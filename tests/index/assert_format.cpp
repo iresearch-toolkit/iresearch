@@ -49,6 +49,10 @@
 
 namespace tests {
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                           position implementation
+// -----------------------------------------------------------------------------
+
 position::position(
     uint32_t pos, uint32_t start,
     uint32_t end,
@@ -56,6 +60,10 @@ position::position(
   : pos(pos), start(start),
     end(end), payload(pay) {
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            posting implementation
+// -----------------------------------------------------------------------------
 
 posting::posting(irs::doc_id_t id)
   : id_(id) {
@@ -75,11 +83,15 @@ void posting::add(uint32_t pos, uint32_t offs_start, const irs::attribute_provid
   positions_.emplace(pos, start, end, pay ? pay->value : irs::bytes_ref::NIL);
 }
 
-term::term(const irs::bytes_ref& data): value( data ) {}
-
 posting& term::add(irs::doc_id_t id) {
   return const_cast<posting&>(*postings.emplace(id).first);
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               term implementation
+// -----------------------------------------------------------------------------
+
+term::term(irs::bytes_ref data): value(data) {}
 
 bool term::operator<( const term& rhs ) const {
   return irs::memcmp_less(
@@ -92,14 +104,13 @@ field::field(
     irs::IndexFeatures index_features,
     const irs::features_t& features)
   : field_meta(name, index_features),
-    pos(0), offs(0) {
+    stats{} {
   for (const auto feature : features) {
-    // FIXME
     this->features[feature] = irs::field_limits::invalid();
   }
 }
 
-term& field::add(const irs::bytes_ref& t) {
+term& field::insert(const irs::bytes_ref& t) {
   auto res = terms.emplace(t);
   return const_cast<term&>(*res.first);
 }
@@ -113,29 +124,47 @@ size_t field::remove(const irs::bytes_ref& t) {
   return terms.erase(term(t));
 }
 
-/* -------------------------------------------------------------------
-* index_segment
-* ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                      column_values implementation
+// -----------------------------------------------------------------------------
 
-index_segment::index_segment() : count_( 0 ) {}
-
-index_segment::index_segment(index_segment&& rhs) noexcept
-  : fields_( std::move( rhs.fields_)),
-    count_( rhs.count_) {
-  rhs.count_ = 0;
+void column_values::insert(irs::doc_id_t key, irs::bytes_ref value) {
+  const auto res = values_.emplace(key, value);
+  ASSERT_FALSE(res.second);
 }
 
-index_segment& index_segment::operator=(index_segment&& rhs) noexcept {
-  if ( this != &rhs ) {
-    fields_ = std::move( rhs.fields_ );
-    count_ = rhs.count_;
-    rhs.count_ = 0;
+void column_values::sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
+  std::map<irs::doc_id_t, irs::bstring> resorted_values;
+
+  for (auto& value : values_) {
+    resorted_values.emplace(
+      docs.at(value.first),
+      std::move(value.second));
   }
 
-  return *this;
+  values_ = std::move(resorted_values);
 }
 
-void index_segment::add_sorted(const ifield& f) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                      index_segment implementation
+// -----------------------------------------------------------------------------
+
+void index_segment::compute_features() {
+  irs::columnstore_writer::values_writer_f writer =
+      [this](irs::doc_id_t) -> column_output&{ return out_; };
+
+  for (auto* field : doc_fields_) {
+    for (auto& entry : field->feature_infos) {
+      buf_.clear();
+
+      entry.handler(field->stats, count_, writer);
+
+      columns_[entry.id].insert(count_, buf_);
+    }
+  }
+}
+
+void index_segment::insert_sorted(const ifield& f) {
   irs::bstring buf;
   irs::bytes_output out(buf);
   if (f.write(out)) {
@@ -145,15 +174,60 @@ void index_segment::add_sorted(const ifield& f) {
   }
 }
 
-void index_segment::add(const ifield& f) {
-  const irs::string_ref& field_name = f.name();
-  field field(field_name, f.index_features(), f.features());
-  auto res = fields_.emplace(field_name, std::move(field));
-  if (res.second) {
-    id_to_field_.emplace_back(&res.first->second);
+void index_segment::insert_stored(const ifield& f) {
+  buf_.clear();
+  irs::bytes_output out{buf_};
+  if (!f.write(out)) {
+    return;
   }
-  const_cast<irs::string_ref&>(res.first->first) = res.first->second.name;
-  auto& fld = res.first->second;
+
+  auto res = columns_meta_.emplace(f.name());
+
+  if (res.second) {
+    const size_t id = columns_.size();
+    EXPECT_LE(id, std::numeric_limits<irs::field_id>::max());
+    columns_.emplace_back();
+
+    res.first->second = id;
+  }
+
+  const auto column_id = res.first->second;
+  EXPECT_LT(column_id, columns_.size()) ;
+
+  columns_[column_id].insert(count_, buf_);
+}
+
+void index_segment::insert(const ifield& f) {
+  const irs::string_ref field_name = f.name();
+
+  const auto res = fields_.emplace(
+    field_name,
+    field{field_name, f.index_features(), f.features()});
+
+  field& field = res.first->second;
+
+  if (res.second) {
+    auto& new_field = res.first->second;
+    id_to_field_.emplace_back(&new_field);
+    for (auto& feature : new_field.features) {
+      auto handler = field_features_.find(feature.first);
+
+      if (handler != field_features_.end()) {
+        const size_t id = columns_.size();
+        ASSERT_LE(id, std::numeric_limits<irs::field_id>::max());
+        columns_.emplace_back();
+
+        feature.second = irs::field_id{id};
+
+        new_field.feature_infos.emplace_back(field::feature_info{
+          irs::field_id{id}, handler->second});
+      }
+    }
+
+    const_cast<irs::string_ref&>(res.first->first) = field.name;
+  }
+
+  doc_fields_.insert(&field);
 
   auto& stream = f.get_tokens();
 
@@ -167,21 +241,53 @@ void index_segment::add(const ifield& f) {
   auto doc_id = irs::doc_id_t((irs::doc_limits::min)() + count_);
 
   while (stream.next()) {
-    tests::term& trm = fld.add(term->value);
+    tests::term& trm = field.insert(term->value);
     tests::posting& pst = trm.add(doc_id);
-    fld.pos += inc->value;
-    pst.add(fld.pos, fld.offs, stream);
+    field.stats.pos += inc->value;
+    ++field.stats.len;
+    pst.add(field.stats.pos, field.stats.offs, stream);
     empty = false;
   }
 
   if (!empty) { 
-    fld.docs.emplace(doc_id);
+    field.docs.emplace(doc_id);
   }
 
   if (offs) {
-    fld.offs += offs->end;
+    field.stats.offs += offs->end;
   }
 }
+
+void index_segment::sort(const irs::comparer& comparator) {
+  if (sort_.empty()) {
+    return;
+  }
+
+  std::sort(
+    sort_.begin(), sort_.end(),
+    [&comparator](
+        const std::pair<irs::bstring, irs::doc_id_t>& lhs,
+        const std::pair<irs::bstring, irs::doc_id_t>& rhs) {
+      return comparator(lhs.first, rhs.first); });
+
+  irs::doc_id_t new_doc_id = irs::doc_limits::min();
+  std::map<irs::doc_id_t, irs::doc_id_t> order;
+  for (auto& entry : sort_) {
+    order[entry.second] = new_doc_id++;
+  }
+
+  for (auto& field : fields_) {
+    field.second.sort(order);
+  }
+
+  for (auto& column : columns_) {
+    column.sort(order);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                  index_meta_writer implementation
+// -----------------------------------------------------------------------------
 
 std::string index_meta_writer::filename(
     const irs::index_meta& /*meta*/) const {
@@ -198,9 +304,9 @@ bool index_meta_writer::commit() { return true; }
 
 void index_meta_writer::rollback() noexcept { }
 
-/* -------------------------------------------------------------------
- * index_meta_reader
- * ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                  index_meta_reader implementation
+// -----------------------------------------------------------------------------
 
 bool index_meta_reader::last_segments_file(
     const irs::directory&,
@@ -214,9 +320,9 @@ void index_meta_reader::read(
     const irs::string_ref& /*filename*/ /*= string_ref::NIL*/) {
 }
 
-/* -------------------------------------------------------------------
- * segment_meta_writer 
- * ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                segment_meta_writer implementation
+// -----------------------------------------------------------------------------
 
 void segment_meta_writer::write(
     irs::directory& /*dir*/,
@@ -224,9 +330,9 @@ void segment_meta_writer::write(
     const irs::segment_meta& /*meta*/) {
 }
 
-/* -------------------------------------------------------------------
- * segment_meta_reader
- * ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                segment_meta_reader implementation
+// -----------------------------------------------------------------------------
 
 void segment_meta_reader::read( 
     const irs::directory& /*dir*/,
@@ -234,9 +340,9 @@ void segment_meta_reader::read(
     const irs::string_ref& /*filename*/ /*= string_ref::NIL*/) {
 }
 
-/* -------------------------------------------------------------------
-* document_mask_writer
-* ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                               document_mask_writer implementation
+// -----------------------------------------------------------------------------
 
 document_mask_writer::document_mask_writer(const index_segment& data):
   data_(data) {
@@ -257,9 +363,9 @@ void document_mask_writer::write(
   }
 }
 
-/* -------------------------------------------------------------------
- * field_writer
- * ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                       field_writer implementation
+// -----------------------------------------------------------------------------
 
 field_writer::field_writer(const index_segment& data)
   : readers_(data) {
@@ -275,8 +381,10 @@ void field_writer::write(
     const irs::feature_map_t& expected_features,
     irs::term_iterator& actual_term) {
   // features to check
-  const tests::field* fld = readers_.data().find(name);
-  ASSERT_NE(nullptr, fld);
+  const auto fld_it = readers_.data().fields().find(name);
+  ASSERT_NE(readers_.data().fields().end(), fld_it);
+
+  auto* fld = &fld_it->second;
   ASSERT_EQ(fld->name, name);
   ASSERT_EQ(fld->features, expected_features);
   ASSERT_EQ(fld->index_features, expected_index_features);
@@ -315,10 +423,9 @@ void field_writer::write(
 
 void field_writer::end() { }
 
-/* -------------------------------------------------------------------
- * field_reader
- * ------------------------------------------------------------------*/
-
+////////////////////////////////////////////////////////////////////////////////
+/// @class doc_iterator
+////////////////////////////////////////////////////////////////////////////////
 class doc_iterator : public irs::doc_iterator {
  public:
   doc_iterator(irs::IndexFeatures features, const tests::term& data);
@@ -347,9 +454,9 @@ class doc_iterator : public irs::doc_iterator {
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t id) override {
-    auto it = data_.postings.find(id);
+    auto it = data_.postings.find(posting{id});
 
-    if ( it == data_.postings.end() ) {
+    if (it == data_.postings.end()) {
       prev_ = next_ = it;
       return irs::doc_limits::eof();
     }
@@ -454,6 +561,9 @@ doc_iterator::doc_iterator(irs::IndexFeatures features, const tests::term& data)
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class term_iterator
+////////////////////////////////////////////////////////////////////////////////
 class term_iterator final : public irs::seek_term_iterator {
  public:
   struct term_cookie final : irs::seek_cookie {
@@ -494,7 +604,7 @@ class term_iterator final : public irs::seek_term_iterator {
   virtual void read() override  { }
 
   virtual bool seek(const irs::bytes_ref& value) override {
-    auto it = data_.terms.find(value);
+    auto it = data_.terms.find(term{value});
 
     if (it == data_.terms.end()) {
       prev_ = next_ = it;
@@ -509,7 +619,7 @@ class term_iterator final : public irs::seek_term_iterator {
   }
 
   virtual irs::SeekResult seek_ge(const irs::bytes_ref& value) override {
-    auto it = data_.terms.lower_bound(value);
+    auto it = data_.terms.lower_bound(term{value});
     if (it == data_.terms.end()) {
       prev_ = next_ = it;
       value_ = irs::bytes_ref::NIL;
@@ -550,6 +660,20 @@ class term_iterator final : public irs::seek_term_iterator {
   std::set<tests::term>::const_iterator next_;
   irs::bytes_ref value_;
 };
+
+term_reader::term_reader(const tests::field& data)
+  : data_(data),
+    min_(data_.terms.begin()->value),
+    max_(data_.terms.rbegin()->value) {
+  if (irs::IndexFeatures::NONE != (meta().index_features & irs::IndexFeatures::FREQ)) {
+    for (auto& term : data.terms) {
+      for (auto& p : term.postings) {
+        freq_.value += static_cast<uint32_t>(p.positions().size());
+      }
+    }
+    pfreq_ = &freq_;
+  }
+}
 
 irs::seek_term_iterator::ptr term_reader::iterator(irs::SeekMode) const {
   return irs::memory::make_managed<term_iterator>(data_);
@@ -636,11 +760,264 @@ size_t field_reader::size() const {
   return data_.size();
 }
 
-/* -------------------------------------------------------------------
- * format 
- * ------------------------------------------------------------------*/
+////////////////////////////////////////////////////////////////////////////////
+/// @class column_meta_writer
+////////////////////////////////////////////////////////////////////////////////
+class column_meta_writer final : public irs::column_meta_writer {
+ public:
+  virtual void prepare(irs::directory& /*dir*/,
+                       const irs::segment_meta& /*meta*/) override {
+    // NOOP
+  }
 
-/*static*/ decltype(format::DEFAULT_SEGMENT) format::DEFAULT_SEGMENT;
+  virtual void write(const std::string& /*name*/,
+                     irs::field_id /*id*/) override {
+    // NOOP
+  }
+
+  virtual void flush() override {
+    // NOOP
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class column_meta_reader
+////////////////////////////////////////////////////////////////////////////////
+class column_meta_reader final : public irs::column_meta_reader {
+ public:
+  explicit column_meta_reader(const index_segment& segment) noexcept
+    : segment_{&segment},
+      begin_{segment.columns_meta().begin()},
+      end_{segment.columns_meta().end()} {
+  }
+
+  virtual bool prepare(
+      const irs::directory& /*dir*/,
+      const irs::segment_meta& /*meta*/,
+      /*out*/ size_t& count,
+      /*out*/ irs::field_id& max_id) override {
+    count = 0;
+    max_id = irs::field_limits::invalid();
+    for (auto& column : segment_->columns_meta()) {
+      max_id = std::max(column.second, max_id);
+      ++count;
+    }
+    return true;
+  }
+
+  virtual bool read(irs::column_meta& column) override {
+    if (begin_ == end_) {
+      return false;
+    }
+
+    std::tie(column.name, column.id) = *begin_;
+    ++begin_;
+    return true;
+  }
+
+ private:
+  const index_segment* segment_;
+  decltype(segment_->columns_meta().begin()) begin_;
+  decltype(segment_->columns_meta().end()) end_;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class columnstore_writer
+////////////////////////////////////////////////////////////////////////////////
+class columnstore_writer final : public irs::columnstore_writer {
+ public:
+  virtual void prepare(
+      irs::directory& /*dir*/,
+      const irs::segment_meta& /*meta*/) {
+    // NOOP
+  }
+
+  virtual column_t push_column(const irs::column_info& /*info*/) {
+    // NOOP
+    EXPECT_FALSE(true);
+    return {};
+  }
+
+  virtual void rollback() noexcept {
+    // NOOP
+  }
+
+  virtual bool commit(const irs::flush_state& /*state*/) {
+    // NOOP
+    EXPECT_FALSE(true);
+    return false;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class column_iterator
+////////////////////////////////////////////////////////////////////////////////
+class column_iterator final : public irs::resettable_doc_iterator {
+ public:
+  explicit column_iterator(const column_values& values) noexcept
+    : values_{&values},
+      cur_{values_->begin()},
+      next_{cur_},
+      end_{values_->end()} {
+    std::get<irs::cost>(attrs_).reset(values_->size());
+  }
+
+  virtual bool next() override {
+    if (cur_ == end_) {
+      return false;
+    }
+
+    cur_ = next_;
+    ++next_;
+
+    std::get<irs::document>(attrs_).value = cur_->first;
+    std::get<irs::payload>(attrs_).value = cur_->second;
+
+    return true;
+  }
+
+  virtual irs::doc_id_t seek(irs::doc_id_t target) override {
+    return irs::seek(*this, target);
+  }
+
+  virtual irs::doc_id_t value() const noexcept override {
+    return std::get<irs::document>(attrs_).value;
+  }
+
+  virtual irs::attribute* get_mutable(
+      irs::type_info::type_id type) noexcept override {
+    return irs::get_mutable(attrs_, type);
+  }
+
+  virtual void reset() noexcept override {
+    cur_ = values_->begin();
+    next_ = cur_;
+  }
+
+ private:
+  using attributes = std::tuple<irs::document, irs::cost, irs::payload>;
+
+  attributes attrs_;
+  const column_values* values_;
+  decltype(values_->begin()) cur_;
+  decltype(values_->begin()) next_;
+  decltype(values_->end()) end_;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class column_reader
+////////////////////////////////////////////////////////////////////////////////
+class column_reader final : public irs::columnstore_reader::column_reader {
+ public:
+  virtual irs::columnstore_reader::values_reader_f values() const override {
+
+    auto moved_it = make_move_on_copy(this->iterator());
+    auto* document = irs::get<irs::document>(*moved_it.value());
+    if (!document || irs::doc_limits::eof(document->value)) {
+      return irs::columnstore_reader::empty_reader();
+    }
+    const irs::bytes_ref* payload_value = &irs::bytes_ref::NIL;
+    auto* payload = irs::get<irs::payload>(*moved_it.value());
+    if (payload) {
+      payload_value = &payload->value;
+    }
+
+    return [it = moved_it, payload_value, document](irs::doc_id_t doc, irs::bytes_ref& value) {
+      if (doc > irs::doc_limits::invalid() && doc < irs::doc_limits::eof()) {
+        if (doc < document->value) {
+#ifdef IRESEARCH_DEBUG
+          auto& impl = dynamic_cast<irs::resettable_doc_iterator&>(*it.value());
+#else
+          auto& impl = static_cast<irs::resettable_doc_iterator&>(*it.value());
+#endif
+          impl.reset();
+        }
+
+        if (doc == it.value()->seek(doc)) {
+          value = *payload_value;
+          return true;
+        }
+      }
+
+      return false;
+    };
+  }
+
+  virtual doc_iterator::ptr iterator() const override {
+    return irs::memory::make_managed<column_iterator>(*values_);
+
+  }
+
+  virtual bool visit(const irs::columnstore_reader::values_visitor_f& visitor) const override {
+    auto it = this->iterator();
+
+    irs::payload dummy;
+    auto* doc = irs::get<irs::document>(*it);
+    if (!doc) {
+      return false;
+    }
+    auto* payload = irs::get<irs::payload>(*it);
+    if (!payload) {
+      payload = &dummy;
+    }
+
+    while (it->next()) {
+      if (!visitor(doc->value, payload->value)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  virtual irs::doc_id_t size() const override {
+    return values_->size();
+
+  }
+
+ private:
+  const column_values* values_;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class columnstore_reader
+////////////////////////////////////////////////////////////////////////////////
+class columnstore_reader final : public irs::columnstore_reader {
+ public:
+  explicit columnstore_reader(const index_segment& segment) noexcept {
+    columns_.reserve(segment.size());
+    for (auto& column : segment.columns()) {
+      columns_.emplace_back(column);
+    }
+  }
+
+  virtual bool prepare(
+      const irs::directory& /*dir*/,
+      const irs::segment_meta& /*meta*/) {
+    return !columns_.empty();
+  }
+
+  virtual const column_reader* column(irs::field_id field) const {
+    if (field < columns_.size()) {
+      return &columns_[field];
+    }
+
+    return nullptr;
+  }
+
+  virtual size_t size() const {
+    return columns_.size();
+  }
+
+ private:
+  std::vector<tests::column_reader> columns_;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             format implementation
+// -----------------------------------------------------------------------------
+
+/*static*/ decltype(format::DEFAULT_SEGMENT) format::DEFAULT_SEGMENT{{}};
 
 format::format(): format(DEFAULT_SEGMENT) {}
 
@@ -674,7 +1051,7 @@ irs::segment_meta_reader::ptr format::get_segment_meta_reader() const {
 }
 
 irs::document_mask_reader::ptr format::get_document_mask_reader() const {
-  return irs::document_mask_reader::ptr();
+  return irs::memory::make_managed<tests::document_mask_reader>(data_);
 }
 
 irs::document_mask_writer::ptr format::get_document_mask_writer() const {
@@ -690,19 +1067,19 @@ irs::field_reader::ptr format::get_field_reader() const {
 }
 
 irs::column_meta_writer::ptr format::get_column_meta_writer() const {
-  return nullptr;
+  return irs::memory::make_unique<tests::column_meta_writer>();
 }
 
 irs::column_meta_reader::ptr format::get_column_meta_reader() const {
-  return nullptr;
+  return irs::memory::make_unique<tests::column_meta_reader>(data_);
 }
 
 irs::columnstore_writer::ptr format::get_columnstore_writer(bool /*consolidation*/) const {
-  return nullptr;
+  return irs::memory::make_unique<tests::columnstore_writer>();
 }
 
 irs::columnstore_reader::ptr format::get_columnstore_reader() const {
-  return nullptr;
+  return irs::memory::make_unique<tests::columnstore_reader>(data_);
 }
 
 REGISTER_FORMAT(tests::format);
@@ -992,8 +1369,8 @@ void assert_index(
       auto actual_term_reader = actual_sub_reader.field(actual_fields->value().meta().name);
       ASSERT_NE(nullptr, actual_term_reader);
 
-      const irs::field_meta* expected_field = expected_segment.find(expected_fields_begin->first);
-      ASSERT_NE(nullptr, expected_field);
+      const auto expected_field_it = expected_segment.fields().find(expected_fields_begin->first);
+      ASSERT_NE(expected_segment.fields().end(), expected_field_it);
 
       // check term reader
       ASSERT_EQ((expected_term_reader->min)(), (actual_term_reader->min)());

@@ -134,7 +134,6 @@ class IRESEARCH_API field_data : util::noncopyable {
   }
 
   mutable std::vector<feature_info> features_;
-  mutable columnstore_writer::values_writer_f norms_;
   mutable field_meta meta_;
   postings terms_;
   byte_block_pool::inserter* byte_writer_;

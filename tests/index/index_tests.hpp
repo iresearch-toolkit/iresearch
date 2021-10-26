@@ -231,7 +231,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     const document* src;
 
     while ((src = gen.next())) {
-      segment.add(
+      segment.insert(
         src->indexed.begin(),
         src->indexed.end(),
         src->sorted);
@@ -249,7 +249,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   }
 
   void add_segment(irs::index_writer& writer, tests::doc_generator_base& gen) {
-    index_.emplace_back();
+    index_.emplace_back(writer.field_features());
     write_segment(writer, index_.back(), gen);
     writer.commit();
   }
@@ -257,7 +257,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   void add_segments(
       irs::index_writer& writer, std::vector<doc_generator_base::ptr>& gens) {
     for (auto& gen : gens) {
-      index_.emplace_back();
+      index_.emplace_back(writer.field_features());
       write_segment(writer, index_.back(), *gen);
     }
     writer.commit();

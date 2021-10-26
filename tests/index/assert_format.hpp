@@ -33,6 +33,9 @@
 
 namespace tests {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct position
+////////////////////////////////////////////////////////////////////////////////
 struct position {
   position(uint32_t pos, uint32_t start,
            uint32_t end, const irs::bytes_ref& pay);
@@ -47,23 +50,17 @@ struct position {
   irs::bstring payload;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class posting
+////////////////////////////////////////////////////////////////////////////////
 class posting {
  public:
-  posting(irs::doc_id_t id);
+  explicit posting(irs::doc_id_t id);
   posting(irs::doc_id_t id, std::set<position>&& positions)
     : positions_(std::move(positions)), id_(id) {
   }
-  posting(posting&& rhs) noexcept
-    : positions_(std::move(rhs.positions_)),
-      id_(rhs.id_) {
-  }
-  posting& operator=(posting&& rhs) noexcept {
-    if (this != &rhs) {
-      positions_ = std::move(rhs.positions_);
-      id_ = rhs.id_;
-    }
-    return *this;
-  }
+  posting(posting&& rhs) noexcept = default;
+  posting& operator=(posting&& rhs) noexcept = default;
 
   void add(uint32_t pos, uint32_t offs_start, const irs::attribute_provider& attrs);
 
@@ -82,8 +79,11 @@ class posting {
   irs::doc_id_t id_;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct term
+////////////////////////////////////////////////////////////////////////////////
 struct term {
-  term(const irs::bytes_ref& data);
+  explicit term(irs::bytes_ref data);
 
   posting& add(irs::doc_id_t id);
 
@@ -97,8 +97,7 @@ struct term {
     for (auto& posting : postings) {
       resorted_postings.emplace(
         docs.at(posting.id_),
-        std::move(const_cast<tests::posting&>(posting).positions_)
-      );
+        std::move(const_cast<tests::posting&>(posting).positions_));
     }
 
     postings = std::move(resorted_postings);
@@ -108,15 +107,29 @@ struct term {
   irs::bstring value;
 };
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class field
+////////////////////////////////////////////////////////////////////////////////
 class field : public irs::field_meta {
  public:
+  struct feature_info {
+    irs::field_id id;
+    irs::feature_handler_f handler;
+  };
+
+  struct field_stats : irs::field_stats {
+    uint32_t pos{};
+    uint32_t offs{};
+  };
+
   field(const irs::string_ref& name,
         irs::IndexFeatures index_features,
         const irs::features_t& features);
   field(field&& rhs) = default;
   field& operator=(field&& rhs) = default;
 
-  term& add(const irs::bytes_ref& term);
+  term& insert(const irs::bytes_ref& term);
   term* find(const irs::bytes_ref& term);
   size_t remove(const irs::bytes_ref& t);
   void sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
@@ -125,126 +138,140 @@ class field : public irs::field_meta {
     }
   }
 
+  std::vector<feature_info> feature_infos;
   std::set<term> terms;
   std::unordered_set<irs::doc_id_t> docs;
-  uint32_t pos;
-  uint32_t offs;
+  field_stats stats;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class column_values
+////////////////////////////////////////////////////////////////////////////////
+class column_values {
+ public:
+  void insert(irs::doc_id_t key, irs::bytes_ref value);
+
+  auto begin() const { return values_.begin(); }
+  auto end() const { return values_.end(); }
+  auto size() const { return values_.size(); }
+
+  void sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs);
+
+ private:
+  std::map<irs::doc_id_t, irs::bstring> values_;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class index_segment
+////////////////////////////////////////////////////////////////////////////////
 class index_segment: irs::util::noncopyable {
  public:
-  typedef std::map<irs::string_ref, field> field_map_t;
-  typedef field_map_t::const_iterator iterator;
+  using field_map_t = std::map<irs::string_ref, field>;
+  using columns_t = std::deque<column_values>; // pointers remain valid
+  using columns_meta_t = std::map<std::string, irs::field_id>;
 
-  index_segment();
-  index_segment(index_segment&& rhs) noexcept;
-  index_segment& operator=(index_segment&& rhs) noexcept;
-   
-  size_t doc_count() const { return count_; }
-  size_t size() const { return fields_.size(); }
-
-  const irs::document_mask& doc_mask() const { return doc_mask_; }
-  const field_map_t& fields() const { return fields_; }
-
-  bool find(const irs::string_ref& name, const irs::bytes_ref& term) {
-    field* fld = find( name );
-    return fld && fld->find(term);
+  explicit index_segment(const irs::field_features_t& features)
+    : field_features_{features} {
   }
+  index_segment(index_segment&& rhs) noexcept = default;
+  index_segment& operator=(index_segment&& rhs) noexcept = default;
 
-  const field* find(size_t id) const {
-    return id_to_field_.at(id);
-  }
-
-  field* find(const irs::string_ref& name) {
-    auto it = fields_.find( name );
-    return it == fields_.end()?nullptr:&it->second;
-  }
-
-  const field* find(const irs::string_ref& name) const {
-    auto it = fields_.find( name );
-    return it == fields_.end()?nullptr:&it->second;
-  }
+  size_t doc_count() const noexcept { return count_; }
+  size_t size() const noexcept { return fields_.size(); }
+  auto& doc_mask() const noexcept { return doc_mask_; }
+  auto& fields() const noexcept { return fields_; }
+  auto& columns() noexcept { return columns_; }
+  auto& columns() const noexcept { return columns_; }
+  auto& columns_meta() const noexcept { return columns_meta_; }
+  auto& columns_meta() noexcept { return columns_meta_; }
 
   template<typename Iterator>
-  void add(Iterator begin, Iterator end, ifield::ptr sorted = nullptr) {
-    // reset field per-document state
-    for (auto it = begin; it != end; ++it) {
-      auto* field_data = find((*it).name());
+  void insert(Iterator begin, Iterator end, ifield::ptr sorted = nullptr);
 
-      if (!field_data) {
-        continue;
-      }
+  void sort(const irs::comparer& comparator);
 
-      field_data->pos = 0;
-      field_data->offs = 0;
-    }
-
-    for (; begin != end; ++begin) {
-      add(*begin);
-    }
-
-    if (sorted) {
-      add_sorted(*sorted);
-    }
-
-    ++count_;
-  }
-
-  void sort(const irs::comparer& comparator) {
-    if (sort_.empty()) {
-      return;
-    }
-
-    std::sort(
-      sort_.begin(), sort_.end(),
-      [&comparator](
-          const std::pair<irs::bstring, irs::doc_id_t>& lhs,
-          const std::pair<irs::bstring, irs::doc_id_t>& rhs) {
-        return comparator(lhs.first, rhs.first);
-    });
-
-    irs::doc_id_t new_doc_id = irs::doc_limits::min();
-    std::map<irs::doc_id_t, irs::doc_id_t> order;
-    for (auto& entry : sort_) {
-      order[entry.second] = new_doc_id++;
-    }
-
-    for (auto& field : fields_) {
-      field.second.sort(order);
-    }
-  }
-
-  void clear() {
+  void clear() noexcept {
     fields_.clear();
     count_ = 0;
   }
 
  private:
-  void add(const ifield& field);
-  void add_sorted(const ifield& field);
+  class column_output final : public irs::column_output {
+   public:
+    explicit column_output(irs::bstring& buf) noexcept
+      : buf_{&buf} {
+    }
 
+    virtual void write_byte(irs::byte_type b) override {
+      (*buf_) += b;
+    }
+
+    virtual void write_bytes(const irs::byte_type* b, size_t size) override {
+      buf_->append(b, size);
+    }
+
+    virtual void reset() override {
+      buf_->clear();
+    }
+
+    irs::bstring* buf_;
+  };
+
+  index_segment(const index_segment& rhs) noexcept = delete;
+  index_segment& operator=(const index_segment& rhs) noexcept = delete;
+
+  void insert(const ifield& field);
+  void insert_stored(const ifield& field);
+  void insert_sorted(const ifield& field);
+  void compute_features();
+
+  irs::field_features_t field_features_;
+  columns_meta_t columns_meta_;
   std::vector<std::pair<irs::bstring, irs::doc_id_t>> sort_;
   std::vector<const field*> id_to_field_;
+  std::set<field*> doc_fields_;
   field_map_t fields_;
-  size_t count_;
+  columns_t columns_;
+  size_t count_{};
   irs::document_mask doc_mask_;
+  irs::bstring buf_;
+  column_output out_{buf_};
 };
 
-class term_reader : public irs::term_reader {
- public:
-  term_reader(const tests::field& data)
-    : data_(data),
-      min_(data_.terms.begin()->value),
-      max_(data_.terms.rbegin()->value) {
-    if (irs::IndexFeatures::NONE != (meta().index_features & irs::IndexFeatures::FREQ)) {
-      for (auto& term : data.terms) {
-        for (auto& p : term.postings) {
-          freq_.value += static_cast<uint32_t>(p.positions().size());
-        }
-      }
-      pfreq_ = &freq_;
+template<typename Iterator>
+void index_segment::insert(
+    Iterator begin, Iterator end,
+    ifield::ptr sorted /*= nullptr*/) {
+  // reset field per-document state
+  doc_fields_.clear();
+  for (auto it = begin; it != end; ++it) {
+    auto field = fields_.find(it->name());
+
+    if (field != fields_.end()) {
+      field->second.stats = {};
     }
   }
+
+  for (; begin != end; ++begin) {
+    insert(*begin);
+    insert_stored(*begin);
+  }
+
+  if (sorted) {
+    insert_sorted(*sorted);
+  }
+
+  compute_features();
+
+  ++count_;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class term_reader
+////////////////////////////////////////////////////////////////////////////////
+class term_reader : public irs::term_reader {
+ public:
+  explicit term_reader(const tests::field& data);
 
   virtual irs::seek_term_iterator::ptr iterator(irs::SeekMode) const override;
   virtual irs::seek_term_iterator::ptr iterator(irs::automaton_table_matcher& a) const override;
@@ -274,68 +301,94 @@ class term_reader : public irs::term_reader {
   irs::bytes_ref max_;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct index_meta_writer
+////////////////////////////////////////////////////////////////////////////////
 struct index_meta_writer: public irs::index_meta_writer {
-  virtual std::string filename(
-    const irs::index_meta& meta
-  ) const override;
-  virtual bool prepare(
-    irs::directory& dir,
-    irs::index_meta& meta
-  ) override;
+  virtual std::string filename(const irs::index_meta& meta) const override;
+  virtual bool prepare(irs::directory& dir, irs::index_meta& meta) override;
   virtual bool commit() override;
   virtual void rollback() noexcept override;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct index_meta_reader
+////////////////////////////////////////////////////////////////////////////////
 struct index_meta_reader : public irs::index_meta_reader {
-  virtual bool last_segments_file(
-    const irs::directory& dir, std::string& out
-  ) const override;
+  virtual bool last_segments_file(const irs::directory& dir, std::string& out) const override;
   virtual void read(
     const irs::directory& dir,
     irs::index_meta& meta,
-    const irs::string_ref& filename = irs::string_ref::NIL
-  ) override;
+    const irs::string_ref& filename = irs::string_ref::NIL) override;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct segment_meta_writer
+////////////////////////////////////////////////////////////////////////////////
 struct segment_meta_writer : public irs::segment_meta_writer {
   virtual void write(
     irs::directory& dir,
     std::string& filename,
-    const irs::segment_meta& meta
-  ) override;
+    const irs::segment_meta& meta) override;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct segment_meta_reader
+////////////////////////////////////////////////////////////////////////////////
 struct segment_meta_reader : public irs::segment_meta_reader {
   virtual void read(
     const irs::directory& dir,
     irs::segment_meta& meta,
-    const irs::string_ref& filename = irs::string_ref::NIL
-  ) override;
+    const irs::string_ref& filename = irs::string_ref::NIL) override;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class document_mask_writer
+////////////////////////////////////////////////////////////////////////////////
 class document_mask_writer: public irs::document_mask_writer {
  public:
-  document_mask_writer(const index_segment& data);
-  virtual std::string filename(
-    const irs::segment_meta& meta
-  ) const override;
+  explicit document_mask_writer(const index_segment& data);
+  virtual std::string filename(const irs::segment_meta& meta) const override;
 
   void write(
     irs::directory& dir,
     const irs::segment_meta& meta,
-    const irs::document_mask& docs_mask
-  ) override;
+    const irs::document_mask& docs_mask) override;
 
  private:
   const index_segment& data_;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class document_mask_reader
+////////////////////////////////////////////////////////////////////////////////
+class document_mask_reader : public irs::document_mask_reader {
+ public:
+  explicit document_mask_reader(const index_segment& data);
+
+  virtual bool read(
+      const irs::directory& /*dir*/,
+      const irs::segment_meta& /*meta*/,
+      irs::document_mask& docs_mask) {
+    docs_mask = data_.doc_mask();
+    return true;
+  }
+
+ private:
+  const index_segment& data_;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class field_reader
+////////////////////////////////////////////////////////////////////////////////
 class field_reader : public irs::field_reader {
  public:
   field_reader( const index_segment& data );
   field_reader(field_reader&& other) noexcept;
 
-  virtual void prepare(const irs::directory& dir, const irs::segment_meta& meta, const irs::document_mask& mask) override;
+  virtual void prepare(const irs::directory& dir,
+                       const irs::segment_meta& meta,
+                       const irs::document_mask& mask) override;
   virtual const irs::term_reader* field(const irs::string_ref& field) const override;
   virtual irs::field_iterator::ptr iterator() const override;
   virtual size_t size() const override;
@@ -349,6 +402,9 @@ class field_reader : public irs::field_reader {
   const index_segment& data_;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class field_writer
+////////////////////////////////////////////////////////////////////////////////
 class field_writer : public irs::field_writer {
  public:
   explicit field_writer(const index_segment& data);
@@ -365,6 +421,9 @@ class field_writer : public irs::field_writer {
   irs::IndexFeatures index_features_{irs::IndexFeatures::NONE};
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class format
+////////////////////////////////////////////////////////////////////////////////
 class format : public irs::format {
  public:
   static ptr make();

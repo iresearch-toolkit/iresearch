@@ -330,8 +330,8 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.emplace_back(writer->field_features());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore
@@ -475,8 +475,8 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.emplace_back(writer->field_features());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore
@@ -584,7 +584,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
     // validate index
     tests::index_t expected_index;
     expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore
@@ -682,7 +682,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
     // validate index
     tests::index_t expected_index;
     expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore
@@ -719,8 +719,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
 
     // successul attempt
     ASSERT_TRUE(writer->begin());
@@ -728,8 +727,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
     ASSERT_THROW(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ), irs::io_error);
+      doc2->stored.begin(), doc2->stored.end()), irs::io_error);
 
     // nothing to flush
     ASSERT_FALSE(writer->begin());
@@ -743,8 +741,8 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.emplace_back(writer->field_features());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore
@@ -812,9 +810,9 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
     // validate index
     tests::index_t expected_index;
     expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected_index.emplace_back();
-    expected_index.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore (segment 0)
@@ -969,7 +967,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
     // validate index
     tests::index_t expected_index;
     expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore
@@ -1105,7 +1103,7 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
     // validate index
     tests::index_t expected_index;
     expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore
@@ -1231,7 +1229,7 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
     // validate index
     tests::index_t expected_index;
     expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore
@@ -1322,9 +1320,9 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
     // validate index
     tests::index_t expected_index;
     expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected_index.emplace_back();
-    expected_index.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore (segment 0)
@@ -1450,13 +1448,13 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
     // validate index
     tests::index_t expected_index;
     expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected_index.emplace_back();
-    expected_index.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected_index.emplace_back();
-    expected_index.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     expected_index.emplace_back();
-    expected_index.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected_index.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore (segment 0)
@@ -1619,11 +1617,11 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
     // validate index
     tests::index_t expected_index;
     expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected_index.emplace_back();
-    expected_index.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected_index.emplace_back();
-    expected_index.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore (segment 0)
@@ -1750,11 +1748,11 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
     // validate index
     tests::index_t expected_index;
     expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected_index.emplace_back();
-    expected_index.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected_index.emplace_back();
-    expected_index.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore (segment 0)
@@ -1881,9 +1879,9 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
     // validate index
     tests::index_t expected_index;
     expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected_index.emplace_back();
-    expected_index.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore (segment 0)
@@ -1991,9 +1989,9 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
     // validate index
     tests::index_t expected_index;
     expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected_index.emplace_back();
-    expected_index.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore (segment 0)
@@ -2152,7 +2150,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     // validate index
     tests::index_t expected_index;
     expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore (segment 0)
@@ -2257,7 +2255,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     // validate index
     tests::index_t expected_index;
     expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore (segment 0)
@@ -2404,7 +2402,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     // validate index
     tests::index_t expected_index;
     expected_index.emplace_back();
-    expected_index.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore
@@ -2483,7 +2481,7 @@ TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flu
     // validate index
     tests::index_t expected_index;
     expected_index.emplace_back();
-    expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
+    expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     tests::assert_index(expected_index, *reader, all_features);
 
     // validate columnstore
@@ -2624,8 +2622,8 @@ TEST(index_death_test_formats_10, open_reader) {
   // validate index
   tests::index_t expected_index;
   expected_index.emplace_back();
-  expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
-  expected_index.back().add(doc2->indexed.begin(), doc2->indexed.end());
+  expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+  expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
   tests::assert_index(expected_index, *reader, all_features);
 
   // validate columnstore
@@ -2707,8 +2705,8 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   // validate index
   tests::index_t expected_index;
   expected_index.emplace_back();
-  expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
-  expected_index.back().add(doc2->indexed.begin(), doc2->indexed.end());
+  expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+  expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
   tests::assert_index(expected_index, *reader, all_features);
 
   dir.register_failure(failing_directory::Failure::REOPEN, "_1.cs"); // regiseter reopen failure in columnstore
@@ -2807,8 +2805,8 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   // validate index
   tests::index_t expected_index;
   expected_index.emplace_back();
-  expected_index.back().add(doc1->indexed.begin(), doc1->indexed.end());
-  expected_index.back().add(doc2->indexed.begin(), doc2->indexed.end());
+  expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+  expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
   tests::assert_index(expected_index, *reader, all_features);
 
   // validate columnstore

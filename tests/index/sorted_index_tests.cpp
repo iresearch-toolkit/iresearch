@@ -446,16 +446,12 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
     // simulate consolidation
     index().clear();
-    index().emplace_back();
+    index().emplace_back(writer->field_features());
     auto& segment = index().back();
 
     gen.reset();
     while (auto* doc = gen.next()) {
-      segment.add(
-        doc->indexed.begin(),
-        doc->indexed.end(),
-        doc->sorted
-      );
+      segment.insert(doc->indexed.begin(), doc->indexed.end(), doc->sorted);
     }
 
     ASSERT_NE(nullptr, writer->comparator());

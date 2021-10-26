@@ -6210,7 +6210,7 @@ TEST_P(index_test_case, reuse_segment_writer) {
   {
     {
       auto& index_ref = const_cast<tests::index_t&>(index());
-      index_ref.emplace_back();
+      index_ref.emplace_back(writer->field_features());
       gen0.reset();
       write_segment(*writer, index_ref.back(), gen0);
       writer->commit();
@@ -6218,7 +6218,7 @@ TEST_P(index_test_case, reuse_segment_writer) {
 
     {
       auto& index_ref = const_cast<tests::index_t&>(index());
-      index_ref.emplace_back();
+      index_ref.emplace_back(writer->field_features());
       gen1.reset();
       write_segment(*writer, index_ref.back(), gen1);
       writer->commit();
@@ -6228,7 +6228,7 @@ TEST_P(index_test_case, reuse_segment_writer) {
   // populate initial small segment
   {
     auto& index_ref = const_cast<tests::index_t&>(index());
-    index_ref.emplace_back();
+    index_ref.emplace_back(writer->field_features());
     gen0.reset();
     write_segment(*writer, index_ref.back(), gen0);
     gen1.reset();
@@ -6239,7 +6239,7 @@ TEST_P(index_test_case, reuse_segment_writer) {
   // populate initial large segment
   {
     auto& index_ref = const_cast<tests::index_t&>(index());
-    index_ref.emplace_back();
+    index_ref.emplace_back(writer->field_features());
 
     for(size_t i = 100; i > 0; --i) {
       gen0.reset();
@@ -6255,7 +6255,7 @@ TEST_P(index_test_case, reuse_segment_writer) {
   // 10 iterations, although 2 should be enough since index_wirter::flush_context_pool_.size() == 2
   for(size_t i = 10; i > 0; --i) {
     auto& index_ref = const_cast<tests::index_t&>(index());
-    index_ref.emplace_back();
+    index_ref.emplace_back(writer->field_features());
 
     // add varying sized segments
     for (size_t j = 0; j < i; ++j) {
@@ -7180,8 +7180,8 @@ TEST_P(index_test_case, consolidate_single_segment) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(this->dir(), codec());
@@ -7338,13 +7338,13 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.emplace_back();
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
-    expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.emplace_back(writer->field_features());
+    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(this->dir(), codec());
@@ -7481,8 +7481,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // segment 4
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit(); // commit transaction
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir)); // segments_3
 
@@ -7495,11 +7494,11 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     expected.emplace_back();
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(this->dir(), codec());
@@ -7642,9 +7641,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // validate structure (does not take removals into account)
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(this->dir(), codec());
@@ -7778,10 +7777,10 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // validate structure (does not take removals into account)
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(this->dir(), codec());
@@ -8078,8 +8077,8 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8163,11 +8162,11 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8279,12 +8278,12 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
-    expected.back().add(doc5->indexed.begin(), doc5->indexed.end());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(doc5->indexed.begin(), doc5->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8426,9 +8425,9 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   for (size_t i = 0; i < SEGMENTS_COUNT/2; ++i) {
     expected.emplace_back();
     const auto* doc = gen.next();
-    expected.back().add(doc->indexed.begin(), doc->indexed.end());
+    expected.back().insert(doc->indexed.begin(), doc->indexed.end());
     doc = gen.next();
-    expected.back().add(doc->indexed.begin(), doc->indexed.end());
+    expected.back().insert(doc->indexed.begin(), doc->indexed.end());
   }
   tests::assert_index(dir(), codec(), expected, all_features);
 
@@ -8559,8 +8558,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8663,11 +8662,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8804,14 +8803,14 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.emplace_back();
-    expected.back().add(doc5->indexed.begin(), doc5->indexed.end());
-    expected.back().add(doc6->indexed.begin(), doc6->indexed.end());
+    expected.back().insert(doc5->indexed.begin(), doc5->indexed.end());
+    expected.back().insert(doc6->indexed.begin(), doc6->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8956,9 +8955,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -9085,10 +9084,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -9216,10 +9215,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
     {
       auto reader = irs::directory_reader::open(dir(), codec());
@@ -9512,10 +9511,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
@@ -9604,12 +9603,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     expected.emplace_back();
-    expected.back().add(doc5->indexed.begin(), doc5->indexed.end());
+    expected.back().insert(doc5->indexed.begin(), doc5->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -9762,12 +9761,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc5->indexed.begin(), doc5->indexed.end());
+    expected.back().insert(doc5->indexed.begin(), doc5->indexed.end());
     expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -9942,10 +9941,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected.emplace_back();
-    expected.back().add(doc5->indexed.begin(), doc5->indexed.end());
+    expected.back().insert(doc5->indexed.begin(), doc5->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -11849,7 +11848,7 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -11896,7 +11895,7 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -11944,7 +11943,7 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -11992,7 +11991,7 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12117,8 +12116,8 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12172,8 +12171,8 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12228,8 +12227,8 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12284,8 +12283,8 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12349,9 +12348,9 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
-    expected.back().add(doc6->indexed.begin(), doc6->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(doc6->indexed.begin(), doc6->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12418,9 +12417,9 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back();
-    expected.back().add(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().add(doc4->indexed.begin(), doc4->indexed.end());
-    expected.back().add(doc6->indexed.begin(), doc6->indexed.end());
+    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(doc6->indexed.begin(), doc6->indexed.end());
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
