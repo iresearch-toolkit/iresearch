@@ -21,10 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
+#include "index/comparer.hpp"
 #include "iql/query_builder.hpp"
 #include "utils/index_utils.hpp"
 
+#include "tests_shared.hpp"
 #include "index_tests.hpp"
 
 namespace {

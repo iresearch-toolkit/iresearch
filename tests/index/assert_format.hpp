@@ -24,11 +24,8 @@
 #ifndef IRESEARCH_ASSERT_FORMAT_H
 #define IRESEARCH_ASSERT_FORMAT_H
 
-#include <set>
-
 #include "doc_generator.hpp"
 #include "index/field_meta.hpp"
-#include "index/comparer.hpp"
 #include "formats/formats.hpp"
 
 namespace tests {
@@ -270,125 +267,11 @@ void index_segment::insert(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class term_reader
-////////////////////////////////////////////////////////////////////////////////
-class term_reader : public irs::term_reader {
- public:
-  explicit term_reader(const tests::field& data);
-
-  virtual irs::seek_term_iterator::ptr iterator(irs::SeekMode) const override;
-  virtual irs::seek_term_iterator::ptr iterator(irs::automaton_table_matcher& a) const override;
-  virtual const irs::field_meta& meta() const override { return data_; }
-  virtual size_t size() const override { return data_.terms.size(); }
-  virtual uint64_t docs_count() const override { return data_.docs.size(); }
-  virtual const irs::bytes_ref& (min)() const override { return min_; }
-  virtual const irs::bytes_ref& (max)() const override { return max_; }
-  virtual size_t bit_union(
-    const cookie_provider& provider,
-    size_t* bitset) const override;
-  virtual irs::doc_iterator::ptr postings(
-      const irs::seek_cookie& cookie,
-      irs::IndexFeatures features) const override;
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    if (irs::type<irs::frequency>::id() == type) {
-      return pfreq_;
-    }
-    return nullptr;
-  }
-
- private:
-  const tests::field& data_;
-  irs::frequency freq_;
-  irs::frequency* pfreq_{};
-  irs::bytes_ref min_;
-  irs::bytes_ref max_;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @struct index_meta_writer
-////////////////////////////////////////////////////////////////////////////////
-struct index_meta_writer: public irs::index_meta_writer {
-  virtual std::string filename(const irs::index_meta& meta) const override;
-  virtual bool prepare(irs::directory& dir, irs::index_meta& meta) override;
-  virtual bool commit() override;
-  virtual void rollback() noexcept override;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @struct index_meta_reader
-////////////////////////////////////////////////////////////////////////////////
-struct index_meta_reader : public irs::index_meta_reader {
-  virtual bool last_segments_file(const irs::directory& dir, std::string& out) const override;
-  virtual void read(
-    const irs::directory& dir,
-    irs::index_meta& meta,
-    const irs::string_ref& filename = irs::string_ref::NIL) override;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @struct segment_meta_writer
-////////////////////////////////////////////////////////////////////////////////
-struct segment_meta_writer : public irs::segment_meta_writer {
-  virtual void write(
-    irs::directory& dir,
-    std::string& filename,
-    const irs::segment_meta& meta) override;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @struct segment_meta_reader
-////////////////////////////////////////////////////////////////////////////////
-struct segment_meta_reader : public irs::segment_meta_reader {
-  virtual void read(
-    const irs::directory& dir,
-    irs::segment_meta& meta,
-    const irs::string_ref& filename = irs::string_ref::NIL) override;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class document_mask_writer
-////////////////////////////////////////////////////////////////////////////////
-class document_mask_writer final : public irs::document_mask_writer {
- public:
-  explicit document_mask_writer(const index_segment& data);
-  virtual std::string filename(const irs::segment_meta& meta) const override;
-
-  void write(
-    irs::directory& dir,
-    const irs::segment_meta& meta,
-    const irs::document_mask& docs_mask) override;
-
- private:
-  const index_segment& data_;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class document_mask_reader
-////////////////////////////////////////////////////////////////////////////////
-class document_mask_reader final : public irs::document_mask_reader {
- public:
-  explicit document_mask_reader(const index_segment& segment) noexcept
-    : segment_{&segment} {
-  }
-
-  virtual bool read(
-      const irs::directory& /*dir*/,
-      const irs::segment_meta& /*meta*/,
-      irs::document_mask& docs_mask) override {
-    docs_mask = segment_->doc_mask();
-    return true;
-  }
-
- private:
-  const index_segment* segment_;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @class field_reader
 ////////////////////////////////////////////////////////////////////////////////
 class field_reader : public irs::field_reader {
  public:
-  field_reader( const index_segment& data );
+  field_reader(const index_segment& data);
   field_reader(field_reader&& other) noexcept;
 
   virtual void prepare(const irs::directory& dir,
@@ -397,7 +280,7 @@ class field_reader : public irs::field_reader {
   virtual const irs::term_reader* field(const irs::string_ref& field) const override;
   virtual irs::field_iterator::ptr iterator() const override;
   virtual size_t size() const override;
-  
+
   const index_segment& data() const {
     return data_;
   }
@@ -407,70 +290,7 @@ class field_reader : public irs::field_reader {
   const index_segment& data_;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class field_writer
-////////////////////////////////////////////////////////////////////////////////
-class field_writer : public irs::field_writer {
- public:
-  explicit field_writer(const index_segment& data);
-
-  virtual void prepare(const irs::flush_state& state) override;
-  virtual void write(const std::string& name,
-                     irs::IndexFeatures index_features,
-                     const irs::feature_map_t& custom_features,
-                     irs::term_iterator& actual_term) override;
-  virtual void end() override;
-
- private:
-  field_reader readers_;
-  irs::IndexFeatures index_features_{irs::IndexFeatures::NONE};
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class format
-////////////////////////////////////////////////////////////////////////////////
-class format : public irs::format {
- public:
-  static ptr make();
-  format();
-  format(const index_segment& data);
-
-  virtual irs::index_meta_writer::ptr get_index_meta_writer() const override;
-  virtual irs::index_meta_reader::ptr get_index_meta_reader() const override;
-
-  virtual irs::segment_meta_writer::ptr get_segment_meta_writer() const override;
-  virtual irs::segment_meta_reader::ptr get_segment_meta_reader() const override;
-
-  virtual document_mask_writer::ptr get_document_mask_writer() const override;
-  virtual irs::document_mask_reader::ptr get_document_mask_reader() const override;
-
-  virtual irs::field_writer::ptr get_field_writer(bool consolidation) const override;
-  virtual irs::field_reader::ptr get_field_reader() const override;
-
-  virtual irs::column_meta_writer::ptr get_column_meta_writer() const override;
-  virtual irs::column_meta_reader::ptr get_column_meta_reader() const override;
-
-  virtual irs::columnstore_writer::ptr get_columnstore_writer(bool consolidation) const override;
-  virtual irs::columnstore_reader::ptr get_columnstore_reader() const override;
-
- private:
-  static const index_segment DEFAULT_SEGMENT;
-  const index_segment& data_;
-};
-
-typedef std::vector<index_segment> index_t;
-
-void assert_term(
-  const irs::term_iterator& expected_term,
-  const irs::term_iterator& actual_term,
-  irs::IndexFeatures features);
-
-void assert_terms_seek(
-  const irs::term_reader& expected_term_reader,
-  const irs::term_reader& actual_term_reader,
-  irs::IndexFeatures features,
-  irs::automaton_table_matcher* acceptor,
-  size_t lookahead = 10); // number of steps to iterate after the seek
+using index_t = std::vector<index_segment>;
 
 void assert_index(
   const index_t& expected_index,
@@ -486,7 +306,6 @@ void assert_index(
   irs::IndexFeatures features,
   size_t skip = 0, // no not validate the first 'skip' segments
   irs::automaton_table_matcher* matcher = nullptr);
-
 } // tests
 
 #endif
