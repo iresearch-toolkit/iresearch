@@ -130,7 +130,7 @@ size_t field::remove(const irs::bytes_ref& t) {
 
 void column_values::insert(irs::doc_id_t key, irs::bytes_ref value) {
   const auto res = values_.emplace(key, value);
-  ASSERT_FALSE(res.second);
+  ASSERT_TRUE(res.second);
 }
 
 void column_values::sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
