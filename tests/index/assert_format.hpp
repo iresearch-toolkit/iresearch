@@ -292,9 +292,20 @@ class field_reader : public irs::field_reader {
 
 using index_t = std::vector<index_segment>;
 
-void assert_index(
+void assert_columnstore(
+  const irs::directory& dir,
+  irs::format::ptr codec,
   const index_t& expected_index,
-  const irs::index_reader& actual_index,
+  size_t skip = 0); // do not validate the first 'skip' segments
+
+void assert_columnstore(
+  irs::index_reader::ptr actual_index,
+  const index_t& expected_index,
+  size_t skip = 0); // do not validate the first 'skip' segments
+
+void assert_index(
+  irs::index_reader::ptr actual_index,
+  const index_t& expected_index,
   irs::IndexFeatures features,
   size_t skip = 0, // do not validate the first 'skip' segments
   irs::automaton_table_matcher* matcher = nullptr);

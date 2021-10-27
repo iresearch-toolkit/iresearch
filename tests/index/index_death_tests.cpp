@@ -332,7 +332,8 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
     tests::index_t expected_index;
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore
     irs::bytes_ref actual_value;
@@ -477,7 +478,8 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
     tests::index_t expected_index;
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore
     irs::bytes_ref actual_value;
@@ -583,7 +585,8 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
     tests::index_t expected_index;
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore
     irs::bytes_ref actual_value;
@@ -681,7 +684,8 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
     tests::index_t expected_index;
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore
     irs::bytes_ref actual_value;
@@ -741,7 +745,8 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
     tests::index_t expected_index;
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore
     irs::bytes_ref actual_value;
@@ -811,7 +816,8 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
     expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -966,7 +972,8 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
     tests::index_t expected_index;
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore
     irs::bytes_ref actual_value;
@@ -1102,7 +1109,8 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
     tests::index_t expected_index;
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore
     irs::bytes_ref actual_value;
@@ -1228,7 +1236,8 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
     tests::index_t expected_index;
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore
     irs::bytes_ref actual_value;
@@ -1321,7 +1330,8 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
     expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -1453,7 +1463,8 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
     expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end());
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc4->indexed.begin(), doc4->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -1620,7 +1631,8 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
     expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -1751,7 +1763,8 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
     expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -1880,7 +1893,8 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
     expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -1990,7 +2004,8 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
     expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -2149,7 +2164,8 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     tests::index_t expected_index;
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -2254,7 +2270,8 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     tests::index_t expected_index;
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -2401,7 +2418,8 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     tests::index_t expected_index;
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore
     irs::bytes_ref actual_value;
@@ -2480,7 +2498,8 @@ TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flu
     tests::index_t expected_index;
     expected_index.emplace_back(writer->field_features());
     expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    tests::assert_index(expected_index, *reader, all_features);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                        expected_index, all_features);
 
     // validate columnstore
     irs::bytes_ref actual_value;
@@ -2622,7 +2641,8 @@ TEST(index_death_test_formats_10, open_reader) {
   expected_index.emplace_back(irs::field_features_t{});
   expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
   expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-  tests::assert_index(expected_index, *reader, all_features);
+  tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                      expected_index, all_features);
 
   // validate columnstore
   irs::bytes_ref actual_value;
@@ -2705,7 +2725,8 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   expected_index.emplace_back(irs::field_features_t{});
   expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
   expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-  tests::assert_index(expected_index, *reader, all_features);
+  tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                      expected_index, all_features);
 
   dir.register_failure(failing_directory::Failure::REOPEN, "_1.cs"); // regiseter reopen failure in columnstore
   dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.cs"); // regiseter reopen failure in columnstore
@@ -2805,7 +2826,8 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   expected_index.emplace_back(irs::field_features_t{});
   expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end());
   expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-  tests::assert_index(expected_index, *reader, all_features);
+  tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
+                      expected_index, all_features);
 
   // validate columnstore
   irs::bytes_ref actual_value;

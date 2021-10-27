@@ -183,27 +183,33 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   irs::index_writer::ptr open_writer(
       irs::directory& dir,
       irs::OpenMode mode = irs::OM_CREATE,
-      const irs::index_writer::init_options& options = {}) {
+      const irs::index_writer::init_options& options = {}) const {
     return irs::index_writer::make(dir, codec_, mode, options);
   }
 
   irs::index_writer::ptr open_writer(
       irs::OpenMode mode = irs::OM_CREATE,
-      const irs::index_writer::init_options& options = {}) {
+      const irs::index_writer::init_options& options = {}) const {
     return irs::index_writer::make(*dir_, codec_, mode, options);
   }
 
-  irs::directory_reader open_reader() {
+  irs::directory_reader open_reader() const {
     return irs::directory_reader::open(*dir_, codec_);
   }
 
   void assert_index(irs::IndexFeatures features,
                     size_t skip = 0,
                     irs::automaton_table_matcher* matcher = nullptr) const {
-    tests::assert_index(dir(), codec_, index(), features, skip, matcher);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(open_reader()),
+                        index(), features, skip, matcher);
   }
 
-  virtual void SetUp() {
+  void assert_columnstore(size_t skip = 0) const {
+    tests::assert_columnstore(static_cast<irs::index_reader::ptr>(open_reader()),
+                              index(), skip);
+  }
+
+  virtual void SetUp() override {
     test_base::SetUp();
 
     // set directory
@@ -215,7 +221,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     ASSERT_NE(nullptr, codec_);
   }
 
-  virtual void TearDown() {
+  virtual void TearDown() override {
     dir_ = nullptr;
     codec_ = nullptr;
     test_base::TearDown();

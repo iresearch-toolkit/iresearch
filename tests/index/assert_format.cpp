@@ -1476,16 +1476,69 @@ void assert_terms_seek(
   }
 }
 
-void assert_index(
+void assert_columnstore(
+    irs::index_reader::ptr actual_index,
     const index_t& expected_index,
-    const irs::index_reader& actual_index_reader,
+    size_t skip /*= 0*/) {
+  // check number of segments
+  ASSERT_EQ(expected_index.size(), actual_index->size());
+  size_t i = 0;
+  for (auto& actual_segment : *actual_index) {
+    // skip segment if validation not required
+    if (skip) {
+      ++i;
+      --skip;
+      continue;
+    }
+
+    // setting up test reader/writer
+    const tests::index_segment& expected_segment = expected_index[i];
+    tests::field_reader expected_reader(expected_segment);
+
+    // iterate over columns
+    auto& expected_columns = expected_segment.columns_meta();
+    auto expected_columns_begin = expected_columns.begin();
+    auto expected_columns_end = expected_columns.end();
+    auto actual_columns = actual_segment.columns();
+
+    for (; actual_columns->next(); ++expected_columns_begin) {
+      ASSERT_EQ(
+        (irs::column_meta{expected_columns_begin->first,
+                          expected_columns_begin->second}),
+        actual_columns->value());
+
+//      const auto* actual_cs = ex
+//
+//      assert_column(irs::columnstore_reader)
+    }
+    ASSERT_FALSE(actual_columns->next());
+    ASSERT_EQ(expected_columns_begin, expected_columns_end);
+  }
+}
+
+void assert_columnstore(
+    const irs::directory& dir,
+    irs::format::ptr codec,
+    const index_t& expected_index,
+    size_t skip /*= 0*/) {
+  auto reader = irs::directory_reader::open(dir, codec);
+  ASSERT_NE(nullptr, reader);
+
+  assert_columnstore(
+    static_cast<irs::index_reader::ptr>(reader),
+    expected_index, skip);
+}
+
+void assert_index(
+    irs::index_reader::ptr actual_index,
+    const index_t& expected_index,
     irs::IndexFeatures features,
     size_t skip /*= 0*/,
     irs::automaton_table_matcher* matcher /*=nullptr*/) {
   // check number of segments
-  ASSERT_EQ(expected_index.size(), actual_index_reader.size());
+  ASSERT_EQ(expected_index.size(), actual_index->size());
   size_t i = 0;
-  for (auto& actual_sub_reader : actual_index_reader) {
+  for (auto& actual_sub_reader : *actual_index) {
     // skip segment if validation not required
     if (skip) {
       ++i;
@@ -1541,26 +1594,6 @@ void assert_index(
     ASSERT_FALSE(actual_fields->next());
     ASSERT_EQ(expected_fields_begin, expected_fields_end);
 
-    // iterate over columns
-//    auto& expected_columns = expected_segment.columns_meta();
-//    auto expected_columns_begin = expected_columns.begin();
-//    auto expected_columns_end = expected_columns.end();
-//    auto actual_columns = actual_sub_reader.columns();
-//
-//    for (; actual_columns->next(); ++expected_columns_begin) {
-//      ASSERT_EQ(
-//        (irs::column_meta{expected_columns_begin->first,
-//                          expected_columns_begin->second}),
-//        actual_columns->value());
-//
-//      const auto* actual_cs = ex
-//
-//      assert_column(irs::columnstore_reader)
-//    }
-//    ASSERT_FALSE(actual_columns->next());
-//    ASSERT_EQ(expected_columns_begin, expected_columns_end);
-
-
     ++i;
     ASSERT_EQ(expected_fields_end, expected_fields_begin);
   }
@@ -1573,9 +1606,11 @@ void assert_index(
     irs::IndexFeatures features,
     size_t skip /*= 0*/,
     irs::automaton_table_matcher* matcher /*= nullptr*/) {
-  auto actual_index_reader = irs::directory_reader::open(dir, codec);
+  auto reader = irs::directory_reader::open(dir, codec);
+  ASSERT_NE(nullptr, reader);
 
-  assert_index(expected_index, actual_index_reader, features, skip, matcher);
+  assert_index(static_cast<irs::index_reader::ptr>(reader),
+               expected_index, features, skip, matcher);
 }
 
 } // tests
