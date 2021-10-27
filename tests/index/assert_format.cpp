@@ -78,7 +78,7 @@ term::term(irs::bytes_ref data)
   : value(data) {
 }
 
-bool term::operator<( const term& rhs ) const {
+bool term::operator<(const term& rhs) const {
   return irs::memcmp_less(
     value.c_str(), value.size(),
     rhs.value.c_str(), rhs.value.size());
@@ -95,17 +95,17 @@ field::field(
   }
 }
 
-term& field::insert(const irs::bytes_ref& t) {
+term& field::insert(irs::bytes_ref t) {
   auto res = terms.emplace(t);
   return const_cast<term&>(*res.first);
 }
 
-term* field::find(const irs::bytes_ref& t) {
+term* field::find(irs::bytes_ref t) {
   auto it = terms.find(term(t));
   return terms.end() == it ? nullptr : const_cast<term*>(&*it);
 }
 
-size_t field::remove(const irs::bytes_ref& t) {
+size_t field::remove(irs::bytes_ref t) {
   return terms.erase(term(t));
 }
 
@@ -381,7 +381,7 @@ class doc_iterator : public irs::doc_iterator {
     }
 
     virtual void reset() override {
-      assert(false); // unsupported
+      ASSERT_TRUE(false); // unsupported
     }
 
    private:
@@ -641,7 +641,7 @@ void assert_terms_seek(
     const irs::term_reader& actual_field,
     irs::IndexFeatures features,
     irs::automaton_table_matcher* matcher,
-    size_t lookahead  = 10) {
+    size_t lookahead = 10) {
   auto expected_term = expected_field.iterator();
   if (matcher) {
     expected_term = irs::memory::make_managed<irs::automaton_term_iterator>(
@@ -649,12 +649,12 @@ void assert_terms_seek(
   }
 
   auto actual_term_with_state = matcher
-    ? actual_field.iterator(*matcher)
-    : actual_field.iterator(irs::SeekMode::NORMAL);
+      ? actual_field.iterator(*matcher)
+      : actual_field.iterator(irs::SeekMode::NORMAL);
   ASSERT_NE(nullptr, actual_term_with_state);
 
   auto actual_term_with_state_random_only
-    = actual_field.iterator(irs::SeekMode::RANDOM_ONLY);
+      = actual_field.iterator(irs::SeekMode::RANDOM_ONLY);
   ASSERT_NE(nullptr, actual_term_with_state_random_only);
 
   for (; expected_term->next();) {
@@ -852,7 +852,6 @@ void assert_columnstore(
     // iterate over columns
     auto& expected_columns = expected_segment.columns_meta();
     auto expected_columns_begin = expected_columns.begin();
-    auto expected_columns_end = expected_columns.end();
     auto actual_columns = actual_segment.columns();
 
     for (; actual_columns->next(); ++expected_columns_begin) {
@@ -869,7 +868,7 @@ void assert_columnstore(
                     expected_segment.columns()[actual_column.id]);
     }
     ASSERT_FALSE(actual_columns->next());
-    ASSERT_EQ(expected_columns_begin, expected_columns_end);
+    ASSERT_EQ(expected_columns_begin, expected_columns.end());
 
     ++i;
   }
@@ -932,16 +931,34 @@ void assert_index(
       ASSERT_EQ(expected_field->second.docs.size(), actual_terms->docs_count());
       ASSERT_EQ(expected_field->second, actual_terms->meta());
 
-      auto expected_features = expected_field->second.index_features;
-
       auto* actual_freq = irs::get<irs::frequency>(*actual_terms);
-      if (irs::IndexFeatures::NONE != (expected_features & irs::IndexFeatures::FREQ)) {
+      if (irs::IndexFeatures::NONE != (expected_field->second.index_features &
+                                       irs::IndexFeatures::FREQ)) {
         ASSERT_NE(nullptr, actual_freq);
         ASSERT_EQ(expected_field->second.total_freq(), actual_freq->value);
       } else {
         ASSERT_EQ(nullptr, actual_freq);
       }
 
+      // check field features
+      auto& expected_field_features = expected_field->second.features;
+      auto& actual_field_features = actual_fields->value().meta().features;
+      ASSERT_EQ(expected_field_features, actual_field_features);
+
+      auto actual_field_feature = actual_field_features.begin();
+      for (auto& expected_field_feature : expected_field_features) {
+        ASSERT_EQ(expected_field_feature.first, actual_field_feature->first);
+        if (!irs::field_limits::valid(expected_field_feature.second)) {
+          ASSERT_FALSE(irs::field_limits::valid(actual_field_feature->second));
+        } else {
+          ASSERT_LT(expected_field_feature.second, expected_segment.columns().size());
+          const auto* actual_column = actual_segment.column_reader(actual_field_feature->second);
+          ASSERT_NE(nullptr, actual_column);
+          assert_column(*actual_column, expected_segment.columns()[expected_field_feature.second]);
+        }
+      }
+
+      // check terms
       assert_terms_next(expected_field->second, *actual_terms, features, matcher);
       assert_terms_seek(expected_field->second, *actual_terms, features, matcher);
     }

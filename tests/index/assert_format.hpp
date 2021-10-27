@@ -130,9 +130,9 @@ struct field : public irs::field_meta {
   field(field&& rhs) = default;
   field& operator=(field&& rhs) = default;
 
-  term& insert(const irs::bytes_ref& term);
-  term* find(const irs::bytes_ref& term);
-  size_t remove(const irs::bytes_ref& t);
+  term& insert(irs::bytes_ref term);
+  term* find(irs::bytes_ref term);
+  size_t remove(irs::bytes_ref term);
   void sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
     for (auto& term : terms) {
       const_cast<tests::term&>(term).sort(docs);
