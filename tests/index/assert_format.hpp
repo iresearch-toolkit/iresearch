@@ -173,8 +173,8 @@ class index_segment: irs::util::noncopyable {
   explicit index_segment(const irs::field_features_t& features)
     : field_features_{features} {
   }
-  index_segment(index_segment&& rhs) noexcept = default;
-  index_segment& operator=(index_segment&& rhs) noexcept = default;
+  index_segment(index_segment&& rhs) = default;
+  index_segment& operator=(index_segment&& rhs) = default;
 
   size_t doc_count() const noexcept { return count_; }
   size_t size() const noexcept { return fields_.size(); }
@@ -201,6 +201,9 @@ class index_segment: irs::util::noncopyable {
     explicit column_output(irs::bstring& buf) noexcept
       : buf_{&buf} {
     }
+
+    column_output(column_output&&) = default;
+    column_output& operator=(column_output&&) = default;
 
     virtual void write_byte(irs::byte_type b) override {
       (*buf_) += b;
@@ -345,7 +348,7 @@ struct segment_meta_reader : public irs::segment_meta_reader {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class document_mask_writer
 ////////////////////////////////////////////////////////////////////////////////
-class document_mask_writer: public irs::document_mask_writer {
+class document_mask_writer final : public irs::document_mask_writer {
  public:
   explicit document_mask_writer(const index_segment& data);
   virtual std::string filename(const irs::segment_meta& meta) const override;
@@ -362,20 +365,22 @@ class document_mask_writer: public irs::document_mask_writer {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class document_mask_reader
 ////////////////////////////////////////////////////////////////////////////////
-class document_mask_reader : public irs::document_mask_reader {
+class document_mask_reader final : public irs::document_mask_reader {
  public:
-  explicit document_mask_reader(const index_segment& data);
+  explicit document_mask_reader(const index_segment& segment) noexcept
+    : segment_{&segment} {
+  }
 
   virtual bool read(
       const irs::directory& /*dir*/,
       const irs::segment_meta& /*meta*/,
-      irs::document_mask& docs_mask) {
-    docs_mask = data_.doc_mask();
+      irs::document_mask& docs_mask) override {
+    docs_mask = segment_->doc_mask();
     return true;
   }
 
  private:
-  const index_segment& data_;
+  const index_segment* segment_;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

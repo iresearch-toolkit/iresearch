@@ -1887,7 +1887,7 @@ TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
     ASSERT_NE(nullptr, writer);
 
     // add segment
-    index().emplace_back();
+    index().emplace_back(writer->field_features());
     auto& segment = index().back();
 
     {

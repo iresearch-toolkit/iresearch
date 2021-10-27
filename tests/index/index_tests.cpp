@@ -350,6 +350,54 @@ irs::format::ptr index_test_base::get_codec() const {
   return irs::formats::get(info.codec, info.module);
 }
 
+void index_test_base::write_segment(
+    irs::index_writer& writer,
+    tests::index_segment& segment,
+    tests::doc_generator_base& gen) {
+  // add segment
+  const document* src;
+
+  while ((src = gen.next())) {
+    segment.insert(
+      src->indexed.begin(),
+      src->indexed.end(),
+      src->sorted);
+
+    ASSERT_TRUE(insert(
+      writer,
+      src->indexed.begin(), src->indexed.end(),
+      src->stored.begin(), src->stored.end(),
+      src->sorted));
+  }
+
+  if (writer.comparator()) {
+    segment.sort(*writer.comparator());
+  }
+}
+
+void index_test_base::add_segment(irs::index_writer& writer, tests::doc_generator_base& gen) {
+  index_.emplace_back(writer.field_features());
+  write_segment(writer, index_.back(), gen);
+  writer.commit();
+}
+
+void index_test_base::add_segments(
+    irs::index_writer& writer, std::vector<doc_generator_base::ptr>& gens) {
+  for (auto& gen : gens) {
+    index_.emplace_back(writer.field_features());
+    write_segment(writer, index_.back(), *gen);
+  }
+  writer.commit();
+}
+
+void index_test_base::add_segment(
+    tests::doc_generator_base& gen,
+    irs::OpenMode mode /*= irs::OM_CREATE*/,
+    const irs::index_writer::init_options& opts /*= {}*/) {
+  auto writer = open_writer(mode, opts);
+  add_segment(*writer, gen);
+}
+
 } // tests
 
 class index_test_case : public tests::index_test_base {

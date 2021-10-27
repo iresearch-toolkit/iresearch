@@ -165,7 +165,6 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   static std::string to_string(const testing::TestParamInfo<index_test_context>& info);
 
  protected:
-
   std::shared_ptr<irs::directory> get_directory(const test_base& ctx) const;
 
   irs::format::ptr get_codec() const;
@@ -224,52 +223,22 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   }
 
   void write_segment(
-      irs::index_writer& writer,
-      tests::index_segment& segment,
-      tests::doc_generator_base& gen) {
-    // add segment
-    const document* src;
-
-    while ((src = gen.next())) {
-      segment.insert(
-        src->indexed.begin(),
-        src->indexed.end(),
-        src->sorted);
-
-      ASSERT_TRUE(insert(
-        writer,
-        src->indexed.begin(), src->indexed.end(),
-        src->stored.begin(), src->stored.end(),
-        src->sorted));
-    }
-
-    if (writer.comparator()) {
-      segment.sort(*writer.comparator());
-    }
-  }
-
-  void add_segment(irs::index_writer& writer, tests::doc_generator_base& gen) {
-    index_.emplace_back(writer.field_features());
-    write_segment(writer, index_.back(), gen);
-    writer.commit();
-  }
-
-  void add_segments(
-      irs::index_writer& writer, std::vector<doc_generator_base::ptr>& gens) {
-    for (auto& gen : gens) {
-      index_.emplace_back(writer.field_features());
-      write_segment(writer, index_.back(), *gen);
-    }
-    writer.commit();
-  }
+    irs::index_writer& writer,
+    tests::index_segment& segment,
+    tests::doc_generator_base& gen);
 
   void add_segment(
-      tests::doc_generator_base& gen,
-      irs::OpenMode mode = irs::OM_CREATE,
-      const irs::index_writer::init_options& opts = {}) {
-    auto writer = open_writer(mode, opts);
-    add_segment(*writer, gen);
-  }
+    irs::index_writer& writer,
+    tests::doc_generator_base& gen);
+
+  void add_segments(
+    irs::index_writer& writer,
+    std::vector<doc_generator_base::ptr>& gens);
+
+  void add_segment(
+    tests::doc_generator_base& gen,
+    irs::OpenMode mode = irs::OM_CREATE,
+    const irs::index_writer::init_options& opts = {});
 
  private:
   index_t index_;

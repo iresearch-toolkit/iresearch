@@ -181,13 +181,13 @@ void index_segment::insert_stored(const ifield& f) {
     return;
   }
 
-  auto res = columns_meta_.emplace(f.name());
+  const size_t id = columns_.size();
+  EXPECT_LE(id, std::numeric_limits<irs::field_id>::max());
+
+  auto res = columns_meta_.emplace(static_cast<std::string>(f.name()), id);
 
   if (res.second) {
-    const size_t id = columns_.size();
-    EXPECT_LE(id, std::numeric_limits<irs::field_id>::max());
     columns_.emplace_back();
-
     res.first->second = id;
   }
 
