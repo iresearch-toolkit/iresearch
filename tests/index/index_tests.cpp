@@ -601,8 +601,7 @@ class index_test_case : public tests::index_test_base {
     ASSERT_EQ(expected_index.size(), actual_reader.size());
 
     size_t thread_count = 16; // arbitrary value > 1
-    std::vector<tests::field_reader> expected_segments;
-    std::vector<const irs::term_reader*> expected_terms; // used to validate terms
+    std::vector<const tests::field*> expected_terms; // used to validate terms
     std::vector<irs::seek_term_iterator::ptr> expected_term_itrs; // used to validate docs
 
     auto& actual_segment = actual_reader[0];
@@ -610,10 +609,11 @@ class index_test_case : public tests::index_test_base {
     ASSERT_FALSE(!actual_terms);
 
     for (size_t i = 0; i < thread_count; ++i) {
-      expected_segments.emplace_back(expected_index[0]);
-      expected_terms.emplace_back(expected_segments.back().field("name_anl_pay"));
+      auto field = expected_index[0].fields().find("name_anl_pay");
+      ASSERT_NE(expected_index[0].fields().end(), field);
+      expected_terms.emplace_back(&field->second);
       ASSERT_TRUE(nullptr != expected_terms.back());
-      expected_term_itrs.emplace_back(expected_terms.back()->iterator(irs::SeekMode::NORMAL));
+      expected_term_itrs.emplace_back(expected_terms.back()->iterator());
       ASSERT_FALSE(!expected_term_itrs.back());
     }
 
@@ -637,7 +637,7 @@ class index_test_case : public tests::index_test_base {
             }
 
             auto act_term_itr = act_terms->iterator(irs::SeekMode::NORMAL);
-            auto exp_terms_itr = exp_terms->iterator(irs::SeekMode::NORMAL);
+            auto exp_terms_itr = exp_terms->iterator();
             ASSERT_FALSE(!act_term_itr);
             ASSERT_FALSE(!exp_terms_itr);
 

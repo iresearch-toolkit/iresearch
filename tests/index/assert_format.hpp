@@ -35,7 +35,10 @@ namespace tests {
 ////////////////////////////////////////////////////////////////////////////////
 struct position {
   position(uint32_t pos, uint32_t start,
-           uint32_t end, const irs::bytes_ref& pay);
+           uint32_t end, const irs::bytes_ref& pay)
+    : pos{pos}, start{start},
+      end{end}, payload{pay} {
+  }
 
   bool operator<(const position& rhs) const {
     return pos < rhs.pos;
@@ -52,7 +55,9 @@ struct position {
 ////////////////////////////////////////////////////////////////////////////////
 class posting {
  public:
-  explicit posting(irs::doc_id_t id);
+  explicit posting(irs::doc_id_t id)
+    : id_{id} {
+  }
   posting(irs::doc_id_t id, std::set<position>&& positions)
     : positions_(std::move(positions)), id_(id) {
   }
@@ -108,8 +113,7 @@ struct term {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class field
 ////////////////////////////////////////////////////////////////////////////////
-class field : public irs::field_meta {
- public:
+struct field : public irs::field_meta {
   struct feature_info {
     irs::field_id id;
     irs::feature_handler_f handler;
@@ -134,6 +138,12 @@ class field : public irs::field_meta {
       const_cast<tests::term&>(term).sort(docs);
     }
   }
+
+  irs::bytes_ref min() const;
+  irs::bytes_ref max() const;
+  uint64_t total_freq() const;
+
+  irs::seek_term_iterator::ptr iterator() const;
 
   std::vector<feature_info> feature_infos;
   std::set<term> terms;
@@ -266,30 +276,6 @@ void index_segment::insert(
   ++count_;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class field_reader
-////////////////////////////////////////////////////////////////////////////////
-class field_reader : public irs::field_reader {
- public:
-  field_reader(const index_segment& data);
-  field_reader(field_reader&& other) noexcept;
-
-  virtual void prepare(const irs::directory& dir,
-                       const irs::segment_meta& meta,
-                       const irs::document_mask& mask) override;
-  virtual const irs::term_reader* field(const irs::string_ref& field) const override;
-  virtual irs::field_iterator::ptr iterator() const override;
-  virtual size_t size() const override;
-
-  const index_segment& data() const {
-    return data_;
-  }
-
- private:
-  std::vector<irs::term_reader::ptr> readers_;
-  const index_segment& data_;
-};
-
 using index_t = std::vector<index_segment>;
 
 void assert_columnstore(
@@ -317,6 +303,7 @@ void assert_index(
   irs::IndexFeatures features,
   size_t skip = 0, // no not validate the first 'skip' segments
   irs::automaton_table_matcher* matcher = nullptr);
+
 } // tests
 
 #endif
