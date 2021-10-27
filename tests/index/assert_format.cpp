@@ -1476,6 +1476,63 @@ void assert_terms_seek(
   }
 }
 
+void assert_column(
+    const irs::columnstore_reader::column_reader& actual_reader,
+    const column_values& expected_values) {
+  ASSERT_EQ(expected_values.size(), actual_reader.size());
+
+  // check iterators & values
+  {
+    auto actual_it = actual_reader.iterator();
+    ASSERT_NE(nullptr, actual_it);
+
+    auto actual_seek_it = actual_reader.iterator();
+    ASSERT_NE(nullptr, actual_seek_it);
+
+    auto actual_values = actual_reader.values();
+    ASSERT_TRUE(actual_values);
+
+    auto* actual_key = irs::get<irs::document>(*actual_it);
+    ASSERT_NE(nullptr, actual_key);
+    auto* actual_value = irs::get<irs::payload>(*actual_it);
+    ASSERT_NE(nullptr, actual_value);
+
+    for (auto& [expected_key, expected_value] : expected_values) {
+      ASSERT_TRUE(actual_it->next());
+
+      auto actual_stateless_seek_it = actual_reader.iterator();
+      ASSERT_NE(nullptr, actual_stateless_seek_it);
+
+      ASSERT_EQ(expected_key, actual_it->value());
+      ASSERT_EQ(expected_key, actual_key->value);
+      ASSERT_EQ(expected_value, actual_value->value);
+      ASSERT_EQ(expected_key, actual_seek_it->seek(expected_key));
+      ASSERT_EQ(expected_key, actual_stateless_seek_it->seek(expected_key));
+
+      irs::bytes_ref actual_value2;
+      ASSERT_TRUE(actual_values(expected_key, actual_value2));
+      ASSERT_EQ(expected_value, actual_value2);
+    }
+    ASSERT_FALSE(actual_it->next());
+    ASSERT_FALSE(actual_it->next());
+  }
+
+  // check visit
+  {
+    auto begin = expected_values.begin();
+
+    actual_reader.visit(
+      [&begin](auto actual_key, auto& actual_value) mutable {
+        auto& [expected_key, expected_value] = *begin;
+        EXPECT_EQ(expected_key, actual_key);
+        EXPECT_EQ(expected_value, actual_value);
+        ++begin;
+        return true;
+    });
+    ASSERT_EQ(begin, expected_values.end());
+  }
+}
+
 void assert_columnstore(
     irs::index_reader::ptr actual_index,
     const index_t& expected_index,
@@ -1491,9 +1548,7 @@ void assert_columnstore(
       continue;
     }
 
-    // setting up test reader/writer
     const tests::index_segment& expected_segment = expected_index[i];
-    tests::field_reader expected_reader(expected_segment);
 
     // iterate over columns
     auto& expected_columns = expected_segment.columns_meta();
@@ -1502,17 +1557,22 @@ void assert_columnstore(
     auto actual_columns = actual_segment.columns();
 
     for (; actual_columns->next(); ++expected_columns_begin) {
-      ASSERT_EQ(
-        (irs::column_meta{expected_columns_begin->first,
-                          expected_columns_begin->second}),
-        actual_columns->value());
+      auto& actual_column = actual_columns->value();
+      ASSERT_EQ(expected_columns_begin->first, actual_column.name);
+      ASSERT_EQ(expected_columns_begin->second, actual_column.id);
+      ASSERT_LT(actual_column.id, expected_segment.columns().size());
 
-//      const auto* actual_cs = ex
-//
-//      assert_column(irs::columnstore_reader)
+      const auto* actual_column_reader = actual_segment.column_reader(actual_column.id);
+      ASSERT_NE(nullptr, actual_column_reader);
+      ASSERT_EQ(actual_column_reader, actual_segment.column_reader(actual_column.name));
+
+      assert_column(*actual_column_reader,
+                    expected_segment.columns()[actual_column.id]);
     }
     ASSERT_FALSE(actual_columns->next());
     ASSERT_EQ(expected_columns_begin, expected_columns_end);
+
+    ++i;
   }
 }
 
@@ -1538,7 +1598,7 @@ void assert_index(
   // check number of segments
   ASSERT_EQ(expected_index.size(), actual_index->size());
   size_t i = 0;
-  for (auto& actual_sub_reader : *actual_index) {
+  for (auto& actual_segment : *actual_index) {
     // skip segment if validation not required
     if (skip) {
       ++i;
@@ -1550,7 +1610,9 @@ void assert_index(
     const tests::index_segment& expected_segment = expected_index[i];
     tests::field_reader expected_reader(expected_segment);
 
-    ASSERT_EQ(expected_reader.size(), actual_sub_reader.size());
+    // segment normally returns a reference to itself
+    ASSERT_EQ(1, actual_segment.size());
+    ASSERT_EQ(&actual_segment, &*actual_segment.begin());
 
     // get field name iterators
     auto& expected_fields = expected_segment.fields();
@@ -1558,7 +1620,7 @@ void assert_index(
     auto expected_fields_end = expected_fields.end();
 
     // iterate over fields
-    auto actual_fields = actual_sub_reader.fields();
+    auto actual_fields = actual_segment.fields();
     for (; actual_fields->next(); ++expected_fields_begin) {
       // check field name
       ASSERT_EQ(expected_fields_begin->first, actual_fields->value().meta().name);
@@ -1566,7 +1628,7 @@ void assert_index(
       // check field terms
       auto expected_term_reader = expected_reader.field(expected_fields_begin->second.name);
       ASSERT_NE(nullptr, expected_term_reader);
-      auto actual_term_reader = actual_sub_reader.field(actual_fields->value().meta().name);
+      auto actual_term_reader = actual_segment.field(actual_fields->value().meta().name);
       ASSERT_NE(nullptr, actual_term_reader);
 
       const auto expected_field_it = expected_segment.fields().find(expected_fields_begin->first);
