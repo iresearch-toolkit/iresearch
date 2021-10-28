@@ -48,281 +48,6 @@ REGISTER_ATTRIBUTE(incompatible_attribute);
 
 incompatible_attribute::incompatible_attribute() noexcept { }
 
-namespace templates {
-
-// ----------------------------------------------------------------------------
-// --SECTION--                               token_stream_payload implemntation
-// ----------------------------------------------------------------------------
-
-token_stream_payload::token_stream_payload(irs::token_stream* impl)
-  : impl_(impl) {
-    assert(impl_);
-    term_ = irs::get<irs::term_attribute>(*impl_);
-    assert(term_);
-}
-
-irs::attribute* token_stream_payload::get_mutable(irs::type_info::type_id type) {
-  if (irs::type<irs::payload>::id() == type) {
-    return &pay_;
-  }
-
-  return impl_->get_mutable(type);
-}
-
-bool token_stream_payload::next() {
-  if (impl_->next()) {
-    pay_.value = term_->value;
-    return true;
-  }
-  pay_.value = irs::bytes_ref::NIL;
-  return false;
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                       string_field implemntation
-// ----------------------------------------------------------------------------
-
-string_field::string_field(
-    const std::string& name,
-    irs::IndexFeatures index_features,
-    const std::vector<irs::type_info::type_id>& extra_features) {
-  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | index_features;
-  features_ = extra_features;
-  name_ = name;
-}
-
-string_field::string_field(
-    const std::string& name,
-    const irs::string_ref& value,
-    irs::IndexFeatures index_features,
-    const std::vector<irs::type_info::type_id>& extra_features)
-  : value_(value) {
-  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | index_features;
-  features_ = extra_features;
-  name_ = name;
-}
-
-// reject too long terms
-void string_field::value(const irs::string_ref& str) {
-  const auto size_len = irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
-  const auto max_len = (std::min)(str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
-  auto begin = str.begin();
-  auto end = str.begin() + max_len;
-  value_.assign(begin, end);
-}
-
-bool string_field::write(irs::data_output& out) const {
-  irs::write_string(out, value_);
-  return true;
-}
-
-irs::token_stream& string_field::get_tokens() const {
-  REGISTER_TIMER_DETAILED();
-
-  stream_.reset(value_);
-  return stream_;
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                   string_ref_field implemntation
-// ----------------------------------------------------------------------------
-
-string_ref_field::string_ref_field(
-    const std::string& name,
-    irs::IndexFeatures extra_index_features,
-    const std::vector<irs::type_info::type_id>& extra_features) {
-  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | extra_index_features;
-  features_ = extra_features;
-  name_ = name;
-}
-
-string_ref_field::string_ref_field(
-    const std::string& name,
-    const irs::string_ref& value,
-    irs::IndexFeatures extra_index_features,
-    const std::vector<irs::type_info::type_id>& extra_features)
-  : value_(value) {
-  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | extra_index_features;
-  features_ = extra_features;
-  name_ = name;
-}
-
-// truncate very long terms
-void string_ref_field::value(const irs::string_ref& str) {
-  const auto size_len = irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
-  const auto max_len = (std::min)(str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
-
-  value_ = irs::string_ref(str.c_str(), max_len);
-}
-
-bool string_ref_field::write(irs::data_output& out) const {
-  irs::write_string(out, value_);
-  return true;
-}
-
-irs::token_stream& string_ref_field::get_tokens() const {
-  REGISTER_TIMER_DETAILED();
-
-  stream_.reset(value_);
-  return stream_;
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                            europarl_doc_template
-// ----------------------------------------------------------------------------
-
-void europarl_doc_template::init() {
-  clear();
-  indexed.push_back(std::make_shared<tests::templates::string_field>("title"));
-  indexed.push_back(std::make_shared<text_field>("title_anl", false));
-  indexed.push_back(std::make_shared<text_field>("title_anl_pay", true));
-  indexed.push_back(std::make_shared<text_field>("body_anl", false));
-  indexed.push_back(std::make_shared<text_field>("body_anl_pay", true));
-  {
-    insert(std::make_shared<tests::long_field>());
-    auto& field = static_cast<tests::long_field&>(indexed.back());
-    field.name("date");
-  }
-  insert(std::make_shared<tests::templates::string_field>("datestr"));
-  insert(std::make_shared<tests::templates::string_field>("body"));
-  {
-    insert(std::make_shared<tests::int_field>());
-    auto& field = static_cast<tests::int_field&>(indexed.back());
-    field.name("id");
-  }
-  insert(std::make_shared<string_field>("idstr"));
-}
-
-void europarl_doc_template::value(size_t idx, const std::string& value) {
-  static auto get_time = [](const std::string& src) {
-    std::istringstream ss(src);
-    std::tm tmb{};
-    char c;
-    ss >> tmb.tm_year >> c >> tmb.tm_mon >> c >> tmb.tm_mday;
-    return std::mktime( &tmb );
-  };
-
-  switch (idx) {
-    case 0: // title
-      title_ = value;
-      indexed.get<tests::templates::string_field>("title")->value(title_);
-      indexed.get<text_field>("title_anl")->value(title_);
-      indexed.get<text_field>("title_anl_pay")->value(title_);
-      break;
-    case 1: // dateA
-      indexed.get<tests::long_field>("date")->value(get_time(value));
-      indexed.get<tests::templates::string_field>("datestr")->value(value);
-      break;
-    case 2: // body
-      body_ = value;
-      indexed.get<tests::templates::string_field>("body")->value(body_);
-      indexed.get<text_field>("body_anl")->value(body_);
-      indexed.get<text_field>("body_anl_pay")->value(body_);
-      break;
-  }
-}
-
-void europarl_doc_template::end() {
-  ++idval_;
-  indexed.get<tests::int_field>("id")->value(idval_);
-  indexed.get<tests::templates::string_field>("idstr")->value(std::to_string(idval_));
-}
-
-void europarl_doc_template::reset() {
-  idval_ = 0;
-}
-
-} // templates
-
-void generic_json_field_factory(
-    tests::document& doc,
-    const std::string& name,
-    const json_doc_generator::json_value& data) {
-  if (json_doc_generator::ValueType::STRING == data.vt) {
-    doc.insert(std::make_shared<templates::string_field>(name, data.str));
-  } else if (json_doc_generator::ValueType::NIL == data.vt) {
-    doc.insert(std::make_shared<tests::binary_field>());
-    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
-  } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
-    doc.insert(std::make_shared<tests::binary_field>());
-    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
-  } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
-    doc.insert(std::make_shared<tests::binary_field>());
-    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
-  } else if (data.is_number()) {
-    // 'value' can be interpreted as a double
-    doc.insert(std::make_shared<tests::double_field>());
-    auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-    field.name(name);
-    field.value(data.as_number<double_t>());
-  }
-}
-
-void payloaded_json_field_factory(
-    tests::document& doc,
-    const std::string& name,
-    const json_doc_generator::json_value& data) {
-  typedef templates::text_field<std::string> text_field;
-
-  if (json_doc_generator::ValueType::STRING == data.vt) {
-    // analyzed && pyaloaded
-    doc.indexed.push_back(std::make_shared<text_field>(
-      std::string(name.c_str()) + "_anl_pay",
-      data.str, true));
-
-    // analyzed field
-    doc.indexed.push_back(std::make_shared<text_field>(
-      std::string(name.c_str()) + "_anl",
-      data.str));
-
-    // not analyzed field
-    doc.insert(std::make_shared<templates::string_field>(name, data.str));
-  } else if (json_doc_generator::ValueType::NIL == data.vt) {
-    doc.insert(std::make_shared<tests::binary_field>());
-    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
-  } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
-    doc.insert(std::make_shared<tests::binary_field>());
-    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
-  } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
-    doc.insert(std::make_shared<tests::binary_field>());
-    auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false()));
-  } else if (data.is_number()) {
-    // 'value' can be interpreted as a double
-    doc.insert(std::make_shared<tests::double_field>());
-    auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-    field.name(name);
-    field.value(data.as_number<double_t>());
-  }
-}
-
-void normalized_string_json_field_factory(
-    tests::document& doc,
-    const std::string& name,
-    const json_doc_generator::json_value& data) {
-  if (json_doc_generator::ValueType::STRING == data.vt) {
-    doc.insert(
-      std::make_shared<templates::string_field>(
-        name,
-        data.str,
-        irs::IndexFeatures::NONE,
-        std::vector<irs::type_info::type_id>{ irs::type<irs::norm>::id() }));;
-  } else {
-    generic_json_field_factory(doc, name, data);
-  }
-}
-
 /*static*/ std::string index_test_base::to_string(
     const testing::TestParamInfo<index_test_context>& info) {
   auto [factory, codec] = info.param;
@@ -416,7 +141,7 @@ class index_test_case : public tests::index_test_base {
       resource("simple_sequential.json"),
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+        doc.insert(std::make_shared<tests::string_field>(name, data.str));
       }
     });
 
@@ -944,7 +669,7 @@ class index_test_case : public tests::index_test_base {
       resource("simple_sequential.json"),
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (tests::json_doc_generator::ValueType::STRING == data.vt) {
-          doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+          doc.insert(std::make_shared<tests::string_field>(name, data.str));
         }
       });
       tests::document const* doc1 = gen.next();
@@ -1118,8 +843,7 @@ class index_test_case : public tests::index_test_base {
     for (auto* doc = gen.next(); doc; doc = gen.next()) {
       ASSERT_TRUE(insert(*writer,
         doc->indexed.end(), doc->indexed.end(), 
-        doc->stored.begin(), doc->stored.end()
-      ));
+        doc->stored.begin(), doc->stored.end()));
       expected_docs.push_back(doc);
     }
     writer->commit();
@@ -1144,7 +868,7 @@ class index_test_case : public tests::index_test_base {
             }
 
             auto* expected_doc = expected_docs[i];
-            auto expected_name = expected_doc->stored.get<tests::templates::string_field>("name")->value();
+            auto expected_name = expected_doc->stored.get<tests::string_field>("name")->value();
             if (expected_name != irs::to_string<irs::string_ref>(actual_value.c_str())) {
               return false;
             }
@@ -1202,17 +926,17 @@ class index_test_case : public tests::index_test_base {
       virtual void init() {
         clear();
         reserve(2);
-        insert(std::make_shared<tests::templates::string_field>("id"));
-        insert(std::make_shared<tests::templates::string_field>("label"));
+        insert(std::make_shared<tests::string_field>("id"));
+        insert(std::make_shared<tests::string_field>("label"));
       }
 
       virtual void value(size_t idx, const irs::string_ref& value) {
         switch(idx) {
          case 0:
-          indexed.get<tests::templates::string_field>("id")->value(value);
+          indexed.get<tests::string_field>("id")->value(value);
           break;
          case 1:
-          indexed.get<tests::templates::string_field>("label")->value(value);
+          indexed.get<tests::string_field>("label")->value(value);
         }
       }
     };
@@ -1259,7 +983,7 @@ class index_test_case : public tests::index_test_base {
             return false;
           }
 
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -1315,7 +1039,7 @@ class index_test_case : public tests::index_test_base {
             return false;
           }
 
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -1376,7 +1100,7 @@ class index_test_case : public tests::index_test_base {
             return false;
           }
 
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -2286,7 +2010,7 @@ class index_test_case : public tests::index_test_base {
 }; // index_test_case
 
 void index_test_case::docs_bit_union(irs::IndexFeatures features) {
-  tests::templates::string_ref_field field("0", features);
+  tests::string_ref_field field("0", features);
   const size_t N = irs::bits_required<uint64_t>(2) + 7;
 
   {
@@ -2553,7 +2277,7 @@ TEST_P(index_test_case, insert_null_empty_term) {
 
 TEST_P(index_test_case, europarl_docs) {
   {
-    tests::templates::europarl_doc_template doc;
+    tests::europarl_doc_template doc;
     tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
     add_segment(gen);
   }
@@ -2567,7 +2291,7 @@ TEST_P(index_test_case, docs_bit_union) {
 
 TEST_P(index_test_case, europarl_docs_automaton) {
   {
-    tests::templates::europarl_doc_template doc;
+    tests::europarl_doc_template doc;
     tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
     add_segment(gen);
   }
@@ -2658,7 +2382,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+      doc.insert(std::make_shared<tests::string_field>(name, data.str));
     }
   });
   std::vector<const tests::document*> docs;
@@ -2736,7 +2460,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
+      doc.insert(std::make_shared<tests::string_field>(
         name,
         data.str
       ));
@@ -2868,7 +2592,7 @@ TEST_P(index_test_case, document_context) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
+      doc.insert(std::make_shared<tests::string_field>(
         name,
         data.str
       ));
@@ -4309,7 +4033,7 @@ TEST_P(index_test_case, doc_removal) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
+      doc.insert(std::make_shared<tests::string_field>(
         name,
         data.str
       ));
@@ -4831,7 +4555,7 @@ TEST_P(index_test_case, doc_update) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
+      doc.insert(std::make_shared<tests::string_field>(
         name,
         data.str
       ));
@@ -5601,7 +5325,7 @@ TEST_P(index_test_case, import_reader) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+      doc.insert(std::make_shared<tests::string_field>(name, data.str));
     }
   });
 
@@ -6006,7 +5730,7 @@ TEST_P(index_test_case, refresh_reader) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
+      doc.insert(std::make_shared<tests::string_field>(
         name,
         data.str
       ));
@@ -6340,7 +6064,7 @@ TEST_P(index_test_case, segment_column_user_system) {
        const tests::json_doc_generator::json_value& data) {
       // add 2 identical fields (without storing) to trigger non-default norm value
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+        doc.insert(std::make_shared<tests::string_field>(name, data.str));
       }
   });
 
@@ -6351,7 +6075,7 @@ TEST_P(index_test_case, segment_column_user_system) {
 
   // add 2 identical fields (without storing) to trigger non-default norm value
   for (size_t i = 2; i; --i) {
-    doc0.insert(std::make_shared<tests::templates::string_field>(
+    doc0.insert(std::make_shared<tests::string_field>(
         "test-field",
         "test-value",
         irs::IndexFeatures::NONE,
@@ -6450,7 +6174,7 @@ TEST_P(index_test_case, import_concurrent) {
     resource("simple_sequential.json"),
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+        doc.insert(std::make_shared<tests::string_field>(name, data.str));
 
         if (name == "name") {
           names.emplace(data.str.data, data.str.size);
@@ -6548,7 +6272,7 @@ TEST_P(index_test_case, concurrent_consolidation) {
     resource("simple_sequential.json"),
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name,
           data.str
         ));
@@ -6674,7 +6398,7 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
     resource("simple_sequential.json"),
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name,
           data.str
         ));
@@ -6813,7 +6537,7 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
     resource("simple_sequential.json"),
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name,
           data.str
         ));
@@ -6955,7 +6679,7 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
     resource("simple_sequential.json"),
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name, data.str));
 
         if (name == "name") {
@@ -7088,7 +6812,7 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name,
           data.str
         ));
@@ -7143,7 +6867,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name,
           data.str
         ));
@@ -7281,7 +7005,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
         const std::string& name,
         const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+        doc.insert(std::make_shared<tests::string_field>(name, data.str));
       }
   });
 
@@ -7897,7 +7621,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name, data.str));
       }
   });
@@ -8051,7 +7775,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name,
           data.str
         ));
@@ -8390,7 +8114,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name,
           data.str
         ));
@@ -8524,7 +8248,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name, data.str));
       }
   });
@@ -11815,7 +11539,7 @@ TEST_P(index_test_case, segment_consolidate) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name,
           data.str
         ));
@@ -12517,7 +12241,7 @@ TEST_P(index_test_case, segment_consolidate) {
       resource("simple_sequential_upper_case.json"),
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) {
-          doc.insert(std::make_shared<tests::templates::string_field>(
+          doc.insert(std::make_shared<tests::string_field>(
             name,
             data.str
           ));
@@ -12608,7 +12332,7 @@ TEST_P(index_test_case, segment_consolidate) {
       resource("simple_sequential_upper_case.json"),
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) {
-          doc.insert(std::make_shared<tests::templates::string_field>(
+          doc.insert(std::make_shared<tests::string_field>(
             name,
             data.str
           ));
@@ -12682,7 +12406,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
+      doc.insert(std::make_shared<tests::string_field>(
         name,
         data.str
       ));
@@ -13243,7 +12967,7 @@ TEST_P(index_test_case, segment_options) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+      doc.insert(std::make_shared<tests::string_field>(name, data.str));
     }
   });
 
@@ -13807,7 +13531,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
 
     // we don't write default norms
     {
-      const tests::templates::string_field field(
+      const tests::string_field field(
         static_cast<std::string>(empty.name()),
         "bar",
         empty.index_features(),
@@ -13818,7 +13542,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     }
 
     {
-      const tests::templates::string_field field(
+      const tests::string_field field(
         static_cast<std::string>(empty.name()),
         "bar",
         empty.index_features(),
@@ -14451,7 +14175,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+        doc.insert(std::make_shared<tests::string_field>(name, data.str));
       }
     });
 

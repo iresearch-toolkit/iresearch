@@ -7797,17 +7797,17 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
     virtual void init() {
       clear();
       reserve(2);
-      insert(std::make_shared<tests::templates::string_field>("id"));
-      insert(std::make_shared<tests::templates::string_field>("label"));
+      insert(std::make_shared<tests::string_field>("id"));
+      insert(std::make_shared<tests::string_field>("label"));
     }
 
     virtual void value(size_t idx, const irs::string_ref& value) {
       switch(idx) {
        case 0:
-        indexed.get<tests::templates::string_field>("id")->value(value);
+        indexed.get<tests::string_field>("id")->value(value);
         break;
        case 1:
-        indexed.get<tests::templates::string_field>("label")->value(value);
+        indexed.get<tests::string_field>("label")->value(value);
       }
     }
   };
@@ -7864,7 +7864,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           }
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -7898,7 +7898,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ++id;
           ASSERT_TRUE(reader(id, actual_value));
 
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           ASSERT_NE(nullptr, field);
           ASSERT_EQ(field->value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -7915,7 +7915,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           }
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -7954,7 +7954,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ++expected_id;
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
 
           const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
@@ -7986,7 +7986,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           }
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -8018,7 +8018,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         while ((doc = gen.next())) {
           ASSERT_TRUE(reader(++id, actual_value));
 
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           ASSERT_EQ(field->value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
         }
@@ -8034,7 +8034,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           }
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -8072,7 +8072,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ++expected_id;
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
@@ -8125,7 +8125,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           }
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -8164,7 +8164,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ++expected_id;
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
@@ -8192,7 +8192,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ++id;
           ASSERT_TRUE(reader(id, actual_value));
 
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           ASSERT_NE(nullptr, field);
           ASSERT_EQ(field->value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -8209,7 +8209,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           }
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -8248,7 +8248,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ++expected_id;
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
@@ -8279,7 +8279,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           }
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -8317,7 +8317,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ++expected_id;
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 
@@ -8344,7 +8344,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         while ((doc = gen.next())) {
           ASSERT_TRUE(reader(++id, actual_value));
 
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           ASSERT_EQ(field->value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
         }
@@ -8360,7 +8360,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           }
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
 
           if (!field) {
             return false;
@@ -8398,7 +8398,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ++expected_id;
 
           auto* doc = gen.next();
-          auto* field = doc->stored.get<tests::templates::string_field>(column_name);
+          auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str = irs::to_string<irs::string_ref>(payload->value.c_str());
 

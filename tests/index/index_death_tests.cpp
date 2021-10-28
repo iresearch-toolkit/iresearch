@@ -249,10 +249,8 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
     test_base::resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
-        name,
-        data.str
-      ));
+      doc.insert(std::make_shared<tests::string_field>(
+        name, data.str));
     }
   });
   const auto* doc1 = gen.next();
@@ -360,10 +358,8 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
     test_base::resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
-        name,
-        data.str
-      ));
+      doc.insert(std::make_shared<tests::string_field>(
+        name, data.str));
     }
   });
   const auto* doc1 = gen.next();
@@ -506,10 +502,8 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
     test_base::resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
-        name,
-        data.str
-      ));
+      doc.insert(std::make_shared<tests::string_field>(
+        name, data.str));
     }
   });
   const auto* doc1 = gen.next();
@@ -1137,10 +1131,8 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
     test_base::resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
-        name,
-        data.str
-      ));
+      doc.insert(std::make_shared<tests::string_field>(
+        name, data.str));
     }
   });
   const auto* doc1 = gen.next();
@@ -1264,10 +1256,8 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
     test_base::resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
-        name,
-        data.str
-      ));
+      doc.insert(std::make_shared<tests::string_field>(
+        name, data.str));
     }
   });
   const auto* doc1 = gen.next();
@@ -1380,10 +1370,8 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
     test_base::resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
-        name,
-        data.str
-      ));
+      doc.insert(std::make_shared<tests::string_field>(
+        name, data.str));
     }
   });
   const auto* doc1 = gen.next();
@@ -1553,10 +1541,8 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
     test_base::resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(
-        name,
-        data.str
-      ));
+      doc.insert(std::make_shared<tests::string_field>(
+        name, data.str));
     }
   });
   const auto* doc1 = gen.next();
