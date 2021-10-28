@@ -2,7 +2,7 @@ IResearch search engine
 
 Third Party Software Read Me
 
-Copyright© 2017-2020 ArangoDB GmbH. All rights reserved.
+Copyright© 2017-2021 ArangoDB GmbH. All rights reserved.
 Published October, 2017
 
 Copyright© 2016-2017 EMC Corporation. All rights reserved.
@@ -94,10 +94,10 @@ number of components produced by third parties
     - Copyright: Google Inc.
     - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
     - How it's used: SIMD wrapper
-17. Title: sse2neon
-    - Copyright: https://github.com/DLTcollab/sse2neon
+17. Title: FastText
+    - Copyright: Facebook Inc.
     - License: [MIT license](https://opensource.org/licenses/MIT)
-    - How it's used: Support ARM64 build by intrinsics coversion.
+    - How it's used: A library for efficient learning of word representations and sentence classification
 ## Third Party Open Source Software licenses
 
 ### OpenFST
