@@ -1375,8 +1375,14 @@ INSTANTIATE_TEST_SUITE_P(
       &tests::directory<&tests::mmap_directory>),
     ::testing::Values(
       tests::format_info{"1_1", "1_0"},
-      tests::format_info{"1_2", "1_0"})),
-  sorted_index_test_case::to_string
-);
+      tests::format_info{"1_2", "1_0"},
+      tests::format_info{"1_3", "1_0"},
+      tests::format_info{"1_4", "1_0"}
+#ifdef IRESEARCH_SSE2
+      , tests::format_info{"1_3simd", "1_0"},
+      tests::format_info{"1_4simd", "1_0"}
+#endif
+    )),
+  sorted_index_test_case::to_string);
 
 }

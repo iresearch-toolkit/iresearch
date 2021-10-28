@@ -906,15 +906,17 @@ void assert_columnstore(
     for (; actual_columns->next(); ++expected_columns_begin) {
       auto& actual_column = actual_columns->value();
       ASSERT_EQ(expected_columns_begin->first, actual_column.name);
-      ASSERT_EQ(expected_columns_begin->second, actual_column.id);
-      ASSERT_LT(actual_column.id, expected_segment.columns().size());
+      // column id is format dependent
+      ASSERT_TRUE(irs::field_limits::valid(expected_columns_begin->second));
+      ASSERT_TRUE(irs::field_limits::valid(actual_column.id));
+      ASSERT_LT(expected_columns_begin->second, expected_segment.columns().size());
 
       const auto* actual_column_reader = actual_segment.column_reader(actual_column.id);
       ASSERT_NE(nullptr, actual_column_reader);
       ASSERT_EQ(actual_column_reader, actual_segment.column_reader(actual_column.name));
 
       assert_column(*actual_column_reader,
-                    expected_segment.columns()[actual_column.id]);
+                    expected_segment.columns()[expected_columns_begin->second]);
     }
     ASSERT_FALSE(actual_columns->next());
     ASSERT_EQ(expected_columns_begin, expected_columns.end());
