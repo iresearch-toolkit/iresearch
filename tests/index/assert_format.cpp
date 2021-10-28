@@ -56,7 +56,7 @@ void assert_term(
     const irs::term_iterator& actual_term,
     irs::IndexFeatures requested_features);
 
-void posting::add(uint32_t pos, uint32_t offs_start, const irs::attribute_provider& attrs) {
+void posting::insert(uint32_t pos, uint32_t offs_start, const irs::attribute_provider& attrs) {
   auto* offs = irs::get<irs::offset>(attrs);
   auto* pay = irs::get<irs::payload>(attrs);
 
@@ -70,7 +70,7 @@ void posting::add(uint32_t pos, uint32_t offs_start, const irs::attribute_provid
   positions_.emplace(pos, start, end, pay ? pay->value : irs::bytes_ref::NIL);
 }
 
-posting& term::add(irs::doc_id_t id) {
+posting& term::insert(irs::doc_id_t id) {
   return const_cast<posting&>(*postings.emplace(id).first);
 }
 
@@ -82,6 +82,18 @@ bool term::operator<(const term& rhs) const {
   return irs::memcmp_less(
     value.c_str(), value.size(),
     rhs.value.c_str(), rhs.value.size());
+}
+
+void term::sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
+  std::set<posting> resorted_postings;
+
+  for (auto& posting : postings) {
+    resorted_postings.emplace(
+      docs.at(posting.id_),
+      std::move(const_cast<tests::posting&>(posting).positions_));
+  }
+
+  postings = std::move(resorted_postings);
 }
 
 field::field(
@@ -136,7 +148,16 @@ uint64_t field::total_freq() const {
   return value;
 }
 
+void field::sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
+  for (auto& term : terms) {
+    const_cast<tests::term&>(term).sort(docs);
+  }
+}
+
 void column_values::insert(irs::doc_id_t key, irs::bytes_ref value) {
+  ASSERT_TRUE(irs::doc_limits::valid(key));
+  ASSERT_TRUE(!irs::doc_limits::eof(key));
+
   const auto res = values_.emplace(key, value);
 
   if (!res.second) {
@@ -226,7 +247,7 @@ void index_segment::insert_stored(const ifield& f) {
   const auto column_id = res.first->second;
   EXPECT_LT(column_id, columns_.size()) ;
 
-  columns_[column_id].insert(count_, buf_);
+  columns_[column_id].insert(irs::doc_limits::min() + count_, buf_);
 }
 
 void index_segment::insert_indexed(const ifield& f) {
@@ -274,10 +295,10 @@ void index_segment::insert_indexed(const ifield& f) {
 
   while (stream.next()) {
     tests::term& trm = field.insert(term->value);
-    tests::posting& pst = trm.add(doc_id);
+    tests::posting& pst = trm.insert(doc_id);
     field.stats.pos += inc->value;
     ++field.stats.len;
-    pst.add(field.stats.pos, field.stats.offs, stream);
+    pst.insert(field.stats.pos, field.stats.offs, stream);
     empty = false;
   }
 

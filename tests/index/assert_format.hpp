@@ -30,9 +30,6 @@
 
 namespace tests {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct position
-////////////////////////////////////////////////////////////////////////////////
 struct position {
   position(uint32_t pos, uint32_t start,
            uint32_t end, const irs::bytes_ref& pay)
@@ -50,9 +47,6 @@ struct position {
   irs::bstring payload;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class posting
-////////////////////////////////////////////////////////////////////////////////
 class posting {
  public:
   explicit posting(irs::doc_id_t id)
@@ -64,7 +58,7 @@ class posting {
   posting(posting&& rhs) noexcept = default;
   posting& operator=(posting&& rhs) noexcept = default;
 
-  void add(uint32_t pos, uint32_t offs_start, const irs::attribute_provider& attrs);
+  void insert(uint32_t pos, uint32_t offs_start, const irs::attribute_provider& attrs);
 
   bool operator<(const posting& rhs) const {
     return id_ < rhs.id_;
@@ -81,38 +75,21 @@ class posting {
   irs::doc_id_t id_;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct term
-////////////////////////////////////////////////////////////////////////////////
 struct term {
   explicit term(irs::bytes_ref data);
 
-  posting& add(irs::doc_id_t id);
+  posting& insert(irs::doc_id_t id);
 
   bool operator<(const term& rhs) const;
 
   uint64_t docs_count() const { return postings.size(); }
 
-  void sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
-    std::set<posting> resorted_postings;
-
-    for (auto& posting : postings) {
-      resorted_postings.emplace(
-        docs.at(posting.id_),
-        std::move(const_cast<tests::posting&>(posting).positions_));
-    }
-
-    postings = std::move(resorted_postings);
-  }
+  void sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs);
 
   std::set<posting> postings;
   irs::bstring value;
 };
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class field
-////////////////////////////////////////////////////////////////////////////////
 struct field : public irs::field_meta {
   struct feature_info {
     irs::field_id id;
@@ -133,11 +110,7 @@ struct field : public irs::field_meta {
   term& insert(irs::bytes_ref term);
   term* find(irs::bytes_ref term);
   size_t remove(irs::bytes_ref term);
-  void sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
-    for (auto& term : terms) {
-      const_cast<tests::term&>(term).sort(docs);
-    }
-  }
+  void sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs);
 
   irs::bytes_ref min() const;
   irs::bytes_ref max() const;
@@ -151,9 +124,6 @@ struct field : public irs::field_meta {
   field_stats stats;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class column_values
-////////////////////////////////////////////////////////////////////////////////
 class column_values {
  public:
   void insert(irs::doc_id_t key, irs::bytes_ref value);
@@ -168,9 +138,6 @@ class column_values {
   std::map<irs::doc_id_t, irs::bstring> values_;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class index_segment
-////////////////////////////////////////////////////////////////////////////////
 class index_segment: irs::util::noncopyable {
  public:
   using field_map_t = std::map<irs::string_ref, field>;

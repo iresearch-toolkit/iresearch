@@ -118,10 +118,7 @@ TEST_P(sorted_index_test_case, simple_sequential) {
     resource("simple_sequential.json"),
     [&sorted_column] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(
-          name,
-          data.str
-        );
+        auto field = std::make_shared<tests::string_field>(name, data.str);
 
         doc.insert(field);
 
