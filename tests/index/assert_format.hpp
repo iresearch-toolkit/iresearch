@@ -192,8 +192,17 @@ class index_segment: irs::util::noncopyable {
   auto& columns_meta() const noexcept { return columns_meta_; }
   auto& columns_meta() noexcept { return columns_meta_; }
 
-  template<typename Iterator>
-  void insert(Iterator begin, Iterator end, ifield::ptr sorted = nullptr);
+  template<typename IndexedFieldIterator, typename StoredFieldIterator>
+  void insert(
+      IndexedFieldIterator indexed_begin, IndexedFieldIterator indexed_end,
+      StoredFieldIterator stored_begin, StoredFieldIterator stored_end,
+      ifield::ptr sorted = nullptr);
+
+  void insert(const document& doc) {
+    insert(std::begin(doc.indexed), std::end(doc.indexed),
+           std::begin(doc.stored), std::end(doc.stored),
+           doc.sorted);
+  }
 
   void sort(const irs::comparer& comparator);
 
@@ -203,34 +212,10 @@ class index_segment: irs::util::noncopyable {
   }
 
  private:
-  class column_output final : public irs::column_output {
-   public:
-    explicit column_output(irs::bstring& buf) noexcept
-      : buf_{&buf} {
-    }
-
-    column_output(column_output&&) = default;
-    column_output& operator=(column_output&&) = default;
-
-    virtual void write_byte(irs::byte_type b) override {
-      (*buf_) += b;
-    }
-
-    virtual void write_bytes(const irs::byte_type* b, size_t size) override {
-      buf_->append(b, size);
-    }
-
-    virtual void reset() override {
-      buf_->clear();
-    }
-
-    irs::bstring* buf_;
-  };
-
   index_segment(const index_segment& rhs) noexcept = delete;
   index_segment& operator=(const index_segment& rhs) noexcept = delete;
 
-  void insert(const ifield& field);
+  void insert_indexed(const ifield& field);
   void insert_stored(const ifield& field);
   void insert_sorted(const ifield& field);
   void compute_features();
@@ -242,19 +227,19 @@ class index_segment: irs::util::noncopyable {
   std::set<field*> doc_fields_;
   field_map_t fields_;
   columns_t columns_;
-  size_t count_{};
   irs::document_mask doc_mask_;
   irs::bstring buf_;
-  column_output out_{buf_};
+  size_t count_{};
 };
 
-template<typename Iterator>
+template<typename IndexedFieldIterator, typename StoredFieldIterator>
 void index_segment::insert(
-    Iterator begin, Iterator end,
+    IndexedFieldIterator indexed_begin, IndexedFieldIterator indexed_end,
+    StoredFieldIterator stored_begin, StoredFieldIterator stored_end,
     ifield::ptr sorted /*= nullptr*/) {
   // reset field per-document state
   doc_fields_.clear();
-  for (auto it = begin; it != end; ++it) {
+  for (auto it = indexed_begin; it != indexed_end; ++it) {
     auto field = fields_.find(it->name());
 
     if (field != fields_.end()) {
@@ -262,9 +247,12 @@ void index_segment::insert(
     }
   }
 
-  for (; begin != end; ++begin) {
-    insert(*begin);
-    insert_stored(*begin);
+  for (; indexed_begin != indexed_end; ++indexed_begin) {
+    insert_indexed(*indexed_begin);
+  }
+
+  for (; stored_begin != stored_end; ++stored_begin) {
+    insert_stored(*stored_begin);
   }
 
   if (sorted) {

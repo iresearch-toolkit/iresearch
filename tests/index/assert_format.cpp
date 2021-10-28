@@ -138,7 +138,10 @@ uint64_t field::total_freq() const {
 
 void column_values::insert(irs::doc_id_t key, irs::bytes_ref value) {
   const auto res = values_.emplace(key, value);
-  ASSERT_TRUE(res.second);
+
+  if (!res.second) {
+    res.first->second.append(value.c_str(), value.size());
+  }
 }
 
 void column_values::sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
@@ -154,8 +157,32 @@ void column_values::sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
 }
 
 void index_segment::compute_features() {
+  struct column_output final : public irs::column_output {
+   public:
+    explicit column_output(irs::bstring& buf) noexcept
+      : buf_{&buf} {
+    }
+
+    column_output(column_output&&) = default;
+    column_output& operator=(column_output&&) = default;
+
+    virtual void write_byte(irs::byte_type b) override {
+      (*buf_) += b;
+    }
+
+    virtual void write_bytes(const irs::byte_type* b, size_t size) override {
+      buf_->append(b, size);
+    }
+
+    virtual void reset() override {
+      buf_->clear();
+    }
+
+    irs::bstring* buf_;
+  } out{buf_};
+
   irs::columnstore_writer::values_writer_f writer =
-      [this](irs::doc_id_t) -> column_output&{ return out_; };
+      [&out](irs::doc_id_t) -> column_output&{ return out; };
 
   for (auto* field : doc_fields_) {
     for (auto& entry : field->feature_infos) {
@@ -194,7 +221,6 @@ void index_segment::insert_stored(const ifield& f) {
 
   if (res.second) {
     columns_.emplace_back();
-    res.first->second = id;
   }
 
   const auto column_id = res.first->second;
@@ -203,7 +229,7 @@ void index_segment::insert_stored(const ifield& f) {
   columns_[column_id].insert(count_, buf_);
 }
 
-void index_segment::insert(const ifield& f) {
+void index_segment::insert_indexed(const ifield& f) {
   const irs::string_ref field_name = f.name();
 
   const auto res = fields_.emplace(

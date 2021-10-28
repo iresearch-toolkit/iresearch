@@ -83,10 +83,7 @@ void index_test_base::write_segment(
   const document* src;
 
   while ((src = gen.next())) {
-    segment.insert(
-      src->indexed.begin(),
-      src->indexed.end(),
-      src->sorted);
+    segment.insert(*src);
 
     ASSERT_TRUE(insert(
       writer,
@@ -6902,8 +6899,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
@@ -6953,7 +6949,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(*doc2);
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(this->dir(), codec());
@@ -7111,12 +7107,12 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(*doc3);
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(*doc4);
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(this->dir(), codec());
@@ -7266,11 +7262,11 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(*doc2);
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(*doc3);
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(*doc4);
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(this->dir(), codec());
@@ -7413,9 +7409,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // validate structure (does not take removals into account)
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc3);
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(this->dir(), codec());
@@ -7549,10 +7545,10 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // validate structure (does not take removals into account)
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(this->dir(), codec());
@@ -7849,8 +7845,8 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -7934,11 +7930,11 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8050,12 +8046,12 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
-    expected.back().insert(doc5->indexed.begin(), doc5->indexed.end());
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
+    expected.back().insert(*doc5);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8197,9 +8193,9 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   for (size_t i = 0; i < SEGMENTS_COUNT/2; ++i) {
     expected.emplace_back(writer->field_features());
     const auto* doc = gen.next();
-    expected.back().insert(doc->indexed.begin(), doc->indexed.end());
+    expected.back().insert(*doc);
     doc = gen.next();
-    expected.back().insert(doc->indexed.begin(), doc->indexed.end());
+    expected.back().insert(*doc);
   }
   tests::assert_index(dir(), codec(), expected, all_features);
 
@@ -8330,8 +8326,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8434,11 +8430,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8575,14 +8571,14 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc5->indexed.begin(), doc5->indexed.end());
-    expected.back().insert(doc6->indexed.begin(), doc6->indexed.end());
+    expected.back().insert(*doc5);
+    expected.back().insert(*doc6);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8727,9 +8723,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8856,10 +8852,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -8923,24 +8919,20 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
 
@@ -8987,10 +8979,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
     {
       auto reader = irs::directory_reader::open(dir(), codec());
@@ -9283,10 +9275,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
@@ -9356,8 +9348,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
     writer->commit(); // commit transaction (will commit removal)
     ASSERT_EQ(4, irs::directory_cleaner::clean(dir())); // segments_2 + stale segment 1 meta + stale segment 2 meta + unused column store
 
@@ -9375,12 +9366,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc5->indexed.begin(), doc5->indexed.end());
+    expected.back().insert(*doc5);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -9463,24 +9454,20 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     // segment 2
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
 
@@ -9491,8 +9478,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
 
     // check consolidating segments
     expected_consolidating_segments = { };
@@ -9533,12 +9519,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc5->indexed.begin(), doc5->indexed.end());
+    expected.back().insert(*doc5);
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc3);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -9621,12 +9607,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
@@ -9636,12 +9620,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir())); // segments_1
 
@@ -9653,8 +9635,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
 
     // check consolidating segments
     expected_consolidating_segments = { };
@@ -9713,10 +9694,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc1->indexed.begin(), doc1->indexed.end());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
+    expected.back().insert(*doc1);
+    expected.back().insert(*doc2);
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc5->indexed.begin(), doc5->indexed.end());
+    expected.back().insert(*doc5);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -11620,7 +11601,7 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -11667,7 +11648,7 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -11695,17 +11676,14 @@ TEST_P(index_test_case, segment_consolidate) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc1_doc2.filter));
     writer->commit();
@@ -11715,7 +11693,7 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -11743,17 +11721,14 @@ TEST_P(index_test_case, segment_consolidate) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc1_doc2.filter));
     writer->commit();
@@ -11763,7 +11738,7 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc3->indexed.begin(), doc3->indexed.end());
+    expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -11802,12 +11777,10 @@ TEST_P(index_test_case, segment_consolidate) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc1.filter));
     writer->commit();
@@ -11829,12 +11802,10 @@ TEST_P(index_test_case, segment_consolidate) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc1.filter));
     ASSERT_TRUE(writer->consolidate(merge_if_masked));
@@ -11865,17 +11836,14 @@ TEST_P(index_test_case, segment_consolidate) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
@@ -11888,8 +11856,8 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -11920,21 +11888,17 @@ TEST_P(index_test_case, segment_consolidate) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->documents().remove(std::move(query_doc1_doc3.filter));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
@@ -11943,8 +11907,8 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -11975,17 +11939,14 @@ TEST_P(index_test_case, segment_consolidate) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
       doc4->stored.begin(), doc4->stored.end()
@@ -11999,8 +11960,8 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12031,21 +11992,17 @@ TEST_P(index_test_case, segment_consolidate) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc1_doc3.filter));
     writer->commit();
@@ -12055,8 +12012,8 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12087,30 +12044,24 @@ TEST_P(index_test_case, segment_consolidate) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc6->indexed.begin(), doc6->indexed.end(),
-      doc6->stored.begin(), doc6->stored.end()
-    ));
+      doc6->stored.begin(), doc6->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc1_doc3_doc5.filter));
     writer->commit();
@@ -12120,9 +12071,9 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
-    expected.back().insert(doc6->indexed.begin(), doc6->indexed.end());
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc4);
+    expected.back().insert(*doc6);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12156,30 +12107,24 @@ TEST_P(index_test_case, segment_consolidate) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc6->indexed.begin(), doc6->indexed.end(),
-      doc6->stored.begin(), doc6->stored.end()
-    ));
+      doc6->stored.begin(), doc6->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc1_doc3_doc5.filter));
     writer->commit();
@@ -12189,9 +12134,9 @@ TEST_P(index_test_case, segment_consolidate) {
     // validate structure
     tests::index_t expected;
     expected.emplace_back(writer->field_features());
-    expected.back().insert(doc2->indexed.begin(), doc2->indexed.end());
-    expected.back().insert(doc4->indexed.begin(), doc4->indexed.end());
-    expected.back().insert(doc6->indexed.begin(), doc6->indexed.end());
+    expected.back().insert(*doc2);
+    expected.back().insert(*doc4);
+    expected.back().insert(*doc6);
     tests::assert_index(dir(), codec(), expected, all_features);
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12224,16 +12169,13 @@ TEST_P(index_test_case, segment_consolidate) {
     // add 1st segment
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc6->indexed.begin(), doc6->indexed.end(),
-      doc6->stored.begin(), doc6->stored.end()
-    ));
+      doc6->stored.begin(), doc6->stored.end()));
     writer->commit();
 
     // add 2nd segment
@@ -12241,10 +12183,7 @@ TEST_P(index_test_case, segment_consolidate) {
       resource("simple_sequential_upper_case.json"),
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) {
-          doc.insert(std::make_shared<tests::string_field>(
-            name,
-            data.str
-          ));
+          doc.insert(std::make_shared<tests::string_field>(name, data.str));
         }
     });
 
@@ -12253,16 +12192,13 @@ TEST_P(index_test_case, segment_consolidate) {
     auto doc1_3 = gen.next();
     ASSERT_TRUE(insert(*writer,
       doc1_1->indexed.begin(), doc1_1->indexed.end(),
-      doc1_1->stored.begin(), doc1_1->stored.end()
-    ));
+      doc1_1->stored.begin(), doc1_1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc1_2->indexed.begin(), doc1_2->indexed.end(),
-      doc1_2->stored.begin(), doc1_2->stored.end()
-    ));
+      doc1_2->stored.begin(), doc1_2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc1_3->indexed.begin(), doc1_3->indexed.end(),
-      doc1_3->stored.begin(), doc1_3->stored.end()
-    ));
+      doc1_3->stored.begin(), doc1_3->stored.end()));
 
     // defragment segments
     writer->commit();
@@ -12315,16 +12251,13 @@ TEST_P(index_test_case, segment_consolidate) {
     // add 1st segment
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc6->indexed.begin(), doc6->indexed.end(),
-      doc6->stored.begin(), doc6->stored.end()
-    ));
+      doc6->stored.begin(), doc6->stored.end()));
     writer->commit();
 
     // add 2nd segment
@@ -12332,10 +12265,7 @@ TEST_P(index_test_case, segment_consolidate) {
       resource("simple_sequential_upper_case.json"),
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) {
-          doc.insert(std::make_shared<tests::string_field>(
-            name,
-            data.str
-          ));
+          doc.insert(std::make_shared<tests::string_field>(name, data.str));
         }
     });
 
@@ -12344,16 +12274,13 @@ TEST_P(index_test_case, segment_consolidate) {
     auto doc1_3 = gen.next();
     ASSERT_TRUE(insert(*writer,
       doc1_1->indexed.begin(), doc1_1->indexed.end(),
-      doc1_1->stored.begin(), doc1_1->stored.end()
-    ));
+      doc1_1->stored.begin(), doc1_1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc1_2->indexed.begin(), doc1_2->indexed.end(),
-      doc1_2->stored.begin(), doc1_2->stored.end()
-    ));
+      doc1_2->stored.begin(), doc1_2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc1_3->indexed.begin(), doc1_3->indexed.end(),
-      doc1_3->stored.begin(), doc1_3->stored.end()
-    ));
+      doc1_3->stored.begin(), doc1_3->stored.end()));
     writer->commit();
 
     // defragment segments
@@ -12406,10 +12333,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::string_field>(
-        name,
-        data.str
-      ));
+      doc.insert(std::make_shared<tests::string_field>(name, data.str));
     }
   });
 
@@ -12426,30 +12350,24 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc6->indexed.begin(), doc6->indexed.end(),
-      doc6->stored.begin(), doc6->stored.end()
-    ));
+      doc6->stored.begin(), doc6->stored.end()));
     writer->commit();
     irs::index_utils::consolidate_bytes options;
     options.threshold = 1;
@@ -12510,25 +12428,20 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
     writer->commit();
     irs::index_utils::consolidate_bytes options;
     options.threshold = 0;
@@ -12589,13 +12502,11 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     irs::index_utils::consolidate_bytes_accum options;
     options.threshold = 1;
@@ -12632,13 +12543,11 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     irs::index_utils::consolidate_bytes_accum options;
     options.threshold = 0;
@@ -12700,26 +12609,21 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc2_doc3_doc4.filter));
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
     writer->commit();
     irs::index_utils::consolidate_docs_live options;
     options.threshold = 1;
@@ -12756,26 +12660,21 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc2_doc3_doc4.filter));
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
     writer->commit();
     irs::index_utils::consolidate_docs_live options;
     options.threshold = 0;
@@ -12837,21 +12736,17 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc2_doc4.filter));
     writer->commit();
@@ -12890,21 +12785,17 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
     writer->documents().remove(std::move(query_doc2_doc4.filter));
     writer->commit();
@@ -13061,8 +12952,7 @@ TEST_P(index_test_case, segment_options) {
 
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
 
     writer->commit();
 
@@ -13120,8 +13010,7 @@ TEST_P(index_test_case, segment_options) {
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
 
     irs::index_writer::segment_options options;
     options.segment_memory_max = 1;
@@ -13129,8 +13018,7 @@ TEST_P(index_test_case, segment_options) {
 
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
 
     writer->commit();
 
@@ -13196,8 +13084,7 @@ TEST_P(index_test_case, writer_close) {
 
     ASSERT_TRUE(insert(*writer,
       doc->indexed.begin(), doc->indexed.end(),
-      doc->stored.begin(), doc->stored.end()
-    ));
+      doc->stored.begin(), doc->stored.end()));
     writer->commit();
   } // ensure writer is closed
 
@@ -13234,13 +13121,11 @@ TEST_P(index_test_case, writer_insert_immediate_remove) {
 
   ASSERT_TRUE(insert(*writer,
     doc4->indexed.begin(), doc4->indexed.end(),
-    doc4->stored.begin(), doc4->stored.end()
-  ));
+    doc4->stored.begin(), doc4->stored.end()));
 
   ASSERT_TRUE(insert(*writer,
     doc3->indexed.begin(), doc3->indexed.end(),
-    doc3->stored.begin(), doc3->stored.end()
-  ));
+    doc3->stored.begin(), doc3->stored.end()));
 
   writer->commit(); // index should be non-empty
 
@@ -13255,13 +13140,11 @@ TEST_P(index_test_case, writer_insert_immediate_remove) {
   // Create segment and immediately do a remove operation
   ASSERT_TRUE(insert(*writer,
     doc1->indexed.begin(), doc1->indexed.end(),
-    doc1->stored.begin(), doc1->stored.end()
-  ));
+    doc1->stored.begin(), doc1->stored.end()));
 
   ASSERT_TRUE(insert(*writer,
     doc2->indexed.begin(), doc2->indexed.end(),
-    doc2->stored.begin(), doc2->stored.end()
-  ));
+    doc2->stored.begin(), doc2->stored.end()));
 
   auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
   writer->documents().remove(*(query_doc1.filter.get()));
@@ -13301,13 +13184,11 @@ TEST_P(index_test_case, writer_insert_immediate_remove_all) {
 
   ASSERT_TRUE(insert(*writer,
     doc4->indexed.begin(), doc4->indexed.end(),
-    doc4->stored.begin(), doc4->stored.end()
-  ));
+    doc4->stored.begin(), doc4->stored.end()));
 
   ASSERT_TRUE(insert(*writer,
     doc3->indexed.begin(), doc3->indexed.end(),
-    doc3->stored.begin(), doc3->stored.end()
-  ));
+    doc3->stored.begin(), doc3->stored.end()));
 
   writer->commit(); // index should be non-empty
   size_t count = 0;
@@ -13321,13 +13202,11 @@ TEST_P(index_test_case, writer_insert_immediate_remove_all) {
   // Create segment and immediately do a remove operation for all added documents
   ASSERT_TRUE(insert(*writer,
     doc1->indexed.begin(), doc1->indexed.end(),
-    doc1->stored.begin(), doc1->stored.end()
-  ));
+    doc1->stored.begin(), doc1->stored.end()));
 
   ASSERT_TRUE(insert(*writer,
     doc2->indexed.begin(), doc2->indexed.end(),
-    doc2->stored.begin(), doc2->stored.end()
-  ));
+    doc2->stored.begin(), doc2->stored.end()));
 
   auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
   writer->documents().remove(*(query_doc1.filter.get()));
@@ -13368,13 +13247,11 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment) {
 
   ASSERT_TRUE(insert(*writer,
     doc1->indexed.begin(), doc1->indexed.end(),
-    doc1->stored.begin(), doc1->stored.end()
-  ));
+    doc1->stored.begin(), doc1->stored.end()));
 
   ASSERT_TRUE(insert(*writer,
     doc2->indexed.begin(), doc2->indexed.end(),
-    doc2->stored.begin(), doc2->stored.end()
-  ));
+    doc2->stored.begin(), doc2->stored.end()));
 
   writer->commit(); // index should be non-empty
   size_t count = 0;
@@ -13423,28 +13300,23 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment_consolidation) {
 
   ASSERT_TRUE(insert(*writer,
     doc1->indexed.begin(), doc1->indexed.end(),
-    doc1->stored.begin(), doc1->stored.end()
-  ));
+    doc1->stored.begin(), doc1->stored.end()));
 
   ASSERT_TRUE(insert(*writer,
     doc2->indexed.begin(), doc2->indexed.end(),
-    doc2->stored.begin(), doc2->stored.end()
-  ));
+    doc2->stored.begin(), doc2->stored.end()));
 
   writer->commit(); // segment 1
   
   ASSERT_TRUE(insert(*writer,
     doc3->indexed.begin(), doc3->indexed.end(),
-    doc3->stored.begin(), doc3->stored.end()
-  ));
+    doc3->stored.begin(), doc3->stored.end()));
 
   ASSERT_TRUE(insert(*writer,
     doc4->indexed.begin(), doc4->indexed.end(),
-    doc4->stored.begin(), doc4->stored.end()
-  ));
+    doc4->stored.begin(), doc4->stored.end()));
 
   writer->commit(); //  segment 2
-
 
   auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
   writer->documents().remove(*(query_doc1.filter.get()));
