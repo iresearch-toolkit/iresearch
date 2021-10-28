@@ -159,11 +159,13 @@ void index_segment::compute_features() {
 
   for (auto* field : doc_fields_) {
     for (auto& entry : field->feature_infos) {
-      buf_.clear();
+      if (entry.handler) {
+        buf_.clear();
 
-      entry.handler(field->stats, count_, writer);
+        entry.handler(field->stats, count_, writer);
 
-      columns_[entry.id].insert(count_, buf_);
+        columns_[entry.id].insert(count_, buf_);
+      }
     }
   }
 }
