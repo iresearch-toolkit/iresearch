@@ -1217,10 +1217,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(
-          name,
-          data.str
-        );
+        auto field = std::make_shared<tests::string_field>(name, data.str);
 
         doc.insert(field);
 
@@ -1249,13 +1246,11 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
     {
       ASSERT_TRUE(insert(*writer,
         doc2->indexed.begin(), doc2->indexed.end(),
-        doc2->stored.begin(), doc2->stored.end()
-      ));
+        doc2->stored.begin(), doc2->stored.end()));
       ASSERT_TRUE(insert(*writer,
         doc0->indexed.begin(), doc0->indexed.end(),
         doc0->stored.begin(), doc0->stored.end(),
-        doc0->sorted
-      ));
+        doc0->sorted));
       writer->commit();
     }
 
@@ -1264,12 +1259,10 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       ASSERT_TRUE(insert(*writer,
         doc1->indexed.begin(), doc1->indexed.end(),
         doc1->stored.begin(), doc1->stored.end(),
-        doc1->sorted
-      ));
+        doc1->sorted));
       ASSERT_TRUE(insert(*writer,
         doc3->indexed.begin(), doc3->indexed.end(),
-        doc3->stored.begin(), doc3->stored.end()
-      ));
+        doc3->stored.begin(), doc3->stored.end()));
       writer->commit();
     }
   }
@@ -1286,6 +1279,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       auto& segment = reader[0];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
+      ASSERT_EQ(2, column->size());
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -1306,6 +1300,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       auto& segment = reader[1];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
+      ASSERT_EQ(2, column->size());
       auto values = column->values();
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
@@ -1341,6 +1336,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
     {
       auto& segment = reader[0];
       const auto* column = segment.sort();
+      ASSERT_EQ(4, column->size());
       ASSERT_NE(nullptr, column);
       auto values = column->values();
       auto terms = segment.field("same");
