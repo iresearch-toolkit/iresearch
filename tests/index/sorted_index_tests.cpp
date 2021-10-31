@@ -1361,6 +1361,27 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
   }
 }
 
+// Separate definition as MSVC parser fails to do conditional defines in macro expansion
+namespace {
+#ifdef IRESEARCH_SSE2
+const auto kSortedIndexTestCaseValues = ::testing::Values(
+    tests::format_info{"1_1", "1_0"},
+    tests::format_info{"1_2", "1_0"},
+    tests::format_info{"1_3", "1_0"},
+    tests::format_info{"1_4", "1_0"},
+    tests::format_info{"1_1", "1_0"},
+    tests::format_info{"1_3simd", "1_0"},
+    tests::format_info{"1_4simd", "1_0"});
+#else
+const auto kSortedIndexTestCaseValues = ::testing::Values(
+    tests::format_info{"1_1", "1_0"},
+    tests::format_info{"1_2", "1_0"},
+    tests::format_info{"1_3", "1_0"},
+    tests::format_info{"1_4", "1_0"},
+    tests::format_info{"1_1", "1_0"});
+#endif
+}
+
 INSTANTIATE_TEST_SUITE_P(
   sorted_index_test,
   sorted_index_test_case,
@@ -1369,16 +1390,7 @@ INSTANTIATE_TEST_SUITE_P(
       &tests::directory<&tests::memory_directory>,
       &tests::directory<&tests::fs_directory>,
       &tests::directory<&tests::mmap_directory>),
-    ::testing::Values(
-      tests::format_info{"1_1", "1_0"},
-      tests::format_info{"1_2", "1_0"},
-      tests::format_info{"1_3", "1_0"},
-      tests::format_info{"1_4", "1_0"}
-#ifdef IRESEARCH_SSE2
-      , tests::format_info{"1_3simd", "1_0"},
-      tests::format_info{"1_4simd", "1_0"}
-#endif
-    )),
+    kSortedIndexTestCaseValues),
   sorted_index_test_case::to_string);
 
 }
