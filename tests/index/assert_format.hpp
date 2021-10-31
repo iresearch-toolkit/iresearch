@@ -150,7 +150,7 @@ class index_segment: irs::util::noncopyable {
   index_segment(index_segment&& rhs) = default;
   index_segment& operator=(index_segment&& rhs) = default;
 
-  size_t doc_count() const noexcept { return count_; }
+  irs::doc_id_t doc_count() const noexcept { return count_; }
   size_t size() const noexcept { return fields_.size(); }
   auto& doc_mask() const noexcept { return doc_mask_; }
   auto& fields() const noexcept { return fields_; }
@@ -200,7 +200,7 @@ class index_segment: irs::util::noncopyable {
   columns_t columns_;
   irs::document_mask doc_mask_;
   irs::bstring buf_;
-  size_t count_{};
+  irs::doc_id_t count_{};
 };
 
 template<typename IndexedFieldIterator, typename StoredFieldIterator>
