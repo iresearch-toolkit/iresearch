@@ -210,9 +210,10 @@ void index_segment::compute_features() {
       if (entry.handler) {
         buf_.clear();
 
-        entry.handler(field->stats, count_, writer);
+        const auto doc_id = doc();
+        entry.handler(field->stats, doc_id, writer);
 
-        columns_[entry.id].insert(count_, buf_);
+        columns_[entry.id].insert(doc_id, buf_);
       }
     }
   }
@@ -247,7 +248,7 @@ void index_segment::insert_stored(const ifield& f) {
   const auto column_id = res.first->second;
   EXPECT_LT(column_id, columns_.size()) ;
 
-  columns_[column_id].insert(irs::doc_limits::min() + count_, buf_);
+  columns_[column_id].insert(doc(), buf_);
 }
 
 void index_segment::insert_indexed(const ifield& f) {

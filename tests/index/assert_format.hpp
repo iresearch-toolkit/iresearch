@@ -182,6 +182,10 @@ class index_segment: irs::util::noncopyable {
   index_segment(const index_segment& rhs) noexcept = delete;
   index_segment& operator=(const index_segment& rhs) noexcept = delete;
 
+  irs::doc_id_t doc() const noexcept {
+    return count_ + irs::doc_limits::min();
+  }
+
   void insert_indexed(const ifield& field);
   void insert_stored(const ifield& field);
   void insert_sorted(const ifield& field);
