@@ -51,11 +51,11 @@ class sorted_europarl_doc_template : public tests::europarl_doc_template {
 
 struct string_comparer : irs::comparer {
   virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
-    if (lhs.null() && rhs.null()) {
+    if (lhs.empty() && rhs.null()) {
       return false;
-    } else if (rhs.null()) {
+    } else if (rhs.empty()) {
       return true;
-    } else if (lhs.null()) {
+    } else if (lhs.empty()) {
       return false;
     }
 
