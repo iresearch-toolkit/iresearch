@@ -1369,7 +1369,6 @@ const auto kSortedIndexTestCaseValues = ::testing::Values(
     tests::format_info{"1_2", "1_0"},
     tests::format_info{"1_3", "1_0"},
     tests::format_info{"1_4", "1_0"},
-    tests::format_info{"1_1", "1_0"},
     tests::format_info{"1_3simd", "1_0"},
     tests::format_info{"1_4simd", "1_0"});
 #else
@@ -1377,8 +1376,7 @@ const auto kSortedIndexTestCaseValues = ::testing::Values(
     tests::format_info{"1_1", "1_0"},
     tests::format_info{"1_2", "1_0"},
     tests::format_info{"1_3", "1_0"},
-    tests::format_info{"1_4", "1_0"},
-    tests::format_info{"1_1", "1_0"});
+    tests::format_info{"1_4", "1_0"});
 #endif
 }
 
