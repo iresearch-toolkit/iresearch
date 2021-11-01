@@ -979,7 +979,20 @@ void assert_index(
       ASSERT_EQ((expected_field->second.max)(), (actual_terms->max)());
       ASSERT_EQ(expected_field->second.terms.size(), actual_terms->size());
       ASSERT_EQ(expected_field->second.docs.size(), actual_terms->docs_count());
-      ASSERT_EQ(expected_field->second, actual_terms->meta());
+
+      const irs::field_meta& expected_meta = expected_field->second;
+      const irs::field_meta& actual_meta = actual_terms->meta();
+      ASSERT_EQ(expected_meta.name, actual_meta.name);
+      ASSERT_EQ(expected_meta.index_features, actual_meta.index_features);
+      auto& expected_features = expected_meta.features;
+      auto actual_features = actual_meta.features;
+      ASSERT_EQ(expected_features.size(), actual_features.size());
+      for (auto& entry : expected_features) {
+        ASSERT_EQ(1, actual_features.erase(entry.first));
+        // we don't check column ids as they are format dependent
+      }
+      ASSERT_TRUE(actual_features.empty());
+
 
       auto* actual_freq = irs::get<irs::frequency>(*actual_terms);
       if (irs::IndexFeatures::NONE != (expected_field->second.index_features &

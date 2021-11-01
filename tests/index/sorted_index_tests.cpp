@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "index/comparer.hpp"
+#include "index/norm.hpp"
 #include "iql/query_builder.hpp"
 #include "utils/index_utils.hpp"
 
@@ -1217,7 +1218,9 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(name, data.str);
+        auto field = std::make_shared<tests::string_field>(
+          name, data.str, irs::IndexFeatures::NONE,
+          std::vector<irs::type_info::type_id>{ irs::type<irs::norm2>::id() });
 
         doc.insert(field);
 
@@ -1239,14 +1242,14 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
   string_comparer less;
   irs::index_writer::init_options opts;
   opts.comparator = &less;
+  opts.features[irs::type<irs::norm2>::id()] = &irs::norm2::compute;
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
   ASSERT_NE(nullptr, writer->comparator());
 
-  auto& expected_index = index();
-
   // create expected index
+  auto& expected_index = index();
   expected_index.emplace_back(writer->field_features());
   expected_index.back().insert(
     doc2->indexed.begin(), doc2->indexed.end(),
