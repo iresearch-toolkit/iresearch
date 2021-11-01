@@ -887,6 +887,8 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
       ASSERT_EQ("AB", irs::ref_cast<char>(actual_value));
       ASSERT_FALSE(docsItr->next());
     }
+
+    assert_index();
   }
 }
 
@@ -1033,6 +1035,8 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_FALSE(docsItr->next());
     }
+
+    assert_index();
   }
 }
 
