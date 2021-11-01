@@ -220,12 +220,10 @@ void index_segment::compute_features() {
 }
 
 void index_segment::insert_sorted(const ifield& f) {
-  irs::bstring buf;
-  irs::bytes_output out(buf);
+  buf_.clear();
+  irs::bytes_output out{buf_};
   if (f.write(out)) {
-    const irs::bytes_ref value = buf;
-    const auto doc_id = doc();
-    sort_.emplace_back(std::make_pair(irs::bstring(value.c_str(), value.size()), doc_id));
+    sort_.emplace_back(std::move(buf_), doc());
   }
 }
 

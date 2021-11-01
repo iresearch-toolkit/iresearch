@@ -163,12 +163,12 @@ class index_segment: irs::util::noncopyable {
   void insert(
       IndexedFieldIterator indexed_begin, IndexedFieldIterator indexed_end,
       StoredFieldIterator stored_begin, StoredFieldIterator stored_end,
-      ifield::ptr sorted = nullptr);
+      const ifield* sorted = nullptr);
 
   void insert(const document& doc) {
     insert(std::begin(doc.indexed), std::end(doc.indexed),
            std::begin(doc.stored), std::end(doc.stored),
-           doc.sorted);
+           doc.sorted.get());
   }
 
   void sort(const irs::comparer& comparator);
@@ -207,7 +207,7 @@ template<typename IndexedFieldIterator, typename StoredFieldIterator>
 void index_segment::insert(
     IndexedFieldIterator indexed_begin, IndexedFieldIterator indexed_end,
     StoredFieldIterator stored_begin, StoredFieldIterator stored_end,
-    ifield::ptr sorted /*= nullptr*/) {
+    const ifield* sorted /*= nullptr*/) {
   // reset field per-document state
   doc_fields_.clear();
   for (auto it = indexed_begin; it != indexed_end; ++it) {
