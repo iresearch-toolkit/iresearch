@@ -857,10 +857,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(
-          name,
-          data.str
-        );
+        auto field = std::make_shared<tests::string_field>(name, data.str);
 
         doc.insert(field);
 
@@ -891,13 +888,11 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       ASSERT_TRUE(insert(*writer,
         doc0->indexed.begin(), doc0->indexed.end(),
         doc0->stored.begin(), doc0->stored.end(),
-        doc0->sorted
-      ));
+        doc0->sorted));
       ASSERT_TRUE(insert(*writer,
         doc2->indexed.begin(), doc2->indexed.end(),
         doc2->stored.begin(), doc2->stored.end(),
-        doc2->sorted
-      ));
+        doc2->sorted));
       writer->commit();
     }
 
@@ -906,13 +901,11 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       ASSERT_TRUE(insert(*writer,
         doc1->indexed.begin(), doc1->indexed.end(),
         doc1->stored.begin(), doc1->stored.end(),
-        doc1->sorted
-      ));
+        doc1->sorted));
       ASSERT_TRUE(insert(*writer,
         doc3->indexed.begin(), doc3->indexed.end(),
         doc3->stored.begin(), doc3->stored.end(),
-        doc3->sorted
-      ));
+        doc3->sorted));
       writer->commit();
     }
   }
@@ -1013,10 +1006,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(
-          name,
-          data.str
-        );
+        auto field = std::make_shared<tests::string_field>(name, data.str);
 
         doc.insert(field);
 
@@ -1047,13 +1037,11 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       ASSERT_TRUE(insert(*writer,
         doc0->indexed.begin(), doc0->indexed.end(),
         doc0->stored.begin(), doc0->stored.end(),
-        doc0->sorted
-      ));
+        doc0->sorted));
       ASSERT_TRUE(insert(*writer,
         doc2->indexed.begin(), doc2->indexed.end(),
         doc2->stored.begin(), doc2->stored.end(),
-        doc2->sorted
-      ));
+        doc2->sorted));
       writer->commit();
     }
 
@@ -1062,13 +1050,11 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       ASSERT_TRUE(insert(*writer,
         doc1->indexed.begin(), doc1->indexed.end(),
         doc1->stored.begin(), doc1->stored.end(),
-        doc1->sorted
-      ));
+        doc1->sorted));
       ASSERT_TRUE(insert(*writer,
         doc3->indexed.begin(), doc3->indexed.end(),
         doc3->stored.begin(), doc3->stored.end(),
-        doc3->sorted
-      ));
+        doc3->sorted));
       writer->commit();
     }
   }

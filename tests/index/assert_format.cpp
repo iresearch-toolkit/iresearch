@@ -1037,6 +1037,8 @@ void assert_index(
     auto actual_fields = actual_segment.fields();
     for (; actual_fields->next(); ++expected_field) {
       ASSERT_EQ(expected_field->first, actual_fields->value().meta().name);
+      ASSERT_EQ(expected_field->second.name, actual_fields->value().meta().name);
+      ASSERT_EQ(expected_field->second.index_features, actual_fields->value().meta().index_features);
 
       // check field terms
       const auto* actual_terms = actual_segment.field(expected_field->first);
