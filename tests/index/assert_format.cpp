@@ -959,6 +959,13 @@ void assert_columnstore(
 
     const tests::index_segment& expected_segment = expected_index[i];
 
+    // check pk is present
+    if (auto& expected_pk = expected_segment.pk(); expected_pk.empty()) {
+      auto* actual_pk = actual_segment.sort();
+      ASSERT_NE(nullptr, actual_pk);
+      assert_pk(*actual_pk, expected_pk);
+    }
+
     // iterate over columns
     auto& expected_columns = expected_segment.columns_meta();
     auto expected_columns_begin = expected_columns.begin();
@@ -1017,13 +1024,6 @@ void assert_index(
     }
 
     const tests::index_segment& expected_segment = expected_index[i];
-
-    // check pk is present
-    if (auto& expected_pk = expected_segment.pk(); expected_pk.empty()) {
-      auto* actual_pk = actual_segment.sort();
-      ASSERT_NE(nullptr, actual_pk);
-      assert_pk(*actual_pk, expected_pk);
-    }
 
     // segment normally returns a reference to itself
     ASSERT_EQ(1, actual_segment.size());
