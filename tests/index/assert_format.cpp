@@ -823,6 +823,68 @@ void assert_terms_seek(
   }
 }
 
+void assert_pk(
+    const irs::columnstore_reader::column_reader& actual_reader,
+    const std::vector<std::pair<irs::bstring, irs::doc_id_t>>& expected_values) {
+  ASSERT_EQ(expected_values.size(), actual_reader.size());
+
+  // check iterators & values
+  {
+    auto actual_it = actual_reader.iterator();
+    ASSERT_NE(nullptr, actual_it);
+
+    auto actual_seek_it = actual_reader.iterator();
+    ASSERT_NE(nullptr, actual_seek_it);
+
+    auto actual_values = actual_reader.values();
+    ASSERT_TRUE(actual_values);
+
+    auto* actual_key = irs::get<irs::document>(*actual_it);
+    ASSERT_NE(nullptr, actual_key);
+    auto* actual_value = irs::get<irs::payload>(*actual_it);
+    ASSERT_NE(nullptr, actual_value);
+
+    irs::doc_id_t expected_key = irs::doc_limits::min();
+    for (auto& expected : expected_values) {
+      auto& expected_value = expected.first;
+      ASSERT_TRUE(actual_it->next());
+
+      auto actual_stateless_seek_it = actual_reader.iterator();
+      ASSERT_NE(nullptr, actual_stateless_seek_it);
+
+      ASSERT_EQ(expected_key, actual_it->value());
+      ASSERT_EQ(expected_key, actual_key->value);
+      ASSERT_EQ(expected_value, actual_value->value);
+      ASSERT_EQ(expected_key, actual_seek_it->seek(expected_key));
+      ASSERT_EQ(expected_key, actual_stateless_seek_it->seek(expected_key));
+
+      irs::bytes_ref actual_value2;
+      ASSERT_TRUE(actual_values(expected_key, actual_value2));
+      ASSERT_EQ(expected_value, actual_value2);
+
+      ++expected_key;
+    }
+    ASSERT_FALSE(actual_it->next());
+    ASSERT_FALSE(actual_it->next());
+  }
+
+  // check visit
+  {
+    auto begin = expected_values.begin();
+    irs::doc_id_t expected_key = irs::doc_limits::min();
+
+    actual_reader.visit(
+      [&begin, &expected_key](auto actual_key, auto& actual_value) mutable {
+        EXPECT_EQ(expected_key, actual_key);
+        EXPECT_EQ(begin->first, actual_value);
+        ++begin;
+        ++expected_key;
+        return true;
+    });
+    ASSERT_EQ(begin, expected_values.end());
+  }
+}
+
 void assert_column(
     const irs::columnstore_reader::column_reader& actual_reader,
     const column_values& expected_values) {
@@ -954,8 +1016,14 @@ void assert_index(
       continue;
     }
 
-    // setting up test reader/writer
     const tests::index_segment& expected_segment = expected_index[i];
+
+    // check pk is present
+    if (auto& expected_pk = expected_segment.pk(); expected_pk.empty()) {
+      auto* actual_pk = actual_segment.sort();
+      ASSERT_NE(nullptr, actual_pk);
+      assert_pk(*actual_pk, expected_pk);
+    }
 
     // segment normally returns a reference to itself
     ASSERT_EQ(1, actual_segment.size());
@@ -973,6 +1041,7 @@ void assert_index(
       // check field terms
       const auto* actual_terms = actual_segment.field(expected_field->first);
       ASSERT_NE(nullptr, actual_terms);
+      ASSERT_EQ(actual_fields->value().meta(), actual_terms->meta());
 
       // check term reader
       ASSERT_EQ((expected_field->second.min)(), (actual_terms->min)());
@@ -980,19 +1049,21 @@ void assert_index(
       ASSERT_EQ(expected_field->second.terms.size(), actual_terms->size());
       ASSERT_EQ(expected_field->second.docs.size(), actual_terms->docs_count());
 
+      // check field meta
       const irs::field_meta& expected_meta = expected_field->second;
       const irs::field_meta& actual_meta = actual_terms->meta();
       ASSERT_EQ(expected_meta.name, actual_meta.name);
       ASSERT_EQ(expected_meta.index_features, actual_meta.index_features);
-      auto& expected_features = expected_meta.features;
-      auto actual_features = actual_meta.features;
-      ASSERT_EQ(expected_features.size(), actual_features.size());
-      for (auto& entry : expected_features) {
-        ASSERT_EQ(1, actual_features.erase(entry.first));
-        // we don't check column ids as they are format dependent
+      {
+        auto& expected_features = expected_meta.features;
+        auto actual_features = actual_meta.features;
+        ASSERT_EQ(expected_features.size(), actual_features.size());
+        for (auto& entry : expected_features) {
+          ASSERT_EQ(1, actual_features.erase(entry.first));
+          // we don't check column ids as they are format dependent
+        }
+        ASSERT_TRUE(actual_features.empty());
       }
-      ASSERT_TRUE(actual_features.empty());
-
 
       auto* actual_freq = irs::get<irs::frequency>(*actual_terms);
       if (irs::IndexFeatures::NONE != (expected_field->second.index_features &
@@ -1003,13 +1074,8 @@ void assert_index(
         ASSERT_EQ(nullptr, actual_freq);
       }
 
-      // check field features
-      auto& expected_field_features = expected_field->second.features;
-      auto& actual_field_features = actual_fields->value().meta().features;
-      ASSERT_EQ(expected_field_features, actual_field_features);
-
-      auto actual_field_feature = actual_field_features.begin();
-      for (auto& expected_field_feature : expected_field_features) {
+      auto actual_field_feature = actual_fields->value().meta().features.begin();
+      for (auto& expected_field_feature : expected_field->second.features) {
         ASSERT_EQ(expected_field_feature.first, actual_field_feature->first);
         if (!irs::field_limits::valid(expected_field_feature.second)) {
           ASSERT_FALSE(irs::field_limits::valid(actual_field_feature->second));
@@ -1019,6 +1085,7 @@ void assert_index(
           ASSERT_NE(nullptr, actual_column);
           assert_column(*actual_column, expected_segment.columns()[expected_field_feature.second]);
         }
+        ++actual_field_feature;
       }
 
       // check terms

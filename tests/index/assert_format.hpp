@@ -158,6 +158,7 @@ class index_segment: irs::util::noncopyable {
   auto& columns() const noexcept { return columns_; }
   auto& columns_meta() const noexcept { return columns_meta_; }
   auto& columns_meta() noexcept { return columns_meta_; }
+  auto& pk() const noexcept { return sort_; };
 
   template<typename IndexedFieldIterator, typename StoredFieldIterator>
   void insert(
