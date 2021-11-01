@@ -1038,6 +1038,28 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
 
     assert_index();
   }
+
+  // create expected index
+  auto& expected_index = index();
+  expected_index.emplace_back(writer->field_features());
+  expected_index.back().insert(
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end(),
+    doc0->sorted.get());
+  expected_index.back().insert(
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end(),
+   doc2->sorted.get());
+  expected_index.back().insert(
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end(),
+    doc1->sorted.get());
+  expected_index.back().insert(
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end(),
+    doc3->sorted.get());
+  expected_index.back().sort(*writer->comparator());
+  assert_index();
 }
 
 TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_with_removals) {
@@ -1205,23 +1227,6 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
     writer->commit();
   }
 
-  // create expected index
-  auto& expected_index = index();
-  expected_index.emplace_back(writer->field_features());
-  expected_index.back().insert(
-    doc0->indexed.begin(), doc0->indexed.end(),
-    doc0->stored.begin(), doc0->stored.end(),
-    doc0->sorted.get());
-  expected_index.back().insert(
-    doc1->indexed.begin(), doc1->indexed.end(),
-    doc1->stored.begin(), doc1->stored.end(),
-    doc1->sorted.get());
-  expected_index.back().insert(
-    doc3->indexed.begin(), doc3->indexed.end(),
-    doc3->stored.begin(), doc3->stored.end(),
-    &empty_field);
-  expected_index.back().sort(*writer->comparator());
-
   // check consolidated segment
   {
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -1252,9 +1257,26 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str()));
       ASSERT_FALSE(docsItr->next());
     }
-
-    assert_index();
   }
+
+  // create expected index
+  auto& expected_index = index();
+  expected_index.emplace_back(writer->field_features());
+  expected_index.back().insert(
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end(),
+    doc0->sorted.get());
+  expected_index.back().insert(
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end(),
+    doc1->sorted.get());
+  expected_index.back().insert(
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end(),
+    &empty_field);
+  expected_index.back().sort(*writer->comparator());
+
+  assert_index();
 }
 
 TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) {
@@ -1292,27 +1314,6 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
   ASSERT_NE(nullptr, writer);
   ASSERT_NE(nullptr, writer->comparator());
 
-  // create expected index
-  auto& expected_index = index();
-  expected_index.emplace_back(writer->field_features());
-  expected_index.back().insert(
-    doc2->indexed.begin(), doc2->indexed.end(),
-    doc2->stored.begin(), doc2->stored.end(),
-    &empty_field);
-  expected_index.back().insert(
-    doc0->indexed.begin(), doc0->indexed.end(),
-    doc0->stored.begin(), doc0->stored.end(),
-    doc0->sorted.get());
-  expected_index.back().insert(
-    doc1->indexed.begin(), doc1->indexed.end(),
-    doc1->stored.begin(), doc1->stored.end(),
-    doc1->sorted.get());
-  expected_index.back().insert(
-    doc3->indexed.begin(), doc3->indexed.end(),
-    doc3->stored.begin(), doc3->stored.end(),
-    &empty_field);
-  expected_index.back().sort(*writer->comparator());
-
   // create segment 0
   ASSERT_TRUE(insert(*writer,
     doc2->indexed.begin(), doc2->indexed.end(),
@@ -1332,7 +1333,6 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
     doc3->indexed.begin(), doc3->indexed.end(),
     doc3->stored.begin(), doc3->stored.end()));
   writer->commit();
-
 
   // read documents
   {
@@ -1425,9 +1425,30 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       ASSERT_TRUE(actual_value.empty());
       ASSERT_FALSE(docsItr->next());
     }
-
-    assert_index();
   }
+
+  // create expected index
+  auto& expected_index = index();
+  expected_index.emplace_back(writer->field_features());
+  expected_index.back().insert(
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end(),
+    &empty_field);
+  expected_index.back().insert(
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end(),
+    doc0->sorted.get());
+  expected_index.back().insert(
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end(),
+    doc1->sorted.get());
+  expected_index.back().insert(
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end(),
+    &empty_field);
+  expected_index.back().sort(*writer->comparator());
+
+  assert_index();
 }
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
