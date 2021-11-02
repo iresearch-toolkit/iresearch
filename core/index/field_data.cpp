@@ -733,7 +733,7 @@ field_data::field_data(
     const features_t& features,
     const field_features_t& field_features,
     const feature_column_info_provider_t& feature_columns,
-    std::deque<feature_column>& cached_features,
+    std::deque<cached_column>& cached_features,
     columnstore_writer& columns,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
