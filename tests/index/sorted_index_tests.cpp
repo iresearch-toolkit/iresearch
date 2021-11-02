@@ -1284,7 +1284,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
   expected_index.back().insert(
     doc3->indexed.begin(), doc3->indexed.end(),
     doc3->stored.begin(), doc3->stored.end(),
-    &empty_field);
+    doc3->sorted.get());
   expected_index.back().sort(*writer->comparator());
 
   assert_index();
