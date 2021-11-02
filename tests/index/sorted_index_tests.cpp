@@ -33,12 +33,46 @@ namespace {
 
 class sorted_europarl_doc_template : public tests::europarl_doc_template {
  public:
-  explicit sorted_europarl_doc_template(const std::string& field)
-    : field_(field) {
+  explicit sorted_europarl_doc_template(
+      std::string field,
+      std::vector<irs::type_info::type_id> field_features)
+    : field_{std::move(field)},
+      field_features_{std::move(field_features)} {
   }
 
   virtual void init() override {
-    tests::europarl_doc_template::init();
+    indexed.push_back(
+      std::make_shared<tests::string_field>(
+        "title", irs::IndexFeatures::ALL, field_features_));
+    indexed.push_back(
+      std::make_shared<text_ref_field>(
+        "title_anl", false, field_features_));
+    indexed.push_back(
+      std::make_shared<text_ref_field>(
+        "title_anl_pay", true, field_features_));
+    indexed.push_back(
+      std::make_shared<text_ref_field>(
+        "body_anl", false, field_features_));
+    indexed.push_back(
+      std::make_shared<text_ref_field>(
+        "body_anl_pay", true, field_features_));
+    {
+      insert(std::make_shared<tests::long_field>());
+      auto& field = static_cast<tests::long_field&>(indexed.back());
+      field.name("date");
+    }
+    insert(std::make_shared<tests::string_field>(
+      "datestr", irs::IndexFeatures::ALL, field_features_));
+    insert(std::make_shared<tests::string_field>(
+      "body", irs::IndexFeatures::ALL, field_features_));
+    {
+      insert(std::make_shared<tests::int_field>());
+      auto& field = static_cast<tests::int_field&>(indexed.back());
+      field.name("id");
+    }
+    insert(std::make_shared<tests::string_field>(
+      "idstr", irs::IndexFeatures::ALL, field_features_));
+
     auto fields = indexed.find(field_);
 
     if (!fields.empty()) {
@@ -48,6 +82,7 @@ class sorted_europarl_doc_template : public tests::europarl_doc_template {
 
  private:
   std::string field_; // sorting field
+  std::vector<irs::type_info::type_id> field_features_;
 }; // sorted_europal_doc_template
 
 struct string_comparer : irs::comparer {
@@ -806,7 +841,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
 }
 
 TEST_P(sorted_index_test_case, europarl) {
-  sorted_europarl_doc_template doc("date");
+  sorted_europarl_doc_template doc("date", field_features());
   tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
 
   long_comparer less;
@@ -898,8 +933,6 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
       ASSERT_EQ("AB", irs::ref_cast<char>(actual_value));
       ASSERT_FALSE(docsItr->next());
     }
-
-    assert_index();
   }
 }
 

@@ -529,7 +529,9 @@ class token_stream_payload final : public irs::token_stream {
 template<typename T>
 class text_field : public tests::field_base {
  public:
-  text_field(const std::string& name, bool payload = false)
+  text_field(const std::string& name,
+             bool payload = false,
+             std::vector<irs::type_info::type_id> features = {})
     : token_stream_(irs::analysis::analyzers::get("text",
                                                    irs::type<irs::text_format::json>::get(),
                                                    "{\"locale\":\"C\", \"stopwords\":[]}")) {
@@ -540,11 +542,15 @@ class text_field : public tests::field_base {
       pay_stream_.reset(new token_stream_payload(token_stream_.get()));
     }
     this->name(name);
+    this->features_ = std::move(features);
     index_features_ = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
                       irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
   }
 
-  text_field(const std::string& name, const T& value, bool payload = false)
+  text_field(const std::string& name,
+             const T& value,
+             bool payload = false,
+             std::vector<irs::type_info::type_id> features = {})
     : token_stream_(irs::analysis::analyzers::get("text",
                                                   irs::type<irs::text_format::json>::get(),
                                                   "{\"locale\":\"C\", \"stopwords\":[]}")),
@@ -556,6 +562,7 @@ class text_field : public tests::field_base {
       pay_stream_.reset(new token_stream_payload(token_stream_.get()));
     }
     this->name(name);
+    this->features_ = std::move(features);
     index_features_ = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
                       irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
   }
