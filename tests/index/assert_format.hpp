@@ -131,6 +131,7 @@ class column_values {
   auto begin() const { return values_.begin(); }
   auto end() const { return values_.end(); }
   auto size() const { return values_.size(); }
+  auto empty() const { return values_.empty(); }
 
   void sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs);
 

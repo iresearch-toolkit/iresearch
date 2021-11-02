@@ -202,8 +202,12 @@ void index_segment::compute_features() {
     irs::bstring* buf_;
   } out{buf_};
 
+  bool written{};
   irs::columnstore_writer::values_writer_f writer =
-      [&out](irs::doc_id_t) -> column_output&{ return out; };
+      [&out, &written](irs::doc_id_t) -> column_output&{
+        written = true;
+        return out;
+  };
 
   for (auto* field : doc_fields_) {
     for (auto& entry : field->feature_infos) {
@@ -211,9 +215,12 @@ void index_segment::compute_features() {
         buf_.clear();
 
         const auto doc_id = doc();
+        written = false;
         entry.handler(field->stats, doc_id, writer);
 
-        columns_[entry.id].insert(doc_id, buf_);
+        if (written) {
+          columns_[entry.id].insert(doc_id, buf_);
+        }
       }
     }
   }
@@ -886,19 +893,24 @@ void assert_pk(
 }
 
 void assert_column(
-    const irs::columnstore_reader::column_reader& actual_reader,
+    const irs::columnstore_reader::column_reader* actual_reader,
     const column_values& expected_values) {
-  ASSERT_EQ(expected_values.size(), actual_reader.size());
+  if (!actual_reader) {
+    ASSERT_TRUE(expected_values.empty());
+    return;
+  }
+
+  ASSERT_EQ(expected_values.size(), actual_reader->size());
 
   // check iterators & values
   {
-    auto actual_it = actual_reader.iterator();
+    auto actual_it = actual_reader->iterator();
     ASSERT_NE(nullptr, actual_it);
 
-    auto actual_seek_it = actual_reader.iterator();
+    auto actual_seek_it = actual_reader->iterator();
     ASSERT_NE(nullptr, actual_seek_it);
 
-    auto actual_values = actual_reader.values();
+    auto actual_values = actual_reader->values();
     ASSERT_TRUE(actual_values);
 
     auto* actual_key = irs::get<irs::document>(*actual_it);
@@ -909,7 +921,7 @@ void assert_column(
     for (auto& [expected_key, expected_value] : expected_values) {
       ASSERT_TRUE(actual_it->next());
 
-      auto actual_stateless_seek_it = actual_reader.iterator();
+      auto actual_stateless_seek_it = actual_reader->iterator();
       ASSERT_NE(nullptr, actual_stateless_seek_it);
 
       ASSERT_EQ(expected_key, actual_it->value());
@@ -930,7 +942,7 @@ void assert_column(
   {
     auto begin = expected_values.begin();
 
-    actual_reader.visit(
+    actual_reader->visit(
       [&begin](auto actual_key, auto& actual_value) mutable {
         auto& [expected_key, expected_value] = *begin;
         EXPECT_EQ(expected_key, actual_key);
@@ -959,14 +971,14 @@ void assert_columnstore(
 
     const tests::index_segment& expected_segment = expected_index[i];
 
-    // check pk is present
+    // check pk if present
     if (auto& expected_pk = expected_segment.pk(); expected_pk.empty()) {
       auto* actual_pk = actual_segment.sort();
       ASSERT_NE(nullptr, actual_pk);
       assert_pk(*actual_pk, expected_pk);
     }
 
-    // iterate over columns
+    // check stored columns
     auto& expected_columns = expected_segment.columns_meta();
     auto expected_columns_begin = expected_columns.begin();
     auto actual_columns = actual_segment.columns();
@@ -980,14 +992,35 @@ void assert_columnstore(
       ASSERT_LT(expected_columns_begin->second, expected_segment.columns().size());
 
       const auto* actual_column_reader = actual_segment.column_reader(actual_column.id);
-      ASSERT_NE(nullptr, actual_column_reader);
       ASSERT_EQ(actual_column_reader, actual_segment.column_reader(actual_column.name));
 
-      assert_column(*actual_column_reader,
+      assert_column(actual_column_reader,
                     expected_segment.columns()[expected_columns_begin->second]);
     }
     ASSERT_FALSE(actual_columns->next());
     ASSERT_EQ(expected_columns_begin, expected_columns.end());
+
+    // check stored features
+    auto& expected_fields = expected_segment.fields();
+    auto expected_field = expected_fields.begin();
+    auto actual_fields = actual_segment.fields();
+    for (; actual_fields->next(); ++expected_field) {
+      auto actual_field_feature = actual_fields->value().meta().features.begin();
+      for (auto& expected_field_feature : expected_field->second.features) {
+        ASSERT_EQ(expected_field_feature.first, actual_field_feature->first);
+        if (!irs::field_limits::valid(expected_field_feature.second)) {
+          ASSERT_FALSE(irs::field_limits::valid(actual_field_feature->second));
+        } else {
+          ASSERT_LT(expected_field_feature.second, expected_segment.columns().size());
+          const auto* actual_column = actual_segment.column_reader(actual_field_feature->second);
+          assert_column(actual_column, expected_segment.columns()[expected_field_feature.second]);
+        }
+        ++actual_field_feature;
+      }
+      ASSERT_EQ(actual_field_feature, actual_fields->value().meta().features.end());
+    }
+    ASSERT_FALSE(actual_fields->next());
+    ASSERT_EQ(expected_field, expected_fields.end());
 
     ++i;
   }
@@ -1074,20 +1107,6 @@ void assert_index(
         ASSERT_EQ(expected_field->second.total_freq(), actual_freq->value);
       } else {
         ASSERT_EQ(nullptr, actual_freq);
-      }
-
-      auto actual_field_feature = actual_fields->value().meta().features.begin();
-      for (auto& expected_field_feature : expected_field->second.features) {
-        ASSERT_EQ(expected_field_feature.first, actual_field_feature->first);
-        if (!irs::field_limits::valid(expected_field_feature.second)) {
-          ASSERT_FALSE(irs::field_limits::valid(actual_field_feature->second));
-        } else {
-          ASSERT_LT(expected_field_feature.second, expected_segment.columns().size());
-          const auto* actual_column = actual_segment.column_reader(actual_field_feature->second);
-          ASSERT_NE(nullptr, actual_column);
-          assert_column(*actual_column, expected_segment.columns()[expected_field_feature.second]);
-        }
-        ++actual_field_feature;
       }
 
       // check terms

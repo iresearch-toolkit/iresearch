@@ -84,6 +84,16 @@ struct long_comparer : irs::comparer {
   }
 };
 
+struct custom_feature {
+  static void compute(
+      const irs::field_stats& stats,
+      irs::doc_id_t doc,
+      // cppcheck-suppress constParameter
+      irs::columnstore_writer::values_writer_f& writer) {
+    writer(doc).write_int(doc);
+  }
+};
+
 class sorted_index_test_case : public tests::index_test_base {
  protected:
   // old formats don't support pluggable features
@@ -98,6 +108,7 @@ class sorted_index_test_case : public tests::index_test_base {
                   std::end(kOldFormats),
                   codec()->type().name()) == std::end(kOldFormats)) {
       ftrs[irs::type<irs::norm2>::id()] = &irs::norm2::compute;
+      ftrs[irs::type<custom_feature>::id()] = &custom_feature::compute;
     }
 
     return ftrs;
