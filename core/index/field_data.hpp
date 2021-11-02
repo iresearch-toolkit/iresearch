@@ -198,21 +198,12 @@ class IRESEARCH_API fields_data: util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   /// @return approximate amount of memory actively in-use by this instance
   //////////////////////////////////////////////////////////////////////////////
-  size_t memory_active() const noexcept {
-    return byte_writer_.pool_offset()
-      + int_writer_.pool_offset() * sizeof(int_block_pool::value_type)
-      + fields_map_.size() * sizeof(fields_map::value_type)
-      + fields_.size() * sizeof(decltype(fields_)::value_type);
-  }
+  size_t memory_active() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return approximate amount of memory reserved by this instance
   //////////////////////////////////////////////////////////////////////////////
-  size_t memory_reserved() const noexcept {
-    return sizeof(fields_data) +
-           byte_pool_.size() +
-           int_pool_.size();
-  }
+  size_t memory_reserved() const noexcept;
 
   size_t size() const { return fields_.size(); }
   void flush(field_writer& fw, flush_state& state);

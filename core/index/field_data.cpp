@@ -1248,6 +1248,24 @@ void fields_data::flush_features(
   }
 }
 
+size_t fields_data::memory_active() const noexcept {
+  return byte_writer_.pool_offset()
+    + int_writer_.pool_offset() * sizeof(int_block_pool::value_type)
+    + fields_map_.size() * sizeof(fields_map::value_type)
+    + fields_.size() * sizeof(decltype(fields_)::value_type)
+    + std::accumulate(
+        std::begin(cached_features_),
+        std::end(cached_features_),
+        size_t{0},
+        [](const auto lhs, const auto& rhs) {
+          return lhs + rhs.stream.memory_active(); });
+}
+
+size_t fields_data::memory_reserved() const noexcept {
+  // FIXME(@gnusi): revisit the implementation
+  return byte_pool_.size() + int_pool_.size();
+}
+
 // use base irs::position type for ancestors
 template<typename Reader>
 struct type<::pos_iterator<Reader>> : type<irs::position> { };
