@@ -147,7 +147,6 @@ struct blocking_directory : directory_mock {
 }; // blocking_directory
 
 struct callback_directory : directory_mock {
-
   typedef std::function<void()> AfterCallback;
 
   explicit callback_directory(irs::directory& impl, AfterCallback&& p)
