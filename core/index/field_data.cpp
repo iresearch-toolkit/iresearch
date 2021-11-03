@@ -1113,8 +1113,8 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
     const auto res = terms_.emplace(term->value);
 
     if (nullptr == res.first) {
-      IR_FRMT_ERROR("field '%s' contains too long term of size '" IR_SIZE_T_SPECIFIER "'",
-                    meta_.name.c_str(), term->value.size());
+      IR_FRMT_WARN("skipping too long term of size '" IR_SIZE_T_SPECIFIER "' in field '%s'",
+                    term->value.size(), meta_.name.c_str());
       IR_FRMT_TRACE("field '%s' contains too long term '%s'",
                     meta_.name.c_str(), ref_cast<char>(term->value).c_str());
       continue;
