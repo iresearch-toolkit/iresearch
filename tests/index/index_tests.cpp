@@ -2454,6 +2454,51 @@ TEST_P(index_test_case, writer_begin_clear) {
   }
 }
 
+TEST_P(index_test_case, writer_commit_cleanup_interleaved) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+
+  auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+  std::atomic<bool> finish{false};
+  auto cleaner = std::thread([this, &finish](void) {
+    while (!finish) {
+      irs::directory_utils::remove_all_unreferenced(dir());
+      std::this_thread::yield();
+    }
+    });
+  {
+    size_t current = 0;
+    tests::document const* doc1{nullptr};
+    while(current < 100) {
+      doc1 = gen.next();
+      if (!doc1) {
+        gen.reset();
+        doc1 = gen.next();
+      }
+      ASSERT_TRUE(
+        insert(*writer,
+          doc1->indexed.begin(), doc1->indexed.end(),
+          doc1->stored.begin(), doc1->stored.end()
+        )
+      );
+      ++current;
+      writer->commit();
+      // check index, it should contain expected number of docs
+      if (current)
+      {
+        auto reader = irs::directory_reader::open(dir(), codec());
+        ASSERT_EQ(current, reader.live_docs_count());
+        ASSERT_EQ(current, reader.docs_count());
+        ASSERT_NE(reader.begin(), reader.end());
+      }
+    }
+  }
+  finish = true;
+  cleaner.join();
+}
+
 TEST_P(index_test_case, writer_commit_clear) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
