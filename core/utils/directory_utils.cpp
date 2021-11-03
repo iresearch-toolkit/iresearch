@@ -334,6 +334,9 @@ index_output::ptr ref_tracking_directory::create(
     const std::string& name) noexcept {
   try {
 
+    // Do not change the order of calls!
+    // The cleaner should "see" the file in directory
+    // ONLY if there is a tracking reference present!
     auto ref = attribute_.add(name);
     auto result = impl_.create(name);
 
