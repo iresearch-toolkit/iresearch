@@ -146,6 +146,23 @@ struct blocking_directory : directory_mock {
   std::mutex intermediate_commits_lock;
 }; // blocking_directory
 
+struct callback_directory : directory_mock {
+
+  typedef std::function<void()> AfterCallback;
+
+  explicit callback_directory(irs::directory& impl, AfterCallback&& p)
+    : tests::directory_mock(impl), after(p) {
+  }
+
+  irs::index_output::ptr create(const std::string& name) noexcept {
+    auto stream = tests::directory_mock::create(name);
+    after();
+    return stream;
+  }
+
+  AfterCallback after;
+}; // callback_directory
+
 struct format_info {
   constexpr format_info(
       const char* codec = nullptr,
