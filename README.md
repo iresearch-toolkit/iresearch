@@ -10,7 +10,7 @@
 -->
 
 # IResearch search engine
-### Version 1.2
+### Version 1.1
 
 ## Table of contents
 - [Overview](#overview)
