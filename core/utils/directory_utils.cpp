@@ -333,14 +333,16 @@ void ref_tracking_directory::clear_refs() const noexcept {
 index_output::ptr ref_tracking_directory::create(
     const std::string& name) noexcept {
   try {
+
+    auto ref = attribute_.add(name);
     auto result = impl_.create(name);
 
     // only track ref on successful call to impl_
     if (result) {
-      auto ref = attribute_.add(name);
-
       auto lock = make_lock_guard(mutex_);
-      refs_.emplace(ref);
+      refs_.insert(std::move(ref));
+    } else {
+      attribute_.remove(name);
     }
 
     return result;
