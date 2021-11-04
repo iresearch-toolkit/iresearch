@@ -92,6 +92,11 @@ option(SUPPRESS_EXTERNAL_WARNINGS "Suppress warnings originating in 3rd party co
 
 add_option_gprof(FALSE)
 
+# test for ARM
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*|arm64.*|ARM64.*)")
+  set(IS_ARM 1)
+endif()
+
 if (USE_VALGRIND)
   add_definitions(-DIRESEARCH_VALGRIND)
 endif()
@@ -114,11 +119,11 @@ if (MSVC)
   if (MSVC_BUILD_THREADS)
     set(CMAKE_C_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_CXX_FLAGS}")
-  else ()
+  else()
     set(CMAKE_C_FLAGS "/MP ${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}")
   endif()
-else()
+elseif(NOT IS_ARM)
   # allow 16 byte compare-exchange
   add_compile_options(-mcx16)
 endif()
