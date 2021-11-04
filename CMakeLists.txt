@@ -118,6 +118,9 @@ if (MSVC)
     set(CMAKE_C_FLAGS "/MP ${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}")
   endif()
+else()
+  # allow 16 byte compare-exchange
+  add_compile_options(-mcx16)
 endif()
 
 ################################################################################
