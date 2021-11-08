@@ -2232,8 +2232,8 @@ TEST_P(index_test_case, writer_commit_cleanup_interleaved) {
     irs::directory_utils::remove_all_unreferenced(dir());
   };
 
-  tests::callback_directory synced_dir(dir(), std::move(clean));
   {
+    tests::callback_directory synced_dir(dir(), clean);
     auto writer = irs::index_writer::make(synced_dir, codec(), irs::OM_CREATE);
     const auto* doc1 = gen.next();
     ASSERT_TRUE(
@@ -2241,13 +2241,13 @@ TEST_P(index_test_case, writer_commit_cleanup_interleaved) {
         doc1->indexed.begin(), doc1->indexed.end(),
         doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
-  }
 
-  // check index, it should contain expected number of docs
-  auto reader = irs::directory_reader::open(dir(), codec());
-  ASSERT_EQ(1, reader.live_docs_count());
-  ASSERT_EQ(1, reader.docs_count());
-  ASSERT_NE(reader.begin(), reader.end());
+    // check index, it should contain expected number of docs
+    auto reader = irs::directory_reader::open(synced_dir, codec());
+    ASSERT_EQ(1, reader.live_docs_count());
+    ASSERT_EQ(1, reader.docs_count());
+    ASSERT_NE(reader.begin(), reader.end());
+  }
 }
 
 TEST_P(index_test_case, writer_commit_clear) {

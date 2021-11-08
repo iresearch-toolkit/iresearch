@@ -159,13 +159,6 @@ struct callback_directory : directory_mock {
     return stream;
   }
 
-  irs::index_input::ptr open(const std::string& name,
-                             irs::IOAdvice advice) const noexcept override {
-    auto stream = tests::directory_mock::open(name, advice);
-    after();
-    return stream;
-  }
-
   AfterCallback after;
 }; // callback_directory
 
