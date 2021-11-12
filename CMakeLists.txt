@@ -264,6 +264,14 @@ configure_file(
   "${CMAKE_CURRENT_BINARY_DIR}/tests/tests_config.hpp"
 )
 
+# copy pre-built files over to the build directory
+# this is required to avoid triggering file generation via bison and perl during the build procedure
+set(IRESEARCH_PREBUILT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt)
+file(GLOB_RECURSE IRESEARCH_PREBUILT_LIST RELATIVE "${IRESEARCH_PREBUILT_DIR}" FOLLOW_SYMLINKS "${IRESEARCH_PREBUILT_DIR}/*")
+foreach(ELEMENT ${IRESEARCH_PREBUILT_LIST})
+  configure_file("${IRESEARCH_PREBUILT_DIR}/${ELEMENT}" "${CMAKE_CURRENT_BINARY_DIR}/${ELEMENT}" COPYONLY)
+endforeach()
+
 add_subdirectory(external)
 add_subdirectory(core)
 add_subdirectory(utils)
