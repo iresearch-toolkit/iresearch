@@ -330,9 +330,7 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E md5sum iql/parser.cc || ${CMAKE_COMMAND} -E remove iql/parser.yy
   COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy || bison --graph --report=all -Wnone -o iql/parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy
-  # TODO Should be something like that, I cannot test it
-  # COMMAND ${CMAKE_COMMAND} -E copy iql/ ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql
-  # We want to copy and replace all files from directory ${CMAKE_CURRENT_SOURCE_DIR}/iql to directory ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql
+  COMMAND ${CMAKE_COMMAND} -E copy iql/*.yy iql/*.hh iql/*.cc ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql
 )
 
 # trigger generation of BUILD_IDENTIFIER if needed
