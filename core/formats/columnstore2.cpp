@@ -996,6 +996,33 @@ namespace columnstore2 {
 // --SECTION--                                             column implementation
 // -----------------------------------------------------------------------------
 
+void column::prepare(doc_id_t key) {
+  assert(!sealed_);
+
+  if (IRS_LIKELY(key > pend_)) {
+    if (addr_table_.full()) {
+      flush_block();
+    }
+
+    prev_ = pend_;
+    pend_ = key;
+    docs_writer_.push_back(key);
+    addr_table_.push_back(data_.stream.file_pointer());
+  }
+}
+
+void column::reset() {
+  if (empty()) {
+    return;
+  }
+
+  [[maybe_unused]] const bool res = docs_writer_.erase(pend_);
+  assert(res);
+  data_.stream.seek(addr_table_.back());
+  addr_table_.pop_back();
+  pend_ = prev_;
+}
+
 void column::flush_block() {
   assert(!addr_table_.empty());
   assert(ctx_.data_out);
@@ -1082,9 +1109,7 @@ void column::finish(index_output& index_out) {
   assert(ctx_.data_out);
 
   docs_writer_.finish();
-  if (!addr_table_.empty()) {
-    flush_block();
-  }
+  flush();
   docs_.stream.flush();
 
   column_header hdr;
@@ -1203,6 +1228,13 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
   }
 
   const auto id = columns_.size();
+
+  // in case of consolidation we write columns one-by-one to
+  // ensure that blocks from different columns don't interleave
+  if (consolidation_ && id) {
+    columns_.back().flush();
+  }
+
   auto& column = columns_.emplace_back(
     column::context{
       alloc_,

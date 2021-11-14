@@ -1481,7 +1481,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
           ASSERT_TRUE(next_it->next());
           ASSERT_EQ(next_doc, next_it->value());
           ASSERT_EQ(sizeof next_doc, next_payload->value.size());
-          EXPECT_EQ(next_doc, *reinterpret_cast<const irs::doc_id_t*>(next_payload->value.c_str()));
+          ASSERT_EQ(next_doc, *reinterpret_cast<const irs::doc_id_t*>(next_payload->value.c_str()));
         }
       }
 
