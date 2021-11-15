@@ -1070,6 +1070,10 @@ void column::flush_block() {
     fixed_length_ = false;
   }
 
+#ifdef IRESEARCH_DEBUG
+  block.size = data_.file.length();
+#endif
+
   if (data_.file.length()) {
     block.data += data_out.file_pointer();
 
@@ -1140,6 +1144,18 @@ void column::finish(index_output& index_out) {
     if (0 == prev_avg_) {
       hdr.type = ColumnType::MASK;
     } else if (ctx_.consolidation) {
+#ifdef IRESEARCH_DEBUG
+      // ensure blocks are dense after consolidation
+      auto prev = std::begin(blocks_);
+      if (prev != std::end(blocks_)) {
+        auto next = std::next(prev);
+
+        for (; next != std::end(blocks_); ++next) {
+          assert(next->data == prev->size + prev->data);
+          prev = next;
+        }
+      }
+#endif
       hdr.type = ColumnType::DENSE_FIXED;
     } else {
       hdr.type = ColumnType::FIXED;

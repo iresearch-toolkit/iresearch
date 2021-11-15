@@ -63,6 +63,9 @@ class column final : public irs::column_output {
     uint64_t avg;
     uint64_t data;
     uint64_t last_size;
+#ifdef IRESEARCH_DEBUG
+    uint64_t size;
+#endif
     uint32_t bits;
   }; // column_block
 
