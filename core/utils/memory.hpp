@@ -232,7 +232,7 @@ class allocator_array_deallocator : public compact_ref<0, Alloc> {
  public:
   typedef compact_ref<0, Alloc> allocator_ref_t;
   typedef typename allocator_ref_t::type allocator_type;
-  typedef typename allocator_type::pointer pointer;
+  typedef typename std::allocator_traits<allocator_type>::pointer pointer;
 
   allocator_array_deallocator(const allocator_type& alloc, size_t size) noexcept
     : allocator_ref_t(alloc), size_(size) {
