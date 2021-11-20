@@ -20,7 +20,7 @@
 // To access the members, use member get<N>() function.
 //
 // Eg:
-//   absl::container_internal::CompressedTuple<int, T1, T2, T3> value(7, t1, t2,
+//   iresearch_absl::container_internal::CompressedTuple<int, T1, T2, T3> value(7, t1, t2,
 //                                                                    t3);
 //   assert(value.get<0>() == 7);
 //   T1& t1 = value.get<1>();
@@ -29,8 +29,8 @@
 //
 // https://en.cppreference.com/w/cpp/language/ebo
 
-#ifndef ABSL_CONTAINER_INTERNAL_COMPRESSED_TUPLE_H_
-#define ABSL_CONTAINER_INTERNAL_COMPRESSED_TUPLE_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_INTERNAL_COMPRESSED_TUPLE_H_
+#define IRESEARCH_ABSL_CONTAINER_INTERNAL_COMPRESSED_TUPLE_H_
 
 #include <initializer_list>
 #include <tuple>
@@ -42,13 +42,13 @@
 #if defined(_MSC_VER) && !defined(__NVCC__)
 // We need to mark these classes with this declspec to ensure that
 // CompressedTuple happens.
-#define ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC __declspec(empty_bases)
+#define IRESEARCH_ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC __declspec(empty_bases)
 #else
-#define ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC
+#define IRESEARCH_ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC
 #endif
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace container_internal {
 
 template <typename... Ts>
@@ -104,34 +104,34 @@ struct Storage {
   T value;
   constexpr Storage() = default;
   template <typename V>
-  explicit constexpr Storage(absl::in_place_t, V&& v)
-      : value(absl::forward<V>(v)) {}
+  explicit constexpr Storage(iresearch_absl::in_place_t, V&& v)
+      : value(iresearch_absl::forward<V>(v)) {}
   constexpr const T& get() const& { return value; }
   T& get() & { return value; }
-  constexpr const T&& get() const&& { return absl::move(*this).value; }
+  constexpr const T&& get() const&& { return iresearch_absl::move(*this).value; }
   T&& get() && { return std::move(*this).value; }
 };
 
 template <typename T, size_t I>
-struct ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC Storage<T, I, true> : T {
+struct IRESEARCH_ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC Storage<T, I, true> : T {
   constexpr Storage() = default;
 
   template <typename V>
-  explicit constexpr Storage(absl::in_place_t, V&& v)
-      : T(absl::forward<V>(v)) {}
+  explicit constexpr Storage(iresearch_absl::in_place_t, V&& v)
+      : T(iresearch_absl::forward<V>(v)) {}
 
   constexpr const T& get() const& { return *this; }
   T& get() & { return *this; }
-  constexpr const T&& get() const&& { return absl::move(*this); }
+  constexpr const T&& get() const&& { return iresearch_absl::move(*this); }
   T&& get() && { return std::move(*this); }
 };
 
 template <typename D, typename I, bool ShouldAnyUseBase>
-struct ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC CompressedTupleImpl;
+struct IRESEARCH_ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC CompressedTupleImpl;
 
 template <typename... Ts, size_t... I, bool ShouldAnyUseBase>
-struct ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC CompressedTupleImpl<
-    CompressedTuple<Ts...>, absl::index_sequence<I...>, ShouldAnyUseBase>
+struct IRESEARCH_ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC CompressedTupleImpl<
+    CompressedTuple<Ts...>, iresearch_absl::index_sequence<I...>, ShouldAnyUseBase>
     // We use the dummy identity function through std::integral_constant to
     // convince MSVC of accepting and expanding I in that context. Without it
     // you would get:
@@ -140,20 +140,20 @@ struct ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC CompressedTupleImpl<
       Storage<Ts, std::integral_constant<size_t, I>::value>... {
   constexpr CompressedTupleImpl() = default;
   template <typename... Vs>
-  explicit constexpr CompressedTupleImpl(absl::in_place_t, Vs&&... args)
-      : Storage<Ts, I>(absl::in_place, absl::forward<Vs>(args))... {}
+  explicit constexpr CompressedTupleImpl(iresearch_absl::in_place_t, Vs&&... args)
+      : Storage<Ts, I>(iresearch_absl::in_place, iresearch_absl::forward<Vs>(args))... {}
   friend CompressedTuple<Ts...>;
 };
 
 template <typename... Ts, size_t... I>
-struct ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC CompressedTupleImpl<
-    CompressedTuple<Ts...>, absl::index_sequence<I...>, false>
+struct IRESEARCH_ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC CompressedTupleImpl<
+    CompressedTuple<Ts...>, iresearch_absl::index_sequence<I...>, false>
     // We use the dummy identity function as above...
     : Storage<Ts, std::integral_constant<size_t, I>::value, false>... {
   constexpr CompressedTupleImpl() = default;
   template <typename... Vs>
-  explicit constexpr CompressedTupleImpl(absl::in_place_t, Vs&&... args)
-      : Storage<Ts, I, false>(absl::in_place, absl::forward<Vs>(args))... {}
+  explicit constexpr CompressedTupleImpl(iresearch_absl::in_place_t, Vs&&... args)
+      : Storage<Ts, I, false>(iresearch_absl::in_place, iresearch_absl::forward<Vs>(args))... {}
   friend CompressedTuple<Ts...>;
 };
 
@@ -180,7 +180,7 @@ struct TupleMoveConstructible : std::false_type {};
 template <class... Ts, class... Vs>
 struct TupleMoveConstructible<true, CompressedTuple<Ts...>, Vs...>
     : std::integral_constant<
-          bool, absl::conjunction<
+          bool, iresearch_absl::conjunction<
                     TupleElementMoveConstructible<Ts, Vs&&>...>::value> {};
 
 template <typename T>
@@ -209,7 +209,7 @@ struct TupleItemsMoveConstructible
 // To access the members, use member .get<N>() function.
 //
 // Eg:
-//   absl::container_internal::CompressedTuple<int, T1, T2, T3> value(7, t1, t2,
+//   iresearch_absl::container_internal::CompressedTuple<int, T1, T2, T3> value(7, t1, t2,
 //                                                                    t3);
 //   assert(value.get<0>() == 7);
 //   T1& t1 = value.get<1>();
@@ -218,9 +218,9 @@ struct TupleItemsMoveConstructible
 //
 // https://en.cppreference.com/w/cpp/language/ebo
 template <typename... Ts>
-class ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC CompressedTuple
+class IRESEARCH_ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC CompressedTuple
     : private internal_compressed_tuple::CompressedTupleImpl<
-          CompressedTuple<Ts...>, absl::index_sequence_for<Ts...>,
+          CompressedTuple<Ts...>, iresearch_absl::index_sequence_for<Ts...>,
           internal_compressed_tuple::ShouldAnyUseBase<Ts...>()> {
  private:
   template <int I>
@@ -239,21 +239,21 @@ class ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC CompressedTuple
   constexpr CompressedTuple() = default;
 #endif
   explicit constexpr CompressedTuple(const Ts&... base)
-      : CompressedTuple::CompressedTupleImpl(absl::in_place, base...) {}
+      : CompressedTuple::CompressedTupleImpl(iresearch_absl::in_place, base...) {}
 
   template <typename First, typename... Vs,
-            absl::enable_if_t<
-                absl::conjunction<
+            iresearch_absl::enable_if_t<
+                iresearch_absl::conjunction<
                     // Ensure we are not hiding default copy/move constructors.
-                    absl::negation<std::is_same<void(CompressedTuple),
-                                                void(absl::decay_t<First>)>>,
+                    iresearch_absl::negation<std::is_same<void(CompressedTuple),
+                                                void(iresearch_absl::decay_t<First>)>>,
                     internal_compressed_tuple::TupleItemsMoveConstructible<
                         CompressedTuple<Ts...>, First, Vs...>>::value,
                 bool> = true>
   explicit constexpr CompressedTuple(First&& first, Vs&&... base)
-      : CompressedTuple::CompressedTupleImpl(absl::in_place,
-                                             absl::forward<First>(first),
-                                             absl::forward<Vs>(base)...) {}
+      : CompressedTuple::CompressedTupleImpl(iresearch_absl::in_place,
+                                             iresearch_absl::forward<First>(first),
+                                             iresearch_absl::forward<Vs>(base)...) {}
 
   template <int I>
   ElemT<I>& get() & {
@@ -272,19 +272,19 @@ class ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC CompressedTuple
 
   template <int I>
   constexpr const ElemT<I>&& get() const&& {
-    return absl::move(*this).StorageT<I>::get();
+    return iresearch_absl::move(*this).StorageT<I>::get();
   }
 };
 
 // Explicit specialization for a zero-element tuple
 // (needed to avoid ambiguous overloads for the default constructor).
 template <>
-class ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC CompressedTuple<> {};
+class IRESEARCH_ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC CompressedTuple<> {};
 
 }  // namespace container_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#undef ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC
+#undef IRESEARCH_ABSL_INTERNAL_COMPRESSED_TUPLE_DECLSPEC
 
-#endif  // ABSL_CONTAINER_INTERNAL_COMPRESSED_TUPLE_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_INTERNAL_COMPRESSED_TUPLE_H_

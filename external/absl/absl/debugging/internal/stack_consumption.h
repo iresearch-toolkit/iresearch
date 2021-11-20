@@ -15,22 +15,22 @@
 
 // Helper function for measuring stack consumption of signal handlers.
 
-#ifndef ABSL_DEBUGGING_INTERNAL_STACK_CONSUMPTION_H_
-#define ABSL_DEBUGGING_INTERNAL_STACK_CONSUMPTION_H_
+#ifndef IRESEARCH_ABSL_DEBUGGING_INTERNAL_STACK_CONSUMPTION_H_
+#define IRESEARCH_ABSL_DEBUGGING_INTERNAL_STACK_CONSUMPTION_H_
 
 #include "absl/base/config.h"
 
 // The code in this module is not portable.
 // Use this feature test macro to detect its availability.
-#ifdef ABSL_INTERNAL_HAVE_DEBUGGING_STACK_CONSUMPTION
-#error ABSL_INTERNAL_HAVE_DEBUGGING_STACK_CONSUMPTION cannot be set directly
+#ifdef IRESEARCH_ABSL_INTERNAL_HAVE_DEBUGGING_STACK_CONSUMPTION
+#error IRESEARCH_ABSL_INTERNAL_HAVE_DEBUGGING_STACK_CONSUMPTION cannot be set directly
 #elif !defined(__APPLE__) && !defined(_WIN32) &&                     \
     (defined(__i386__) || defined(__x86_64__) || defined(__ppc__) || \
      defined(__aarch64__))
-#define ABSL_INTERNAL_HAVE_DEBUGGING_STACK_CONSUMPTION 1
+#define IRESEARCH_ABSL_INTERNAL_HAVE_DEBUGGING_STACK_CONSUMPTION 1
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace debugging_internal {
 
 // Returns the stack consumption in bytes for the code exercised by
@@ -42,9 +42,9 @@ namespace debugging_internal {
 int GetSignalHandlerStackConsumption(void (*signal_handler)(int));
 
 }  // namespace debugging_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_INTERNAL_HAVE_DEBUGGING_STACK_CONSUMPTION
+#endif  // IRESEARCH_ABSL_INTERNAL_HAVE_DEBUGGING_STACK_CONSUMPTION
 
-#endif  // ABSL_DEBUGGING_INTERNAL_STACK_CONSUMPTION_H_
+#endif  // IRESEARCH_ABSL_DEBUGGING_INTERNAL_STACK_CONSUMPTION_H_

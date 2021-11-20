@@ -12,8 +12,8 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 
-#ifndef ABSL_TIME_INTERNAL_CCTZ_ZONE_INFO_SOURCE_H_
-#define ABSL_TIME_INTERNAL_CCTZ_ZONE_INFO_SOURCE_H_
+#ifndef IRESEARCH_ABSL_TIME_INTERNAL_CCTZ_ZONE_INFO_SOURCE_H_
+#define IRESEARCH_ABSL_TIME_INTERNAL_CCTZ_ZONE_INFO_SOURCE_H_
 
 #include <cstddef>
 #include <functional>
@@ -22,8 +22,8 @@
 
 #include "absl/base/config.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace time_internal {
 namespace cctz {
 
@@ -43,11 +43,11 @@ class ZoneInfoSource {
 
 }  // namespace cctz
 }  // namespace time_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace time_internal {
 namespace cctz_extension {
 
@@ -55,10 +55,10 @@ namespace cctz_extension {
 // given the name of a time zone and a fallback factory.  Returns null
 // when the data for the named zone cannot be found.
 using ZoneInfoSourceFactory =
-    std::unique_ptr<absl::time_internal::cctz::ZoneInfoSource> (*)(
+    std::unique_ptr<iresearch_absl::time_internal::cctz::ZoneInfoSource> (*)(
         const std::string&,
         const std::function<std::unique_ptr<
-            absl::time_internal::cctz::ZoneInfoSource>(const std::string&)>&);
+            iresearch_absl::time_internal::cctz::ZoneInfoSource>(const std::string&)>&);
 
 // The user can control the mapping of zone names to zoneinfo data by
 // providing a definition for cctz_extension::zone_info_source_factory.
@@ -96,7 +96,7 @@ extern ZoneInfoSourceFactory zone_info_source_factory;
 
 }  // namespace cctz_extension
 }  // namespace time_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_TIME_INTERNAL_CCTZ_ZONE_INFO_SOURCE_H_
+#endif  // IRESEARCH_ABSL_TIME_INTERNAL_CCTZ_ZONE_INFO_SOURCE_H_

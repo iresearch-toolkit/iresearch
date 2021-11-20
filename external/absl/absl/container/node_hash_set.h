@@ -32,8 +32,8 @@
 // `node_hash_set` and perhaps converting to a more efficient `flat_hash_set`
 // upon further review.
 
-#ifndef ABSL_CONTAINER_NODE_HASH_SET_H_
-#define ABSL_CONTAINER_NODE_HASH_SET_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_NODE_HASH_SET_H_
+#define IRESEARCH_ABSL_CONTAINER_NODE_HASH_SET_H_
 
 #include <type_traits>
 
@@ -43,15 +43,15 @@
 #include "absl/container/internal/raw_hash_set.h"  // IWYU pragma: export
 #include "absl/memory/memory.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace container_internal {
 template <typename T>
 struct NodeHashSetPolicy;
 }  // namespace container_internal
 
 // -----------------------------------------------------------------------------
-// absl::node_hash_set
+// iresearch_absl::node_hash_set
 // -----------------------------------------------------------------------------
 //
 // An `absl::node_hash_set<T>` is an unordered associative container which
@@ -76,7 +76,7 @@ struct NodeHashSetPolicy;
 // Example:
 //
 //   // Create a node hash set of three strings
-//   absl::node_hash_map<std::string, std::string> ducks =
+//   iresearch_absl::node_hash_map<std::string, std::string> ducks =
 //     {"huey", "dewey", "louie"};
 //
 //  // Insert a new element into the node hash map
@@ -89,12 +89,12 @@ struct NodeHashSetPolicy;
 //  if (ducks.contains("dewey")) {
 //    std::cout << "We found dewey!" << std::endl;
 //  }
-template <class T, class Hash = absl::container_internal::hash_default_hash<T>,
-          class Eq = absl::container_internal::hash_default_eq<T>,
+template <class T, class Hash = iresearch_absl::container_internal::hash_default_hash<T>,
+          class Eq = iresearch_absl::container_internal::hash_default_eq<T>,
           class Alloc = std::allocator<T>>
 class node_hash_set
-    : public absl::container_internal::raw_hash_set<
-          absl::container_internal::NodeHashSetPolicy<T>, Hash, Eq, Alloc> {
+    : public iresearch_absl::container_internal::raw_hash_set<
+          iresearch_absl::container_internal::NodeHashSetPolicy<T>, Hash, Eq, Alloc> {
   using Base = typename node_hash_set::raw_hash_set;
 
  public:
@@ -106,38 +106,38 @@ class node_hash_set
   // *  Default constructor
   //
   //    // No allocation for the table's elements is made.
-  //    absl::node_hash_set<std::string> set1;
+  //    iresearch_absl::node_hash_set<std::string> set1;
   //
   // * Initializer List constructor
   //
-  //   absl::node_hash_set<std::string> set2 =
+  //   iresearch_absl::node_hash_set<std::string> set2 =
   //       {{"huey"}, {"dewey"}, {"louie"}};
   //
   // * Copy constructor
   //
-  //   absl::node_hash_set<std::string> set3(set2);
+  //   iresearch_absl::node_hash_set<std::string> set3(set2);
   //
   // * Copy assignment operator
   //
   //  // Hash functor and Comparator are copied as well
-  //  absl::node_hash_set<std::string> set4;
+  //  iresearch_absl::node_hash_set<std::string> set4;
   //  set4 = set3;
   //
   // * Move constructor
   //
   //   // Move is guaranteed efficient
-  //   absl::node_hash_set<std::string> set5(std::move(set4));
+  //   iresearch_absl::node_hash_set<std::string> set5(std::move(set4));
   //
   // * Move assignment operator
   //
   //   // May be efficient if allocators are compatible
-  //   absl::node_hash_set<std::string> set6;
+  //   iresearch_absl::node_hash_set<std::string> set6;
   //   set6 = std::move(set5);
   //
   // * Range constructor
   //
   //   std::vector<std::string> v = {"a", "b"};
-  //   absl::node_hash_set<std::string> set7(v.begin(), v.end());
+  //   iresearch_absl::node_hash_set<std::string> set7(v.begin(), v.end());
   node_hash_set() {}
   using Base::Base;
 
@@ -442,7 +442,7 @@ namespace container_internal {
 
 template <class T>
 struct NodeHashSetPolicy
-    : absl::container_internal::node_hash_policy<T&, NodeHashSetPolicy<T>> {
+    : iresearch_absl::container_internal::node_hash_policy<T&, NodeHashSetPolicy<T>> {
   using key_type = T;
   using init_type = T;
   using constant_iterators = std::true_type;
@@ -450,10 +450,10 @@ struct NodeHashSetPolicy
   template <class Allocator, class... Args>
   static T* new_element(Allocator* alloc, Args&&... args) {
     using ValueAlloc =
-        typename absl::allocator_traits<Allocator>::template rebind_alloc<T>;
+        typename iresearch_absl::allocator_traits<Allocator>::template rebind_alloc<T>;
     ValueAlloc value_alloc(*alloc);
-    T* res = absl::allocator_traits<ValueAlloc>::allocate(value_alloc, 1);
-    absl::allocator_traits<ValueAlloc>::construct(value_alloc, res,
+    T* res = iresearch_absl::allocator_traits<ValueAlloc>::allocate(value_alloc, 1);
+    iresearch_absl::allocator_traits<ValueAlloc>::construct(value_alloc, res,
                                                   std::forward<Args>(args)...);
     return res;
   }
@@ -461,17 +461,17 @@ struct NodeHashSetPolicy
   template <class Allocator>
   static void delete_element(Allocator* alloc, T* elem) {
     using ValueAlloc =
-        typename absl::allocator_traits<Allocator>::template rebind_alloc<T>;
+        typename iresearch_absl::allocator_traits<Allocator>::template rebind_alloc<T>;
     ValueAlloc value_alloc(*alloc);
-    absl::allocator_traits<ValueAlloc>::destroy(value_alloc, elem);
-    absl::allocator_traits<ValueAlloc>::deallocate(value_alloc, elem, 1);
+    iresearch_absl::allocator_traits<ValueAlloc>::destroy(value_alloc, elem);
+    iresearch_absl::allocator_traits<ValueAlloc>::deallocate(value_alloc, elem, 1);
   }
 
   template <class F, class... Args>
-  static decltype(absl::container_internal::DecomposeValue(
+  static decltype(iresearch_absl::container_internal::DecomposeValue(
       std::declval<F>(), std::declval<Args>()...))
   apply(F&& f, Args&&... args) {
-    return absl::container_internal::DecomposeValue(
+    return iresearch_absl::container_internal::DecomposeValue(
         std::forward<F>(f), std::forward<Args>(args)...);
   }
 
@@ -483,11 +483,11 @@ namespace container_algorithm_internal {
 
 // Specialization of trait in absl/algorithm/container.h
 template <class Key, class Hash, class KeyEqual, class Allocator>
-struct IsUnorderedContainer<absl::node_hash_set<Key, Hash, KeyEqual, Allocator>>
+struct IsUnorderedContainer<iresearch_absl::node_hash_set<Key, Hash, KeyEqual, Allocator>>
     : std::true_type {};
 
 }  // namespace container_algorithm_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_NODE_HASH_SET_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_NODE_HASH_SET_H_

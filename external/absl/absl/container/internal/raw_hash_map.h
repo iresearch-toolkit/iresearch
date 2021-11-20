@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_CONTAINER_INTERNAL_RAW_HASH_MAP_H_
-#define ABSL_CONTAINER_INTERNAL_RAW_HASH_MAP_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_INTERNAL_RAW_HASH_MAP_H_
+#define IRESEARCH_ABSL_CONTAINER_INTERNAL_RAW_HASH_MAP_H_
 
 #include <tuple>
 #include <type_traits>
@@ -23,8 +23,8 @@
 #include "absl/container/internal/container_memory.h"
 #include "absl/container/internal/raw_hash_set.h"  // IWYU pragma: export
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace container_internal {
 
 template <class Policy, class Hash, class Eq, class Alloc>
@@ -191,7 +191,7 @@ class raw_hash_map : public raw_hash_set<Policy, Hash, Eq, Alloc> {
 };
 
 }  // namespace container_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_INTERNAL_RAW_HASH_MAP_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_INTERNAL_RAW_HASH_MAP_H_

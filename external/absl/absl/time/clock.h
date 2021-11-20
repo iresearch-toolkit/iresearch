@@ -19,19 +19,19 @@
 // This header file contains utility functions for working with the system-wide
 // realtime clock. For descriptions of the main time abstractions used within
 // this header file, consult the time.h header file.
-#ifndef ABSL_TIME_CLOCK_H_
-#define ABSL_TIME_CLOCK_H_
+#ifndef IRESEARCH_ABSL_TIME_CLOCK_H_
+#define IRESEARCH_ABSL_TIME_CLOCK_H_
 
 #include "absl/base/macros.h"
 #include "absl/time/time.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 // Now()
 //
 // Returns the current time, expressed as an `absl::Time` absolute time value.
-absl::Time Now();
+iresearch_absl::Time Now();
 
 // GetCurrentTimeNanos()
 //
@@ -48,9 +48,9 @@ int64_t GetCurrentTimeNanos();
 // Notes:
 // * Signal interruptions will not reduce the sleep duration.
 // * Returns immediately when passed a nonpositive duration.
-void SleepFor(absl::Duration duration);
+void SleepFor(iresearch_absl::Duration duration);
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
 // -----------------------------------------------------------------------------
@@ -64,11 +64,11 @@ ABSL_NAMESPACE_END
 // By changing our extension points to be extern "C", we dodge this
 // check.
 extern "C" {
-void AbslInternalSleepFor(absl::Duration duration);
+void AbslInternalSleepFor(iresearch_absl::Duration duration);
 }  // extern "C"
 
-inline void absl::SleepFor(absl::Duration duration) {
+inline void iresearch_absl::SleepFor(iresearch_absl::Duration duration) {
   AbslInternalSleepFor(duration);
 }
 
-#endif  // ABSL_TIME_CLOCK_H_
+#endif  // IRESEARCH_ABSL_TIME_CLOCK_H_

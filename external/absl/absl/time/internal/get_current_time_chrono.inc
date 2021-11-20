@@ -27,5 +27,5 @@ static int64_t GetCurrentTimeNanosFromSystem() {
 }
 
 }  // namespace time_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

@@ -58,8 +58,8 @@
 // const methods without synchronization. Copying a Cord produces a new instance
 // that can be used concurrently with the original in arbitrary ways.
 
-#ifndef ABSL_STRINGS_CORD_H_
-#define ABSL_STRINGS_CORD_H_
+#ifndef IRESEARCH_ABSL_STRINGS_CORD_H_
+#define IRESEARCH_ABSL_STRINGS_CORD_H_
 
 #include <algorithm>
 #include <cstddef>
@@ -82,12 +82,12 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 class Cord;
 class CordTestPeer;
 template <typename Releaser>
-Cord MakeCordFromExternal(absl::string_view, Releaser&&);
+Cord MakeCordFromExternal(iresearch_absl::string_view, Releaser&&);
 void CopyCordToString(const Cord& src, std::string* dst);
 
 // Cord
@@ -122,7 +122,7 @@ class Cord {
  private:
   template <typename T>
   using EnableIfString =
-      absl::enable_if_t<std::is_same<T, std::string>::value, int>;
+      iresearch_absl::enable_if_t<std::is_same<T, std::string>::value, int>;
 
  public:
   // Cord::Cord() Constructors.
@@ -140,8 +140,8 @@ class Cord {
   // Creates a Cord from a `src` string. This constructor is marked explicit to
   // prevent implicit Cord constructions from arguments convertible to an
   // `absl::string_view`.
-  explicit Cord(absl::string_view src);
-  Cord& operator=(absl::string_view src);
+  explicit Cord(iresearch_absl::string_view src);
+  Cord& operator=(iresearch_absl::string_view src);
 
   // Creates a Cord from a `std::string&&` rvalue. These constructors are
   // templated to avoid ambiguities for types that are convertible to both
@@ -171,16 +171,16 @@ class Cord {
   // remain live until the releaser is invoked. The callable releaser also must:
   //
   //   * be move constructible
-  //   * support `void operator()(absl::string_view) const` or `void operator()`
+  //   * support `void operator()(iresearch_absl::string_view) const` or `void operator()`
   //
   // Example:
   //
   // Cord MakeCord(BlockPool* pool) {
   //   Block* block = pool->NewBlock();
   //   FillBlock(block);
-  //   return absl::MakeCordFromExternal(
+  //   return iresearch_absl::MakeCordFromExternal(
   //       block->ToStringView(),
-  //       [pool, block](absl::string_view v) {
+  //       [pool, block](iresearch_absl::string_view v) {
   //         pool->FreeBlock(block, v);
   //       });
   // }
@@ -189,8 +189,8 @@ class Cord {
   // releaser doesn't do anything. For example, consider the following:
   //
   // void Foo(const char* buffer, int len) {
-  //   auto c = absl::MakeCordFromExternal(absl::string_view(buffer, len),
-  //                                       [](absl::string_view) {});
+  //   auto c = iresearch_absl::MakeCordFromExternal(iresearch_absl::string_view(buffer, len),
+  //                                       [](iresearch_absl::string_view) {});
   //
   //   // BUG: If Bar() copies its cord for any reason, including keeping a
   //   // substring of it, the lifetime of buffer might be extended beyond
@@ -198,7 +198,7 @@ class Cord {
   //   Bar(c);
   // }
   template <typename Releaser>
-  friend Cord MakeCordFromExternal(absl::string_view data, Releaser&& releaser);
+  friend Cord MakeCordFromExternal(iresearch_absl::string_view data, Releaser&& releaser);
 
   // Cord::Clear()
   //
@@ -212,7 +212,7 @@ class Cord {
   // data.
   void Append(const Cord& src);
   void Append(Cord&& src);
-  void Append(absl::string_view src);
+  void Append(iresearch_absl::string_view src);
   template <typename T, EnableIfString<T> = 0>
   void Append(T&& src);
 
@@ -221,7 +221,7 @@ class Cord {
   // Prepends data to the Cord, which may come from another Cord or other string
   // data.
   void Prepend(const Cord& src);
-  void Prepend(absl::string_view src);
+  void Prepend(iresearch_absl::string_view src);
   template <typename T, EnableIfString<T> = 0>
   void Prepend(T&& src);
 
@@ -277,19 +277,19 @@ class Cord {
   //   -1  'this' Cord is smaller
   //    0  two Cords are equal
   //    1  'this' Cord is larger
-  int Compare(absl::string_view rhs) const;
+  int Compare(iresearch_absl::string_view rhs) const;
   int Compare(const Cord& rhs) const;
 
   // Cord::StartsWith()
   //
   // Determines whether the Cord starts with the passed string data `rhs`.
   bool StartsWith(const Cord& rhs) const;
-  bool StartsWith(absl::string_view rhs) const;
+  bool StartsWith(iresearch_absl::string_view rhs) const;
 
   // Cord::EndsWidth()
   //
   // Determines whether the Cord ends with the passed string data `rhs`.
-  bool EndsWith(absl::string_view rhs) const;
+  bool EndsWith(iresearch_absl::string_view rhs) const;
   bool EndsWith(const Cord& rhs) const;
 
   // Cord::operator std::string()
@@ -342,7 +342,7 @@ class Cord {
   class ChunkIterator {
    public:
     using iterator_category = std::input_iterator_tag;
-    using value_type = absl::string_view;
+    using value_type = iresearch_absl::string_view;
     using difference_type = ptrdiff_t;
     using pointer = const value_type*;
     using reference = value_type;
@@ -374,14 +374,14 @@ class Cord {
 
     // A view into bytes of the current `CordRep`. It may only be a view to a
     // suffix of bytes if this is being used by `CharIterator`.
-    absl::string_view current_chunk_;
+    iresearch_absl::string_view current_chunk_;
     // The current leaf, or `nullptr` if the iterator points to short data.
     // If the current chunk is a substring node, current_leaf_ points to the
     // underlying flat or external node.
-    absl::cord_internal::CordRep* current_leaf_ = nullptr;
+    iresearch_absl::cord_internal::CordRep* current_leaf_ = nullptr;
     // The number of bytes left in the `Cord` over which we are iterating.
     size_t bytes_remaining_ = 0;
-    absl::InlinedVector<absl::cord_internal::CordRep*, 4>
+    iresearch_absl::InlinedVector<iresearch_absl::cord_internal::CordRep*, 4>
         stack_of_right_children_;
   };
 
@@ -395,8 +395,8 @@ class Cord {
   //
   // Example:
   //
-  //   absl::Cord::ChunkIterator FindAsChunk(const absl::Cord& c,
-  //                                         absl::string_view s) {
+  //   iresearch_absl::Cord::ChunkIterator FindAsChunk(const iresearch_absl::Cord& c,
+  //                                         iresearch_absl::string_view s) {
   //     return std::find(c.chunk_begin(), c.chunk_end(), s);
   //   }
   ChunkIterator chunk_begin() const;
@@ -442,13 +442,13 @@ class Cord {
   // Example:
   //
   //   void ProcessChunks(const Cord& cord) {
-  //     for (absl::string_view chunk : cord.Chunks()) { ... }
+  //     for (iresearch_absl::string_view chunk : cord.Chunks()) { ... }
   //   }
   //
   // Note that the ordinary caveats of temporary lifetime extension apply:
   //
   //   void Process() {
-  //     for (absl::string_view chunk : CordFactory().Chunks()) {
+  //     for (iresearch_absl::string_view chunk : CordFactory().Chunks()) {
   //       // The temporary Cord returned by CordFactory has been destroyed!
   //     }
   //   }
@@ -523,7 +523,7 @@ class Cord {
   // Returns the longest contiguous view starting at the iterator's position.
   //
   // `it` must be dereferenceable.
-  static absl::string_view ChunkRemaining(const CharIterator& it);
+  static iresearch_absl::string_view ChunkRemaining(const CharIterator& it);
 
   // Cord::CharIterator::char_begin()
   //
@@ -601,23 +601,23 @@ class Cord {
   //
   // If this cord's representation is a single flat array, returns a
   // string_view referencing that array.  Otherwise returns nullopt.
-  absl::optional<absl::string_view> TryFlat() const;
+  iresearch_absl::optional<iresearch_absl::string_view> TryFlat() const;
 
   // Cord::Flatten()
   //
   // Flattens the cord into a single array and returns a view of the data.
   //
   // If the cord was already flat, the contents are not modified.
-  absl::string_view Flatten();
+  iresearch_absl::string_view Flatten();
 
-  // Supports absl::Cord as a sink object for absl::Format().
-  friend void AbslFormatFlush(absl::Cord* cord, absl::string_view part) {
+  // Supports iresearch_absl::Cord as a sink object for iresearch_absl::Format().
+  friend void AbslFormatFlush(iresearch_absl::Cord* cord, iresearch_absl::string_view part) {
     cord->Append(part);
   }
 
   template <typename H>
-  friend H AbslHashValue(H hash_state, const absl::Cord& c) {
-    absl::optional<absl::string_view> maybe_flat = c.TryFlat();
+  friend H AbslHashValue(H hash_state, const iresearch_absl::Cord& c) {
+    iresearch_absl::optional<iresearch_absl::string_view> maybe_flat = c.TryFlat();
     if (maybe_flat.has_value()) {
       return H::combine(std::move(hash_state), *maybe_flat);
     }
@@ -627,15 +627,15 @@ class Cord {
  private:
   friend class CordTestPeer;
   friend bool operator==(const Cord& lhs, const Cord& rhs);
-  friend bool operator==(const Cord& lhs, absl::string_view rhs);
+  friend bool operator==(const Cord& lhs, iresearch_absl::string_view rhs);
 
   // Calls the provided function once for each cord chunk, in order.  Unlike
   // Chunks(), this API will not allocate memory.
-  void ForEachChunk(absl::FunctionRef<void(absl::string_view)>) const;
+  void ForEachChunk(iresearch_absl::FunctionRef<void(iresearch_absl::string_view)>) const;
 
   // Allocates new contiguous storage for the contents of the cord. This is
   // called by Flatten() when the cord was not already flat.
-  absl::string_view FlattenSlowPath();
+  iresearch_absl::string_view FlattenSlowPath();
 
   // Actual cord contents are hidden inside the following simple
   // class so that we can isolate the bulk of cord.cc from changes
@@ -645,7 +645,7 @@ class Cord {
   class InlineRep {
    public:
     static constexpr unsigned char kMaxInline = 15;
-    static_assert(kMaxInline >= sizeof(absl::cord_internal::CordRep*), "");
+    static_assert(kMaxInline >= sizeof(iresearch_absl::cord_internal::CordRep*), "");
     // Tag byte & kMaxInline means we are storing a pointer.
     static constexpr unsigned char kTreeFlag = 1 << 4;
     // Tag byte & kProfiledFlag means we are profiling the Cord.
@@ -665,22 +665,22 @@ class Cord {
                   bool nullify_tail);  // Discards pointer, if any
     char* set_data(size_t n);  // Write data to the result
     // Returns nullptr if holding bytes
-    absl::cord_internal::CordRep* tree() const;
+    iresearch_absl::cord_internal::CordRep* tree() const;
     // Discards old pointer, if any
-    void set_tree(absl::cord_internal::CordRep* rep);
+    void set_tree(iresearch_absl::cord_internal::CordRep* rep);
     // Replaces a tree with a new root. This is faster than set_tree, but it
     // should only be used when it's clear that the old rep was a tree.
-    void replace_tree(absl::cord_internal::CordRep* rep);
+    void replace_tree(iresearch_absl::cord_internal::CordRep* rep);
     // Returns non-null iff was holding a pointer
-    absl::cord_internal::CordRep* clear();
+    iresearch_absl::cord_internal::CordRep* clear();
     // Converts to pointer if necessary.
-    absl::cord_internal::CordRep* force_tree(size_t extra_hint);
+    iresearch_absl::cord_internal::CordRep* force_tree(size_t extra_hint);
     void reduce_size(size_t n);  // REQUIRES: holding data
     void remove_prefix(size_t n);  // REQUIRES: holding data
     void AppendArray(const char* src_data, size_t src_size);
-    absl::string_view FindFlatStartPiece() const;
-    void AppendTree(absl::cord_internal::CordRep* tree);
-    void PrependTree(absl::cord_internal::CordRep* tree);
+    iresearch_absl::string_view FindFlatStartPiece() const;
+    void AppendTree(iresearch_absl::cord_internal::CordRep* tree);
+    void PrependTree(iresearch_absl::cord_internal::CordRep* tree);
     void GetAppendRegion(char** region, size_t* size, size_t max_length);
     void GetAppendRegion(char** region, size_t* size);
     bool IsSame(const InlineRep& other) const {
@@ -696,7 +696,7 @@ class Cord {
         memcpy(&y, other.data_ + 8, sizeof(y));
         if (x == y) return 0;
       }
-      return absl::big_endian::FromHost64(x) < absl::big_endian::FromHost64(y)
+      return iresearch_absl::big_endian::FromHost64(x) < iresearch_absl::big_endian::FromHost64(y)
                  ? -1
                  : 1;
     }
@@ -704,7 +704,7 @@ class Cord {
       // memcpy is much faster when operating on a known size. On most supported
       // platforms, the small string optimization is large enough that resizing
       // to 15 bytes does not cause a memory allocation.
-      absl::strings_internal::STLStringResizeUninitialized(dst,
+      iresearch_absl::strings_internal::STLStringResizeUninitialized(dst,
                                                            sizeof(data_) - 1);
       memcpy(&(*dst)[0], data_, sizeof(data_) - 1);
       // erase is faster than resize because the logic for memory allocation is
@@ -727,45 +727,45 @@ class Cord {
     // If the data has length <= kMaxInline, we store it in data_[0..len-1],
     // and store the length in data_[kMaxInline].  Else we store it in a tree
     // and store a pointer to that tree in data_[0..sizeof(CordRep*)-1].
-    alignas(absl::cord_internal::CordRep*) char data_[kMaxInline + 1];
+    alignas(iresearch_absl::cord_internal::CordRep*) char data_[kMaxInline + 1];
   };
   InlineRep contents_;
 
   // Helper for MemoryUsage().
-  static size_t MemoryUsageAux(const absl::cord_internal::CordRep* rep);
+  static size_t MemoryUsageAux(const iresearch_absl::cord_internal::CordRep* rep);
 
   // Helper for GetFlat() and TryFlat().
-  static bool GetFlatAux(absl::cord_internal::CordRep* rep,
-                         absl::string_view* fragment);
+  static bool GetFlatAux(iresearch_absl::cord_internal::CordRep* rep,
+                         iresearch_absl::string_view* fragment);
 
   // Helper for ForEachChunk().
   static void ForEachChunkAux(
-      absl::cord_internal::CordRep* rep,
-      absl::FunctionRef<void(absl::string_view)> callback);
+      iresearch_absl::cord_internal::CordRep* rep,
+      iresearch_absl::FunctionRef<void(iresearch_absl::string_view)> callback);
 
   // The destructor for non-empty Cords.
   void DestroyCordSlow();
 
   // Out-of-line implementation of slower parts of logic.
   void CopyToArraySlowPath(char* dst) const;
-  int CompareSlowPath(absl::string_view rhs, size_t compared_size,
+  int CompareSlowPath(iresearch_absl::string_view rhs, size_t compared_size,
                       size_t size_to_compare) const;
   int CompareSlowPath(const Cord& rhs, size_t compared_size,
                       size_t size_to_compare) const;
-  bool EqualsImpl(absl::string_view rhs, size_t size_to_compare) const;
+  bool EqualsImpl(iresearch_absl::string_view rhs, size_t size_to_compare) const;
   bool EqualsImpl(const Cord& rhs, size_t size_to_compare) const;
   int CompareImpl(const Cord& rhs) const;
 
   template <typename ResultType, typename RHS>
   friend ResultType GenericCompare(const Cord& lhs, const RHS& rhs,
                                    size_t size_to_compare);
-  static absl::string_view GetFirstChunk(const Cord& c);
-  static absl::string_view GetFirstChunk(absl::string_view sv);
+  static iresearch_absl::string_view GetFirstChunk(const Cord& c);
+  static iresearch_absl::string_view GetFirstChunk(iresearch_absl::string_view sv);
 
   // Returns a new reference to contents_.tree(), or steals an existing
   // reference if called on an rvalue.
-  absl::cord_internal::CordRep* TakeRep() const&;
-  absl::cord_internal::CordRep* TakeRep() &&;
+  iresearch_absl::cord_internal::CordRep* TakeRep() const&;
+  iresearch_absl::cord_internal::CordRep* TakeRep() &&;
 
   // Helper for Append().
   template <typename C>
@@ -775,7 +775,7 @@ class Cord {
   template <typename H>
   H HashFragmented(H hash_state) const {
     typename H::AbslInternalPiecewiseCombiner combiner;
-    ForEachChunk([&combiner, &hash_state](absl::string_view chunk) {
+    ForEachChunk([&combiner, &hash_state](iresearch_absl::string_view chunk) {
       hash_state = combiner.add_buffer(std::move(hash_state), chunk.data(),
                                        chunk.size());
     });
@@ -783,11 +783,11 @@ class Cord {
   }
 };
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 // allow a Cord to be logged
 extern std::ostream& operator<<(std::ostream& out, const Cord& cord);
@@ -839,14 +839,14 @@ inline void SmallMemmove(char* dst, const char* src, size_t n,
 
 // Does non-template-specific `CordRepExternal` initialization.
 // Expects `data` to be non-empty.
-void InitializeCordRepExternal(absl::string_view data, CordRepExternal* rep);
+void InitializeCordRepExternal(iresearch_absl::string_view data, CordRepExternal* rep);
 
 // Creates a new `CordRep` that owns `data` and `releaser` and returns a pointer
 // to it, or `nullptr` if `data` was empty.
 template <typename Releaser>
 // NOLINTNEXTLINE - suppress clang-tidy raw pointer return.
-CordRep* NewExternalRep(absl::string_view data, Releaser&& releaser) {
-  using ReleaserType = absl::decay_t<Releaser>;
+CordRep* NewExternalRep(iresearch_absl::string_view data, Releaser&& releaser) {
+  using ReleaserType = iresearch_absl::decay_t<Releaser>;
   if (data.empty()) {
     // Never create empty external nodes.
     InvokeReleaser(Rank0{}, ReleaserType(std::forward<Releaser>(releaser)),
@@ -863,17 +863,17 @@ CordRep* NewExternalRep(absl::string_view data, Releaser&& releaser) {
 // Overload for function reference types that dispatches using a function
 // pointer because there are no `alignof()` or `sizeof()` a function reference.
 // NOLINTNEXTLINE - suppress clang-tidy raw pointer return.
-inline CordRep* NewExternalRep(absl::string_view data,
-                               void (&releaser)(absl::string_view)) {
+inline CordRep* NewExternalRep(iresearch_absl::string_view data,
+                               void (&releaser)(iresearch_absl::string_view)) {
   return NewExternalRep(data, &releaser);
 }
 
 }  // namespace cord_internal
 
 template <typename Releaser>
-Cord MakeCordFromExternal(absl::string_view data, Releaser&& releaser) {
+Cord MakeCordFromExternal(iresearch_absl::string_view data, Releaser&& releaser) {
   Cord cord;
-  cord.contents_.set_tree(::absl::cord_internal::NewExternalRep(
+  cord.contents_.set_tree(::iresearch_absl::cord_internal::NewExternalRep(
       data, std::forward<Releaser>(releaser)));
   return cord;
 }
@@ -924,9 +924,9 @@ inline const char* Cord::InlineRep::data() const {
   return is_tree() ? nullptr : data_;
 }
 
-inline absl::cord_internal::CordRep* Cord::InlineRep::tree() const {
+inline iresearch_absl::cord_internal::CordRep* Cord::InlineRep::tree() const {
   if (is_tree()) {
-    absl::cord_internal::CordRep* rep;
+    iresearch_absl::cord_internal::CordRep* rep;
     memcpy(&rep, data_, sizeof(rep));
     return rep;
   } else {
@@ -942,7 +942,7 @@ inline size_t Cord::InlineRep::size() const {
   return static_cast<size_t>(tree()->length);
 }
 
-inline void Cord::InlineRep::set_tree(absl::cord_internal::CordRep* rep) {
+inline void Cord::InlineRep::set_tree(iresearch_absl::cord_internal::CordRep* rep) {
   if (rep == nullptr) {
     memset(data_, 0, sizeof(data_));
   } else {
@@ -955,9 +955,9 @@ inline void Cord::InlineRep::set_tree(absl::cord_internal::CordRep* rep) {
   }
 }
 
-inline void Cord::InlineRep::replace_tree(absl::cord_internal::CordRep* rep) {
-  ABSL_ASSERT(is_tree());
-  if (ABSL_PREDICT_FALSE(rep == nullptr)) {
+inline void Cord::InlineRep::replace_tree(iresearch_absl::cord_internal::CordRep* rep) {
+  IRESEARCH_ABSL_ASSERT(is_tree());
+  if (IRESEARCH_ABSL_PREDICT_FALSE(rep == nullptr)) {
     set_tree(rep);
     return;
   }
@@ -965,9 +965,9 @@ inline void Cord::InlineRep::replace_tree(absl::cord_internal::CordRep* rep) {
   memset(data_ + sizeof(rep), 0, sizeof(data_) - sizeof(rep) - 1);
 }
 
-inline absl::cord_internal::CordRep* Cord::InlineRep::clear() {
+inline iresearch_absl::cord_internal::CordRep* Cord::InlineRep::clear() {
   const char tag = data_[kMaxInline];
-  absl::cord_internal::CordRep* result = nullptr;
+  iresearch_absl::cord_internal::CordRep* result = nullptr;
   if (tag > kMaxInline) {
     memcpy(&result, data_, sizeof(result));
   }
@@ -1012,30 +1012,30 @@ inline bool Cord::empty() const { return contents_.empty(); }
 
 inline size_t Cord::EstimatedMemoryUsage() const {
   size_t result = sizeof(Cord);
-  if (const absl::cord_internal::CordRep* rep = contents_.tree()) {
+  if (const iresearch_absl::cord_internal::CordRep* rep = contents_.tree()) {
     result += MemoryUsageAux(rep);
   }
   return result;
 }
 
-inline absl::optional<absl::string_view> Cord::TryFlat() const {
-  absl::cord_internal::CordRep* rep = contents_.tree();
+inline iresearch_absl::optional<iresearch_absl::string_view> Cord::TryFlat() const {
+  iresearch_absl::cord_internal::CordRep* rep = contents_.tree();
   if (rep == nullptr) {
-    return absl::string_view(contents_.data(), contents_.size());
+    return iresearch_absl::string_view(contents_.data(), contents_.size());
   }
-  absl::string_view fragment;
+  iresearch_absl::string_view fragment;
   if (GetFlatAux(rep, &fragment)) {
     return fragment;
   }
-  return absl::nullopt;
+  return iresearch_absl::nullopt;
 }
 
-inline absl::string_view Cord::Flatten() {
-  absl::cord_internal::CordRep* rep = contents_.tree();
+inline iresearch_absl::string_view Cord::Flatten() {
+  iresearch_absl::cord_internal::CordRep* rep = contents_.tree();
   if (rep == nullptr) {
-    return absl::string_view(contents_.data(), contents_.size());
+    return iresearch_absl::string_view(contents_.data(), contents_.size());
   } else {
-    absl::string_view already_flat_contents;
+    iresearch_absl::string_view already_flat_contents;
     if (GetFlatAux(rep, &already_flat_contents)) {
       return already_flat_contents;
     }
@@ -1043,7 +1043,7 @@ inline absl::string_view Cord::Flatten() {
   return FlattenSlowPath();
 }
 
-inline void Cord::Append(absl::string_view src) {
+inline void Cord::Append(iresearch_absl::string_view src) {
   contents_.AppendArray(src.data(), src.size());
 }
 
@@ -1066,7 +1066,7 @@ inline bool Cord::StartsWith(const Cord& rhs) const {
   return EqualsImpl(rhs, rhs_size);
 }
 
-inline bool Cord::StartsWith(absl::string_view rhs) const {
+inline bool Cord::StartsWith(iresearch_absl::string_view rhs) const {
   size_t rhs_size = rhs.size();
   if (size() < rhs_size) return false;
   return EqualsImpl(rhs, rhs_size);
@@ -1079,7 +1079,7 @@ inline Cord::ChunkIterator::ChunkIterator(const Cord* cord)
     stack_of_right_children_.push_back(cord->contents_.tree());
     operator++();
   } else {
-    current_chunk_ = absl::string_view(cord->contents_.data(), cord->size());
+    current_chunk_ = iresearch_absl::string_view(cord->contents_.data(), cord->size());
   }
 }
 
@@ -1098,12 +1098,12 @@ inline bool Cord::ChunkIterator::operator!=(const ChunkIterator& other) const {
 }
 
 inline Cord::ChunkIterator::reference Cord::ChunkIterator::operator*() const {
-  ABSL_HARDENING_ASSERT(bytes_remaining_ != 0);
+  IRESEARCH_ABSL_HARDENING_ASSERT(bytes_remaining_ != 0);
   return current_chunk_;
 }
 
 inline Cord::ChunkIterator::pointer Cord::ChunkIterator::operator->() const {
-  ABSL_HARDENING_ASSERT(bytes_remaining_ != 0);
+  IRESEARCH_ABSL_HARDENING_ASSERT(bytes_remaining_ != 0);
   return &current_chunk_;
 }
 
@@ -1114,7 +1114,7 @@ inline void Cord::ChunkIterator::RemoveChunkPrefix(size_t n) {
 }
 
 inline void Cord::ChunkIterator::AdvanceBytes(size_t n) {
-  if (ABSL_PREDICT_TRUE(n < current_chunk_.size())) {
+  if (IRESEARCH_ABSL_PREDICT_TRUE(n < current_chunk_.size())) {
     RemoveChunkPrefix(n);
   } else if (n != 0) {
     AdvanceBytesSlowPath(n);
@@ -1138,7 +1138,7 @@ inline Cord::ChunkIterator Cord::ChunkRange::end() const {
 inline Cord::ChunkRange Cord::Chunks() const { return ChunkRange(this); }
 
 inline Cord::CharIterator& Cord::CharIterator::operator++() {
-  if (ABSL_PREDICT_TRUE(chunk_iterator_->size() > 1)) {
+  if (IRESEARCH_ABSL_PREDICT_TRUE(chunk_iterator_->size() > 1)) {
     chunk_iterator_.RemoveChunkPrefix(1);
   } else {
     ++chunk_iterator_;
@@ -1178,7 +1178,7 @@ inline void Cord::Advance(CharIterator* it, size_t n_bytes) {
   it->chunk_iterator_.AdvanceBytes(n_bytes);
 }
 
-inline absl::string_view Cord::ChunkRemaining(const CharIterator& it) {
+inline iresearch_absl::string_view Cord::ChunkRemaining(const CharIterator& it) {
   return *it.chunk_iterator_;
 }
 
@@ -1199,10 +1199,10 @@ inline Cord::CharIterator Cord::CharRange::end() const {
 inline Cord::CharRange Cord::Chars() const { return CharRange(this); }
 
 inline void Cord::ForEachChunk(
-    absl::FunctionRef<void(absl::string_view)> callback) const {
-  absl::cord_internal::CordRep* rep = contents_.tree();
+    iresearch_absl::FunctionRef<void(iresearch_absl::string_view)> callback) const {
+  iresearch_absl::cord_internal::CordRep* rep = contents_.tree();
   if (rep == nullptr) {
-    callback(absl::string_view(contents_.data(), contents_.size()));
+    callback(iresearch_absl::string_view(contents_.data(), contents_.size()));
   } else {
     return ForEachChunkAux(rep, callback);
   }
@@ -1234,28 +1234,28 @@ inline bool operator>=(const Cord& x, const Cord& y) {
 //
 // Due to implicit conversions, these also enable comparisons of Cord with
 // with std::string, ::string, and const char*.
-inline bool operator==(const Cord& lhs, absl::string_view rhs) {
+inline bool operator==(const Cord& lhs, iresearch_absl::string_view rhs) {
   size_t lhs_size = lhs.size();
   size_t rhs_size = rhs.size();
   if (lhs_size != rhs_size) return false;
   return lhs.EqualsImpl(rhs, rhs_size);
 }
 
-inline bool operator==(absl::string_view x, const Cord& y) { return y == x; }
-inline bool operator!=(const Cord& x, absl::string_view y) { return !(x == y); }
-inline bool operator!=(absl::string_view x, const Cord& y) { return !(x == y); }
-inline bool operator<(const Cord& x, absl::string_view y) {
+inline bool operator==(iresearch_absl::string_view x, const Cord& y) { return y == x; }
+inline bool operator!=(const Cord& x, iresearch_absl::string_view y) { return !(x == y); }
+inline bool operator!=(iresearch_absl::string_view x, const Cord& y) { return !(x == y); }
+inline bool operator<(const Cord& x, iresearch_absl::string_view y) {
   return x.Compare(y) < 0;
 }
-inline bool operator<(absl::string_view x, const Cord& y) {
+inline bool operator<(iresearch_absl::string_view x, const Cord& y) {
   return y.Compare(x) > 0;
 }
-inline bool operator>(const Cord& x, absl::string_view y) { return y < x; }
-inline bool operator>(absl::string_view x, const Cord& y) { return y < x; }
-inline bool operator<=(const Cord& x, absl::string_view y) { return !(y < x); }
-inline bool operator<=(absl::string_view x, const Cord& y) { return !(y < x); }
-inline bool operator>=(const Cord& x, absl::string_view y) { return !(x < y); }
-inline bool operator>=(absl::string_view x, const Cord& y) { return !(x < y); }
+inline bool operator>(const Cord& x, iresearch_absl::string_view y) { return y < x; }
+inline bool operator>(iresearch_absl::string_view x, const Cord& y) { return y < x; }
+inline bool operator<=(const Cord& x, iresearch_absl::string_view y) { return !(y < x); }
+inline bool operator<=(iresearch_absl::string_view x, const Cord& y) { return !(y < x); }
+inline bool operator>=(const Cord& x, iresearch_absl::string_view y) { return !(x < y); }
+inline bool operator>=(iresearch_absl::string_view x, const Cord& y) { return !(x < y); }
 
 // Some internals exposed to test code.
 namespace strings_internal {
@@ -1270,7 +1270,7 @@ class CordTestAccess {
   static uint8_t LengthToTag(size_t s);
 };
 }  // namespace strings_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_STRINGS_CORD_H_
+#endif  // IRESEARCH_ABSL_STRINGS_CORD_H_

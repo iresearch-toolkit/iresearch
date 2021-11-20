@@ -17,8 +17,8 @@
 #include "absl/base/internal/endian.h"
 #include "absl/base/internal/raw_logging.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace strings_internal {
 
 const char kBase64Chars[] =
@@ -87,7 +87,7 @@ size_t Base64EscapeInternal(const unsigned char* src, size_t szsrc, char* dest,
   // So we can pump through three-byte chunks atomically.
   if (szsrc >= 3) {                    // "limit_src - 3" is UB if szsrc < 3.
     while (cur_src < limit_src - 3) {  // While we have >= 32 bits.
-      uint32_t in = absl::big_endian::Load32(cur_src) >> 8;
+      uint32_t in = iresearch_absl::big_endian::Load32(cur_src) >> 8;
 
       cur_dest[0] = base64[in >> 18];
       in &= 0x3FFFF;
@@ -133,7 +133,7 @@ size_t Base64EscapeInternal(const unsigned char* src, size_t szsrc, char* dest,
       // Two bytes left: this encodes to three characters, and (optionally)
       // one pad character to round out the four-character cypherblock.
       if (szdest < 3) return 0;
-      uint32_t in = absl::big_endian::Load16(cur_src);
+      uint32_t in = iresearch_absl::big_endian::Load16(cur_src);
       cur_dest[0] = base64[in >> 10];
       in &= 0x3FF;
       cur_dest[1] = base64[in >> 4];
@@ -154,7 +154,7 @@ size_t Base64EscapeInternal(const unsigned char* src, size_t szsrc, char* dest,
       // the loop because the loop above always reads 4 bytes, and the fourth
       // byte is past the end of the input.
       if (szdest < 4) return 0;
-      uint32_t in = (cur_src[0] << 16) + absl::big_endian::Load16(cur_src + 1);
+      uint32_t in = (cur_src[0] << 16) + iresearch_absl::big_endian::Load16(cur_src + 1);
       cur_dest[0] = base64[in >> 18];
       in &= 0x3FFFF;
       cur_dest[1] = base64[in >> 12];
@@ -169,12 +169,12 @@ size_t Base64EscapeInternal(const unsigned char* src, size_t szsrc, char* dest,
     default:
       // Should not be reached: blocks of 4 bytes are handled
       // in the while loop before this switch statement.
-      ABSL_RAW_LOG(FATAL, "Logic problem? szsrc = %zu", szsrc);
+      IRESEARCH_ABSL_RAW_LOG(FATAL, "Logic problem? szsrc = %zu", szsrc);
       break;
   }
   return (cur_dest - dest);
 }
 
 }  // namespace strings_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

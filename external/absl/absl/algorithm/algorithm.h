@@ -19,8 +19,8 @@
 // This header file contains Google extensions to the standard <algorithm> C++
 // header.
 
-#ifndef ABSL_ALGORITHM_ALGORITHM_H_
-#define ABSL_ALGORITHM_ALGORITHM_H_
+#ifndef IRESEARCH_ABSL_ALGORITHM_ALGORITHM_H_
+#define IRESEARCH_ABSL_ALGORITHM_ALGORITHM_H_
 
 #include <algorithm>
 #include <iterator>
@@ -28,8 +28,8 @@
 
 #include "absl/base/config.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 namespace algorithm_internal {
 
@@ -114,7 +114,7 @@ bool equal(InputIter1 first1, InputIter1 last1, InputIter2 first2,
 template <typename InputIter1, typename InputIter2>
 bool equal(InputIter1 first1, InputIter1 last1, InputIter2 first2,
            InputIter2 last2) {
-  return absl::equal(first1, last1, first2, last2,
+  return iresearch_absl::equal(first1, last1, first2, last2,
                      algorithm_internal::EqualTo{});
 }
 
@@ -153,7 +153,7 @@ ForwardIterator rotate(ForwardIterator first, ForwardIterator middle,
                    ForwardIterator>());
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_ALGORITHM_ALGORITHM_H_
+#endif  // IRESEARCH_ABSL_ALGORITHM_ALGORITHM_H_

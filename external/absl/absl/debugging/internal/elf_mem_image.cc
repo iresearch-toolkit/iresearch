@@ -17,7 +17,7 @@
 
 #include "absl/debugging/internal/elf_mem_image.h"
 
-#ifdef ABSL_HAVE_ELF_MEM_IMAGE  // defined in elf_mem_image.h
+#ifdef IRESEARCH_ABSL_HAVE_ELF_MEM_IMAGE  // defined in elf_mem_image.h
 
 #include <string.h>
 #include <cassert>
@@ -37,8 +37,8 @@
 
 #define VERSYM_VERSION 0x7fff
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace debugging_internal {
 
 namespace {
@@ -54,11 +54,11 @@ int ElfType(const ElfW(Sym) *symbol) { return ELF64_ST_TYPE(symbol->st_info); }
 #else
 const int kElfClass = -1;
 int ElfBind(const ElfW(Sym) *) {
-  ABSL_RAW_LOG(FATAL, "Unexpected word size");
+  IRESEARCH_ABSL_RAW_LOG(FATAL, "Unexpected word size");
   return 0;
 }
 int ElfType(const ElfW(Sym) *) {
-  ABSL_RAW_LOG(FATAL, "Unexpected word size");
+  IRESEARCH_ABSL_RAW_LOG(FATAL, "Unexpected word size");
   return 0;
 }
 #endif
@@ -81,7 +81,7 @@ const T *GetTableElement(const ElfW(Ehdr) * ehdr, ElfW(Off) table_offset,
 const int ElfMemImage::kInvalidBaseSentinel = 0;
 
 ElfMemImage::ElfMemImage(const void *base) {
-  ABSL_RAW_CHECK(base != kInvalidBase, "bad pointer");
+  IRESEARCH_ABSL_RAW_CHECK(base != kInvalidBase, "bad pointer");
   Init(base);
 }
 
@@ -94,17 +94,17 @@ int ElfMemImage::GetNumSymbols() const {
 }
 
 const ElfW(Sym) *ElfMemImage::GetDynsym(int index) const {
-  ABSL_RAW_CHECK(index < GetNumSymbols(), "index out of range");
+  IRESEARCH_ABSL_RAW_CHECK(index < GetNumSymbols(), "index out of range");
   return dynsym_ + index;
 }
 
 const ElfW(Versym) *ElfMemImage::GetVersym(int index) const {
-  ABSL_RAW_CHECK(index < GetNumSymbols(), "index out of range");
+  IRESEARCH_ABSL_RAW_CHECK(index < GetNumSymbols(), "index out of range");
   return versym_ + index;
 }
 
 const ElfW(Phdr) *ElfMemImage::GetPhdr(int index) const {
-  ABSL_RAW_CHECK(index < ehdr_->e_phnum, "index out of range");
+  IRESEARCH_ABSL_RAW_CHECK(index < ehdr_->e_phnum, "index out of range");
   return GetTableElement<ElfW(Phdr)>(ehdr_,
                                      ehdr_->e_phoff,
                                      ehdr_->e_phentsize,
@@ -112,7 +112,7 @@ const ElfW(Phdr) *ElfMemImage::GetPhdr(int index) const {
 }
 
 const char *ElfMemImage::GetDynstr(ElfW(Word) offset) const {
-  ABSL_RAW_CHECK(offset < strsize_, "offset out of range");
+  IRESEARCH_ABSL_RAW_CHECK(offset < strsize_, "offset out of range");
   return dynstr_ + offset;
 }
 
@@ -121,12 +121,12 @@ const void *ElfMemImage::GetSymAddr(const ElfW(Sym) *sym) const {
     // Symbol corresponds to "special" (e.g. SHN_ABS) section.
     return reinterpret_cast<const void *>(sym->st_value);
   }
-  ABSL_RAW_CHECK(link_base_ < sym->st_value, "symbol out of range");
+  IRESEARCH_ABSL_RAW_CHECK(link_base_ < sym->st_value, "symbol out of range");
   return GetTableElement<char>(ehdr_, 0, 1, sym->st_value - link_base_);
 }
 
 const ElfW(Verdef) *ElfMemImage::GetVerdef(int index) const {
-  ABSL_RAW_CHECK(0 <= index && static_cast<size_t>(index) <= verdefnum_,
+  IRESEARCH_ABSL_RAW_CHECK(0 <= index && static_cast<size_t>(index) <= verdefnum_,
                  "index out of range");
   const ElfW(Verdef) *version_definition = verdef_;
   while (version_definition->vd_ndx < index && version_definition->vd_next) {
@@ -145,7 +145,7 @@ const ElfW(Verdaux) *ElfMemImage::GetVerdefAux(
 }
 
 const char *ElfMemImage::GetVerstr(ElfW(Word) offset) const {
-  ABSL_RAW_CHECK(offset < strsize_, "offset out of range");
+  IRESEARCH_ABSL_RAW_CHECK(offset < strsize_, "offset out of range");
   return dynstr_ + offset;
 }
 
@@ -337,7 +337,7 @@ ElfMemImage::SymbolIterator ElfMemImage::end() const {
 
 void ElfMemImage::SymbolIterator::Update(int increment) {
   const ElfMemImage *image = reinterpret_cast<const ElfMemImage *>(image_);
-  ABSL_RAW_CHECK(image->IsPresent() || increment == 0, "");
+  IRESEARCH_ABSL_RAW_CHECK(image->IsPresent() || increment == 0, "");
   if (!image->IsPresent()) {
     return;
   }
@@ -348,7 +348,7 @@ void ElfMemImage::SymbolIterator::Update(int increment) {
   }
   const ElfW(Sym)    *symbol = image->GetDynsym(index_);
   const ElfW(Versym) *version_symbol = image->GetVersym(index_);
-  ABSL_RAW_CHECK(symbol && version_symbol, "");
+  IRESEARCH_ABSL_RAW_CHECK(symbol && version_symbol, "");
   const char *const symbol_name = image->GetDynstr(symbol->st_name);
   const ElfW(Versym) version_index = version_symbol[0] & VERSYM_VERSION;
   const ElfW(Verdef) *version_definition = nullptr;
@@ -363,7 +363,7 @@ void ElfMemImage::SymbolIterator::Update(int increment) {
   if (version_definition) {
     // I am expecting 1 or 2 auxiliary entries: 1 for the version itself,
     // optional 2nd if the version has a parent.
-    ABSL_RAW_CHECK(
+    IRESEARCH_ABSL_RAW_CHECK(
         version_definition->vd_cnt == 1 || version_definition->vd_cnt == 2,
         "wrong number of entries");
     const ElfW(Verdaux) *version_aux = image->GetVerdefAux(version_definition);
@@ -376,7 +376,7 @@ void ElfMemImage::SymbolIterator::Update(int increment) {
 }
 
 }  // namespace debugging_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_HAVE_ELF_MEM_IMAGE
+#endif  // IRESEARCH_ABSL_HAVE_ELF_MEM_IMAGE

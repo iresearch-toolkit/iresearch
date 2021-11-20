@@ -38,24 +38,24 @@
 //
 //   int main(int argc, char** argv) {
 //     // Initialize the Symbolizer before installing the failure signal handler
-//     absl::InitializeSymbolizer(argv[0]);
+//     iresearch_absl::InitializeSymbolizer(argv[0]);
 //
 //     // Now you may install the failure signal handler
-//     absl::FailureSignalHandlerOptions options;
-//     absl::InstallFailureSignalHandler(options);
+//     iresearch_absl::FailureSignalHandlerOptions options;
+//     iresearch_absl::InstallFailureSignalHandler(options);
 //
 //     // Start running your main program
 //     ...
 //     return 0;
 //  }
 //
-#ifndef ABSL_DEBUGGING_SYMBOLIZE_H_
-#define ABSL_DEBUGGING_SYMBOLIZE_H_
+#ifndef IRESEARCH_ABSL_DEBUGGING_SYMBOLIZE_H_
+#define IRESEARCH_ABSL_DEBUGGING_SYMBOLIZE_H_
 
 #include "absl/debugging/internal/symbolize.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 // InitializeSymbolizer()
 //
@@ -67,7 +67,7 @@ ABSL_NAMESPACE_BEGIN
 // Example:
 //
 // int main(int argc, char *argv[]) {
-//   absl::InitializeSymbolizer(argv[0]);
+//   iresearch_absl::InitializeSymbolizer(argv[0]);
 //   // Now you can use the symbolizer
 // }
 void InitializeSymbolizer(const char* argv0);
@@ -86,14 +86,14 @@ void InitializeSymbolizer(const char* argv0);
 //   static void DumpPCAndSymbol(void *pc) {
 //     char tmp[1024];
 //     const char *symbol = "(unknown)";
-//     if (absl::Symbolize(pc, tmp, sizeof(tmp))) {
+//     if (iresearch_absl::Symbolize(pc, tmp, sizeof(tmp))) {
 //       symbol = tmp;
 //     }
-//     absl::PrintF("%p  %s\n", pc, symbol);
+//     iresearch_absl::PrintF("%p  %s\n", pc, symbol);
 //  }
 bool Symbolize(const void *pc, char *out, int out_size);
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_DEBUGGING_SYMBOLIZE_H_
+#endif  // IRESEARCH_ABSL_DEBUGGING_SYMBOLIZE_H_

@@ -21,17 +21,17 @@
 #include "absl/base/config.h"
 #include "absl/base/internal/raw_logging.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 
 namespace {
 template <typename T>
 [[noreturn]] void Throw(const T& error) {
-#ifdef ABSL_HAVE_EXCEPTIONS
+#ifdef IRESEARCH_ABSL_HAVE_EXCEPTIONS
   throw error;
 #else
-  ABSL_RAW_LOG(FATAL, "%s", error.what());
+  IRESEARCH_ABSL_RAW_LOG(FATAL, "%s", error.what());
   std::abort();
 #endif
 }
@@ -104,5 +104,5 @@ void ThrowStdBadFunctionCall() { Throw(std::bad_function_call()); }
 void ThrowStdBadAlloc() { Throw(std::bad_alloc()); }
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

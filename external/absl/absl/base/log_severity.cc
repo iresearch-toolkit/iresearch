@@ -16,12 +16,12 @@
 
 #include <ostream>
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
-std::ostream& operator<<(std::ostream& os, absl::LogSeverity s) {
-  if (s == absl::NormalizeLogSeverity(s)) return os << absl::LogSeverityName(s);
+std::ostream& operator<<(std::ostream& os, iresearch_absl::LogSeverity s) {
+  if (s == iresearch_absl::NormalizeLogSeverity(s)) return os << iresearch_absl::LogSeverityName(s);
   return os << "absl::LogSeverity(" << static_cast<int>(s) << ")";
 }
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_BASE_INTERNAL_HIDE_PTR_H_
-#define ABSL_BASE_INTERNAL_HIDE_PTR_H_
+#ifndef IRESEARCH_ABSL_BASE_INTERNAL_HIDE_PTR_H_
+#define IRESEARCH_ABSL_BASE_INTERNAL_HIDE_PTR_H_
 
 #include <cstdint>
 
 #include "absl/base/config.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 
 // Arbitrary value with high bits set. Xor'ing with it is unlikely
@@ -30,7 +30,7 @@ constexpr uintptr_t HideMask() {
 }
 
 // Hide a pointer from the leak checker. For internal use only.
-// Differs from absl::IgnoreLeak(ptr) in that absl::IgnoreLeak(ptr) causes ptr
+// Differs from iresearch_absl::IgnoreLeak(ptr) in that iresearch_absl::IgnoreLeak(ptr) causes ptr
 // and all objects reachable from ptr to be ignored by the leak checker.
 template <class T>
 inline uintptr_t HidePtr(T* ptr) {
@@ -45,7 +45,7 @@ inline T* UnhidePtr(uintptr_t hidden) {
 }
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_BASE_INTERNAL_HIDE_PTR_H_
+#endif  // IRESEARCH_ABSL_BASE_INTERNAL_HIDE_PTR_H_

@@ -102,7 +102,7 @@ bool StackTraceWorksForTest() {
   return true;
 }
 }  // namespace debugging_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
 #endif  // ABSL_DEBUGGING_INTERNAL_STACKTRACE_GENERIC_INL_H_

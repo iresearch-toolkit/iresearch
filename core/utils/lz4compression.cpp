@@ -79,7 +79,7 @@ lz4stream_decode lz4_make_stream_decode() {
 // -----------------------------------------------------------------------------
 
 bytes_ref lz4::lz4compressor::compress(byte_type* src, size_t size, bstring& out) {
-  assert(size <= std::numeric_limits<int>::max()); // LZ4 API uses int
+  assert(size <= static_cast<unsigned>(std::numeric_limits<int>::max())); // LZ4 API uses int
   const auto src_size = static_cast<int>(size);
 
   // ensure we have enough space to store compressed data
@@ -100,7 +100,7 @@ bytes_ref lz4::lz4compressor::compress(byte_type* src, size_t size, bstring& out
 bytes_ref lz4::lz4decompressor::decompress(
     const byte_type* src,  size_t src_size,
     byte_type* dst,  size_t dst_size) {
-  assert(src_size <= std::numeric_limits<int>::max()); // LZ4 API uses int
+  assert(src_size <= static_cast<unsigned>(std::numeric_limits<int>::max())); // LZ4 API uses int
 
   const auto lz4_size = LZ4_decompress_safe(
     reinterpret_cast<const char*>(src),
@@ -120,14 +120,14 @@ compressor::ptr lz4::compressor(const options& opts) {
   const auto acceleration = ::acceleration(opts.hint);
 
   if (0 == acceleration) {
-    return compressor::ptr(compressor::ptr(), &LZ4_BASIC_COMPRESSOR);
+    return memory::to_managed<lz4compressor, false>(&LZ4_BASIC_COMPRESSOR);
   }
 
-  return memory::make_shared<lz4compressor>(acceleration);
+  return memory::to_managed(memory::make_unique<lz4compressor>(acceleration));
 }
 
 decompressor::ptr lz4::decompressor() {
-  return decompressor::ptr(decompressor::ptr(), &LZ4_BASIC_DECOMPRESSOR);
+  return memory::to_managed<lz4decompressor, false>(&LZ4_BASIC_DECOMPRESSOR);
 }
 
 void lz4::init() {

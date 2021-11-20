@@ -29,13 +29,19 @@ set(IResearchTests_INCLUDE_DIR
 set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
   ./analysis/delimited_token_stream_tests.cpp
+  ./analysis/collation_token_stream_test.cpp
+  ./analysis/classification_stream_test.cpp
+  ./analysis/nearest_neighbors_stream_test.cpp
   ./analysis/ngram_token_stream_test.cpp
   ./analysis/pipeline_stream_tests.cpp
+  ./analysis/segmentation_stream_tests.cpp
   ./analysis/text_token_normalizing_stream_tests.cpp
   ./analysis/text_token_stemming_stream_tests.cpp
-  ./analysis/token_masking_stream_tests.cpp
+  ./analysis/token_stopwords_stream_tests.cpp
   ./analysis/token_attributes_test.cpp
   ./analysis/token_stream_tests.cpp
+  ./formats/columnstore2_test.cpp
+  ./formats/sparse_bitmap_test.cpp
   ./formats/formats_tests.cpp
   ./formats/formats_test_case_base.cpp
   ./formats/skip_list_test.cpp
@@ -87,6 +93,7 @@ set(IReSearch_tests_sources
   ./utils/async_utils_tests.cpp
   ./utils/automaton_test.cpp
   ./utils/bitvector_tests.cpp
+  ./utils/encryption_test.cpp
   ./utils/container_utils_tests.cpp
   ./utils/compression_test.cpp
   ./utils/crc_test.cpp
@@ -99,16 +106,16 @@ set(IReSearch_tests_sources
   ./utils/bit_packing_tests.cpp
   ./utils/bit_utils_tests.cpp
   ./utils/block_pool_test.cpp
-  ./utils/encryption_test.cpp
-  ./utils/locale_utils_tests.cpp
   ./utils/levenshtein_utils_test.cpp
   ./utils/wildcard_utils_test.cpp
   ./utils/ref_counter_tests.cpp
   ./utils/memory_tests.cpp
   ./utils/string_tests.cpp
+  ./utils/simd_utils_test.cpp
   ./utils/bitset_tests.cpp
   ./utils/ebo_tests.cpp
   ./utils/math_utils_test.cpp
+  ./utils/misc_test.cpp
   ./utils/std_test.cpp
   ./utils/thread_pool_test.cpp
   ./utils/type_utils_tests.cpp
@@ -162,6 +169,7 @@ add_executable(${IResearchTests_TARGET_NAME}-static
   ./formats/formats_11_tests.cpp
   ./formats/formats_12_tests.cpp
   ./formats/formats_13_tests.cpp
+  ./formats/formats_14_tests.cpp
   ./iql/parser_test.cpp
 )
 
@@ -175,7 +183,9 @@ add_dependencies(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-analyzer-norm-shared
   ${IResearch_TARGET_NAME}-analyzer-stem-shared
-  ${IResearch_TARGET_NAME}-analyzer-mask-shared
+  ${IResearch_TARGET_NAME}-analyzer-stopwords-shared
+  ${IResearch_TARGET_NAME}-analyzer-pipeline-shared
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${IResearch_TARGET_NAME}-scorer-tfidf-shared
   ${IResearch_TARGET_NAME}-scorer-bm25-shared
@@ -187,7 +197,9 @@ add_dependencies(${IResearchTests_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-text-static
   ${IResearch_TARGET_NAME}-analyzer-norm-static
   ${IResearch_TARGET_NAME}-analyzer-stem-static
-  ${IResearch_TARGET_NAME}-analyzer-mask-static
+  ${IResearch_TARGET_NAME}-analyzer-stopwords-static
+  ${IResearch_TARGET_NAME}-analyzer-pipeline-static
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
@@ -231,7 +243,9 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-analyzer-norm-shared
   ${IResearch_TARGET_NAME}-analyzer-stem-shared
-  ${IResearch_TARGET_NAME}-analyzer-mask-shared
+  ${IResearch_TARGET_NAME}-analyzer-stopwords-shared
+  ${IResearch_TARGET_NAME}-analyzer-pipeline-shared
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
@@ -260,6 +274,7 @@ include_directories(${IResearchTests_TARGET_NAME}-shared
   ${IReSearch_generated_INCLUDE_DIR}
   ${IResearch_INCLUDE_DIR}
   ${ICU_INCLUDE_DIR}
+  ${Fasttext_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
   ${FROZEN_INCLUDE_DIR}
@@ -273,6 +288,7 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   ${IReSearch_generated_INCLUDE_DIR}
   ${IResearch_INCLUDE_DIR}
   ${ICU_INCLUDE_DIR}
+  ${Fasttext_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
   ${FROZEN_INCLUDE_DIR}

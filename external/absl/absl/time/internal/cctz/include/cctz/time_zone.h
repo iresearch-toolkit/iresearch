@@ -17,8 +17,8 @@
 // times (represented by cctz::civil_second) using the rules defined by
 // a time zone (cctz::time_zone).
 
-#ifndef ABSL_TIME_INTERNAL_CCTZ_TIME_ZONE_H_
-#define ABSL_TIME_INTERNAL_CCTZ_TIME_ZONE_H_
+#ifndef IRESEARCH_ABSL_TIME_INTERNAL_CCTZ_TIME_ZONE_H_
+#define IRESEARCH_ABSL_TIME_INTERNAL_CCTZ_TIME_ZONE_H_
 
 #include <chrono>
 #include <cstdint>
@@ -28,8 +28,8 @@
 #include "absl/base/config.h"
 #include "absl/time/internal/cctz/include/cctz/civil_time.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace time_internal {
 namespace cctz {
 
@@ -380,7 +380,7 @@ inline bool parse(const std::string& fmt, const std::string& input,
 
 }  // namespace cctz
 }  // namespace time_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_TIME_INTERNAL_CCTZ_TIME_ZONE_H_
+#endif  // IRESEARCH_ABSL_TIME_INTERNAL_CCTZ_TIME_ZONE_H_

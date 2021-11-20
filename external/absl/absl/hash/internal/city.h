@@ -42,8 +42,8 @@
 // of a+b is easily derived from the hashes of a and b.  This property
 // doesn't hold for any hash functions in this file.
 
-#ifndef ABSL_HASH_INTERNAL_CITY_H_
-#define ABSL_HASH_INTERNAL_CITY_H_
+#ifndef IRESEARCH_ABSL_HASH_INTERNAL_CITY_H_
+#define IRESEARCH_ABSL_HASH_INTERNAL_CITY_H_
 
 #include <stdint.h>
 #include <stdlib.h>  // for size_t.
@@ -52,8 +52,8 @@
 
 #include "absl/base/config.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace hash_internal {
 
 typedef std::pair<uint64_t, uint64_t> uint128;
@@ -90,7 +90,7 @@ inline uint64_t Hash128to64(const uint128 &x) {
 }
 
 }  // namespace hash_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_HASH_INTERNAL_CITY_H_
+#endif  // IRESEARCH_ABSL_HASH_INTERNAL_CITY_H_

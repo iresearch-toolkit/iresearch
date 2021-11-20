@@ -28,7 +28,7 @@
 #include <TargetConditionals.h>
 #endif
 
-#ifdef ABSL_HAVE_MMAP
+#ifdef IRESEARCH_ABSL_HAVE_MMAP
 #include <sys/mman.h>
 #endif
 
@@ -48,18 +48,18 @@
 #include "absl/debugging/stacktrace.h"
 
 #ifndef _WIN32
-#define ABSL_HAVE_SIGACTION
+#define IRESEARCH_ABSL_HAVE_SIGACTION
 // Apple WatchOS and TVOS don't allow sigaltstack
 #if !(defined(TARGET_OS_WATCH) && TARGET_OS_WATCH) && \
     !(defined(TARGET_OS_TV) && TARGET_OS_TV)
-#define ABSL_HAVE_SIGALTSTACK
+#define IRESEARCH_ABSL_HAVE_SIGALTSTACK
 #endif
 #endif
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
-ABSL_CONST_INIT static FailureSignalHandlerOptions fsh_options;
+IRESEARCH_ABSL_CONST_INIT static FailureSignalHandlerOptions fsh_options;
 
 // Resets the signal handler for signo to the default action for that
 // signal, then raises the signal.
@@ -71,7 +71,7 @@ static void RaiseToDefaultHandler(int signo) {
 struct FailureSignalData {
   const int signo;
   const char* const as_string;
-#ifdef ABSL_HAVE_SIGACTION
+#ifdef IRESEARCH_ABSL_HAVE_SIGACTION
   struct sigaction previous_action;
   // StructSigaction is used to silence -Wmissing-field-initializers.
   using StructSigaction = struct sigaction;
@@ -82,7 +82,7 @@ struct FailureSignalData {
 #endif
 };
 
-ABSL_CONST_INIT static FailureSignalData failure_signal_data[] = {
+IRESEARCH_ABSL_CONST_INIT static FailureSignalData failure_signal_data[] = {
     {SIGSEGV, "SIGSEGV", FSD_PREVIOUS_INIT},
     {SIGILL, "SIGILL", FSD_PREVIOUS_INIT},
     {SIGFPE, "SIGFPE", FSD_PREVIOUS_INIT},
@@ -100,7 +100,7 @@ static void RaiseToPreviousHandler(int signo) {
   // Search for the previous handler.
   for (const auto& it : failure_signal_data) {
     if (it.signo == signo) {
-#ifdef ABSL_HAVE_SIGACTION
+#ifdef IRESEARCH_ABSL_HAVE_SIGACTION
       sigaction(signo, &it.previous_action, nullptr);
 #else
       signal(signo, it.previous_handler);
@@ -127,7 +127,7 @@ const char* FailureSignalToString(int signo) {
 
 }  // namespace debugging_internal
 
-#ifdef ABSL_HAVE_SIGALTSTACK
+#ifdef IRESEARCH_ABSL_HAVE_SIGALTSTACK
 
 static bool SetupAlternateStackOnce() {
 #if defined(__wasm__) || defined (__asjms__)
@@ -136,8 +136,8 @@ static bool SetupAlternateStackOnce() {
   const size_t page_mask = sysconf(_SC_PAGESIZE) - 1;
 #endif
   size_t stack_size = (std::max(SIGSTKSZ, 65536) + page_mask) & ~page_mask;
-#if defined(ABSL_HAVE_ADDRESS_SANITIZER) || \
-    defined(ABSL_HAVE_MEMORY_SANITIZER) || defined(ABSL_HAVE_THREAD_SANITIZER)
+#if defined(IRESEARCH_ABSL_HAVE_ADDRESS_SANITIZER) || \
+    defined(IRESEARCH_ABSL_HAVE_MEMORY_SANITIZER) || defined(IRESEARCH_ABSL_HAVE_THREAD_SANITIZER)
   // Account for sanitizer instrumentation requiring additional stack space.
   stack_size *= 5;
 #endif
@@ -146,7 +146,7 @@ static bool SetupAlternateStackOnce() {
   memset(&sigstk, 0, sizeof(sigstk));
   sigstk.ss_size = stack_size;
 
-#ifdef ABSL_HAVE_MMAP
+#ifdef IRESEARCH_ABSL_HAVE_MMAP
 #ifndef MAP_STACK
 #define MAP_STACK 0
 #endif
@@ -156,31 +156,31 @@ static bool SetupAlternateStackOnce() {
   sigstk.ss_sp = mmap(nullptr, sigstk.ss_size, PROT_READ | PROT_WRITE,
                       MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
   if (sigstk.ss_sp == MAP_FAILED) {
-    ABSL_RAW_LOG(FATAL, "mmap() for alternate signal stack failed");
+    IRESEARCH_ABSL_RAW_LOG(FATAL, "mmap() for alternate signal stack failed");
   }
 #else
   sigstk.ss_sp = malloc(sigstk.ss_size);
   if (sigstk.ss_sp == nullptr) {
-    ABSL_RAW_LOG(FATAL, "malloc() for alternate signal stack failed");
+    IRESEARCH_ABSL_RAW_LOG(FATAL, "malloc() for alternate signal stack failed");
   }
 #endif
 
   if (sigaltstack(&sigstk, nullptr) != 0) {
-    ABSL_RAW_LOG(FATAL, "sigaltstack() failed with errno=%d", errno);
+    IRESEARCH_ABSL_RAW_LOG(FATAL, "sigaltstack() failed with errno=%d", errno);
   }
   return true;
 }
 
 #endif
 
-#ifdef ABSL_HAVE_SIGACTION
+#ifdef IRESEARCH_ABSL_HAVE_SIGACTION
 
 // Sets up an alternate stack for signal handlers once.
 // Returns the appropriate flag for sig_action.sa_flags
 // if the system supports using an alternate stack.
 static int MaybeSetupAlternateStack() {
-#ifdef ABSL_HAVE_SIGALTSTACK
-  ABSL_ATTRIBUTE_UNUSED static const bool kOnce = SetupAlternateStackOnce();
+#ifdef IRESEARCH_ABSL_HAVE_SIGALTSTACK
+  IRESEARCH_ABSL_ATTRIBUTE_UNUSED static const bool kOnce = SetupAlternateStackOnce();
   return SA_ONSTACK;
 #else
   return 0;
@@ -200,7 +200,7 @@ static void InstallOneFailureHandler(FailureSignalData* data,
     act.sa_flags |= MaybeSetupAlternateStack();
   }
   act.sa_sigaction = handler;
-  ABSL_RAW_CHECK(sigaction(data->signo, &act, &data->previous_action) == 0,
+  IRESEARCH_ABSL_RAW_CHECK(sigaction(data->signo, &act, &data->previous_action) == 0,
                  "sigaction() failed");
 }
 
@@ -209,14 +209,14 @@ static void InstallOneFailureHandler(FailureSignalData* data,
 static void InstallOneFailureHandler(FailureSignalData* data,
                                      void (*handler)(int)) {
   data->previous_handler = signal(data->signo, handler);
-  ABSL_RAW_CHECK(data->previous_handler != SIG_ERR, "signal() failed");
+  IRESEARCH_ABSL_RAW_CHECK(data->previous_handler != SIG_ERR, "signal() failed");
 }
 
 #endif
 
 static void WriteToStderr(const char* data) {
-  absl::base_internal::ErrnoSaver errno_saver;
-  absl::raw_logging_internal::SafeWriteToStderr(data, strlen(data));
+  iresearch_absl::base_internal::ErrnoSaver errno_saver;
+  iresearch_absl::raw_logging_internal::SafeWriteToStderr(data, strlen(data));
 }
 
 static void WriteSignalMessage(int signo, void (*writerfn)(const char*)) {
@@ -239,7 +239,7 @@ struct WriterFnStruct {
   void (*writerfn)(const char*);
 };
 
-// Many of the absl::debugging_internal::Dump* functions in
+// Many of the iresearch_absl::debugging_internal::Dump* functions in
 // examine_stack.h take a writer function pointer that has a void* arg
 // for historical reasons. failure_signal_handler_writer only takes a
 // data pointer. This function converts between these types.
@@ -257,12 +257,12 @@ ABSL_ATTRIBUTE_NOINLINE static void WriteStackTrace(
   void* stack[kNumStackFrames];
   int frame_sizes[kNumStackFrames];
   int min_dropped_frames;
-  int depth = absl::GetStackFramesWithContext(
+  int depth = iresearch_absl::GetStackFramesWithContext(
       stack, frame_sizes, kNumStackFrames,
       1,  // Do not include this function in stack trace.
       ucontext, &min_dropped_frames);
-  absl::debugging_internal::DumpPCAndFrameSizesAndStackTrace(
-      absl::debugging_internal::GetProgramCounter(ucontext), stack, frame_sizes,
+  iresearch_absl::debugging_internal::DumpPCAndFrameSizesAndStackTrace(
+      iresearch_absl::debugging_internal::GetProgramCounter(ucontext), stack, frame_sizes,
       depth, min_dropped_frames, symbolize_stacktrace, writerfn, writerfn_arg);
 }
 
@@ -277,7 +277,7 @@ static void WriteFailureInfo(int signo, void* ucontext,
                   &writerfn_struct);
 }
 
-// absl::SleepFor() can't be used here since AbslInternalSleepFor()
+// iresearch_absl::SleepFor() can't be used here since AbslInternalSleepFor()
 // may be overridden to do something that isn't async-signal-safe on
 // some platforms.
 static void PortableSleepForSeconds(int seconds) {
@@ -291,7 +291,7 @@ static void PortableSleepForSeconds(int seconds) {
 #endif
 }
 
-#ifdef ABSL_HAVE_ALARM
+#ifdef IRESEARCH_ABSL_HAVE_ALARM
 // AbslFailureSignalHandler() installs this as a signal handler for
 // SIGALRM, then sets an alarm to be delivered to the program after a
 // set amount of time. If AbslFailureSignalHandler() hangs for more than
@@ -302,27 +302,27 @@ static void ImmediateAbortSignalHandler(int) {
 }
 #endif
 
-// absl::base_internal::GetTID() returns pid_t on most platforms, but
-// returns absl::base_internal::pid_t on Windows.
-using GetTidType = decltype(absl::base_internal::GetTID());
-ABSL_CONST_INIT static std::atomic<GetTidType> failed_tid(0);
+// iresearch_absl::base_internal::GetTID() returns pid_t on most platforms, but
+// returns iresearch_absl::base_internal::pid_t on Windows.
+using GetTidType = decltype(iresearch_absl::base_internal::GetTID());
+IRESEARCH_ABSL_CONST_INIT static std::atomic<GetTidType> failed_tid(0);
 
-#ifndef ABSL_HAVE_SIGACTION
+#ifndef IRESEARCH_ABSL_HAVE_SIGACTION
 static void AbslFailureSignalHandler(int signo) {
   void* ucontext = nullptr;
 #else
 static void AbslFailureSignalHandler(int signo, siginfo_t*, void* ucontext) {
 #endif
 
-  const GetTidType this_tid = absl::base_internal::GetTID();
+  const GetTidType this_tid = iresearch_absl::base_internal::GetTID();
   GetTidType previous_failed_tid = 0;
   if (!failed_tid.compare_exchange_strong(
           previous_failed_tid, static_cast<intptr_t>(this_tid),
           std::memory_order_acq_rel, std::memory_order_relaxed)) {
-    ABSL_RAW_LOG(
+    IRESEARCH_ABSL_RAW_LOG(
         ERROR,
         "Signal %d raised at PC=%p while already in AbslFailureSignalHandler()",
-        signo, absl::debugging_internal::GetProgramCounter(ucontext));
+        signo, iresearch_absl::debugging_internal::GetProgramCounter(ucontext));
     if (this_tid != previous_failed_tid) {
       // Another thread is already in AbslFailureSignalHandler(), so wait
       // a bit for it to finish. If the other thread doesn't kill us,
@@ -334,7 +334,7 @@ static void AbslFailureSignalHandler(int signo, siginfo_t*, void* ucontext) {
     }
   }
 
-#ifdef ABSL_HAVE_ALARM
+#ifdef IRESEARCH_ABSL_HAVE_ALARM
   // Set an alarm to abort the program in case this code hangs or deadlocks.
   if (fsh_options.alarm_on_failure_secs > 0) {
     alarm(0);  // Cancel any existing alarms.
@@ -366,5 +366,5 @@ void InstallFailureSignalHandler(const FailureSignalHandlerOptions& options) {
   }
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

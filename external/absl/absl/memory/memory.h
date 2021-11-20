@@ -20,8 +20,8 @@
 // conversion of smart pointers. This file is an extension to the C++
 // standard <memory> library header file.
 
-#ifndef ABSL_MEMORY_MEMORY_H_
-#define ABSL_MEMORY_MEMORY_H_
+#ifndef IRESEARCH_ABSL_MEMORY_MEMORY_H_
+#define IRESEARCH_ABSL_MEMORY_MEMORY_H_
 
 #include <cstddef>
 #include <limits>
@@ -33,8 +33,8 @@
 #include "absl/base/macros.h"
 #include "absl/meta/type_traits.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 // -----------------------------------------------------------------------------
 // Function Template: WrapUnique()
@@ -146,7 +146,7 @@ using std::make_unique;
 //       NOTE: an array of unknown bounds T[] may still be (and often will be)
 //       initialized to have a size, and will still use this overload. E.g:
 //
-//         auto my_array = absl::make_unique<int[]>(10);
+//         auto my_array = iresearch_absl::make_unique<int[]>(10);
 //
 //   - For an array of known bounds T[N]:
 //
@@ -156,12 +156,12 @@ using std::make_unique;
 //       NOTE: an array of known bounds T[N] is not considered a useful
 //       construction, and may cause undefined behavior in templates. E.g:
 //
-//         auto my_array = absl::make_unique<int[10]>();
+//         auto my_array = iresearch_absl::make_unique<int[10]>();
 //
 //       In those cases, of course, you can still use the overload above and
 //       simply initialize it to its desired size:
 //
-//         auto my_array = absl::make_unique<int[]>(10);
+//         auto my_array = iresearch_absl::make_unique<int[]>(10);
 
 // `absl::make_unique` overload for non-array types.
 template <typename T, typename... Args>
@@ -176,7 +176,7 @@ typename memory_internal::MakeUniqueResult<T>::scalar make_unique(
 // these array elements.
 template <typename T>
 typename memory_internal::MakeUniqueResult<T>::array make_unique(size_t n) {
-  return std::unique_ptr<T>(new typename absl::remove_extent_t<T>[n]());
+  return std::unique_ptr<T>(new typename iresearch_absl::remove_extent_t<T>[n]());
 }
 
 // `absl::make_unique` overload for an array T[N] of known bounds.
@@ -210,8 +210,8 @@ inline std::nullptr_t RawPtr(std::nullptr_t) { return nullptr; }
 //
 // Example:
 //
-//     auto up = absl::make_unique<int>(10);
-//     auto sp = absl::ShareUniquePtr(std::move(up));  // shared_ptr<int>
+//     auto up = iresearch_absl::make_unique<int>(10);
+//     auto sp = iresearch_absl::ShareUniquePtr(std::move(up));  // shared_ptr<int>
 //     CHECK_EQ(*sp, 10);
 //     CHECK(up == nullptr);
 //
@@ -238,7 +238,7 @@ std::shared_ptr<T> ShareUniquePtr(std::unique_ptr<T, D>&& ptr) {
 // Example:
 //
 //    auto sp = std::make_shared<int>(10);
-//    auto wp = absl::WeakenPtr(sp);
+//    auto wp = iresearch_absl::WeakenPtr(sp);
 //    CHECK_EQ(sp.get(), wp.lock().get());
 //    sp.reset();
 //    CHECK(wp.lock() == nullptr);
@@ -438,32 +438,32 @@ struct allocator_traits {
 
   // const_pointer:
   // Alloc::const_pointer if present, otherwise
-  // absl::pointer_traits<pointer>::rebind<const value_type>
+  // iresearch_absl::pointer_traits<pointer>::rebind<const value_type>
   using const_pointer =
       memory_internal::ExtractOrT<memory_internal::GetConstPointer, Alloc,
-                                  typename absl::pointer_traits<pointer>::
+                                  typename iresearch_absl::pointer_traits<pointer>::
                                       template rebind<const value_type>>;
 
   // void_pointer:
   // Alloc::void_pointer if present, otherwise
-  // absl::pointer_traits<pointer>::rebind<void>
+  // iresearch_absl::pointer_traits<pointer>::rebind<void>
   using void_pointer = memory_internal::ExtractOrT<
       memory_internal::GetVoidPointer, Alloc,
-      typename absl::pointer_traits<pointer>::template rebind<void>>;
+      typename iresearch_absl::pointer_traits<pointer>::template rebind<void>>;
 
   // const_void_pointer:
   // Alloc::const_void_pointer if present, otherwise
-  // absl::pointer_traits<pointer>::rebind<const void>
+  // iresearch_absl::pointer_traits<pointer>::rebind<const void>
   using const_void_pointer = memory_internal::ExtractOrT<
       memory_internal::GetConstVoidPointer, Alloc,
-      typename absl::pointer_traits<pointer>::template rebind<const void>>;
+      typename iresearch_absl::pointer_traits<pointer>::template rebind<const void>>;
 
   // difference_type:
   // Alloc::difference_type if present, otherwise
-  // absl::pointer_traits<pointer>::difference_type
+  // iresearch_absl::pointer_traits<pointer>::difference_type
   using difference_type = memory_internal::ExtractOrT<
       memory_internal::GetDifferenceType, Alloc,
-      typename absl::pointer_traits<pointer>::difference_type>;
+      typename iresearch_absl::pointer_traits<pointer>::difference_type>;
 
   // size_type:
   // Alloc::size_type if present, otherwise
@@ -505,9 +505,9 @@ struct allocator_traits {
   using rebind_alloc = typename memory_internal::RebindAlloc<Alloc, T>::type;
 
   // rebind_traits:
-  // absl::allocator_traits<rebind_alloc<T>>
+  // iresearch_absl::allocator_traits<rebind_alloc<T>>
   template <typename T>
-  using rebind_traits = absl::allocator_traits<rebind_alloc<T>>;
+  using rebind_traits = iresearch_absl::allocator_traits<rebind_alloc<T>>;
 
   // allocate(Alloc& a, size_type n):
   // Calls a.allocate(n)
@@ -623,7 +623,7 @@ using GetIsNothrow = typename Alloc::is_nothrow;
 
 }  // namespace memory_internal
 
-// ABSL_ALLOCATOR_NOTHROW is a build time configuration macro for user to
+// IRESEARCH_ABSL_ALLOCATOR_NOTHROW is a build time configuration macro for user to
 // specify whether the default allocation function can throw or never throws.
 // If the allocation function never throws, user should define it to a non-zero
 // value (e.g. via `-DABSL_ALLOCATOR_NOTHROW`).
@@ -633,7 +633,7 @@ using GetIsNothrow = typename Alloc::is_nothrow;
 // allocator_is_nothrow<Alloc> is a traits class that derives from
 // Alloc::is_nothrow if present, otherwise std::false_type. It's specialized
 // for Alloc = std::allocator<T> for any type T according to the state of
-// ABSL_ALLOCATOR_NOTHROW.
+// IRESEARCH_ABSL_ALLOCATOR_NOTHROW.
 //
 // default_allocator_is_nothrow is a class that derives from std::true_type
 // when the default allocator (global operator new) never throws, and
@@ -647,7 +647,7 @@ struct allocator_is_nothrow
     : memory_internal::ExtractOrT<memory_internal::GetIsNothrow, Alloc,
                                   std::false_type> {};
 
-#if defined(ABSL_ALLOCATOR_NOTHROW) && ABSL_ALLOCATOR_NOTHROW
+#if defined(IRESEARCH_ABSL_ALLOCATOR_NOTHROW) && IRESEARCH_ABSL_ALLOCATOR_NOTHROW
 template <typename T>
 struct allocator_is_nothrow<std::allocator<T>> : std::true_type {};
 struct default_allocator_is_nothrow : std::true_type {};
@@ -660,16 +660,16 @@ template <typename Allocator, typename Iterator, typename... Args>
 void ConstructRange(Allocator& alloc, Iterator first, Iterator last,
                     const Args&... args) {
   for (Iterator cur = first; cur != last; ++cur) {
-    ABSL_INTERNAL_TRY {
+    IRESEARCH_ABSL_INTERNAL_TRY {
       std::allocator_traits<Allocator>::construct(alloc, std::addressof(*cur),
                                                   args...);
     }
-    ABSL_INTERNAL_CATCH_ANY {
+    IRESEARCH_ABSL_INTERNAL_CATCH_ANY {
       while (cur != first) {
         --cur;
         std::allocator_traits<Allocator>::destroy(alloc, std::addressof(*cur));
       }
-      ABSL_INTERNAL_RETHROW;
+      IRESEARCH_ABSL_INTERNAL_RETHROW;
     }
   }
 }
@@ -679,21 +679,21 @@ void CopyRange(Allocator& alloc, Iterator destination, InputIterator first,
                InputIterator last) {
   for (Iterator cur = destination; first != last;
        static_cast<void>(++cur), static_cast<void>(++first)) {
-    ABSL_INTERNAL_TRY {
+    IRESEARCH_ABSL_INTERNAL_TRY {
       std::allocator_traits<Allocator>::construct(alloc, std::addressof(*cur),
                                                   *first);
     }
-    ABSL_INTERNAL_CATCH_ANY {
+    IRESEARCH_ABSL_INTERNAL_CATCH_ANY {
       while (cur != destination) {
         --cur;
         std::allocator_traits<Allocator>::destroy(alloc, std::addressof(*cur));
       }
-      ABSL_INTERNAL_RETHROW;
+      IRESEARCH_ABSL_INTERNAL_RETHROW;
     }
   }
 }
 }  // namespace memory_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_MEMORY_MEMORY_H_
+#endif  // IRESEARCH_ABSL_MEMORY_MEMORY_H_

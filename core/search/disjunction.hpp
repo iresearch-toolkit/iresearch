@@ -766,6 +766,9 @@ class disjunction final
   virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) override {
     assert(ctx);
     assert(visitor);
+    if (heap_.empty()) {
+      return;
+    }
     hitch_all_iterators();
     auto& lead = itrs_[heap_.back()];
     auto cont = visitor(ctx, lead);
@@ -909,6 +912,7 @@ class disjunction final
 
   std::pair<heap_iterator, heap_iterator> hitch_all_iterators() {
     // hitch all iterators in head to the lead (current doc_)
+    assert(!heap_.empty());
     auto begin = heap_.begin(), end = heap_.end()-1;
 
     auto& doc = std::get<document>(attrs_);
@@ -1134,6 +1138,7 @@ class block_disjunction final : public doc_iterator, private score_ctx {
       }
 
       visit_and_purge([this, target, &doc](auto& it) mutable {
+        UNUSED(this);
         const auto value = it->seek(target);
 
         if (doc_limits::eof(value)) {
@@ -1141,13 +1146,15 @@ class block_disjunction final : public doc_iterator, private score_ctx {
           return false;
         }
 
+        // this is to circumvent bug in GCC 10.1 on ARM64
+        constexpr bool is_min_match = traits_type::min_match();
         if (value < doc.value) {
           doc.value = value;
-          if constexpr (traits_type::min_match()) {
+          if constexpr (is_min_match) {
             match_count_ = 1;
           }
         } else {
-          if constexpr (traits_type::min_match()) {
+          if constexpr (is_min_match) {
             if (target == value) {
               ++match_count_;
             }
@@ -1206,7 +1213,7 @@ class block_disjunction final : public doc_iterator, private score_ctx {
   }
 
   static constexpr doc_id_t num_blocks() noexcept {
-    return std::max(size_t(1), traits_type::num_blocks());
+    return static_cast<doc_id_t>(std::max(size_t(1), traits_type::num_blocks()));
   }
 
   static constexpr doc_id_t window() noexcept {
@@ -1344,7 +1351,9 @@ class block_disjunction final : public doc_iterator, private score_ctx {
         //  }
         //}
 
-        if constexpr (traits_type::score()) {
+        // circumventing GCC 10.1 bug on ARM64
+        constexpr bool is_score = traits_type::score(); 
+        if constexpr (is_score) {
           if (!it.score->is_default()) {
             return this->refill<true>(it, empty);
           }
@@ -1362,15 +1371,17 @@ class block_disjunction final : public doc_iterator, private score_ctx {
 
     cur_ = *mask_;
     begin_ = mask_ + 1;
-    while (!cur_) {
-      cur_ = *begin_++;
-      doc_base_ += bits_required<uint64_t>();
-    }
-    assert(cur_);
-
     if constexpr (traits_type::min_match() || traits_type::score()) {
       buf_offset_ = 0;
     }
+    while (!cur_) {
+      cur_ = *begin_++;
+      doc_base_ += bits_required<uint64_t>();
+      if constexpr (traits_type::min_match() || traits_type::score()) {
+        buf_offset_ += bits_required<uint64_t>();
+      }
+    }
+    assert(cur_);
 
     return true;
   }
@@ -1427,8 +1438,8 @@ class block_disjunction final : public doc_iterator, private score_ctx {
   attributes attrs_;
   size_t match_count_;
   size_t buf_offset_{}; // offset within a buffer
-  score_buffer_type score_buf_;
-  min_match_buffer_type match_buf_;
+  score_buffer_type score_buf_;     // FIXME EBO
+  min_match_buffer_type match_buf_; // FIXME EBO
   const byte_type* score_value_{score_buf_.data()};
   order::prepared::merger merger_;
 }; // block_disjunction

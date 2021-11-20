@@ -22,12 +22,12 @@
 #include "absl/strings/internal/resize_uninitialized.h"
 #include "absl/strings/string_view.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace substitute_internal {
 
-void SubstituteAndAppendArray(std::string* output, absl::string_view format,
-                              const absl::string_view* args_array,
+void SubstituteAndAppendArray(std::string* output, iresearch_absl::string_view format,
+                              const iresearch_absl::string_view* args_array,
                               size_t num_args) {
   // Determine total size needed.
   size_t size = 0;
@@ -35,21 +35,21 @@ void SubstituteAndAppendArray(std::string* output, absl::string_view format,
     if (format[i] == '$') {
       if (i + 1 >= format.size()) {
 #ifndef NDEBUG
-        ABSL_RAW_LOG(FATAL,
-                     "Invalid absl::Substitute() format string: \"%s\".",
-                     absl::CEscape(format).c_str());
+        IRESEARCH_ABSL_RAW_LOG(FATAL,
+                     "Invalid iresearch_absl::Substitute() format string: \"%s\".",
+                     iresearch_absl::CEscape(format).c_str());
 #endif
         return;
-      } else if (absl::ascii_isdigit(format[i + 1])) {
+      } else if (iresearch_absl::ascii_isdigit(format[i + 1])) {
         int index = format[i + 1] - '0';
         if (static_cast<size_t>(index) >= num_args) {
 #ifndef NDEBUG
-          ABSL_RAW_LOG(
+          IRESEARCH_ABSL_RAW_LOG(
               FATAL,
-              "Invalid absl::Substitute() format string: asked for \"$"
+              "Invalid iresearch_absl::Substitute() format string: asked for \"$"
               "%d\", but only %d args were given.  Full format string was: "
               "\"%s\".",
-              index, static_cast<int>(num_args), absl::CEscape(format).c_str());
+              index, static_cast<int>(num_args), iresearch_absl::CEscape(format).c_str());
 #endif
           return;
         }
@@ -60,9 +60,9 @@ void SubstituteAndAppendArray(std::string* output, absl::string_view format,
         ++i;  // Skip next char.
       } else {
 #ifndef NDEBUG
-        ABSL_RAW_LOG(FATAL,
-                     "Invalid absl::Substitute() format string: \"%s\".",
-                     absl::CEscape(format).c_str());
+        IRESEARCH_ABSL_RAW_LOG(FATAL,
+                     "Invalid iresearch_absl::Substitute() format string: \"%s\".",
+                     iresearch_absl::CEscape(format).c_str());
 #endif
         return;
       }
@@ -79,8 +79,8 @@ void SubstituteAndAppendArray(std::string* output, absl::string_view format,
   char* target = &(*output)[original_size];
   for (size_t i = 0; i < format.size(); i++) {
     if (format[i] == '$') {
-      if (absl::ascii_isdigit(format[i + 1])) {
-        const absl::string_view src = args_array[format[i + 1] - '0'];
+      if (iresearch_absl::ascii_isdigit(format[i + 1])) {
+        const iresearch_absl::string_view src = args_array[format[i + 1] - '0'];
         target = std::copy(src.begin(), src.end(), target);
         ++i;  // Skip next char.
       } else if (format[i + 1] == '$') {
@@ -104,12 +104,12 @@ Arg::Arg(const void* value) {
     char* ptr = scratch_ + sizeof(scratch_);
     uintptr_t num = reinterpret_cast<uintptr_t>(value);
     do {
-      *--ptr = absl::numbers_internal::kHexChar[num & 0xf];
+      *--ptr = iresearch_absl::numbers_internal::kHexChar[num & 0xf];
       num >>= 4;
     } while (num != 0);
     *--ptr = 'x';
     *--ptr = '0';
-    piece_ = absl::string_view(ptr, scratch_ + sizeof(scratch_) - ptr);
+    piece_ = iresearch_absl::string_view(ptr, scratch_ + sizeof(scratch_) - ptr);
   }
 }
 
@@ -119,7 +119,7 @@ Arg::Arg(Hex hex) {
   char* writer = end;
   uint64_t value = hex.value;
   do {
-    *--writer = absl::numbers_internal::kHexChar[value & 0xF];
+    *--writer = iresearch_absl::numbers_internal::kHexChar[value & 0xF];
     value >>= 4;
   } while (value != 0);
 
@@ -131,7 +131,7 @@ Arg::Arg(Hex hex) {
     beg = writer;
   }
 
-  piece_ = absl::string_view(beg, end - beg);
+  piece_ = iresearch_absl::string_view(beg, end - beg);
 }
 
 // TODO(jorg): Don't duplicate so much code between here and str_cat.cc
@@ -163,9 +163,9 @@ Arg::Arg(Dec dec) {
     if (add_sign_again) *--writer = '-';
   }
 
-  piece_ = absl::string_view(writer, end - writer);
+  piece_ = iresearch_absl::string_view(writer, end - writer);
 }
 
 }  // namespace substitute_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

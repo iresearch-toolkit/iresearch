@@ -29,24 +29,24 @@
 #include "absl/base/internal/unaligned_access.h"
 #include "absl/base/optimization.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace hash_internal {
 
-#ifdef ABSL_IS_BIG_ENDIAN
-#define uint32_in_expected_order(x) (absl::gbswap_32(x))
-#define uint64_in_expected_order(x) (absl::gbswap_64(x))
+#ifdef IRESEARCH_ABSL_IS_BIG_ENDIAN
+#define uint32_in_expected_order(x) (iresearch_absl::gbswap_32(x))
+#define uint64_in_expected_order(x) (iresearch_absl::gbswap_64(x))
 #else
 #define uint32_in_expected_order(x) (x)
 #define uint64_in_expected_order(x) (x)
 #endif
 
 static uint64_t Fetch64(const char *p) {
-  return uint64_in_expected_order(ABSL_INTERNAL_UNALIGNED_LOAD64(p));
+  return uint64_in_expected_order(IRESEARCH_ABSL_INTERNAL_UNALIGNED_LOAD64(p));
 }
 
 static uint32_t Fetch32(const char *p) {
-  return uint32_in_expected_order(ABSL_INTERNAL_UNALIGNED_LOAD32(p));
+  return uint32_in_expected_order(IRESEARCH_ABSL_INTERNAL_UNALIGNED_LOAD32(p));
 }
 
 // Some primes between 2^63 and 2^64 for various uses.
@@ -171,9 +171,9 @@ uint32_t CityHash32(const char *s, size_t len) {
     h = Rotate32(h, 19);
     h = h * 5 + 0xe6546b64;
     g ^= b4;
-    g = absl::gbswap_32(g) * 5;
+    g = iresearch_absl::gbswap_32(g) * 5;
     h += b4 * 5;
-    h = absl::gbswap_32(h);
+    h = iresearch_absl::gbswap_32(h);
     f += b0;
     PERMUTE3(f, h, g);
     s += 20;
@@ -285,11 +285,11 @@ static uint64_t HashLen33to64(const char *s, size_t len) {
   uint64_t h = Fetch64(s + len - 16) * mul;
   uint64_t u = Rotate(a + g, 43) + (Rotate(b, 30) + c) * 9;
   uint64_t v = ((a + g) ^ d) + f + 1;
-  uint64_t w = absl::gbswap_64((u + v) * mul) + h;
+  uint64_t w = iresearch_absl::gbswap_64((u + v) * mul) + h;
   uint64_t x = Rotate(e + f, 42) + c;
-  uint64_t y = (absl::gbswap_64((v + w) * mul) + g) * mul;
+  uint64_t y = (iresearch_absl::gbswap_64((v + w) * mul) + g) * mul;
   uint64_t z = e + f + c;
-  a = absl::gbswap_64((x + z) * mul + y) + b;
+  a = iresearch_absl::gbswap_64((x + z) * mul + y) + b;
   b = ShiftMix((z + a) * mul + d + h) * mul;
   return b + x;
 }
@@ -342,5 +342,5 @@ uint64_t CityHash64WithSeeds(const char *s, size_t len, uint64_t seed0,
 }
 
 }  // namespace hash_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

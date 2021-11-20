@@ -27,10 +27,10 @@
 //
 // Example:
 //
-//   auto a = absl::any(65);
-//   absl::any_cast<int>(a);         // 65
-//   absl::any_cast<char>(a);        // throws absl::bad_any_cast
-//   absl::any_cast<std::string>(a); // throws absl::bad_any_cast
+//   auto a = iresearch_absl::any(65);
+//   iresearch_absl::any_cast<int>(a);         // 65
+//   iresearch_absl::any_cast<char>(a);        // throws iresearch_absl::bad_any_cast
+//   iresearch_absl::any_cast<std::string>(a); // throws iresearch_absl::bad_any_cast
 //
 // `absl::any` is a C++11 compatible version of the C++17 `std::any` abstraction
 // and is designed to be a drop-in replacement for code compliant with C++17.
@@ -50,26 +50,26 @@
 // Abseil has also released an `absl::variant` type (a C++11 compatible version
 // of the C++17 `std::variant`), which is generally preferred for use over
 // `absl::any`.
-#ifndef ABSL_TYPES_ANY_H_
-#define ABSL_TYPES_ANY_H_
+#ifndef IRESEARCH_ABSL_TYPES_ANY_H_
+#define IRESEARCH_ABSL_TYPES_ANY_H_
 
 #include "absl/base/config.h"
 #include "absl/utility/utility.h"
 
-#ifdef ABSL_USES_STD_ANY
+#ifdef IRESEARCH_ABSL_USES_STD_ANY
 
 #include <any>  // IWYU pragma: export
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 using std::any;
 using std::any_cast;
 using std::bad_any_cast;
 using std::make_any;
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#else  // ABSL_USES_STD_ANY
+#else  // IRESEARCH_ABSL_USES_STD_ANY
 
 #include <algorithm>
 #include <cstddef>
@@ -87,14 +87,14 @@ ABSL_NAMESPACE_END
 
 // NOTE: This macro is an implementation detail that is undefined at the bottom
 // of the file. It is not intended for expansion directly from user code.
-#ifdef ABSL_ANY_DETAIL_HAS_RTTI
-#error ABSL_ANY_DETAIL_HAS_RTTI cannot be directly set
+#ifdef IRESEARCH_ABSL_ANY_DETAIL_HAS_RTTI
+#error IRESEARCH_ABSL_ANY_DETAIL_HAS_RTTI cannot be directly set
 #elif !defined(__GNUC__) || defined(__GXX_RTTI)
-#define ABSL_ANY_DETAIL_HAS_RTTI 1
+#define IRESEARCH_ABSL_ANY_DETAIL_HAS_RTTI 1
 #endif  // !defined(__GNUC__) || defined(__GXX_RTTI)
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 class any;
 
@@ -117,7 +117,7 @@ any make_any(std::initializer_list<U> il, Args&&... args);
 
 // any_cast()
 //
-// Statically casts the value of a `const absl::any` type to the given type.
+// Statically casts the value of a `const iresearch_absl::any` type to the given type.
 // This function will throw `absl::bad_any_cast` if the stored value type of the
 // `absl::any` does not match the cast.
 //
@@ -126,8 +126,8 @@ any make_any(std::initializer_list<U> il, Args&&... args);
 //
 // Example:
 //
-//   absl::any my_any = std::vector<int>();
-//   absl::any_cast<std::vector<int>&>(my_any).push_back(42);
+//   iresearch_absl::any my_any = std::vector<int>();
+//   iresearch_absl::any_cast<std::vector<int>&>(my_any).push_back(42);
 template <typename ValueType>
 ValueType any_cast(const any& operand);
 
@@ -157,7 +157,7 @@ template <typename ValueType>
 ValueType* any_cast(any* operand) noexcept;
 
 // -----------------------------------------------------------------------------
-// absl::any
+// iresearch_absl::any
 // -----------------------------------------------------------------------------
 //
 // An `absl::any` object provides the facility to either store an instance of a
@@ -171,10 +171,10 @@ ValueType* any_cast(any* operand) noexcept;
 //
 // Example:
 //
-//   auto a = absl::any(65);                 // Literal, copyable
-//   auto b = absl::any(std::vector<int>()); // Default-initialized, copyable
+//   auto a = iresearch_absl::any(65);                 // Literal, copyable
+//   auto b = iresearch_absl::any(std::vector<int>()); // Default-initialized, copyable
 //   std::unique_ptr<Foo> my_foo;
-//   auto c = absl::any(std::move(my_foo));  // Error, not copy-constructible
+//   auto c = iresearch_absl::any(std::move(my_foo));  // Error, not copy-constructible
 //
 // Note that `absl::any` makes use of decayed types (`absl::decay_t` in this
 // context) to remove const-volatile qualifiers (known as "cv qualifiers"),
@@ -188,10 +188,10 @@ ValueType* any_cast(any* operand) noexcept;
 // Example:
 //
 //   const int a = 4;
-//   absl::any foo(a);  // Decay ensures we store an "int", not a "const int&".
+//   iresearch_absl::any foo(a);  // Decay ensures we store an "int", not a "const int&".
 //
 //   void my_function() {}
-//   absl::any bar(my_function);  // Decay ensures we store a function pointer.
+//   iresearch_absl::any bar(my_function);  // Decay ensures we store a function pointer.
 //
 // `absl::any` is a C++11 compatible version of the C++17 `std::any` abstraction
 // and is designed to be a drop-in replacement for code compliant with C++17.
@@ -225,16 +225,16 @@ class any {
   // This constructor will not participate in overload resolution if the
   // decayed type of `T` is not copy-constructible.
   template <
-      typename T, typename VT = absl::decay_t<T>,
-      absl::enable_if_t<!absl::disjunction<
+      typename T, typename VT = iresearch_absl::decay_t<T>,
+      iresearch_absl::enable_if_t<!iresearch_absl::disjunction<
           std::is_same<any, VT>, IsInPlaceType<VT>,
-          absl::negation<std::is_copy_constructible<VT> > >::value>* = nullptr>
+          iresearch_absl::negation<std::is_copy_constructible<VT> > >::value>* = nullptr>
   any(T&& value) : obj_(new Obj<VT>(in_place, std::forward<T>(value))) {}
 
   // Constructs an `absl::any` object with a "contained object" of the decayed
   // type of `T`, which is initialized via `std::forward<T>(value)`.
-  template <typename T, typename... Args, typename VT = absl::decay_t<T>,
-            absl::enable_if_t<absl::conjunction<
+  template <typename T, typename... Args, typename VT = iresearch_absl::decay_t<T>,
+            iresearch_absl::enable_if_t<iresearch_absl::conjunction<
                 std::is_copy_constructible<VT>,
                 std::is_constructible<VT, Args...>>::value>* = nullptr>
   explicit any(in_place_type_t<T> /*tag*/, Args&&... args)
@@ -245,9 +245,9 @@ class any {
   // direct-non-list-initializing an object of type `VT` with the arguments
   // `initializer_list, std::forward<Args>(args)...`.
   template <
-      typename T, typename U, typename... Args, typename VT = absl::decay_t<T>,
-      absl::enable_if_t<
-          absl::conjunction<std::is_copy_constructible<VT>,
+      typename T, typename U, typename... Args, typename VT = iresearch_absl::decay_t<T>,
+      iresearch_absl::enable_if_t<
+          iresearch_absl::conjunction<std::is_copy_constructible<VT>,
                             std::is_constructible<VT, std::initializer_list<U>&,
                                                   Args...>>::value>* = nullptr>
   explicit any(in_place_type_t<T> /*tag*/, std::initializer_list<U> ilist,
@@ -271,9 +271,9 @@ class any {
   }
 
   // Assigns an `absl::any` object with a "contained object" of the passed type.
-  template <typename T, typename VT = absl::decay_t<T>,
-            absl::enable_if_t<absl::conjunction<
-                absl::negation<std::is_same<VT, any>>,
+  template <typename T, typename VT = iresearch_absl::decay_t<T>,
+            iresearch_absl::enable_if_t<iresearch_absl::conjunction<
+                iresearch_absl::negation<std::is_same<VT, any>>,
                 std::is_copy_constructible<VT>>::value>* = nullptr>
   any& operator=(T&& rhs) {
     any tmp(in_place_type_t<VT>(), std::forward<T>(rhs));
@@ -294,8 +294,8 @@ class any {
   // `*this` does not contain a value, and any previously contained value has
   // been destroyed.
   template <
-      typename T, typename... Args, typename VT = absl::decay_t<T>,
-      absl::enable_if_t<std::is_copy_constructible<VT>::value &&
+      typename T, typename... Args, typename VT = iresearch_absl::decay_t<T>,
+      iresearch_absl::enable_if_t<std::is_copy_constructible<VT>::value &&
                         std::is_constructible<VT, Args...>::value>* = nullptr>
   VT& emplace(Args&&... args) {
     reset();  // NOTE: reset() is required here even in the world of exceptions.
@@ -317,8 +317,8 @@ class any {
   // unless `is_copy_constructible_v<VT>` is `true` and
   // `is_constructible_v<VT, initializer_list<U>&, Args...>` is `true`.
   template <
-      typename T, typename U, typename... Args, typename VT = absl::decay_t<T>,
-      absl::enable_if_t<std::is_copy_constructible<VT>::value &&
+      typename T, typename U, typename... Args, typename VT = iresearch_absl::decay_t<T>,
+      iresearch_absl::enable_if_t<std::is_copy_constructible<VT>::value &&
                         std::is_constructible<VT, std::initializer_list<U>&,
                                               Args...>::value>* = nullptr>
   VT& emplace(std::initializer_list<U> ilist, Args&&... args) {
@@ -348,7 +348,7 @@ class any {
   // returns `false`.
   bool has_value() const noexcept { return obj_ != nullptr; }
 
-#if ABSL_ANY_DETAIL_HAS_RTTI
+#if IRESEARCH_ABSL_ANY_DETAIL_HAS_RTTI
   // Returns: typeid(T) if *this has a contained object of type T, otherwise
   // typeid(void).
   const std::type_info& type() const noexcept {
@@ -358,7 +358,7 @@ class any {
 
     return typeid(void);
   }
-#endif  // ABSL_ANY_DETAIL_HAS_RTTI
+#endif  // IRESEARCH_ABSL_ANY_DETAIL_HAS_RTTI
 
  private:
   // Tagged type-erased abstraction for holding a cloneable object.
@@ -367,9 +367,9 @@ class any {
     virtual ~ObjInterface() = default;
     virtual std::unique_ptr<ObjInterface> Clone() const = 0;
     virtual const void* ObjTypeId() const noexcept = 0;
-#if ABSL_ANY_DETAIL_HAS_RTTI
+#if IRESEARCH_ABSL_ANY_DETAIL_HAS_RTTI
     virtual const std::type_info& Type() const noexcept = 0;
-#endif  // ABSL_ANY_DETAIL_HAS_RTTI
+#endif  // IRESEARCH_ABSL_ANY_DETAIL_HAS_RTTI
   };
 
   // Hold a value of some queryable type, with an ability to Clone it.
@@ -386,9 +386,9 @@ class any {
 
     const void* ObjTypeId() const noexcept final { return IdForType<T>(); }
 
-#if ABSL_ANY_DETAIL_HAS_RTTI
+#if IRESEARCH_ABSL_ANY_DETAIL_HAS_RTTI
     const std::type_info& Type() const noexcept final { return typeid(T); }
-#endif  // ABSL_ANY_DETAIL_HAS_RTTI
+#endif  // IRESEARCH_ABSL_ANY_DETAIL_HAS_RTTI
 
     T value;
   };
@@ -518,11 +518,11 @@ T* any_cast(any* operand) noexcept {
              : nullptr;
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#undef ABSL_ANY_DETAIL_HAS_RTTI
+#undef IRESEARCH_ABSL_ANY_DETAIL_HAS_RTTI
 
-#endif  // ABSL_USES_STD_ANY
+#endif  // IRESEARCH_ABSL_USES_STD_ANY
 
-#endif  // ABSL_TYPES_ANY_H_
+#endif  // IRESEARCH_ABSL_TYPES_ANY_H_

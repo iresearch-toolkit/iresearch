@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ABSL_BASE_INTERNAL_ERRNO_SAVER_H_
-#define ABSL_BASE_INTERNAL_ERRNO_SAVER_H_
+#ifndef IRESEARCH_ABSL_BASE_INTERNAL_ERRNO_SAVER_H_
+#define IRESEARCH_ABSL_BASE_INTERNAL_ERRNO_SAVER_H_
 
 #include <cerrno>
 
 #include "absl/base/config.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace base_internal {
 
 // `ErrnoSaver` captures the value of `errno` upon construction and restores it
@@ -37,7 +37,7 @@ class ErrnoSaver {
 };
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_BASE_INTERNAL_ERRNO_SAVER_H_
+#endif  // IRESEARCH_ABSL_BASE_INTERNAL_ERRNO_SAVER_H_

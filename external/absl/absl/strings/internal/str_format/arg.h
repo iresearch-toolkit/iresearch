@@ -1,5 +1,5 @@
-#ifndef ABSL_STRINGS_INTERNAL_STR_FORMAT_ARG_H_
-#define ABSL_STRINGS_INTERNAL_STR_FORMAT_ARG_H_
+#ifndef IRESEARCH_ABSL_STRINGS_INTERNAL_STR_FORMAT_ARG_H_
+#define IRESEARCH_ABSL_STRINGS_INTERNAL_STR_FORMAT_ARG_H_
 
 #include <string.h>
 #include <wchar.h>
@@ -18,14 +18,14 @@
 #include "absl/strings/internal/str_format/extension.h"
 #include "absl/strings/string_view.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 class Cord;
 class FormatCountCapture;
 class FormatSink;
 
-template <absl::FormatConversionCharSet C>
+template <iresearch_absl::FormatConversionCharSet C>
 struct FormatConvertResult;
 class FormatConversionSpec;
 
@@ -49,9 +49,9 @@ auto FormatConvertImpl(const T& v, FormatConversionSpecImpl conv,
                                   std::declval<const FormatConversionSpec&>(),
                                   std::declval<FormatSink*>())) {
   using FormatConversionSpecT =
-      absl::enable_if_t<sizeof(const T& (*)()) != 0, FormatConversionSpec>;
+      iresearch_absl::enable_if_t<sizeof(const T& (*)()) != 0, FormatConversionSpec>;
   using FormatSinkT =
-      absl::enable_if_t<sizeof(const T& (*)()) != 0, FormatSink>;
+      iresearch_absl::enable_if_t<sizeof(const T& (*)()) != 0, FormatSink>;
   auto fcs = conv.Wrap<FormatConversionSpecT>();
   auto fs = sink->Wrap<FormatSinkT>();
   return AbslFormatConvert(v, fcs, &fs);
@@ -114,7 +114,7 @@ FormatConvertImpl(const char* v, const FormatConversionSpecImpl conv,
                   FormatSinkImpl* sink);
 
 template <class AbslCord, typename std::enable_if<std::is_same<
-                              AbslCord, absl::Cord>::value>::type* = nullptr>
+                              AbslCord, iresearch_absl::Cord>::value>::type* = nullptr>
 StringConvertResult FormatConvertImpl(const AbslCord& value,
                                       FormatConversionSpecImpl conv,
                                       FormatSinkImpl* sink) {
@@ -237,7 +237,7 @@ struct FormatCountCaptureHelper {
   static ArgConvertResult<FormatConversionCharSetInternal::n> ConvertHelper(
       const FormatCountCapture& v, FormatConversionSpecImpl conv,
       FormatSinkImpl* sink) {
-    const absl::enable_if_t<sizeof(T) != 0, FormatCountCapture>& v2 = v;
+    const iresearch_absl::enable_if_t<sizeof(T) != 0, FormatCountCapture>& v2 = v;
 
     if (conv.conversion_char() !=
         str_format_internal::FormatConversionCharInternal::n) {
@@ -279,7 +279,7 @@ struct FormatArgImplFriend {
 
 template <typename Arg>
 constexpr FormatConversionCharSet ArgumentToConv() {
-  return absl::str_format_internal::ExtractCharSet(
+  return iresearch_absl::str_format_internal::ExtractCharSet(
       decltype(str_format_internal::FormatConvertImpl(
           std::declval<const Arg&>(),
           std::declval<const FormatConversionSpecImpl&>(),
@@ -443,12 +443,12 @@ class FormatArgImpl {
   template <typename T>
   static bool Dispatch(Data arg, FormatConversionSpecImpl spec, void* out) {
     // A `none` conv indicates that we want the `int` conversion.
-    if (ABSL_PREDICT_FALSE(spec.conversion_char() ==
+    if (IRESEARCH_ABSL_PREDICT_FALSE(spec.conversion_char() ==
                            FormatConversionCharInternal::kNone)) {
       return ToInt<T>(arg, static_cast<int*>(out), std::is_integral<T>(),
                       std::is_enum<T>());
     }
-    if (ABSL_PREDICT_FALSE(!Contains(ArgumentToConv<T>(),
+    if (IRESEARCH_ABSL_PREDICT_FALSE(!Contains(ArgumentToConv<T>(),
                                      spec.conversion_char()))) {
       return false;
     }
@@ -462,43 +462,43 @@ class FormatArgImpl {
   Dispatcher dispatcher_;
 };
 
-#define ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(T, E)                     \
+#define IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(T, E)                     \
   E template bool FormatArgImpl::Dispatch<T>(Data, FormatConversionSpecImpl, \
                                              void*)
 
-#define ABSL_INTERNAL_FORMAT_DISPATCH_OVERLOADS_EXPAND_(...)                   \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(str_format_internal::VoidPtr,     \
+#define IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_OVERLOADS_EXPAND_(...)                   \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(str_format_internal::VoidPtr,     \
                                              __VA_ARGS__);                     \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(bool, __VA_ARGS__);               \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(char, __VA_ARGS__);               \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(signed char, __VA_ARGS__);        \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(unsigned char, __VA_ARGS__);      \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(short, __VA_ARGS__); /* NOLINT */ \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(unsigned short,      /* NOLINT */ \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(bool, __VA_ARGS__);               \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(char, __VA_ARGS__);               \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(signed char, __VA_ARGS__);        \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(unsigned char, __VA_ARGS__);      \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(short, __VA_ARGS__); /* NOLINT */ \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(unsigned short,      /* NOLINT */ \
                                              __VA_ARGS__);                     \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(int, __VA_ARGS__);                \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(unsigned int, __VA_ARGS__);       \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(long, __VA_ARGS__); /* NOLINT */  \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(unsigned long,      /* NOLINT */  \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(int, __VA_ARGS__);                \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(unsigned int, __VA_ARGS__);       \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(long, __VA_ARGS__); /* NOLINT */  \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(unsigned long,      /* NOLINT */  \
                                              __VA_ARGS__);                     \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(long long, /* NOLINT */           \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(long long, /* NOLINT */           \
                                              __VA_ARGS__);                     \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(unsigned long long, /* NOLINT */  \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(unsigned long long, /* NOLINT */  \
                                              __VA_ARGS__);                     \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(int128, __VA_ARGS__);             \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(uint128, __VA_ARGS__);            \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(float, __VA_ARGS__);              \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(double, __VA_ARGS__);             \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(long double, __VA_ARGS__);        \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(const char*, __VA_ARGS__);        \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(std::string, __VA_ARGS__);        \
-  ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(string_view, __VA_ARGS__)
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(int128, __VA_ARGS__);             \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(uint128, __VA_ARGS__);            \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(float, __VA_ARGS__);              \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(double, __VA_ARGS__);             \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(long double, __VA_ARGS__);        \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(const char*, __VA_ARGS__);        \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(std::string, __VA_ARGS__);        \
+  IRESEARCH_ABSL_INTERNAL_FORMAT_DISPATCH_INSTANTIATE_(string_view, __VA_ARGS__)
 
 ABSL_INTERNAL_FORMAT_DISPATCH_OVERLOADS_EXPAND_(extern);
 
 
 }  // namespace str_format_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_STRINGS_INTERNAL_STR_FORMAT_ARG_H_
+#endif  // IRESEARCH_ABSL_STRINGS_INTERNAL_STR_FORMAT_ARG_H_

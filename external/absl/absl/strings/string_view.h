@@ -24,8 +24,8 @@
 //
 // This `absl::string_view` abstraction is designed to be a drop-in
 // replacement for the C++17 `std::string_view` abstraction.
-#ifndef ABSL_STRINGS_STRING_VIEW_H_
-#define ABSL_STRINGS_STRING_VIEW_H_
+#ifndef IRESEARCH_ABSL_STRINGS_STRING_VIEW_H_
+#define IRESEARCH_ABSL_STRINGS_STRING_VIEW_H_
 
 #include <algorithm>
 #include <cassert>
@@ -42,29 +42,29 @@
 #include "absl/base/optimization.h"
 #include "absl/base/port.h"
 
-#ifdef ABSL_USES_STD_STRING_VIEW
+#ifdef IRESEARCH_ABSL_USES_STD_STRING_VIEW
 
 #include <string_view>  // IWYU pragma: export
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 using string_view = std::string_view;
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#else  // ABSL_USES_STD_STRING_VIEW
+#else  // IRESEARCH_ABSL_USES_STD_STRING_VIEW
 
-#if ABSL_HAVE_BUILTIN(__builtin_memcmp) || \
+#if IRESEARCH_ABSL_HAVE_BUILTIN(__builtin_memcmp) || \
     (defined(__GNUC__) && !defined(__clang__))
-#define ABSL_INTERNAL_STRING_VIEW_MEMCMP __builtin_memcmp
-#else  // ABSL_HAVE_BUILTIN(__builtin_memcmp)
-#define ABSL_INTERNAL_STRING_VIEW_MEMCMP memcmp
-#endif  // ABSL_HAVE_BUILTIN(__builtin_memcmp)
+#define IRESEARCH_ABSL_INTERNAL_STRING_VIEW_MEMCMP __builtin_memcmp
+#else  // IRESEARCH_ABSL_HAVE_BUILTIN(__builtin_memcmp)
+#define IRESEARCH_ABSL_INTERNAL_STRING_VIEW_MEMCMP memcmp
+#endif  // IRESEARCH_ABSL_HAVE_BUILTIN(__builtin_memcmp)
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
-// absl::string_view
+// iresearch_absl::string_view
 //
 // A `string_view` provides a lightweight view into the string data provided by
 // a `std::string`, double-quoted string literal, character array, or even
@@ -79,11 +79,11 @@ ABSL_NAMESPACE_BEGIN
 //
 // Because of its small size, prefer passing `string_view` by value:
 //
-//   void MyFunction(absl::string_view arg);
+//   void MyFunction(iresearch_absl::string_view arg);
 //
 // If circumstances require, you may also pass one by const reference:
 //
-//   void MyFunction(const absl::string_view& arg);  // not preferred
+//   void MyFunction(const iresearch_absl::string_view& arg);  // not preferred
 //
 // Passing by value generates slightly smaller code for many architectures.
 //
@@ -96,11 +96,11 @@ ABSL_NAMESPACE_BEGIN
 // temporary value:
 //
 //   // BAD use of string_view: lifetime problem
-//   absl::string_view sv = obj.ReturnAString();
+//   iresearch_absl::string_view sv = obj.ReturnAString();
 //
 //   // GOOD use of string_view: str outlives sv
 //   std::string str = obj.ReturnAString();
-//   absl::string_view sv = str;
+//   iresearch_absl::string_view sv = str;
 //
 // Due to lifetime issues, a `string_view` is sometimes a poor choice for a
 // return value and usually a poor choice for a data member. If you do use a
@@ -108,7 +108,7 @@ ABSL_NAMESPACE_BEGIN
 // pointed to by the `string_view` outlives the `string_view`.
 //
 // A `string_view` may represent a whole string or just part of a string. For
-// example, when splitting a string, `std::vector<absl::string_view>` is a
+// example, when splitting a string, `std::vector<iresearch_absl::string_view>` is a
 // natural data type for the output.
 //
 // For another example, a Cord is a non-contiguous, potentially very
@@ -126,8 +126,8 @@ ABSL_NAMESPACE_BEGIN
 //
 // You may create a null `string_view` in two ways:
 //
-//   absl::string_view sv;
-//   absl::string_view sv(nullptr, 0);
+//   iresearch_absl::string_view sv;
+//   iresearch_absl::string_view sv(nullptr, 0);
 //
 // For the above, `sv.data() == nullptr`, `sv.length() == 0`, and
 // `sv.empty() == true`. Also, if you create a `string_view` with a non-null
@@ -145,17 +145,17 @@ ABSL_NAMESPACE_BEGIN
 //
 //   const char* nullcp = nullptr;
 //   // string_view.size() will return 0 in all cases.
-//   absl::string_view();
-//   absl::string_view(nullcp, 0);
-//   absl::string_view("");
-//   absl::string_view("", 0);
-//   absl::string_view("abcdef", 0);
-//   absl::string_view("abcdef" + 6, 0);
+//   iresearch_absl::string_view();
+//   iresearch_absl::string_view(nullcp, 0);
+//   iresearch_absl::string_view("");
+//   iresearch_absl::string_view("", 0);
+//   iresearch_absl::string_view("abcdef", 0);
+//   iresearch_absl::string_view("abcdef" + 6, 0);
 //
 // All empty `string_view` objects whether null or not, are equal:
 //
-//   absl::string_view() == absl::string_view("", 0)
-//   absl::string_view(nullptr, 0) == absl::string_view("abcdef"+6, 0)
+//   iresearch_absl::string_view() == iresearch_absl::string_view("", 0)
+//   iresearch_absl::string_view(nullptr, 0) == iresearch_absl::string_view("abcdef"+6, 0)
 class string_view {
  public:
   using traits_type = std::char_traits<char>;
@@ -288,7 +288,7 @@ class string_view {
   // Returns the ith element of the `string_view` using the array operator.
   // Note that this operator does not perform any bounds checking.
   constexpr const_reference operator[](size_type i) const {
-    return ABSL_HARDENING_ASSERT(i < size()), ptr_[i];
+    return IRESEARCH_ABSL_HARDENING_ASSERT(i < size()), ptr_[i];
   }
 
   // string_view::at()
@@ -297,7 +297,7 @@ class string_view {
   // and an exception of type `std::out_of_range` will be thrown on invalid
   // access.
   constexpr const_reference at(size_type i) const {
-    return ABSL_PREDICT_TRUE(i < size())
+    return IRESEARCH_ABSL_PREDICT_TRUE(i < size())
                ? ptr_[i]
                : ((void)base_internal::ThrowStdOutOfRange(
                       "absl::string_view::at"),
@@ -308,14 +308,14 @@ class string_view {
   //
   // Returns the first element of a `string_view`.
   constexpr const_reference front() const {
-    return ABSL_HARDENING_ASSERT(!empty()), ptr_[0];
+    return IRESEARCH_ABSL_HARDENING_ASSERT(!empty()), ptr_[0];
   }
 
   // string_view::back()
   //
   // Returns the last element of a `string_view`.
   constexpr const_reference back() const {
-    return ABSL_HARDENING_ASSERT(!empty()), ptr_[size() - 1];
+    return IRESEARCH_ABSL_HARDENING_ASSERT(!empty()), ptr_[size() - 1];
   }
 
   // string_view::data()
@@ -334,7 +334,7 @@ class string_view {
   // Removes the first `n` characters from the `string_view`. Note that the
   // underlying string is not changed, only the view.
   void remove_prefix(size_type n) {
-    ABSL_HARDENING_ASSERT(n <= length_);
+    IRESEARCH_ABSL_HARDENING_ASSERT(n <= length_);
     ptr_ += n;
     length_ -= n;
   }
@@ -344,7 +344,7 @@ class string_view {
   // Removes the last `n` characters from the `string_view`. Note that the
   // underlying string is not changed, only the view.
   void remove_suffix(size_type n) {
-    ABSL_HARDENING_ASSERT(n <= length_);
+    IRESEARCH_ABSL_HARDENING_ASSERT(n <= length_);
     length_ -= n;
   }
 
@@ -371,7 +371,7 @@ class string_view {
   // Copies the contents of the `string_view` at offset `pos` and length `n`
   // into `buf`.
   size_type copy(char* buf, size_type n, size_type pos = 0) const {
-    if (ABSL_PREDICT_FALSE(pos > length_)) {
+    if (IRESEARCH_ABSL_PREDICT_FALSE(pos > length_)) {
       base_internal::ThrowStdOutOfRange("absl::string_view::copy");
     }
     size_type rlen = (std::min)(length_ - pos, n);
@@ -387,9 +387,9 @@ class string_view {
   // Returns a "substring" of the `string_view` (at offset `pos` and length
   // `n`) as another string_view. This function throws `std::out_of_bounds` if
   // `pos > size`.
-  // Use absl::ClippedSubstr if you need a truncating substr operation.
+  // Use iresearch_absl::ClippedSubstr if you need a truncating substr operation.
   constexpr string_view substr(size_type pos, size_type n = npos) const {
-    return ABSL_PREDICT_FALSE(pos > length_)
+    return IRESEARCH_ABSL_PREDICT_FALSE(pos > length_)
                ? (base_internal::ThrowStdOutOfRange(
                       "absl::string_view::substr"),
                   string_view())
@@ -408,7 +408,7 @@ class string_view {
     return CompareImpl(length_, x.length_,
                        Min(length_, x.length_) == 0
                            ? 0
-                           : ABSL_INTERNAL_STRING_VIEW_MEMCMP(
+                           : IRESEARCH_ABSL_INTERNAL_STRING_VIEW_MEMCMP(
                                  ptr_, x.ptr_, Min(length_, x.length_)));
   }
 
@@ -526,7 +526,7 @@ class string_view {
       (std::numeric_limits<difference_type>::max)();
 
   static constexpr size_type CheckLengthInternal(size_type len) {
-    return ABSL_HARDENING_ASSERT(len <= kMaxSize), len;
+    return IRESEARCH_ABSL_HARDENING_ASSERT(len <= kMaxSize), len;
   }
 
   static constexpr size_type StrlenInternal(const char* str) {
@@ -535,11 +535,11 @@ class string_view {
     const char* begin = str;
     while (*str != '\0') ++str;
     return str - begin;
-#elif ABSL_HAVE_BUILTIN(__builtin_strlen) || \
+#elif IRESEARCH_ABSL_HAVE_BUILTIN(__builtin_strlen) || \
     (defined(__GNUC__) && !defined(__clang__))
     // GCC has __builtin_strlen according to
     // https://gcc.gnu.org/onlinedocs/gcc-4.7.0/gcc/Other-Builtins.html, but
-    // ABSL_HAVE_BUILTIN doesn't detect that, so we use the extra checks above.
+    // IRESEARCH_ABSL_HAVE_BUILTIN doesn't detect that, so we use the extra checks above.
     // __builtin_strlen is constexpr.
     return __builtin_strlen(str);
 #else
@@ -568,7 +568,7 @@ class string_view {
 constexpr bool operator==(string_view x, string_view y) noexcept {
   return x.size() == y.size() &&
          (x.empty() ||
-          ABSL_INTERNAL_STRING_VIEW_MEMCMP(x.data(), y.data(), x.size()) == 0);
+          IRESEARCH_ABSL_INTERNAL_STRING_VIEW_MEMCMP(x.data(), y.data(), x.size()) == 0);
 }
 
 constexpr bool operator!=(string_view x, string_view y) noexcept {
@@ -594,15 +594,15 @@ constexpr bool operator>=(string_view x, string_view y) noexcept {
 // IO Insertion Operator
 std::ostream& operator<<(std::ostream& o, string_view piece);
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#undef ABSL_INTERNAL_STRING_VIEW_MEMCMP
+#undef IRESEARCH_ABSL_INTERNAL_STRING_VIEW_MEMCMP
 
-#endif  // ABSL_USES_STD_STRING_VIEW
+#endif  // IRESEARCH_ABSL_USES_STD_STRING_VIEW
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 // ClippedSubstr()
 //
@@ -623,7 +623,7 @@ constexpr string_view NullSafeStringView(const char* p) {
   return p ? string_view(p) : string_view();
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_STRINGS_STRING_VIEW_H_
+#endif  // IRESEARCH_ABSL_STRINGS_STRING_VIEW_H_

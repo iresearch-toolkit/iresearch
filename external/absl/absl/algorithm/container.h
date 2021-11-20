@@ -37,8 +37,8 @@
 // to which the function is applied, `Pred` indicates the predicate object type
 // to be used by the function and `T` indicates the applicable element type.
 
-#ifndef ABSL_ALGORITHM_CONTAINER_H_
-#define ABSL_ALGORITHM_CONTAINER_H_
+#ifndef IRESEARCH_ABSL_ALGORITHM_CONTAINER_H_
+#define IRESEARCH_ABSL_ALGORITHM_CONTAINER_H_
 
 #include <algorithm>
 #include <cassert>
@@ -54,8 +54,8 @@
 #include "absl/base/macros.h"
 #include "absl/meta/type_traits.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace container_algorithm_internal {
 
 // NOTE: it is important to defer to ADL lookup for building with C++ modules,
@@ -135,7 +135,7 @@ constexpr std::size_t c_size(T (&)[N]) {
 
 // c_linear_search()
 //
-// Container-based version of absl::linear_search() for performing a linear
+// Container-based version of iresearch_absl::linear_search() for performing a linear
 // search within a container.
 template <typename C, typename EqualityComparable>
 bool c_linear_search(const C& c, EqualityComparable&& value) {
@@ -785,7 +785,7 @@ OutputIterator c_reverse_copy(const C& sequence, OutputIterator result) {
 template <typename C,
           typename Iterator = container_algorithm_internal::ContainerIter<C>>
 Iterator c_rotate(C& sequence, Iterator middle) {
-  return absl::rotate(container_algorithm_internal::c_begin(sequence), middle,
+  return iresearch_absl::rotate(container_algorithm_internal::c_begin(sequence), middle,
                       container_algorithm_internal::c_end(sequence));
 }
 
@@ -1661,7 +1661,7 @@ void c_iota(Sequence& sequence, T&& value) {
 // accumulation by value.
 //
 // Note: Due to a language technicality this function has return type
-// absl::decay_t<T>. As a user of this function you can casually read
+// iresearch_absl::decay_t<T>. As a user of this function you can casually read
 // this as "returns T by value" and assume it does the right thing.
 template <typename Sequence, typename T>
 decay_t<T> c_accumulate(const Sequence& sequence, T&& init) {
@@ -1687,7 +1687,7 @@ decay_t<T> c_accumulate(const Sequence& sequence, T&& init,
 // to compute the cumulative inner product of container element pairs.
 //
 // Note: Due to a language technicality this function has return type
-// absl::decay_t<T>. As a user of this function you can casually read
+// iresearch_absl::decay_t<T>. As a user of this function you can casually read
 // this as "returns T by value" and assume it does the right thing.
 template <typename Sequence1, typename Sequence2, typename T>
 decay_t<T> c_inner_product(const Sequence1& factors1, const Sequence2& factors2,
@@ -1758,7 +1758,7 @@ OutputIt c_partial_sum(const InputSequence& input, OutputIt output_first,
                           output_first, std::forward<BinaryOp>(op));
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_ALGORITHM_CONTAINER_H_
+#endif  // IRESEARCH_ABSL_ALGORITHM_CONTAINER_H_

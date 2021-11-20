@@ -44,16 +44,16 @@
 // reason, `insert()` and `erase()` return a valid iterator at the current
 // position.
 
-#ifndef ABSL_CONTAINER_BTREE_SET_H_
-#define ABSL_CONTAINER_BTREE_SET_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_BTREE_SET_H_
+#define IRESEARCH_ABSL_CONTAINER_BTREE_SET_H_
 
 #include "absl/container/internal/btree.h"  // IWYU pragma: export
 #include "absl/container/internal/btree_container.h"  // IWYU pragma: export
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
-// absl::btree_set<>
+// iresearch_absl::btree_set<>
 //
 // An `absl::btree_set<K>` is an ordered associative container of unique key
 // values designed to be a more efficient replacement for `std::set` (in most
@@ -85,37 +85,37 @@ class btree_set
   //
   // * Default constructor
   //
-  //   absl::btree_set<std::string> set1;
+  //   iresearch_absl::btree_set<std::string> set1;
   //
   // * Initializer List constructor
   //
-  //   absl::btree_set<std::string> set2 =
+  //   iresearch_absl::btree_set<std::string> set2 =
   //       {{"huey"}, {"dewey"}, {"louie"},};
   //
   // * Copy constructor
   //
-  //   absl::btree_set<std::string> set3(set2);
+  //   iresearch_absl::btree_set<std::string> set3(set2);
   //
   // * Copy assignment operator
   //
-  //  absl::btree_set<std::string> set4;
+  //  iresearch_absl::btree_set<std::string> set4;
   //  set4 = set3;
   //
   // * Move constructor
   //
   //   // Move is guaranteed efficient
-  //   absl::btree_set<std::string> set5(std::move(set4));
+  //   iresearch_absl::btree_set<std::string> set5(std::move(set4));
   //
   // * Move assignment operator
   //
   //   // May be efficient if allocators are compatible
-  //   absl::btree_set<std::string> set6;
+  //   iresearch_absl::btree_set<std::string> set6;
   //   set6 = std::move(set5);
   //
   // * Range constructor
   //
   //   std::vector<std::string> v = {"a", "b"};
-  //   absl::btree_set<std::string> set7(v.begin(), v.end());
+  //   iresearch_absl::btree_set<std::string> set7(v.begin(), v.end());
   btree_set() {}
   using Base::Base;
 
@@ -352,7 +352,7 @@ class btree_set
   using Base::value_comp;
 };
 
-// absl::swap(absl::btree_set<>, absl::btree_set<>)
+// iresearch_absl::swap(iresearch_absl::btree_set<>, iresearch_absl::btree_set<>)
 //
 // Swaps the contents of two `absl::btree_set` containers.
 template <typename K, typename C, typename A>
@@ -360,7 +360,7 @@ void swap(btree_set<K, C, A> &x, btree_set<K, C, A> &y) {
   return x.swap(y);
 }
 
-// absl::erase_if(absl::btree_set<>, Pred)
+// iresearch_absl::erase_if(iresearch_absl::btree_set<>, Pred)
 //
 // Erases all elements that satisfy the predicate pred from the container.
 template <typename K, typename C, typename A, typename Pred>
@@ -374,7 +374,7 @@ void erase_if(btree_set<K, C, A> &set, Pred pred) {
   }
 }
 
-// absl::btree_multiset<>
+// iresearch_absl::btree_multiset<>
 //
 // An `absl::btree_multiset<K>` is an ordered associative container of
 // keys and associated values designed to be a more efficient replacement
@@ -407,37 +407,37 @@ class btree_multiset
   //
   // * Default constructor
   //
-  //   absl::btree_multiset<std::string> set1;
+  //   iresearch_absl::btree_multiset<std::string> set1;
   //
   // * Initializer List constructor
   //
-  //   absl::btree_multiset<std::string> set2 =
+  //   iresearch_absl::btree_multiset<std::string> set2 =
   //       {{"huey"}, {"dewey"}, {"louie"},};
   //
   // * Copy constructor
   //
-  //   absl::btree_multiset<std::string> set3(set2);
+  //   iresearch_absl::btree_multiset<std::string> set3(set2);
   //
   // * Copy assignment operator
   //
-  //  absl::btree_multiset<std::string> set4;
+  //  iresearch_absl::btree_multiset<std::string> set4;
   //  set4 = set3;
   //
   // * Move constructor
   //
   //   // Move is guaranteed efficient
-  //   absl::btree_multiset<std::string> set5(std::move(set4));
+  //   iresearch_absl::btree_multiset<std::string> set5(std::move(set4));
   //
   // * Move assignment operator
   //
   //   // May be efficient if allocators are compatible
-  //   absl::btree_multiset<std::string> set6;
+  //   iresearch_absl::btree_multiset<std::string> set6;
   //   set6 = std::move(set5);
   //
   // * Range constructor
   //
   //   std::vector<std::string> v = {"a", "b"};
-  //   absl::btree_multiset<std::string> set7(v.begin(), v.end());
+  //   iresearch_absl::btree_multiset<std::string> set7(v.begin(), v.end());
   btree_multiset() {}
   using Base::Base;
 
@@ -655,7 +655,7 @@ class btree_multiset
   using Base::value_comp;
 };
 
-// absl::swap(absl::btree_multiset<>, absl::btree_multiset<>)
+// iresearch_absl::swap(iresearch_absl::btree_multiset<>, iresearch_absl::btree_multiset<>)
 //
 // Swaps the contents of two `absl::btree_multiset` containers.
 template <typename K, typename C, typename A>
@@ -663,7 +663,7 @@ void swap(btree_multiset<K, C, A> &x, btree_multiset<K, C, A> &y) {
   return x.swap(y);
 }
 
-// absl::erase_if(absl::btree_multiset<>, Pred)
+// iresearch_absl::erase_if(iresearch_absl::btree_multiset<>, Pred)
 //
 // Erases all elements that satisfy the predicate pred from the container.
 template <typename K, typename C, typename A, typename Pred>
@@ -677,7 +677,7 @@ void erase_if(btree_multiset<K, C, A> &set, Pred pred) {
   }
 }
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_BTREE_SET_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_BTREE_SET_H_

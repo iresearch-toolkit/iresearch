@@ -24,7 +24,7 @@
 // The difference between the mem and str versions is the mem version
 // takes a pointer and a length, rather than a '\0'-terminated string.
 // The memcase* routines defined here assume the locale is "C"
-// (they use absl::ascii_tolower instead of tolower).
+// (they use iresearch_absl::ascii_tolower instead of tolower).
 //
 // These routines are based on the BSD library.
 //
@@ -59,17 +59,17 @@
 // --                      MEMCASEIS
 // strcount                MEMCOUNT       (strcount is from strutil.h)
 
-#ifndef ABSL_STRINGS_INTERNAL_MEMUTIL_H_
-#define ABSL_STRINGS_INTERNAL_MEMUTIL_H_
+#ifndef IRESEARCH_ABSL_STRINGS_INTERNAL_MEMUTIL_H_
+#define IRESEARCH_ABSL_STRINGS_INTERNAL_MEMUTIL_H_
 
 #include <cstddef>
 #include <cstring>
 
 #include "absl/base/port.h"  // disable some warnings on Windows
-#include "absl/strings/ascii.h"  // for absl::ascii_tolower
+#include "absl/strings/ascii.h"  // for iresearch_absl::ascii_tolower
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace strings_internal {
 
 inline char* memcat(char* dest, size_t destlen, const char* src,
@@ -98,10 +98,10 @@ const char* int_memmatch(const char* haystack, size_t haylen,
   for (; haystack < hayend; ++haystack) {
     char hay = case_sensitive
                    ? *haystack
-                   : absl::ascii_tolower(static_cast<unsigned char>(*haystack));
+                   : iresearch_absl::ascii_tolower(static_cast<unsigned char>(*haystack));
     char nee = case_sensitive
                    ? *needle
-                   : absl::ascii_tolower(static_cast<unsigned char>(*needle));
+                   : iresearch_absl::ascii_tolower(static_cast<unsigned char>(*needle));
     if (hay == nee) {
       if (++needle == needleend) {
         return haystack + 1 - neelen;
@@ -142,7 +142,7 @@ const char* memmatch(const char* phaystack, size_t haylen, const char* pneedle,
                      size_t neelen);
 
 }  // namespace strings_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_STRINGS_INTERNAL_MEMUTIL_H_
+#endif  // IRESEARCH_ABSL_STRINGS_INTERNAL_MEMUTIL_H_

@@ -70,13 +70,13 @@
 //
 // For more information, see Adding Type Support to `absl::Hash` below.
 //
-#ifndef ABSL_HASH_HASH_H_
-#define ABSL_HASH_HASH_H_
+#ifndef IRESEARCH_ABSL_HASH_HASH_H_
+#define IRESEARCH_ABSL_HASH_HASH_H_
 
 #include "absl/hash/internal/hash.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 
 // -----------------------------------------------------------------------------
 // `absl::Hash`
@@ -100,7 +100,7 @@ ABSL_NAMESPACE_BEGIN
 //   * std::tuple<Ts...>, if all the Ts... are hashable
 //   * std::unique_ptr and std::shared_ptr
 //   * All string-like types including:
-//     * absl::Cord
+//     * iresearch_absl::Cord
 //     * std::string
 //     * std::string_view (as well as any instance of std::basic_string that
 //       uses char and std::char_traits)
@@ -108,17 +108,17 @@ ABSL_NAMESPACE_BEGIN
 //  * All the standard ordered associative containers (provided the elements are
 //    hashable)
 //  * absl types such as the following:
-//    * absl::string_view
-//    * absl::InlinedVector
-//    * absl::FixedArray
-//    * absl::uint128
-//    * absl::Time, absl::Duration, and absl::TimeZone
+//    * iresearch_absl::string_view
+//    * iresearch_absl::InlinedVector
+//    * iresearch_absl::FixedArray
+//    * iresearch_absl::uint128
+//    * iresearch_absl::Time, iresearch_absl::Duration, and iresearch_absl::TimeZone
 //
 // Note: the list above is not meant to be exhaustive. Additional type support
 // may be added, in which case the above list will be updated.
 //
 // -----------------------------------------------------------------------------
-// absl::Hash Invocation Evaluation
+// iresearch_absl::Hash Invocation Evaluation
 // -----------------------------------------------------------------------------
 //
 // When invoked, `absl::Hash<T>` searches for supplied hash functions in the
@@ -145,7 +145,7 @@ ABSL_NAMESPACE_BEGIN
 //   such state. A hash table, for example, may mix the state to produce an
 //   integer value; a testing framework may simply hold a vector of that state.
 // * Within implementations of `AbslHashValue()` used to extend user-defined
-//   types. (See "Adding Type Support to absl::Hash" below.)
+//   types. (See "Adding Type Support to iresearch_absl::Hash" below.)
 // * Inside a `HashState`, providing type erasure for the concept of a hash
 //   state, which you can use to extend the `absl::Hash` framework for types
 //   that are otherwise difficult to extend using `AbslHashValue()`. (See the
@@ -212,7 +212,7 @@ ABSL_NAMESPACE_BEGIN
 // only be extended by adding `AbslHashValue()` overloads.
 //
 template <typename T>
-using Hash = absl::hash_internal::Hash<T>;
+using Hash = iresearch_absl::hash_internal::Hash<T>;
 
 // HashState
 //
@@ -241,17 +241,17 @@ using Hash = absl::hash_internal::Hash<T>;
 //     template <typename H>
 //     friend H AbslHashValue(H state, const Interface& value) {
 //       state = H::combine(std::move(state), std::type_index(typeid(*this)));
-//       value.HashValue(absl::HashState::Create(&state));
+//       value.HashValue(iresearch_absl::HashState::Create(&state));
 //       return state;
 //     }
 //    private:
-//     virtual void HashValue(absl::HashState state) const = 0;
+//     virtual void HashValue(iresearch_absl::HashState state) const = 0;
 //   };
 //
 //   class Impl : Interface {
 //    private:
-//     void HashValue(absl::HashState state) const override {
-//       absl::HashState::combine(std::move(state), v1_, v2_);
+//     void HashValue(iresearch_absl::HashState state) const override {
+//       iresearch_absl::HashState::combine(std::move(state), v1_, v2_);
 //     }
 //     int v1_;
 //     std::string v2_;
@@ -319,7 +319,7 @@ class HashState : public hash_internal::HashStateBase<HashState> {
   void (*combine_contiguous_)(void*, const unsigned char*, size_t);
 };
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_HASH_HASH_H_
+#endif  // IRESEARCH_ABSL_HASH_HASH_H_

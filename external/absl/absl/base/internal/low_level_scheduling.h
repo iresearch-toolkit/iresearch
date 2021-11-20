@@ -15,8 +15,8 @@
 // Core interfaces and definitions used by by low-level interfaces such as
 // SpinLock.
 
-#ifndef ABSL_BASE_INTERNAL_LOW_LEVEL_SCHEDULING_H_
-#define ABSL_BASE_INTERNAL_LOW_LEVEL_SCHEDULING_H_
+#ifndef IRESEARCH_ABSL_BASE_INTERNAL_LOW_LEVEL_SCHEDULING_H_
+#define IRESEARCH_ABSL_BASE_INTERNAL_LOW_LEVEL_SCHEDULING_H_
 
 #include "absl/base/internal/raw_logging.h"
 #include "absl/base/internal/scheduling_mode.h"
@@ -28,8 +28,8 @@
 extern "C" bool __google_disable_rescheduling(void);
 extern "C" void __google_enable_rescheduling(bool disable_result);
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 class CondVar;
 class Mutex;
 
@@ -96,11 +96,11 @@ class SchedulingGuard {
   };
 
   // Access to SchedulingGuard is explicitly permitted.
-  friend class absl::CondVar;
-  friend class absl::Mutex;
+  friend class iresearch_absl::CondVar;
+  friend class iresearch_absl::Mutex;
   friend class SchedulingHelper;
   friend class SpinLock;
-  friend int absl::synchronization_internal::MutexDelay(int32_t c, int mode);
+  friend int iresearch_absl::synchronization_internal::MutexDelay(int32_t c, int mode);
 
   SchedulingGuard(const SchedulingGuard&) = delete;
   SchedulingGuard& operator=(const SchedulingGuard&) = delete;
@@ -125,11 +125,11 @@ inline void SchedulingGuard::EnableRescheduling(bool /* disable_result */) {
 inline SchedulingGuard::ScopedEnable::ScopedEnable()
     : scheduling_disabled_depth_(0) {}
 inline SchedulingGuard::ScopedEnable::~ScopedEnable() {
-  ABSL_RAW_CHECK(scheduling_disabled_depth_ == 0, "disable unused warning");
+  IRESEARCH_ABSL_RAW_CHECK(scheduling_disabled_depth_ == 0, "disable unused warning");
 }
 
 }  // namespace base_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_BASE_INTERNAL_LOW_LEVEL_SCHEDULING_H_
+#endif  // IRESEARCH_ABSL_BASE_INTERNAL_LOW_LEVEL_SCHEDULING_H_

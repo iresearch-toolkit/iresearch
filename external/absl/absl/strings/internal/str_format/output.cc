@@ -17,8 +17,8 @@
 #include <errno.h>
 #include <cstring>
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace str_format_internal {
 
 namespace {
@@ -68,5 +68,5 @@ void FILERawSink::Write(string_view v) {
 }
 
 }  // namespace str_format_internal
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl

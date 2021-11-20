@@ -26,8 +26,8 @@
 //
 // In most cases, your default choice for a hash set should be a set of type
 // `flat_hash_set`.
-#ifndef ABSL_CONTAINER_FLAT_HASH_SET_H_
-#define ABSL_CONTAINER_FLAT_HASH_SET_H_
+#ifndef IRESEARCH_ABSL_CONTAINER_FLAT_HASH_SET_H_
+#define IRESEARCH_ABSL_CONTAINER_FLAT_HASH_SET_H_
 
 #include <type_traits>
 #include <utility>
@@ -39,15 +39,15 @@
 #include "absl/container/internal/raw_hash_set.h"  // IWYU pragma: export
 #include "absl/memory/memory.h"
 
-namespace absl {
-ABSL_NAMESPACE_BEGIN
+namespace iresearch_absl {
+IRESEARCH_ABSL_NAMESPACE_BEGIN
 namespace container_internal {
 template <typename T>
 struct FlatHashSetPolicy;
 }  // namespace container_internal
 
 // -----------------------------------------------------------------------------
-// absl::flat_hash_set
+// iresearch_absl::flat_hash_set
 // -----------------------------------------------------------------------------
 //
 // An `absl::flat_hash_set<T>` is an unordered associative container which has
@@ -82,7 +82,7 @@ struct FlatHashSetPolicy;
 // Example:
 //
 //   // Create a flat hash set of three strings
-//   absl::flat_hash_set<std::string> ducks =
+//   iresearch_absl::flat_hash_set<std::string> ducks =
 //     {"huey", "dewey", "louie"};
 //
 //  // Insert a new element into the flat hash set
@@ -95,12 +95,12 @@ struct FlatHashSetPolicy;
 //  if (ducks.contains("dewey")) {
 //    std::cout << "We found dewey!" << std::endl;
 //  }
-template <class T, class Hash = absl::container_internal::hash_default_hash<T>,
-          class Eq = absl::container_internal::hash_default_eq<T>,
+template <class T, class Hash = iresearch_absl::container_internal::hash_default_hash<T>,
+          class Eq = iresearch_absl::container_internal::hash_default_eq<T>,
           class Allocator = std::allocator<T>>
 class flat_hash_set
-    : public absl::container_internal::raw_hash_set<
-          absl::container_internal::FlatHashSetPolicy<T>, Hash, Eq, Allocator> {
+    : public iresearch_absl::container_internal::raw_hash_set<
+          iresearch_absl::container_internal::FlatHashSetPolicy<T>, Hash, Eq, Allocator> {
   using Base = typename flat_hash_set::raw_hash_set;
 
  public:
@@ -112,38 +112,38 @@ class flat_hash_set
   // *  Default constructor
   //
   //    // No allocation for the table's elements is made.
-  //    absl::flat_hash_set<std::string> set1;
+  //    iresearch_absl::flat_hash_set<std::string> set1;
   //
   // * Initializer List constructor
   //
-  //   absl::flat_hash_set<std::string> set2 =
+  //   iresearch_absl::flat_hash_set<std::string> set2 =
   //       {{"huey"}, {"dewey"}, {"louie"},};
   //
   // * Copy constructor
   //
-  //   absl::flat_hash_set<std::string> set3(set2);
+  //   iresearch_absl::flat_hash_set<std::string> set3(set2);
   //
   // * Copy assignment operator
   //
   //  // Hash functor and Comparator are copied as well
-  //  absl::flat_hash_set<std::string> set4;
+  //  iresearch_absl::flat_hash_set<std::string> set4;
   //  set4 = set3;
   //
   // * Move constructor
   //
   //   // Move is guaranteed efficient
-  //   absl::flat_hash_set<std::string> set5(std::move(set4));
+  //   iresearch_absl::flat_hash_set<std::string> set5(std::move(set4));
   //
   // * Move assignment operator
   //
   //   // May be efficient if allocators are compatible
-  //   absl::flat_hash_set<std::string> set6;
+  //   iresearch_absl::flat_hash_set<std::string> set6;
   //   set6 = std::move(set5);
   //
   // * Range constructor
   //
   //   std::vector<std::string> v = {"a", "b"};
-  //   absl::flat_hash_set<std::string> set7(v.begin(), v.end());
+  //   iresearch_absl::flat_hash_set<std::string> set7(v.begin(), v.end());
   flat_hash_set() {}
   using Base::Base;
 
@@ -459,13 +459,13 @@ struct FlatHashSetPolicy {
 
   template <class Allocator, class... Args>
   static void construct(Allocator* alloc, slot_type* slot, Args&&... args) {
-    absl::allocator_traits<Allocator>::construct(*alloc, slot,
+    iresearch_absl::allocator_traits<Allocator>::construct(*alloc, slot,
                                                  std::forward<Args>(args)...);
   }
 
   template <class Allocator>
   static void destroy(Allocator* alloc, slot_type* slot) {
-    absl::allocator_traits<Allocator>::destroy(*alloc, slot);
+    iresearch_absl::allocator_traits<Allocator>::destroy(*alloc, slot);
   }
 
   template <class Allocator>
@@ -478,10 +478,10 @@ struct FlatHashSetPolicy {
   static T& element(slot_type* slot) { return *slot; }
 
   template <class F, class... Args>
-  static decltype(absl::container_internal::DecomposeValue(
+  static decltype(iresearch_absl::container_internal::DecomposeValue(
       std::declval<F>(), std::declval<Args>()...))
   apply(F&& f, Args&&... args) {
-    return absl::container_internal::DecomposeValue(
+    return iresearch_absl::container_internal::DecomposeValue(
         std::forward<F>(f), std::forward<Args>(args)...);
   }
 
@@ -493,12 +493,12 @@ namespace container_algorithm_internal {
 
 // Specialization of trait in absl/algorithm/container.h
 template <class Key, class Hash, class KeyEqual, class Allocator>
-struct IsUnorderedContainer<absl::flat_hash_set<Key, Hash, KeyEqual, Allocator>>
+struct IsUnorderedContainer<iresearch_absl::flat_hash_set<Key, Hash, KeyEqual, Allocator>>
     : std::true_type {};
 
 }  // namespace container_algorithm_internal
 
-ABSL_NAMESPACE_END
+IRESEARCH_ABSL_NAMESPACE_END
 }  // namespace absl
 
-#endif  // ABSL_CONTAINER_FLAT_HASH_SET_H_
+#endif  // IRESEARCH_ABSL_CONTAINER_FLAT_HASH_SET_H_
