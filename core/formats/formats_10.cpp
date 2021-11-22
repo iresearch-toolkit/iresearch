@@ -1735,7 +1735,7 @@ class doc_iterator final : public irs::doc_iterator {
       skip_{IteratorTraits::block_size(), postings_writer_base::SKIP_N, read_skip{this}} {
     assert(
       std::all_of(std::begin(buf_.docs), std::end(buf_.docs),
-                  [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
+                  [](doc_id_t doc) { return !doc_limits::valid(doc); }));
   }
 
   void prepare(
@@ -2065,7 +2065,136 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
     skip_ctx_ = &last;
 
     // init skip writer in lazy fashion
-    if (!skip_) {
+    if (IRS_LIKELY(skip_)) {
+seek_after_initialization:
+      const size_t skipped = skip_.seek(target);
+      if (skipped > (cur_pos_ + relative_pos())) {
+        doc_in_->seek(last.doc_ptr);
+        std::get<document>(attrs_).value = last.doc;
+        cur_pos_ = skipped;
+        begin_ = end_ = buf_.docs; // will trigger refill in "next"
+        if constexpr (IteratorTraits::position()) {
+          std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(last); // notify positions
+        }
+      }
+    }
+
+    auto skip_in = doc_in_->dup();
+
+    if (!skip_in) {
+      IR_FRMT_ERROR("Failed to duplicate input in: %s", __FUNCTION__);
+
+      throw io_error("Failed to duplicate document input");
+    }
+
+    skip_in->seek(term_state_.doc_start + term_state_.e_skip_start);
+    skip_.prepare(std::move(skip_in));
+
+    // initialize skip levels
+    const auto num_levels = skip_.num_levels();
+    if (num_levels) {
+      skip_levels_.resize(num_levels);
+
+      // since we store pointer deltas, add postings offset
+      auto& top = skip_levels_.back();
+      top.doc_ptr = term_state_.doc_start;
+      top.pos_ptr = term_state_.pos_start;
+      top.pay_ptr = term_state_.pay_start;
+    }
+    goto seek_after_initialization;
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class wanderator
+/// @tparam IteratorTraits requested features
+/// @tparam FieldTraits actual field features
+///////////////////////////////////////////////////////////////////////////////
+template<typename IteratorTraits, typename FieldTraits>
+class wanderator final : public irs::doc_iterator {
+ private:
+  static_assert(FieldTraits::wand());
+
+  using attributes = std::conditional_t<
+    IteratorTraits::frequency() && IteratorTraits::position(),
+      std::tuple<document, frequency, cost, score, position<IteratorTraits, FieldTraits>>,
+      std::conditional_t<IteratorTraits::frequency(),
+        std::tuple<document, frequency, cost, score>,
+        std::tuple<document, cost, score>
+      >>;
+
+ public:
+  // hide 'ptr' defined in irs::doc_iterator
+  using ptr = memory::managed_ptr<doc_iterator>;
+
+  wanderator() noexcept
+    : skip_levels_(1),
+      skip_{IteratorTraits::block_size(), postings_writer_base::SKIP_N, read_skip{this}} {
+    assert(
+      std::all_of(std::begin(buf_.docs), std::end(buf_.docs),
+                  [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
+  }
+
+  void prepare(
+      const term_meta& meta,
+      const index_input* doc_in,
+      [[maybe_unused]] const index_input* pos_in,
+      [[maybe_unused]] const index_input* pay_in) {
+    assert(!IteratorTraits::frequency() || IteratorTraits::frequency() == FieldTraits::frequency());
+    assert(!IteratorTraits::position() || IteratorTraits::position() == FieldTraits::position());
+    assert(!IteratorTraits::offset() || IteratorTraits::offset() == FieldTraits::offset());
+    assert(!IteratorTraits::payload() || IteratorTraits::payload() == FieldTraits::payload());
+
+    begin_ = end_ = buf_.docs;
+
+    term_state_ = static_cast<const version10::term_meta&>(meta);
+
+    // init document stream
+    if (term_state_.docs_count > 1) {
+      if (!doc_in_) {
+        doc_in_ = doc_in->reopen(); // reopen thread-safe stream
+
+        if (!doc_in_) {
+          // implementation returned wrong pointer
+          IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
+
+          throw io_error("failed to reopen document input");
+        }
+      }
+
+      doc_in_->seek(term_state_.doc_start);
+      assert(!doc_in_->eof());
+    }
+
+    std::get<cost>(attrs_).reset(term_state_.docs_count); // estimate iterator
+
+    if constexpr (IteratorTraits::frequency()) {
+      assert(meta.freq);
+
+      if constexpr (IteratorTraits::position()) {
+        doc_state state;
+        state.pos_in = pos_in;
+        state.pay_in = pay_in;
+        state.term_state = &term_state_;
+        state.freq = &std::get<frequency>(attrs_).value;
+        state.enc_buf = enc_buf_;
+
+        const auto term_freq = meta.freq;
+
+        if (term_freq < IteratorTraits::block_size()) {
+          state.tail_start = term_state_.pos_start;
+        } else if (term_freq == IteratorTraits::block_size()) {
+          state.tail_start = type_limits<type_t::address_t>::invalid();
+        } else {
+          state.tail_start = term_state_.pos_start + term_state_.pos_end;
+        }
+
+        state.tail_length = term_freq % IteratorTraits::block_size();
+        std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(state);
+      }
+    }
+
+    if (term_state_.docs_count > IteratorTraits::block_size()) {
       auto skip_in = doc_in_->dup();
 
       if (!skip_in) {
@@ -2089,20 +2218,241 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
         top.pos_ptr = term_state_.pos_start;
         top.pay_ptr = term_state_.pay_start;
       }
+    } else if (1 == term_state_.docs_count) {
+      *buf_.docs = (doc_limits::min)() + term_state_.e_single_doc;
+      if constexpr (IteratorTraits::frequency()) {
+        *buf_.freqs = meta.freq;
+        freq_ = buf_.freqs;
+      }
+      ++end_;
     }
+  }
 
-    const size_t skipped = skip_.seek(target);
-    if (skipped > (cur_pos_ + relative_pos())) {
-      doc_in_->seek(last.doc_ptr);
-      std::get<document>(attrs_).value = last.doc;
-      cur_pos_ = skipped;
-      begin_ = end_ = buf_.docs; // will trigger refill in "next"
-      if constexpr (IteratorTraits::position()) {
-        std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(last); // notify positions
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return irs::get_mutable(attrs_, type);
+  }
+
+  void seek_to_block(doc_id_t target) {
+    // check whether it make sense to use skip-list
+    if (skip_levels_.front().doc < target &&
+        term_state_.docs_count > IteratorTraits::block_size()) { // FIXME don't use wanderator for short posting lists?
+      const size_t skipped = skip_.seek(target);
+      if (skipped > (cur_pos_ + relative_pos())) {
+        std::get<document>(attrs_).value = prev_skip_.doc;
+        cur_pos_ = skipped;
+        begin_ = end_ = buf_.docs; // will trigger refill in "next"
       }
     }
   }
-}
+
+  virtual doc_id_t seek(doc_id_t target) override {
+    auto& doc = std::get<document>(attrs_);
+
+    if (target <= doc.value) {
+      return doc.value;
+    }
+
+    seek_to_block(target);
+
+    if (begin_ == end_) {
+      cur_pos_ += relative_pos();
+
+      if (cur_pos_ == term_state_.docs_count) {
+        doc.value = doc_limits::eof();
+        begin_ = end_ = buf_.docs; // seal the iterator
+        return doc_limits::eof();
+      }
+
+      if (prev_skip_.doc_ptr) {
+        doc_in_->seek(prev_skip_.doc_ptr);
+        if constexpr (IteratorTraits::position()) {
+          std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(prev_skip_); // notify positions
+        }
+        prev_skip_.doc_ptr = 0;
+      }
+
+      refill();
+    }
+
+    [[maybe_unused]] uint32_t notify{0};
+    while (begin_ < end_) {
+      doc.value += *begin_++;
+
+      if constexpr (!IteratorTraits::position()) {
+        if (doc.value >= target) {
+          if constexpr (IteratorTraits::frequency()) {
+            freq_ = buf_.freqs + relative_pos();
+            assert((freq_ - 1) >= buf_.freqs && (freq_ - 1) < std::end(buf_.freqs));
+            std::get<frequency>(attrs_).value = freq_[-1];
+          }
+          return doc.value;
+        }
+      } else {
+        assert(IteratorTraits::frequency());
+        auto& freq = std::get<frequency>(attrs_);
+        auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
+        freq.value = *freq_++;
+        notify += freq.value;
+
+        if (doc.value >= target) {
+          pos.notify(notify);
+          pos.clear();
+          return doc.value;
+        }
+      }
+    }
+
+    if constexpr (IteratorTraits::position()) {
+      std::get<position<IteratorTraits, FieldTraits>>(attrs_).notify(notify);
+    }
+    while (doc.value < target) {
+      next();
+    }
+
+    return doc.value;
+  }
+
+  virtual doc_id_t value() const noexcept final {
+    return std::get<document>(attrs_).value;
+  }
+
+  virtual bool next() override {
+    return !doc_limits::eof(seek(std::get<document>(attrs_).value + 1));
+  }
+
+ private:
+  struct read_skip {
+    wanderator* self;
+
+    doc_id_t operator()(size_t level, size_t end, index_input& in) const {
+      auto& last = self->prev_skip_;
+      auto& next = self->skip_levels_[level];
+
+      if (last.level > level) {
+        // move to the more granular level
+        next = last;
+      } else {
+        // store previous step on the same level
+        static_cast<skip_state&>(last) = next;
+      }
+
+      last.level = level;
+
+      if (in.file_pointer() >= end) {
+        // stream exhausted
+        return (next.doc = doc_limits::eof());
+      }
+
+      next.doc = in.read_vint();
+      next.doc_ptr += in.read_vlong();
+
+      if constexpr (FieldTraits::position()) {
+        next.pend_pos = in.read_vint();
+        next.pos_ptr += in.read_vlong();
+
+        if constexpr (FieldTraits::payload() || FieldTraits::offset()) {
+          if constexpr (FieldTraits::payload()) {
+            next.pay_pos = in.read_vint();
+          }
+
+          next.pay_ptr += in.read_vlong();
+        }
+      }
+
+      score_buffer::skip(in);
+
+      return next.doc;
+    }
+  };
+
+  struct data_buffer {
+    doc_id_t docs[IteratorTraits::block_size()]{}; // doc values
+  };
+
+  struct freq_buffer : data_buffer {
+    uint32_t freqs[IteratorTraits::block_size()]; // document frequencies
+  };
+
+  // returns current position in the document block 'docs_'
+  size_t relative_pos() noexcept {
+    assert(begin_ >= buf_.docs);
+    return begin_ - buf_.docs;
+  }
+
+  void read_end_block(size_t size) {
+    end_ = buf_.docs + size;
+    auto* doc = std::begin(buf_.docs);
+
+    [[maybe_unused]] uint32_t* doc_freq;
+    if constexpr (IteratorTraits::frequency()) {
+      doc_freq = std::begin(buf_.freqs);
+    }
+
+    while (doc < end_) {
+      if constexpr (FieldTraits::frequency()) {
+        if constexpr (IteratorTraits::frequency()) {
+          if (shift_unpack_32(doc_in_->read_vint(), *doc++)) {
+            *doc_freq++ = 1;
+          } else {
+            *doc_freq++ = doc_in_->read_vint();
+          }
+        } else {
+          if (!shift_unpack_32(doc_in_->read_vint(), *doc++)) {
+            doc_in_->read_vint();
+          }
+        }
+      } else {
+        *doc++ = doc_in_->read_vint();
+      }
+    }
+  }
+
+  void refill() {
+    // should never call refill for singleton documents
+    assert(1 != term_state_.docs_count);
+    const auto left = term_state_.docs_count - cur_pos_;
+
+    if (left >= IteratorTraits::block_size()) {
+      // read doc deltas
+      IteratorTraits::read_block(*doc_in_, enc_buf_, buf_.docs);
+
+      if constexpr (IteratorTraits::frequency()) {
+        IteratorTraits::read_block(*doc_in_, enc_buf_, buf_.freqs);
+      } else if constexpr (FieldTraits::frequency()) {
+        IteratorTraits::skip_block(*doc_in_);
+      }
+
+      static_assert(IRESEARCH_COUNTOF(decltype(buf_.docs){}) == IteratorTraits::block_size());
+      end_ = std::end(buf_.docs);
+    } else {
+      read_end_block(left);
+    }
+
+    // if this is the initial doc_id then set it to min() for proper delta value
+    if (auto& doc = std::get<irs::document>(attrs_);
+        !doc_limits::valid(doc.value)) {
+      doc.value = (doc_limits::min)();
+    }
+
+    begin_ = buf_.docs;
+    if constexpr (IteratorTraits::frequency()) {
+      freq_ = buf_.freqs;
+    }
+  }
+
+  std::conditional_t<IteratorTraits::frequency(), freq_buffer, data_buffer> buf_;
+  uint32_t enc_buf_[IteratorTraits::block_size()]; // buffer for encoding
+  std::vector<skip_state> skip_levels_;
+  skip_reader<read_skip> skip_;
+  skip_context prev_skip_; // pointer to skip context used by skip reader
+  uint32_t cur_pos_{};
+  const doc_id_t* begin_{buf_.docs};
+  doc_id_t* end_{buf_.docs};
+  uint32_t* freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
+  index_input::ptr doc_in_;
+  version10::term_meta term_state_;
+  attributes attrs_;
+}; // wanderator
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                index_meta_writer
@@ -3037,7 +3387,7 @@ class postings_reader final: public postings_reader_base {
  private:
   template<typename IteratorTraits, typename FieldTraits, bool Wand>
   using doc_iterator_t = std::conditional_t<
-    Wand, doc_iterator<IteratorTraits, FieldTraits>,
+    Wand, ::wanderator<IteratorTraits, FieldTraits>,
           doc_iterator<IteratorTraits, FieldTraits>>;
 
   template<typename IteratorTraits, typename FieldTraits, bool Wand>
