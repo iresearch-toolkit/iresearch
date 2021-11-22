@@ -139,10 +139,6 @@ class concurrent_stack : private util::noncopyable {
   }
 
   std::atomic<concurrent_node> head_;
-
-#ifndef _MSC_VER
-  static_assert(decltype(head_)::is_always_lock_free);
-#endif
 }; // concurrent_stack
 
 //////////////////////////////////////////////////////////////////////////////
