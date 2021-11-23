@@ -313,7 +313,7 @@ size_t skip_reader<Read>::seek(doc_id_t target) {
   }(std::begin(levels_), std::end(levels_), target);
 
   uint64_t child = 0; // pointer to child skip
-  size_t skipped = 0; // number of skipped documents
+  size_t skipped = 0;
 
   for ( ; level != std::end(levels_); ++level) {
     if (level->doc < target) {
@@ -321,12 +321,10 @@ size_t skip_reader<Read>::seek(doc_id_t target) {
       seek_skip(*level, child, skipped);
 
       // seek to skip
-      child = level->child;
-      read_skip(*level);
-
-      for (; level->doc < target; read_skip(*level)) {
+      do {
         child = level->child;
-      }
+        read_skip(*level);
+      } while (level->doc < target);
 
       skipped = level->skipped - level->step;
     }

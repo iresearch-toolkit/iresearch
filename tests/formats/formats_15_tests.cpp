@@ -1,4 +1,4 @@
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,29 +22,6 @@
 #include "store/directory_attributes.hpp"
 
 namespace {
-
-// 1.5 specific tests
-class format_15_test_case : public tests::directory_test_case_base<> { };
-
-TEST_P(format_15_test_case, Wanderator) {
-
-}
-
-INSTANTIATE_TEST_SUITE_P(
-  format_15_test,
-  format_15_test_case,
-  ::testing::Combine(
-    ::testing::Values(
-      &tests::directory<&tests::memory_directory>,
-      &tests::directory<&tests::fs_directory>,
-      &tests::directory<&tests::mmap_directory>,
-      &tests::rot13_directory<&tests::fs_directory, 16>,
-      &tests::rot13_directory<&tests::mmap_directory, 16>,
-      &tests::rot13_directory<&tests::memory_directory, 7>,
-      &tests::rot13_directory<&tests::fs_directory, 7>,
-      &tests::rot13_directory<&tests::mmap_directory, 7>),
-    ::testing::Values(tests::format_info{"1_4", "1_4simd"})),
-  format_15_test_case::to_string);
 
 // generic tests
 using tests::format_test_case;
