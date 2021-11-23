@@ -219,7 +219,7 @@ class skip_reader_base : util::noncopyable {
     uint64_t child{}; // pointer to current child level
     size_t id; // level id
     size_t step; // how many docs we jump over with a single skip
-    size_t skipped{}; // number of sipped documents
+    size_t skipped{}; // number of skipped documents on a level
     doc_id_t doc{ doc_limits::invalid() }; // current key
   };
 
@@ -313,7 +313,7 @@ size_t skip_reader<Read>::seek(doc_id_t target) {
   }(std::begin(levels_), std::end(levels_), target);
 
   uint64_t child = 0; // pointer to child skip
-  size_t skipped = 0;
+  size_t skipped = 0; // number of skipped documents
 
   for ( ; level != std::end(levels_); ++level) {
     if (level->doc < target) {
