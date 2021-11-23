@@ -1941,6 +1941,7 @@ class doc_iterator final : public irs::doc_iterator {
         static_cast<skip_state&>(last) = next;
       }
 
+      // FIXME(gnusi): can we move it under the condition above?
       last.level = level;
 
       if (in.file_pointer() >= end) {
@@ -2136,6 +2137,7 @@ class wanderator final : public irs::doc_iterator {
 
   wanderator() noexcept
     : skip_levels_(1),
+      skip_scores_(1),
       skip_{IteratorTraits::block_size(), postings_writer_base::SKIP_N, read_skip{*this}} {
     assert(
       std::all_of(std::begin(buf_.docs), std::end(buf_.docs),
@@ -2216,6 +2218,7 @@ class wanderator final : public irs::doc_iterator {
   std::conditional_t<IteratorTraits::frequency(), freq_buffer, data_buffer> buf_;
   uint32_t enc_buf_[IteratorTraits::block_size()]; // buffer for encoding
   std::vector<skip_state> skip_levels_;
+  std::vector<score_buffer> skip_scores_;
   skip_reader<read_skip> skip_;
   skip_context prev_skip_; // pointer to skip context used by skip reader
   uint32_t cur_pos_{};
@@ -2241,6 +2244,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::read_skip::operator()(
     static_cast<skip_state&>(last) = next;
   }
 
+  // FIXME(gnusi): can we move it under the condition above?
   last.level = level;
 
   if (in.file_pointer() >= end) {
@@ -2264,7 +2268,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::read_skip::operator()(
     }
   }
 
-  score_buffer::skip(in);
+  self_->skip_scores_[level].read(in);
 
   return next.doc;
 }
@@ -2346,6 +2350,7 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
     const auto num_levels = skip_.num_levels();
     if (num_levels) {
       skip_levels_.resize(num_levels);
+      skip_scores_.resize(num_levels);
 
       // since we store pointer deltas, add postings offset
       auto& top = skip_levels_.back();
