@@ -176,6 +176,11 @@ struct IRESEARCH_API postings_reader {
     IndexFeatures required_features,
     const term_meta& meta) = 0;
 
+  virtual doc_iterator::ptr wanderator(
+    IndexFeatures field_features,
+    IndexFeatures required_features,
+    const term_meta& meta) = 0;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief evaluates a union of all docs denoted by attribute supplied via a
   ///        speciified 'provider'. Each doc is represented by a bit in a
@@ -256,6 +261,10 @@ struct IRESEARCH_API term_reader: public attribute_provider {
                            size_t* bitset) const = 0;
 
   virtual doc_iterator::ptr postings(
+    const seek_cookie& cookie,
+    IndexFeatures features) const = 0;
+
+  virtual doc_iterator::ptr wanderator(
     const seek_cookie& cookie,
     IndexFeatures features) const = 0;
 
