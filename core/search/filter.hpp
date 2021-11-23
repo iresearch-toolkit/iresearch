@@ -36,6 +36,14 @@ namespace iresearch {
 
 struct index_reader;
 
+enum class ExecutionMode : uint32_t {
+  // access all documents
+  kReturnAll,
+
+  // access only top matched documents
+  kTop
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class filter
 /// @brief base class for all user-side filters

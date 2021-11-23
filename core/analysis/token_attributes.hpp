@@ -194,6 +194,23 @@ class attribute_provider_change final : public attribute {
   mutable callback_f callback_{&noop};
 }; // attribute_provider_change
 
+// Score threshold can be set by document consumers
+class score_threshold final : public attribute {
+ public:
+  using value_type = uint32_t;
+
+  // DO NOT CHANGE NAME
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::score_threshold";
+  }
+
+  void set(value_type value) noexcept { value_ = value; }
+  value_type get() const noexcept { return value_; }
+
+ private:
+  uint32_t value_{};
+};
+
 } // ROOT
 
 #endif
