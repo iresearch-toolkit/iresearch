@@ -2164,6 +2164,10 @@ class wanderator final : public irs::doc_iterator {
   }
 
  private:
+  struct skip_state_with_score : ::skip_state {
+    score_buffer score;
+  };
+
   class read_skip {
    public:
     explicit read_skip(wanderator& self) noexcept
@@ -2264,7 +2268,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::read_skip::operator()(
     }
   }
 
-  score_buffer::skip(in);
+  next.score.read(in);
 
   return next.doc;
 }
@@ -2366,6 +2370,8 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
 template<typename IteratorTraits, typename FieldTraits>
 doc_id_t wanderator<IteratorTraits, FieldTraits>::seek_to_threshold(doc_id_t target) {
   auto& threshold = std::get<score_threshold>(attrs_);
+
+
 
 
   return target;
