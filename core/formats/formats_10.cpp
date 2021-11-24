@@ -1717,6 +1717,25 @@ struct position<IteratorTraits, FieldTraits, false> : attribute {
   void clear() { }
 }; // position
 
+
+// Buffer type containing only document buffer
+template<typename IteratorTraits>
+struct data_buffer {
+  doc_id_t docs[IteratorTraits::block_size()]{};
+};
+
+// Buffer type containing both document and fequency buffers
+template<typename IteratorTraits>
+struct freq_buffer : data_buffer<IteratorTraits> {
+  uint32_t freqs[IteratorTraits::block_size()];
+};
+
+template<typename IteratorTraits>
+using buffer_type = std::conditional_t<
+  IteratorTraits::frequency(),
+  freq_buffer<IteratorTraits>,
+  data_buffer<IteratorTraits>>;
+
 ///////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
 /// @tparam IteratorTraits requested features
@@ -1820,14 +1839,6 @@ class doc_iterator final : public irs::doc_iterator {
     doc_iterator* self_;
   };
 
-  struct data_buffer {
-    doc_id_t docs[IteratorTraits::block_size()]{}; // doc values
-  };
-
-  struct freq_buffer : data_buffer {
-    uint32_t freqs[IteratorTraits::block_size()]; // document frequencies
-  };
-
   void seek_to_block(doc_id_t target);
 
   // returns current position in the document block 'docs_'
@@ -1871,7 +1882,7 @@ class doc_iterator final : public irs::doc_iterator {
     }
   }
 
-  std::conditional_t<IteratorTraits::frequency(), freq_buffer, data_buffer> buf_;
+  buffer_type<IteratorTraits> buf_;
   uint32_t enc_buf_[IteratorTraits::block_size()]; // buffer for encoding
   std::vector<skip_state> skip_levels_;
   skip_reader<read_skip> skip_;
@@ -2190,7 +2201,7 @@ class wanderator final : public irs::doc_iterator {
   }
 
   virtual bool next() override {
-    return !doc_limits::eof(seek(std::get<document>(attrs_).value + 1));
+    return !doc_limits::eof(seek(value() + 1));
   }
 
  private:
@@ -2204,14 +2215,6 @@ class wanderator final : public irs::doc_iterator {
 
    private:
     wanderator* self_;
-  };
-
-  struct data_buffer {
-    doc_id_t docs[IteratorTraits::block_size()]{}; // doc values
-  };
-
-  struct freq_buffer : data_buffer {
-    uint32_t freqs[IteratorTraits::block_size()]; // document frequencies
   };
 
   void seek_to_block(doc_id_t target) {
@@ -2243,7 +2246,7 @@ class wanderator final : public irs::doc_iterator {
 
   void refill();
 
-  std::conditional_t<IteratorTraits::frequency(), freq_buffer, data_buffer> buf_;
+  buffer_type<IteratorTraits> buf_;
   uint32_t enc_buf_[IteratorTraits::block_size()]; // buffer for encoding
   std::vector<skip_state> skip_levels_;
   std::vector<score_buffer> skip_scores_;

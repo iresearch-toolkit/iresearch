@@ -573,14 +573,11 @@ irs::seek_term_iterator::ptr field::iterator() const {
   return irs::memory::make_managed<term_iterator>(*this);
 }
 
-void assert_term(
-    const irs::term_iterator& expected_term,
-    const irs::term_iterator& actual_term,
-    irs::IndexFeatures requested_features) {
-  ASSERT_EQ(expected_term.value(), actual_term.value());
-
-  const irs::doc_iterator::ptr expected_docs = expected_term.postings(requested_features);
-  const irs::doc_iterator::ptr actual_docs = actual_term.postings(requested_features);
+void assert_docs(
+    irs::doc_iterator::ptr expected_docs,
+    irs::doc_iterator::ptr actual_docs) {
+  ASSERT_NE(nullptr, expected_docs);
+  ASSERT_NE(nullptr, actual_docs);
 
   ASSERT_TRUE(!irs::doc_limits::valid(expected_docs->value()));
   ASSERT_TRUE(!irs::doc_limits::valid(actual_docs->value()));
@@ -638,6 +635,33 @@ void assert_term(
   ASSERT_TRUE(irs::doc_limits::eof(actual_docs->value()));
 }
 
+void assert_docs(
+    const irs::term_iterator& expected_term,
+    const irs::term_reader& actual_terms,
+    irs::seek_cookie::ptr actual_cookie,
+    irs::IndexFeatures requested_features) {
+  assert_docs(
+    expected_term.postings(requested_features),
+    actual_terms.postings(*actual_cookie, requested_features));
+
+  assert_docs(
+    expected_term.postings(requested_features),
+    actual_terms.wanderator(*actual_cookie, requested_features));
+
+  // FIXME(gnusi): check bit_union
+}
+
+void assert_term(
+    const irs::term_iterator& expected_term,
+    const irs::term_iterator& actual_term,
+    irs::IndexFeatures requested_features) {
+  ASSERT_EQ(expected_term.value(), actual_term.value());
+
+  assert_docs(
+    expected_term.postings(requested_features),
+    actual_term.postings(requested_features));
+}
+
 void assert_terms_next(
     const field& expected_field,
     const irs::term_reader& actual_field,
@@ -662,6 +686,7 @@ void assert_terms_next(
     ASSERT_TRUE(actual_term->next());
 
     assert_term(*expected_term, *actual_term, features);
+    assert_docs(*expected_term, actual_field, actual_term->cookie(), features);
 
     if (actual_min.null()) {
       actual_min_buf = actual_term->value();
@@ -1083,7 +1108,6 @@ void assert_index(
         ASSERT_EQ(nullptr, actual_freq);
       }
 
-      // check terms
       assert_terms_next(expected_field->second, *actual_terms, features, matcher);
       assert_terms_seek(expected_field->second, *actual_terms, features, matcher);
     }
