@@ -669,16 +669,6 @@ TEST_P(format_test_case, fields_read_write) {
            ASSERT_EQ(meta->docs_count, meta_from_cookie->docs_count);
            ASSERT_EQ(meta->freq, meta_from_cookie->freq);
          }
-
-         auto cookie_term = term_reader->iterator(irs::SeekMode::RANDOM_ONLY);
-         ASSERT_TRUE(cookie_term->seek(term->value(), *cookie));
-         ASSERT_EQ(term->value(), cookie_term->value());
-         {
-           auto* meta_from_cookie = irs::get<irs::term_meta>(*cookie_term);
-           ASSERT_NE(nullptr, meta_from_cookie);
-           ASSERT_EQ(meta->docs_count, meta_from_cookie->docs_count);
-           ASSERT_EQ(meta->freq, meta_from_cookie->freq);
-         }
        }
      }
 
@@ -690,63 +680,6 @@ TEST_P(format_test_case, fields_read_write) {
          ASSERT_TRUE(term->seek(*expected_sorted_term));
          ASSERT_EQ(*expected_sorted_term, term->value());
        }
-     }
-
-     // check sorted terms using "seek to cookie"
-     {
-       auto expected_sorted_term = sorted_terms.begin();
-       auto term = term_reader->iterator(irs::SeekMode::NORMAL);
-       for (; term->next(); ++expected_sorted_term) {
-         ASSERT_EQ(*expected_sorted_term, term->value());
-
-         // get cookie
-         auto cookie = term->cookie();
-         ASSERT_NE(nullptr, cookie);
-         {
-           auto sought_term = term_reader->iterator(irs::SeekMode::NORMAL);
-           ASSERT_TRUE(sought_term->seek(*expected_sorted_term, *cookie));
-           ASSERT_EQ(*expected_sorted_term, sought_term->value());
-
-           // iterate to the end with sought_term
-           auto copy_expected_sorted_term = expected_sorted_term;
-           for (++copy_expected_sorted_term; sought_term->next(); ++copy_expected_sorted_term) {
-             ASSERT_EQ(*copy_expected_sorted_term, sought_term->value());
-           }
-           ASSERT_EQ(sorted_terms.end(), copy_expected_sorted_term);
-           ASSERT_FALSE(sought_term->next());
-         }
-       }
-       ASSERT_EQ(sorted_terms.end(), expected_sorted_term);
-       ASSERT_FALSE(term->next());
-     }
-
-     // check unsorted terms using "seek to cookie"
-     {
-       auto expected_term = unsorted_terms.begin();
-       auto term = term_reader->iterator(irs::SeekMode::NORMAL);
-       for (; term->next(); ++expected_term) {
-         auto sorted_term = sorted_terms.find(*expected_term);
-         ASSERT_NE(sorted_terms.end(), sorted_term);
-
-         // get cookie
-         auto cookie = term->cookie();
-         ASSERT_NE(nullptr, cookie);
-         {
-           auto sought_term = term_reader->iterator(irs::SeekMode::NORMAL);
-           ASSERT_TRUE(sought_term->seek(*sorted_term, *cookie));
-           ASSERT_EQ(*sorted_term, sought_term->value());
-
-           // iterate to the end with sought_term
-           auto copy_sorted_term = sorted_term;
-           for (++copy_sorted_term; sought_term->next(); ++copy_sorted_term) {
-             ASSERT_EQ(*copy_sorted_term, sought_term->value());
-           }
-           ASSERT_EQ(sorted_terms.end(), copy_sorted_term);
-           ASSERT_FALSE(sought_term->next());
-         }
-       }
-       ASSERT_EQ(unsorted_terms.end(), expected_term);
-       ASSERT_FALSE(term->next());
      }
 
      // check sorted terms using multiple "seek"s on single iterator

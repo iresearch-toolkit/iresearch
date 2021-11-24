@@ -558,13 +558,6 @@ class term_iterator final : public irs::seek_term_iterator {
     return irs::memory::make_managed<doc_iterator>(data_.index_features & features, *prev_);
   }
 
-  virtual bool seek(
-      const irs::bytes_ref& /*term*/,
-      const irs::seek_cookie& cookie) override {
-    auto& state = dynamic_cast<const term_cookie&>(cookie);
-    return seek(state.term);
-  }
-
   virtual irs::seek_cookie::ptr cookie() const override {
     return irs::memory::make_unique<term_cookie>(value_);
   }
@@ -795,25 +788,6 @@ void assert_terms_seek(
     // seek to cookie without state, iterate to the end
     {
       auto actual_term = actual_field.iterator(irs::SeekMode::NORMAL);
-      ASSERT_TRUE(actual_term->seek(expected_term->value(), *cookie));
-      ASSERT_EQ(expected_term->value(), actual_term->value());
-      assert_term(*expected_term, *actual_term, features);
-
-      // iterate forward
-      {
-        auto copy_expected_term = irs::memory::make_managed<term_iterator>(expected_field);
-        ASSERT_TRUE(copy_expected_term->seek(expected_term->value()));
-        ASSERT_EQ(expected_term->value(), copy_expected_term->value());
-        for(size_t i = 0; i < lookahead; ++i) {
-          const bool copy_expected_next = copy_expected_term->next();
-          const bool actual_next = actual_term->next();
-          ASSERT_EQ(copy_expected_next, actual_next);
-          if (!copy_expected_next) {
-            break;
-          }
-          assert_term(*copy_expected_term, *actual_term, features);
-        }
-      }
 
       // seek to the same term
       ASSERT_TRUE(actual_term->seek(expected_term->value()));
