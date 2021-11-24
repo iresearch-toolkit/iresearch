@@ -100,7 +100,7 @@ void skip_writer::flush(index_output& out) {
 skip_reader_base::level::level(
     index_input::ptr&& stream,
     size_t id,
-    size_t step,
+    doc_id_t step,
     uint64_t begin,
     uint64_t end) noexcept
   : stream{std::move(stream)}, // thread-safe input
@@ -110,10 +110,10 @@ skip_reader_base::level::level(
     step{step} {
 }
 
-/* static */ void skip_reader_base::seek_skip(
+/* static */ void skip_reader_base::seek_to_child(
     level& lvl,
     uint64_t ptr,
-    size_t skipped) {
+    doc_id_t skipped) {
   auto &stream = *lvl.stream;
   const auto absolute_ptr = lvl.begin + ptr;
   if (absolute_ptr > stream.file_pointer()) {
@@ -140,7 +140,7 @@ void skip_reader_base::reset() {
     std::vector<level>& levels,
     index_input::ptr&& stream,
     size_t id,
-    size_t step) {
+    doc_id_t step) {
   assert(stream);
 
   // read level length

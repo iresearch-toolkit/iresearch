@@ -455,7 +455,7 @@ class postings_writer_base : public irs::postings_writer {
 
  protected:
   postings_writer_base(
-      size_t block_size,
+      doc_id_t block_size,
       const range<doc_id_t>& docs,
       const range<uint32_t>& freqs,
       doc_id_t* skip_doc,
@@ -1725,6 +1725,8 @@ struct position<IteratorTraits, FieldTraits, false> : attribute {
 template<typename IteratorTraits, typename FieldTraits>
 class doc_iterator final : public irs::doc_iterator {
  private:
+  static_assert(IteratorTraits::block_size() <= std::numeric_limits<doc_id_t>::max());
+
   using attributes = std::conditional_t<
     IteratorTraits::frequency() && IteratorTraits::position(),
       std::tuple<document, frequency, cost, score, position<IteratorTraits, FieldTraits>>,
@@ -1829,9 +1831,9 @@ class doc_iterator final : public irs::doc_iterator {
   void seek_to_block(doc_id_t target);
 
   // returns current position in the document block 'docs_'
-  size_t relative_pos() noexcept {
+  doc_id_t relative_pos() noexcept {
     assert(begin_ >= buf_.docs);
-    return begin_ - buf_.docs;
+    return static_cast<doc_id_t>(begin_ - buf_.docs);
   }
 
   void read_end_block(size_t size);
@@ -2098,7 +2100,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
     // init skip writer in lazy fashion
     if (IRS_LIKELY(skip_)) {
 seek_after_initialization:
-      const size_t skipped = skip_.seek(target);
+      const doc_id_t skipped{skip_.seek(target)};
       if (skipped > (cur_pos_ + relative_pos())) {
         doc_in_->seek(last.doc_ptr);
         std::get<document>(attrs_).value = last.doc;
@@ -2147,6 +2149,7 @@ template<typename IteratorTraits, typename FieldTraits>
 class wanderator final : public irs::doc_iterator {
  private:
   static_assert(FieldTraits::wand());
+  static_assert(IteratorTraits::block_size() <= std::numeric_limits<doc_id_t>::max());
 
   using attributes = std::conditional_t<
     IteratorTraits::frequency() && IteratorTraits::position(),
@@ -2217,7 +2220,7 @@ class wanderator final : public irs::doc_iterator {
     // check whether it make sense to use skip-list
     if (skip_levels_.front().doc < target &&
         term_state_.docs_count > IteratorTraits::block_size()) {
-      const size_t skipped = skip_.seek(target);
+      const doc_id_t skipped{skip_.seek(target)};
       if (skipped > (cur_pos_ + relative_pos())) {
         std::get<document>(attrs_).value = prev_skip_.doc;
         cur_pos_ = skipped;
@@ -2231,9 +2234,9 @@ class wanderator final : public irs::doc_iterator {
   doc_id_t seek_to_target(doc_id_t target);
 
   // returns current position in the document block 'docs_'
-  size_t relative_pos() noexcept {
+  doc_id_t relative_pos() noexcept {
     assert(begin_ >= buf_.docs);
-    return begin_ - buf_.docs;
+    return static_cast<doc_id_t>(begin_ - buf_.docs);
   }
 
   void read_end_block(size_t size);
@@ -2395,7 +2398,7 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
 
 template<typename IteratorTraits, typename FieldTraits>
 doc_id_t wanderator<IteratorTraits, FieldTraits>::seek_to_threshold(doc_id_t target) {
-  auto& threshold = std::get<score_threshold>(attrs_);
+  [[maybe_unused]] auto& threshold = std::get<score_threshold>(attrs_);
 
 
   return target;
@@ -3454,7 +3457,7 @@ class postings_reader final: public postings_reader_base {
   virtual irs::doc_iterator::ptr wanderator(
       IndexFeatures field_features,
       IndexFeatures required_features,
-      const term_meta& meta) {
+      const term_meta& meta) override {
     return iterator_impl<FormatTraits::wand()>(field_features, required_features, meta);
   }
 
@@ -3538,9 +3541,6 @@ irs::doc_iterator::ptr postings_reader<FormatTraits>::iterator_impl(
         *this, std::forward<Args>(args)...);
     }
   }
-
-  assert(false);
-  return irs::doc_iterator::empty();
 }
 
 template<typename FormatTraits>

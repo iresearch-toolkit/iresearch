@@ -416,15 +416,8 @@ target_include_directories(${IResearch_TARGET_NAME}-static
 
 # setup MSVC specific compiler flags
 if(MSVC)
-  target_compile_options(${IResearch_TARGET_NAME}-shared
-    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
-    PRIVATE "/EHa"
-  )
-
-  target_compile_options(${IResearch_TARGET_NAME}-static
-    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
-    PRIVATE "/EHa"
-  )
+  target_compile_options(${IResearch_TARGET_NAME}-shared PRIVATE "/EHa")
+  target_compile_options(${IResearch_TARGET_NAME}-static PRIVATE "/EHa")
 endif()
 
 set_target_properties(${IResearch_TARGET_NAME}-shared
