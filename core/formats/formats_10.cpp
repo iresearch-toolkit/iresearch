@@ -2085,6 +2085,8 @@ seek_after_initialization:
           std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(last); // notify positions
         }
       }
+
+      return;
     }
 
     auto skip_in = doc_in_->dup();
