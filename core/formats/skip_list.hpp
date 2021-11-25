@@ -51,7 +51,7 @@ class skip_writer : util::noncopyable {
   /// @param skip_n skip interval for levels 1..n
   //////////////////////////////////////////////////////////////////////////////
   skip_writer(doc_id_t skip_0, doc_id_t skip_n) noexcept
-    : skip_0_{skip_0}, skip_n_{skip_n} {
+    : max_levels_{0}, skip_0_{skip_0}, skip_n_{skip_n} {
     assert(skip_0_);
   }
 
@@ -61,14 +61,14 @@ class skip_writer : util::noncopyable {
   doc_id_t skip_0() const noexcept { return skip_0_; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @returns number of elements to skip at the levels from 1 to num_levels()
+  /// @returns number of elements to skip at the levels from 1 to max_levels()
   //////////////////////////////////////////////////////////////////////////////
   doc_id_t skip_n() const noexcept { return skip_n_; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements in a skip-list
   //////////////////////////////////////////////////////////////////////////////
-  size_t num_levels() const noexcept { return levels_.size(); }
+  size_t max_levels() const noexcept { return max_levels_; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prepares skip_writer
@@ -107,47 +107,39 @@ class skip_writer : util::noncopyable {
   template<typename Writer>
   void skip(doc_id_t count, Writer&& write);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns true if skip_writer was succesfully prepared
-  //////////////////////////////////////////////////////////////////////////////
-  explicit operator bool() const noexcept {
-    return !levels_.empty();
-  }
-
  protected:
   std::vector<memory_output> levels_;
+  size_t max_levels_;
   doc_id_t skip_0_; // skip interval for 0 level
   doc_id_t skip_n_; // skip interval for 1..n levels
 }; // skip_writer
 
 template<typename Writer>
 void skip_writer::skip(doc_id_t count, Writer&& write) {
-  assert(static_cast<bool>(*this));
+  if (0 == (count % skip_0_)) {
+    assert(!levels_.empty());
 
-  if (0 != count % skip_0_) {
-    return;
-  }
+    uint64_t child = 0;
 
-  uint64_t child = 0;
+    // write 0 level
+    {
+      auto& stream = levels_.front().stream;
+      write(0, stream);
+      count /= skip_0_;
+      child = stream.file_pointer();
+    }
 
-  // write 0 level
-  {
-    auto& stream = levels_.front().stream;
-    write(0, stream);
-    count /= skip_0_;
-    child = stream.file_pointer();
-  }
+    // write levels from 1 to n
+    for (size_t i = 1;
+         0 == count % skip_n_ && i < max_levels_;
+         ++i, count /= skip_n_) {
+      auto& stream = levels_[i].stream;
+      write(i, stream);
 
-  // write levels from 1 to n
-  for (size_t i = 1, size = levels_.size();
-       0 == count % skip_n_ && i < size;
-       ++i, count /= skip_n_) {
-    auto& stream = levels_[i].stream;
-    write(i, stream);
-
-    uint64_t next_child = stream.file_pointer();
-    stream.write_vlong(child);
-    child = next_child;
+      uint64_t next_child = stream.file_pointer();
+      stream.write_vlong(child);
+      child = next_child;
+    }
   }
 }
 
@@ -192,13 +184,6 @@ class skip_reader_base : util::noncopyable {
   /// @brief resets skip reader internal state
   //////////////////////////////////////////////////////////////////////////////
   void reset();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns true if skip_reader was succesfully prepared
-  //////////////////////////////////////////////////////////////////////////////
-  explicit operator bool() const noexcept  {
-    return !levels_.empty();
-  }
 
  protected:
   static constexpr size_t UNDEFINED = std::numeric_limits<size_t>::max();

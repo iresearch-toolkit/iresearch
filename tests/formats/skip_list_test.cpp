@@ -45,13 +45,13 @@ class skip_writer_test : public test_base {
     };
 
     irs::skip_writer writer(skip, skip);
-    ASSERT_FALSE(writer);
+    ASSERT_EQ(0, writer.max_levels());
     irs::memory_directory dir;
 
     // write data
     {
       writer.prepare(max_levels, count);
-      ASSERT_TRUE(static_cast<bool>(writer));
+      ASSERT_NE(0, writer.max_levels());
 
       for (size_t doc = 0; doc < count; ++doc) {
         cur_doc = doc;
@@ -86,14 +86,13 @@ class skip_writer_test : public test_base {
       auto in = dir.open("docs", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
 
-      // skip number of levels
-      in->read_vint();
+      size_t num_levels = in->read_vint();
 
       // check levels from n downto 1
-      for (size_t i = writer.num_levels(); i > 1; --i) {
+      for (; num_levels > 1; --num_levels) {
         // skip level size
         in->read_vlong();
-        auto& level = levels[i-1];
+        auto& level = levels[num_levels-1];
         for (auto expected_doc : level) {
           auto doc = in->read_vint();
           ASSERT_EQ(expected_doc, doc);
@@ -103,7 +102,7 @@ class skip_writer_test : public test_base {
       }
 
       // check level 0
-      {
+      if (num_levels) {
         // skip level size
         in->read_vlong();
         auto& level = levels[0];
@@ -129,12 +128,11 @@ TEST_F(skip_writer_test, prepare) {
     const size_t skip_0 = 16;
 
     irs::skip_writer writer(skip_0, skip_n);
-    ASSERT_FALSE(writer);
+    ASSERT_EQ(0, writer.max_levels());
     writer.prepare(max_levels, doc_count);
-    ASSERT_FALSE(static_cast<bool>(writer));
     ASSERT_EQ(skip_0, writer.skip_0());
     ASSERT_EQ(skip_n, writer.skip_n());
-    ASSERT_EQ(0, writer.num_levels());
+    ASSERT_EQ(0, writer.max_levels());
   }
 
   // at least 1 level must exists
@@ -144,12 +142,11 @@ TEST_F(skip_writer_test, prepare) {
     const size_t skip_n = 8;
     const size_t skip_0 = 16;
     irs::skip_writer writer(skip_0, skip_n);
-    ASSERT_FALSE(writer);
+    ASSERT_EQ(0, writer.max_levels());
     writer.prepare(max_levels, doc_count);
-    ASSERT_TRUE(static_cast<bool>(writer));
     ASSERT_EQ(skip_0, writer.skip_0());
     ASSERT_EQ(skip_n, writer.skip_n());
-    ASSERT_EQ(1, writer.num_levels());
+    ASSERT_EQ(1, writer.max_levels());
   }
 
   // less than max levels
@@ -158,12 +155,11 @@ TEST_F(skip_writer_test, prepare) {
     const size_t skip = 8;
     const size_t max_levels = 10;
     irs::skip_writer writer(skip, skip);
-    ASSERT_FALSE(writer);
+    ASSERT_EQ(0, writer.max_levels());
     writer.prepare(max_levels, doc_count);
-    ASSERT_TRUE(static_cast<bool>(writer));
     ASSERT_EQ(skip, writer.skip_0());
     ASSERT_EQ(skip, writer.skip_n());
-    ASSERT_EQ(3, writer.num_levels());
+    ASSERT_EQ(3, writer.max_levels());
   }
 
   // more than max levels 
@@ -172,12 +168,21 @@ TEST_F(skip_writer_test, prepare) {
     const size_t skip = 8;
     const size_t max_levels = 5;
     irs::skip_writer writer(skip, skip);
-    ASSERT_FALSE(writer);
+    ASSERT_EQ(0, writer.max_levels());
     writer.prepare(max_levels, doc_count);
-    ASSERT_TRUE(static_cast<bool>(writer));
     ASSERT_EQ(skip, writer.skip_0());
     ASSERT_EQ(skip, writer.skip_n());
-    ASSERT_EQ(5, writer.num_levels());
+    ASSERT_EQ(5, writer.max_levels());
+
+    writer.prepare(max_levels, 7);
+    ASSERT_EQ(skip, writer.skip_0());
+    ASSERT_EQ(skip, writer.skip_n());
+    ASSERT_EQ(0, writer.max_levels());
+
+    writer.prepare(max_levels, 0);
+    ASSERT_EQ(skip, writer.skip_0());
+    ASSERT_EQ(skip, writer.skip_n());
+    ASSERT_EQ(0, writer.max_levels());
   }
 }
 
@@ -200,9 +205,9 @@ TEST_F(skip_writer_test, reset) {
 
   // prepare writer
   irs::skip_writer writer(skip, skip);
-  ASSERT_FALSE(writer);
+  ASSERT_EQ(0, writer.max_levels());
   writer.prepare(max_levels, count);
-  ASSERT_TRUE(static_cast<bool>(writer));
+  ASSERT_NE(max_levels, writer.max_levels());
 
   // prepare directory
   irs::memory_directory dir;
@@ -245,14 +250,13 @@ TEST_F(skip_writer_test, reset) {
       auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
 
-      // skip number of levels
-      in->read_vint();
+      size_t num_levels = in->read_vint();
 
       // check levels from n downto 1
-      for (size_t i = writer.num_levels(); i > 1; --i) {
+      for (; num_levels > 1; --num_levels) {
         // skip level size
         in->read_vlong();
-        auto& level = levels[i-1];
+        auto& level = levels[num_levels-1];
         for (auto expected_doc : level) {
           auto doc = in->read_vint();
           ASSERT_EQ(expected_doc, doc);
@@ -262,7 +266,7 @@ TEST_F(skip_writer_test, reset) {
       }
 
       // check level 0
-      {
+      if (num_levels) {
         // skip level size
         in->read_vlong();
         auto& level = levels[0];
@@ -318,14 +322,13 @@ TEST_F(skip_writer_test, reset) {
       auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
 
-      // skip number of levels
-      in->read_vint();
+      size_t num_levels = in->read_vint();
 
       // check levels from n downto 1
-      for (size_t i = writer.num_levels(); i > 1; --i) {
+      for (num_levels; num_levels > 1; --num_levels) {
         // skip level size
         in->read_vlong();
-        auto& level = levels[i-1];
+        auto& level = levels[num_levels-1];
         for (auto expected_doc : level) {
           auto doc = in->read_vint();
           ASSERT_EQ(expected_doc, doc);
@@ -335,7 +338,7 @@ TEST_F(skip_writer_test, reset) {
       }
 
       // check level 0
-      {
+      if (num_levels) {
         // skip level size
         in->read_vlong();
         auto& level = levels[0];
@@ -356,9 +359,9 @@ TEST_F(skip_reader_test, prepare) {
     size_t skip = 8;
 
     irs::skip_writer writer(skip, skip);
-    ASSERT_FALSE(writer);
+    ASSERT_EQ(0, writer.max_levels());
     writer.prepare(max_levels, count);
-    ASSERT_TRUE(static_cast<bool>(writer));
+    ASSERT_EQ(3, writer.max_levels());
     irs::memory_directory dir;
     {
       auto out = dir.create("docs");
@@ -369,13 +372,12 @@ TEST_F(skip_reader_test, prepare) {
 
     auto noop_read = [](size_t, irs::data_input&) { return irs::doc_limits::eof(); };
     irs::skip_reader<decltype(noop_read)> reader(skip, skip, std::move(noop_read));
-    ASSERT_FALSE(reader);
+    ASSERT_EQ(0, reader.num_levels());
     {
       auto in = dir.open("docs", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       reader.prepare(std::move(in));
     }
-    ASSERT_FALSE(static_cast<bool>(reader));
     ASSERT_EQ(0, reader.num_levels());
     ASSERT_EQ(skip, reader.skip_0());
     ASSERT_EQ(skip, reader.skip_n());
@@ -394,13 +396,13 @@ TEST_F(skip_reader_test, prepare) {
     };
 
     irs::skip_writer writer(skip, skip);
-    ASSERT_FALSE(writer);
+    ASSERT_EQ(0, writer.max_levels());
     irs::memory_directory dir;
 
     // write data
     {
       writer.prepare(max_levels, count);
-      ASSERT_TRUE(static_cast<bool>(writer));
+      ASSERT_EQ(3, writer.max_levels());
 
       for (size_t i = 0; i <= count; ++i) {
         if (i && 0 == i % skip) {
@@ -418,12 +420,11 @@ TEST_F(skip_reader_test, prepare) {
     };
 
     irs::skip_reader<decltype(noop)> reader(skip, skip, std::move(noop));
-    ASSERT_FALSE(reader);
+    ASSERT_EQ(0, reader.num_levels());
     auto in = dir.open("docs", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in);
     reader.prepare(std::move(in));
-    ASSERT_TRUE(static_cast<bool>(reader));
-    ASSERT_EQ(writer.num_levels(), reader.num_levels());
+    ASSERT_EQ(writer.max_levels(), reader.num_levels());
     ASSERT_EQ(skip, reader.skip_0());
     ASSERT_EQ(skip, reader.skip_n());
   }
@@ -456,12 +457,12 @@ TEST_F(skip_reader_test, seek) {
       };
 
       irs::skip_writer writer(skip_0, skip_n);
-      ASSERT_FALSE(writer);
+      ASSERT_EQ(0, writer.max_levels());
 
       // write data
 
       writer.prepare(max_levels, count);
-      ASSERT_TRUE(static_cast<bool>(writer));
+      ASSERT_EQ(3, writer.max_levels());
 
       size_t size = 0;
       for (size_t doc = 0; doc <= count; ++doc, ++size) {
@@ -504,11 +505,11 @@ TEST_F(skip_reader_test, seek) {
       };
 
       irs::skip_reader<decltype(read_skip)> reader(skip_0, skip_n, std::move(read_skip));
-      ASSERT_FALSE(reader);
+      ASSERT_EQ(0, reader.num_levels());
       auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       reader.prepare(std::move(in));
-      ASSERT_TRUE(static_cast<bool>(reader));
+      ASSERT_EQ(3, reader.num_levels());
       ASSERT_EQ(skip_0, reader.skip_0());
       ASSERT_EQ(skip_n, reader.skip_n());
 
@@ -755,15 +756,12 @@ TEST_F(skip_reader_test, seek) {
 
     irs::memory_directory dir;
     irs::skip_writer writer(skip_0, skip_n);
+    ASSERT_EQ(0, writer.max_levels());
 
     // write data
     {
-      ASSERT_FALSE(writer);
-
-      // write data
-
       writer.prepare(max_levels, count);
-      ASSERT_TRUE(static_cast<bool>(writer));
+      ASSERT_EQ(3, writer.max_levels());
 
       size_t size = 0;
       for (size_t doc = 0; doc <= count; ++doc, ++size) {
@@ -805,12 +803,11 @@ TEST_F(skip_reader_test, seek) {
       };
 
       irs::skip_reader<decltype(read_skip)> reader(skip_0, skip_n, std::move(read_skip));
-      ASSERT_FALSE(reader);
+      ASSERT_EQ(0, reader.num_levels());
       auto in = dir.open(file, irs::IOAdvice::RANDOM);
       ASSERT_FALSE(!in);
       reader.prepare(std::move(in));
-      ASSERT_TRUE(static_cast<bool>(reader));
-      ASSERT_EQ(writer.num_levels(), reader.num_levels());
+      ASSERT_EQ(writer.max_levels(), reader.num_levels());
       ASSERT_EQ(skip_0, reader.skip_0());
       ASSERT_EQ(skip_n, reader.skip_n());
 
@@ -964,15 +961,12 @@ TEST_F(skip_reader_test, seek) {
 
     irs::memory_directory dir;
     irs::skip_writer writer(skip_0, skip_n);
+    ASSERT_EQ(0, writer.max_levels());
 
     // write data
     {
-      ASSERT_FALSE(writer);
-
-      // write data
-
       writer.prepare(max_levels, count);
-      ASSERT_TRUE(static_cast<bool>(writer));
+      ASSERT_EQ(4, writer.max_levels());
 
       size_t size = 0;
       for (size_t doc = 0; doc <= count; ++doc, ++size) {
@@ -1018,12 +1012,11 @@ TEST_F(skip_reader_test, seek) {
       };
 
       irs::skip_reader<decltype(read_skip)> reader(skip_0, skip_n, std::move(read_skip));
-      ASSERT_FALSE(reader);
+      ASSERT_EQ(0, reader.num_levels());
       auto in = dir.open(file, irs::IOAdvice::RANDOM);
       ASSERT_FALSE(!in);
       reader.prepare(std::move(in));
-      ASSERT_TRUE(static_cast<bool>(reader));
-      ASSERT_EQ(writer.num_levels(), reader.num_levels());
+      ASSERT_EQ(writer.max_levels(), reader.num_levels());
       ASSERT_EQ(skip_0, reader.skip_0());
       ASSERT_EQ(skip_n, reader.skip_n());
 
@@ -1149,14 +1142,12 @@ TEST_F(skip_reader_test, seek) {
 
     irs::memory_directory dir;
     irs::skip_writer writer(skip_0, skip_n);
+    ASSERT_EQ(0, writer.max_levels());
 
     // write data
     {
-      ASSERT_FALSE(writer);
-
-      // write data
       writer.prepare(max_levels, count);
-      ASSERT_TRUE(static_cast<bool>(writer));
+      ASSERT_EQ(3 , writer.max_levels());
 
       irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
       for (size_t size = 0; size <= count; doc += 2, ++size) {
@@ -1200,7 +1191,7 @@ TEST_F(skip_reader_test, seek) {
       };
 
       irs::skip_reader<decltype(read_skip)> reader(skip_0, skip_n, std::move(read_skip));
-      ASSERT_FALSE(reader);
+      ASSERT_EQ(0, reader.num_levels());
       auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       reader.prepare(std::move(in));

@@ -53,24 +53,24 @@ void skip_writer::prepare(
     size_t max_levels, 
     size_t count,
     const memory_allocator& alloc /* = memory_allocator::global() */) {
-  max_levels = std::min(
+  max_levels_ = std::min(
     std::max(size_t(1), max_levels),
     ::max_levels(skip_0_, skip_n_, count));
-  levels_.reserve(max_levels);
+  levels_.reserve(max_levels_);
 
   // reset existing skip levels
   for (auto& level : levels_) {
     level.reset(alloc);
   }
 
-  // add new skip levels
-  for (auto size = levels_.size(); size < max_levels; ++size) {
+  // add new skip levels if needed
+  for (auto size = levels_.size(); size < max_levels_; ++size) {
     levels_.emplace_back(alloc);
   }
 }
 
 void skip_writer::flush(index_output& out) {
-  const auto rend = levels_.rend();
+  const auto rend = levels_.rbegin() + max_levels_;
 
   // find first filled level
   auto level = std::find_if(
