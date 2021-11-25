@@ -2308,11 +2308,6 @@ TEST_P(index_test_case, europarl_docs) {
   assert_index();
 }
 
-TEST_P(index_test_case, docs_bit_union) {
-  docs_bit_union(irs::IndexFeatures::NONE);
-  docs_bit_union(irs::IndexFeatures::FREQ);
-}
-
 TEST_P(index_test_case, europarl_docs_automaton) {
   {
     tests::europarl_doc_template doc;
@@ -2340,6 +2335,53 @@ TEST_P(index_test_case, europarl_docs_automaton) {
     irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
+}
+
+#ifndef IRESEARCH_DEBUG
+
+TEST_P(index_test_case, europarl_docs_big) {
+  {
+    tests::europarl_doc_template doc;
+    tests::delim_doc_generator gen(resource("europarl.subset.big.txt"), doc);
+    add_segment(gen);
+  }
+  assert_index();
+}
+
+TEST_P(index_test_case, europarl_docs_big_automaton) {
+  {
+    tests::europarl_doc_template doc;
+    tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
+    add_segment(gen);
+  }
+
+  // prefix
+  {
+    auto acceptor = irs::from_wildcard("forb%");
+    irs::automaton_table_matcher matcher(acceptor, true);
+    assert_index(0, &matcher);
+  }
+
+  // part
+  {
+    auto acceptor = irs::from_wildcard("%ende%");
+    irs::automaton_table_matcher matcher(acceptor, true);
+    assert_index(0, &matcher);
+  }
+
+  // suffix
+  {
+    auto acceptor = irs::from_wildcard("%ione");
+    irs::automaton_table_matcher matcher(acceptor, true);
+    assert_index(0, &matcher);
+  }
+}
+
+#endif
+
+TEST_P(index_test_case, docs_bit_union) {
+  docs_bit_union(irs::IndexFeatures::NONE);
+  docs_bit_union(irs::IndexFeatures::FREQ);
 }
 
 TEST_P(index_test_case, monarch_eco_onthology) {
