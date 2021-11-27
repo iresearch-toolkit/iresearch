@@ -4265,7 +4265,7 @@ class format15simd : public format14simd {
   }
 };
 
-const ::format14simd FORMAT15SIMD_INSTANCE;
+const ::format15simd FORMAT15SIMD_INSTANCE;
 
 irs::postings_writer::ptr format15simd::get_postings_writer(bool consolidation) const {
   return memory::make_unique<::postings_writer<format_traits>>(
@@ -4277,7 +4277,7 @@ irs::postings_reader::ptr format15simd::get_postings_reader() const {
 }
 
 /*static*/ irs::format::ptr format15simd::make() {
-  return irs::format::ptr(irs::format::ptr(), &FORMAT14SIMD_INSTANCE);
+  return irs::format::ptr(irs::format::ptr(), &FORMAT15SIMD_INSTANCE);
 }
 
 REGISTER_FORMAT_MODULE(::format15simd, MODULE_NAME);
