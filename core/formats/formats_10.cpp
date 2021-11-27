@@ -1571,14 +1571,14 @@ struct position_impl<IteratorTraits, FieldTraits, false, false> {
   }
 
   struct cookie {
-    uint32_t pend_pos_{};
+    size_t pend_pos_{};
     size_t file_pointer_ = std::numeric_limits<size_t>::max();
   };
 
   uint32_t pos_deltas_[IteratorTraits::block_size()]; // buffer to store position deltas
   const uint32_t* freq_; // lenght of the posting list for a document
   uint32_t* enc_buf_; // auxillary buffer to decode data
-  uint32_t pend_pos_{}; // how many positions "behind" we are
+  size_t pend_pos_{}; // how many positions "behind" we are
   uint64_t tail_start_; // file pointer where the last (vInt encoded) pos delta block is
   size_t tail_length_; // number of positions in the last (vInt encoded) pos delta block
   uint32_t buf_pos_{ IteratorTraits::block_size() }; // current position in pos_deltas_ buffer
@@ -1599,8 +1599,8 @@ class position final : public irs::position,
   virtual value_t seek(value_t target) override {
     const uint32_t freq = *this->freq_;
     if (this->pend_pos_ > freq) {
-        skip(this->pend_pos_ - freq);
-        this->pend_pos_ = freq;
+      skip(this->pend_pos_ - freq);
+      this->pend_pos_ = freq;
     }
     while (value_ < target && this->pend_pos_) {
       if (this->buf_pos_ == IteratorTraits::block_size()) {
@@ -2333,6 +2333,9 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
   assert(!IteratorTraits::payload() || IteratorTraits::payload() == FieldTraits::payload());
   assert(!skip_levels_.empty()); // ensured by ctor
   assert(doc_limits::eof(skip_levels_.front().doc)); // ensured by ctor
+
+  // don't use wanderator for short posting lists
+  assert(term_state_.docs_count > IteratorTraits::block_size());
 
   begin_ = end_ = buf_.docs;
 
@@ -3485,6 +3488,11 @@ class postings_reader final: public postings_reader_base {
       IndexFeatures field_features,
       IndexFeatures required_features,
       const term_meta& meta) override {
+    if (meta.docs_count <= FormatTraits::block_size()) {
+      // no need to use wanderator for short lists
+      return iterator(field_features, required_features, meta);
+    }
+
     return iterator_impl<FormatTraits::wand()>(field_features, required_features, meta);
   }
 
