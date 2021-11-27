@@ -1029,11 +1029,13 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
           write_skip(level, out);
 
           if constexpr (FormatTraits::wand()) {
-            auto& score = score_levels_[level];
-            if (level) {
-              score.add(score_levels_[level - 1]);
+            if (IndexFeatures::NONE != (features_ & IndexFeatures::FREQ)) {
+              auto& score = score_levels_[level];
+              if (level) {
+                score.add(score_levels_[level - 1]);
+              }
+              score.write(out);
             }
-            score.write(out);
           }
       });
 
@@ -2335,7 +2337,7 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
   assert(doc_limits::eof(skip_levels_.front().doc)); // ensured by ctor
 
   // don't use wanderator for short posting lists
-  assert(term_state_.docs_count > IteratorTraits::block_size());
+  assert(meta.docs_count > IteratorTraits::block_size());
 
   begin_ = end_ = buf_.docs;
 
@@ -3488,8 +3490,11 @@ class postings_reader final: public postings_reader_base {
       IndexFeatures field_features,
       IndexFeatures required_features,
       const term_meta& meta) override {
-    if (meta.docs_count <= FormatTraits::block_size()) {
-      // no need to use wanderator for short lists
+    if (meta.docs_count <= FormatTraits::block_size() ||
+        IndexFeatures::NONE == (required_features & IndexFeatures::FREQ)) {
+      // No need to use wanderator
+      //  * for short lists
+      //  * if term frequency isn't tracked
       return iterator(field_features, required_features, meta);
     }
 

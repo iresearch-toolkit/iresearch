@@ -109,7 +109,8 @@ class format_test_case : public index_test_base {
 
   class postings: public irs::doc_iterator {
    public:
-    typedef std::vector<irs::doc_id_t> docs_t;
+    // DocId + Freq
+    typedef std::vector<std::pair<irs::doc_id_t, uint32_t>> docs_t;
     typedef std::vector<irs::cost::cost_t> costs_t;
 
     postings(
@@ -119,7 +120,7 @@ class format_test_case : public index_test_base {
       : next_(begin), end_(end), pos_(features) {
       attrs_[irs::type<irs::attribute_provider_change>::id()] = &callback_;
       if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::FREQ)) {
-        freq_.value = 10;
+        freq_.value = 0;
         attrs_[irs::type<irs::frequency>::id()] = &freq_;
         if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::POS)) {
           attrs_[irs::type<irs::position>::id()] = &pos_;
@@ -137,9 +138,9 @@ class format_test_case : public index_test_base {
         return false;
       }
 
-      doc_ = *next_;
+      std::tie(doc_, freq_.value) = *next_;
       pos_.value_ = doc_;
-      pos_.end_ = pos_.value_ + 10;
+      pos_.end_ = pos_.value_ + freq_.value;
       pos_.clear();
       ++next_;
 
@@ -173,15 +174,18 @@ class format_test_case : public index_test_base {
   template<typename Iterator>
   class terms: public irs::term_iterator {
    public:
+    using docs_type = std::vector<std::pair<irs::doc_id_t, uint32_t>>;
+
     terms(const Iterator& begin, const Iterator& end)
-      : next_(begin), end_(end) {
-      docs_.push_back((irs::type_limits<irs::type_t::doc_id_t>::min)());
+        : next_(begin), end_(end) {
+      docs_.emplace_back((irs::type_limits<irs::type_t::doc_id_t>::min)(), 0);
     }
 
-    terms(const Iterator& begin, const Iterator& end,
-        std::vector<irs::doc_id_t>::const_iterator doc_begin,
-        std::vector<irs::doc_id_t>::const_iterator doc_end)
-      : docs_(doc_begin, doc_end), next_(begin), end_(end) {
+    terms(const Iterator& begin,
+          const Iterator& end,
+          docs_type::const_iterator doc_begin,
+          docs_type::const_iterator doc_end)
+        : docs_(doc_begin, doc_end), next_(begin), end_(end) {
     }
 
     bool next() {
@@ -211,7 +215,7 @@ class format_test_case : public index_test_base {
 
    private:
     irs::bytes_ref val_;
-    std::vector<irs::doc_id_t> docs_;
+    docs_type docs_;
     Iterator next_;
     Iterator end_;
   }; // terms
