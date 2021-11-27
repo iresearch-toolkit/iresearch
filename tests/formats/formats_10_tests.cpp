@@ -881,8 +881,8 @@ TEST_P(format_10_test_case, postings_seek) {
 
     const auto docs = generate_docs(kCount, 1);
 
-//    postings_seek(docs, irs::IndexFeatures::NONE);
-//    postings_seek(docs, irs::IndexFeatures::FREQ);
+    postings_seek(docs, irs::IndexFeatures::NONE);
+    postings_seek(docs, irs::IndexFeatures::FREQ);
     postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS);
     postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS);
     postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::PAY);
