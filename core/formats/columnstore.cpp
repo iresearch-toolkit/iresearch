@@ -1640,6 +1640,11 @@ class column
 
   virtual ~column() = default;
 
+  virtual bytes_ref payload() const final {
+    // Implementation doesn't support column headers.
+    return bytes_ref::NIL;
+  }
+
   virtual void read(data_input& in, uint64_t* /*buf*/, compression::decompressor::ptr decomp) {
     count_ = in.read_vint();
     max_ = in.read_vint();

@@ -381,11 +381,14 @@ struct IRESEARCH_API columnstore_reader {
   struct column_reader {
     virtual ~column_reader() = default;
 
-    // returns corresponding column reader
+    // Returns column header .
+    virtual bytes_ref payload() const = 0;
+
+    // Returns corresponding column reader.
     virtual columnstore_reader::values_reader_f values() const = 0;
 
-    // returns the corresponding column iterator
-    // if the column implementation supports document payloads then the latter
+    // Returns the corresponding column iterator.
+    // If the column implementation supports document payloads then the latter
     // may be accessed via the 'payload' attribute
     virtual doc_iterator::ptr iterator() const = 0;
 

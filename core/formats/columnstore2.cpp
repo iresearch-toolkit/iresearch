@@ -328,6 +328,10 @@ class column_base : public columnstore_reader::column_reader,
     assert(!is_encrypted(hdr) || cipher_);
   }
 
+  virtual bytes_ref payload() const override {
+    return bytes_ref::NIL;
+  }
+
   virtual columnstore_reader::values_reader_f values() const override;
 
   virtual bool visit(const columnstore_reader::values_visitor_f& visitor) const override;
@@ -400,7 +404,7 @@ columnstore_reader::values_reader_f column_base::values() const {
 bool column_base::visit(const columnstore_reader::values_visitor_f& visitor) const {
   auto it = this->iterator();
 
-  payload dummy;
+  irs::payload dummy;
   auto* doc = irs::get<document>(*it);
   if (!doc) {
     return false;
