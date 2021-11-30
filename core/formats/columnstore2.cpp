@@ -53,6 +53,7 @@ void write_header(index_output& out, const column_header& hdr) {
   out.write_int(hdr.min);
   out.write_int(hdr.docs_count);
   out.write_long(hdr.docs_index);
+  write_string(out, hdr.payload);
 }
 
 column_header read_header(index_input& in) {
@@ -62,6 +63,7 @@ column_header read_header(index_input& in) {
   hdr.min = in.read_int();
   hdr.docs_count = in.read_int();
   hdr.docs_index = in.read_long();
+  hdr.payload = read_string<decltype(hdr.payload)>(in);
   return hdr;
 }
 
@@ -313,28 +315,28 @@ class column_base : public columnstore_reader::column_reader,
                     private util::noncopyable {
  public:
   column_base(
-      const column_header& hdr,
+      column_header&& hdr,
       column_index&& index,
       const index_input& stream,
       encryption::stream* cipher)
     : stream_{&stream},
       cipher_{cipher},
-      hdr_{hdr},
+      hdr_{std::move(hdr)},
       index_{std::move(index)},
       opts_{
         index_.empty()
           ? sparse_bitmap_iterator::block_index_t{}
           : sparse_bitmap_iterator::block_index_t{ index_.data(), index_.size() },  true } {
-    assert(!is_encrypted(hdr) || cipher_);
+    assert(!is_encrypted(hdr_) || cipher_);
   }
 
-  virtual bytes_ref payload() const override {
-    return bytes_ref::NIL;
+  virtual bytes_ref payload() const final {
+    return hdr_.payload;
   }
 
-  virtual columnstore_reader::values_reader_f values() const override;
+  virtual columnstore_reader::values_reader_f values() const final;
 
-  virtual bool visit(const columnstore_reader::values_visitor_f& visitor) const override;
+  virtual bool visit(const columnstore_reader::values_visitor_f& visitor) const final;
 
   virtual doc_id_t size() const noexcept final {
     return hdr_.docs_count;
@@ -574,21 +576,22 @@ struct mask_column final : public column_base {
   }; // payload_reader
 
   static column_ptr read(
-      const column_header& hdr,
+      column_header&& hdr,
       column_index&& index,
       index_input& /*index_in*/,
       const index_input& data_in,
       compression::decompressor::ptr&& /*inflater*/,
       encryption::stream* cipher) {
-    return memory::make_unique<mask_column>(hdr, std::move(index), data_in, cipher);
+    return memory::make_unique<mask_column>(
+        std::move(hdr), std::move(index), data_in, cipher);
   }
 
   mask_column(
-      const column_header& hdr,
+      column_header&& hdr,
       column_index&& index,
       const index_input& data_in,
       encryption::stream* cipher)
-    : column_base{hdr, std::move(index), data_in, cipher} {
+    : column_base{std::move(hdr), std::move(index), data_in, cipher} {
     assert(ColumnType::MASK == header().type);
   }
 
@@ -628,7 +631,7 @@ doc_iterator::ptr mask_column::iterator() const {
 class dense_fixed_length_column final : public column_base {
  public:
   static column_ptr read(
-    const column_header& hdr,
+    column_header&& hdr,
     column_index&& index,
     index_input& index_in,
     const index_input& data_in,
@@ -636,14 +639,14 @@ class dense_fixed_length_column final : public column_base {
     encryption::stream* cipher);
 
   dense_fixed_length_column(
-      const column_header& hdr,
+      column_header&& hdr,
       column_index&& index,
       const index_input& data_in,
       compression::decompressor::ptr&& inflater,
       encryption::stream* cipher,
       uint64_t data,
       uint64_t len)
-    : column_base{hdr, std::move(index), data_in, cipher},
+    : column_base{std::move(hdr), std::move(index), data_in, cipher},
       inflater_{std::move(inflater)},
       data_{data},
       len_{len} {
@@ -683,7 +686,7 @@ class dense_fixed_length_column final : public column_base {
 }; // dense_fixed_length_column
 
 /*static*/ column_ptr dense_fixed_length_column::read(
-    const column_header& hdr,
+    column_header&& hdr,
     column_index&& index,
     index_input& index_in,
     const index_input& data_in,
@@ -693,7 +696,7 @@ class dense_fixed_length_column final : public column_base {
   const uint64_t len = index_in.read_long();
 
   return memory::make_unique<dense_fixed_length_column>(
-    hdr, std::move(index), data_in,
+    std::move(hdr), std::move(index), data_in,
     std::move(inflater), cipher,
     data, len);
 }
@@ -725,7 +728,7 @@ doc_iterator::ptr dense_fixed_length_column::iterator() const {
 class fixed_length_column final : public column_base {
  public:
   static column_ptr read(
-      const column_header& hdr,
+      column_header&& hdr,
       column_index&& index,
       index_input& index_in,
       const index_input& data_in,
@@ -735,20 +738,20 @@ class fixed_length_column final : public column_base {
     auto blocks = read_blocks_dense(hdr, index_in);
 
     return memory::make_unique<fixed_length_column>(
-      hdr, std::move(index), data_in,
+      std::move(hdr), std::move(index), data_in,
       std::move(inflater), cipher,
       std::move(blocks), len);
   }
 
   fixed_length_column(
-      const column_header& hdr,
+      column_header&& hdr,
       column_index&& index,
       const index_input& data_in,
       compression::decompressor::ptr&& inflater,
       encryption::stream* cipher,
       std::vector<uint64_t>&& blocks,
       uint64_t len)
-    : column_base{hdr, std::move(index), data_in, cipher},
+    : column_base{std::move(hdr), std::move(index), data_in, cipher},
       blocks_{blocks},
       inflater_{std::move(inflater)},
       len_{len} {
@@ -825,7 +828,7 @@ class sparse_column final : public column_base {
   };
 
   static column_ptr read(
-      const column_header& hdr,
+      column_header&& hdr,
       column_index&& index,
       index_input& index_in,
       const index_input& data_in,
@@ -834,18 +837,18 @@ class sparse_column final : public column_base {
     auto blocks = read_blocks_sparse(hdr, index_in);
 
     return memory::make_unique<sparse_column>(
-      hdr, std::move(index), data_in,
+      std::move(hdr), std::move(index), data_in,
       std::move(inflater), cipher, std::move(blocks));
   }
 
   sparse_column(
-      const column_header& hdr,
+      column_header&& hdr,
       column_index&& index,
       const index_input& data_in,
       compression::decompressor::ptr&& inflater,
       encryption::stream* cipher,
       std::vector<column_block>&& blocks)
-    : column_base{hdr, std::move(index), data_in, cipher},
+    : column_base{std::move(hdr), std::move(index), data_in, cipher},
       blocks_{std::move(blocks)},
       inflater_{std::move(inflater)} {
     assert(header().docs_count);
@@ -873,7 +876,7 @@ class sparse_column final : public column_base {
   }; // payload_reader
 
   static std::vector<column_block> read_blocks_sparse(
-    const column_header& hder, index_input& in);
+    const column_header& hdr, index_input& in);
 
   std::vector<column_block> blocks_;
   compression::decompressor::ptr inflater_;
@@ -981,7 +984,7 @@ doc_iterator::ptr sparse_column::iterator() const {
 }
 
 using column_factory_f = column_ptr(*)(
-  const column_header&, column_index&&, index_input&,
+  column_header&&, column_index&&, index_input&,
   const index_input&, compression::decompressor::ptr&&,
   encryption::stream*);
 
@@ -1428,7 +1431,7 @@ void reader::prepare_index(
         compression_id.c_str(), i)};
     }
 
-    const column_header hdr = read_header(*index_in);
+    column_header hdr = read_header(*index_in);
 
     if (is_encrypted(hdr) && !data_cipher_) {
       throw index_error{string_utils::to_string(
@@ -1448,7 +1451,8 @@ void reader::prepare_index(
 
     const size_t idx = static_cast<size_t>(hdr.type);
     if (IRS_LIKELY(idx < IRESEARCH_COUNTOF(FACTORIES))) {
-      auto column = FACTORIES[idx](hdr, std::move(index), *index_in, *data_in_,
+      auto column = FACTORIES[idx](std::move(hdr), std::move(index),
+                                   *index_in, *data_in_,
                                    std::move(inflater), data_cipher_.get());
       assert(column);
       columns.emplace_back(std::move(column));
