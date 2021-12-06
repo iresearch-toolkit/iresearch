@@ -450,7 +450,6 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   std::string seg_name_;
   field_writer::ptr field_writer_;
   const column_info_provider_t* column_info_;
-  const field_features_t* field_features_;
   column_meta_writer::ptr col_meta_writer_;
   columnstore_writer::ptr col_writer_;
   tracking_directory dir_;

@@ -180,7 +180,6 @@ segment_writer::segment_writer(
   : sort_(column_info),
     fields_(field_features, feature_column_info, cached_columns_, comparator),
     column_info_(&column_info),
-    field_features_(&field_features),
     dir_(dir),
     initialized_(false) {
 }
