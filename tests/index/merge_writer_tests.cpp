@@ -198,12 +198,12 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
     return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true );
   };
 
-  irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+  irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
     return irs::column_info(irs::type<irs::compression::none>::get(), {}, false);
   };
 
   auto reader = irs::directory_reader::open(dir, codec_ptr);
-  irs::merge_writer writer(dir, column_info, feature_column_info);
+  irs::merge_writer writer(dir, column_info, feature_info);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -604,12 +604,12 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
     return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
   };
 
-  irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+  irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
     return irs::column_info(irs::type<irs::compression::none>::get(), {}, false);
   };
 
   auto reader = irs::directory_reader::open(dir, codec_ptr);
-  irs::merge_writer writer(dir, column_info, feature_column_info);
+  irs::merge_writer writer(dir, column_info, feature_info);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -1131,7 +1131,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
   };
 
-  irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+  irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
     return irs::column_info(irs::type<irs::compression::none>::get(), {}, false);
   };
 
@@ -1882,7 +1882,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   irs::index_meta::index_segment_t index_segment;
   index_segment.meta.codec = codec_ptr;
 
-  irs::merge_writer writer(dir, column_info, feature_column_info);
+  irs::merge_writer writer(dir, column_info, feature_info);
   writer.reserve(2);
   writer.add(reader[0]);
   writer.add(reader[1]);
@@ -2338,13 +2338,13 @@ TEST_P(merge_writer_test_case, test_merge_writer_add_segments) {
       return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
     };
 
-    irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+    irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
       return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true);
     };
 
     irs::memory_directory dir;
     irs::index_meta::index_segment_t index_segment;
-    irs::merge_writer writer(dir, column_info, feature_column_info);
+    irs::merge_writer writer(dir, column_info, feature_info);
 
     for (auto& sub_reader: reader) {
       writer.add(sub_reader);
@@ -2399,14 +2399,14 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
       return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
     };
 
-    irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+    irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
       return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true);
     };
 
     irs::memory_directory dir;
     irs::index_meta::index_segment_t index_segment;
     irs::merge_writer::flush_progress_t progress;
-    irs::merge_writer writer(dir, column_info, feature_column_info);
+    irs::merge_writer writer(dir, column_info, feature_info);
 
     index_segment.meta.codec = codec_ptr;
     writer.add(reader[0]);
@@ -2429,14 +2429,14 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
       return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
     };
 
-    irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+    irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
       return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true);
     };
 
     irs::memory_directory dir;
     irs::index_meta::index_segment_t index_segment;
     irs::merge_writer::flush_progress_t progress = []()->bool { return false; };
-    irs::merge_writer writer(dir, column_info, feature_column_info);
+    irs::merge_writer writer(dir, column_info, feature_info);
 
     index_segment.meta.codec = codec_ptr;
     writer.add(reader[0]);
@@ -2463,7 +2463,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
       return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
     };
 
-    irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+    irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
       return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true);
     };
 
@@ -2471,7 +2471,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     irs::index_meta::index_segment_t index_segment;
     irs::merge_writer::flush_progress_t progress =
       [&progress_call_count]()->bool { ++progress_call_count; return true; };
-    irs::merge_writer writer(dir, column_info, feature_column_info);
+    irs::merge_writer writer(dir, column_info, feature_info);
 
     index_segment.meta.codec = codec_ptr;
     writer.add(reader[0]);
@@ -2494,7 +2494,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
   };
 
-  irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+  irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
     return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true);
   };
 
@@ -2505,7 +2505,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     irs::index_meta::index_segment_t index_segment;
     irs::merge_writer::flush_progress_t progress =
       [&call_count]()->bool { return --call_count; };
-    irs::merge_writer writer(dir, column_info, feature_column_info);
+    irs::merge_writer writer(dir, column_info, feature_info);
 
     index_segment.meta.codec = codec_ptr;
     index_segment.meta.name = "merged";
@@ -2569,11 +2569,11 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
       return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
     };
 
-    irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+    irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
       return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true);
     };
 
-    irs::merge_writer writer(dir, column_info, feature_column_info);
+    irs::merge_writer writer(dir, column_info, feature_info);
     writer.add(reader[1]); // assume 1 is segment with text field
     writer.add(reader[0]); // assume 0 is segment with string field
 
@@ -2589,11 +2589,11 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
       return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
     };
 
-    irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+    irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
       return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true);
     };
 
-    irs::merge_writer writer(dir, column_info, feature_column_info);
+    irs::merge_writer writer(dir, column_info, feature_info);
     writer.add(reader[0]); // assume 0 is segment with text field
     writer.add(reader[1]); // assume 1 is segment with string field
 
@@ -2637,7 +2637,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
   irs::column_info_provider_t column_info = [](const irs::string_ref&) {
     return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true);
   };
-  irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+  irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
     return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true);
   };
   // populate directory
@@ -2682,7 +2682,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
   ASSERT_EQ(1, reader[0].live_docs_count());
   ASSERT_EQ(2, reader[1].live_docs_count());
 
-  irs::merge_writer writer(dir, column_info, feature_column_info, &test_comparer);
+  irs::merge_writer writer(dir, column_info, feature_info, &test_comparer);
   writer.add(reader[0]);
   writer.add(reader[1]);
 
@@ -2956,7 +2956,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
   };
 
-  irs::feature_column_info_provider_t feature_column_info = [](irs::type_info::type_id) {
+  irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
     return irs::column_info(irs::type<irs::compression::none>::get(), {}, false);
   };
 
@@ -3762,7 +3762,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   irs::index_meta::index_segment_t index_segment;
   index_segment.meta.codec = codec_ptr;
 
-  irs::merge_writer writer(dir, column_info, feature_column_info);
+  irs::merge_writer writer(dir, column_info, feature_info);
   writer.reserve(2);
   writer.add(reader[0]);
   writer.add(reader[1]);

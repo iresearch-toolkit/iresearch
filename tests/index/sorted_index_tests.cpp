@@ -539,7 +539,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
     // simulate consolidation
     index().clear();
-    index().emplace_back(writer->field_features());
+    index().emplace_back(writer->feature_info());
     auto& segment = index().back();
 
     gen.reset();

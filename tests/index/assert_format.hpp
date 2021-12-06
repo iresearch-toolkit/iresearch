@@ -145,7 +145,7 @@ class index_segment: irs::util::noncopyable {
   using columns_t = std::deque<column_values>; // pointers remain valid
   using columns_meta_t = std::map<std::string, irs::field_id>;
 
-  explicit index_segment(const irs::field_features_t& features)
+  explicit index_segment(const irs::feature_info_provider_t& features)
     : field_features_{features} {
   }
   index_segment(index_segment&& rhs) = default;
@@ -193,7 +193,7 @@ class index_segment: irs::util::noncopyable {
   void insert_sorted(const ifield& field);
   void compute_features();
 
-  irs::field_features_t field_features_;
+  irs::feature_info_provider_t field_features_;
   columns_meta_t columns_meta_;
   std::vector<std::pair<irs::bstring, irs::doc_id_t>> sort_;
   std::vector<const field*> id_to_field_;

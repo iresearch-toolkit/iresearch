@@ -102,13 +102,12 @@ doc_id_t segment_writer::begin(
 
 segment_writer::ptr segment_writer::make(
     directory& dir,
-    const field_features_t& field_features,
     const column_info_provider_t& column_info,
-    const feature_column_info_provider_t& feature_column_info,
+    const feature_info_provider_t& feature_info,
     const comparer* comparator) {
   return memory::maker<segment_writer>::make(
-    dir, field_features, column_info,
-    feature_column_info, comparator);
+    dir, column_info,
+    feature_info, comparator);
 }
 
 size_t segment_writer::memory_active() const noexcept {
@@ -173,12 +172,11 @@ bool segment_writer::remove(doc_id_t doc_id) {
 
 segment_writer::segment_writer(
     directory& dir,
-    const field_features_t& field_features,
     const column_info_provider_t& column_info,
-    const feature_column_info_provider_t& feature_column_info,
+    const feature_info_provider_t& feature_info,
     const comparer* comparator) noexcept
   : sort_(column_info),
-    fields_(field_features, feature_column_info, cached_columns_, comparator),
+    fields_(feature_info, cached_columns_, comparator),
     column_info_(&column_info),
     dir_(dir),
     initialized_(false) {

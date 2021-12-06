@@ -1175,7 +1175,7 @@ bool write_fields(
     columnstore& cs,
     const flush_state& flush_state,
     const segment_meta& meta,
-    const feature_column_info_provider_t& column_info,
+    const feature_info_provider_t& column_info,
     compound_field_iterator& field_itr,
     const merge_writer::flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
@@ -1215,7 +1215,7 @@ bool write_fields(
     for (; begin != end; ++begin) {
       std::tie(feature, std::ignore) = *begin;
 
-      cs.reset(column_info(feature));
+      cs.reset(column_info(feature).first);
 
       // remap merge features
       if (!progress() || !field_itr.visit(merge_features)) {
@@ -1251,7 +1251,7 @@ bool write_fields(
     CompoundIterator& feature_itr,
     const flush_state& flush_state,
     const segment_meta& meta,
-    const feature_column_info_provider_t& column_info,
+    const feature_info_provider_t& column_info,
     compound_field_iterator& field_itr,
     const merge_writer::flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
@@ -1301,7 +1301,7 @@ bool write_fields(
     for (; begin != end; ++begin) {
       std::tie(feature, std::ignore) = *begin;
 
-      cs.reset(column_info(feature));
+      cs.reset(column_info(feature).first);
 
       // remap merge norms
       if (!progress() || !feature_itr.reset(add_iterators)) {
@@ -1380,7 +1380,7 @@ merge_writer::reader_ctx::reader_ctx(sub_reader::ptr reader) noexcept
 merge_writer::merge_writer() noexcept
   : dir_(noop_directory::instance()),
     column_info_(nullptr),
-    feature_column_info_(nullptr),
+    feature_info_(nullptr),
     comparator_(nullptr) {
 }
 
@@ -1396,7 +1396,7 @@ bool merge_writer::flush(
   assert(progress);
   assert(!comparator_);
   assert(column_info_ && *column_info_);
-  assert(feature_column_info_ && *feature_column_info_);
+  assert(feature_info_ && *feature_info_);
 
   field_meta_map_t field_meta_map;
   compound_field_iterator fields_itr(progress);
@@ -1482,7 +1482,7 @@ bool merge_writer::flush(
   state.name = segment.meta.name;
 
   // write field meta and field term data
-  if (!write_fields(cs, state, segment.meta, *feature_column_info_,
+  if (!write_fields(cs, state, segment.meta, *feature_info_,
                     fields_itr, progress)) {
     return false; // flush failure
   }
@@ -1504,7 +1504,7 @@ bool merge_writer::flush_sorted(
   assert(progress);
   assert(comparator_);
   assert(column_info_ && *column_info_);
-  assert(feature_column_info_ && *feature_column_info_);
+  assert(feature_info_ && *feature_info_);
 
   field_meta_map_t field_meta_map;
   compound_column_meta_iterator_t columns_meta_itr;
@@ -1667,7 +1667,7 @@ bool merge_writer::flush_sorted(
 
   // write field meta and field term data
   if (!write_fields(cs, sorting_doc_it, state, segment.meta,
-                    *feature_column_info_, fields_itr, progress)) {
+                    *feature_info_, fields_itr, progress)) {
     return false; // flush failure
   }
 

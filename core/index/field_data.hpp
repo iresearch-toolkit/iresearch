@@ -76,8 +76,7 @@ class IRESEARCH_API field_data : util::noncopyable {
   field_data(
     const string_ref& name,
     const features_t& features,
-    const field_features_t& field_features,
-    const feature_column_info_provider_t& feature_columns,
+    const feature_info_provider_t& feature_columns,
     std::deque<cached_column>& cached_columns,
     columnstore_writer& columns,
     byte_block_pool::inserter& byte_writer,
@@ -182,8 +181,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
   using postings_ref_t = std::vector<const posting*>;
 
   explicit fields_data(
-    const field_features_t& field_features,
-    const feature_column_info_provider_t& feature_columns,
+    const feature_info_provider_t& feature_info,
     std::deque<cached_column>& cached_features,
     const comparer* comparator);
 
@@ -213,8 +211,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   const comparer* comparator_;
-  const field_features_t* field_features_;
-  const feature_column_info_provider_t* feature_columns_;
+  const feature_info_provider_t* feature_info_;
   std::deque<field_data> fields_; // pointers remain valid
   std::deque<cached_column>* cached_features_; // pointers remain valid
   fields_map fields_map_;

@@ -26,7 +26,7 @@
 
 #include <vector>
 
-#include "column_info.hpp"
+#include "index_features.hpp"
 #include "index_meta.hpp"
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
@@ -57,11 +57,11 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
   explicit merge_writer(
       directory& dir,
       const column_info_provider_t& column_info,
-      const feature_column_info_provider_t& feature_column_info,
+      const feature_info_provider_t& feature_info,
       const comparer* comparator = nullptr) noexcept
     : dir_(dir),
       column_info_(&column_info),
-      feature_column_info_(&feature_column_info),
+      feature_info_(&feature_info),
       comparator_(comparator) {
     assert(column_info);
   }
@@ -120,7 +120,7 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
   directory& dir_;
   std::vector<reader_ctx> readers_;
   const column_info_provider_t* column_info_;
-  const feature_column_info_provider_t* feature_column_info_;
+  const feature_info_provider_t* feature_info_;
   const comparer* comparator_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // merge_writer

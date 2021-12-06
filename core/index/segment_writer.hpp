@@ -151,9 +151,8 @@ class IRESEARCH_API segment_writer : util::noncopyable {
 
   static ptr make(
     directory& dir,
-    const field_features_t& field_features,
     const column_info_provider_t& column_info,
-    const feature_column_info_provider_t& feature_column_info,
+    const feature_info_provider_t& feature_info,
     const comparer* comparator);
 
   // begin document-write transaction
@@ -300,9 +299,8 @@ class IRESEARCH_API segment_writer : util::noncopyable {
 
   segment_writer(
     directory& dir,
-    const field_features_t& field_features,
     const column_info_provider_t& column_info,
-    const feature_column_info_provider_t& feature_column_info,
+    const feature_info_provider_t& feature_info,
     const comparer* comparator) noexcept;
 
   bool index(

@@ -24,8 +24,8 @@
 #define IRESEARCH_INDEX_FEATURES_H
 
 #include <functional>
-#include <map>
 
+#include "index/column_info.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/type_info.hpp"
 
@@ -85,7 +85,7 @@ using feature_handler_f = void(*)(
   doc_id_t,
   std::function<column_output&(doc_id_t)>&);
 
-using field_features_t = std::map<type_info::type_id, feature_handler_f>;
+using feature_info_provider_t = std::function<std::pair<column_info, feature_handler_f>(type_info::type_id)>;
 
 }
 

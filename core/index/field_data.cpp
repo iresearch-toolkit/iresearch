@@ -731,8 +731,7 @@ class term_reader final : public irs::basic_term_reader,
 field_data::field_data(
     const string_ref& name,
     const features_t& features,
-    const field_features_t& field_features,
-    const feature_column_info_provider_t& feature_columns,
+    const feature_info_provider_t& feature_columns,
     std::deque<cached_column>& cached_features,
     columnstore_writer& columns,
     byte_block_pool::inserter& byte_writer,
@@ -745,32 +744,28 @@ field_data::field_data(
     int_writer_(&int_writer),
     proc_table_(TERM_PROCESSING_TABLES[size_t(random_access)]),
     last_doc_(doc_limits::invalid()) {
-  features_.reserve(field_features.size());
+  // FIXME
+  //features_.reserve(field_features.size());
   for (const type_info::type_id feature : features) {
-    const auto it = field_features.find(feature);
+    auto feature_info = feature_columns(feature);
 
-    if (IRS_UNLIKELY(it == field_features.end())) {
-      assert(false);
-      continue;
-    }
-
-    if (it->second) {
+    if (feature_info.second) {
       assert(feature_columns);
 
       if (random_access) {
         // sorted index case
         auto* id = &meta_.features[feature];
         *id = field_limits::invalid();
-        auto& stream = cached_features.emplace_back(id, feature_columns(feature));
+        auto& stream = cached_features.emplace_back(id, feature_info.first);
 
         features_.emplace_back(
-            it->second,
+            std::move(feature_info.second),
             [stream = &stream.stream](doc_id_t doc) mutable -> column_output& {
               stream->prepare(doc);
               return *stream; });
       } else {
-        auto [id, handler] = columns.push_column(feature_columns(feature));
-        features_.emplace_back(it->second, std::move(handler));
+        auto [id, handler] = columns.push_column(feature_info.first);
+        features_.emplace_back(std::move(feature_info.second), std::move(handler));
         meta_.features[feature] = id;
       }
     } else {
@@ -1144,13 +1139,11 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
 // -----------------------------------------------------------------------------
 
 fields_data::fields_data(
-    const field_features_t& field_features,
-    const feature_column_info_provider_t& feature_columns,
+    const feature_info_provider_t& feature_info,
     std::deque<cached_column>& cached_features,
     const comparer* comparator /*= nullptr*/)
   : comparator_(comparator),
-    field_features_(&field_features),
-    feature_columns_(&feature_columns),
+    feature_info_(&feature_info),
     cached_features_(&cached_features),
     byte_writer_(byte_pool_.begin()),
     int_writer_(int_pool_.begin()) {
@@ -1172,8 +1165,8 @@ field_data* fields_data::emplace(
   if (!it->second) {
     try {
       fields_.emplace_back(
-        name, features, *field_features_,
-        *feature_columns_, *cached_features_, columns,
+        name, features,
+        *feature_info_, *cached_features_, columns,
         byte_writer_, int_writer_,
         index_features, (nullptr != comparator_));
     } catch (...) {

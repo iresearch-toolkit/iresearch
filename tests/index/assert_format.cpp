@@ -269,9 +269,9 @@ void index_segment::insert_indexed(const ifield& f) {
     auto& new_field = res.first->second;
     id_to_field_.emplace_back(&new_field);
     for (auto& feature : new_field.features) {
-      auto handler = field_features_.find(feature.first);
+      auto handler = field_features_(feature.first);
 
-      if (handler != field_features_.end()) {
+      if (handler.second) {
         const size_t id = columns_.size();
         ASSERT_LE(id, std::numeric_limits<irs::field_id>::max());
         columns_.emplace_back();
@@ -279,7 +279,7 @@ void index_segment::insert_indexed(const ifield& f) {
         feature.second = irs::field_id{id};
 
         new_field.feature_infos.emplace_back(field::feature_info{
-          irs::field_id{id}, handler->second});
+          irs::field_id{id}, std::move(handler.second)});
       }
     }
 
