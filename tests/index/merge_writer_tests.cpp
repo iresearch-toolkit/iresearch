@@ -1100,7 +1100,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
                    irs::doc_id_t doc,
                    irs::columnstore_writer::values_writer_f& writer) {
         writer(doc).write_int(stats.len); };
-    } else  if (irs::type<irs::norm2>::id() == id) {
+    } else if (irs::type<norm2>::id() == id) {
       handler = [](const irs::field_stats& stats,
                    irs::doc_id_t doc,
                    irs::columnstore_writer::values_writer_f& writer) {
@@ -2878,18 +2878,20 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   doc3.indexed.push_back(std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text3));
 
   irs::index_writer::init_options opts;
-  opts.features = [](irs::type_info::type_id id) {
+  opts.features = [](irs::type_info::type_id type) {
     irs::feature_handler_f handler{};
-    if (irs::type<irs::norm>::id() == id) {
+    if (irs::type<irs::norm>::id() == type) {
       handler = [](const irs::field_stats& stats,
                    irs::doc_id_t doc,
                    irs::columnstore_writer::values_writer_f& writer) {
-        writer(doc).write_int(stats.len); };
-    } else  if (irs::type<irs::norm2>::id() == id) {
+        writer(doc).write_int(stats.len);
+      };
+    } else if (irs::type<norm2>::id() == type) {
       handler = [](const irs::field_stats& stats,
                    irs::doc_id_t doc,
                    irs::columnstore_writer::values_writer_f& writer) {
-        writer(doc).write_int(stats.len + 1); };
+        writer(doc).write_int(stats.len + 1);
+      };
     }
 
     return std::make_pair(
