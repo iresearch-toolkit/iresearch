@@ -209,8 +209,13 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
     writer->commit();
   }
 
+  const auto column_info = default_column_info();
+  ASSERT_TRUE(column_info);
+  const auto feature_info = default_feature_info();
+  ASSERT_TRUE(feature_info);
+
   auto reader = irs::directory_reader::open(dir, codec_ptr);
-  irs::merge_writer writer(dir, default_column_info(), default_feature_info());
+  irs::merge_writer writer(dir, column_info, feature_info);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -607,8 +612,13 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
     writer->commit();
   }
 
+  const auto column_info = default_column_info();
+  ASSERT_TRUE(column_info);
+  const auto feature_info = default_feature_info();
+  ASSERT_TRUE(feature_info);
+
   auto reader = irs::directory_reader::open(dir, codec_ptr);
-  irs::merge_writer writer(dir, default_column_info(), default_feature_info());
+  irs::merge_writer writer(dir, column_info, feature_info);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -1877,7 +1887,12 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   irs::index_meta::index_segment_t index_segment;
   index_segment.meta.codec = codec_ptr;
 
-  irs::merge_writer writer(dir, default_column_info(), default_feature_info());
+  const auto column_info = default_column_info();
+  ASSERT_TRUE(column_info);
+  const auto feature_info = default_feature_info();
+  ASSERT_TRUE(feature_info);
+
+  irs::merge_writer writer(dir, column_info, feature_info);
   writer.reserve(2);
   writer.add(reader[0]);
   writer.add(reader[1]);
@@ -2329,9 +2344,14 @@ TEST_P(merge_writer_test_case, test_merge_writer_add_segments) {
 
   // merge 33 segments to writer (segments > 32 to trigger GCC 8.2.0 optimizer bug)
   {
+    const auto column_info = default_column_info();
+    ASSERT_TRUE(column_info);
+    const auto feature_info = default_feature_info();
+    ASSERT_TRUE(feature_info);
+
     irs::memory_directory dir;
     irs::index_meta::index_segment_t index_segment;
-    irs::merge_writer writer(dir, default_column_info(), default_feature_info());
+    irs::merge_writer writer(dir, column_info, feature_info);
 
     for (auto& sub_reader: reader) {
       writer.add(sub_reader);
@@ -2380,12 +2400,17 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
   ASSERT_EQ(1, reader[0].docs_count());
   ASSERT_EQ(1, reader[1].docs_count());
 
+  const auto column_info = default_column_info();
+  ASSERT_TRUE(column_info);
+  const auto feature_info = default_feature_info();
+  ASSERT_TRUE(feature_info);
+
   // test default progress (false)
   {
     irs::memory_directory dir;
     irs::index_meta::index_segment_t index_segment;
     irs::merge_writer::flush_progress_t progress;
-    irs::merge_writer writer(dir, default_column_info(), default_feature_info());
+    irs::merge_writer writer(dir, column_info, feature_info);
 
     index_segment.meta.codec = codec_ptr;
     writer.add(reader[0]);
@@ -2407,7 +2432,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     irs::memory_directory dir;
     irs::index_meta::index_segment_t index_segment;
     irs::merge_writer::flush_progress_t progress = []()->bool { return false; };
-    irs::merge_writer writer(dir, default_column_info(), default_feature_info());
+    irs::merge_writer writer(dir, column_info, feature_info);
 
     index_segment.meta.codec = codec_ptr;
     writer.add(reader[0]);
@@ -2434,7 +2459,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     irs::index_meta::index_segment_t index_segment;
     irs::merge_writer::flush_progress_t progress =
       [&progress_call_count]()->bool { ++progress_call_count; return true; };
-    irs::merge_writer writer(dir, default_column_info(), default_feature_info());
+    irs::merge_writer writer(dir, column_info, feature_info);
 
     index_segment.meta.codec = codec_ptr;
     writer.add(reader[0]);
@@ -2460,7 +2485,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     irs::index_meta::index_segment_t index_segment;
     irs::merge_writer::flush_progress_t progress =
       [&call_count]()->bool { return --call_count; };
-    irs::merge_writer writer(dir, default_column_info(), default_feature_info());
+    irs::merge_writer writer(dir, column_info, feature_info);
 
     index_segment.meta.codec = codec_ptr;
     index_segment.meta.name = "merged";
@@ -2518,9 +2543,14 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
   ASSERT_EQ(1, reader[0].docs_count());
   ASSERT_EQ(1, reader[1].docs_count());
 
+  const auto column_info = default_column_info();
+  ASSERT_TRUE(column_info);
+  const auto feature_info = default_feature_info();
+  ASSERT_TRUE(feature_info);
+
   // test merge existing with feature subset (success)
   {
-    irs::merge_writer writer(dir, default_column_info(), default_feature_info());
+    irs::merge_writer writer(dir, column_info, feature_info);
     writer.add(reader[1]); // assume 1 is segment with text field
     writer.add(reader[0]); // assume 0 is segment with string field
 
@@ -2532,7 +2562,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
 
   // test merge existing with feature superset (fail)
   {
-    irs::merge_writer writer(dir, default_column_info(), default_feature_info());
+    irs::merge_writer writer(dir, column_info, feature_info);
     writer.add(reader[0]); // assume 0 is segment with text field
     writer.add(reader[1]); // assume 1 is segment with string field
 
@@ -2616,8 +2646,12 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
   ASSERT_EQ(1, reader[0].live_docs_count());
   ASSERT_EQ(2, reader[1].live_docs_count());
 
-  irs::merge_writer writer(dir, default_column_info(),
-                           default_feature_info(), &test_comparer);
+  const auto column_info = default_column_info();
+  ASSERT_TRUE(column_info);
+  const auto feature_info = default_feature_info();
+  ASSERT_TRUE(feature_info);
+
+  irs::merge_writer writer(dir, column_info, feature_info, &test_comparer);
   writer.add(reader[0]);
   writer.add(reader[1]);
 
@@ -3693,7 +3727,12 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   irs::index_meta::index_segment_t index_segment;
   index_segment.meta.codec = codec_ptr;
 
-  irs::merge_writer writer(dir, default_column_info(), default_feature_info());
+  const auto column_info = default_column_info();
+  ASSERT_TRUE(column_info);
+  const auto feature_info = default_feature_info();
+  ASSERT_TRUE(feature_info);
+
+  irs::merge_writer writer(dir, column_info, feature_info);
   writer.reserve(2);
   writer.add(reader[0]);
   writer.add(reader[1]);
