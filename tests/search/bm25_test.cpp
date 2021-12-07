@@ -107,7 +107,15 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
     });
 
     irs::index_writer::init_options opts;
-    opts.features.emplace(norm, handler);
+    opts.features = [&](irs::type_info::type_id id) {
+      irs::column_info info{irs::type<irs::compression::lz4>::get(), {}, false};
+
+      if (id == norm) {
+        return std::make_pair(info, handler);
+      }
+
+      return std::make_pair(info, irs::feature_handler_f{});
+    };
 
     add_segment(gen, irs::OM_CREATE, opts);
   }

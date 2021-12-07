@@ -81,11 +81,12 @@ FORCE_INLINE bool is_subset_of(
 }
 
 using feature_handler_f = void(*)(
-  const field_stats&,
-  doc_id_t,
-  std::function<column_output&(doc_id_t)>&);
+    const field_stats&,
+    doc_id_t,
+    std::function<column_output&(doc_id_t)>&);
 
-using feature_info_provider_t = std::function<std::pair<column_info, feature_handler_f>(type_info::type_id)>;
+using feature_info_provider_t = std::function<
+    std::pair<column_info, feature_handler_f>(type_info::type_id)>;
 
 }
 

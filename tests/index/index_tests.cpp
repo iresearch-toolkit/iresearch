@@ -98,7 +98,7 @@ void index_test_base::write_segment(
 }
 
 void index_test_base::add_segment(irs::index_writer& writer, tests::doc_generator_base& gen) {
-  index_.emplace_back(writer.field_features());
+  index_.emplace_back(writer.feature_info());
   write_segment(writer, index_.back(), gen);
   writer.commit();
 }
@@ -106,7 +106,7 @@ void index_test_base::add_segment(irs::index_writer& writer, tests::doc_generato
 void index_test_base::add_segments(
     irs::index_writer& writer, std::vector<doc_generator_base::ptr>& gens) {
   for (auto& gen : gens) {
-    index_.emplace_back(writer.field_features());
+    index_.emplace_back(writer.feature_info());
     write_segment(writer, index_.back(), *gen);
   }
   writer.commit();
@@ -124,6 +124,18 @@ void index_test_base::add_segment(
 
 class index_test_case : public tests::index_test_base {
  public:
+  static irs::feature_info_provider_t features_with_norms() {
+    return [](irs::type_info::type_id id) {
+      const irs::column_info info{irs::type<irs::compression::lz4>::get(), {}, false};
+
+      if (irs::type<irs::norm>::id() == id) {
+        return std::make_pair(info, &irs::norm::compute);
+      }
+
+      return std::make_pair(info, irs::feature_handler_f{});
+    };
+  }
+
   void assert_index(size_t skip = 0, irs::automaton_table_matcher* matcher = nullptr) const {
     index_test_base::assert_index(irs::IndexFeatures::NONE, skip, matcher);
     index_test_base::assert_index(irs::IndexFeatures::FREQ, skip, matcher);
@@ -1778,11 +1790,7 @@ class index_test_case : public tests::index_test_base {
     }; // stored_field
 
     // insert documents
-
-    irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<tests::incompatible_attribute>::id(), nullptr);
-
-    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE, opts);
+    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
 
     size_t i = 0;
     const size_t max = 8;
@@ -5157,9 +5165,6 @@ TEST_P(index_test_case, doc_update) {
     auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
 
     irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::offset>::id(), nullptr);
-    opts.features.emplace(irs::type<irs::frequency>::id(), nullptr);
-    opts.features.emplace(irs::type<irs::increment>::id(), nullptr);
 
     auto writer = open_writer(irs::OM_CREATE, opts);
     auto test_field0 = std::make_shared<test_field>();
@@ -6006,7 +6011,7 @@ TEST_P(index_test_case, reuse_segment_writer) {
   {
     {
       auto& index_ref = const_cast<tests::index_t&>(index());
-      index_ref.emplace_back(writer->field_features());
+      index_ref.emplace_back(writer->feature_info());
       gen0.reset();
       write_segment(*writer, index_ref.back(), gen0);
       writer->commit();
@@ -6014,7 +6019,7 @@ TEST_P(index_test_case, reuse_segment_writer) {
 
     {
       auto& index_ref = const_cast<tests::index_t&>(index());
-      index_ref.emplace_back(writer->field_features());
+      index_ref.emplace_back(writer->feature_info());
       gen1.reset();
       write_segment(*writer, index_ref.back(), gen1);
       writer->commit();
@@ -6024,7 +6029,7 @@ TEST_P(index_test_case, reuse_segment_writer) {
   // populate initial small segment
   {
     auto& index_ref = const_cast<tests::index_t&>(index());
-    index_ref.emplace_back(writer->field_features());
+    index_ref.emplace_back(writer->feature_info());
     gen0.reset();
     write_segment(*writer, index_ref.back(), gen0);
     gen1.reset();
@@ -6035,7 +6040,7 @@ TEST_P(index_test_case, reuse_segment_writer) {
   // populate initial large segment
   {
     auto& index_ref = const_cast<tests::index_t&>(index());
-    index_ref.emplace_back(writer->field_features());
+    index_ref.emplace_back(writer->feature_info());
 
     for(size_t i = 100; i > 0; --i) {
       gen0.reset();
@@ -6051,7 +6056,7 @@ TEST_P(index_test_case, reuse_segment_writer) {
   // 10 iterations, although 2 should be enough since index_wirter::flush_context_pool_.size() == 2
   for(size_t i = 10; i > 0; --i) {
     auto& index_ref = const_cast<tests::index_t&>(index());
-    index_ref.emplace_back(writer->field_features());
+    index_ref.emplace_back(writer->feature_info());
 
     // add varying sized segments
     for (size_t j = 0; j < i; ++j) {
@@ -6113,7 +6118,7 @@ TEST_P(index_test_case, segment_column_user_system) {
 
 
   irs::index_writer::init_options opts;
-  opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
+  opts.features = features_with_norms();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
 
@@ -6975,7 +6980,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc2);
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
@@ -7133,11 +7138,11 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc3);
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc4);
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc1);
     expected.back().insert(*doc2);
     tests::assert_index(this->dir(), codec(), expected, all_features);
@@ -7288,11 +7293,11 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc2);
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc3);
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc4);
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
@@ -7435,7 +7440,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     // validate structure (does not take removals into account)
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc1);
     expected.back().insert(*doc2);
     expected.back().insert(*doc3);
@@ -7571,7 +7576,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     // validate structure (does not take removals into account)
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc1);
     expected.back().insert(*doc2);
     expected.back().insert(*doc3);
@@ -7871,7 +7876,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc1);
     expected.back().insert(*doc2);
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -7956,10 +7961,10 @@ TEST_P(index_test_case, segment_consolidate_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc1);
     expected.back().insert(*doc2);
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc3);
     expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -8072,10 +8077,10 @@ TEST_P(index_test_case, segment_consolidate_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc1);
     expected.back().insert(*doc2);
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc3);
     expected.back().insert(*doc4);
     expected.back().insert(*doc5);
@@ -8218,7 +8223,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   gen.reset();
   tests::index_t expected;
   for (size_t i = 0; i < SEGMENTS_COUNT/2; ++i) {
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     const auto* doc = gen.next();
     expected.back().insert(*doc);
     doc = gen.next();
@@ -8352,7 +8357,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc1);
     expected.back().insert(*doc2);
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -8456,10 +8461,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc3);
     expected.back().insert(*doc4);
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc1);
     expected.back().insert(*doc2);
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -8597,13 +8602,13 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc3);
     expected.back().insert(*doc4);
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc1);
     expected.back().insert(*doc2);
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc5);
     expected.back().insert(*doc6);
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -8749,7 +8754,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc1);
     expected.back().insert(*doc2);
     expected.back().insert(*doc3);
@@ -8878,7 +8883,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc1);
     expected.back().insert(*doc2);
     expected.back().insert(*doc3);
@@ -9005,7 +9010,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc1);
     expected.back().insert(*doc2);
     expected.back().insert(*doc3);
@@ -9301,7 +9306,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_NE(0, irs::directory_cleaner::clean(dir()));
 
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc1);
     expected.back().insert(*doc2);
     expected.back().insert(*doc3);
@@ -9392,12 +9397,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc1);
     expected.back().insert(*doc2);
     expected.back().insert(*doc3);
     expected.back().insert(*doc4);
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc5);
     tests::assert_index(dir(), codec(), expected, all_features);
 
@@ -9545,9 +9550,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc5);
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc1);
     expected.back().insert(*doc2);
     expected.back().insert(*doc3);
@@ -9720,10 +9725,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc1);
     expected.back().insert(*doc2);
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc5);
     tests::assert_index(dir(), codec(), expected, all_features);
 
@@ -11627,7 +11632,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
@@ -11674,7 +11679,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
@@ -11719,7 +11724,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
@@ -11764,7 +11769,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
@@ -11882,7 +11887,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc2);
     expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -11933,7 +11938,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc2);
     expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -11986,7 +11991,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc2);
     expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -12038,7 +12043,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc2);
     expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
@@ -12097,7 +12102,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc2);
     expected.back().insert(*doc4);
     expected.back().insert(*doc6);
@@ -12160,7 +12165,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
     // validate structure
     tests::index_t expected;
-    expected.emplace_back(writer->field_features());
+    expected.emplace_back(writer->feature_info());
     expected.back().insert(*doc2);
     expected.back().insert(*doc4);
     expected.back().insert(*doc6);
@@ -13417,7 +13422,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
 
   {
     irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
+    opts.features = features_with_norms();
 
     auto writer = open_writer(irs::OM_CREATE, opts);
 
@@ -13604,37 +13609,45 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
 
   {
     irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<feature1>::id(), [](
-        const irs::field_stats& stats,
-        irs::doc_id_t doc,
-        std::function<irs::column_output&(irs::doc_id_t)>& writer) {
-      if (doc == 2) {
-        return;
+    opts.features = [](irs::type_info::type_id id) {
+      irs::feature_handler_f handler{};
+
+      if (irs::type<feature1>::id() == id) {
+        handler = [](const irs::field_stats& stats,
+                     irs::doc_id_t doc,
+                     std::function<irs::column_output&(irs::doc_id_t)>& writer) {
+          if (doc == 2) {
+            return;
+          }
+
+          auto& stream = writer(doc);
+          stream.write_int(doc);
+          stream.write_int(stats.len);
+          stream.write_int(stats.num_overlap);
+          stream.write_int(stats.max_term_freq);
+          stream.write_int(stats.num_unique);
+        };
+      } else if (irs::type<feature3>::id() == id) {
+        handler = [](const irs::field_stats& stats,
+                     irs::doc_id_t doc,
+                     std::function<irs::column_output&(irs::doc_id_t)>& writer) {
+          if (doc == 1) {
+            return;
+          }
+
+          auto& stream = writer(doc);
+          stream.write_int(doc);
+          stream.write_int(stats.len);
+          stream.write_int(stats.num_overlap);
+          stream.write_int(stats.max_term_freq);
+          stream.write_int(stats.num_unique);
+        };
       }
 
-      auto& stream = writer(doc);
-      stream.write_int(doc);
-      stream.write_int(stats.len);
-      stream.write_int(stats.num_overlap);
-      stream.write_int(stats.max_term_freq);
-      stream.write_int(stats.num_unique);
-    });
-    opts.features.emplace(irs::type<feature2>::id(), nullptr); // marker feature
-    opts.features.emplace(irs::type<feature3>::id(), [](
-        const irs::field_stats& stats,
-        irs::doc_id_t doc,
-        std::function<irs::column_output&(irs::doc_id_t)>& writer) {
-      if (doc == 1) {
-        return;
-      }
-
-      auto& stream = writer(doc);
-      stream.write_int(doc);
-      stream.write_int(stats.len);
-      stream.write_int(stats.num_overlap);
-      stream.write_int(stats.max_term_freq);
-      stream.write_int(stats.num_unique);
-    });
+      return std::make_pair(
+        irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
+        std::move(handler));
+    };
 
     auto writer = open_writer(irs::OM_CREATE, opts);
 

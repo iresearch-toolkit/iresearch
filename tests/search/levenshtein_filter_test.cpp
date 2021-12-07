@@ -466,7 +466,15 @@ TEST_P(by_edit_distance_test_case, bm25) {
       });
 
     irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
+    opts.features = [](irs::type_info::type_id id) {
+      const irs::column_info info{irs::type<irs::compression::lz4>::get(), {}, false};
+
+      if (irs::type<irs::norm>::id() == id) {
+        return std::make_pair(info, &irs::norm::compute);
+      }
+
+      return std::make_pair(info, irs::feature_handler_f{});
+    };
 
     add_segment(gen, irs::OM_CREATE, opts);
   }

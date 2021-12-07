@@ -132,6 +132,21 @@ struct merge_writer_test_case : public tests::directory_test_case_base<std::stri
 
     return (*factory)(nullptr).second + "___" + codec;
   }
+
+  static irs::column_info_provider_t default_column_info() {
+    return [](irs::string_ref) {
+        return irs::column_info(irs::type<irs::compression::lz4>::get(),
+                                irs::compression::options{}, true );
+    };
+  }
+
+  static irs::feature_info_provider_t default_feature_info() {
+    return [](irs::type_info::type_id) {
+      return std::make_pair(
+          irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true),
+          irs::feature_handler_f{});
+    };
+  }
 };
 
 TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
@@ -194,16 +209,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
     writer->commit();
   }
 
-  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true );
-  };
-
-  irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
-    return irs::column_info(irs::type<irs::compression::none>::get(), {}, false);
-  };
-
   auto reader = irs::directory_reader::open(dir, codec_ptr);
-  irs::merge_writer writer(dir, column_info, feature_info);
+  irs::merge_writer writer(dir, default_column_info(), default_feature_info());
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -600,16 +607,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
     writer->commit();
   }
 
-  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
-  };
-
-  irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
-    return irs::column_info(irs::type<irs::compression::none>::get(), {}, false);
-  };
-
   auto reader = irs::directory_reader::open(dir, codec_ptr);
-  irs::merge_writer writer(dir, column_info, feature_info);
+  irs::merge_writer writer(dir, default_column_info(), default_feature_info());
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -1084,20 +1083,24 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   doc3.indexed.push_back(std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text3));
 
   irs::index_writer::init_options opts;
-  opts.features.emplace(
-    irs::type<irs::norm>::id(),
-    [](const irs::field_stats& stats,
-       irs::doc_id_t doc,
-       irs::columnstore_writer::values_writer_f& writer) {
-      writer(doc).write_int(stats.len);
-    });
-  opts.features.emplace(
-    irs::type<norm2>::id(),
-    [](const irs::field_stats& stats,
-       irs::doc_id_t doc,
-       irs::columnstore_writer::values_writer_f& writer) {
-      writer(doc).write_int(stats.len + 1);
-    });
+  opts.features = [](irs::type_info::type_id id) {
+    irs::feature_handler_f handler{};
+    if (irs::type<irs::norm>::id() == id) {
+      handler = [](const irs::field_stats& stats,
+                   irs::doc_id_t doc,
+                   irs::columnstore_writer::values_writer_f& writer) {
+        writer(doc).write_int(stats.len); };
+    } else  if (irs::type<irs::norm2>::id() == id) {
+      handler = [](const irs::field_stats& stats,
+                   irs::doc_id_t doc,
+                   irs::columnstore_writer::values_writer_f& writer) {
+        writer(doc).write_int(stats.len + 1); };
+    }
+
+    return std::make_pair(
+      irs::column_info{irs::type<irs::compression::lz4>::get(), {}, false},
+      std::move(handler));
+  };
 
   // populate directory
   {
@@ -1125,14 +1128,6 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   auto docs_count = [](const irs::sub_reader& segment, const irs::string_ref& field) {
     auto* reader = segment.field(field);
     return reader ? reader->docs_count() : 0;
-  };
-
-  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
-  };
-
-  irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
-    return irs::column_info(irs::type<irs::compression::none>::get(), {}, false);
   };
 
   auto reader = irs::directory_reader::open(dir, codec_ptr);
@@ -1882,7 +1877,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   irs::index_meta::index_segment_t index_segment;
   index_segment.meta.codec = codec_ptr;
 
-  irs::merge_writer writer(dir, column_info, feature_info);
+  irs::merge_writer writer(dir, default_column_info(), default_feature_info());
   writer.reserve(2);
   writer.add(reader[0]);
   writer.add(reader[1]);
@@ -2334,17 +2329,9 @@ TEST_P(merge_writer_test_case, test_merge_writer_add_segments) {
 
   // merge 33 segments to writer (segments > 32 to trigger GCC 8.2.0 optimizer bug)
   {
-    irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-      return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
-    };
-
-    irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
-      return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true);
-    };
-
     irs::memory_directory dir;
     irs::index_meta::index_segment_t index_segment;
-    irs::merge_writer writer(dir, column_info, feature_info);
+    irs::merge_writer writer(dir, default_column_info(), default_feature_info());
 
     for (auto& sub_reader: reader) {
       writer.add(sub_reader);
@@ -2395,18 +2382,10 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
 
   // test default progress (false)
   {
-    irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-      return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
-    };
-
-    irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
-      return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true);
-    };
-
     irs::memory_directory dir;
     irs::index_meta::index_segment_t index_segment;
     irs::merge_writer::flush_progress_t progress;
-    irs::merge_writer writer(dir, column_info, feature_info);
+    irs::merge_writer writer(dir, default_column_info(), default_feature_info());
 
     index_segment.meta.codec = codec_ptr;
     writer.add(reader[0]);
@@ -2425,18 +2404,10 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
 
   // test always-false progress
   {
-    irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-      return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
-    };
-
-    irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
-      return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true);
-    };
-
     irs::memory_directory dir;
     irs::index_meta::index_segment_t index_segment;
     irs::merge_writer::flush_progress_t progress = []()->bool { return false; };
-    irs::merge_writer writer(dir, column_info, feature_info);
+    irs::merge_writer writer(dir, default_column_info(), default_feature_info());
 
     index_segment.meta.codec = codec_ptr;
     writer.add(reader[0]);
@@ -2459,19 +2430,11 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
 
   // test always-true progress
   {
-    irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-      return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
-    };
-
-    irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
-      return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true);
-    };
-
     irs::memory_directory dir;
     irs::index_meta::index_segment_t index_segment;
     irs::merge_writer::flush_progress_t progress =
       [&progress_call_count]()->bool { ++progress_call_count; return true; };
-    irs::merge_writer writer(dir, column_info, feature_info);
+    irs::merge_writer writer(dir, default_column_info(), default_feature_info());
 
     index_segment.meta.codec = codec_ptr;
     writer.add(reader[0]);
@@ -2490,14 +2453,6 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
 
   ASSERT_TRUE(progress_call_count); // there should have been at least some calls
 
-  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
-  };
-
-  irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
-    return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true);
-  };
-
   // test limited-true progress
   for (size_t i = 1; i < progress_call_count; ++i) { // +1 for pre-decrement in 'progress'
     size_t call_count = i;
@@ -2505,7 +2460,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     irs::index_meta::index_segment_t index_segment;
     irs::merge_writer::flush_progress_t progress =
       [&call_count]()->bool { return --call_count; };
-    irs::merge_writer writer(dir, column_info, feature_info);
+    irs::merge_writer writer(dir, default_column_info(), default_feature_info());
 
     index_segment.meta.codec = codec_ptr;
     index_segment.meta.name = "merged";
@@ -2565,15 +2520,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
 
   // test merge existing with feature subset (success)
   {
-    irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-      return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
-    };
-
-    irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
-      return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true);
-    };
-
-    irs::merge_writer writer(dir, column_info, feature_info);
+    irs::merge_writer writer(dir, default_column_info(), default_feature_info());
     writer.add(reader[1]); // assume 1 is segment with text field
     writer.add(reader[0]); // assume 0 is segment with string field
 
@@ -2585,15 +2532,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
 
   // test merge existing with feature superset (fail)
   {
-    irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-      return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
-    };
-
-    irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
-      return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true);
-    };
-
-    irs::merge_writer writer(dir, column_info, feature_info);
+    irs::merge_writer writer(dir, default_column_info(), default_feature_info());
     writer.add(reader[0]); // assume 0 is segment with text field
     writer.add(reader[1]); // assume 1 is segment with string field
 
@@ -2634,17 +2573,12 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
   ASSERT_NE(nullptr, codec_ptr);
   irs::memory_directory dir;
   binary_comparer test_comparer;
-  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true);
-  };
-  irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
-    return irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true);
-  };
+
   // populate directory
   {
     irs::index_writer::init_options opts;
     opts.comparator = &test_comparer;
-    opts.column_info = column_info;
+    opts.column_info = default_column_info();
     auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE, opts);
     ASSERT_TRUE(insert(*writer,
       doc1.indexed.begin(), doc1.indexed.end(),
@@ -2682,7 +2616,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
   ASSERT_EQ(1, reader[0].live_docs_count());
   ASSERT_EQ(2, reader[1].live_docs_count());
 
-  irs::merge_writer writer(dir, column_info, feature_info, &test_comparer);
+  irs::merge_writer writer(dir, default_column_info(),
+                           default_feature_info(), &test_comparer);
   writer.add(reader[0]);
   writer.add(reader[1]);
 
@@ -2909,20 +2844,24 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   doc3.indexed.push_back(std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text3));
 
   irs::index_writer::init_options opts;
-  opts.features.emplace(
-    irs::type<irs::norm>::id(),
-    [](const irs::field_stats& stats,
-       irs::doc_id_t doc,
-       irs::columnstore_writer::values_writer_f& writer) {
-      writer(doc).write_int(stats.len);
-    });
-  opts.features.emplace(
-    irs::type<norm2>::id(),
-    [](const irs::field_stats& stats,
-       irs::doc_id_t doc,
-       irs::columnstore_writer::values_writer_f& writer) {
-      writer(doc).write_int(stats.len + 1);
-    });
+  opts.features = [](irs::type_info::type_id id) {
+    irs::feature_handler_f handler{};
+    if (irs::type<irs::norm>::id() == id) {
+      handler = [](const irs::field_stats& stats,
+                   irs::doc_id_t doc,
+                   irs::columnstore_writer::values_writer_f& writer) {
+        writer(doc).write_int(stats.len); };
+    } else  if (irs::type<irs::norm2>::id() == id) {
+      handler = [](const irs::field_stats& stats,
+                   irs::doc_id_t doc,
+                   irs::columnstore_writer::values_writer_f& writer) {
+        writer(doc).write_int(stats.len + 1); };
+    }
+
+    return std::make_pair(
+      irs::column_info{irs::type<irs::compression::lz4>::get(), {}, false},
+      std::move(handler));
+  };
 
   // populate directory
   {
@@ -2950,14 +2889,6 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   auto docs_count = [](const irs::sub_reader& segment, const irs::string_ref& field) {
     auto* reader = segment.field(field);
     return reader ? reader->docs_count() : 0;
-  };
-
-  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
-  };
-
-  irs::feature_info_provider_t feature_info = [](irs::type_info::type_id) {
-    return irs::column_info(irs::type<irs::compression::none>::get(), {}, false);
   };
 
   auto reader = irs::directory_reader::open(dir, codec_ptr);
@@ -3762,7 +3693,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   irs::index_meta::index_segment_t index_segment;
   index_segment.meta.codec = codec_ptr;
 
-  irs::merge_writer writer(dir, column_info, feature_info);
+  irs::merge_writer writer(dir, default_column_info(), default_feature_info());
   writer.reserve(2);
   writer.add(reader[0]);
   writer.add(reader[1]);

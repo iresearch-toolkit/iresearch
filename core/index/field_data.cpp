@@ -747,11 +747,10 @@ field_data::field_data(
   // FIXME
   //features_.reserve(field_features.size());
   for (const type_info::type_id feature : features) {
+    assert(feature_columns);
     auto feature_info = feature_columns(feature);
 
     if (feature_info.second) {
-      assert(feature_columns);
-
       if (random_access) {
         // sorted index case
         auto* id = &meta_.features[feature];

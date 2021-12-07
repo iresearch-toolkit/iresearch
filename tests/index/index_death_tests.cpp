@@ -242,6 +242,15 @@ class failing_directory : public tests::directory_mock {
   mutable std::set<fail_t, fail_less> failures_;
 }; // failing_directory
 
+
+irs::feature_info_provider_t default_feature_info() {
+  return [](irs::type_info::type_id) {
+    return std::make_pair(
+        irs::column_info(irs::type<irs::compression::none>::get(), {}, true),
+        irs::feature_handler_f{});
+  };
+}
+
 }
 
 TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
@@ -2625,7 +2634,7 @@ TEST(index_death_test_formats_10, open_reader) {
 
   // validate index
   tests::index_t expected_index;
-  expected_index.emplace_back(irs::field_features_t{});
+  expected_index.emplace_back(::default_feature_info());
   expected_index.back().insert(*doc1);
   expected_index.back().insert(*doc2);
   tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
@@ -2709,7 +2718,7 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
 
   // validate index
   tests::index_t expected_index;
-  expected_index.emplace_back(irs::field_features_t{});
+  expected_index.emplace_back(::default_feature_info());
   expected_index.back().insert(*doc1);
   expected_index.back().insert(*doc2);
   tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
@@ -2810,7 +2819,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
 
   // validate index
   tests::index_t expected_index;
-  expected_index.emplace_back(irs::field_features_t{});
+  expected_index.emplace_back(::default_feature_info());
   expected_index.back().insert(*doc1);
   expected_index.back().insert(*doc2);
   tests::assert_index(static_cast<irs::index_reader::ptr>(reader),

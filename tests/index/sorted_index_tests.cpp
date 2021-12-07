@@ -121,7 +121,7 @@ struct long_comparer : irs::comparer {
 
 struct custom_feature {
   static void compute(
-      const irs::field_stats& stats,
+      const irs::field_stats& /*stats*/,
       irs::doc_id_t doc,
       // cppcheck-suppress constParameter
       irs::columnstore_writer::values_writer_f& writer) {
@@ -135,18 +135,32 @@ class sorted_index_test_case : public tests::index_test_base {
   static constexpr irs::string_ref kOldFormats[] {
     "1_0", "1_1", "1_2", "1_3", "1_3simd" };
 
-  irs::field_features_t features() {
-    irs::field_features_t ftrs;
-    ftrs[irs::type<irs::norm>::id()] = &irs::norm::compute;
+  irs::feature_info_provider_t features() {
+    return [codec = codec()](irs::type_info::type_id id) {
+      if (id == irs::type<irs::norm>::id()) {
+        return std::make_pair(
+          irs::column_info{irs::type<irs::compression::lz4>::get(), {}, false},
+          &irs::norm::compute );
+      }
 
-    if (std::find(std::begin(kOldFormats),
-                  std::end(kOldFormats),
-                  codec()->type().name()) == std::end(kOldFormats)) {
-      ftrs[irs::type<irs::norm2>::id()] = &irs::norm2::compute;
-      ftrs[irs::type<custom_feature>::id()] = &custom_feature::compute;
-    }
+      if (std::find(std::begin(kOldFormats),
+                    std::end(kOldFormats),
+                    codec->type().name()) == std::end(kOldFormats)) {
+          if (irs::type<irs::norm2>::id() == id) {
+            return std::make_pair(
+              irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
+              &irs::norm2::compute );
+          } else if (irs::type<custom_feature>::id() == id) {
+            return std::make_pair(
+              irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
+              &custom_feature::compute );
+          }
+      }
 
-    return ftrs;
+      return std::make_pair(
+        irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
+        irs::feature_handler_f{});
+    };
   }
 
   std::vector<irs::type_info::type_id> field_features() {
@@ -1083,7 +1097,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
 
   // create expected index
   auto& expected_index = index();
-  expected_index.emplace_back(writer->field_features());
+  expected_index.emplace_back(writer->feature_info());
   expected_index.back().insert(
     doc0->indexed.begin(), doc0->indexed.end(),
     doc0->stored.begin(), doc0->stored.end(),
@@ -1303,7 +1317,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
 
   // create expected index
   auto& expected_index = index();
-  expected_index.emplace_back(writer->field_features());
+  expected_index.emplace_back(writer->feature_info());
   expected_index.back().insert(
     doc0->indexed.begin(), doc0->indexed.end(),
     doc0->stored.begin(), doc0->stored.end(),
@@ -1471,7 +1485,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
 
   // create expected index
   auto& expected_index = index();
-  expected_index.emplace_back(writer->field_features());
+  expected_index.emplace_back(writer->feature_info());
   expected_index.back().insert(
     doc2->indexed.begin(), doc2->indexed.end(),
     doc2->stored.begin(), doc2->stored.end(),
