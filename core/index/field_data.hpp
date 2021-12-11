@@ -63,12 +63,15 @@ class sorting_doc_iterator;
 // represents a mapping between cached column data
 // and a pointer to column identifier
 struct cached_column {
-  cached_column(field_id* id, column_info info) noexcept
-    : id{id}, stream{info} {
+  cached_column(
+      field_id* id, column_info info,
+      columnstore_writer::column_header_writer_f header_writer) noexcept
+    : id{id}, stream{info}, header_writer{std::move(header_writer)} {
   }
 
   field_id* id;
   sorted_column stream;
+  columnstore_writer::column_header_writer_f header_writer;
 };
 
 class IRESEARCH_API field_data : util::noncopyable {
@@ -102,7 +105,8 @@ class IRESEARCH_API field_data : util::noncopyable {
 
   void compute_features() const {
     for (auto& entry : features_) {
-      entry.handler(stats_, doc(), entry.writer);
+      assert(entry.handler);
+      entry.handler->write(stats_, doc(), entry.writer);
     }
   }
 
@@ -118,13 +122,13 @@ class IRESEARCH_API field_data : util::noncopyable {
 
   struct feature_info {
     feature_info(
-        feature_handler_f handler,
+        feature_writer::ptr handler,
         columnstore_writer::values_writer_f writer)
-      : handler{handler},
+      : handler{std::move(handler)},
         writer{std::move(writer)} {
     }
 
-    feature_handler_f handler;
+    feature_writer::ptr handler;
     columnstore_writer::values_writer_f writer;
   };
 

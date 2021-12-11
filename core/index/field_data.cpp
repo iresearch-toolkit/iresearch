@@ -748,23 +748,33 @@ field_data::field_data(
   //features_.reserve(field_features.size());
   for (const type_info::type_id feature : features) {
     assert(feature_columns);
-    auto feature_info = feature_columns(feature);
+    auto [feature_column_info, feature_writer_factory] = feature_columns(feature);
 
-    if (feature_info.second) {
+    auto feature_writer = feature_writer_factory
+      ? (*feature_writer_factory)(bytes_ref::NIL)
+      : nullptr;
+
+    if (feature_writer) {
+      columnstore_writer::column_header_writer_f header_writer =
+          [writer = feature_writer.get()](bstring& out) { writer->finish(out); };
+
       if (random_access) {
         // sorted index case
         auto* id = &meta_.features[feature];
         *id = field_limits::invalid();
-        auto& stream = cached_features.emplace_back(id, feature_info.first);
-
+        auto& stream = cached_features.emplace_back(
+            id, feature_column_info,
+            std::move(header_writer));
         features_.emplace_back(
-            std::move(feature_info.second),
+            std::move(feature_writer),
             [stream = &stream.stream](doc_id_t doc) mutable -> column_output& {
               stream->prepare(doc);
               return *stream; });
       } else {
-        auto [id, handler] = columns.push_column(feature_info.first);
-        features_.emplace_back(std::move(feature_info.second), std::move(handler));
+        auto [id, handler] = columns.push_column(
+            feature_column_info,
+            std::move(header_writer));
+        features_.emplace_back(std::move(feature_writer), std::move(handler));
         meta_.features[feature] = id;
       }
     } else {

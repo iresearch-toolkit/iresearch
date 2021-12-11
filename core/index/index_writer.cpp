@@ -60,7 +60,7 @@ const feature_info_provider_t kDefaultFeatureInfo = [](irs::type_info::type_id) 
   // no compression, no encryption
   return std::make_pair(
     column_info{ irs::type<compression::none>::get(), {}, false },
-    feature_handler_f{});
+    feature_writer_factory_t{});
 };
 
 struct flush_segment_context {

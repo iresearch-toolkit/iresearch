@@ -1169,6 +1169,10 @@ void column::finish(index_output& index_out) {
     }
   }
 
+  if (header_writer_) {
+    header_writer_(hdr.payload);
+  }
+
   irs::write_string(index_out, compression_.name());
   write_header(index_out, hdr);
 
@@ -1231,7 +1235,9 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
   data_cipher_ = std::move(data_cipher);
 }
 
-columnstore_writer::column_t writer::push_column(const column_info& info) {
+columnstore_writer::column_t writer::push_column(
+    const column_info& info,
+    column_header_writer_f header_writer) {
   // FIXME
   // Since current implementation doesn't support custom compression,
   // we ignore the compression option set in column_info.
@@ -1266,6 +1272,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
       { buf_.get() },
       consolidation_ },
     compression,
+    std::move(header_writer),
     std::move(compressor));
 
   return std::make_pair(id, [&column] (doc_id_t doc) -> column_output& {

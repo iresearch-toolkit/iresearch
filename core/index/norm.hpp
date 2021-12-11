@@ -45,6 +45,31 @@ class norm_base {
 static_assert(std::is_nothrow_move_constructible_v<norm_base>);
 static_assert(std::is_nothrow_move_assignable_v<norm_base>);
 
+//class norm_writer final : public feature_writer {
+// public:
+//  virtual void write(
+//      const field_stats& stats,
+//      doc_id_t doc,
+//      // cppcheck-suppress constParameter
+//      columnstore_writer::values_writer_f& writer) final {
+//    hdr_.update(stats.len);
+//
+//    if constexpr (NumBytes == sizeof(byte_type)) {
+//      writer(doc).write_byte(static_cast<byte_type>(stats.len & 0xFF));
+//    }
+//
+//    if constexpr (NumBytes == sizeof(uint16_t)) {
+//      writer(doc).write_short(static_cast<uint16_t>(stats.len & 0xFFFF));
+//    }
+//
+//    if constexpr (NumBytes == sizeof(uint32_t)) {
+//      writer(doc).write_int(stats.len);
+//    }
+//  }
+//
+//  virtual void finish(data_output& out) final { }
+//};
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class norm
 //////////////////////////////////////////////////////////////////////////////
@@ -70,6 +95,85 @@ class IRESEARCH_API norm : public norm_base {
 static_assert(std::is_nothrow_move_constructible_v<norm>);
 static_assert(std::is_nothrow_move_assignable_v<norm>);
 
+class norm2_header final {
+ public:
+  void update(uint32_t value) noexcept {
+    min_ = std::min(min_, value);
+    max_ = std::max(max_, value);
+  }
+
+  bool reset(bytes_ref payload) noexcept {
+    if (IRS_LIKELY(payload.size() == sizeof(min_) + sizeof(max_))) {
+      auto* p = payload.c_str();
+      min_ = std::min(irs::read<decltype(min_)>(p), min_);
+      max_ = std::max(irs::read<decltype(max_)>(p), max_);
+      return true;
+    }
+    return false;
+  }
+
+  size_t num_bytes() const noexcept {
+    if (max_ <= std::numeric_limits<byte_type>::max()) {
+      return sizeof(byte_type);
+    } else if (max_ <= std::numeric_limits<uint16_t>::max()) {
+      return sizeof(uint16_t);
+    } else {
+      return sizeof(uint32_t);
+    }
+  }
+
+  void write(bstring& out) const {
+    out.resize(sizeof(min_) + sizeof(max_));
+
+    auto* p = out.data();
+    irs::write(p, min_);
+    irs::write(p, max_);
+  }
+
+ private:
+  uint32_t min_{std::numeric_limits<uint32_t>::max()};
+  uint32_t max_{std::numeric_limits<uint32_t>::min()};
+};
+
+template<size_t NumBytes>
+class norm2_writer final : public feature_writer {
+  static_assert(NumBytes == sizeof(byte_type) ||
+                NumBytes == sizeof(uint16_t) ||
+                NumBytes == sizeof(uint32_t));
+
+ public:
+  explicit norm2_writer(norm2_header hdr) noexcept
+    : hdr_{hdr} {
+  }
+
+  virtual void write(
+      const field_stats& stats,
+      doc_id_t doc,
+      // cppcheck-suppress constParameter
+      columnstore_writer::values_writer_f& writer) final {
+    hdr_.update(stats.len);
+
+    if constexpr (NumBytes == sizeof(byte_type)) {
+      writer(doc).write_byte(static_cast<byte_type>(stats.len & 0xFF));
+    }
+
+    if constexpr (NumBytes == sizeof(uint16_t)) {
+      writer(doc).write_short(static_cast<uint16_t>(stats.len & 0xFFFF));
+    }
+
+    if constexpr (NumBytes == sizeof(uint32_t)) {
+      writer(doc).write_int(stats.len);
+    }
+  }
+
+  virtual void finish(bstring& out) final {
+    hdr_.write(out);
+  }
+
+ private:
+  norm2_header hdr_;
+};
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class norm2
 //////////////////////////////////////////////////////////////////////////////
@@ -78,6 +182,27 @@ class IRESEARCH_API norm2 : public norm_base {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept {
     return "iresearch::norm2";
+  }
+
+  static feature_writer::ptr make_writer(bytes_ref payload) {
+    norm2_header hdr{};
+
+    if (payload.empty()) {
+      return memory::make_managed<norm2_writer<sizeof(uint32_t)>>(hdr);
+    }
+
+    if (hdr.reset(payload)) {
+      switch (hdr.num_bytes()) {
+        case sizeof(byte_type):
+          return memory::make_managed<norm2_writer<sizeof(byte_type)>>(hdr);
+        case sizeof(uint16_t):
+          return memory::make_managed<norm2_writer<sizeof(uint16_t)>>(hdr);
+        default:
+          return memory::make_managed<norm2_writer<sizeof(uint32_t)>>(hdr);
+      }
+    }
+
+    return nullptr;
   }
 
   static void compute(

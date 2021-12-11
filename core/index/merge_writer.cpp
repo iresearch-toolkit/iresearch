@@ -269,11 +269,10 @@ bool compound_doc_iterator::next() {
 /// @struct sorting_compound_doc_iterator
 /// @brief iterator over sorted doc_ids for a term over all readers
 //////////////////////////////////////////////////////////////////////////////
-class sorting_compound_doc_iterator : public doc_iterator {
+class sorting_compound_doc_iterator final : public doc_iterator {
  public:
   explicit sorting_compound_doc_iterator(
-      compound_doc_iterator& doc_it
-  ) noexcept
+      compound_doc_iterator& doc_it) noexcept
     : doc_it_(&doc_it),
       heap_it_(min_heap_context(doc_it.iterators)) {
   }
@@ -865,12 +864,12 @@ bool compute_field_meta(
 //////////////////////////////////////////////////////////////////////////////
 class columnstore {
  public:
-  static constexpr const size_t PROGRESS_STEP_COLUMN = size_t(1) << 13;
+  static constexpr size_t kProgressStepColumn = size_t{1} << 13;
 
   columnstore(
       columnstore_writer::ptr&& writer,
       const merge_writer::flush_progress_t& progress)
-    : progress_(progress, PROGRESS_STEP_COLUMN),
+    : progress_(progress, kProgressStepColumn),
       writer_(std::move(writer)) {
   }
 
@@ -878,7 +877,7 @@ class columnstore {
       directory& dir,
       const segment_meta& meta,
       const merge_writer::flush_progress_t& progress)
-    : progress_(progress, PROGRESS_STEP_COLUMN) {
+    : progress_(progress, kProgressStepColumn) {
     auto writer = meta.codec->get_columnstore_writer(true);
     writer->prepare(dir, meta);
 
@@ -919,7 +918,7 @@ class columnstore {
   }
 
   // inserts live values from the specified 'iterator' into column
-  bool insert(doc_iterator& it) {
+  bool insert(sorting_compound_doc_iterator& it) {
     const payload* payload = nullptr;
 
     auto* callback = irs::get<attribute_provider_change>(it);
@@ -940,7 +939,7 @@ class columnstore {
 
       auto& out = column_.second(it.value());
 
-      if (payload) {
+      if (payload && payload->value.size()) {
         out.write_bytes(payload->value.c_str(), payload->value.size());
       }
 
@@ -953,7 +952,7 @@ class columnstore {
   void reset(const column_info& info) {
     if (!empty_ || info_ != info) {
       info_ = info;
-      column_ = writer_->push_column(info);
+      column_ = writer_->push_column(info, {}); // FIXME(gnusi): proper writer
       empty_ = true;
     }
   }
@@ -1064,10 +1063,9 @@ class sorting_compound_column_iterator : util::noncopyable {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief write columnstore
 //////////////////////////////////////////////////////////////////////////////
-template<typename CompoundIterator>
 bool write_columns(
     columnstore& cs,
-    CompoundIterator& columns,
+    sorting_compound_doc_iterator& columns,
     directory& dir,
     const column_info_provider_t& column_info,
     const segment_meta& meta,
@@ -1300,7 +1298,6 @@ bool write_fields(
 
     for (; begin != end; ++begin) {
       std::tie(feature, std::ignore) = *begin;
-
       cs.reset(column_info(feature).first);
 
       // remap merge norms
@@ -1593,7 +1590,7 @@ bool merge_writer::flush_sorted(
 
   // get column info for sorted column
   const auto info = (*column_info_)(string_ref::NIL);
-  auto column = writer->push_column(info);
+  auto column = writer->push_column(info, {});
 
   doc_id_t next_id = doc_limits::min();
   while (columns_it.next()) {

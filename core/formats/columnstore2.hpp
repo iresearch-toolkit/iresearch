@@ -72,10 +72,12 @@ class column final : public irs::column_output {
   explicit column(
       const context& ctx,
       const irs::type_info& compression,
+      columnstore_writer::column_header_writer_f&& header_writer,
       compression::compressor::ptr deflater)
     : ctx_{ctx},
       compression_{compression},
-      deflater_{std::move(deflater)} {
+      deflater_{std::move(deflater)},
+      header_writer_{std::move(header_writer)} {
   }
 
   void prepare(doc_id_t key);
@@ -161,6 +163,7 @@ class column final : public irs::column_output {
   context ctx_;
   irs::type_info compression_;
   compression::compressor::ptr deflater_;
+  columnstore_writer::column_header_writer_f header_writer_;
   std::vector<column_block> blocks_; // at most 65536 blocks
   memory_output data_{*ctx_.alloc};
   memory_output docs_{*ctx_.alloc};
@@ -192,7 +195,9 @@ class writer final : public columnstore_writer {
   explicit writer(bool consolidation);
 
   virtual void prepare(directory& dir, const segment_meta& meta) override;
-  virtual column_t push_column(const column_info& info) override;
+  virtual column_t push_column(
+      const column_info& info,
+      column_header_writer_f header_writer) override;
   virtual bool commit(const flush_state& state) override;
   virtual void rollback() noexcept override;
 

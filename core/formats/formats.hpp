@@ -318,13 +318,16 @@ struct IRESEARCH_API columnstore_writer {
   using ptr = std::unique_ptr<columnstore_writer>;
 
   // NOTE: doc > type_limits<type_t::doc_id_t>::invalid() && doc < type_limits<type_t::doc_id_t>::eof()
-  typedef std::function<column_output&(doc_id_t doc)> values_writer_f;
+  using values_writer_f = std::function<column_output&(doc_id_t doc)>;
+  using column_header_writer_f = std::function<void(bstring& out)>;
+
   typedef std::pair<field_id, values_writer_f> column_t;
 
   virtual ~columnstore_writer() = default;
 
   virtual void prepare(directory& dir, const segment_meta& meta) = 0;
-  virtual column_t push_column(const column_info& info) = 0;
+  virtual column_t push_column(const column_info& info,
+                               column_header_writer_f header_writer) = 0;
   virtual void rollback() noexcept = 0;
   virtual bool commit(const flush_state& state) = 0; // @return was anything actually flushed
 }; // columnstore_writer

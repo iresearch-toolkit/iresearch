@@ -67,9 +67,10 @@ segment_writer::stored_column::stored_column(
   auto info = column_info(name);
 
   if (!cache) {
-    std::tie(id, writer) = columnstore.push_column(info);
+    std::tie(id, writer) = columnstore.push_column(info, {});
   } else {
-    auto& cached = cached_columns.emplace_back(&id, info);
+    auto& cached = cached_columns.emplace_back(
+        &id, info, columnstore_writer::column_header_writer_f{});
 
     writer = [stream = &cached.stream](irs::doc_id_t doc)-> column_output& {
       stream->prepare(doc);
@@ -175,7 +176,7 @@ segment_writer::segment_writer(
     const column_info_provider_t& column_info,
     const feature_info_provider_t& feature_info,
     const comparer* comparator) noexcept
-  : sort_(column_info),
+  : sort_(column_info, {}),
     fields_(feature_info, cached_columns_, comparator),
     column_info_(&column_info),
     dir_(dir),
@@ -300,13 +301,15 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
 
   if (fields_.comparator()) {
     std::tie(docmap, sort_.id) = sort_.stream.flush(
-        *col_writer_, doc_id_t(docs_cached()), *fields_.comparator());
+        *col_writer_, std::move(sort_.header_writer),
+        doc_id_t(docs_cached()), *fields_.comparator());
 
     // flush all cached columns
     irs::sorted_column::flush_buffer_t buffer;
     for (auto& column : cached_columns_) {
       if (IRS_LIKELY(!field_limits::valid(*column.id))) {
-        *column.id = column.stream.flush(*col_writer_, docmap, buffer);
+        *column.id = column.stream.flush(
+            *col_writer_, std::move(column.header_writer), docmap, buffer);
       }
     }
 
@@ -326,7 +329,7 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
     meta.column_store = true;
   }
 
-  // flush fields metadata & inverted data
+  // flush fields metadata & inverted data,
   if (docs_cached()) {
     flush_fields(docmap);
   }
