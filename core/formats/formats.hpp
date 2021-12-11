@@ -334,8 +334,6 @@ struct IRESEARCH_API columnstore_writer {
 
 }
 
-// columnstore_reader::values_reader_f
-MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t, irs::bytes_ref&)>;) // cppcheck-suppress unknownMacro
 // columnstore_writer::values_writer_f
 MSVC_ONLY(template class IRESEARCH_API std::function<irs::column_output&(irs::doc_id_t)>;) 
 
@@ -383,12 +381,12 @@ struct IRESEARCH_API columnstore_reader {
   struct column_reader {
     virtual ~column_reader() = default;
 
-    // Returns column header .
+    // Returns column header.
     virtual bytes_ref payload() const = 0;
 
     // Returns the corresponding column iterator.
-    // If the column implementation supports document payloads then the latter
-    // may be accessed via the 'payload' attribute
+    // If the column implementation supports document payloads then it
+    // can be accessed via the 'payload' attribute.
     virtual doc_iterator::ptr iterator() const = 0;
 
     virtual bool visit(const columnstore_reader::values_visitor_f& reader) const = 0;
@@ -398,17 +396,15 @@ struct IRESEARCH_API columnstore_reader {
 
   virtual ~columnstore_reader() = default;
 
-  /// @returns true if conlumnstore is present in a segment,
-  ///          false - otherwise
-  /// @throws io_error
-  /// @throws index_error
+  // Returns true if conlumnstore is present in a segment, false - otherwise.
+  // May throw `io_error` or `index_error`.
   virtual bool prepare(
     const directory& dir,
     const segment_meta& meta) = 0;
 
   virtual const column_reader* column(field_id field) const = 0;
 
-  // @returns total number of columns
+  // Returns total number of columns.
   virtual size_t size() const = 0;
 }; // columnstore_reader
 

@@ -156,50 +156,16 @@ class PYRESEARCH_API  column_iterator {
 }; // column_iterator
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @class column_values_reader
-/// @brief python proxy for irs::columnstore_reader::values_reader_f
-///////////////////////////////////////////////////////////////////////////////
-class PYRESEARCH_API  column_values_reader {
- public:
-  ~column_values_reader() SWIG_noexcept { }
-
-  std::pair<bool, irs::bytes_ref> get(uint32_t key) {
-    irs::bytes_ref value;
-    const bool found = reader_(key, value);
-    return std::make_pair(found, value);
-  }
-
-  bool has(uint32_t key) const {
-    irs::bytes_ref value;
-    return reader_(key, value);
-  }
-
- private:
-  friend class column_reader;
-
-  column_values_reader(irs::columnstore_reader::values_reader_f&& reader) SWIG_noexcept 
-    : reader_(std::move(reader)) {
-  }
-
-  irs::columnstore_reader::values_reader_f reader_;
-};
-
-///////////////////////////////////////////////////////////////////////////////
 /// @class column_reader
 /// @brief python proxy for irs::columnstore_reader::column_reader
 ///////////////////////////////////////////////////////////////////////////////
-class PYRESEARCH_API  column_reader {
+class PYRESEARCH_API column_reader {
  public:
   ~column_reader() SWIG_noexcept { }
 
   doc_iterator iterator() const {
     assert(reader_);
     return reader_->iterator();
-  }
-
-  column_values_reader values() const {
-    assert(reader_);
-    return reader_->values();
   }
 
   operator bool() const SWIG_noexcept {
