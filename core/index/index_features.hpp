@@ -88,17 +88,12 @@ struct feature_writer {
   virtual void write(
       const field_stats& stats,
       doc_id_t doc,
-      std::function<column_output&(doc_id_t)>& writer);
+      std::function<column_output&(doc_id_t)>& writer) = 0;
 
   virtual void finish(bstring& out) = 0;
 };
 
 using feature_writer_factory_t = feature_writer::ptr(*)(bytes_ref);
-
-using feature_handler_f = void(*)(
-    const field_stats&,
-    doc_id_t,
-    std::function<column_output&(doc_id_t)>&);
 
 using feature_info_provider_t = std::function<
     std::pair<column_info, feature_writer_factory_t>(type_info::type_id)>;

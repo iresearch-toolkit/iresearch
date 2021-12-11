@@ -45,30 +45,16 @@ class norm_base {
 static_assert(std::is_nothrow_move_constructible_v<norm_base>);
 static_assert(std::is_nothrow_move_assignable_v<norm_base>);
 
-//class norm_writer final : public feature_writer {
-// public:
-//  virtual void write(
-//      const field_stats& stats,
-//      doc_id_t doc,
-//      // cppcheck-suppress constParameter
-//      columnstore_writer::values_writer_f& writer) final {
-//    hdr_.update(stats.len);
-//
-//    if constexpr (NumBytes == sizeof(byte_type)) {
-//      writer(doc).write_byte(static_cast<byte_type>(stats.len & 0xFF));
-//    }
-//
-//    if constexpr (NumBytes == sizeof(uint16_t)) {
-//      writer(doc).write_short(static_cast<uint16_t>(stats.len & 0xFFFF));
-//    }
-//
-//    if constexpr (NumBytes == sizeof(uint32_t)) {
-//      writer(doc).write_int(stats.len);
-//    }
-//  }
-//
-//  virtual void finish(data_output& out) final { }
-//};
+class norm_writer final : public feature_writer {
+ public:
+  virtual void write(
+      const field_stats& stats,
+      doc_id_t doc,
+      // cppcheck-suppress constParameter
+      columnstore_writer::values_writer_f& writer) final;
+
+  virtual void finish(bstring& /*out*/) final { }
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class norm
@@ -83,6 +69,8 @@ class IRESEARCH_API norm : public norm_base {
   FORCE_INLINE static constexpr float_t DEFAULT() noexcept {
     return 1.f;
   }
+
+  static feature_writer::ptr make_writer(bytes_ref payload);
 
   static void compute(
     const field_stats& stats,

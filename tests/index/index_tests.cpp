@@ -129,10 +129,10 @@ class index_test_case : public tests::index_test_base {
       const irs::column_info info{irs::type<irs::compression::lz4>::get(), {}, false};
 
       if (irs::type<irs::norm>::id() == id) {
-        return std::make_pair(info, &irs::norm::compute);
+        return std::make_pair(info, &irs::norm::make_writer);
       }
 
-      return std::make_pair(info, irs::feature_handler_f{});
+      return std::make_pair(info, irs::feature_writer_factory_t{});
     };
   }
 
@@ -13607,40 +13607,51 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
     mutable irs::string_token_stream stream_;
   } field;
 
+  class feature_writer final : public irs::feature_writer {
+   public:
+    explicit feature_writer(irs::doc_id_t filter_doc) noexcept
+      : filter_doc_{filter_doc} {
+    }
+
+    virtual void write(const irs::field_stats& stats,
+               irs::doc_id_t doc,
+               std::function<irs::column_output&(irs::doc_id_t)>& writer) final {
+      if (doc == filter_doc_) {
+        return;
+      }
+
+      auto& stream = writer(doc);
+      stream.write_int(doc);
+      stream.write_int(stats.len);
+      stream.write_int(stats.num_overlap);
+      stream.write_int(stats.max_term_freq);
+      stream.write_int(stats.num_unique);
+
+    }
+
+    virtual void finish(irs::bstring& out) final {
+      EXPECT_TRUE(out.empty());
+      out.resize(sizeof(filter_doc_));
+      auto* p = out.data();
+      irs::write(p, filter_doc_);
+    }
+
+   private:
+    irs::doc_id_t filter_doc_;
+  };
+
   {
     irs::index_writer::init_options opts;
     opts.features = [](irs::type_info::type_id id) {
-      irs::feature_handler_f handler{};
+      irs::feature_writer_factory_t handler{};
 
       if (irs::type<feature1>::id() == id) {
-        handler = [](const irs::field_stats& stats,
-                     irs::doc_id_t doc,
-                     std::function<irs::column_output&(irs::doc_id_t)>& writer) {
-          if (doc == 2) {
-            return;
-          }
-
-          auto& stream = writer(doc);
-          stream.write_int(doc);
-          stream.write_int(stats.len);
-          stream.write_int(stats.num_overlap);
-          stream.write_int(stats.max_term_freq);
-          stream.write_int(stats.num_unique);
+        handler = [](irs::bytes_ref) -> irs::feature_writer::ptr {
+          return irs::memory::make_managed<feature_writer>(2);
         };
       } else if (irs::type<feature3>::id() == id) {
-        handler = [](const irs::field_stats& stats,
-                     irs::doc_id_t doc,
-                     std::function<irs::column_output&(irs::doc_id_t)>& writer) {
-          if (doc == 1) {
-            return;
-          }
-
-          auto& stream = writer(doc);
-          stream.write_int(doc);
-          stream.write_int(stats.len);
-          stream.write_int(stats.num_overlap);
-          stream.write_int(stats.max_term_freq);
-          stream.write_int(stats.num_unique);
+        handler = [](irs::bytes_ref) -> irs::feature_writer::ptr {
+          return irs::memory::make_managed<feature_writer>(1);
         };
       }
 

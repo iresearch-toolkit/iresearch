@@ -37,6 +37,29 @@ struct norm2 { };
 
 REGISTER_ATTRIBUTE(tests::norm2);
 
+class test_feature_writer final : public irs::feature_writer {
+ public:
+  explicit test_feature_writer(uint32_t value) noexcept
+    : value_{value} {
+  }
+
+  virtual void write(const irs::field_stats& stats,
+             irs::doc_id_t doc,
+             std::function<irs::column_output&(irs::doc_id_t)>& writer) final {
+    writer(doc).write_int(stats.len + value_);
+  }
+
+  virtual void finish(irs::bstring& out) final {
+    EXPECT_TRUE(out.empty());
+    out.resize(sizeof(value_));
+    auto* p = out.data();
+    irs::write(p, value_);
+  }
+
+ private:
+  uint32_t value_;
+};
+
 struct binary_comparer : public irs::comparer {
  protected:
   bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const override {
@@ -144,7 +167,7 @@ struct merge_writer_test_case : public tests::directory_test_case_base<std::stri
     return [](irs::type_info::type_id) {
       return std::make_pair(
           irs::column_info(irs::type<irs::compression::lz4>::get(), {}, true),
-          irs::feature_handler_f{});
+          irs::feature_writer_factory_t{});
     };
   }
 };
@@ -1094,22 +1117,20 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
 
   irs::index_writer::init_options opts;
   opts.features = [](irs::type_info::type_id id) {
-    irs::feature_handler_f handler{};
+    irs::feature_writer_factory_t writer_factory{};
     if (irs::type<irs::norm>::id() == id) {
-      handler = [](const irs::field_stats& stats,
-                   irs::doc_id_t doc,
-                   irs::columnstore_writer::values_writer_f& writer) {
-        writer(doc).write_int(stats.len); };
+      writer_factory = [](irs::bytes_ref) -> irs::feature_writer::ptr {
+        return irs::memory::make_managed<test_feature_writer>(0);
+      };
     } else if (irs::type<norm2>::id() == id) {
-      handler = [](const irs::field_stats& stats,
-                   irs::doc_id_t doc,
-                   irs::columnstore_writer::values_writer_f& writer) {
-        writer(doc).write_int(stats.len + 1); };
+      writer_factory = [](irs::bytes_ref) -> irs::feature_writer::ptr {
+        return irs::memory::make_managed<test_feature_writer>(1);
+      };
     }
 
     return std::make_pair(
       irs::column_info{irs::type<irs::compression::lz4>::get(), {}, false},
-      std::move(handler));
+      std::move(writer_factory));
   };
 
   // populate directory
@@ -2879,18 +2900,14 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
 
   irs::index_writer::init_options opts;
   opts.features = [](irs::type_info::type_id type) {
-    irs::feature_handler_f handler{};
+    irs::feature_writer_factory_t handler{};
     if (irs::type<irs::norm>::id() == type) {
-      handler = [](const irs::field_stats& stats,
-                   irs::doc_id_t doc,
-                   irs::columnstore_writer::values_writer_f& writer) {
-        writer(doc).write_int(stats.len);
+      handler = [](irs::bytes_ref) -> irs::feature_writer::ptr {
+        return irs::memory::make_managed<test_feature_writer>(0);
       };
     } else if (irs::type<norm2>::id() == type) {
-      handler = [](const irs::field_stats& stats,
-                   irs::doc_id_t doc,
-                   irs::columnstore_writer::values_writer_f& writer) {
-        writer(doc).write_int(stats.len + 1);
+      handler = [](irs::bytes_ref) -> irs::feature_writer::ptr {
+        return irs::memory::make_managed<test_feature_writer>(1);
       };
     }
 

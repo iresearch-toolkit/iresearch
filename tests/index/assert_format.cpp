@@ -211,12 +211,12 @@ void index_segment::compute_features() {
 
   for (auto* field : doc_fields_) {
     for (auto& entry : field->feature_infos) {
-      if (entry.handler) {
+      if (entry.writer) {
         buf_.clear();
 
         const auto doc_id = doc();
         written = false;
-        entry.handler(field->stats, doc_id, writer);
+        entry.writer->write(field->stats, doc_id, writer);
 
         if (written) {
           columns_[entry.id].insert(doc_id, buf_);
@@ -271,7 +271,11 @@ void index_segment::insert_indexed(const ifield& f) {
     for (auto& feature : new_field.features) {
       auto handler = field_features_(feature.first);
 
-      if (handler.second) {
+      auto feature_writer = handler.second
+        ? (*handler.second)(irs::bytes_ref::NIL)
+        : nullptr;
+
+      if (feature_writer) {
         const size_t id = columns_.size();
         ASSERT_LE(id, std::numeric_limits<irs::field_id>::max());
         columns_.emplace_back();
@@ -279,7 +283,7 @@ void index_segment::insert_indexed(const ifield& f) {
         feature.second = irs::field_id{id};
 
         new_field.feature_infos.emplace_back(field::feature_info{
-          irs::field_id{id}, std::move(handler.second)});
+          irs::field_id{id}, std::move(feature_writer)});
       }
     }
 

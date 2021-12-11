@@ -93,7 +93,7 @@ struct term {
 struct field : public irs::field_meta {
   struct feature_info {
     irs::field_id id;
-    irs::feature_handler_f handler;
+    irs::feature_writer::ptr writer;
   };
 
   struct field_stats : irs::field_stats {

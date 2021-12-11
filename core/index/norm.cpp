@@ -72,6 +72,25 @@ bool norm_base::reset(
 // --SECTION--                                                              norm
 // -----------------------------------------------------------------------------
 
+void norm_writer::write(
+    const field_stats& stats,
+    doc_id_t doc,
+    columnstore_writer::values_writer_f& writer) {
+  if (stats.len > 0) {
+    const float_t value = 1.f / float_t(std::sqrt(double_t(stats.len)));
+    if (value != norm::DEFAULT()) {
+      auto& stream = writer(doc);
+      write_zvfloat(stream, value);
+    }
+  }
+}
+
+/*static*/ feature_writer::ptr norm::make_writer(bytes_ref /*payload*/) {
+  static norm_writer kWriter;
+
+  return memory::to_managed<feature_writer, false>(&kWriter);
+}
+
 float_t norm::read() const {
   assert(column_it_);
   if (doc_->value != column_it_->seek(doc_->value)) {

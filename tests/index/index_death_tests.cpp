@@ -247,7 +247,7 @@ irs::feature_info_provider_t default_feature_info() {
   return [](irs::type_info::type_id) {
     return std::make_pair(
         irs::column_info(irs::type<irs::compression::none>::get(), {}, true),
-        irs::feature_handler_f{});
+        irs::feature_writer_factory_t{});
   };
 }
 
@@ -258,8 +258,7 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
     test_base::resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::string_field>(
-        name, data.str));
+      doc.insert(std::make_shared<tests::string_field>(name, data.str));
     }
   });
   const auto* doc1 = gen.next();

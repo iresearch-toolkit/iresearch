@@ -120,6 +120,31 @@ struct long_comparer : irs::comparer {
 };
 
 struct custom_feature {
+  struct writer : irs::feature_writer {
+    virtual void write(
+        const irs::field_stats& /*stats*/,
+        irs::doc_id_t doc,
+        // cppcheck-suppress constParameter
+        irs::columnstore_writer::values_writer_f& writer) final {
+      ++count;
+      writer(doc).write_int(doc);
+    }
+
+    virtual void finish(irs::bstring& out) final {
+      EXPECT_TRUE(out.empty());
+      out.resize(sizeof(size_t));
+
+      auto* p = out.data();
+      irs::write<size_t>(p, count);
+    }
+
+    size_t count{0}; // FIXME(gnusi): check header payload in tests
+  };
+
+  static irs::feature_writer::ptr make_writer(irs::bytes_ref /*payload*/) {
+    return irs::memory::make_managed<writer>();
+  }
+
   static void compute(
       const irs::field_stats& /*stats*/,
       irs::doc_id_t doc,
@@ -131,49 +156,47 @@ struct custom_feature {
 
 class sorted_index_test_case : public tests::index_test_base {
  protected:
-  // old formats don't support pluggable features
-  static constexpr irs::string_ref kOldFormats[] {
-    "1_0", "1_1", "1_2", "1_3", "1_3simd" };
+  bool supports_pluggable_features() const noexcept {
+    // old formats don't support pluggable features
+    constexpr irs::string_ref kOldFormats[] {
+        "1_0", "1_1", "1_2", "1_3", "1_3simd" };
+
+     return std::end(kOldFormats) == std::find(std::begin(kOldFormats),
+                                               std::end(kOldFormats),
+                                               codec()->type().name());
+  }
 
   irs::feature_info_provider_t features() {
-    return [codec = codec()](irs::type_info::type_id id) {
+    return [this](irs::type_info::type_id id) {
       if (id == irs::type<irs::norm>::id()) {
         return std::make_pair(
           irs::column_info{irs::type<irs::compression::lz4>::get(), {}, false},
-          &irs::norm::compute );
+          &irs::norm::make_writer);
       }
 
-      if (std::find(std::begin(kOldFormats),
-                    std::end(kOldFormats),
-                    codec->type().name()) == std::end(kOldFormats)) {
+      if (supports_pluggable_features()) {
           if (irs::type<irs::norm2>::id() == id) {
             return std::make_pair(
-              irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
-              &irs::norm2::compute );
+                irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
+                &irs::norm2::make_writer);
           } else if (irs::type<custom_feature>::id() == id) {
             return std::make_pair(
-              irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
-              &custom_feature::compute );
+                irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
+                &custom_feature::make_writer);
           }
       }
 
       return std::make_pair(
-        irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
-        irs::feature_handler_f{});
+          irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
+          irs::feature_writer_factory_t{});
     };
   }
 
   std::vector<irs::type_info::type_id> field_features() {
-    std::vector<irs::type_info::type_id> ftrs {
-      irs::type<irs::norm>::id() };
-
-    if (std::find(std::begin(kOldFormats),
-                  std::end(kOldFormats),
-                  codec()->type().name()) == std::end(kOldFormats)) {
-      ftrs.emplace_back(irs::type<irs::norm2>::id());
-    }
-
-    return ftrs;
+    return supports_pluggable_features()
+      ? std::vector<irs::type_info::type_id>{ irs::type<irs::norm>::id(),
+                                              irs::type<irs::norm2>::id() }
+      : std::vector<irs::type_info::type_id>{ irs::type<irs::norm>::id() };
   }
 
   void assert_index(size_t skip = 0, irs::automaton_table_matcher* matcher = nullptr) const {

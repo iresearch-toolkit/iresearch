@@ -79,10 +79,11 @@ struct bstring_data_output: public data_output {
 class tfidf_test_case : public index_test_base {
  protected:
   void test_query_norms(irs::type_info::type_id norm,
-                        irs::feature_handler_f handler);
+                        irs::feature_writer_factory_t handler);
 };
 
-void tfidf_test_case::test_query_norms(irs::type_info::type_id norm, irs::feature_handler_f handler) {
+void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
+                                       irs::feature_writer_factory_t handler) {
   {
     const std::vector<irs::type_info::type_id> extra_features = { norm };
 
@@ -113,7 +114,7 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm, irs::featur
         return std::make_pair(info, handler);
       }
 
-      return std::make_pair(info, irs::feature_handler_f{});
+      return std::make_pair(info, irs::feature_writer_factory_t{});
     };
 
     add_segment(gen, irs::OM_CREATE, opts);
@@ -1159,7 +1160,7 @@ TEST_P(tfidf_test_case, test_query) {
 }
 
 TEST_P(tfidf_test_case, test_query_norms) {
-  test_query_norms(irs::type<irs::norm>::id(), &irs::norm::compute);
+  test_query_norms(irs::type<irs::norm>::id(), &irs::norm::make_writer);
 }
 
 #ifndef IRESEARCH_DLL
@@ -1433,7 +1434,7 @@ INSTANTIATE_TEST_SUITE_P(
 class tfidf_test_case_14 : public tfidf_test_case { };
 
 TEST_P(tfidf_test_case_14, test_query_norms) {
-  test_query_norms(irs::type<irs::norm2>::id(), &irs::norm2::compute);
+  test_query_norms(irs::type<irs::norm2>::id(), &irs::norm2::make_writer);
 }
 
 INSTANTIATE_TEST_SUITE_P(
