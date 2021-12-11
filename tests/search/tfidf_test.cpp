@@ -132,7 +132,10 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
   auto& segment = *(reader.begin());
   const auto* column = segment.column_reader("seq");
   ASSERT_NE(nullptr, column);
-  auto values = column->values();
+  auto values = column->iterator();
+  ASSERT_NE(nullptr, values);
+  auto* actual_value = irs::get<irs::payload>(*values);
+  ASSERT_NE(nullptr, actual_value);
 
   // by_range multiple
   {
@@ -146,7 +149,6 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     constexpr uint64_t expected[]{ 7, 0, 3, 1, 5, };
 
-    irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
@@ -155,8 +157,8 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
 
     while(docs->next()) {
       const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
-      ASSERT_TRUE(values(docs->value(), actual_value));
-      in.reset(actual_value);
+      ASSERT_EQ(docs->value(), values->seek(docs->value()));
+      in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
@@ -183,7 +185,6 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     constexpr uint64_t expected[]{ 0, 7, 5, 2, 3, 1, };
 
-    irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
@@ -191,8 +192,8 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
 
     while(docs->next()) {
       const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
-      ASSERT_TRUE(values(docs->value(), actual_value));
-      in.reset(actual_value);
+      ASSERT_EQ(docs->value(), values->seek(docs->value()));
+      in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
@@ -396,16 +397,17 @@ TEST_P(tfidf_test_case, test_phrase) {
 
     auto column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
-
-    irs::bytes_ref key_value;
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
     while (docs->next()) {
-      ASSERT_TRUE(values(docs->value(), key_value));
+      ASSERT_EQ(docs->value(), values->seek(docs->value()));
 
       sorted.emplace(
         irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
-        irs::to_string<std::string>(key_value.c_str()));
+        irs::to_string<std::string>(actual_value->value.c_str()));
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -447,17 +449,17 @@ TEST_P(tfidf_test_case, test_phrase) {
 
     auto column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
-
-    irs::bytes_ref key_value;
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
     while (docs->next()) {
-      ASSERT_TRUE(values(docs->value(), key_value));
+      ASSERT_EQ(docs->value(), values->seek(docs->value()));
 
       sorted.emplace(
         irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
-        irs::to_string<std::string>(key_value.c_str())
-      );
+        irs::to_string<std::string>(actual_value->value.c_str()));
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -496,7 +498,10 @@ TEST_P(tfidf_test_case, test_query) {
   auto& segment = *(reader.begin());
   const auto* column = segment.column_reader("seq");
   ASSERT_NE(nullptr, column);
-  auto values = column->values();
+  auto values = column->iterator();
+  ASSERT_NE(nullptr, values);
+  auto* actual_value = irs::get<irs::payload>(*values);
+  ASSERT_NE(nullptr, actual_value);
 
   // by_term
   {
@@ -507,7 +512,6 @@ TEST_P(tfidf_test_case, test_query) {
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{ 0, 1, 5, 7 };
 
-    irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
@@ -515,8 +519,8 @@ TEST_P(tfidf_test_case, test_query) {
     ASSERT_TRUE(bool(score));
 
     while(docs->next()) {
-      ASSERT_TRUE(values(docs->value(), actual_value));
-      in.reset(actual_value);
+      ASSERT_EQ(docs->value(), values->seek(docs->value()));
+      in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
@@ -588,21 +592,23 @@ TEST_P(tfidf_test_case, test_query) {
       5 // segment 1
     };
 
-    irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
 
     for (auto& segment: reader) {
       const auto* column = segment.column_reader("seq");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       auto docs = prepared_filter->execute(segment, prepared_order);
       auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
       while(docs->next()) {
-        ASSERT_TRUE(values(docs->value(), actual_value));
-        in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));
+        in.reset(actual_value->value);
 
         auto str_seq = irs::read_string<std::string>(in);
         auto seq = strtoull(str_seq.c_str(), nullptr, 10);
@@ -685,21 +691,23 @@ TEST_P(tfidf_test_case, test_query) {
       0, 2, 5 // same value in 3 documents
     };
 
-    irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
 
     for (auto& segment: reader) {
       const auto* column = segment.column_reader("seq");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       auto docs = prepared_filter->execute(segment, prepared_order);
       auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
       while(docs->next()) {
-        ASSERT_TRUE(values(docs->value(), actual_value));
-        in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));
+        in.reset(actual_value->value);
 
         auto str_seq = irs::read_string<std::string>(in);
         auto seq = strtoull(str_seq.c_str(), nullptr, 10);
@@ -773,21 +781,23 @@ TEST_P(tfidf_test_case, test_query) {
       30, 31, // same value in segment 0 and segment 1 (smaller idf() -> smaller tfidf() + reverse)
     };
 
-    irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
 
     for (auto& segment: reader) {
       const auto* column = segment.column_reader("seq");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       auto docs = prepared_filter->execute(segment, prepared_order);
       auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
       while(docs->next()) {
-        ASSERT_TRUE(values(docs->value(), actual_value));
-        in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));
+        in.reset(actual_value->value);
 
         auto str_seq = irs::read_string<std::string>(in);
         auto seq = strtoull(str_seq.c_str(), nullptr, 10);
@@ -817,7 +827,6 @@ TEST_P(tfidf_test_case, test_query) {
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{ 0, 1, 5, 7 };
 
-    irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
@@ -825,8 +834,8 @@ TEST_P(tfidf_test_case, test_query) {
     ASSERT_TRUE(bool(score));
 
     while(docs->next()) {
-      ASSERT_TRUE(values(docs->value(), actual_value));
-      in.reset(actual_value);
+      ASSERT_EQ(docs->value(), values->seek(docs->value()));
+      in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
@@ -856,7 +865,6 @@ TEST_P(tfidf_test_case, test_query) {
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{ 3, 7 };
 
-    irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
@@ -864,8 +872,8 @@ TEST_P(tfidf_test_case, test_query) {
     ASSERT_TRUE(bool(score));
 
     while(docs->next()) {
-      ASSERT_TRUE(values(docs->value(), actual_value));
-      in.reset(actual_value);
+      ASSERT_EQ(docs->value(), values->seek(docs->value()));
+      in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
@@ -894,7 +902,6 @@ TEST_P(tfidf_test_case, test_query) {
 //    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
 //    std::vector<uint64_t> expected{ 3, 7 };
 //
-//    irs::bytes_ref actual_value;
 //    irs::bytes_ref_input in;
 //    auto prepared_filter = filter.prepare(reader, prepared_order);
 //    auto docs = prepared_filter->execute(segment, prepared_order);
@@ -906,8 +913,8 @@ TEST_P(tfidf_test_case, test_query) {
 //
 //    while(docs->next()) {
 //      score->evaluate();
-//      ASSERT_TRUE(values(docs->value(), actual_value));
-//      in.reset(actual_value);
+//      ASSERT_EQ(docs->value(), values->seek(docs->value()));
+//      in.reset(actual_value->value);
 //
 //      auto str_seq = irs::read_string<std::string>(in);
 //      auto seq = strtoull(str_seq.c_str(), nullptr, 10);
@@ -941,7 +948,6 @@ TEST_P(tfidf_test_case, test_query) {
       5, // 1.47    = sqrt(1)*(log(8/(4+1))+1) + sqrt(0)*(log(8/(2+1))+1)
     };
 
-    irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
@@ -949,8 +955,8 @@ TEST_P(tfidf_test_case, test_query) {
     ASSERT_TRUE(bool(score));
 
     while(docs->next()) {
-      ASSERT_TRUE(values(docs->value(), actual_value));
-      in.reset(actual_value);
+      ASSERT_EQ(docs->value(), values->seek(docs->value()));
+      in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
@@ -987,7 +993,6 @@ TEST_P(tfidf_test_case, test_query) {
       2, // 1.693147 = sqrt(1)*(log(8/(3+1))+1) + sqrt(0)*(log(8/(4+1))+1) + sqrt(0)*(log(8/(2+1))+1)
     };
 
-    irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
@@ -995,8 +1000,8 @@ TEST_P(tfidf_test_case, test_query) {
     ASSERT_TRUE(bool(score));
 
     while(docs->next()) {
-      ASSERT_TRUE(values(docs->value(), actual_value));
-      in.reset(actual_value);
+      ASSERT_EQ(docs->value(), values->seek(docs->value()));
+      in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
@@ -1028,7 +1033,6 @@ TEST_P(tfidf_test_case, test_query) {
       { -1, 7 },
     };
 
-    irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
@@ -1036,8 +1040,8 @@ TEST_P(tfidf_test_case, test_query) {
     ASSERT_TRUE(bool(score));
 
     while(docs->next()) {
-      ASSERT_TRUE(values(docs->value(), actual_value));
-      in.reset(actual_value);
+      ASSERT_EQ(docs->value(), values->seek(docs->value()));
+      in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
@@ -1064,7 +1068,6 @@ TEST_P(tfidf_test_case, test_query) {
     irs::all filter;
     filter.boost(1.5f);
 
-    irs::bytes_ref actual_value;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
@@ -1076,7 +1079,7 @@ TEST_P(tfidf_test_case, test_query) {
       ASSERT_EQ(doc, docs->value());
 
       const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
-      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
       ASSERT_EQ(1.5f, *reinterpret_cast<const float_t*>(score_value.c_str()));
     }
@@ -1088,7 +1091,6 @@ TEST_P(tfidf_test_case, test_query) {
     irs::all filter;
     filter.boost(0.f);
 
-    irs::bytes_ref actual_value;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
@@ -1100,7 +1102,7 @@ TEST_P(tfidf_test_case, test_query) {
       ASSERT_EQ(doc, docs->value());
 
       const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
-      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
       ASSERT_EQ(0.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
     }
@@ -1113,7 +1115,6 @@ TEST_P(tfidf_test_case, test_query) {
     *filter.mutable_field() = "seq";
     filter.mutable_options()->prefix_match = false;
 
-    irs::bytes_ref actual_value;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
@@ -1125,7 +1126,7 @@ TEST_P(tfidf_test_case, test_query) {
       ASSERT_EQ(doc, docs->value());
 
       const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
-      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
       ASSERT_EQ(1.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
     }
@@ -1139,7 +1140,6 @@ TEST_P(tfidf_test_case, test_query) {
     filter.mutable_options()->prefix_match = false;
     filter.boost(0.f);
 
-    irs::bytes_ref actual_value;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
@@ -1151,7 +1151,7 @@ TEST_P(tfidf_test_case, test_query) {
       ASSERT_EQ(doc, docs->value());
 
       const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
-      ASSERT_TRUE(values(docs->value(), actual_value));
+      ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
       ASSERT_EQ(0.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
     }
@@ -1381,7 +1381,10 @@ TEST_P(tfidf_test_case, test_order) {
   uint64_t seq = 0;
   const auto* column = segment.column_reader("seq");
   ASSERT_NE(nullptr, column);
-  auto values = column->values();
+  auto values = column->iterator();
+  ASSERT_NE(nullptr, values);
+  auto* actual_value = irs::get<irs::payload>(*values);
+  ASSERT_NE(nullptr, actual_value);
 
   {
     query.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
@@ -1389,7 +1392,6 @@ TEST_P(tfidf_test_case, test_order) {
     std::multimap<iresearch::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{ 0, 1, 5, 7 };
 
-    irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
     auto prepared = query.prepare(reader, prepared_order);
     auto docs = prepared->execute(segment, prepared_order);
@@ -1397,8 +1399,8 @@ TEST_P(tfidf_test_case, test_order) {
     ASSERT_TRUE(bool(score));
 
     for (; docs->next();) {
-      ASSERT_TRUE(values(docs->value(), actual_value));
-      in.reset(actual_value);
+      ASSERT_EQ(docs->value(), values->seek(docs->value()));
+      in.reset(actual_value->value);
 
       auto str_seq = iresearch::read_string<std::string>(in);
       seq = strtoull(str_seq.c_str(), nullptr, 10);

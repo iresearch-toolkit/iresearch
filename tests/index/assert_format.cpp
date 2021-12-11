@@ -847,9 +847,6 @@ void assert_pk(
     auto actual_seek_it = actual_reader.iterator();
     ASSERT_NE(nullptr, actual_seek_it);
 
-    auto actual_values = actual_reader.values();
-    ASSERT_TRUE(actual_values);
-
     auto* actual_key = irs::get<irs::document>(*actual_it);
     ASSERT_NE(nullptr, actual_key);
     auto* actual_value = irs::get<irs::payload>(*actual_it);
@@ -868,10 +865,6 @@ void assert_pk(
       ASSERT_EQ(expected_value, actual_value->value);
       ASSERT_EQ(expected_key, actual_seek_it->seek(expected_key));
       ASSERT_EQ(expected_key, actual_stateless_seek_it->seek(expected_key));
-
-      irs::bytes_ref actual_value2;
-      ASSERT_TRUE(actual_values(expected_key, actual_value2));
-      ASSERT_EQ(expected_value, actual_value2);
 
       ++expected_key;
     }
@@ -914,9 +907,6 @@ void assert_column(
     auto actual_seek_it = actual_reader->iterator();
     ASSERT_NE(nullptr, actual_seek_it);
 
-    auto actual_values = actual_reader->values();
-    ASSERT_TRUE(actual_values);
-
     auto* actual_key = irs::get<irs::document>(*actual_it);
     ASSERT_NE(nullptr, actual_key);
     auto* actual_value = irs::get<irs::payload>(*actual_it);
@@ -933,10 +923,6 @@ void assert_column(
       ASSERT_EQ(expected_value, actual_value->value);
       ASSERT_EQ(expected_key, actual_seek_it->seek(expected_key));
       ASSERT_EQ(expected_key, actual_stateless_seek_it->seek(expected_key));
-
-      irs::bytes_ref actual_value2;
-      ASSERT_TRUE(actual_values(expected_key, actual_value2));
-      ASSERT_EQ(expected_value, actual_value2);
     }
     ASSERT_FALSE(actual_it->next());
     ASSERT_FALSE(actual_it->next());

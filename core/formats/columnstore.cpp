@@ -875,7 +875,7 @@ class sparse_block : util::noncopyable {
     return true;
   }
 
-  bool visit(const columnstore_reader::values_reader_f& visitor) const {
+  bool visit(const columnstore_reader::values_visitor_f& visitor) const {
     bytes_ref payload;
 
     // visit first [begin;end-1) blocks
@@ -1048,7 +1048,7 @@ class dense_block : util::noncopyable {
     return true;
   }
 
-  bool visit(const columnstore_reader::values_reader_f& visitor) const {
+  bool visit(const columnstore_reader::values_visitor_f& visitor) const {
     bytes_ref payload;
 
     doc_id_t key = base_; // visit first [begin;end-1) blocks
@@ -1218,7 +1218,7 @@ class dense_fixed_offset_block : util::noncopyable {
     return true;
   }
 
-  bool visit(const columnstore_reader::values_reader_f& visitor) const {
+  bool visit(const columnstore_reader::values_visitor_f& visitor) const {
     assert(size_);
 
     bytes_ref payload;
@@ -1343,7 +1343,7 @@ class sparse_mask_block : util::noncopyable {
     return !(std::end(keys_) == it || *it > key);
   }
 
-  bool visit(const columnstore_reader::values_reader_f& reader) const {
+  bool visit(const columnstore_reader::values_visitor_f& reader) const {
     for (auto begin = std::begin(keys_), end = begin + size_; begin != end; ++begin) {
       if (!reader(*begin, DUMMY)) {
         return false;
@@ -1456,7 +1456,7 @@ class dense_mask_block {
     return min_ <= key && key < max_;
   }
 
-  bool visit(const columnstore_reader::values_reader_f& visitor) const {
+  bool visit(const columnstore_reader::values_visitor_f& visitor) const {
     for (auto doc = min_; doc < max_; ++doc) {
       if (!visitor(doc, DUMMY)) {
         return false;
@@ -1791,17 +1791,6 @@ class column_iterator final : public irs::doc_iterator {
 // --SECTION--                                                           Columns
 // -----------------------------------------------------------------------------
 
-template<typename Column>
-columnstore_reader::values_reader_f column_values(const Column& column) {
-if (column.empty()) {
-    return columnstore_reader::empty_reader();
-  }
-
-  return [&column](doc_id_t key, bytes_ref& value) {
-    return column.value(key, value);
-  };
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sparse_column
 ////////////////////////////////////////////////////////////////////////////////
@@ -1919,10 +1908,6 @@ class sparse_column final : public column {
       *this,
       refs_.data(),
       refs_.data() + refs_.size() - 1); // -1 for upper bound
-  }
-
-  virtual columnstore_reader::values_reader_f values() const override {
-    return column_values<column_t>(*this);
   }
 
  private:
@@ -2102,10 +2087,6 @@ class dense_fixed_offset_column final : public column {
       refs_.data() + refs_.size());
   }
 
-  virtual columnstore_reader::values_reader_f values() const override {
-    return column_values<column_t>(*this);
-  }
-
  private:
   friend class column_iterator<column_t>;
 
@@ -2239,10 +2220,6 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   }
 
   virtual irs::doc_iterator::ptr iterator() const override;
-
-  virtual columnstore_reader::values_reader_f values() const override {
-    return column_values<column_t>(*this);
-  }
 
  private:
   class column_iterator final : public irs::doc_iterator {

@@ -378,17 +378,13 @@ struct IRESEARCH_API column_meta_reader {
 struct IRESEARCH_API columnstore_reader {
   using ptr = std::unique_ptr<columnstore_reader>;
 
-  typedef std::function<bool(doc_id_t, bytes_ref&)> values_reader_f;
-  typedef std::function<bool(doc_id_t, const bytes_ref&)> values_visitor_f;  
+  typedef std::function<bool(doc_id_t, const bytes_ref&)> values_visitor_f;
 
   struct column_reader {
     virtual ~column_reader() = default;
 
     // Returns column header .
     virtual bytes_ref payload() const = 0;
-
-    // Returns corresponding column reader.
-    virtual columnstore_reader::values_reader_f values() const = 0;
 
     // Returns the corresponding column iterator.
     // If the column implementation supports document payloads then the latter
@@ -399,8 +395,6 @@ struct IRESEARCH_API columnstore_reader {
 
     virtual doc_id_t size() const = 0;
   };
-
-  static const values_reader_f& empty_reader();
 
   virtual ~columnstore_reader() = default;
 

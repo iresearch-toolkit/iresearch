@@ -1488,27 +1488,33 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     std::unordered_set<irs::bytes_ref> expected_bytes;
     auto column = segment.column_reader("doc_bytes");
     ASSERT_NE(nullptr, column);
-    auto bytes_values = column->values();
+    auto bytes_values = column->iterator();
+    ASSERT_NE(nullptr, bytes_values);
     std::unordered_set<double> expected_double;
     column = segment.column_reader("doc_double");
     ASSERT_NE(nullptr, column);
-    auto double_values = column->values();
+    auto double_values = column->iterator();
+    ASSERT_NE(nullptr, double_values);
     std::unordered_set<float> expected_float;
     column = segment.column_reader("doc_float");
     ASSERT_NE(nullptr, column);
-    auto float_values = column->values();
+    auto float_values = column->iterator();
+    ASSERT_NE(nullptr, float_values);
     std::unordered_set<int> expected_int;
     column = segment.column_reader("doc_int");
     ASSERT_NE(nullptr, column);
-    auto int_values = column->values();
+    auto int_values = column->iterator();
+    ASSERT_NE(nullptr, int_values);
     std::unordered_set<int64_t> expected_long;
     column = segment.column_reader("doc_long");
     ASSERT_NE(nullptr, column);
-    auto long_values = column->values();
+    auto long_values = column->iterator();
+    ASSERT_NE(nullptr, long_values);
     std::unordered_set<std::string> expected_string;
     column = segment.column_reader("doc_string");
     ASSERT_NE(nullptr, column);
-    auto string_values = column->values();
+    auto string_values = column->iterator();
+    ASSERT_NE(nullptr, string_values);
 
     expected_bytes = { irs::bytes_ref(bytes1), irs::bytes_ref(bytes2) };
     expected_double = { 2.718281828 * 1, 2.718281828 * 2 };
@@ -1518,26 +1524,31 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     expected_string = { string1, string2 };
 
     // can't have more docs then highest doc_id
-    irs::bytes_ref value;
     irs::bytes_ref_input in;
     for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
       const auto doc = irs::doc_id_t((irs::doc_limits::min)() + i);
-      ASSERT_TRUE(bytes_values(doc, value)); in.reset(value);
+      ASSERT_EQ(doc, bytes_values->seek(doc));
+      in.reset(irs::get<irs::payload>(*bytes_values)->value);
       ASSERT_EQ(1, expected_bytes.erase(irs::read_string<irs::bstring>(in)));
 
-      ASSERT_TRUE(double_values(doc, value)); in.reset(value);
+      ASSERT_EQ(doc, double_values->seek(doc));
+      in.reset(irs::get<irs::payload>(*double_values)->value);
       ASSERT_EQ(1, expected_double.erase(irs::read_zvdouble(in)));
 
-      ASSERT_TRUE(float_values(doc, value)); in.reset(value);
+      ASSERT_EQ(doc, float_values->seek(doc));
+      in.reset(irs::get<irs::payload>(*float_values)->value);
       ASSERT_EQ(1, expected_float.erase(irs::read_zvfloat(in)));
 
-      ASSERT_TRUE(int_values(doc, value)); in.reset(value);
+      ASSERT_EQ(doc, int_values->seek(doc));
+      in.reset(irs::get<irs::payload>(*int_values)->value);
       ASSERT_EQ(1, expected_int.erase(irs::read_zvint(in)));
 
-      ASSERT_TRUE(long_values(doc, value)); in.reset(value);
+      ASSERT_EQ(doc, long_values->seek(doc));
+      in.reset(irs::get<irs::payload>(*long_values)->value);
       ASSERT_EQ(1, expected_long.erase(irs::read_zvlong(in)));
 
-      ASSERT_TRUE(string_values(doc, value)); in.reset(value);
+      ASSERT_EQ(doc, string_values->seek(doc));
+      in.reset(irs::get<irs::payload>(*string_values)->value);
       ASSERT_EQ(1, expected_string.erase(irs::read_string<std::string>(in)));
     }
 
@@ -1844,27 +1855,33 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     std::unordered_set<irs::bytes_ref> expected_bytes;
     auto column = segment.column_reader("doc_bytes");
     ASSERT_NE(nullptr, column);
-    auto bytes_values = column->values();
+    auto bytes_values = column->iterator();
+    ASSERT_NE(nullptr, bytes_values);
     std::unordered_set<double> expected_double;
     column = segment.column_reader("doc_double");
     ASSERT_NE(nullptr, column);
-    auto double_values = column->values();
+    auto double_values = column->iterator();
+    ASSERT_NE(nullptr, double_values);
     std::unordered_set<float> expected_float;
     column = segment.column_reader("doc_float");
     ASSERT_NE(nullptr, column);
-    auto float_values = column->values();
+    auto float_values = column->iterator();
+    ASSERT_NE(nullptr, float_values);
     std::unordered_set<int> expected_int;
     column = segment.column_reader("doc_int");
     ASSERT_NE(nullptr, column);
-    auto int_values = column->values();
+    auto int_values = column->iterator();
+    ASSERT_NE(nullptr, int_values);
     std::unordered_set<int64_t> expected_long;
     column = segment.column_reader("doc_long");
     ASSERT_NE(nullptr, column);
-    auto long_values = column->values();
+    auto long_values = column->iterator();
+    ASSERT_NE(nullptr, long_values);
     std::unordered_set<std::string> expected_string;
     column = segment.column_reader("doc_string");
     ASSERT_NE(nullptr, column);
-    auto string_values = column->values();
+    auto string_values = column->iterator();
+    ASSERT_NE(nullptr, string_values);
 
     expected_bytes = { irs::bytes_ref(bytes3) };
     expected_double = { 2.718281828 * 3 };
@@ -1874,26 +1891,41 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     expected_string = { string3, string4 };
 
     // can't have more docs then highest doc_id
-    irs::bytes_ref value;
     irs::bytes_ref_input in;
     for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
       const auto doc = irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i);
-      ASSERT_EQ(!expected_bytes.empty(), bytes_values(doc, value)); in.reset(value);
-      expected_bytes.erase(irs::read_string<irs::bstring>(in));
+      if (!expected_bytes.empty()) {
+        ASSERT_EQ(doc, bytes_values->seek(doc));
+        in.reset(irs::get<irs::payload>(*bytes_values)->value);
+        expected_bytes.erase(irs::read_string<irs::bstring>(in));
+      }
 
-      ASSERT_EQ(!expected_double.empty(), double_values(doc, value)); in.reset(value);
-      expected_double.erase(irs::read_zvdouble(in));
+      if (!expected_double.empty()) {
+        ASSERT_EQ(doc, double_values->seek(doc));
+        in.reset(irs::get<irs::payload>(*double_values)->value);
+        expected_double.erase(irs::read_zvdouble(in));
+      }
 
-      ASSERT_EQ(!expected_float.empty(), float_values(doc, value)); in.reset(value);
-      expected_float.erase(irs::read_zvfloat(in));
+      if (!expected_float.empty()) {
+        ASSERT_EQ(doc, float_values->seek(doc));
+        in.reset(irs::get<irs::payload>(*float_values)->value);
+        expected_float.erase(irs::read_zvfloat(in));
+      }
 
-      ASSERT_EQ(!expected_int.empty(), int_values(doc, value)); in.reset(value);
-      expected_int.erase(irs::read_zvint(in));
+      if (!expected_int.empty()) {
+        ASSERT_EQ(doc, int_values->seek(doc));
+        in.reset(irs::get<irs::payload>(*int_values)->value);
+        expected_int.erase(irs::read_zvint(in));
+      }
 
-      ASSERT_EQ(!expected_long.empty(), long_values(doc, value)); in.reset(value);
-      expected_long.erase(irs::read_zvlong(in));
+      if (!expected_long.empty()) {
+        ASSERT_EQ(doc, long_values->seek(doc));
+        in.reset(irs::get<irs::payload>(*long_values)->value);
+        expected_long.erase(irs::read_zvlong(in));
+      }
 
-      ASSERT_TRUE(string_values(doc, value)); in.reset(value);
+      ASSERT_EQ(doc, string_values->seek(doc));
+      in.reset(irs::get<irs::payload>(*string_values)->value);
       ASSERT_EQ(1, expected_string.erase(irs::read_string<std::string>(in)));
     }
 
@@ -2268,27 +2300,27 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   std::unordered_set<irs::bytes_ref> expected_bytes;
   auto column = segment.column_reader("doc_bytes");
   ASSERT_NE(nullptr, column);
-  auto bytes_values = column->values();
+  auto bytes_values = column->iterator();
   std::unordered_set<double> expected_double;
   column = segment.column_reader("doc_double");
   ASSERT_NE(nullptr, column);
-  auto double_values = column->values();
+  auto double_values = column->iterator();
   std::unordered_set<float> expected_float;
   column = segment.column_reader("doc_float");
   ASSERT_NE(nullptr, column);
-  auto float_values = column->values();
+  auto float_values = column->iterator();
   std::unordered_set<int> expected_int;
   column = segment.column_reader("doc_int");
   ASSERT_NE(nullptr, column);
-  auto int_values = column->values();
+  auto int_values = column->iterator();
   std::unordered_set<int64_t> expected_long;
   column = segment.column_reader("doc_long");
   ASSERT_NE(nullptr, column);
-  auto long_values = column->values();
+  auto long_values = column->iterator();
   std::unordered_set<std::string> expected_string;
   column = segment.column_reader("doc_string");
   ASSERT_NE(nullptr, column);
-  auto string_values = column->values();
+  auto string_values = column->iterator();
 
   expected_bytes = { irs::bytes_ref(bytes1), irs::bytes_ref(bytes2), irs::bytes_ref(bytes3) };
   expected_double = { 2.718281828 * 1, 2.718281828 * 2, 2.718281828 * 3 };
@@ -2298,27 +2330,32 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   expected_string = { string1, string2, string3 };
 
   // can't have more docs then highest doc_id
-  irs::bytes_ref value;
   irs::bytes_ref_input in;
   for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
     const auto doc = irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i);
 
-    ASSERT_TRUE(bytes_values(doc, value)); in.reset(value);
+    ASSERT_EQ(doc, bytes_values->seek(doc));
+    in.reset(irs::get<irs::payload>(*bytes_values)->value);
     ASSERT_EQ(1, expected_bytes.erase(irs::read_string<irs::bstring>(in)));
 
-    ASSERT_TRUE(double_values(doc, value)); in.reset(value);
+    ASSERT_EQ(doc, double_values->seek(doc));
+    in.reset(irs::get<irs::payload>(*double_values)->value);
     ASSERT_EQ(1, expected_double.erase(irs::read_zvdouble(in)));
 
-    ASSERT_TRUE(float_values(doc, value)); in.reset(value);
+    ASSERT_EQ(doc, float_values->seek(doc));
+    in.reset(irs::get<irs::payload>(*float_values)->value);
     ASSERT_EQ(1, expected_float.erase(irs::read_zvfloat(in)));
 
-    ASSERT_TRUE(int_values(doc, value)); in.reset(value);
+    ASSERT_EQ(doc, int_values->seek(doc));
+    in.reset(irs::get<irs::payload>(*int_values)->value);
     ASSERT_EQ(1, expected_int.erase(irs::read_zvint(in)));
 
-    ASSERT_TRUE(long_values(doc, value)); in.reset(value);
+    ASSERT_EQ(doc, long_values->seek(doc));
+    in.reset(irs::get<irs::payload>(*long_values)->value);
     ASSERT_EQ(1, expected_long.erase(irs::read_zvlong(in)));
 
-    ASSERT_TRUE(string_values(doc, value)); in.reset(value);
+    ASSERT_EQ(doc, string_values->seek(doc));
+    in.reset(irs::get<irs::payload>(*string_values)->value);
     ASSERT_EQ(1, expected_string.erase(irs::read_string<std::string>(in)));
   }
 
@@ -2693,17 +2730,20 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
   ASSERT_EQ(3, segment.live_docs_count());
   auto docs = segment.docs_iterator();
   auto column = segment.column_reader(field);
-  auto bytes_values = column->values();
+  auto bytes_values = column->iterator();
+  ASSERT_NE(nullptr, bytes_values);
+  auto* value = irs::get<irs::payload>(*bytes_values);
+  ASSERT_NE(nullptr, value);
 
   auto expected_id = irs::doc_limits::min();
-  irs::bytes_ref value;
   irs::bytes_ref_input in;
   constexpr irs::string_ref expected_columns[]{ "B", "C", "D" };
   size_t idx = 0;
   while (docs->next()) {
     SCOPED_TRACE(testing::Message("Doc id ") << expected_id);
     EXPECT_EQ(expected_id, docs->value());
-    ASSERT_TRUE(bytes_values(expected_id, value)); in.reset(value);
+    ASSERT_EQ(expected_id, bytes_values->seek(expected_id));
+    in.reset(value->value);
     auto actual = irs::read_string<std::string>(in);
     EXPECT_EQ(expected_columns[idx++], actual);
     ++expected_id;
@@ -3299,27 +3339,33 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     std::unordered_set<irs::bytes_ref> expected_bytes;
     auto column = segment.column_reader("doc_bytes");
     ASSERT_NE(nullptr, column);
-    auto bytes_values = column->values();
+    auto bytes_values = column->iterator();
+    ASSERT_NE(nullptr, bytes_values);
     std::unordered_set<double> expected_double;
     column = segment.column_reader("doc_double");
     ASSERT_NE(nullptr, column);
-    auto double_values = column->values();
+    auto double_values = column->iterator();
+    ASSERT_NE(nullptr, double_values);
     std::unordered_set<float> expected_float;
     column = segment.column_reader("doc_float");
     ASSERT_NE(nullptr, column);
-    auto float_values = column->values();
+    auto float_values = column->iterator();
+    ASSERT_NE(nullptr, float_values);
     std::unordered_set<int> expected_int;
     column = segment.column_reader("doc_int");
     ASSERT_NE(nullptr, column);
-    auto int_values = column->values();
+    auto int_values = column->iterator();
+    ASSERT_NE(nullptr, int_values);
     std::unordered_set<int64_t> expected_long;
     column = segment.column_reader("doc_long");
     ASSERT_NE(nullptr, column);
-    auto long_values = column->values();
+    auto long_values = column->iterator();
+    ASSERT_NE(nullptr, long_values);
     std::unordered_set<std::string> expected_string;
     column = segment.column_reader("doc_string");
     ASSERT_NE(nullptr, column);
-    auto string_values = column->values();
+    auto string_values = column->iterator();
+    ASSERT_NE(nullptr, string_values);
 
     expected_bytes = { irs::bytes_ref(bytes1), irs::bytes_ref(bytes2) };
     expected_double = { 2.718281828 * 1, 2.718281828 * 2 };
@@ -3329,26 +3375,32 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     expected_string = { string1, string2 };
 
     // can't have more docs then highest doc_id
-    irs::bytes_ref value;
     irs::bytes_ref_input in;
     for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
       const auto doc = irs::doc_id_t((irs::doc_limits::min)() + i);
-      ASSERT_TRUE(bytes_values(doc, value)); in.reset(value);
+
+      ASSERT_EQ(doc, bytes_values->seek(doc));
+      in.reset(irs::get<irs::payload>(*bytes_values)->value);
       ASSERT_EQ(1, expected_bytes.erase(irs::read_string<irs::bstring>(in)));
 
-      ASSERT_TRUE(double_values(doc, value)); in.reset(value);
+      ASSERT_EQ(doc, double_values->seek(doc));
+      in.reset(irs::get<irs::payload>(*double_values)->value);
       ASSERT_EQ(1, expected_double.erase(irs::read_zvdouble(in)));
 
-      ASSERT_TRUE(float_values(doc, value)); in.reset(value);
+      ASSERT_EQ(doc, float_values->seek(doc));
+      in.reset(irs::get<irs::payload>(*float_values)->value);
       ASSERT_EQ(1, expected_float.erase(irs::read_zvfloat(in)));
 
-      ASSERT_TRUE(int_values(doc, value)); in.reset(value);
+      ASSERT_EQ(doc, int_values->seek(doc));
+      in.reset(irs::get<irs::payload>(*int_values)->value);
       ASSERT_EQ(1, expected_int.erase(irs::read_zvint(in)));
 
-      ASSERT_TRUE(long_values(doc, value)); in.reset(value);
+      ASSERT_EQ(doc, long_values->seek(doc));
+      in.reset(irs::get<irs::payload>(*long_values)->value);
       ASSERT_EQ(1, expected_long.erase(irs::read_zvlong(in)));
 
-      ASSERT_TRUE(string_values(doc, value)); in.reset(value);
+      ASSERT_EQ(doc, string_values->seek(doc));
+      in.reset(irs::get<irs::payload>(*string_values)->value);
       ASSERT_EQ(1, expected_string.erase(irs::read_string<std::string>(in)));
     }
 
@@ -3682,27 +3734,33 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     std::unordered_set<irs::bytes_ref> expected_bytes;
     auto column = segment.column_reader("doc_bytes");
     ASSERT_NE(nullptr, column);
-    auto bytes_values = column->values();
+    auto bytes_values = column->iterator();
+    ASSERT_NE(nullptr, bytes_values);
     std::unordered_set<double> expected_double;
     column = segment.column_reader("doc_double");
     ASSERT_NE(nullptr, column);
-    auto double_values = column->values();
+    auto double_values = column->iterator();
+    ASSERT_NE(nullptr, double_values);
     std::unordered_set<float> expected_float;
     column = segment.column_reader("doc_float");
     ASSERT_NE(nullptr, column);
-    auto float_values = column->values();
+    auto float_values = column->iterator();
+    ASSERT_NE(nullptr, float_values);
     std::unordered_set<int> expected_int;
     column = segment.column_reader("doc_int");
     ASSERT_NE(nullptr, column);
-    auto int_values = column->values();
+    auto int_values = column->iterator();
+    ASSERT_NE(nullptr, int_values);
     std::unordered_set<int64_t> expected_long;
     column = segment.column_reader("doc_long");
     ASSERT_NE(nullptr, column);
-    auto long_values = column->values();
+    auto long_values = column->iterator();
+    ASSERT_NE(nullptr, long_values);
     std::unordered_set<std::string> expected_string;
     column = segment.column_reader("doc_string");
     ASSERT_NE(nullptr, column);
-    auto string_values = column->values();
+    auto string_values = column->iterator();
+    ASSERT_NE(nullptr, string_values);
 
     expected_bytes = { irs::bytes_ref(bytes3) };
     expected_double = { 2.718281828 * 3 };
@@ -3712,27 +3770,44 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     expected_string = { string3, string4 };
 
     // can't have more docs then highest doc_id
-    irs::bytes_ref value;
     irs::bytes_ref_input in;
     for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
-      const auto doc = irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i);
-      ASSERT_EQ(!expected_bytes.empty(), bytes_values(doc, value)); in.reset(value);
-      expected_bytes.erase(irs::read_string<irs::bstring>(in));
+      const auto doc = irs::doc_id_t((irs::doc_limits::min)() + i);
 
-      ASSERT_EQ(!expected_double.empty(), double_values(doc, value)); in.reset(value);
-      expected_double.erase(irs::read_zvdouble(in));
+      if (!expected_bytes.empty()) {
+        ASSERT_EQ(doc, bytes_values->seek(doc));
+        in.reset(irs::get<irs::payload>(*bytes_values)->value);
+        expected_bytes.erase(irs::read_string<irs::bstring>(in));
+      }
 
-      ASSERT_EQ(!expected_float.empty(), float_values(doc, value)); in.reset(value);
-      expected_float.erase(irs::read_zvfloat(in));
+      if (!expected_double.empty()) {
+        ASSERT_EQ(doc, double_values->seek(doc));
+        in.reset(irs::get<irs::payload>(*double_values)->value);
+        expected_double.erase(irs::read_zvdouble(in));
+      }
 
-      ASSERT_EQ(!expected_int.empty(), int_values(doc, value)); in.reset(value);
-      expected_int.erase(irs::read_zvint(in));
+      if (!expected_float.empty()) {
+        ASSERT_EQ(doc, float_values->seek(doc));
+        in.reset(irs::get<irs::payload>(*float_values)->value);
+        expected_float.erase(irs::read_zvfloat(in));
+      }
 
-      ASSERT_EQ(!expected_long.empty(), long_values(doc, value)); in.reset(value);
-      expected_long.erase(irs::read_zvlong(in));
+      if (!expected_int.empty()) {
+        ASSERT_EQ(doc, int_values->seek(doc));
+        in.reset(irs::get<irs::payload>(*int_values)->value);
+        expected_int.erase(irs::read_zvint(in));
+      }
 
-      ASSERT_TRUE(string_values(doc, value)); in.reset(value);
+      if (!expected_long.empty()) {
+        ASSERT_EQ(doc, long_values->seek(doc));
+        in.reset(irs::get<irs::payload>(*long_values)->value);
+        expected_long.erase(irs::read_zvlong(in));
+      }
+
+      ASSERT_EQ(doc, string_values->seek(doc));
+      in.reset(irs::get<irs::payload>(*string_values)->value);
       ASSERT_EQ(1, expected_string.erase(irs::read_string<std::string>(in)));
+
     }
 
     ASSERT_TRUE(expected_bytes.empty());
@@ -4135,27 +4210,33 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   std::unordered_set<irs::bytes_ref> expected_bytes;
   auto column = segment.column_reader("doc_bytes");
   ASSERT_NE(nullptr, column);
-  auto bytes_values = column->values();
+  auto bytes_values = column->iterator();
+  ASSERT_NE(nullptr, bytes_values);
   std::unordered_set<double> expected_double;
   column = segment.column_reader("doc_double");
   ASSERT_NE(nullptr, column);
-  auto double_values = column->values();
+  auto double_values = column->iterator();
+  ASSERT_NE(nullptr, double_values);
   std::unordered_set<float> expected_float;
   column = segment.column_reader("doc_float");
   ASSERT_NE(nullptr, column);
-  auto float_values = column->values();
+  auto float_values = column->iterator();
+  ASSERT_NE(nullptr, float_values);
   std::unordered_set<int> expected_int;
   column = segment.column_reader("doc_int");
   ASSERT_NE(nullptr, column);
-  auto int_values = column->values();
+  auto int_values = column->iterator();
+  ASSERT_NE(nullptr, int_values);
   std::unordered_set<int64_t> expected_long;
   column = segment.column_reader("doc_long");
   ASSERT_NE(nullptr, column);
-  auto long_values = column->values();
+  auto long_values = column->iterator();
+  ASSERT_NE(nullptr, long_values);
   std::unordered_set<std::string> expected_string;
   column = segment.column_reader("doc_string");
   ASSERT_NE(nullptr, column);
-  auto string_values = column->values();
+  auto string_values = column->iterator();
+  ASSERT_NE(nullptr, string_values);
 
   expected_bytes = { irs::bytes_ref(bytes1), irs::bytes_ref(bytes2), irs::bytes_ref(bytes3) };
   expected_double = { 2.718281828 * 1, 2.718281828 * 2, 2.718281828 * 3 };
@@ -4165,27 +4246,32 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   expected_string = { string1, string2, string3 };
 
   // can't have more docs then highest doc_id
-  irs::bytes_ref value;
   irs::bytes_ref_input in;
   for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
     const auto doc = irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i);
 
-    ASSERT_TRUE(bytes_values(doc, value)); in.reset(value);
+    ASSERT_EQ(doc, bytes_values->seek(doc));
+    in.reset(irs::get<irs::payload>(*bytes_values)->value);
     ASSERT_EQ(1, expected_bytes.erase(irs::read_string<irs::bstring>(in)));
 
-    ASSERT_TRUE(double_values(doc, value)); in.reset(value);
+    ASSERT_EQ(doc, double_values->seek(doc));
+    in.reset(irs::get<irs::payload>(*double_values)->value);
     ASSERT_EQ(1, expected_double.erase(irs::read_zvdouble(in)));
 
-    ASSERT_TRUE(float_values(doc, value)); in.reset(value);
+    ASSERT_EQ(doc, float_values->seek(doc));
+    in.reset(irs::get<irs::payload>(*float_values)->value);
     ASSERT_EQ(1, expected_float.erase(irs::read_zvfloat(in)));
 
-    ASSERT_TRUE(int_values(doc, value)); in.reset(value);
+    ASSERT_EQ(doc, int_values->seek(doc));
+    in.reset(irs::get<irs::payload>(*int_values)->value);
     ASSERT_EQ(1, expected_int.erase(irs::read_zvint(in)));
 
-    ASSERT_TRUE(long_values(doc, value)); in.reset(value);
+    ASSERT_EQ(doc, long_values->seek(doc));
+    in.reset(irs::get<irs::payload>(*long_values)->value);
     ASSERT_EQ(1, expected_long.erase(irs::read_zvlong(in)));
 
-    ASSERT_TRUE(string_values(doc, value)); in.reset(value);
+    ASSERT_EQ(doc, string_values->seek(doc));
+    in.reset(irs::get<irs::payload>(*string_values)->value);
     ASSERT_EQ(1, expected_string.erase(irs::read_string<std::string>(in)));
   }
 

@@ -334,8 +334,6 @@ class column_base : public columnstore_reader::column_reader,
     return hdr_.payload;
   }
 
-  virtual columnstore_reader::values_reader_f values() const final;
-
   virtual bool visit(const columnstore_reader::values_visitor_f& visitor) const final;
 
   virtual doc_id_t size() const noexcept final {
@@ -369,39 +367,6 @@ class column_base : public columnstore_reader::column_reader,
   column_index index_;
   sparse_bitmap_iterator::options opts_;
 }; // column_base
-
-columnstore_reader::values_reader_f column_base::values() const {
-  auto moved_it = make_move_on_copy(this->iterator());
-  auto* document = irs::get<irs::document>(*moved_it.value());
-  if (!document || doc_limits::eof(document->value)) {
-    return columnstore_reader::empty_reader();
-  }
-  const bytes_ref* payload_value = &bytes_ref::NIL;
-  auto* payload = irs::get<irs::payload>(*moved_it.value());
-  if (payload) {
-    payload_value = &payload->value;
-  }
-
-  return [it = moved_it, payload_value, document](doc_id_t doc, bytes_ref& value) {
-    if (doc > doc_limits::invalid() && doc < doc_limits::eof()) {
-      if (doc < document->value) {
-#ifdef IRESEARCH_DEBUG
-        auto& impl = dynamic_cast<resettable_doc_iterator&>(*it.value());
-#else
-        auto& impl = static_cast<resettable_doc_iterator&>(*it.value());
-#endif
-        impl.reset();
-      }
-
-      if (doc == it.value()->seek(doc)) {
-        value = *payload_value;
-        return true;
-      }
-    }
-
-    return false;
-  };
-}
 
 bool column_base::visit(const columnstore_reader::values_visitor_f& visitor) const {
   auto it = this->iterator();

@@ -2006,19 +2006,20 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column_reader("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
-
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
     std::set<std::string> actual;
 
-    irs::bytes_ref value;
     auto docs = prepared->execute(segment);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     while(docs->next()) {
       const auto doc = docs->value();
-      values(doc, value);
-      actual.emplace(irs::to_string<std::string>(value.c_str()));
+      ASSERT_EQ(doc, values->seek(doc));
+      actual.emplace(irs::to_string<std::string>(actual_value->value.c_str()));
     }
     ASSERT_EQ(expected, actual);
   }
@@ -2055,19 +2056,20 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column_reader("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
-
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
     std::set<std::string> actual;
 
-    irs::bytes_ref value;
     auto docs = prepared->execute(segment);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     while(docs->next()) {
       const auto doc = docs->value();
-      values(doc, value);
-      actual.emplace(irs::to_string<std::string>(value.c_str()));
+      ASSERT_EQ(doc, values->seek(doc));
+      actual.emplace(irs::to_string<std::string>(actual_value->value.c_str()));
     }
     ASSERT_EQ(expected, actual);
   }
@@ -2106,18 +2108,20 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column_reader("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
     std::set<std::string> actual;
 
-    irs::bytes_ref value;
     auto docs = prepared->execute(segment);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     while(docs->next()) {
       const auto doc = docs->value();
-      values(doc, value);
-      actual.emplace(irs::to_string<std::string>(value.c_str()));
+      ASSERT_EQ(doc, values->seek(doc));
+      actual.emplace(irs::to_string<std::string>(actual_value->value.c_str()));
     }
     ASSERT_EQ(expected, actual);
   }
@@ -2154,18 +2158,20 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column_reader("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
     std::set<std::string> actual;
 
-    irs::bytes_ref value;
     auto docs = prepared->execute(segment);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     while(docs->next()) {
       const auto doc = docs->value();
-      values(doc, value);
-      actual.emplace(irs::to_string<std::string>(value.c_str()));
+      ASSERT_EQ(doc, values->seek(doc));
+      actual.emplace(irs::to_string<std::string>(actual_value->value.c_str()));
     }
     ASSERT_EQ(expected, actual);
   }

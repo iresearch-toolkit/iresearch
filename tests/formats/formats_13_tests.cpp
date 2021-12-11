@@ -296,17 +296,19 @@ TEST_P(format_13_test_case, open_non_ecnrypted_with_encrypted) {
     std::unordered_set<irs::string_ref> expectedName = { "A" };
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
-    irs::bytes_ref actual_value;
     for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value->value.c_str())));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -353,17 +355,19 @@ TEST_P(format_13_test_case, open_10_with_13) {
     std::unordered_set<irs::string_ref> expectedName = { "A" };
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
-    irs::bytes_ref actual_value;
     for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value->value.c_str())));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -423,17 +427,19 @@ TEST_P(format_13_test_case, formats_10_13) {
     std::unordered_set<irs::string_ref> expectedName = { "A" };
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
-    irs::bytes_ref actual_value;
     for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value->value.c_str())));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -449,17 +455,19 @@ TEST_P(format_13_test_case, formats_10_13) {
     std::unordered_set<irs::string_ref> expectedName = { "B" };
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
     ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
     auto terms = segment.field("same");
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
-    irs::bytes_ref actual_value;
     for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value->value.c_str())));
     }
 
     ASSERT_TRUE(expectedName.empty());

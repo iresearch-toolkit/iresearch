@@ -1114,28 +1114,25 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
 
   // read documents
   {
-    irs::bytes_ref actual_value;
+    auto reader = codec()->get_columnstore_reader();
+    ASSERT_TRUE(reader->prepare(dir(), seg));
 
-    // check 1st segment
-    {
-      auto reader = codec()->get_columnstore_reader();
-      ASSERT_TRUE(reader->prepare(dir(), seg));
+    auto column = reader->column(column_id);
+    ASSERT_NE(nullptr, column);
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
-      auto column = reader->column(column_id);
-      ASSERT_NE(nullptr, column);
-      auto values = column->values();
+    irs::doc_id_t id = 0;
 
-      irs::doc_id_t id = 0;
-      ASSERT_FALSE(values(0, actual_value));
-
-      for (++id; id < seg.docs_count; ++id) {
-        if (id == 1025) {
-          // gap
-          ASSERT_FALSE(values(id, actual_value));
-        } else {
-          ASSERT_TRUE(values(id, actual_value));
-          ASSERT_EQ(payload, actual_value);
-        }
+    for (++id; id < seg.docs_count; ++id) {
+      if (id == 1025) {
+        // gap
+        ASSERT_EQ(id + 1, values->seek(id));
+      } else {
+        ASSERT_EQ(id, values->seek(id));
+        ASSERT_EQ(payload, actual_value->value);
       }
     }
   }
@@ -1170,21 +1167,20 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
 
   // read documents
   {
-    irs::bytes_ref actual_value;
+    auto reader_1 = codec()->get_columnstore_reader();
+    ASSERT_TRUE(reader_1->prepare(dir(), seg));
 
-    // check 1st segment
-    {
-      auto reader_1 = codec()->get_columnstore_reader();
-      ASSERT_TRUE(reader_1->prepare(dir(), seg));
+    auto column = reader_1->column(column_id);
+    ASSERT_NE(nullptr, column);
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
-      auto column = reader_1->column(column_id);
-      ASSERT_NE(nullptr, column);
-      auto values = column->values();
-
-      for (irs::doc_id_t id = 0; id < seg.docs_count; ) {
-        ASSERT_TRUE(values(++id, actual_value));
-        ASSERT_TRUE(actual_value.null());
-      }
+    for (irs::doc_id_t id = 0; id < seg.docs_count; ) {
+      ++id;
+      ASSERT_EQ(id, values->seek(id));
+      ASSERT_TRUE(actual_value->value.null());
     }
   }
 }
@@ -1224,7 +1220,6 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
   // - random read (not cached)
   // - iterate (cached)
   {
-    irs::bytes_ref actual_value;
     auto reader = codec()->get_columnstore_reader();
     ASSERT_TRUE(reader->prepare(dir(), segment));
 
@@ -1232,25 +1227,24 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
     {
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto mask = column->values();
-      ASSERT_FALSE(mask(0, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_FALSE(mask(1, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_FALSE(mask(1, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(4, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_FALSE(mask(6, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(8, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(9, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_FALSE(mask(irs::doc_limits::eof(), actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(2, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(4, values->seek(1));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(4, values->seek(1));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(4, values->seek(4));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(8, values->seek(6));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(8, values->seek(8));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(9, values->seek(9));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(irs::doc_limits::eof(values->seek(irs::doc_limits::eof())));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
     }
 
     // seek over field values (cached)
@@ -1286,7 +1280,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         if (payload) {
           // if attribute is present, payload value has
           // to be always empty for mask column
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+          ASSERT_TRUE(payload->value.null());
         }
       }
 
@@ -1295,7 +1289,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       if (payload) {
         // if attribute is present, payload value has
         // to be always empty for mask column
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        ASSERT_TRUE(payload->value.null());
       }
     }
 
@@ -1311,7 +1305,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         // if attribute is present, payload value has
         // to be always empty for mask column
         ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        ASSERT_TRUE(payload->value.null());
       }
 
       std::vector<irs::doc_id_t> expected_values = {
@@ -1324,7 +1318,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         if (payload) {
           // if attribute is present, payload value has
           // to be always empty for mask column
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+          ASSERT_TRUE(payload->value.null());
         }
       }
 
@@ -1334,7 +1328,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       if (payload) {
         // if attribute is present, payload value has
         // to be always empty for mask column
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        ASSERT_TRUE(payload->value.null());
       }
     }
   }
@@ -1344,7 +1338,6 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
   // - random read (cached)
   // - iterate (cached)
   {
-    irs::bytes_ref actual_value;
     auto reader = codec()->get_columnstore_reader();
     ASSERT_TRUE(reader->prepare(dir(), segment));
 
@@ -1373,7 +1366,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         if (payload) {
           // if attribute is present, payload value has
           // to be always empty for mask column
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+          ASSERT_TRUE(payload->value.null());
         }
       }
 
@@ -1383,31 +1376,32 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       if (payload) {
         // if attribute is present, payload value has
         // to be always empty for mask column
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        ASSERT_TRUE(payload->value.null());
       }
     }
 
-    // read field values (cached)
+    // read field values (potentially cached)
     {
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto mask = column->values();
-      ASSERT_FALSE(mask(0, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_FALSE(mask(1, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_FALSE(mask(1, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(4, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_FALSE(mask(6, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(8, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(9, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(2, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(4, values->seek(1));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(4, values->seek(1));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(4, values->seek(4));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(8, values->seek(6));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(8, values->seek(8));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(9, values->seek(9));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(irs::doc_limits::eof(values->seek(irs::doc_limits::eof())));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
     }
 
     // iterate over field values (cached)
@@ -1575,30 +1569,33 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
 
   // read documents
   {
-    irs::bytes_ref actual_value;
+    auto reader_1 = codec()->get_columnstore_reader();
+    ASSERT_TRUE(reader_1->prepare(dir(), seg));
 
-    // check 1st segment
-    {
-      auto reader_1 = codec()->get_columnstore_reader();
-      ASSERT_TRUE(reader_1->prepare(dir(), seg));
+    auto id_column = reader_1->column(columns["id"].first);
+    ASSERT_NE(nullptr, id_column);
 
-      auto id_column = reader_1->column(columns["id"].first);
-      ASSERT_NE(nullptr, id_column);
-      auto id_values = id_column->values();
+    auto id_values = id_column->iterator();
+    ASSERT_NE(nullptr, id_values);
+    auto* id_payload = irs::get<irs::payload>(*id_values);
+    ASSERT_NE(nullptr, id_payload);
 
-      auto name_column = reader_1->column(columns["name"].first);
-      ASSERT_NE(nullptr, name_column);
-      auto name_values = name_column->values();
+    auto name_column = reader_1->column(columns["name"].first);
+    ASSERT_NE(nullptr, name_column);
 
-      gen.reset();
-      irs::doc_id_t i = 0;
-      for (const document* doc; i < seg.docs_count && (doc = gen.next());) {
-        ++i;
-        ASSERT_TRUE(id_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::string_field>(0).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
-        ASSERT_TRUE(name_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::string_field>(1).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
-      }
+    auto name_values = name_column->iterator();
+    ASSERT_NE(nullptr, name_values);
+    auto* name_payload = irs::get<irs::payload>(*name_values);
+    ASSERT_NE(nullptr, name_payload);
+
+    gen.reset();
+    irs::doc_id_t i = 0;
+    for (const document* doc; i < seg.docs_count && (doc = gen.next());) {
+      ++i;
+      ASSERT_EQ(i, id_values->seek(i));
+      ASSERT_EQ(doc->stored.get<tests::string_field>(0).value(), irs::to_string<irs::string_ref>(id_payload->value.c_str()));
+      ASSERT_EQ(i, name_values->seek(i));
+      ASSERT_EQ(doc->stored.get<tests::string_field>(1).value(), irs::to_string<irs::string_ref>(name_payload->value.c_str()));
     }
   }
 }
@@ -1662,26 +1659,27 @@ TEST_P(format_test_case, columns_rw_big_document) {
 
     // random access
     {
-      irs::bytes_ref actual_value;
-
       stream.clear(); // clear eof flag if set
       stream.seekg(0, stream.beg); // seek to the beginning of the file
 
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
 
       std::memset(field.buf, 0, sizeof field.buf); // clear buffer
       stream.read(field.buf, sizeof field.buf);
       ASSERT_TRUE(bool(stream));
-      ASSERT_TRUE(values(1, actual_value));
-      ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(actual_value));
+      ASSERT_EQ(1, values->seek(1));
+      ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(actual_value->value));
 
       std::memset(field.buf, 0, sizeof field.buf); // clear buffer
       stream.read(field.buf, sizeof field.buf);
       ASSERT_TRUE(bool(stream));
-      ASSERT_TRUE(values(2, actual_value));
-      ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(actual_value));
+      ASSERT_EQ(2, values->seek(2));
+      ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(actual_value->value));
     }
 
     // iterator "next"
@@ -1828,10 +1826,9 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
       ++id;
       for (auto& field : doc->stored) {
         const auto res = columns_2.emplace(
-          std::piecewise_construct,
-          std::forward_as_tuple(std::string(field.name())),
-          std::forward_as_tuple()
-        );
+            std::piecewise_construct,
+            std::forward_as_tuple(std::string(field.name())),
+            std::forward_as_tuple());
 
         if (res.second) {
           res.first->second = writer->push_column(lz4_column_info(),
@@ -1893,8 +1890,6 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
   // read documents
   {
-    irs::bytes_ref actual_value;
-
     // check 1st segment
     {
       auto reader_1 = codec()->get_columnstore_reader();
@@ -1902,20 +1897,28 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
       auto id_column = reader_1->column(columns_1["id"].first);
       ASSERT_NE(nullptr, id_column);
-      auto id_values = id_column->values();
+      auto id_values = id_column->iterator();
+      ASSERT_NE(nullptr, id_values);
+      auto* id_payload = irs::get<irs::payload>(*id_values);
+      ASSERT_NE(nullptr, id_payload);
 
       auto name_column = reader_1->column(columns_1["name"].first);
       ASSERT_NE(nullptr, name_column);
-      auto name_values = name_column->values();
+      auto name_values = name_column->iterator();
+      ASSERT_NE(nullptr, name_values);
+      auto* name_payload = irs::get<irs::payload>(*name_values);
+      ASSERT_NE(nullptr, name_payload);
 
       gen.reset();
       irs::doc_id_t i = 0;
       for (const document* doc; i < seg_1.docs_count && (doc = gen.next());) {
         ++i;
-        ASSERT_TRUE(id_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::string_field>(0).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
-        ASSERT_TRUE(name_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::string_field>(1).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
+        ASSERT_EQ(i, id_values->seek(i));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(0).value(),
+                  irs::to_string<irs::string_ref>(id_payload->value.c_str()));
+        ASSERT_EQ(i, name_values->seek(i));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(1).value(),
+                  irs::to_string<irs::string_ref>(name_payload->value.c_str()));
       }
 
       // check 2nd segment (same as 1st)
@@ -1924,22 +1927,30 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
       auto id_column_2 = reader_2->column(columns_2["id"].first);
       ASSERT_NE(nullptr, id_column_2);
-      auto id_values_2 = id_column_2->values();
+      auto id_values_2 = id_column_2->iterator();
+      ASSERT_NE(nullptr, id_values_2);
+      auto* id_payload_2 = irs::get<irs::payload>(*id_values_2);
+      ASSERT_NE(nullptr, id_payload_2);
 
       auto name_column_2 = reader_2->column(columns_2["name"].first);
       ASSERT_NE(nullptr, name_column_2);
-      auto name_values_2 = name_column_2->values();
+      auto name_values_2 = name_column_2->iterator();
+      ASSERT_NE(nullptr, name_values_2);
+      auto* name_payload_2 = irs::get<irs::payload>(*name_values_2);
+      ASSERT_NE(nullptr, name_payload_2);
 
       // check for equality
-      irs::bytes_ref value;
-      for (irs::doc_id_t i = 0, count = seg_2.docs_count; i < count;) {
+      gen.reset();
+
+      const document* doc;
+      for (irs::doc_id_t i = 0, count = seg_2.docs_count; i < count && (doc = gen.next());) {
         ++i;
-        ASSERT_TRUE(id_values(i, value));
-        ASSERT_TRUE(id_values_2(i, actual_value));
-        ASSERT_EQ(value, actual_value);
-        ASSERT_TRUE(name_values(i, value));
-        ASSERT_TRUE(name_values_2(i, actual_value));
-        ASSERT_EQ(value, actual_value);
+        ASSERT_EQ(i, id_values_2->seek(i));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(0).value(),
+                  irs::to_string<irs::string_ref>(id_payload_2->value.c_str()));
+        ASSERT_EQ(i, name_values_2->seek(i));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(1).value(),
+                  irs::to_string<irs::string_ref>(name_payload_2->value.c_str()));
       }
     }
 
@@ -1950,19 +1961,27 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
       auto id_column = reader->column(columns_3["id"].first);
       ASSERT_NE(nullptr, id_column);
-      auto id_values = id_column->values();
+      auto id_values = id_column->iterator();
+      ASSERT_NE(nullptr, id_values);
+      auto* id_payload = irs::get<irs::payload>(*id_values);
+      ASSERT_NE(nullptr, id_payload);
 
       auto name_column = reader->column(columns_3["name"].first);
       ASSERT_NE(nullptr, name_column);
-      auto name_values = name_column->values();
+      auto name_values = name_column->iterator();
+      ASSERT_NE(nullptr, name_values);
+      auto* name_payload = irs::get<irs::payload>(*name_values);
+      ASSERT_NE(nullptr, name_payload);
 
       irs::doc_id_t i = 0;
       for (const document* doc; i < seg_3.docs_count && (doc = gen.next());) {
         ++i;
-        ASSERT_TRUE(id_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::string_field>(0).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
-        ASSERT_TRUE(name_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::string_field>(1).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
+        ASSERT_EQ(i, id_values->seek(i));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(0).value(),
+                  irs::to_string<irs::string_ref>(id_payload->value.c_str()));
+        ASSERT_EQ(i, name_values->seek(i));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(1).value(),
+                  irs::to_string<irs::string_ref>(name_payload->value.c_str()));
       }
     }
   }
@@ -2091,9 +2110,8 @@ TEST_P(format_test_case, columns_rw_typed) {
     auto reader = codec()->get_columnstore_reader();
     ASSERT_TRUE(reader->prepare(dir(), meta));
 
-    std::unordered_map<std::string, irs::columnstore_reader::values_reader_f> readers;
+    std::unordered_map<std::string, irs::doc_iterator::ptr> readers;
 
-    irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
     irs::doc_id_t i = 0;
     size_t value_id = 0;
@@ -2104,19 +2122,21 @@ TEST_P(format_test_case, columns_rw_typed) {
         auto& expected_field = values[value_id++];
         const std::string name(expected_field.name);
         const auto res = readers.emplace(
-          std::piecewise_construct,
-          std::forward_as_tuple(name),
-          std::forward_as_tuple()
-        );
+            std::piecewise_construct,
+            std::forward_as_tuple(name),
+            std::forward_as_tuple());
 
         if (res.second) {
           auto column = reader->column(columns[name].first);
           ASSERT_NE(nullptr, column);
-          res.first->second = column->values();
+          res.first->second = column->iterator();
         }
 
-        auto& column_reader = res.first->second;
-        ASSERT_TRUE(column_reader(i, actual_value)); in.reset(actual_value);
+        auto& column_iterator = *res.first->second;
+        auto* actual_value = irs::get<irs::payload>(column_iterator);
+        ASSERT_NE(nullptr, actual_value);
+        ASSERT_EQ(i, column_iterator.seek(i));
+        in.reset(actual_value->value);
 
         switch (expected_field.type) {
           case Value::Type::String: {
@@ -2156,10 +2176,9 @@ TEST_P(format_test_case, columns_rw_typed) {
         auto& expected_field = values[value_id++];
         const std::string name(expected_field.name);
         const auto res = readers.emplace(
-          std::piecewise_construct,
-          std::forward_as_tuple(name),
-          std::forward_as_tuple()
-        );
+            std::piecewise_construct,
+            std::forward_as_tuple(name),
+            std::forward_as_tuple());
 
         if (res.second) {
           auto column = reader->column(columns[name].first);
@@ -2457,17 +2476,6 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
 
       ASSERT_EQ(expected_values.end(), expected_value);
     }
-
-    // random read
-    {
-      irs::bytes_ref actual_value;
-      auto values = column->values();
-
-      for (auto& expected_value : expected_values) {
-        ASSERT_TRUE(values(expected_value.first, actual_value));
-        ASSERT_EQ(expected_value.second, actual_value);
-      }
-    }
   }
 
   // sparse fixed offset column
@@ -2516,17 +2524,6 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
       }));
 
       ASSERT_EQ(expected_values.end(), expected_value);
-    }
-
-    // random read
-    {
-      irs::bytes_ref actual_value;
-      auto values = column->values();
-
-      for (auto& expected_value : expected_values) {
-        ASSERT_TRUE(values(expected_value.first, actual_value));
-        ASSERT_EQ(expected_value.second, actual_value);
-      }
     }
   }
 }
@@ -2744,14 +2741,15 @@ TEST_P(format_test_case, columns_rw) {
 
     // check field4
     {
-      irs::bytes_ref actual_value;
       auto column_reader = reader->column(segment0_field4_id);
       ASSERT_NE(nullptr, column_reader);
-      auto column = column_reader->values();
+      auto column = column_reader->iterator();
+      ASSERT_NE(nullptr, column);
+      auto* actual_value = irs::get<irs::payload>(*column);
+      ASSERT_NE(nullptr, actual_value);
 
-      ASSERT_FALSE(column((std::numeric_limits<irs::doc_id_t>::min)(), actual_value)); // check doc==min, column==field4
-      ASSERT_TRUE(column(1, actual_value)); // check doc==1, column==field4
-      ASSERT_EQ("field4_doc_min", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(1, column->seek(1)); // check doc==1, column==field4
+      ASSERT_EQ("field4_doc_min", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
     }
 
     // visit field0 values (not cached)
@@ -2830,27 +2828,29 @@ TEST_P(format_test_case, columns_rw) {
 
     // check field0
     {
-      irs::bytes_ref actual_value;
       auto column_reader = reader->column(segment0_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      auto column = column_reader->values();
+      auto column = column_reader->iterator();
+      ASSERT_NE(nullptr, column);
+      auto* actual_value = irs::get<irs::payload>(*column);
+      ASSERT_NE(nullptr, actual_value);
 
       // read (not cached)
       {
-        ASSERT_TRUE(column(1, actual_value)); // check doc==1, column==field0
-        ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
-        ASSERT_FALSE(column(5, actual_value)); // doc without value in field0
-        ASSERT_TRUE(column(33, actual_value)); // check doc==33, column==field0
-        ASSERT_EQ("field0_doc33", irs::to_string<irs::string_ref>(actual_value.c_str()));
+        ASSERT_EQ(1, column->seek(1)); // check doc==1, column==field0
+        ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+        ASSERT_EQ(33, column->seek(5)); // doc without value in field0
+        ASSERT_EQ(33, column->seek(33)); // check doc==33, column==field0
+        ASSERT_EQ("field0_doc33", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       }
 
       // read (cached)
       {
-        ASSERT_TRUE(column(1, actual_value)); // check doc==0, column==field0
-        ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
-        ASSERT_FALSE(column(5, actual_value)); // doc without value in field0
-        ASSERT_TRUE(column(33, actual_value)); // check doc==33, column==field0
-        ASSERT_EQ("field0_doc33", irs::to_string<irs::string_ref>(actual_value.c_str()));
+        ASSERT_EQ(1, column->seek(1)); // check doc==0, column==field0
+        ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+        ASSERT_EQ(33, column->seek(5)); // doc without value in field0
+        ASSERT_EQ(33, column->seek(33)); // check doc==33, column==field0
+        ASSERT_EQ("field0_doc33", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       }
     }
 
@@ -3025,30 +3025,31 @@ TEST_P(format_test_case, columns_rw) {
 
     // check field1 (multiple values per document - cached)
     {
-      irs::bytes_ref actual_value;
       irs::bytes_ref_input in;
       auto column_reader = reader->column(segment0_field1_id);
       ASSERT_NE(nullptr, column_reader);
-      auto column = column_reader->values();
+      auto column = column_reader->iterator();
+      ASSERT_NE(nullptr, column);
+      auto* actual_value = irs::get<irs::payload>(*column);
+      ASSERT_NE(nullptr, actual_value);
 
       // read compound column value
       // check doc==0, column==field1
-      ASSERT_TRUE(column(1, actual_value)); in.reset(actual_value);
+      ASSERT_EQ(1, column->seek(1));
+      in.reset(actual_value->value);
       ASSERT_EQ("field1_doc0", irs::read_string<std::string>(in));
       ASSERT_EQ("field1_doc0_1", irs::read_string<std::string>(in));
 
-      ASSERT_FALSE(column(2, actual_value));
+      ASSERT_EQ(12, column->seek(2));
 
       // read overwritten compund value
       // check doc==12, column==field1
-      ASSERT_TRUE(column(12, actual_value)); in.reset(actual_value);
+      ASSERT_EQ(12, column->seek(12));
+      in.reset(actual_value->value);
       ASSERT_EQ("field1_doc12_1", irs::read_string<std::string>(in));
       ASSERT_EQ("field1_doc12_2", irs::read_string<std::string>(in));
 
-      ASSERT_FALSE(column(13, actual_value));
-
-      // read by invalid key
-      ASSERT_FALSE(column(irs::doc_limits::eof(), actual_value));
+      ASSERT_TRUE(irs::doc_limits::eof(column->seek(13)));
     }
 
     // visit empty column
@@ -3176,7 +3177,6 @@ TEST_P(format_test_case, columns_rw) {
 
   // read columns values from segment _2
   {
-    irs::bytes_ref actual_value;
     auto reader = codec()->get_columnstore_reader();
     ASSERT_TRUE(reader->prepare(dir(), meta1));
 
@@ -3255,13 +3255,14 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment1_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      auto column = column_reader->values();
-      ASSERT_TRUE(column(1, actual_value)); // check doc==1, column==field0
-      ASSERT_EQ("segment_2_field1_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
-      ASSERT_TRUE(column(12, actual_value)); // check doc==12, column==field1
-      ASSERT_EQ("segment_2_field1_doc12", irs::to_string<irs::string_ref>(actual_value.c_str()));
-      ASSERT_FALSE(column(5, actual_value)); // doc without value in field0
-      ASSERT_EQ("segment_2_field1_doc12", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      auto column = column_reader->iterator();
+      ASSERT_NE(nullptr, column);
+      auto* actual_value = irs::get<irs::payload>(*column);
+      ASSERT_NE(nullptr, actual_value);
+      ASSERT_EQ(1, column->seek(1)); // check doc==1, column==field0
+      ASSERT_EQ("segment_2_field1_doc0", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ(12, column->seek(12)); // check doc==12, column==field1
+      ASSERT_EQ("segment_2_field1_doc12", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
     }
 
     // iterate over field0 values (cached)

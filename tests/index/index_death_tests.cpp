@@ -342,11 +342,13 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
                         expected_index, all_features);
 
     // validate columnstore
-    irs::bytes_ref actual_value;
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
     auto terms = segment.field("same");
@@ -355,8 +357,8 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
-    ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -486,11 +488,13 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
                         expected_index, all_features);
 
     // validate columnstore
-    irs::bytes_ref actual_value;
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
     auto terms = segment.field("same");
@@ -499,8 +503,8 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
-    ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -591,11 +595,13 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
                         expected_index, all_features);
 
     // validate columnstore
-    irs::bytes_ref actual_value;
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
     auto terms = segment.field("same");
@@ -604,8 +610,8 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
-    ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -690,11 +696,13 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
                         expected_index, all_features);
 
     // validate columnstore
-    irs::bytes_ref actual_value;
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
     auto terms = segment.field("same");
@@ -703,8 +711,8 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
-    ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -751,11 +759,13 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
                         expected_index, all_features);
 
     // validate columnstore
-    irs::bytes_ref actual_value;
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
     auto terms = segment.field("same");
@@ -764,8 +774,8 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
-    ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -823,11 +833,13 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
     // validate columnstore (segment 0)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[0]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -836,18 +848,20 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
     // validate columnstore (segment 1)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[1]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -856,8 +870,8 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -978,11 +992,13 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
                         expected_index, all_features);
 
     // validate columnstore
-    irs::bytes_ref actual_value;
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
     auto terms = segment.field("same");
@@ -991,8 +1007,8 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
-    ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -1116,11 +1132,13 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
                         expected_index, all_features);
 
     // validate columnstore
-    irs::bytes_ref actual_value;
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
     auto terms = segment.field("same");
@@ -1129,8 +1147,8 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
-    ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -1241,11 +1259,13 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
                         expected_index, all_features);
 
     // validate columnstore
-    irs::bytes_ref actual_value;
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
     auto terms = segment.field("same");
@@ -1254,8 +1274,8 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
-    ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -1334,11 +1354,13 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
 
     // validate columnstore (segment 0)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[0]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -1347,18 +1369,20 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
     // validate columnstore (segment 1)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[1]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -1367,8 +1391,8 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -1465,11 +1489,13 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
 
     // validate columnstore (segment 0)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[0]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -1478,18 +1504,20 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
     // validate columnstore (segment 1)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[1]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -1498,18 +1526,20 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
     // validate columnstore (segment 2)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[2]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -1518,18 +1548,20 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
     // validate columnstore (segment 3)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[3]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -1538,8 +1570,8 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -1631,11 +1663,13 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
 
     // validate columnstore (segment 0)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[0]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -1644,18 +1678,20 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
     // validate columnstore (segment 1)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[1]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -1664,18 +1700,20 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
     // validate columnstore (segment 2)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[2]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -1684,8 +1722,8 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -1763,11 +1801,13 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
 
     // validate columnstore (segment 0)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[0]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -1776,18 +1816,20 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
     // validate columnstore (segment 1)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[1]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -1796,18 +1838,20 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
     // validate columnstore (segment 2)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[2]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -1816,8 +1860,8 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -1893,11 +1937,13 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
 
     // validate columnstore (segment 0)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[0]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -1906,18 +1952,20 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
     // validate columnstore (segment 1)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[1]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -1926,8 +1974,8 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2004,11 +2052,13 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
 
     // validate columnstore (segment 0)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[0]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -2017,18 +2067,20 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
     // validate columnstore (segment 1)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[1]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -2037,8 +2089,8 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2164,11 +2216,13 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 
     // validate columnstore (segment 0)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[0]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -2177,8 +2231,8 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2270,11 +2324,13 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 
     // validate columnstore (segment 0)
     {
-      irs::bytes_ref actual_value;
       auto& segment = reader[0]; // assume 0 is id of first/only segment
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator();
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, segment.docs_count()); // total count of documents
       ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -2283,8 +2339,8 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
       ASSERT_TRUE(termItr->next());
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
-      ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2417,11 +2473,13 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
                         expected_index, all_features);
 
     // validate columnstore
-    irs::bytes_ref actual_value;
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
     auto terms = segment.field("same");
@@ -2430,8 +2488,8 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
-    ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -2497,11 +2555,13 @@ TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flu
                         expected_index, all_features);
 
     // validate columnstore
-    irs::bytes_ref actual_value;
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     const auto* column = segment.column_reader("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
     ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
     auto terms = segment.field("same");
@@ -2510,8 +2570,8 @@ TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flu
     ASSERT_TRUE(termItr->next());
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
-    ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -2640,11 +2700,13 @@ TEST(index_death_test_formats_10, open_reader) {
                       expected_index, all_features);
 
   // validate columnstore
-  irs::bytes_ref actual_value;
   auto& segment = reader[0]; // assume 0 is id of first/only segment
   const auto* column = segment.column_reader("name");
   ASSERT_NE(nullptr, column);
-  auto values = column->values();
+  auto values = column->iterator();
+  ASSERT_NE(nullptr, values);
+  auto* actual_value = irs::get<irs::payload>(*values);
+  ASSERT_NE(nullptr, actual_value);
   ASSERT_EQ(2, segment.docs_count()); // total count of documents
   ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
   auto terms = segment.field("same");
@@ -2653,11 +2715,11 @@ TEST(index_death_test_formats_10, open_reader) {
   ASSERT_TRUE(termItr->next());
   auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
   ASSERT_TRUE(docsItr->next());
-  ASSERT_TRUE(values(docsItr->value(), actual_value));
-  ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+  ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+  ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
   ASSERT_TRUE(docsItr->next());
-  ASSERT_TRUE(values(docsItr->value(), actual_value));
-  ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+  ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+  ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
   ASSERT_FALSE(docsItr->next());
 
   // validate live docs
@@ -2727,11 +2789,13 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.cs"); // regiseter reopen failure in columnstore
 
   // validate columnstore
-  irs::bytes_ref actual_value;
   auto& segment = reader[0]; // assume 0 is id of first/only segment
   const auto* column = segment.column_reader("name");
   ASSERT_NE(nullptr, column);
-  auto values = column->values();
+  auto values = column->iterator();
+  ASSERT_NE(nullptr, values);
+  auto* actual_value = irs::get<irs::payload>(*values);
+  ASSERT_NE(nullptr, actual_value);
   ASSERT_EQ(2, segment.docs_count()); // total count of documents
   ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
   auto terms = segment.field("same");
@@ -2740,14 +2804,14 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   ASSERT_TRUE(termItr->next());
   auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
   ASSERT_TRUE(docsItr->next());
-  ASSERT_THROW(values(docsItr->value(), actual_value), irs::io_error); // failed to reopen
-  ASSERT_THROW(values(docsItr->value(), actual_value), irs::io_error); // failed to reopen (nullptr)
-  ASSERT_TRUE(values(docsItr->value(), actual_value)); // successful attempt
+  ASSERT_THROW(values->seek(docsItr->value()), irs::io_error); // failed to reopen
+  ASSERT_THROW(values->seek(docsItr->value()), irs::io_error); // failed to reopen (nullptr)
+  ASSERT_EQ(docsItr->value(), values->seek(docsItr->value())); // successful attempt
   dir.register_failure(failing_directory::Failure::REOPEN, "_1.cs"); // don't need to reopen anymore
-  ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+  ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
   ASSERT_TRUE(docsItr->next());
-  ASSERT_TRUE(values(docsItr->value(), actual_value));
-  ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+  ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+  ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
   ASSERT_FALSE(docsItr->next());
 
   // validate live docs
@@ -2825,11 +2889,13 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
                       expected_index, all_features);
 
   // validate columnstore
-  irs::bytes_ref actual_value;
   auto& segment = reader[0]; // assume 0 is id of first/only segment
   const auto* column = segment.column_reader("name");
   ASSERT_NE(nullptr, column);
-  auto values = column->values();
+  auto values = column->iterator();
+  ASSERT_NE(nullptr, values);
+  auto* actual_value = irs::get<irs::payload>(*values);
+  ASSERT_NE(nullptr, actual_value);
   ASSERT_EQ(2, segment.docs_count()); // total count of documents
   ASSERT_EQ(1, segment.live_docs_count()); // total count of documents
   auto terms = segment.field("same_anl_pay");
@@ -2889,11 +2955,11 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
 
   auto docsItr = termItr->postings(irs::IndexFeatures::NONE); // successful attempt
   ASSERT_TRUE(docsItr->next());
-  ASSERT_TRUE(values(docsItr->value(), actual_value)); // successful attempt
-  ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+  ASSERT_EQ(docsItr->value(), values->seek(docsItr->value())); // successful attempt
+  ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
   ASSERT_TRUE(docsItr->next());
-  ASSERT_TRUE(values(docsItr->value(), actual_value));
-  ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+  ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+  ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
   ASSERT_FALSE(docsItr->next());
 
   // validate live docs
