@@ -1060,15 +1060,10 @@ class sorting_compound_column_iterator : util::noncopyable {
   external_heap_iterator<min_heap_context> heap_it_;
 }; // sorting_compound_column_iterator
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief write columnstore
-//////////////////////////////////////////////////////////////////////////////
 bool write_columns(
     columnstore& cs,
     sorting_compound_doc_iterator& columns,
-    directory& dir,
     const column_info_provider_t& column_info,
-    const segment_meta& meta,
     compound_column_meta_iterator_t& column_meta_itr,
     const merge_writer::flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
@@ -1094,9 +1089,6 @@ bool write_columns(
     return column_meta_itr.visit(add_iterators);
   };
 
-  auto column_meta_writer = meta.codec->get_column_meta_writer();
-  column_meta_writer->prepare(dir, meta);
-
   while (column_meta_itr.next()) {
     const auto& column_name = (*column_meta_itr).name;
     cs.reset(column_info(column_name));
@@ -1110,25 +1102,14 @@ bool write_columns(
     if (!cs.insert(columns)) {
       return false; // failed to insert all values
     }
-
-    if (!cs.empty()) {
-      column_meta_writer->write(column_name, cs.id());
-    }
   }
-
-  column_meta_writer->flush();
 
   return true;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief write columnstore
-//////////////////////////////////////////////////////////////////////////////
 bool write_columns(
     columnstore& cs,
-    directory& dir,
     const column_info_provider_t& column_info,
-    const segment_meta& meta,
     compound_column_meta_iterator_t& column_itr,
     const merge_writer::flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
@@ -1142,10 +1123,6 @@ bool write_columns(
     return cs.insert(segment, column.id, doc_map);
   };
 
-  auto cmw = meta.codec->get_column_meta_writer();
-
-  cmw->prepare(dir, meta);
-
   while (column_itr.next()) {
     const auto& column_name = (*column_itr).name;
     cs.reset(column_info(column_name));
@@ -1155,13 +1132,7 @@ bool write_columns(
     if (!progress() || !column_itr.visit(visitor)) {
       return false; // failed to visit all values
     }
-
-    if (!cs.empty()) {
-      cmw->write(column_name, cs.id());
-    } 
   }
-
-  cmw->flush();
 
   return true;
 }
@@ -1461,9 +1432,7 @@ bool merge_writer::flush(
     return false; // progress callback requested termination
   }
 
-  // write columns
-  if (!write_columns(cs, dir, *column_info_, segment.meta,
-                     columns_meta_itr, progress)) {
+  if (!write_columns(cs, *column_info_, columns_meta_itr, progress)) {
     return false; // flush failure
   }
 
@@ -1645,9 +1614,8 @@ bool merge_writer::flush_sorted(
     return false; // progress callback requested termination
   }
 
-  // write columns
-  if (!write_columns(cs, sorting_doc_it, dir, *column_info_,
-                     segment.meta, columns_meta_itr, progress)) {
+  if (!write_columns(cs, sorting_doc_it, *column_info_,
+                     columns_meta_itr, progress)) {
     return false; // flush failure
   }
 

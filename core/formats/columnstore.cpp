@@ -2811,7 +2811,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     columns.emplace_back(std::move(column));
   }
 
-//  read_columns_meta(meta.codec, dir, meta);
+  read_columns_meta(meta.codec, dir, meta);
 
   // noexcept
   context_provider::prepare(std::move(stream), std::move(cipher));
