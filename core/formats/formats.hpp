@@ -44,7 +44,6 @@ namespace iresearch {
 
 struct segment_meta;
 struct field_meta;
-struct column_meta;
 struct flush_state;
 struct reader_state;
 struct index_output;
@@ -338,37 +337,6 @@ struct IRESEARCH_API columnstore_writer {
 MSVC_ONLY(template class IRESEARCH_API std::function<irs::column_output&(irs::doc_id_t)>;) 
 
 namespace iresearch {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @struct column_meta_writer
-////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API column_meta_writer {
-  using ptr = std::unique_ptr<column_meta_writer>;
-
-  virtual ~column_meta_writer() = default;
-  virtual void prepare(directory& dir, const segment_meta& meta) = 0;
-  virtual void write(const std::string& name, field_id id) = 0;
-  virtual void flush() = 0;
-}; // column_meta_writer 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @struct column_meta_reader
-////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API column_meta_reader {
-  using ptr = std::unique_ptr<column_meta_reader>;
-
-  virtual ~column_meta_reader() = default;
-  /// @returns true if column_meta is present in a segment.
-  ///          false - otherwise
-  virtual bool prepare(
-    const directory& dir, 
-    const segment_meta& meta,
-    /*out*/ size_t& count,
-    /*out*/ field_id& max_id) = 0;
-
-  // returns false if there is no more data to read
-  virtual bool read(column_meta& column) = 0;
-}; // column_meta_reader
 
 struct column_reader {
   using values_visitor_f = std::function<bool(doc_id_t, const bytes_ref&)>;

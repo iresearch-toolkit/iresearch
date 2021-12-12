@@ -76,6 +76,55 @@ using columnstore::ColumnMetaVersion;
 
 irs::bytes_ref DUMMY; // placeholder for visiting logic in columnstore
 
+//////////////////////////////////////////////////////////////////////////////
+/// @struct column_meta
+/// @brief represents column metadata
+//////////////////////////////////////////////////////////////////////////////
+struct column_meta {
+ public:
+  column_meta() = default;
+  column_meta(const column_meta&) = default;
+  column_meta(column_meta&& rhs) noexcept;
+  column_meta(const string_ref& field, field_id id);
+
+  column_meta& operator=(column_meta&& rhs) noexcept;
+  column_meta& operator=(const column_meta&) = default;
+
+  bool operator==(const column_meta& rhs) const;
+  bool operator!=(const column_meta& rhs) const {
+    return !(*this == rhs);
+  }
+
+  std::string name;
+  field_id id{ field_limits::invalid() };
+}; // column_meta
+
+static_assert(std::is_nothrow_move_constructible<column_meta>::value,
+              "default move constructor expected");
+
+column_meta::column_meta(column_meta&& rhs) noexcept
+  : name(std::move(rhs.name)), id(rhs.id) {
+  rhs.id = field_limits::invalid();
+}
+
+column_meta::column_meta(const string_ref& name, field_id id)
+  : name(name.c_str(), name.size()), id(id) {
+}
+
+column_meta& column_meta::operator=(column_meta&& rhs) noexcept {
+  if (this != &rhs) {
+    name = std::move(rhs.name);
+    id = rhs.id;
+    rhs.id = field_limits::invalid();
+  }
+
+  return *this;
+}
+
+bool column_meta::operator==(const column_meta& rhs) const {
+  return name == rhs.name;
+}
+
 struct format_traits {
   FORCE_INLINE static void pack32(
       const uint32_t* RESTRICT decoded,
