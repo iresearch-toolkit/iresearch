@@ -436,7 +436,6 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   }
 
   size_t flush_doc_mask(const segment_meta& meta); // flushes document mask to directory, returns number of masked documens
-  void flush_column_meta(const segment_meta& meta); // flushes column meta to directory
   void flush_fields(const doc_map& docmap); // flushes indexed fields to directory
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
@@ -451,7 +450,6 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   std::string seg_name_;
   field_writer::ptr field_writer_;
   const column_info_provider_t* column_info_;
-  column_meta_writer::ptr col_meta_writer_;
   columnstore_writer::ptr col_writer_;
   tracking_directory dir_;
   uint64_t tick_{0};

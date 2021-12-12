@@ -835,7 +835,7 @@ void assert_terms_seek(
 }
 
 void assert_pk(
-    const irs::columnstore_reader::column_reader& actual_reader,
+    const irs::column_reader& actual_reader,
     const std::vector<std::pair<irs::bstring, irs::doc_id_t>>& expected_values) {
   ASSERT_EQ(expected_values.size(), actual_reader.size());
 
@@ -890,7 +890,7 @@ void assert_pk(
 }
 
 void assert_column(
-    const irs::columnstore_reader::column_reader* actual_reader,
+    const irs::column_reader* actual_reader,
     const column_values& expected_values) {
   if (!actual_reader) {
     ASSERT_TRUE(expected_values.empty());

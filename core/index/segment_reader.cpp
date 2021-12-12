@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/container/flat_hash_map.h>
+
 #include "shared.hpp"
 #include "segment_reader.hpp"
 
@@ -37,20 +39,6 @@
 namespace {
 
 using namespace irs;
-
-struct column_ref_eq : value_ref_eq<column_meta*> {
-  using self_t::operator();
-
-  bool operator()(const ref_t& lhs, const hashed_string_ref& rhs) const noexcept {
-    return lhs.second->name == rhs;
-  }
-
-  bool operator()(const hashed_string_ref& lhs, const ref_t& rhs) const noexcept {
-    return this->operator()(rhs, lhs);
-  }
-};
-
-using name_to_column_map = flat_hash_set<column_ref_eq>;
 
 class all_iterator final : public doc_iterator {
  public:
@@ -181,67 +169,6 @@ class masked_docs_iterator
   doc_id_t next_;
 };
 
-bool read_columns_meta(
-    const format& codec,
-    const directory& dir,
-    const segment_meta& meta,
-    std::vector<column_meta>& columns,
-    std::vector<column_meta*>& id_to_column,
-    name_to_column_map& name_to_column) {
-  size_t count = 0;
-  irs::field_id max_id;
-  auto reader = codec.get_column_meta_reader();
-
-  if (!reader->prepare(dir, meta, count, max_id)) {
-    // no column meta found in a segment
-    return false;
-  }
-
-  columns.reserve(count); // prevent reallocations
-  id_to_column.resize(max_id + 1); // +1 for count
-  name_to_column.reserve(count);
-
-  for (irs::column_meta col_meta; reader->read(col_meta);) {
-    columns.emplace_back(std::move(col_meta));
-
-    auto& column = columns.back();
-    const auto res = name_to_column.emplace(hash_utils::hash(column.name), &column);
-
-    assert(column.id < id_to_column.size());
-
-    if (!res.second || id_to_column[column.id]) {
-      throw irs::index_error(irs::string_utils::to_string(
-        "duplicate column '%s' in segment '%s'",
-        column.name.c_str(),
-        meta.name.c_str()
-      ));
-    }
-
-    id_to_column[column.id] = &column;
-  }
-
-  // check column meta order
-
-  auto less = [] (const irs::column_meta& lhs,
-                  const irs::column_meta& rhs) noexcept {
-    return lhs.name < rhs.name;
-  };
-
-  if (!std::is_sorted(columns.begin(), columns.end(), less)) {
-    columns.clear();
-    id_to_column.clear();
-    name_to_column.clear();
-
-    throw irs::index_error(irs::string_utils::to_string(
-      "invalid column order in segment '%s'",
-      meta.name.c_str()
-    ));
-  }
-
-  // column meta exists
-  return true;
-}
-
 } // namespace {
 
 namespace iresearch {
@@ -260,8 +187,6 @@ class segment_reader_impl : public sub_reader {
   const directory& dir() const noexcept { 
     return dir_;
   }
-
-  virtual const column_meta* column(const string_ref& name) const override;
 
   virtual column_iterator::ptr columns() const override;
 
@@ -309,26 +234,26 @@ class segment_reader_impl : public sub_reader {
     return 1; // only 1 segment
   }
 
-  virtual const columnstore_reader::column_reader* sort() const noexcept override {
+  virtual const irs::column_reader* sort() const noexcept override {
     return sort_;
   }
 
-  virtual const columnstore_reader::column_reader* column_reader(
-    field_id field
-  ) const override;
+  virtual const irs::column_reader* column_reader(field_id field) const override;
+
+  virtual const irs::column_reader* column_reader(const string_ref& name) const override;
 
  private:
+  using named_columns = absl::flat_hash_map<hashed_string_ref, const irs::column_reader*>;
+
   DECLARE_SHARED_PTR(segment_reader_impl); // required for NAMED_PTR(...)
-  std::vector<column_meta> columns_;
   columnstore_reader::ptr columnstore_reader_;
-  const columnstore_reader::column_reader* sort_{};
+  const irs::column_reader* sort_{};
   const directory& dir_;
   uint64_t docs_count_;
   document_mask docs_mask_;
   field_reader::ptr field_reader_;
-  std::vector<column_meta*> id_to_column_;
   uint64_t meta_version_;
-  name_to_column_map name_to_column_;
+  named_columns named_columns_;
 
   segment_reader_impl(
     const directory& dir,
@@ -404,10 +329,10 @@ segment_reader_impl::segment_reader_impl(
     meta_version_(meta_version) {
 }
 
-const column_meta* segment_reader_impl::column(
+const irs::column_reader* segment_reader_impl::column_reader(
     const string_ref& name) const {
-  auto it = name_to_column_.find(make_hashed_ref(name));
-  return it == name_to_column_.end() ? nullptr : it->second;
+  auto it = named_columns_.find(make_hashed_ref(name));
+  return it == named_columns_.end() ? nullptr : it->second;
 }
 
 column_iterator::ptr segment_reader_impl::columns() const {
@@ -456,7 +381,7 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
   // initialize optional columnstore
   if (segment_reader::has<irs::columnstore_reader>(meta)) {
     auto& columnstore_reader = reader->columnstore_reader_;
-    columnstore_reader  = codec.get_columnstore_reader();
+    columnstore_reader = codec.get_columnstore_reader();
 
     if (!columnstore_reader->prepare(dir, meta)) {
       throw index_error(string_utils::to_string(
@@ -475,26 +400,33 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
         ));
       }
     }
-  }
 
-  // initialize optional columns meta
-  read_columns_meta(
-    codec,
-    dir,
-    meta,
-    reader->columns_,
-    reader->id_to_column_,
-    reader->name_to_column_
-  );
+    // FIXME(gnusi): reserve space for named columns???
+    // reader->named_columns_.reserve(columnstore_reader->size()); - too rough
+
+    columnstore_reader->visit([&reader, &meta](const irs::column_reader& column){
+      const auto name = column.name();
+
+      if (!name.null()) {
+        const auto [it, is_new] = reader->named_columns_.emplace(make_hashed_ref(name), &column);
+        UNUSED(it);
+
+        if (IRS_UNLIKELY(!is_new)) {
+          throw index_error(string_utils::to_string(
+            "duplicate named column '%s' in segment '%s'",
+            static_cast<std::string>(name), meta.name.c_str()));
+        }
+      }
+
+      return true;
+    });
+  }
 
   return reader;
 }
 
-const columnstore_reader::column_reader* segment_reader_impl::column_reader(
-    field_id field) const {
-  return columnstore_reader_
-    ? columnstore_reader_->column(field)
-    : nullptr;
+const irs::column_reader* segment_reader_impl::column_reader(field_id field) const {
+  return columnstore_reader_ ? columnstore_reader_->column(field) : nullptr;
 }
 
 }

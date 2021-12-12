@@ -368,7 +368,31 @@ struct IRESEARCH_API column_meta_reader {
 
   // returns false if there is no more data to read
   virtual bool read(column_meta& column) = 0;
-}; // column_meta_reader 
+}; // column_meta_reader
+
+struct column_reader {
+  using values_visitor_f = std::function<bool(doc_id_t, const bytes_ref&)>;
+
+  virtual ~column_reader() = default;
+
+  // Returns column id.
+  virtual field_id id() const = 0;
+
+  // Returns optional column name.
+  virtual string_ref name() const = 0;
+
+  // Returns column header.
+  virtual bytes_ref payload() const = 0;
+
+  // Returns the corresponding column iterator.
+  // If the column implementation supports document payloads then it
+  // can be accessed via the 'payload' attribute.
+  virtual doc_iterator::ptr iterator() const = 0;
+
+  virtual bool visit(const values_visitor_f& reader) const = 0;
+
+  virtual doc_id_t size() const = 0;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct columnstore_reader
@@ -376,23 +400,7 @@ struct IRESEARCH_API column_meta_reader {
 struct IRESEARCH_API columnstore_reader {
   using ptr = std::unique_ptr<columnstore_reader>;
 
-  typedef std::function<bool(doc_id_t, const bytes_ref&)> values_visitor_f;
-
-  struct column_reader {
-    virtual ~column_reader() = default;
-
-    // Returns column header.
-    virtual bytes_ref payload() const = 0;
-
-    // Returns the corresponding column iterator.
-    // If the column implementation supports document payloads then it
-    // can be accessed via the 'payload' attribute.
-    virtual doc_iterator::ptr iterator() const = 0;
-
-    virtual bool visit(const columnstore_reader::values_visitor_f& reader) const = 0;
-
-    virtual doc_id_t size() const = 0;
-  };
+  using column_visitor_f = std::function<bool(const column_reader&)>;
 
   virtual ~columnstore_reader() = default;
 
@@ -401,6 +409,8 @@ struct IRESEARCH_API columnstore_reader {
   virtual bool prepare(
     const directory& dir,
     const segment_meta& meta) = 0;
+
+  virtual bool visit(const column_visitor_f& visitor) const = 0;
 
   virtual const column_reader* column(field_id field) const = 0;
 
@@ -536,9 +546,6 @@ class IRESEARCH_API format {
 
   virtual field_writer::ptr get_field_writer(bool consolidation) const = 0;
   virtual field_reader::ptr get_field_reader() const = 0;
-
-  virtual column_meta_writer::ptr get_column_meta_writer() const = 0;
-  virtual column_meta_reader::ptr get_column_meta_reader() const = 0;
 
   virtual columnstore_writer::ptr get_columnstore_writer(bool consolidation) const = 0;
   virtual columnstore_reader::ptr get_columnstore_reader() const = 0;

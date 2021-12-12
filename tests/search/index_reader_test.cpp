@@ -99,8 +99,6 @@ TEST(directory_reader_test, open_newest_index) {
     virtual irs::document_mask_reader::ptr get_document_mask_reader() const override { return nullptr; }
     virtual irs::field_writer::ptr get_field_writer(bool) const override { return nullptr; }
     virtual irs::field_reader::ptr get_field_reader() const override { return nullptr; }
-    virtual irs::column_meta_writer::ptr get_column_meta_writer() const override { return nullptr; }
-    virtual irs::column_meta_reader::ptr get_column_meta_reader() const override { return nullptr; }
     virtual irs::columnstore_writer::ptr get_columnstore_writer(bool) const override { return nullptr; }
     virtual irs::columnstore_reader::ptr get_columnstore_reader() const override { return nullptr; }
   };

@@ -68,10 +68,6 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     return *this;
   }
 
-  virtual const column_meta* column(const string_ref& name) const override {
-    return impl_->column(name);
-  }
-
   virtual column_iterator::ptr columns() const override {
     return impl_->columns();
   }
@@ -112,13 +108,15 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     return impl_->size();
   }
 
-  virtual const columnstore_reader::column_reader* sort() const override {
+  virtual const irs::column_reader* sort() const override {
     return impl_->sort();
   }
 
-  using sub_reader::column_reader;
-  virtual const columnstore_reader::column_reader* column_reader(
-      field_id field) const override {
+  virtual const irs::column_reader* column_reader(const string_ref& name) const override {
+    return impl_->column_reader(name);
+  }
+
+  virtual const irs::column_reader* column_reader(field_id field) const override {
     return impl_->column_reader(field);
   }
 

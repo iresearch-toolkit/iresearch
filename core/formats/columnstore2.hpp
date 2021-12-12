@@ -80,23 +80,6 @@ class column final : public irs::column_output {
       header_writer_{std::move(header_writer)} {
   }
 
-  void prepare(doc_id_t key);
-
-  bool empty() const noexcept {
-    return addr_table_.empty() && !docs_count_;
-  }
-
-  void flush() {
-    if (!addr_table_.empty()) {
-      flush_block();
-#ifdef IRESEARCH_DEBUG
-      sealed_ = true;
-#endif
-    }
-  }
-
-  void finish(index_output& index_out);
-
   virtual void write_byte(byte_type b) override {
     data_.stream.write_byte(b);
   }
@@ -107,10 +90,21 @@ class column final : public irs::column_output {
 
   virtual void reset() override;
 
+  bool operator<(const column& rhs) const noexcept {
+    if (no_name_) {
+      return true;
+    }
+
+    if (rhs.no_name_) {
+      return false;
+    }
+
+    return name_ < rhs.name_;
+  }
+
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @class address_table
-  //////////////////////////////////////////////////////////////////////////////
+  friend class writer;
+
   class address_table {
    public:
     uint64_t back() const noexcept {
@@ -158,9 +152,31 @@ class column final : public irs::column_output {
     uint64_t* offset_{offsets_};
   }; // address_table
 
+  void prepare(doc_id_t key);
+
+  bool empty() const noexcept {
+    return addr_table_.empty() && !docs_count_;
+  }
+
+  void flush() {
+    if (!addr_table_.empty()) {
+      flush_block();
+#ifdef IRESEARCH_DEBUG
+      sealed_ = true;
+#endif
+    }
+  }
+
+  void finish(index_output& index_out);
+
+  void set_ordinal(field_id ord) noexcept {
+    ord_ = ord;
+  }
+
   void flush_block();
 
   context ctx_;
+  std::string name_;
   irs::type_info compression_;
   compression::compressor::ptr deflater_;
   columnstore_writer::column_header_writer_f header_writer_;
@@ -173,7 +189,9 @@ class column final : public irs::column_output {
   doc_id_t docs_count_{};
   doc_id_t prev_{}; // last committed doc_id_t
   doc_id_t pend_{}; // last pushed doc_id_t
+  field_id ord_{field_limits::invalid()}; // ordinal position
   bool fixed_length_{true};
+  bool no_name_{true};
 #ifdef IRESEARCH_DEBUG
   bool sealed_{false};
 #endif
@@ -206,6 +224,7 @@ class writer final : public columnstore_writer {
   std::string data_filename_;
   memory_allocator* alloc_;
   std::deque<column> columns_; // pointers remain valid
+  std::vector<std::reference_wrapper<column>> sorted_columns_;
   index_output::ptr data_out_;
   encryption::stream::ptr data_cipher_;
   std::unique_ptr<byte_type[]> buf_;
@@ -242,14 +261,19 @@ enum class ColumnType : uint16_t {
 ////////////////////////////////////////////////////////////////////////////////
 enum class ColumnProperty : uint16_t {
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief regular column
+  /// @brief Regular column
   //////////////////////////////////////////////////////////////////////////////
   NORMAL = 0,
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief encrytped data
+  /// @brief Encrytped data
   //////////////////////////////////////////////////////////////////////////////
-  ENCRYPT = 1
+  ENCRYPT = 1,
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Annonymous column
+  //////////////////////////////////////////////////////////////////////////////
+  NO_NAME = 2
 }; // ColumnProperty
 
 ENABLE_BITMASK_ENUM(ColumnProperty);
@@ -307,6 +331,8 @@ class reader final : public columnstore_reader {
       : columns_[field].get();
   }
 
+  virtual bool visit(const column_visitor_f& visitor) const override;
+
   virtual size_t size() const override {
     return columns_.size();
   }
@@ -323,6 +349,7 @@ class reader final : public columnstore_reader {
     const std::string& filename);
 
   std::vector<column_ptr> columns_;
+  std::vector<const column_ptr::element_type*> sorted_columns_;
   encryption::stream::ptr data_cipher_;
   index_input::ptr data_in_;
 }; // reader

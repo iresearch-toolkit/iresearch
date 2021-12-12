@@ -56,7 +56,7 @@ class column_existence_query : public irs::filter::prepared {
  protected:
   doc_iterator::ptr iterator(
       const sub_reader& segment,
-      const columnstore_reader::column_reader& column,
+      const column_reader& column,
       const order::prepared& ord) const {
     auto it = column.iterator();
 

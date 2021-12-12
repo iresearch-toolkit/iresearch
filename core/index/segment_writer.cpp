@@ -224,34 +224,6 @@ column_output& segment_writer::stream(
   })->writer(doc_id);
 }
 
-void segment_writer::flush_column_meta(const segment_meta& meta) {
-  // ensure columns are sorted
-  sorted_columns_.resize(columns_.size());
-  auto begin = sorted_columns_.begin();
-  for (auto& entry : columns_) {
-    *begin = &entry;
-    ++begin;
-  }
-  std::sort(
-    sorted_columns_.begin(), sorted_columns_.end(),
-    [](const stored_column* lhs, const stored_column* rhs) noexcept {
-      return lhs->name < rhs->name;
-  });
-
-  // flush columns meta
-  try {
-    col_meta_writer_->prepare(dir_, meta);
-    for (const auto* column: sorted_columns_) {
-      col_meta_writer_->write(column->name, column->id);
-    }
-    col_meta_writer_->flush();
-  } catch (...) {
-    col_meta_writer_.reset(); // invalidate column meta writer
-
-    throw;
-  }
-}
-
 void segment_writer::flush_fields(const doc_map& docmap) {
   flush_state state;
   state.dir = &dir_;
@@ -321,13 +293,7 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
   }
 
   // flush columnstore
-  if (col_writer_->commit(state)) {
-    if (!columns_.empty()) {
-      flush_column_meta(meta);
-    }
-
-    meta.column_store = true;
-  }
+  meta.column_store = col_writer_->commit(state);
 
   // flush fields metadata & inverted data,
   if (docs_cached()) {
@@ -375,11 +341,6 @@ void segment_writer::reset(const segment_meta& meta) {
   if (!field_writer_) {
     field_writer_ = meta.codec->get_field_writer(false);
     assert(field_writer_);
-  }
-
-  if (!col_meta_writer_) {
-    col_meta_writer_ = meta.codec->get_column_meta_writer();
-    assert(col_meta_writer_);
   }
 
   if (!col_writer_) {
