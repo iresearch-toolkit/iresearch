@@ -211,10 +211,6 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
     irs::bytes_ref_input in;
     auto column = segment.column_reader("_id");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
-    ASSERT_NE(nullptr, values);
-    auto* actual_value = irs::get<irs::payload>(*values);
-    ASSERT_NE(nullptr, actual_value);
 
     // empty query
     {
@@ -283,6 +279,11 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // next
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docs = prepared->execute(segment);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
@@ -302,6 +303,11 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // seek
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docs = prepared->execute(segment);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
@@ -333,6 +339,11 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // next
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docs = prepared->execute(segment);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
@@ -352,6 +363,11 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // seek
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docs = prepared->execute(segment);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
@@ -378,6 +394,11 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // next
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docs = prepared->execute(segment);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
@@ -428,6 +449,11 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // seek + next
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docs = prepared->execute(segment);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));

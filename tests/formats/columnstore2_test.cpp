@@ -156,7 +156,7 @@ TEST_P(columnstore2_test_case, empty_column) {
     ASSERT_EQ(1, column->size());
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
-    ASSERT_EQ(1, header_payload[0]);
+    ASSERT_EQ(2, header_payload[0]);
     auto it = column->iterator();
     auto* document = irs::get<irs::document>(*it);
     ASSERT_NE(nullptr, document);

@@ -132,13 +132,14 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
   auto& segment = *(reader.begin());
   const auto* column = segment.column_reader("seq");
   ASSERT_NE(nullptr, column);
-  auto values = column->iterator();
-  ASSERT_NE(nullptr, values);
-  auto* actual_value = irs::get<irs::payload>(*values);
-  ASSERT_NE(nullptr, actual_value);
 
   // by_range multiple
   {
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     irs::by_range filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
@@ -175,6 +176,11 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
 
   // by_range multiple (3 values)
   {
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     irs::by_range filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
@@ -498,13 +504,13 @@ TEST_P(tfidf_test_case, test_query) {
   auto& segment = *(reader.begin());
   const auto* column = segment.column_reader("seq");
   ASSERT_NE(nullptr, column);
-  auto values = column->iterator();
-  ASSERT_NE(nullptr, values);
-  auto* actual_value = irs::get<irs::payload>(*values);
-  ASSERT_NE(nullptr, actual_value);
-
   // by_term
   {
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     irs::by_term filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
@@ -539,6 +545,11 @@ TEST_P(tfidf_test_case, test_query) {
 
   // by term multi-segment, same term (same score for all docs)
   {
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
       [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
@@ -628,6 +639,11 @@ TEST_P(tfidf_test_case, test_query) {
 
   // by_term disjunction multi-segment, different terms (same score for all docs)
   {
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
       [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
@@ -727,6 +743,11 @@ TEST_P(tfidf_test_case, test_query) {
 
   // by_prefix empty multi-segment, different terms (same score for all docs)
   {
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     tests::json_doc_generator gen(
       resource("simple_sequential.json"),
       [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
@@ -817,6 +838,11 @@ TEST_P(tfidf_test_case, test_query) {
 
   // by_range single
   {
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     irs::by_range filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
@@ -854,6 +880,11 @@ TEST_P(tfidf_test_case, test_query) {
 
   // by_range single + scored_terms_limit(1)
   {
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     irs::by_range filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
@@ -893,6 +924,11 @@ TEST_P(tfidf_test_case, test_query) {
   //FIXME!!!
   // by_range single + scored_terms_limit(0)
 //  {
+//    auto values = column->iterator();
+//    ASSERT_NE(nullptr, values);
+//    auto* actual_value = irs::get<irs::payload>(*values);
+//    ASSERT_NE(nullptr, actual_value);
+//
 //    irs::by_range filter;
 //
 //    filter.field("field").scored_terms_limit(0)
@@ -931,6 +967,11 @@ TEST_P(tfidf_test_case, test_query) {
 
   // by_range multiple
   {
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     irs::by_range filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
@@ -975,6 +1016,11 @@ TEST_P(tfidf_test_case, test_query) {
 
   // by_range multiple (3 values)
   {
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     irs::by_range filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
@@ -1020,6 +1066,11 @@ TEST_P(tfidf_test_case, test_query) {
 
   // by_phrase
   {
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     irs::by_phrase filter;
     *filter.mutable_field() = "field";
     auto& phrase = *filter.mutable_options();
@@ -1065,6 +1116,11 @@ TEST_P(tfidf_test_case, test_query) {
 
   // all
   {
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     irs::all filter;
     filter.boost(1.5f);
 
@@ -1088,6 +1144,11 @@ TEST_P(tfidf_test_case, test_query) {
 
   // all
   {
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     irs::all filter;
     filter.boost(0.f);
 
@@ -1111,6 +1172,11 @@ TEST_P(tfidf_test_case, test_query) {
 
   // column existence
   {
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     irs::by_column_existence filter;
     *filter.mutable_field() = "seq";
     filter.mutable_options()->prefix_match = false;
@@ -1135,6 +1201,11 @@ TEST_P(tfidf_test_case, test_query) {
 
   // column existence
   {
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     irs::by_column_existence filter;
     *filter.mutable_field() = "seq";
     filter.mutable_options()->prefix_match = false;
@@ -1381,12 +1452,13 @@ TEST_P(tfidf_test_case, test_order) {
   uint64_t seq = 0;
   const auto* column = segment.column_reader("seq");
   ASSERT_NE(nullptr, column);
-  auto values = column->iterator();
-  ASSERT_NE(nullptr, values);
-  auto* actual_value = irs::get<irs::payload>(*values);
-  ASSERT_NE(nullptr, actual_value);
 
   {
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     query.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
 
     std::multimap<iresearch::bstring, uint64_t, decltype(comparer)> sorted(comparer);

@@ -7742,10 +7742,6 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       auto& segment = reader[0];
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator();
-      ASSERT_NE(nullptr, values);
-      auto* actual_value = irs::get<irs::payload>(*values);
-      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(3, segment.docs_count()); // total count of documents
       ASSERT_EQ(2, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -7755,6 +7751,11 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
       // including deleted docs
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
@@ -7770,6 +7771,11 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
       // only live docs
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
@@ -7882,10 +7888,6 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       auto& segment = reader[0];
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator();
-      ASSERT_NE(nullptr, values);
-      auto* actual_value = irs::get<irs::payload>(*values);
-      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(4, segment.docs_count()); // total count of documents
       ASSERT_EQ(2, segment.live_docs_count()); // total count of documents
       auto terms = segment.field("same");
@@ -7895,6 +7897,11 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
       // including deleted docs
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
@@ -7913,6 +7920,11 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
       // only live docs
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
@@ -9097,10 +9109,6 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       auto& segment = reader[0];
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator();
-      ASSERT_NE(nullptr, values);
-      auto* actual_value = irs::get<irs::payload>(*values);
-      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(3, segment.docs_count()); // total count of documents
       ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
@@ -9110,6 +9118,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // with deleted docs
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
@@ -9125,6 +9138,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // without deleted docs
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
@@ -9230,10 +9248,6 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       auto& segment = reader[0];
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator();
-      ASSERT_NE(nullptr, values);
-      auto* actual_value = irs::get<irs::payload>(*values);
-      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(4, segment.docs_count()); // total count of documents
       ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
@@ -9243,6 +9257,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // with deleted docs
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
@@ -9261,6 +9280,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // without deleted docs
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
@@ -9359,10 +9383,6 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
         auto& segment = reader[0];
         const auto* column = segment.column_reader("name");
         ASSERT_NE(nullptr, column);
-        auto values = column->iterator();
-        ASSERT_NE(nullptr, values);
-        auto* actual_value = irs::get<irs::payload>(*values);
-        ASSERT_NE(nullptr, actual_value);
         ASSERT_EQ(4, segment.docs_count()); // total count of documents
         ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
         auto terms = segment.field("same");
@@ -9372,6 +9392,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
         // with deleted docs
         {
+          auto values = column->iterator();
+          ASSERT_NE(nullptr, values);
+          auto* actual_value = irs::get<irs::payload>(*values);
+          ASSERT_NE(nullptr, actual_value);
+
           auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
           ASSERT_TRUE(docsItr->next());
           ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
@@ -9390,6 +9415,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
         // without deleted docs
         {
+          auto values = column->iterator();
+          ASSERT_NE(nullptr, values);
+          auto* actual_value = irs::get<irs::payload>(*values);
+          ASSERT_NE(nullptr, actual_value);
+
           auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
           ASSERT_TRUE(docsItr->next());
           ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
@@ -9752,10 +9782,6 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       auto& segment = reader[0];
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator();
-      ASSERT_NE(nullptr, values);
-      auto* actual_value = irs::get<irs::payload>(*values);
-      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(4, segment.docs_count()); // total count of documents
       ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
@@ -9765,6 +9791,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // with deleted docs
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
@@ -9783,6 +9814,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // without deleted docs
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
@@ -9933,10 +9969,6 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       auto& segment = reader[1];
       const auto* column = segment.column_reader("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator();
-      ASSERT_NE(nullptr, values);
-      auto* actual_value = irs::get<irs::payload>(*values);
-      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(4, segment.docs_count()); // total count of documents
       ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
       auto terms = segment.field("same");
@@ -9946,6 +9978,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // with deleted docs
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
@@ -9964,6 +10001,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // without deleted docs
       {
+        auto values = column->iterator();
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));

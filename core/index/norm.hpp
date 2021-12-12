@@ -140,18 +140,19 @@ class norm2_writer final : public feature_writer {
       // cppcheck-suppress constParameter
       columnstore_writer::values_writer_f& writer) final {
     hdr_.update(stats.len);
+    writer(doc).write_int(stats.len);
 
-    if constexpr (NumBytes == sizeof(byte_type)) {
-      writer(doc).write_byte(static_cast<byte_type>(stats.len & 0xFF));
-    }
-
-    if constexpr (NumBytes == sizeof(uint16_t)) {
-      writer(doc).write_short(static_cast<uint16_t>(stats.len & 0xFFFF));
-    }
-
-    if constexpr (NumBytes == sizeof(uint32_t)) {
-      writer(doc).write_int(stats.len);
-    }
+//    if constexpr (NumBytes == sizeof(byte_type)) {
+//      writer(doc).write_byte(static_cast<byte_type>(stats.len & 0xFF));
+//    }
+//
+//    if constexpr (NumBytes == sizeof(uint16_t)) {
+//      writer(doc).write_short(static_cast<uint16_t>(stats.len & 0xFFFF));
+//    }
+//
+//    if constexpr (NumBytes == sizeof(uint32_t)) {
+//      writer(doc).write_int(stats.len);
+//    }
   }
 
   virtual void finish(bstring& out) final {

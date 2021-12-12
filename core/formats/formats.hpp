@@ -520,7 +520,7 @@ struct IRESEARCH_API index_meta_reader {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API format {
  public:
-  typedef std::shared_ptr<const format> ptr;
+  using ptr = std::shared_ptr<const format>;
 
   explicit format(const type_info& type) noexcept : type_(type) {}
   virtual ~format() = default;

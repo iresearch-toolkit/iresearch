@@ -622,10 +622,6 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
   auto& segment = reader[0]; // assume 0 is id of first/only segment
   auto column = segment.column_reader("name");
   ASSERT_NE(nullptr, column);
-  auto values = column->iterator();
-  ASSERT_NE(nullptr, values);
-  auto* actual_value = irs::get<irs::payload>(*values);
-  ASSERT_NE(nullptr, actual_value);
 
   // default range builder functr ()
   {
@@ -637,6 +633,11 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
 
     auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
+
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
@@ -657,6 +658,11 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
@@ -676,6 +682,11 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     ASSERT_TRUE(docsItr->next());
@@ -694,6 +705,11 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
 
     auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
+
+    auto values = column->iterator();
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());

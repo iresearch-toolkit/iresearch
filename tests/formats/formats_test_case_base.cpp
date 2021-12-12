@@ -1175,12 +1175,11 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
-    ASSERT_NE(nullptr, actual_value);
 
     for (irs::doc_id_t id = 0; id < seg.docs_count; ) {
       ++id;
       ASSERT_EQ(id, values->seek(id));
-      ASSERT_TRUE(actual_value->value.null());
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
     }
   }
 }
@@ -1231,9 +1230,9 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_TRUE(!actual_value || actual_value->value.null());
-      ASSERT_EQ(4, values->seek(1));
+      ASSERT_EQ(2, values->seek(1));
       ASSERT_TRUE(!actual_value || actual_value->value.null());
-      ASSERT_EQ(4, values->seek(1));
+      ASSERT_EQ(2, values->seek(2));
       ASSERT_TRUE(!actual_value || actual_value->value.null());
       ASSERT_EQ(4, values->seek(4));
       ASSERT_TRUE(!actual_value || actual_value->value.null());
@@ -1388,9 +1387,9 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_TRUE(!actual_value || actual_value->value.null());
-      ASSERT_EQ(4, values->seek(1));
+      ASSERT_EQ(2, values->seek(1));
       ASSERT_TRUE(!actual_value || actual_value->value.null());
-      ASSERT_EQ(4, values->seek(1));
+      ASSERT_EQ(2, values->seek(2));
       ASSERT_TRUE(!actual_value || actual_value->value.null());
       ASSERT_EQ(4, values->seek(4));
       ASSERT_TRUE(!actual_value || actual_value->value.null());
@@ -2830,13 +2829,14 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment0_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      auto column = column_reader->iterator();
-      ASSERT_NE(nullptr, column);
-      auto* actual_value = irs::get<irs::payload>(*column);
-      ASSERT_NE(nullptr, actual_value);
 
       // read (not cached)
       {
+        auto column = column_reader->iterator();
+        ASSERT_NE(nullptr, column);
+        auto* actual_value = irs::get<irs::payload>(*column);
+        ASSERT_NE(nullptr, actual_value);
+
         ASSERT_EQ(1, column->seek(1)); // check doc==1, column==field0
         ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
         ASSERT_EQ(33, column->seek(5)); // doc without value in field0
@@ -2846,6 +2846,11 @@ TEST_P(format_test_case, columns_rw) {
 
       // read (cached)
       {
+        auto column = column_reader->iterator();
+        ASSERT_NE(nullptr, column);
+        auto* actual_value = irs::get<irs::payload>(*column);
+        ASSERT_NE(nullptr, actual_value);
+
         ASSERT_EQ(1, column->seek(1)); // check doc==0, column==field0
         ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
         ASSERT_EQ(33, column->seek(5)); // doc without value in field0

@@ -250,7 +250,7 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
 
     auto it = column->iterator();
     auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_FALSE(payload);
+    ASSERT_TRUE(!payload || payload->value.null());
 
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
     while (it->next()) {
@@ -411,6 +411,6 @@ TEST_P(sorted_column_test_case, sort) {
 INSTANTIATE_TEST_SUITE_P(
     sorted_column_test,
     sorted_column_test_case,
-    ::testing::Values("1_0", "1_5"));
+    ::testing::Values("1_0", "1_4"));
 
 #endif // IRESEARCH_DLL
