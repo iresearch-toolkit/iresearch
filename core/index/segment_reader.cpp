@@ -244,6 +244,7 @@ class segment_reader_impl : public sub_reader {
 
  private:
   using named_columns = absl::flat_hash_map<hashed_string_ref, const irs::column_reader*>;
+  using sorted_named_columns = std::vector<std::reference_wrapper<const irs::column_reader>>;
 
   DECLARE_SHARED_PTR(segment_reader_impl); // required for NAMED_PTR(...)
   columnstore_reader::ptr columnstore_reader_;
@@ -254,6 +255,7 @@ class segment_reader_impl : public sub_reader {
   field_reader::ptr field_reader_;
   uint64_t meta_version_;
   named_columns named_columns_;
+  sorted_named_columns sorted_named_columns_;
 
   segment_reader_impl(
     const directory& dir,
@@ -337,19 +339,17 @@ const irs::column_reader* segment_reader_impl::column_reader(
 
 column_iterator::ptr segment_reader_impl::columns() const {
   struct less {
-    bool operator()(
-        const irs::column_meta& lhs,
-        const string_ref& rhs) const noexcept {
-      return lhs.name < rhs;
+    bool operator()(const irs::column_reader& lhs,
+                    const string_ref& rhs) const noexcept {
+      return lhs.name() < rhs;
     }
   }; // less
 
   typedef iterator_adaptor<
-    string_ref, column_meta, column_iterator, less
-  > iterator_t;
+      string_ref, irs::column_reader, decltype(sorted_named_columns_.begin()), column_iterator, less> iterator_t;
 
   return memory::make_managed<iterator_t>(
-    columns_.data(), columns_.data() + columns_.size());
+      std::begin(sorted_named_columns_), std::end(sorted_named_columns_));
 }
 
 doc_iterator::ptr segment_reader_impl::docs_iterator() const {
@@ -401,14 +401,20 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
       }
     }
 
-    // FIXME(gnusi): reserve space for named columns???
-    // reader->named_columns_.reserve(columnstore_reader->size()); - too rough
+    // FIXME(gnusi): too rough, we must exlude unnamed columns
+    const size_t num_columns = columnstore_reader->size();
 
-    columnstore_reader->visit([&reader, &meta](const irs::column_reader& column){
+    auto& named_columns = reader->named_columns_;
+    named_columns.reserve(num_columns);
+    auto& sorted_named_columns = reader->sorted_named_columns_;
+    sorted_named_columns.reserve(num_columns);
+
+    columnstore_reader->visit(
+        [&named_columns, &sorted_named_columns, &meta](const irs::column_reader& column){
       const auto name = column.name();
 
       if (!name.null()) {
-        const auto [it, is_new] = reader->named_columns_.emplace(make_hashed_ref(name), &column);
+        const auto [it, is_new] = named_columns.emplace(make_hashed_ref(name), &column);
         UNUSED(it);
 
         if (IRS_UNLIKELY(!is_new)) {
@@ -416,6 +422,14 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
             "duplicate named column '%s' in segment '%s'",
             static_cast<std::string>(name), meta.name.c_str()));
         }
+
+        if (!sorted_named_columns.empty() &&
+            sorted_named_columns.back().get().name() >= name) {
+          throw index_error(string_utils::to_string(
+            "Named columns are out of order in segment '%s'", meta.name.c_str()));
+        }
+
+        sorted_named_columns.emplace_back(column);
       }
 
       return true;

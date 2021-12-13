@@ -996,6 +996,19 @@ constexpr column_factory_f FACTORIES[] {
   &fixed_length_column::read,
   &dense_fixed_length_column::read };
 
+
+bool less(string_ref lhs, string_ref rhs) noexcept {
+  if (lhs.null()) {
+    return true;
+  }
+
+  if (rhs.null()) {
+    return false;
+  }
+
+  return lhs < rhs;
+}
+
 }
 
 namespace iresearch {
@@ -1145,7 +1158,7 @@ void column::finish(index_output& index_out) {
     docs_.file >> data_out;
   }
 
-  if (no_name_) {
+  if (!name_.has_value()) {
     hdr.props |= ColumnProperty::NO_NAME;
   }
 
@@ -1182,14 +1195,16 @@ void column::finish(index_output& index_out) {
   irs::write_string(index_out, compression_.name());
   write_header(index_out, hdr);
   index_out.write_int(ord_); // ordinal position
-  if (!no_name_) {
+  if (name_.has_value()) {
+    auto& name = name_.value();
+
     if (ctx_.cipher) {
       ctx_.cipher->encrypt(index_out.file_pointer(),
-                           reinterpret_cast<byte_type*>(name_.data()),
-                           name_.size());
+                           reinterpret_cast<byte_type*>(name.data()),
+                           name.size());
     }
 
-    irs::write_string(index_out, name_);
+    irs::write_string(index_out, name);
   }
 
   if (hdr.docs_index) {
@@ -1349,7 +1364,9 @@ bool writer::commit(const flush_state& /*state*/) {
             std::back_inserter(sorted_columns_));
   std::sort(std::begin(sorted_columns_),
             std::end(sorted_columns_),
-            std::less<const column&>{});
+            [](const column& lhs, const column& rhs) {
+              return ::less(lhs.name(), rhs.name());
+            });
 
   // Ensured by `push_column(...)`
   assert(columns_.size() < field_limits::invalid());
@@ -1443,6 +1460,7 @@ void reader::prepare_data(const directory& dir, const std::string& filename) {
 // FIXME return result???
 void reader::prepare_index(
     const directory& dir,
+    const segment_meta& meta,
     const std::string& filename) {
   auto index_in = dir.open(filename, irs::IOAdvice::READONCE_SEQUENTIAL);
 
@@ -1539,6 +1557,16 @@ void reader::prepare_index(
 
   format_utils::check_footer(*index_in, checksum);
 
+  if (!std::is_sorted(std::begin(sorted_columns),
+                      std::end(sorted_columns),
+                      [](const auto* lhs, const auto* rhs) {
+                        return ::less(lhs->name(), rhs->name());
+                      })) {
+    throw irs::index_error(irs::string_utils::to_string(
+        "invalid column order in segment '%s'",
+        meta.name.c_str()));
+  }
+
   // noexcept block
   columns_ = std::move(columns);
   sorted_columns_ = std::move(sorted_columns);
@@ -1578,7 +1606,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
       index_filename.c_str())};
   }
 
-  prepare_index(dir, index_filename);
+  prepare_index(dir, meta, index_filename);
 
   return true;
 }

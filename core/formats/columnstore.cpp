@@ -379,14 +379,14 @@ void meta_writer::flush() {
   count_ = 0;
 }
 
-class meta_reader final : public irs::column_meta_reader {
+class meta_reader final {
  public:
-  virtual bool prepare(
+  bool prepare(
     const directory& dir,
     const segment_meta& meta,
     size_t& count,
-    field_id& max_id) override;
-  virtual bool read(column_meta& column) override;
+    field_id& max_id);
+  bool read(column_meta& column);
 
  private:
   encryption::stream::ptr in_cipher_;
@@ -488,65 +488,6 @@ bool meta_reader::read(column_meta& column) {
   column.id = id;
   --count_;
 
-  return true;
-}
-
-bool read_columns_meta(
-    const directory& dir,
-    const segment_meta& meta,
-    std::vector<column_meta>& columns,
-    std::vector<column_meta*>& id_to_column,
-    name_to_column_map& name_to_column) {
-  size_t count = 0;
-  irs::field_id max_id;
-  meta_reader reader;
-
-  if (!reader.prepare(dir, meta, count, max_id)) {
-    // no column meta found in a segment
-    return false;
-  }
-
-  columns.reserve(count); // prevent reallocations
-  id_to_column.resize(max_id + 1); // +1 for count
-  name_to_column.reserve(count);
-
-  for (irs::column_meta col_meta; reader.read(col_meta);) {
-    columns.emplace_back(std::move(col_meta));
-
-    auto& column = columns.back();
-    const auto res = name_to_column.emplace(hash_utils::hash(column.name), &column);
-
-    assert(column.id < id_to_column.size());
-
-    if (!res.second || id_to_column[column.id]) {
-      throw irs::index_error(irs::string_utils::to_string(
-        "duplicate column '%s' in segment '%s'",
-        column.name.c_str(),
-        meta.name.c_str()
-      ));
-    }
-
-    id_to_column[column.id] = &column;
-  }
-
-  // check column meta order
-
-  auto less = [] (const irs::column_meta& lhs,
-                  const irs::column_meta& rhs) noexcept {
-    return lhs.name < rhs.name;
-  };
-
-  if (!std::is_sorted(columns.begin(), columns.end(), less)) {
-    columns.clear();
-    id_to_column.clear();
-    name_to_column.clear();
-
-    throw irs::index_error(irs::string_utils::to_string(
-        "invalid column order in segment '%s'",
-        meta.name.c_str()));
-  }
-
-  // column meta exists
   return true;
 }
 
@@ -2025,8 +1966,7 @@ class column
   }
 
   virtual string_ref name() const final {
-    // FIXME(gnusi): implement
-    return string_ref::NIL;
+    return name_.has_value() ? name_.value() : string_ref::NIL;
   }
 
   virtual bytes_ref payload() const final {
@@ -2043,6 +1983,10 @@ class column
       avg_block_count_ = count_;
     }
     decomp_ = std::move(decomp);
+  }
+
+  void set_name(std::string&& name) noexcept {
+    name_ = std::move(name);
   }
 
   bool encrypted() const noexcept { return encrypted_; }
@@ -2066,6 +2010,7 @@ class column
   uint32_t avg_block_count_{};
   ColumnProperty props_{ CP_SPARSE };
   field_id id_;
+  std::optional<std::string> name_;
   bool encrypted_{ false }; // cached encryption mark
 }; // column
 
@@ -2728,8 +2673,42 @@ class reader final: public columnstore_reader, public context_provider {
   }
 
  private:
+  bool read_meta(
+    const directory& dir,
+    const segment_meta& meta,
+    std::vector<column::ptr>& columns);
+
   std::vector<column::ptr> columns_;
 }; // reader
+
+bool reader::read_meta(
+    const directory& dir,
+    const segment_meta& meta,
+    std::vector<column::ptr>& columns) {
+  size_t count = 0;
+  irs::field_id max_id;
+  meta_reader reader;
+
+  if (!reader.prepare(dir, meta, count, max_id)) {
+    // no column meta found in a segment
+    return false;
+  }
+
+  for (column_meta col_meta; reader.read(col_meta);) {
+    if (col_meta.id >= columns.size()) {
+      throw irs::index_error(irs::string_utils::to_string(
+        "invalid column '%s' id in segment '%s'",
+        col_meta.name.c_str(),
+        meta.name.c_str()));
+    }
+
+    assert(col_meta.id == columns[col_meta.id]->id());
+    columns[col_meta.id]->set_name(std::move(col_meta.name));
+  }
+
+  // column meta exists
+  return true;
+}
 
 bool reader::prepare(const directory& dir, const segment_meta& meta) {
   const auto filename = file_name(meta.name, writer::FORMAT_EXT);
@@ -2860,7 +2839,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     columns.emplace_back(std::move(column));
   }
 
-  read_columns_meta(meta.codec, dir, meta);
+  read_meta(dir, meta, columns);
 
   // noexcept
   context_provider::prepare(std::move(stream), std::move(cipher));

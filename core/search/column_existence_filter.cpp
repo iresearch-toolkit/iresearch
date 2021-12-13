@@ -110,8 +110,8 @@ class column_prefix_existence_query final : public column_existence_query {
 
     disjunction_t::doc_iterators_t itrs;
 
-    while (irs::starts_with(it->value().name, prefix)) {
-      const auto* column = segment.column_reader(it->value().id);
+    while (irs::starts_with(it->value().name(), prefix)) {
+      const auto* column = segment.column_reader(it->value().id());
 
       if (!column) {
         continue;

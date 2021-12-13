@@ -381,14 +381,8 @@ bool sorting_compound_doc_iterator::next() {
   return false;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @struct compound_iterator
-//////////////////////////////////////////////////////////////////////////////
-template<typename Iterator>
-class compound_iterator {
+class compound_column_iterator {
  public:
-  typedef typename std::remove_reference<decltype(Iterator()->value())>::type value_type;
-
   size_t size() const { return iterators_.size(); }
 
   void add(const sub_reader& reader,
@@ -409,9 +403,12 @@ class compound_iterator {
     return true;
   }
 
-  const value_type& operator*() const {
-    static value_type empty;
-    return current_value_ ? *current_value_ : empty;
+  const column_reader& operator*() const {
+    if (IRS_LIKELY(current_value_)) {
+      return *current_value_;
+    }
+
+    return column_iterator::empty()->value();
   }
 
   bool next() {
@@ -432,7 +429,7 @@ class compound_iterator {
       }
 
       const auto& value = it->value();
-      const string_ref key = value.name;
+      const string_ref key = value.name();
 
       if (!iterator_mask_.empty() && current_key_ < key) {
         continue; // empty field or value too large
@@ -445,7 +442,7 @@ class compound_iterator {
         current_value_ = &value;
       }
 
-      assert(value == *current_value_); // validated by caller
+      assert(&value == current_value_); // validated by caller
       iterator_mask_.push_back(i);
     }
 
@@ -461,7 +458,7 @@ class compound_iterator {
  private:
   struct iterator_t : util::noncopyable {
     iterator_t(
-        Iterator&& it,
+        column_iterator::ptr&& it,
         const sub_reader& reader,
         const doc_map_f& doc_map)
       : it(std::move(it)),
@@ -472,14 +469,14 @@ class compound_iterator {
     iterator_t(iterator_t&&) = default;
     iterator_t& operator=(iterator_t&&) = delete;
 
-    Iterator it;
+    column_iterator::ptr it;
     const sub_reader* reader;
     const doc_map_f* doc_map;
   };
 
   static_assert(std::is_nothrow_move_constructible_v<iterator_t>);
 
-  const value_type* current_value_{};
+  const column_reader* current_value_{};
   string_ref current_key_;
   std::vector<size_t> iterator_mask_; // valid iterators for current step 
   std::vector<iterator_t> iterators_; // all segment iterators
@@ -736,8 +733,6 @@ class compound_field_iterator : public basic_term_reader {
   mutable compound_term_iterator term_itr_;
   progress_tracker progress_;
 }; // compound_field_iterator
-
-typedef compound_iterator<column_iterator::ptr> compound_column_meta_iterator_t;
 
 void compound_field_iterator::add(
     const sub_reader& reader,
@@ -1064,7 +1059,7 @@ bool write_columns(
     columnstore& cs,
     sorting_compound_doc_iterator& columns,
     const column_info_provider_t& column_info,
-    compound_column_meta_iterator_t& column_meta_itr,
+    compound_column_iterator& column_meta_itr,
     const merge_writer::flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
   assert(cs);
@@ -1074,8 +1069,8 @@ bool write_columns(
     auto add_iterators = [&itrs](
         const sub_reader& segment,
         const doc_map_f& doc_map,
-        const column_meta& column) {
-      auto* reader = segment.column_reader(column.id);
+        const irs::column_reader& column) {
+      auto* reader = segment.column_reader(column.id());
 
       if (!reader) {
         return false;
@@ -1090,7 +1085,7 @@ bool write_columns(
   };
 
   while (column_meta_itr.next()) {
-    const auto& column_name = (*column_meta_itr).name;
+    const auto& column_name = (*column_meta_itr).name();
     cs.reset(column_info(column_name));
 
     // visit matched columns from merging segments and
@@ -1110,7 +1105,7 @@ bool write_columns(
 bool write_columns(
     columnstore& cs,
     const column_info_provider_t& column_info,
-    compound_column_meta_iterator_t& column_itr,
+    compound_column_iterator& column_itr,
     const merge_writer::flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
   assert(cs);
@@ -1119,12 +1114,12 @@ bool write_columns(
   auto visitor = [&cs](
       const sub_reader& segment,
       const doc_map_f& doc_map,
-      const column_meta& column) {
-    return cs.insert(segment, column.id, doc_map);
+      const irs::column_reader& column) {
+    return cs.insert(segment, column.id(), doc_map);
   };
 
   while (column_itr.next()) {
-    const auto& column_name = (*column_itr).name;
+    const auto& column_name = (*column_itr).name();
     cs.reset(column_info(column_name));
 
     // visit matched columns from merging segments and
@@ -1368,7 +1363,7 @@ bool merge_writer::flush(
 
   field_meta_map_t field_meta_map;
   compound_field_iterator fields_itr(progress);
-  compound_column_meta_iterator_t columns_meta_itr;
+  compound_column_iterator columns_meta_itr;
   feature_set_t fields_features;
   IndexFeatures index_features{IndexFeatures::NONE};
 
@@ -1473,7 +1468,7 @@ bool merge_writer::flush_sorted(
   assert(feature_info_ && *feature_info_);
 
   field_meta_map_t field_meta_map;
-  compound_column_meta_iterator_t columns_meta_itr;
+  compound_column_iterator columns_meta_itr;
   compound_field_iterator fields_itr(progress, comparator_);
   feature_set_t fields_features;
   IndexFeatures index_features{IndexFeatures::NONE};

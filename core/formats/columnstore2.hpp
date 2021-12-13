@@ -90,18 +90,6 @@ class column final : public irs::column_output {
 
   virtual void reset() override;
 
-  bool operator<(const column& rhs) const noexcept {
-    if (no_name_) {
-      return true;
-    }
-
-    if (rhs.no_name_) {
-      return false;
-    }
-
-    return name_ < rhs.name_;
-  }
-
  private:
   friend class writer;
 
@@ -173,10 +161,14 @@ class column final : public irs::column_output {
     ord_ = ord;
   }
 
+  string_ref name() const noexcept {
+    return name_.has_value() ? name_.value() : string_ref::NIL;
+  }
+
   void flush_block();
 
   context ctx_;
-  std::string name_;
+  std::optional<std::string> name_;
   irs::type_info compression_;
   compression::compressor::ptr deflater_;
   columnstore_writer::column_header_writer_f header_writer_;
@@ -191,7 +183,6 @@ class column final : public irs::column_output {
   doc_id_t pend_{}; // last pushed doc_id_t
   field_id ord_{field_limits::invalid()}; // ordinal position
   bool fixed_length_{true};
-  bool no_name_{true};
 #ifdef IRESEARCH_DEBUG
   bool sealed_{false};
 #endif
@@ -346,6 +337,7 @@ class reader final : public columnstore_reader {
 
   void prepare_index(
     const directory& dir,
+    const segment_meta& meta,
     const std::string& filename);
 
   std::vector<column_ptr> columns_;

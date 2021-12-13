@@ -982,7 +982,7 @@ class index_test_case : public tests::index_test_base {
     // read columns 
     {
       auto visit_column = [&segment] (const irs::string_ref& column_name) {
-        auto* meta = segment.column(column_name);
+        auto* meta = segment.column_reader(column_name);
         if (!meta) {
           return false;
         }
@@ -1014,7 +1014,7 @@ class index_test_case : public tests::index_test_base {
           return true;
         };
 
-        auto* column = segment.column_reader(meta->id);
+        auto* column = segment.column_reader(meta->id());
 
         if (!column) {
           return false;
@@ -1024,7 +1024,7 @@ class index_test_case : public tests::index_test_base {
       };
 
       auto read_column_offset = [&segment](const irs::string_ref& column_name, irs::doc_id_t offset) {
-        auto* meta = segment.column(column_name);
+        auto* meta = segment.column_reader(column_name);
         if (!meta) {
           return false;
         }
@@ -1033,7 +1033,7 @@ class index_test_case : public tests::index_test_base {
         tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
         const tests::document* doc = nullptr;
 
-        auto column = segment.column_reader(meta->id);
+        auto column = segment.column_reader(meta->id());
         if (!column) {
           return false;
         }
@@ -1077,7 +1077,7 @@ class index_test_case : public tests::index_test_base {
       };
 
       auto iterate_column = [&segment](const irs::string_ref& column_name) {
-        auto* meta = segment.column(column_name);
+        auto* meta = segment.column_reader(column_name);
         if (!meta) {
           return false;
         }
@@ -1087,7 +1087,7 @@ class index_test_case : public tests::index_test_base {
         tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
         const tests::document* doc = nullptr;
 
-        auto column = segment.column_reader(meta->id);
+        auto column = segment.column_reader(meta->id());
 
         if (!column) {
           return false;
@@ -1468,7 +1468,7 @@ class index_test_case : public tests::index_test_base {
 
       for (auto expected = names.begin(); expected != names.end();) {
         ASSERT_TRUE(actual->next());
-        ASSERT_EQ(*expected, actual->value().name);
+        ASSERT_EQ(*expected, actual->value().name());
         ++expected;
       }
       ASSERT_FALSE(actual->next());
@@ -1485,16 +1485,16 @@ class index_test_case : public tests::index_test_base {
 
       for (auto expected = names.begin(), prev = expected; expected != names.end();) {
         ASSERT_TRUE(actual->seek(*expected));
-        ASSERT_EQ(*expected, actual->value().name);
+        ASSERT_EQ(*expected, actual->value().name());
 
         if (prev != expected) {
           ASSERT_TRUE(actual->seek(*prev)); // can't seek backwards
-          ASSERT_EQ(*expected, actual->value().name);
+          ASSERT_EQ(*expected, actual->value().name());
         }
 
         // seek to the same value
         ASSERT_TRUE(actual->seek(*expected));
-        ASSERT_EQ(*expected, actual->value().name);
+        ASSERT_EQ(*expected, actual->value().name());
 
         prev = expected;
         ++expected;
@@ -1516,21 +1516,21 @@ class index_test_case : public tests::index_test_base {
       const auto key = irs::string_ref("0");
       ASSERT_TRUE(key < names.front());
       ASSERT_TRUE(actual->seek(key));
-      ASSERT_EQ(*expected, actual->value().name);
+      ASSERT_EQ(*expected, actual->value().name());
 
       ++expected;
       for (auto prev = names.begin(); expected != names.end();) {
         ASSERT_TRUE(actual->next());
-        ASSERT_EQ(*expected, actual->value().name);
+        ASSERT_EQ(*expected, actual->value().name());
 
         if (prev != expected) {
           ASSERT_TRUE(actual->seek(*prev)); // can't seek backwards
-          ASSERT_EQ(*expected, actual->value().name);
+          ASSERT_EQ(*expected, actual->value().name());
         }
 
         // seek to the same value
         ASSERT_TRUE(actual->seek(*expected));
-        ASSERT_EQ(*expected, actual->value().name);
+        ASSERT_EQ(*expected, actual->value().name());
 
         prev = expected;
         ++expected;
@@ -1574,7 +1574,7 @@ class index_test_case : public tests::index_test_base {
         auto& expected = seek.second;
 
         ASSERT_TRUE(actual->seek(key));
-        ASSERT_EQ(expected, actual->value().name);
+        ASSERT_EQ(expected, actual->value().name());
       }
 
       const auto key = irs::string_ref("~");
@@ -1601,11 +1601,11 @@ class index_test_case : public tests::index_test_base {
         auto actual = segment.columns();
 
         ASSERT_TRUE(actual->seek(key));
-        ASSERT_EQ(*expected, actual->value().name);
+        ASSERT_EQ(*expected, actual->value().name());
 
         for (++expected; expected != names.end(); ++expected) {
           ASSERT_TRUE(actual->next());
-          ASSERT_EQ(*expected, actual->value().name);
+          ASSERT_EQ(*expected, actual->value().name());
         }
 
         ASSERT_FALSE(actual->next()); // reached the end
