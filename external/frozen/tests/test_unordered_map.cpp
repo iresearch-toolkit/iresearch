@@ -1,4 +1,5 @@
 #include <frozen/unordered_map.h>
+#include <frozen/string.h>
 #include <iostream>
 #include <unordered_map>
 
@@ -137,6 +138,8 @@ TEST_CASE("frozen::unordered_map <> std::unordered_map", "[unordered_map]") {
 TEST_CASE("frozen::unordered_map <> frozen::make_unordered_map", "[unordered_map]") {
   constexpr frozen::unordered_map<int, int, 128> frozen_map = { INIT_SEQ };
   constexpr auto frozen_map2 = frozen::make_unordered_map<int, int>({INIT_SEQ});
+  constexpr auto frozen_map3 = frozen::make_unordered_map(std::array<std::pair<int, int>, 128>{{INIT_SEQ}});
+  REQUIRE(std::equal(frozen_map2.begin(), frozen_map2.end(), frozen_map3.begin()));
 
   SECTION("checking size and content") {
     REQUIRE(frozen_map.size() == frozen_map2.size());
@@ -145,6 +148,26 @@ TEST_CASE("frozen::unordered_map <> frozen::make_unordered_map", "[unordered_map
     for (auto v : frozen_map)
       REQUIRE(frozen_map2.count(std::get<0>(v)));
   }
+}
+
+TEST_CASE("frozen::unordered_map <> std::unordered_map /small", "[unordered_map]") {
+#define INIT_SEQ_SMALL \
+{"0", 0},{"1", 1},{"2", 2},{"3", 3},{"5", 4},{"8", 5},{"9", 6},{"A", 7},{"W", 8},{"X", 9},{"r", 10},{"y", 11},{"BF", 12},{"AP", 13}
+
+  const std::unordered_map<frozen::string, int> std_map = { INIT_SEQ_SMALL };
+  constexpr frozen::unordered_map<frozen::string, int, 14> frozen_map = { INIT_SEQ_SMALL };
+  SECTION("checking size and content") {
+    REQUIRE(std_map.size() == frozen_map.size());
+    for (auto v : std_map)
+      REQUIRE(frozen_map.count(std::get<0>(v)));
+    for (auto v : frozen_map)
+      REQUIRE(std_map.count(std::get<0>(v)));
+  }
+
+  static_assert(std::is_same<typename decltype(std_map)::key_type,
+                             typename decltype(frozen_map)::key_type>::value, "");
+  static_assert(std::is_same<typename decltype(std_map)::mapped_type,
+                             typename decltype(frozen_map)::mapped_type>::value, "");
 }
 
 TEST_CASE("frozen::unordered_map constexpr", "[unordered_map]") {
@@ -160,4 +183,41 @@ TEST_CASE("access", "[unordered_map]") {
   constexpr frozen::unordered_map<unsigned, unsigned, 2> ce = {{3,4}, {11,12}};
   REQUIRE(4 == ce.at(3));
   REQUIRE_THROWS(ce.at(33));
+}
+
+TEST_CASE("Modifiable frozen::unordered_map", "[unordered_map]") {
+  frozen::unordered_map<int, int, 3> frozen_map = {{0, 1}, {2, 3}, {4, 5}};
+
+  SECTION("Lookup existing values") {
+    REQUIRE(frozen_map.at(0) == 1);
+    REQUIRE(frozen_map.find(0)->second == 1);
+    REQUIRE(frozen_map.equal_range(0).first->second == 1);
+
+    REQUIRE(frozen_map.at(2) == 3);
+    REQUIRE(frozen_map.find(2)->second == 3);
+    REQUIRE(frozen_map.equal_range(2).first->second == 3);
+
+    REQUIRE(frozen_map.at(4) == 5);
+    REQUIRE(frozen_map.find(4)->second == 5);
+    REQUIRE(frozen_map.equal_range(4).first->second == 5);
+  }
+
+  SECTION("Lookup failure") {
+    REQUIRE(frozen_map.find(5) == frozen_map.end());
+    REQUIRE_THROWS_AS(frozen_map.at(5), std::out_of_range);
+  }
+
+  SECTION("Modify value") {
+    frozen_map.at(0) = -1;
+    REQUIRE(frozen_map.at(0) == -1);
+
+    frozen_map.begin()->second = -2;
+    REQUIRE(frozen_map.begin()->second == -2);
+
+    (frozen_map.end() - 1)->second = -3;
+    REQUIRE((frozen_map.end() - 1)->second == -3);
+
+    frozen_map.equal_range(4).first->second = -5;
+    REQUIRE(frozen_map.at(4) == -5);
+  }
 }

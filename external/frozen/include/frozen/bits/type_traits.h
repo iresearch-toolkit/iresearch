@@ -20,11 +20,31 @@
  * under the License.
  */
 
-#ifndef FROZEN_LETITGO_VERSION_H
-#define FROZEN_LETITGO_VERSION_H
+#ifndef FROZEN_LETITGO_BITS_TYPE_TRAITS_H
+#define FROZEN_LETITGO_BITS_TYPE_TRAITS_H
 
-#define FROZEN_MAJOR_VERSION 1
-#define FROZEN_MINOR_VERSION 0
-#define FROZEN_PATCH_VERSION 1
+#include <type_traits>
+
+namespace frozen {
+
+namespace bits {
+
+template <class...>
+using void_t = void;
+
+template <class, class, class = void_t<>>
+struct has_is_transparent
+{};
+template <class T, class U>
+struct has_is_transparent<T, U, void_t<typename T::is_transparent>>
+{
+  typedef void type;
+};
+
+template <class T, class U>
+using has_is_transparent_t = typename has_is_transparent<T, U>::type;
+
+} // namespace bits
+} // namespace frozen
 
 #endif
