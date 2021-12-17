@@ -47,6 +47,16 @@ class format_test_case : public index_test_base {
   irs::column_info lz4_column_info() const noexcept;
   irs::column_info none_column_info() const noexcept;
 
+  bool supports_encryption() const noexcept {
+    // old formats don't support columnstore headers
+    constexpr irs::string_ref kOldFormats[] { "1_0" };
+
+    const auto it = std::find(std::begin(kOldFormats),
+                              std::end(kOldFormats),
+                              codec()->type().name());
+    return std::end(kOldFormats) == it;
+  }
+
   bool supports_columnstore_headers() const noexcept {
     // old formats don't support columnstore headers
     constexpr irs::string_ref kOldFormats[] {
