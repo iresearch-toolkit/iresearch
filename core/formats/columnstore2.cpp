@@ -49,8 +49,9 @@ std::string index_file_name(string_ref prefix) {
 
 void write_header(index_output& out, const column_header& hdr) {
   out.write_long(hdr.docs_index);
+  assert(hdr.id < std::numeric_limits<uint32_t>::max());
+  out.write_int(static_cast<uint32_t>(hdr.id & 0xFFFFFFFF));
   out.write_int(hdr.min);
-  out.write_int(hdr.id);
   out.write_int(hdr.docs_count);
   write_enum(out, hdr.type);
   write_enum(out, hdr.props);
@@ -59,8 +60,8 @@ void write_header(index_output& out, const column_header& hdr) {
 column_header read_header(index_input& in) {
   column_header hdr;
   hdr.docs_index = in.read_long();
-  hdr.min = in.read_int();
   hdr.id = in.read_int();
+  hdr.min = in.read_int();
   hdr.docs_count = in.read_int();
   hdr.type = read_enum<ColumnType>(in);
   hdr.props = read_enum<ColumnProperty>(in);
@@ -1494,13 +1495,13 @@ void reader::prepare_index(
 
     if (!inflater && !compression::exists(compression_id)) {
       throw index_error{string_utils::to_string(
-        "Failed to load compression '%s' for column id=%u",
+        "Failed to load compression '%s' for column id=" IR_SIZE_T_SPECIFIER "",
         compression_id.c_str(), i)};
     }
 
     if (inflater && !inflater->prepare(*index_in)) { // FIXME or data_in???
       throw index_error{string_utils::to_string(
-        "Failed to prepare compression '%s' for column id=%u",
+        "Failed to prepare compression '%s' for column id=" IR_SIZE_T_SPECIFIER "",
         compression_id.c_str(), i)};
     }
 
@@ -1508,19 +1509,19 @@ void reader::prepare_index(
 
     if (is_encrypted(hdr) && !data_cipher_) {
       throw index_error{string_utils::to_string(
-        "Failed to load encrypted column id=%u without a cipher",
+        "Failed to load encrypted column id=" IR_SIZE_T_SPECIFIER " without a cipher",
         i)};
     }
 
     if (ColumnType::kMask != hdr.type && 0 == hdr.docs_count) {
       throw index_error{string_utils::to_string(
-        "Failed to load column id=%u, only mask column may be empty",
+        "Failed to load column id=" IR_SIZE_T_SPECIFIER ", only mask column may be empty",
         i)};
     }
 
     if (hdr.id >= std::numeric_limits<uint32_t>::max() || hdr.id >= count) {
       throw index_error{string_utils::to_string(
-        "Failed to load column id=%u, invalid ordinal position",
+        "Failed to load column id=" IR_SIZE_T_SPECIFIER ", invalid ordinal position",
         i)};
     }
 
@@ -1561,7 +1562,7 @@ void reader::prepare_index(
       sorted_columns.emplace_back(std::move(column));
     } else {
       throw index_error{string_utils::to_string(
-        "Failed to load column id=%u, got invalid type=%u",
+        "Failed to load column id=" IR_SIZE_T_SPECIFIER " , got invalid type=%u",
         i, static_cast<uint32_t>(hdr.type))};
     }
   }

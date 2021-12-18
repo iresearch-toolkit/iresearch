@@ -320,6 +320,7 @@ struct IRESEARCH_API columnstore_writer {
   using values_writer_f = std::function<column_output&(doc_id_t doc)>;
 
   // Finalizer can be used to assign name and payload to a column.
+  // Returned `string_ref` must be valid during `commit(...)`.
   using column_finalizer_f = std::function<string_ref(bstring& out)>;
 
   typedef std::pair<field_id, values_writer_f> column_t;

@@ -83,47 +83,28 @@ irs::bytes_ref DUMMY; // placeholder for visiting logic in columnstore
 struct column_meta {
  public:
   column_meta() = default;
-  column_meta(const column_meta&) = default;
-  column_meta(column_meta&& rhs) noexcept;
-  column_meta(const string_ref& field, field_id id);
+  column_meta(column_meta&& rhs) noexcept
+      : name(std::move(rhs.name)), id(rhs.id) {
+    rhs.id = field_limits::invalid();
+  }
 
-  column_meta& operator=(column_meta&& rhs) noexcept;
-  column_meta& operator=(const column_meta&) = default;
+  column_meta(const column_meta&) = delete ;
+  column_meta& operator=(const column_meta&) = delete;
+  column_meta& operator=(column_meta&& rhs) noexcept = delete;
 
-  bool operator==(const column_meta& rhs) const;
-  bool operator!=(const column_meta& rhs) const {
+  bool operator==(const column_meta& rhs) const noexcept {
+    return name == rhs.name;
+  }
+  bool operator!=(const column_meta& rhs) const noexcept {
     return !(*this == rhs);
   }
 
   std::string name;
   field_id id{ field_limits::invalid() };
-}; // column_meta
+};
 
-static_assert(std::is_nothrow_move_constructible<column_meta>::value,
+static_assert(std::is_nothrow_move_constructible_v<column_meta>,
               "default move constructor expected");
-
-column_meta::column_meta(column_meta&& rhs) noexcept
-  : name(std::move(rhs.name)), id(rhs.id) {
-  rhs.id = field_limits::invalid();
-}
-
-column_meta::column_meta(const string_ref& name, field_id id)
-  : name(name.c_str(), name.size()), id(id) {
-}
-
-column_meta& column_meta::operator=(column_meta&& rhs) noexcept {
-  if (this != &rhs) {
-    name = std::move(rhs.name);
-    id = rhs.id;
-    rhs.id = field_limits::invalid();
-  }
-
-  return *this;
-}
-
-bool column_meta::operator==(const column_meta& rhs) const {
-  return name == rhs.name;
-}
 
 struct format_traits {
   FORCE_INLINE static void pack32(
@@ -660,15 +641,17 @@ class writer final : public irs::columnstore_writer {
    public:
     explicit column(writer& ctx, field_id id,
                     const irs::type_info& type,
+                    columnstore_writer::column_finalizer_f&& finalizer,
                     compression::compressor::ptr compressor,
                     encryption::stream* cipher)
       : ctx_(&ctx),
         comp_type_(type),
         comp_(std::move(compressor)),
+        finalizer_{std::move(finalizer)},
         cipher_(cipher),
+        id_(id),
         blocks_index_(*ctx.alloc_),
-        block_buf_(2*MAX_DATA_BLOCK_SIZE, 0),
-        id_(id) {
+        block_buf_(2*MAX_DATA_BLOCK_SIZE, 0) {
       assert(comp_); // ensured by `push_column'
       block_buf_.clear(); // reset size to '0'
     }
@@ -694,28 +677,16 @@ class writer final : public irs::columnstore_writer {
       return !block_index_.total();
     }
 
-    string_ref name() const noexcept {
-      return name_.has_value() ? name_.value() : string_ref::NIL;
-    }
+    string_ref name() const noexcept { return name_; }
 
-    field_id id() const noexcept {
-      return id_;
-    }
+    field_id id() const noexcept { return id_; }
 
-    bool operator<(const column& rhs) const noexcept {
-      if (!name_.has_value()) {
-        return true;
-      }
-
-      if (!rhs.name_.has_value()) {
-        return false;
-      }
-
-      return name_.value() < rhs.name();
-    }
-
-    void finish() {
+    void finish(bstring& tmp) {
       auto& out = *ctx_->data_out_;
+
+      if (finalizer_) {
+        name_ = finalizer_(tmp);
+      }
 
        // evaluate overall column properties
       auto column_props = blocks_props_;
@@ -837,7 +808,9 @@ class writer final : public irs::columnstore_writer {
     writer* ctx_; // writer context
     irs::type_info comp_type_;
     compression::compressor::ptr comp_; // compressor used for column
+    columnstore_writer::column_finalizer_f finalizer_;
     encryption::stream* cipher_;
+    field_id id_;
     uint64_t length_{}; // size of all data blocks in the column
     uint64_t prev_block_size_{};
     index_block<INDEX_BLOCK_SIZE> block_index_; // current block index (per document key/offset)
@@ -849,8 +822,7 @@ class writer final : public irs::columnstore_writer {
     uint32_t avg_block_count_{}; // average number of items per block (tail block is not taken into account since it may skew distribution)
     uint32_t avg_block_size_{}; // average size of the block (tail block is not taken into account since it may skew distribution)
     doc_id_t max_{ doc_limits::invalid() }; // max key (among flushed blocks)
-    field_id id_;
-    std::optional<std::string> name_;
+    string_ref name_;
   }; // column
 
   void flush_meta(const flush_state& meta);
@@ -902,7 +874,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
 
 columnstore_writer::column_t writer::push_column(
     const column_info& info,
-    column_finalizer_f /*writer*/) {
+    column_finalizer_f finalizer) {
   encryption::stream* cipher;
   irs::type_info compression;
 
@@ -923,7 +895,8 @@ columnstore_writer::column_t writer::push_column(
   }
 
   const auto id = columns_.size();
-  columns_.emplace_back(*this, id, info.compression(), std::move(compressor), cipher);
+  columns_.emplace_back(*this, id, info.compression(), std::move(finalizer),
+                        std::move(compressor), cipher);
   auto& column = columns_.back();
 
   return std::make_pair(id, [&column] (doc_id_t doc) -> column_output& {
@@ -940,34 +913,38 @@ columnstore_writer::column_t writer::push_column(
 bool writer::commit(const flush_state& state) {
   assert(dir_);
 
-  // remove all empty columns from tail
+  // Remove all empty columns from tail.
   while (!columns_.empty() && columns_.back().empty()) {
     columns_.pop_back();
   }
 
-  // remove file if there is no data to write
+  // Remove file if there is no data to write.
   if (columns_.empty()) {
     data_out_.reset();
 
-    if (!dir_->remove(filename_)) { // ignore error
+    if (!dir_->remove(filename_)) { // Ignore error.
       IR_FRMT_ERROR("Failed to remove file, path: %s", filename_.c_str());
     }
 
-    return false; // nothing to flush
+    return false; // Nothing to flush.
   }
 
-  // flush all remain data including possible empty columns among filled columns
+  // Flush all remain data including possible
+  // empty columns amongst the filled ones.
   for (auto& column : columns_) {
-    // commit and flush remain blocks
     column.flush();
   }
 
-  const auto block_index_ptr = data_out_->file_pointer(); // where blocks index start
+  const auto block_index_ptr = data_out_->file_pointer(); // Where blocks index start.
 
-  data_out_->write_vlong(columns_.size()); // number of columns
+  data_out_->write_vlong(columns_.size()); // Number of columns.
+
+  // Dummy buffer, current implementation doesn't support column payload.
+  bstring tmp;
 
   for (auto& column : columns_) {
-    column.finish(); // column blocks index
+    tmp.clear();
+    column.finish(tmp);
   }
 
   data_out_->write_long(block_index_ptr);
@@ -992,31 +969,24 @@ void writer::flush_meta(const flush_state& meta) {
   // ensure columns are sorted
   assert(sorted_columns_.empty());
   sorted_columns_.reserve(columns_.size());
-  std::copy(std::begin(columns_),
-            std::end(columns_),
-            std::back_inserter(sorted_columns_));
+  std::copy_if(std::begin(columns_),
+               std::end(columns_),
+               std::back_inserter(sorted_columns_),
+               [](auto& column) noexcept { return !column.name().null(); });
   std::sort(std::begin(sorted_columns_),
             std::end(sorted_columns_),
-            std::less<const column&>{});
+            [](const writer::column& lhs, const writer::column& rhs) noexcept {
+                assert(!rhs.name().null());
+                return lhs.name() < rhs.name();
+            });
 
   // flush columns meta
-  try {
-    meta_writer_.prepare(*dir_, meta.name);
-    for (const writer::column& column : sorted_columns_) {
-      const auto name = column.name();
-
-      if (name.null()) {
-        // don't write columns without names
-        break;
-      }
-
-      meta_writer_.write(name, column.id());
-    }
-    meta_writer_.flush();
-  } catch (...) {
-
-    throw;
+  meta_writer_.prepare(*dir_, meta.name);
+  for (const writer::column& column : sorted_columns_) {
+    assert(!column.name().null());
+    meta_writer_.write(column.name(), column.id());
   }
+  meta_writer_.flush();
 }
 
 template<typename Block, typename Allocator>
@@ -2781,7 +2751,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
 
     if (factory_id >= IRESEARCH_COUNTOF(COLUMN_FACTORIES)) {
       throw index_error(string_utils::to_string(
-        "Failed to load column id=%u, got invalid properties=%d",
+        "Failed to load column id=" IR_SIZE_T_SPECIFIER "), got invalid properties=%d",
         i, static_cast<uint32_t>(props)));
     }
 
@@ -2794,7 +2764,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
         "Enum 'ColumnProperty' has different underlying type");
 
       throw index_error(string_utils::to_string(
-        "Failed to open column id=%u, properties=%d",
+        "Failed to open column id=" IR_SIZE_T_SPECIFIER ", properties=%d",
         i, static_cast<uint32_t>(props)));
     }
 
@@ -2802,7 +2772,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
 
     if (!column) {
       throw index_error(string_utils::to_string(
-        "Factory failed to create column id=%u", i));
+        "Factory failed to create column id=" IR_SIZE_T_SPECIFIER "", i));
     }
 
     compression::decompressor::ptr decomp;
@@ -2813,13 +2783,13 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
 
       if (!decomp && !compression::exists(compression_id)) {
         throw index_error(string_utils::to_string(
-          "Failed to load compression '%s' for column id=%u",
+          "Failed to load compression '%s' for column id=" IR_SIZE_T_SPECIFIER "",
           compression_id.c_str(), i));
       }
 
       if (decomp && !decomp->prepare(*stream)) {
         throw index_error(string_utils::to_string(
-          "Failed to prepare compression '%s' for column id=%u",
+          "Failed to prepare compression '%s' for column id=" IR_SIZE_T_SPECIFIER "",
           compression_id.c_str(), i));
       }
     } else {
@@ -2832,7 +2802,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     try {
       column->read(*stream, buf, std::move(decomp));
     } catch (...) {
-      IR_FRMT_ERROR("Failed to load column id=%u", i);
+      IR_FRMT_ERROR("Failed to load column id=" IR_SIZE_T_SPECIFIER "", i);
 
       throw;
     }
