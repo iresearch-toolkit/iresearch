@@ -3418,7 +3418,7 @@ TEST_P(format_test_case, format_utils_header_footer) {
   }
 }
 
-TEST_P(format_test_case, columnstore_read_write_wrong_encryption) {
+TEST_P(format_test_case_with_encryption, columnstore_read_write_wrong_encryption) {
   if (!supports_encryption()) {
     return;
   }
@@ -3475,32 +3475,7 @@ TEST_P(format_test_case, columnstore_read_write_wrong_encryption) {
   ASSERT_THROW(reader->prepare(dir(), meta), irs::index_error);
 }
 
-TEST_P(format_test_case, write_zero_block_encryption) {
-  if (!supports_encryption()) {
-    return;
-  }
-
-  tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    &tests::generic_json_field_factory);
-
-  tests::document const* doc1 = gen.next();
-
-  // replace encryption
-  dir().attributes() = irs::directory_attributes{
-    0, std::make_unique<tests::rot13_encryption>(0) };
-
-  auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
-  ASSERT_NE(nullptr, writer);
-
-  ASSERT_TRUE(insert(*writer,
-    doc1->indexed.begin(), doc1->indexed.end(),
-    doc1->stored.begin(), doc1->stored.end()));
-
-  ASSERT_THROW(writer->commit(), irs::index_error);
-}
-
-TEST_P(format_test_case, read_zero_block_encryption) {
+TEST_P(format_test_case_with_encryption, read_zero_block_encryption) {
   if (!supports_encryption()) {
     return;
   }
@@ -3535,7 +3510,7 @@ TEST_P(format_test_case, read_zero_block_encryption) {
   ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
 }
 
-TEST_P(format_test_case, fields_read_write_wrong_encryption) {
+TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
   if (!supports_encryption()) {
     return;
   }
@@ -3605,7 +3580,7 @@ TEST_P(format_test_case, fields_read_write_wrong_encryption) {
   ASSERT_THROW(reader->prepare(dir(), meta, docs_mask), irs::index_error);
 }
 
-TEST_P(format_test_case, open_ecnrypted_with_wrong_encryption) {
+TEST_P(format_test_case_with_encryption, open_ecnrypted_with_wrong_encryption) {
   if (!supports_encryption()) {
     return;
   }
@@ -3636,6 +3611,10 @@ TEST_P(format_test_case, open_ecnrypted_with_wrong_encryption) {
 }
 
 TEST_P(format_test_case, open_ecnrypted_with_non_encrypted) {
+  if (!supports_encryption()) {
+    return;
+  }
+
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     &tests::generic_json_field_factory);
@@ -3664,6 +3643,10 @@ TEST_P(format_test_case, open_ecnrypted_with_non_encrypted) {
 }
 
 TEST_P(format_test_case, open_non_ecnrypted_with_encrypted) {
+  if (!supports_encryption()) {
+    return;
+  }
+
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     &tests::generic_json_field_factory);

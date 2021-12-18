@@ -28,11 +28,9 @@
 
 namespace {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          format 12 specific tests
-// -----------------------------------------------------------------------------
+using tests::format_test_case_with_encryption;
 
-class format_12_test_case : public tests::directory_test_case_base<> { };
+class format_12_test_case : public format_test_case_with_encryption { };
 
 TEST_P(format_12_test_case, open_10_with_12) {
   tests::json_doc_generator gen(
@@ -195,25 +193,27 @@ TEST_P(format_12_test_case, formats_10_12) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-  format_12_test,
-  format_12_test_case,
-  ::testing::Values(
-    &tests::rot13_directory<&tests::memory_directory, 16>,
-    &tests::rot13_directory<&tests::fs_directory, 16>,
-    &tests::rot13_directory<&tests::mmap_directory, 16>),
-  tests::directory_test_case_base<>::to_string
-);
+TEST_P(format_12_test_case, write_zero_block_encryption) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     generic tests
-// -----------------------------------------------------------------------------
+  tests::document const* doc1 = gen.next();
 
-using tests::format_test_case;
+  // replace encryption
+  ASSERT_NE(nullptr, dir().attributes().encryption());
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(0) };
 
-INSTANTIATE_TEST_SUITE_P(
-  format_12_test,
-  format_test_case,
+  auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+  ASSERT_NE(nullptr, writer);
+
+  ASSERT_THROW(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end()), irs::index_error);
+}
+
+const auto kTestValues =
   ::testing::Combine(
     ::testing::Values(
       &tests::rot13_directory<&tests::memory_directory, 16>,
@@ -222,8 +222,20 @@ INSTANTIATE_TEST_SUITE_P(
       &tests::rot13_directory<&tests::memory_directory, 7>,
       &tests::rot13_directory<&tests::fs_directory, 7>,
       &tests::rot13_directory<&tests::mmap_directory, 7>),
-    ::testing::Values(tests::format_info{"1_2", "1_0"})),
-  format_test_case::to_string
-);
+    ::testing::Values(tests::format_info{"1_2", "1_0"}));
+
+// 1.2 specific tests
+INSTANTIATE_TEST_SUITE_P(
+    format_12_test,
+    format_12_test_case,
+    kTestValues,
+    format_12_test_case::to_string);
+
+// Generic tests
+INSTANTIATE_TEST_SUITE_P(
+    format_12_test,
+    format_test_case_with_encryption,
+    kTestValues,
+    format_12_test_case::to_string);
 
 }

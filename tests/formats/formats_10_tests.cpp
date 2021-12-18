@@ -929,10 +929,6 @@ TEST_P(format_10_test_case, postings_seek) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        format specific test cases
-// -----------------------------------------------------------------------------
-
 INSTANTIATE_TEST_SUITE_P(
   format_10_test,
   format_10_test_case,
@@ -942,12 +938,7 @@ INSTANTIATE_TEST_SUITE_P(
       &tests::directory<&tests::fs_directory>,
       &tests::directory<&tests::mmap_directory>),
     ::testing::Values("1_0")),
-  format_10_test_case::to_string
-);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                generic test cases
-// -----------------------------------------------------------------------------
+  format_10_test_case::to_string);
 
 INSTANTIATE_TEST_SUITE_P(
   format_10_test,
@@ -958,7 +949,6 @@ INSTANTIATE_TEST_SUITE_P(
       &tests::directory<&tests::fs_directory>,
       &tests::directory<&tests::mmap_directory>),
     ::testing::Values("1_0")),
-  format_test_case::to_string
-);
+  format_test_case::to_string);
 
 }

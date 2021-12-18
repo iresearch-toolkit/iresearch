@@ -1508,7 +1508,9 @@ void reader::prepare_index(
 
     column_header hdr = read_header(*index_in);
 
-    if (is_encrypted(hdr) && !data_cipher_) {
+    const bool encrypted = is_encrypted(hdr);
+
+    if (encrypted && !data_cipher_) {
       throw index_error{string_utils::to_string(
         "Failed to load encrypted column id=" IR_SIZE_T_SPECIFIER " without a cipher",
         i)};
@@ -1532,7 +1534,8 @@ void reader::prepare_index(
     if (ColumnProperty::kNoName != (hdr.props & ColumnProperty::kNoName)) {
       name = irs::read_string<std::string>(*index_in);
 
-      if (data_cipher_) {
+      if (encrypted) {
+        assert(data_cipher_);
         data_cipher_->decrypt(index_in->file_pointer() - name->size(),
                               reinterpret_cast<byte_type*>(name->data()),
                               name->size());

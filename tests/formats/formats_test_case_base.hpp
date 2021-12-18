@@ -278,7 +278,9 @@ class format_test_case : public index_test_base {
 
     ASSERT_TRUE(index_files.empty());
   }
-}; // format_test_case
+};
+
+class format_test_case_with_encryption : public format_test_case { };
 
 } // tests
 
