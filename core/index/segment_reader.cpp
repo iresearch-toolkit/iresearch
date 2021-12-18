@@ -209,7 +209,7 @@ class segment_reader_impl : public sub_reader {
     return memory::make_managed<mask_doc_iterator>(std::move(it), docs_mask_);
   }
 
-  virtual const term_reader* field(const string_ref& name) const override {
+  virtual const term_reader* field(string_ref name) const override {
     return field_reader_->field(name);
   }
 
@@ -240,7 +240,7 @@ class segment_reader_impl : public sub_reader {
 
   virtual const irs::column_reader* column(field_id field) const override;
 
-  virtual const irs::column_reader* column(const string_ref& name) const override;
+  virtual const irs::column_reader* column(string_ref name) const override;
 
  private:
   using named_columns = absl::flat_hash_map<hashed_string_ref, const irs::column_reader*>;
@@ -331,8 +331,7 @@ segment_reader_impl::segment_reader_impl(
     meta_version_(meta_version) {
 }
 
-const irs::column_reader* segment_reader_impl::column(
-    const string_ref& name) const {
+const irs::column_reader* segment_reader_impl::column(string_ref name) const {
   auto it = named_columns_.find(make_hashed_ref(name));
   return it == named_columns_.end() ? nullptr : it->second;
 }
@@ -340,7 +339,7 @@ const irs::column_reader* segment_reader_impl::column(
 column_iterator::ptr segment_reader_impl::columns() const {
   struct less {
     bool operator()(const irs::column_reader& lhs,
-                    const string_ref& rhs) const noexcept {
+                    string_ref rhs) const noexcept {
       return lhs.name() < rhs;
     }
   }; // less
