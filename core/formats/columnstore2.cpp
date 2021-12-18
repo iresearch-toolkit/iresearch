@@ -1151,6 +1151,7 @@ void column::finish(index_output& index_out) {
 
   column_header hdr;
   hdr.docs_count = docs_count_;
+  hdr.id = id_;
 
   memory_index_input in{docs_.file};
   sparse_bitmap_iterator it{&in, {{}, false}};
@@ -1168,7 +1169,7 @@ void column::finish(index_output& index_out) {
     docs_.file >> data_out;
   }
 
-  if (!name_.null()) {
+  if (name_.null()) {
     hdr.props |= ColumnProperty::kNoName;
   }
 
@@ -1484,10 +1485,10 @@ void reader::prepare_index(
 
   const field_id count = index_in->read_vint();
 
-  decltype(columns_) columns;
-  columns.reserve(count);
   decltype(sorted_columns_) sorted_columns;
-  sorted_columns.resize(count);
+  sorted_columns.reserve(count);
+  decltype(columns_) columns;
+  columns.resize(count);
 
   for (field_id i = 0; i < count; ++i) {
     const auto compression_id = read_string<std::string>(*index_in);

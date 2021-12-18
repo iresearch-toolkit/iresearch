@@ -2645,20 +2645,23 @@ class reader final: public columnstore_reader, public context_provider {
   }
 
  private:
-  bool read_meta(
+  static bool read_meta(
     const directory& dir,
     const segment_meta& meta,
-    std::vector<column::ptr>& columns);
+    std::vector<column::ptr>& columns,
+    std::vector<const class column*>& sorted_columns);
 
   std::vector<column::ptr> columns_;
+  std::vector<const class column*> sorted_columns_;
 }; // reader
 
 bool reader::read_meta(
     const directory& dir,
     const segment_meta& meta,
-    std::vector<column::ptr>& columns) {
-  size_t count = 0;
-  irs::field_id max_id;
+    std::vector<column::ptr>& columns,
+    std::vector<const class column*>& sorted_columns) {
+  size_t count{};
+  irs::field_id max_id{};
   meta_reader reader;
 
   if (!reader.prepare(dir, meta, count, max_id)) {
@@ -2666,6 +2669,7 @@ bool reader::read_meta(
     return false;
   }
 
+  sorted_columns.reserve(columns.size());
   for (column_meta col_meta; reader.read(col_meta);) {
     if (col_meta.id >= columns.size()) {
       throw irs::index_error(irs::string_utils::to_string(
@@ -2675,7 +2679,17 @@ bool reader::read_meta(
     }
 
     assert(col_meta.id == columns[col_meta.id]->id());
-    columns[col_meta.id]->set_name(std::move(col_meta.name));
+    auto& column = columns[col_meta.id];
+    column->set_name(std::move(col_meta.name));
+    sorted_columns.emplace_back(column.get());
+  }
+
+  for (auto& column : columns) {
+    const auto name = column->name();
+
+    if (name.null()) {
+      sorted_columns.emplace_back(column.get());
+    }
   }
 
   // column meta exists
@@ -2811,17 +2825,19 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     columns.emplace_back(std::move(column));
   }
 
-  read_meta(dir, meta, columns);
+  decltype(sorted_columns_) sorted_columns;
+  read_meta(dir, meta, columns, sorted_columns);
 
   // noexcept
   context_provider::prepare(std::move(stream), std::move(cipher));
   columns_ = std::move(columns);
+  sorted_columns_ = std::move(sorted_columns);
 
   return true;
 }
 
 bool reader::visit(const column_visitor_f& visitor) const {
-  for (auto& column : columns_) {
+  for (auto* column : sorted_columns_) {
     assert(column);
     if (!visitor(*column)) {
       return false;
