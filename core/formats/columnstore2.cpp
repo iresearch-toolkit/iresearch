@@ -1368,6 +1368,7 @@ bool writer::commit(const flush_state& /*state*/) {
 
   // Ensured by `push_column(...)`
   assert(columns_.size() < field_limits::invalid());
+  assert(columns_.size() == sorted_columns_.size());
   const field_id count = static_cast<field_id>(columns_.size());
 
   const irs::string_ref segment_name{
@@ -1382,10 +1383,11 @@ bool writer::commit(const flush_state& /*state*/) {
       index_filename.c_str())};
   }
 
-  format_utils::write_header(*index_out, kIndexFormatName, static_cast<int32_t>(Version::kMin));
+  format_utils::write_header(*index_out, kIndexFormatName,
+                             static_cast<int32_t>(Version::kMin));
 
   index_out->write_vint(static_cast<uint32_t>(count));
-  for (auto& column : columns_) {
+  for (column& column : sorted_columns_) {
     column.finish(*index_out);
   }
 
