@@ -234,7 +234,7 @@ TEST(directory_reader_test, open) {
     ASSERT_EQ(3, sub->docs_count());
     ASSERT_EQ(3, sub->live_docs_count());
 
-    const auto* column = sub->column_reader("name");
+    const auto* column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -261,7 +261,7 @@ TEST(directory_reader_test, open) {
     ASSERT_EQ(4, sub->docs_count());
     ASSERT_EQ(4, sub->live_docs_count());
 
-    const auto* column = sub->column_reader("name");
+    const auto* column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -290,7 +290,7 @@ TEST(directory_reader_test, open) {
     ASSERT_EQ(2, sub->docs_count());
     ASSERT_EQ(2, sub->live_docs_count());
 
-    const auto* column = sub->column_reader("name");
+    const auto* column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -473,7 +473,7 @@ TEST(segment_reader_test, open) {
     ASSERT_EQ(meta.docs_count, rdr.live_docs_count());
 
     auto& segment = *rdr.begin();
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);

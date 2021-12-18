@@ -3703,7 +3703,7 @@ TEST_P(format_test_case, open_non_ecnrypted_with_encrypted) {
     ASSERT_EQ(1, segment.live_docs_count());
 
     std::unordered_set<irs::string_ref> expectedName = { "A" };
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);

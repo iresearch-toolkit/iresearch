@@ -112,12 +112,12 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     return impl_->sort();
   }
 
-  virtual const irs::column_reader* column_reader(const string_ref& name) const override {
-    return impl_->column_reader(name);
+  virtual const irs::column_reader* column(const string_ref& name) const override {
+    return impl_->column(name);
   }
 
-  virtual const irs::column_reader* column_reader(field_id field) const override {
-    return impl_->column_reader(field);
+  virtual const irs::column_reader* column(field_id field) const override {
+    return impl_->column(field);
   }
 
   ////////////////////////////////////////////////////////////////////////////////

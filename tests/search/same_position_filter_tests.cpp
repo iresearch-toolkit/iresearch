@@ -209,7 +209,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
     auto& segment = *(index.begin());
 
     irs::bytes_ref_input in;
-    auto column = segment.column_reader("_id");
+    auto column = segment.column("_id");
     ASSERT_NE(nullptr, column);
 
     // empty query

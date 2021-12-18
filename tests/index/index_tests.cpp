@@ -726,7 +726,7 @@ class index_test_case : public tests::index_test_base {
         // segment #1
         {
           auto& segment = reader[0];
-          const auto* column = segment.column_reader("name");
+          const auto* column = segment.column("name");
           ASSERT_NE(nullptr, column);
           auto values = column->iterator();
           ASSERT_NE(nullptr, values);
@@ -746,7 +746,7 @@ class index_test_case : public tests::index_test_base {
         // segment #1
         {
           auto& segment = reader[1];
-          auto* column = segment.column_reader("name");
+          auto* column = segment.column("name");
           ASSERT_NE(nullptr, column);
           auto values = column->iterator();
           ASSERT_NE(nullptr, values);
@@ -831,7 +831,7 @@ class index_test_case : public tests::index_test_base {
       auto reader = irs::directory_reader::open(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      auto* column = segment.column_reader("name");
+      auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -872,7 +872,7 @@ class index_test_case : public tests::index_test_base {
       auto read_columns = [&expected_docs, &reader] () {
         size_t i = 0;
         for (auto& segment: reader) {
-          auto* column = segment.column_reader("name");
+          auto* column = segment.column("name");
           if (!column) {
             return false;
           }
@@ -982,7 +982,7 @@ class index_test_case : public tests::index_test_base {
     // read columns 
     {
       auto visit_column = [&segment] (const irs::string_ref& column_name) {
-        auto* meta = segment.column_reader(column_name);
+        auto* meta = segment.column(column_name);
         if (!meta) {
           return false;
         }
@@ -1014,7 +1014,7 @@ class index_test_case : public tests::index_test_base {
           return true;
         };
 
-        auto* column = segment.column_reader(meta->id());
+        auto* column = segment.column(meta->id());
 
         if (!column) {
           return false;
@@ -1024,7 +1024,7 @@ class index_test_case : public tests::index_test_base {
       };
 
       auto read_column_offset = [&segment](const irs::string_ref& column_name, irs::doc_id_t offset) {
-        auto* meta = segment.column_reader(column_name);
+        auto* meta = segment.column(column_name);
         if (!meta) {
           return false;
         }
@@ -1033,7 +1033,7 @@ class index_test_case : public tests::index_test_base {
         tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
         const tests::document* doc = nullptr;
 
-        auto column = segment.column_reader(meta->id());
+        auto column = segment.column(meta->id());
         if (!column) {
           return false;
         }
@@ -1077,7 +1077,7 @@ class index_test_case : public tests::index_test_base {
       };
 
       auto iterate_column = [&segment](const irs::string_ref& column_name) {
-        auto* meta = segment.column_reader(column_name);
+        auto* meta = segment.column(column_name);
         if (!meta) {
           return false;
         }
@@ -1087,7 +1087,7 @@ class index_test_case : public tests::index_test_base {
         tests::csv_doc_generator gen(resource("simple_two_column.csv"), csv_doc_template);
         const tests::document* doc = nullptr;
 
-        auto column = segment.column_reader(meta->id());
+        auto column = segment.column(meta->id());
 
         if (!column) {
           return false;
@@ -1900,7 +1900,7 @@ class index_test_case : public tests::index_test_base {
       std::unordered_set<std::string> expected_values { "doc0", "doc1", "doc7" };
       std::unordered_set<std::string> actual_values;
 
-      const auto* column_reader = segment.column_reader("stored");
+      const auto* column_reader = segment.column("stored");
       ASSERT_NE(nullptr, column_reader);
       auto column = column_reader->iterator();
       ASSERT_NE(nullptr, column);
@@ -2481,7 +2481,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
 
     for (size_t i = 0, count = reader.size(); i < count; ++i) {
       auto& segment = reader[i];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -2836,7 +2836,7 @@ TEST_P(index_test_case, document_context) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2895,7 +2895,7 @@ TEST_P(index_test_case, document_context) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2955,7 +2955,7 @@ TEST_P(index_test_case, document_context) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3016,7 +3016,7 @@ TEST_P(index_test_case, document_context) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3053,7 +3053,7 @@ TEST_P(index_test_case, document_context) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3095,7 +3095,7 @@ TEST_P(index_test_case, document_context) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3137,7 +3137,7 @@ TEST_P(index_test_case, document_context) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3190,7 +3190,7 @@ TEST_P(index_test_case, document_context) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3249,7 +3249,7 @@ TEST_P(index_test_case, document_context) {
 
    {
       auto& segment = reader[0]; // assume 0 is id of first segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -3268,7 +3268,7 @@ TEST_P(index_test_case, document_context) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of second segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -3308,7 +3308,7 @@ TEST_P(index_test_case, document_context) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3352,7 +3352,7 @@ TEST_P(index_test_case, document_context) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3415,7 +3415,7 @@ TEST_P(index_test_case, document_context) {
 
    {
       auto& segment = reader[0]; // assume 0 is id of first segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -3434,7 +3434,7 @@ TEST_P(index_test_case, document_context) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of second segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -3478,7 +3478,7 @@ TEST_P(index_test_case, document_context) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3526,7 +3526,7 @@ TEST_P(index_test_case, document_context) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3587,7 +3587,7 @@ TEST_P(index_test_case, document_context) {
 
    {
       auto& segment = reader[0]; // assume 0 is id of first segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -3606,7 +3606,7 @@ TEST_P(index_test_case, document_context) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of second segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -3653,7 +3653,7 @@ TEST_P(index_test_case, document_context) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3704,7 +3704,7 @@ TEST_P(index_test_case, document_context) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3771,7 +3771,7 @@ TEST_P(index_test_case, document_context) {
 
    {
       auto& segment = reader[0]; // assume 0 is id of first segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -3790,7 +3790,7 @@ TEST_P(index_test_case, document_context) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of second segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -3836,7 +3836,7 @@ TEST_P(index_test_case, document_context) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of first segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -3855,7 +3855,7 @@ TEST_P(index_test_case, document_context) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of second segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -3907,7 +3907,7 @@ TEST_P(index_test_case, document_context) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of first segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -3926,7 +3926,7 @@ TEST_P(index_test_case, document_context) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of second segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -3945,7 +3945,7 @@ TEST_P(index_test_case, document_context) {
 
     {
       auto& segment = reader[2]; // assume 2 is id of third segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -3992,7 +3992,7 @@ TEST_P(index_test_case, document_context) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of first segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -4011,7 +4011,7 @@ TEST_P(index_test_case, document_context) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of second segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -4063,7 +4063,7 @@ TEST_P(index_test_case, document_context) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of first segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -4082,7 +4082,7 @@ TEST_P(index_test_case, document_context) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of second segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -4101,7 +4101,7 @@ TEST_P(index_test_case, document_context) {
 
     {
       auto& segment = reader[2]; // assume 2 is id of third segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -4139,7 +4139,7 @@ TEST_P(index_test_case, document_context) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of first/old segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -4158,7 +4158,7 @@ TEST_P(index_test_case, document_context) {
 
     {
       auto& segment = reader[1]; // assume 0 is id of first/new segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -4211,7 +4211,7 @@ TEST_P(index_test_case, doc_removal) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4247,7 +4247,7 @@ TEST_P(index_test_case, doc_removal) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4284,7 +4284,7 @@ TEST_P(index_test_case, doc_removal) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4321,7 +4321,7 @@ TEST_P(index_test_case, doc_removal) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4357,7 +4357,7 @@ TEST_P(index_test_case, doc_removal) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4396,7 +4396,7 @@ TEST_P(index_test_case, doc_removal) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4439,7 +4439,7 @@ TEST_P(index_test_case, doc_removal) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4480,7 +4480,7 @@ TEST_P(index_test_case, doc_removal) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4524,7 +4524,7 @@ TEST_P(index_test_case, doc_removal) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of old segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -4543,7 +4543,7 @@ TEST_P(index_test_case, doc_removal) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of new segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -4592,7 +4592,7 @@ TEST_P(index_test_case, doc_removal) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of old segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -4611,7 +4611,7 @@ TEST_P(index_test_case, doc_removal) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of new segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -4684,7 +4684,7 @@ TEST_P(index_test_case, doc_removal) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of old-old segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -4703,7 +4703,7 @@ TEST_P(index_test_case, doc_removal) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of old segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -4722,7 +4722,7 @@ TEST_P(index_test_case, doc_removal) {
 
     {
       auto& segment = reader[2]; // assume 2 is id of new segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -4777,7 +4777,7 @@ TEST_P(index_test_case, doc_update) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4813,7 +4813,7 @@ TEST_P(index_test_case, doc_update) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4849,7 +4849,7 @@ TEST_P(index_test_case, doc_update) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4893,7 +4893,7 @@ TEST_P(index_test_case, doc_update) {
     {
       auto& segment = reader[0]; // assume 0 is id of old segment
       auto terms = segment.field("same");
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -4911,7 +4911,7 @@ TEST_P(index_test_case, doc_update) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of new segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -4960,7 +4960,7 @@ TEST_P(index_test_case, doc_update) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5011,7 +5011,7 @@ TEST_P(index_test_case, doc_update) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5048,7 +5048,7 @@ TEST_P(index_test_case, doc_update) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5089,7 +5089,7 @@ TEST_P(index_test_case, doc_update) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5137,7 +5137,7 @@ TEST_P(index_test_case, doc_update) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of old segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -5156,7 +5156,7 @@ TEST_P(index_test_case, doc_update) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of new segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -5198,7 +5198,7 @@ TEST_P(index_test_case, doc_update) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5238,7 +5238,7 @@ TEST_P(index_test_case, doc_update) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5281,7 +5281,7 @@ TEST_P(index_test_case, doc_update) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5327,7 +5327,7 @@ TEST_P(index_test_case, doc_update) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5418,7 +5418,7 @@ TEST_P(index_test_case, doc_update) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5459,7 +5459,7 @@ TEST_P(index_test_case, doc_update) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5500,7 +5500,7 @@ TEST_P(index_test_case, doc_update) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5545,7 +5545,7 @@ TEST_P(index_test_case, doc_update) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5692,7 +5692,7 @@ TEST_P(index_test_case, import_reader) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5736,7 +5736,7 @@ TEST_P(index_test_case, import_reader) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count());
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5780,7 +5780,7 @@ TEST_P(index_test_case, import_reader) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(4, segment.docs_count());
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5839,7 +5839,7 @@ TEST_P(index_test_case, import_reader) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5892,7 +5892,7 @@ TEST_P(index_test_case, import_reader) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count());
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5945,7 +5945,7 @@ TEST_P(index_test_case, import_reader) {
     {
       auto& segment = reader[0]; // assume 0 is id of imported segment
       ASSERT_EQ(2, segment.docs_count());
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -5968,7 +5968,7 @@ TEST_P(index_test_case, import_reader) {
     {
       auto& segment = reader[1]; // assume 1 is id of original segment
       ASSERT_EQ(1, segment.docs_count());
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -6026,7 +6026,7 @@ TEST_P(index_test_case, refresh_reader) {
   {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6060,7 +6060,7 @@ TEST_P(index_test_case, refresh_reader) {
     {
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -6084,7 +6084,7 @@ TEST_P(index_test_case, refresh_reader) {
       reader = reader.reopen();
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -6121,7 +6121,7 @@ TEST_P(index_test_case, refresh_reader) {
   {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6142,7 +6142,7 @@ TEST_P(index_test_case, refresh_reader) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of first segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -6161,7 +6161,7 @@ TEST_P(index_test_case, refresh_reader) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of second segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -6197,7 +6197,7 @@ TEST_P(index_test_case, refresh_reader) {
 
     {
       auto& segment = reader[0]; // assume 0 is id of first segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -6216,7 +6216,7 @@ TEST_P(index_test_case, refresh_reader) {
 
     {
       auto& segment = reader[1]; // assume 1 is id of second segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -6239,7 +6239,7 @@ TEST_P(index_test_case, refresh_reader) {
     reader = reader.reopen();
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of second segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6404,10 +6404,10 @@ TEST_P(index_test_case, segment_column_user_system) {
   ASSERT_NE(field->meta().features.end(), norm);
   ASSERT_TRUE(irs::field_limits::valid(norm->second));
 
-  auto* column = segment.column_reader(norm->second); // system column
+  auto* column = segment.column(norm->second); // system column
   ASSERT_NE(nullptr, column);
 
-  column = segment.column_reader("name");
+  column = segment.column("name");
   ASSERT_NE(nullptr, column);
   auto values = column->iterator();
   ASSERT_NE(nullptr, values);
@@ -6531,7 +6531,7 @@ TEST_P(index_test_case, import_concurrent) {
 
   size_t removed = 0;
   for (auto& segment : reader) {
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6659,7 +6659,7 @@ TEST_P(index_test_case, concurrent_consolidation) {
 
   size_t removed = 0;
   auto& segment = reader[0];
-  const auto* column = segment.column_reader("name");
+  const auto* column = segment.column("name");
   ASSERT_NE(nullptr, column);
   auto values = column->iterator();
   ASSERT_NE(nullptr, values);
@@ -6800,7 +6800,7 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
 
   size_t removed = 0;
   auto& segment = reader[0];
-  const auto* column = segment.column_reader("name");
+  const auto* column = segment.column("name");
   ASSERT_NE(nullptr, column);
   auto values = column->iterator();
   ASSERT_NE(nullptr, values);
@@ -6944,7 +6944,7 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
 
   size_t removed = 0;
   auto& segment = reader[0];
-  const auto* column = segment.column_reader("name");
+  const auto* column = segment.column("name");
   ASSERT_NE(nullptr, column);
   auto values = column->iterator();
   ASSERT_NE(nullptr, values);
@@ -7073,7 +7073,7 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
 
   size_t removed = 0;
   auto& segment = reader[0];
-  const auto* column = segment.column_reader("name");
+  const auto* column = segment.column("name");
   ASSERT_NE(nullptr, column);
   auto values = column->iterator();
   ASSERT_NE(nullptr, values);
@@ -7258,7 +7258,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
     // assume 0 is 'merged' segment
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -7423,7 +7423,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // assume 0 is 'segment 3'
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -7444,7 +7444,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // assume 1 is 'segment 4'
     {
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -7465,7 +7465,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // assume 2 is merged segment
     {
       auto& segment = reader[2];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -7586,7 +7586,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // assume 0 is 'segment 2'
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -7607,7 +7607,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // assume 1 is 'segment 3'
     {
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -7628,7 +7628,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // assume 1 is 'segment 4'
     {
       auto& segment = reader[2];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -7740,7 +7740,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // assume 0 is 'merged segment'
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(3, segment.docs_count()); // total count of documents
       ASSERT_EQ(2, segment.live_docs_count()); // total count of documents
@@ -7886,7 +7886,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // assume 0 is 'merged segment'
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(4, segment.docs_count()); // total count of documents
       ASSERT_EQ(2, segment.live_docs_count()); // total count of documents
@@ -8192,7 +8192,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     // assume 0 is merged segment
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -8283,7 +8283,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     // assume 0 is merged segment
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -8307,7 +8307,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     // assume 1 is the newly created segment (doc3+doc4)
     {
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -8407,7 +8407,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     // assume 0 is merged segment
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -8431,7 +8431,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     // assume 1 is the newly crated segment
     {
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -8557,7 +8557,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
 
   for (size_t i = 0; i < SEGMENTS_COUNT/2; ++i) {
     auto& segment = reader[i];
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -8690,7 +8690,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // assume 0 is merged segment
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -8800,7 +8800,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // assume 0 is the existing segment
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -8824,7 +8824,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // assume 1 is merged segment
     {
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -8951,7 +8951,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // assume 0 is the existing segment
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -8975,7 +8975,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // assume 1 is merged segment
     {
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -8999,7 +8999,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // assume 2 is the last added segment
     {
       auto& segment = reader[2];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -9107,7 +9107,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // assume 0 is merged segment
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(3, segment.docs_count()); // total count of documents
       ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
@@ -9246,7 +9246,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // assume 0 is merged segment
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(4, segment.docs_count()); // total count of documents
       ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
@@ -9381,7 +9381,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       // assume 0 is merged segment
       {
         auto& segment = reader[0];
-        const auto* column = segment.column_reader("name");
+        const auto* column = segment.column("name");
         ASSERT_NE(nullptr, column);
         ASSERT_EQ(4, segment.docs_count()); // total count of documents
         ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
@@ -9780,7 +9780,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // assume 0 is merged segment
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(4, segment.docs_count()); // total count of documents
       ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
@@ -9833,7 +9833,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // assume 1 is the recently added segment
     {
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -9945,7 +9945,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // assume 1 is the recently added segment
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -9967,7 +9967,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // assume 0 is merged segment
     {
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(4, segment.docs_count()); // total count of documents
       ASSERT_EQ(2, segment.live_docs_count()); // total count of live documents
@@ -10130,7 +10130,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // assume 0 is first segment
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -10156,7 +10156,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     // assume 1 is the recently added segment
     {
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -10230,7 +10230,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 0 is only segment (version 0)
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -10291,7 +10291,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 0 is only segment (version 0)
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -10351,7 +10351,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 0 is only segment (version 0)
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -10412,7 +10412,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 0 is only segment (version 0)
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -10485,7 +10485,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 0 is merged segment (version 0)
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -10520,7 +10520,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 1 is tail segment (version 1)
     {
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -10595,7 +10595,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 0 is merged segment (version 0)
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -10630,7 +10630,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 1 is tail segment (version 1)
     {
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -10720,7 +10720,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 0 is 2nd segment (version 0)
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -10755,7 +10755,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 1 is merged segment (version 0)
     {
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -10790,7 +10790,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 2 is tail segment (version 1)
     {
       auto& segment = reader[2];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -10864,7 +10864,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 0 is merged segment (version 0)
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -10899,7 +10899,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 1 is tail segment (version 1)
     {
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -10974,7 +10974,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 0 is merged segment (version 0 + version 1)
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -11067,7 +11067,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 0 is segment (version 0)
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -11105,7 +11105,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 1 is segment (version 1)
     {
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -11143,7 +11143,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 2 is 2nd segment (version 0)
     {
       auto& segment = reader[2];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -11243,7 +11243,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 0 is segment (version 0)
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -11281,7 +11281,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 1 is merged segment (version 1)
     {
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -11319,7 +11319,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 2 is 2nd segment (version 0)
     {
       auto& segment = reader[2];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -11357,7 +11357,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 3 is 2nd segment (version 1)
     {
       auto& segment = reader[3];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -11468,7 +11468,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 0 is merged segment (version 0)
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -11506,7 +11506,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 1 is second (unmerged) segment (version 1)
     {
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -11627,7 +11627,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 0 is merged segment
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -11758,7 +11758,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
     // assume 0 is merged segment
     {
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -12059,7 +12059,7 @@ TEST_P(index_test_case, segment_consolidate) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -12109,7 +12109,7 @@ TEST_P(index_test_case, segment_consolidate) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -12158,7 +12158,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -12206,7 +12206,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count()); // total count of documents
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -12328,7 +12328,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -12382,7 +12382,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -12438,7 +12438,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -12493,7 +12493,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count()); // total count of documents
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -12556,7 +12556,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count()); // total count of documents
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -12622,7 +12622,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count()); // total count of documents
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -12693,14 +12693,14 @@ TEST_P(index_test_case, segment_consolidate) {
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(6, segment.docs_count()); // total count of documents
 
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    const auto* upper_case_column = segment.column_reader("NAME");
+    const auto* upper_case_column = segment.column("NAME");
     ASSERT_NE(nullptr, upper_case_column);
     auto upper_case_values = upper_case_column->iterator();
     ASSERT_NE(nullptr, upper_case_values);
@@ -12781,14 +12781,14 @@ TEST_P(index_test_case, segment_consolidate) {
     auto& segment = reader[0]; // assume 0 is id of first/only segment
     ASSERT_EQ(6, segment.docs_count()); // total count of documents
 
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    const auto* upper_case_column = segment.column_reader("NAME");
+    const auto* upper_case_column = segment.column("NAME");
     ASSERT_NE(nullptr, upper_case_column);
     auto upper_case_values = upper_case_column->iterator();
     ASSERT_NE(nullptr, upper_case_values);
@@ -12875,7 +12875,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     {
       std::unordered_set<irs::string_ref> expectedName = { "A", "B", "C", "D" };
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -12899,7 +12899,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     {
       std::unordered_set<irs::string_ref> expectedName = { "E", "F" };
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -12959,7 +12959,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -12983,7 +12983,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -13027,7 +13027,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -13071,7 +13071,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -13095,7 +13095,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -13149,7 +13149,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -13204,7 +13204,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -13228,7 +13228,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -13280,7 +13280,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
 
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -13333,7 +13333,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -13357,7 +13357,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       auto termItr = terms->iterator(irs::SeekMode::NORMAL);
       ASSERT_TRUE(termItr->next());
 
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -13438,7 +13438,7 @@ TEST_P(index_test_case, segment_options) {
     {
       std::unordered_set<irs::string_ref> expectedName = { "A", "B" };
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -13485,7 +13485,7 @@ TEST_P(index_test_case, segment_options) {
     {
       std::unordered_set<irs::string_ref> expectedName = { "A" };
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -13509,7 +13509,7 @@ TEST_P(index_test_case, segment_options) {
     {
       std::unordered_set<irs::string_ref> expectedName = { "B" };
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -13555,7 +13555,7 @@ TEST_P(index_test_case, segment_options) {
     {
       std::unordered_set<irs::string_ref> expectedName = { "A" };
       auto& segment = reader[0];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -13579,7 +13579,7 @@ TEST_P(index_test_case, segment_options) {
     {
       std::unordered_set<irs::string_ref> expectedName = { "B" };
       auto& segment = reader[1];
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -13977,7 +13977,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     ASSERT_FALSE(field->next());
     ASSERT_FALSE(field->next());
 
-    auto column_reader = segment.column_reader(norm->second);
+    auto column_reader = segment.column(norm->second);
     ASSERT_NE(nullptr, column_reader);
     ASSERT_EQ(1, column_reader->size());
     auto it = column_reader->iterator();
@@ -14233,7 +14233,7 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
     {
       auto feature = field_reader.meta().features.find(irs::type<feature1>::id());
       ASSERT_NE(feature, field_reader.meta().features.end());
-      auto column_reader = segment.column_reader(feature->second);
+      auto column_reader = segment.column(feature->second);
       ASSERT_NE(nullptr, column_reader);
       ASSERT_EQ(2, column_reader->size());
       auto it = column_reader->iterator();
@@ -14277,7 +14277,7 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
     {
       auto feature = field_reader.meta().features.find(irs::type<feature3>::id());
       ASSERT_NE(feature, field_reader.meta().features.end());
-      auto column_reader = segment.column_reader(feature->second);
+      auto column_reader = segment.column(feature->second);
       ASSERT_NE(nullptr, column_reader);
       ASSERT_EQ(2, column_reader->size());
       auto it = column_reader->iterator();

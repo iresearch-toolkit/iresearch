@@ -884,7 +884,7 @@ class columnstore {
       const sub_reader& reader,
       field_id column,
       const doc_map_f& doc_map) {
-    const auto* column_reader = reader.column_reader(column);
+    const auto* column_reader = reader.column(column);
 
     if (!column_reader) {
       // nothing to do
@@ -1070,7 +1070,7 @@ bool write_columns(
         const sub_reader& segment,
         const doc_map_f& doc_map,
         const irs::column_reader& column) {
-      auto* reader = segment.column_reader(column.id());
+      auto* reader = segment.column(column.id());
 
       if (!reader) {
         return false;
@@ -1239,7 +1239,7 @@ bool write_fields(
         return true;
       }
 
-      auto* reader = segment.column_reader(column->second);
+      auto* reader = segment.column(column->second);
 
       if (!reader) {
         return false;

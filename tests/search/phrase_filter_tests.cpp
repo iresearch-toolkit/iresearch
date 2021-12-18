@@ -112,7 +112,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -214,7 +214,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -365,7 +365,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -516,7 +516,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -619,7 +619,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -722,7 +722,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -825,7 +825,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -928,7 +928,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1033,7 +1033,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1138,7 +1138,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1242,7 +1242,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1347,7 +1347,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1470,7 +1470,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1520,7 +1520,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1554,7 +1554,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1588,7 +1588,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1622,7 +1622,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1704,7 +1704,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1778,7 +1778,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1844,7 +1844,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1903,7 +1903,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1947,7 +1947,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2007,7 +2007,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2067,7 +2067,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2129,7 +2129,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2176,7 +2176,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2227,7 +2227,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2328,7 +2328,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2475,7 +2475,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2622,7 +2622,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
 #endif
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2724,7 +2724,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
 #endif
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2828,7 +2828,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
 #endif
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2905,7 +2905,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2961,7 +2961,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3022,7 +3022,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3083,7 +3083,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3136,7 +3136,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3191,7 +3191,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3246,7 +3246,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3287,7 +3287,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3346,7 +3346,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3407,7 +3407,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3460,7 +3460,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3517,7 +3517,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3558,7 +3558,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3619,7 +3619,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3680,7 +3680,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3734,7 +3734,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3791,7 +3791,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3833,7 +3833,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3907,7 +3907,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -3983,7 +3983,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4045,7 +4045,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4113,7 +4113,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4153,7 +4153,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4229,7 +4229,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4305,7 +4305,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4371,7 +4371,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4416,7 +4416,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4469,7 +4469,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4543,7 +4543,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4617,7 +4617,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4697,7 +4697,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4738,7 +4738,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -4883,7 +4883,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_EQ(6, finish_count); // 6 sub-terms in phrase
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5017,7 +5017,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5074,7 +5074,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5158,7 +5158,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5245,7 +5245,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
       ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     }
 
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5319,7 +5319,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5363,7 +5363,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5407,7 +5407,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5452,7 +5452,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5496,7 +5496,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5540,7 +5540,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5585,7 +5585,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5630,7 +5630,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5677,7 +5677,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5730,7 +5730,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr, prepared_order);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5792,7 +5792,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr, prepared_order);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5851,7 +5851,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr, prepared_order);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -5944,7 +5944,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr, prepared_order);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6092,7 +6092,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr, prepared_order);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6266,7 +6266,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr, prepared_order);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6311,7 +6311,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6355,7 +6355,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6395,7 +6395,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6434,7 +6434,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6479,7 +6479,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6524,7 +6524,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6569,7 +6569,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6615,7 +6615,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6661,7 +6661,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6708,7 +6708,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6831,7 +6831,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6872,7 +6872,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6920,7 +6920,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -6972,7 +6972,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto pord = ord.prepare();
     auto prepared = q.prepare(rdr, pord);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -7034,7 +7034,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto pord = ord.prepare();
     auto prepared = q.prepare(rdr, pord);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -7078,7 +7078,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -7130,7 +7130,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto prepared = q.prepare(rdr, pord);
 
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -7170,7 +7170,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -7207,7 +7207,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -7244,7 +7244,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -7282,7 +7282,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -7320,7 +7320,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -7358,7 +7358,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto prepared = q.prepare(rdr);
     auto sub = rdr.begin();
-    auto column = sub->column_reader("name");
+    auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);

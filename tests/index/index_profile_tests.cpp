@@ -340,13 +340,13 @@ class index_profile_test_case : public tests::index_test_base {
     for (size_t i = 0, count = reader.size(); i < count; ++i) {
       indexed_docs_count += reader[i].live_docs_count();
 
-      const auto* column = reader[i].column_reader("same");
+      const auto* column = reader[i].column("same");
       if (column) {
         // field present in all docs from simple_sequential.json
         column->visit(imported_visitor);
       }
 
-      column = reader[i].column_reader("updated");
+      column = reader[i].column("updated");
       if (column) {
         // field insterted by updater threads
         column->visit(updated_visitor);

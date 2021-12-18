@@ -354,9 +354,9 @@ TEST_P(sorted_index_test_case, simple_sequential) {
           return less(lhs.order, rhs.order);
       });
 
-      auto* column_meta = segment.column_reader(column_name);
+      auto* column_meta = segment.column(column_name);
       ASSERT_NE(nullptr, column_meta);
-      auto* column = segment.column_reader(column_meta->id());
+      auto* column = segment.column(column_meta->id());
       ASSERT_NE(nullptr, column);
 
       ASSERT_EQ(id-1, column->size());
@@ -537,9 +537,9 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
             return less(lhs.order, rhs.order);
         });
 
-        auto* column_meta = segment.column_reader(column_name);
+        auto* column_meta = segment.column(column_name);
         ASSERT_NE(nullptr, column_meta);
-        auto* column = segment.column_reader(column_meta->id());
+        auto* column = segment.column(column_meta->id());
         ASSERT_NE(nullptr, column);
 
         ASSERT_EQ(id-1, column->size());
@@ -686,9 +686,9 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
           return less(lhs.order, rhs.order);
       });
 
-      auto* column_meta = segment.column_reader(column_name);
+      auto* column_meta = segment.column(column_name);
       ASSERT_NE(nullptr, column_meta);
-      auto* column = segment.column_reader(column_meta->id());
+      auto* column = segment.column(column_meta->id());
       ASSERT_NE(nullptr, column);
 
       ASSERT_EQ(id-1, column->size());
@@ -846,9 +846,9 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
           return less(lhs.order, rhs.order);
       });
 
-      auto* column_meta = segment.column_reader(column_name);
+      auto* column_meta = segment.column(column_name);
       ASSERT_NE(nullptr, column_meta);
-      auto* column = segment.column_reader(column_meta->id());
+      auto* column = segment.column(column_meta->id());
       ASSERT_NE(nullptr, column);
 
       ASSERT_EQ(id-1, column->size());

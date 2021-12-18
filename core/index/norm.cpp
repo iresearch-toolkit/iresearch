@@ -49,7 +49,7 @@ bool norm_base::reset(
     const sub_reader& reader,
     field_id column,
     const document& doc) {
-  const auto* column_reader = reader.column_reader(column);
+  const auto* column_reader = reader.column(column);
 
   if (!column_reader) {
     return false;

@@ -68,7 +68,7 @@ TEST_P(format_13_test_case, open_10_with_13) {
     ASSERT_EQ(1, segment.live_docs_count());
 
     std::unordered_set<irs::string_ref> expectedName = { "A" };
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -140,7 +140,7 @@ TEST_P(format_13_test_case, formats_10_13) {
     ASSERT_EQ(1, segment.live_docs_count());
 
     std::unordered_set<irs::string_ref> expectedName = { "A" };
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -168,7 +168,7 @@ TEST_P(format_13_test_case, formats_10_13) {
     ASSERT_EQ(1, segment.live_docs_count());
 
     std::unordered_set<irs::string_ref> expectedName = { "B" };
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);

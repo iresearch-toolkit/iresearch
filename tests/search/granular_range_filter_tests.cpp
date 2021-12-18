@@ -2004,7 +2004,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
 
     auto prepared = query.prepare(reader);
     ASSERT_NE(nullptr, prepared);
-    auto* column = segment.column_reader("_key");
+    auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2054,7 +2054,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
 
     auto prepared = query.prepare(reader);
     ASSERT_NE(nullptr, prepared);
-    auto* column = segment.column_reader("_key");
+    auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2106,7 +2106,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
 
     auto prepared = query.prepare(reader);
     ASSERT_NE(nullptr, prepared);
-    auto* column = segment.column_reader("_key");
+    auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2156,7 +2156,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
 
     auto prepared = query.prepare(reader);
     ASSERT_NE(nullptr, prepared);
-    auto* column = segment.column_reader("_key");
+    auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);

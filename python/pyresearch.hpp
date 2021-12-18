@@ -266,9 +266,9 @@ class PYRESEARCH_API  segment_reader {
   ~segment_reader() SWIG_noexcept { }
 
   column_iterator columns() const { return reader_->columns(); }
-  column_reader column(uint64_t id) const { return reader_->column_reader(id); }
+  column_reader column(uint64_t id) const { return reader_->column(id); }
   column_reader column(irs::string_ref column) const {
-    return reader_->column_reader(column);
+    return reader_->column(column);
   }
   size_t docs_count() const { return reader_->docs_count(); }
   doc_iterator docs_iterator() const { 

@@ -88,14 +88,14 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // check number of documents in the column
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_EQ(MAX_DOCS/2, column->size());
     }
 
@@ -124,9 +124,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
@@ -155,15 +155,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -211,7 +211,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // visit values (not cached)
@@ -239,15 +239,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     {
       // iterate over column (not cached)
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -308,15 +308,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -364,7 +364,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // visit values (not cached)
@@ -392,15 +392,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // seek over column (not cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -448,7 +448,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
 
     // seek over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -496,7 +496,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
 
     // seek to the begin + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -548,7 +548,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
 
     // seek before the begin + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -600,7 +600,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
 
     // seek to the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -629,7 +629,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
 
     // seek to before the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -657,7 +657,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
 
     // seek to after the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -683,7 +683,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     {
       const size_t steps_forward = 5;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -757,7 +757,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       irs::doc_id_t expected_value = expected_doc - 1;
       size_t docs = 0;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS;) {
         auto it = column->iterator();
@@ -848,7 +848,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     {
       const size_t steps_forward = 5;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -894,7 +894,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
 
     // seek over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -961,15 +961,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -1059,14 +1059,14 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // check number of documents in the column
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_EQ(MAX_DOCS, column->size());
     }
 
@@ -1093,9 +1093,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
@@ -1123,16 +1123,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -1174,7 +1174,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // visit values (not cached)
@@ -1201,16 +1201,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
     {
       // iterate over column (not cached)
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -1263,16 +1263,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -1313,7 +1313,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // visit values (not cached)
@@ -1340,16 +1340,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
     // seek over column (not cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -1383,7 +1383,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
 
     // seek to begin + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -1417,7 +1417,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
 
     // seek before begin + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -1451,7 +1451,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
 
     // seek to the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -1469,7 +1469,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
 
     // seek to before the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -1493,7 +1493,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
 
     // seek to after the end + next + seek before end
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -1514,7 +1514,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
 
     // seek to gap + next(x5)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -1545,7 +1545,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
     {
       const size_t steps_forward = 5;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -1611,7 +1611,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       irs::doc_id_t expected_doc = MAX_DOCS+1;
       size_t docs_count = 0;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS+1;) {
         auto it = column->iterator();
@@ -1677,7 +1677,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
     {
       const size_t steps_forward = 5;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -1725,16 +1725,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -1828,14 +1828,14 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // check number of documents in the column
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_EQ(MAX_DOCS, column->size());
     }
 
@@ -1870,9 +1870,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
@@ -1907,15 +1907,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -1968,7 +1968,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // visit values (not cached)
@@ -2002,15 +2002,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     {
       // iterate over column (not cached)
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -2081,15 +2081,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -2142,7 +2142,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // visit values (not cached)
@@ -2176,15 +2176,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // seek over column (not cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -2236,7 +2236,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
 
     // seek to the begin + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -2293,7 +2293,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
 
     // seek before the begin + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -2350,7 +2350,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
 
     // seek to the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -2380,7 +2380,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
 
     // seek to before the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -2421,7 +2421,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
 
     // seek to after the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -2447,7 +2447,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
     {
       const size_t steps_forward = 5;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -2536,7 +2536,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       irs::doc_id_t expected_value = expected_doc - 1;
       size_t docs_count = 0;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS+1;) {
         auto it = column->iterator();
@@ -2637,7 +2637,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
     {
       const size_t steps_forward = 5;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -2717,15 +2717,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -2850,14 +2850,14 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // check number of documents in the column
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_EQ(MAX_DOCS, column->size());
     }
 
@@ -2891,9 +2891,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
@@ -2927,15 +2927,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -3042,14 +3042,14 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // check number of documents in the column
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_EQ(MAX_DOCS, column->size());
     }
 
@@ -3080,9 +3080,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
@@ -3113,15 +3113,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -3223,14 +3223,14 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // check number of documents in the column
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_EQ(MAX_DOCS, column->size());
     }
 
@@ -3259,9 +3259,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
@@ -3290,15 +3290,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -3345,7 +3345,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // visit values (not cached)
@@ -3374,15 +3374,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     {
       // iterate over column (not cached)
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -3442,15 +3442,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -3497,7 +3497,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(1+MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // visit values (not cached)
@@ -3526,15 +3526,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // seek over column (not cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -3577,7 +3577,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
 
     // seek to the begin + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -3620,7 +3620,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
 
     // seek before the begin + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -3662,7 +3662,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
 
     // seek to the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -3686,7 +3686,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
 
     // seek to before the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -3717,7 +3717,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
 
     // seek to after the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -3742,7 +3742,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     // FIXME revisit
     // seek to gap + next(x5)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -3776,7 +3776,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     {
       const size_t steps_forward = 5;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -3850,7 +3850,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       irs::doc_id_t expected_value = expected_doc - 1;
       size_t docs_count = 0;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS;) {
         auto it = column->iterator();
@@ -3941,7 +3941,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     {
       const size_t steps_forward = 5;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4011,15 +4011,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4100,14 +4100,14 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // check number of documents in the column
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_EQ(MAX_DOCS/2, column->size());
     }
 
@@ -4129,7 +4129,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
@@ -4153,16 +4153,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4201,7 +4201,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // visit values (not cached)
@@ -4222,16 +4222,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
 
     // iterate over column (not cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4275,16 +4275,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4323,7 +4323,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // visit values (not cached)
@@ -4344,16 +4344,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
 
     // seek over column (not cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4389,7 +4389,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
 
     // seek over column (not cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4428,7 +4428,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
 
     // seek over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4467,7 +4467,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
 
     // seek to the begin + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4502,7 +4502,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
 
     // seek before the begin + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4536,7 +4536,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
 
     // seek to the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4556,7 +4556,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
 
     // seek to before the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4576,7 +4576,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
 
     // seek to after the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4602,7 +4602,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     {
       const size_t steps_forward = 5;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4657,7 +4657,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       irs::doc_id_t expected_doc = MAX_DOCS;
       size_t docs_count = 0;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
 
       for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS;) {
@@ -4714,7 +4714,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     {
       const size_t steps_forward = 5;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4744,7 +4744,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
 
     // seek over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4796,16 +4796,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4877,14 +4877,14 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // check number of documents in the column
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_EQ(MAX_DOCS, column->size());
     }
 
@@ -4906,9 +4906,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
@@ -4931,16 +4931,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -4974,7 +4974,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // visit values (not cached)
@@ -4995,16 +4995,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
     {
       // iterate over column (not cached)
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5043,16 +5043,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5086,7 +5086,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // visit values (not cached)
@@ -5107,16 +5107,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
     // seek over column (not cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5143,7 +5143,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
 
     // seek to the begin + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5171,7 +5171,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
 
     // seek before the begin + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5199,7 +5199,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
 
     // seek to the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5215,7 +5215,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
 
     // seek to before the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5234,7 +5234,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
 
     // seek to after the end + next + seek before end
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5256,7 +5256,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
     {
       const size_t steps_forward = 5;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5304,7 +5304,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       irs::doc_id_t expected_doc = MAX_DOCS;
       size_t docs_count = 0;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS;) {
         auto it = column->iterator();
@@ -5349,7 +5349,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
     {
       const size_t steps_forward = 5;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5389,16 +5389,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5471,14 +5471,14 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // check number of documents in the column
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_EQ(MAX_DOCS, column->size());
     }
 
@@ -5501,9 +5501,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
@@ -5526,15 +5526,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5575,7 +5575,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // visit values (not cached)
@@ -5597,15 +5597,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     {
       // iterate over column (not cached)
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5652,15 +5652,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5701,7 +5701,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // visit values (not cached)
@@ -5723,15 +5723,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // seek over column (not cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5768,7 +5768,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
 
     // seek to the begin + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5806,7 +5806,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
 
     // seek before the begin + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5843,7 +5843,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
 
     // seek to the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5867,7 +5867,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
 
     // seek to before the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5898,7 +5898,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
 
     // seek to after the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5924,7 +5924,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     {
       const size_t steps_forward = 5;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -5983,7 +5983,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       irs::doc_id_t expected_value = expected_doc - 1;
       size_t docs_count = 0;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS;) {
         auto it = column->iterator();
@@ -6052,7 +6052,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     {
       const size_t steps_forward = 5;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -6104,15 +6104,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -6194,14 +6194,14 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // check number of documents in the column
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_EQ(MAX_DOCS, column->size());
     }
 
@@ -6230,9 +6230,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
@@ -6261,15 +6261,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -6315,7 +6315,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // visit values (not cached)
@@ -6343,15 +6343,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     {
       // iterate over column (not cached)
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -6409,15 +6409,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -6463,7 +6463,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
     auto& segment = *(reader.begin());
     ASSERT_EQ(irs::doc_id_t(MAX_DOCS), segment.live_docs_count());
 
-    auto* meta = segment.column_reader(column_name);
+    auto* meta = segment.column(column_name);
     ASSERT_NE(nullptr, meta);
 
     // visit values (not cached)
@@ -6491,15 +6491,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // seek over column (not cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -6542,7 +6542,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
 
     // seek to the begin + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -6591,7 +6591,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
 
     // seek before the begin + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -6640,7 +6640,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
 
     // seek to the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -6670,7 +6670,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
 
     // seek to before the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -6711,7 +6711,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
 
     // seek to after the end + next
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -6737,7 +6737,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
     {
       const size_t steps_forward = 5;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -6807,7 +6807,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       irs::doc_id_t expected_value = expected_doc - 1;
       size_t docs_count = 0;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS;) {
         auto it = column->iterator();
@@ -6897,7 +6897,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
     {
       const size_t steps_forward = 5;
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -6966,15 +6966,15 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
         return true;
       };
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_EQ(column, segment.column_reader(meta->id()));
+      ASSERT_EQ(column, segment.column(meta->id()));
       ASSERT_TRUE(column->visit(visitor));
     }
 
     // iterate over column (cached)
     {
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -7071,7 +7071,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
     // check 'id' column
     {
       const iresearch::string_ref column_name = "id";
-      auto* meta = segment.column_reader(column_name);
+      auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
 
       // visit column (not cached)
@@ -7098,9 +7098,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           return true;
         };
 
-        auto column = segment.column_reader(column_name);
+        auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
-        ASSERT_EQ(column, segment.column_reader(meta->id()));
+        ASSERT_EQ(column, segment.column(meta->id()));
         ASSERT_TRUE(column->visit(visitor));
       }
 
@@ -7128,9 +7128,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           return true;
         };
 
-        auto column = segment.column_reader(column_name);
+        auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
-        ASSERT_EQ(column, segment.column_reader(meta->id()));
+        ASSERT_EQ(column, segment.column(meta->id()));
         ASSERT_TRUE(column->visit(visitor));
       }
 
@@ -7139,7 +7139,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         gen.reset();
         irs::doc_id_t expected_id = 0;
 
-        auto column = segment.column_reader(column_name);
+        auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
@@ -7172,7 +7172,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
     // check 'label' column
     {
       const iresearch::string_ref column_name = "label";
-      auto* meta = segment.column_reader(column_name);
+      auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
 
       // visit column (not cached)
@@ -7198,9 +7198,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           return true;
         };
 
-        auto column = segment.column_reader(column_name);
+        auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
-        ASSERT_EQ(column, segment.column_reader(meta->id()));
+        ASSERT_EQ(column, segment.column(meta->id()));
         ASSERT_TRUE(column->visit(visitor));
       }
 
@@ -7227,9 +7227,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           return true;
         };
 
-        auto column = segment.column_reader(column_name);
+        auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
-        ASSERT_EQ(column, segment.column_reader(meta->id()));
+        ASSERT_EQ(column, segment.column(meta->id()));
         ASSERT_TRUE(column->visit(visitor));
       }
 
@@ -7238,7 +7238,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         gen.reset();
         irs::doc_id_t expected_id = 0;
 
-        auto column = segment.column_reader(column_name);
+        auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
@@ -7291,7 +7291,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
     // check 'id' column
     {
       const iresearch::string_ref column_name = "id";
-      auto* meta = segment.column_reader(column_name);
+      auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
 
       // visit column (not cached)
@@ -7318,9 +7318,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           return true;
         };
 
-        auto column = segment.column_reader(column_name);
+        auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
-        ASSERT_EQ(column, segment.column_reader(meta->id()));
+        ASSERT_EQ(column, segment.column(meta->id()));
         ASSERT_TRUE(column->visit(visitor));
       }
 
@@ -7329,7 +7329,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         gen.reset();
         irs::doc_id_t expected_id = 0;
 
-        auto column = segment.column_reader(column_name);
+        auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
@@ -7381,9 +7381,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           return true;
         };
 
-        auto column = segment.column_reader(column_name);
+        auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
-        ASSERT_EQ(column, segment.column_reader(meta->id()));
+        ASSERT_EQ(column, segment.column(meta->id()));
         ASSERT_TRUE(column->visit(visitor));
       }
 
@@ -7392,7 +7392,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         gen.reset();
         irs::doc_id_t expected_id = 0;
 
-        auto column = segment.column_reader(column_name);
+        auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
@@ -7424,7 +7424,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
     // check 'label' column
     {
       const iresearch::string_ref column_name = "label";
-      auto* meta = segment.column_reader(column_name);
+      auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
 
       // visit column (not cached)
@@ -7450,9 +7450,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           return true;
         };
 
-        auto column = segment.column_reader(column_name);
+        auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
-        ASSERT_EQ(column, segment.column_reader(meta->id()));
+        ASSERT_EQ(column, segment.column(meta->id()));
         ASSERT_TRUE(column->visit(visitor));
       }
 
@@ -7461,7 +7461,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         gen.reset();
         irs::doc_id_t expected_id = 0;
 
-        auto column = segment.column_reader(column_name);
+        auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
@@ -7512,9 +7512,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           return true;
         };
 
-        auto column = segment.column_reader(column_name);
+        auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
-        ASSERT_EQ(column, segment.column_reader(meta->id()));
+        ASSERT_EQ(column, segment.column(meta->id()));
         ASSERT_TRUE(column->visit(visitor));
       }
 
@@ -7523,7 +7523,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         gen.reset();
         irs::doc_id_t expected_id = 0;
 
-        auto column = segment.column_reader(column_name);
+        auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
         auto it = column->iterator();
         ASSERT_NE(nullptr, it);
@@ -7590,19 +7590,19 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
     // read attribute from invalid column
     {
-      ASSERT_EQ(nullptr, segment.column_reader("invalid_column"));
+      ASSERT_EQ(nullptr, segment.column("invalid_column"));
     }
 
     // check number of values in the column
     {
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(4, column->size());
     }
 
     // iterate over 'name' column (cached)
     {
-      auto column = segment.column_reader("name");
+      auto column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -7633,7 +7633,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
     // iterate over 'prefix' column (cached)
     {
-      auto column = segment.column_reader("prefix");
+      auto column = segment.column("prefix");
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -7673,12 +7673,12 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
     // read attribute from invalid column
     {
-      ASSERT_EQ(nullptr, segment.column_reader("invalid_column"));
+      ASSERT_EQ(nullptr, segment.column("invalid_column"));
     }
 
     {
       // iterate over 'name' column (not cached)
-      auto column = segment.column_reader("name");
+      auto column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -7709,7 +7709,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
     // iterate over 'name' column (cached)
     {
-      auto column = segment.column_reader("name");
+      auto column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -7740,7 +7740,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
     {
       // iterate over 'prefix' column (not cached)
-      auto column = segment.column_reader("prefix");
+      auto column = segment.column("prefix");
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -7771,7 +7771,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
     // iterate over 'prefix' column (cached)
     {
-      auto column = segment.column_reader("prefix");
+      auto column = segment.column("prefix");
       ASSERT_NE(nullptr, column);
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
@@ -7833,7 +7833,7 @@ TEST_P(index_column_test_case, read_empty_doc_attributes) {
   ASSERT_EQ(1, reader.size());
   auto& segment = *(reader.begin());
 
-  const auto* column = segment.column_reader("name");
+  const auto* column = segment.column("name");
   ASSERT_EQ(nullptr, column);
 }
 

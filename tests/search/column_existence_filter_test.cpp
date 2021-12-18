@@ -87,7 +87,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
@@ -118,7 +118,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
@@ -152,7 +152,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
@@ -182,7 +182,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
@@ -215,7 +215,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
@@ -244,7 +244,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
@@ -308,7 +308,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
@@ -339,7 +339,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
@@ -373,7 +373,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
@@ -403,7 +403,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
@@ -436,7 +436,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
@@ -465,7 +465,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
@@ -528,7 +528,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
-      auto column = segment.column_reader("name");
+      auto column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -597,7 +597,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
-      auto column = segment.column_reader("name");
+      auto column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -642,7 +642,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
-      auto column = segment.column_reader("name");
+      auto column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -687,7 +687,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
-      auto column = segment.column_reader("name");
+      auto column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -798,7 +798,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto column_itr = column->iterator();
       auto filter_itr = prepared_filter->execute(segment, prepared_order);
@@ -887,7 +887,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column = segment.column_reader(column_name);
+      auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       auto column_itr = column->iterator();
       auto filter_itr = prepared_filter->execute(segment, prepared_order);
@@ -973,7 +973,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
 
-      auto column = segment.column_reader(column_name_full);
+      auto column = segment.column(column_name_full);
       ASSERT_NE(nullptr, column);
       auto column_itr = column->iterator();
       auto filter_itr = prepared_filter->execute(segment, prepared_order);

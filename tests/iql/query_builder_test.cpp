@@ -224,7 +224,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 
   // single string term
   {
-    auto column = segment.column_reader("name");
+    auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -276,7 +276,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   // term negation
   {
     irs::bytes_ref_input in;
-    auto column = segment.column_reader("name");
+    auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -306,7 +306,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 
   // term union
   {
-    auto column = segment.column_reader("name");
+    auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -365,13 +365,13 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     std::unordered_set<irs::string_ref> expected = { "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
 
     double_t seq;
-    auto seq_column = segment.column_reader("seq");
+    auto seq_column = segment.column("seq");
     ASSERT_NE(nullptr, seq_column);
     auto seq_values = seq_column->iterator();
     ASSERT_NE(nullptr, seq_values);
     auto* actual_seq_value = irs::get<irs::payload>(*seq_values);
     ASSERT_NE(nullptr, actual_seq_value);
-    auto name_column = segment.column_reader("name");
+    auto name_column = segment.column("name");
     ASSERT_NE(nullptr, name_column);
     auto name_values = name_column->iterator();
     ASSERT_NE(nullptr, name_values);
@@ -409,13 +409,13 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     std::unordered_set<irs::string_ref> expected = { "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
 
     double_t seq;
-    auto seq_column = segment.column_reader("seq");
+    auto seq_column = segment.column("seq");
     ASSERT_NE(nullptr, seq_column);
     auto seq_values = seq_column->iterator();
     ASSERT_NE(nullptr, seq_values);
     auto* actual_seq_value = irs::get<irs::payload>(*seq_values);
     ASSERT_NE(nullptr, actual_seq_value);
-    auto name_column = segment.column_reader("name");
+    auto name_column = segment.column("name");
     ASSERT_NE(nullptr, name_column);
     auto name_values = name_column->iterator();
     ASSERT_NE(nullptr, name_values);
@@ -453,13 +453,13 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     std::unordered_set<irs::string_ref> expected = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N" };
 
     double_t seq;
-    auto seq_column = segment.column_reader("seq");
+    auto seq_column = segment.column("seq");
     ASSERT_NE(nullptr, seq_column);
     auto seq_values = seq_column->iterator();
     ASSERT_NE(nullptr, seq_values);
     auto* actual_seq_value = irs::get<irs::payload>(*seq_values);
     ASSERT_NE(nullptr, actual_seq_value);
-    auto name_column = segment.column_reader("name");
+    auto name_column = segment.column("name");
     ASSERT_NE(nullptr, name_column);
     auto name_values = name_column->iterator();
     ASSERT_NE(nullptr, name_values);
@@ -497,13 +497,13 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     std::unordered_set<irs::string_ref> expected = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M" };
 
     double_t seq;
-    auto seq_column = segment.column_reader("seq");
+    auto seq_column = segment.column("seq");
     ASSERT_NE(nullptr, seq_column);
     auto seq_values = seq_column->iterator();
     ASSERT_NE(nullptr, seq_values);
     auto* actual_seq_value = irs::get<irs::payload>(*seq_values);
     ASSERT_NE(nullptr, actual_seq_value);
-    auto name_column = segment.column_reader("name");
+    auto name_column = segment.column("name");
     ASSERT_NE(nullptr, name_column);
     auto name_values = name_column->iterator();
     ASSERT_NE(nullptr, name_values);
@@ -537,7 +537,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
 
   // limit
   {
-    auto column = segment.column_reader("name");
+    auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -620,7 +620,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
   auto reader = load_json(dir, "simple_sequential.json");
   ASSERT_EQ(1, reader.size());
   auto& segment = reader[0]; // assume 0 is id of first/only segment
-  auto column = segment.column_reader("name");
+  auto column = segment.column("name");
   ASSERT_NE(nullptr, column);
 
   // default range builder functr ()
@@ -729,7 +729,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
 
     ASSERT_EQ(1, analyzed_reader.size());
     auto& analyzed_segment = analyzed_reader[0]; // assume 0 is id of first/only segment
-    auto column = analyzed_segment.column_reader("name");
+    auto column = analyzed_segment.column("name");
     ASSERT_NE(nullptr, column);
     auto analyzed_segment_values = column->iterator();
     ASSERT_NE(nullptr, analyzed_segment_values);
@@ -782,7 +782,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
   auto reader = load_json(dir, "simple_sequential.json");
   ASSERT_EQ(1, reader.size());
   auto& segment = reader[0]; // assume 0 is id of first/only segment
-  auto column = segment.column_reader("name");
+  auto column = segment.column("name");
   ASSERT_NE(nullptr, column);
   auto values = column->iterator();
   ASSERT_NE(nullptr, values);
@@ -910,7 +910,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
 
   // user supplied boolean_function
   {
-    auto column = segment.column_reader("name");
+    auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -941,7 +941,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
   // user supplied negated boolean_function
   {
     irs::bytes_ref_input in;
-    auto column = segment.column_reader("name");
+    auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1017,7 +1017,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     std::unordered_set<irs::string_ref> expected = { "A", "C", "D", "E" };
-    auto column = segment.column_reader("name");
+    auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1047,7 +1047,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_sequence_fns) {
   auto reader = load_json(dir, "simple_sequential.json");
   ASSERT_EQ(1, reader.size());
   auto& segment = reader[0]; // assume 0 is id of first/only segment
-  auto column = segment.column_reader("name");
+  auto column = segment.column("name");
   ASSERT_NE(nullptr, column);
   auto values = column->iterator();
   ASSERT_NE(nullptr, values);
@@ -1146,7 +1146,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
 */
   // custom contextual order function
   {
-    auto column = segment.column_reader("name");
+    auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);

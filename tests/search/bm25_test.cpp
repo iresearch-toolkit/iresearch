@@ -130,7 +130,7 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
 
   auto reader = iresearch::directory_reader::open(dir(), codec());
   auto& segment = *(reader.begin());
-  const auto* column = segment.column_reader("seq");
+  const auto* column = segment.column("seq");
   ASSERT_NE(nullptr, column);
   // by_range multiple
   {
@@ -405,7 +405,7 @@ TEST_P(bm25_test_case, test_phrase) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    auto column = segment.column_reader("name");
+    auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -459,7 +459,7 @@ TEST_P(bm25_test_case, test_phrase) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    auto column = segment.column_reader("name");
+    auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -508,7 +508,7 @@ TEST_P(bm25_test_case, test_query) {
 
   auto reader = iresearch::directory_reader::open(dir(), codec());
   auto& segment = *(reader.begin());
-  const auto* column = segment.column_reader("seq");
+  const auto* column = segment.column("seq");
   ASSERT_NE(nullptr, column);
   // by_term
   {
@@ -612,7 +612,7 @@ TEST_P(bm25_test_case, test_query) {
     auto prepared_filter = filter.prepare(reader, prepared_order);
 
     for (auto& segment: reader) {
-      const auto* column = segment.column_reader("seq");
+      const auto* column = segment.column("seq");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -715,7 +715,7 @@ TEST_P(bm25_test_case, test_query) {
     auto prepared_filter = filter.prepare(reader, prepared_order);
 
     for (auto& segment: reader) {
-      const auto* column = segment.column_reader("seq");
+      const auto* column = segment.column("seq");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -809,7 +809,7 @@ TEST_P(bm25_test_case, test_query) {
     auto prepared_filter = filter.prepare(reader, prepared_order);
 
     for (auto& segment: reader) {
-      const auto* column = segment.column_reader("seq");
+      const auto* column = segment.column("seq");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -1488,7 +1488,7 @@ TEST_P(bm25_test_case, test_order) {
   };
 
   uint64_t seq = 0;
-  const auto* column = segment.column_reader("seq");
+  const auto* column = segment.column("seq");
   ASSERT_NE(nullptr, column);
 
   {

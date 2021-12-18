@@ -44,7 +44,7 @@ class column_existence_query : public irs::filter::prepared {
       const sub_reader& segment,
       const order::prepared& ord,
       const attribute_provider* /*ctx*/) const override {
-    const auto* column = segment.column_reader(field_);
+    const auto* column = segment.column(field_);
 
     if (!column) {
       return doc_iterator::empty();
@@ -111,7 +111,7 @@ class column_prefix_existence_query final : public column_existence_query {
     disjunction_t::doc_iterators_t itrs;
 
     while (irs::starts_with(it->value().name(), prefix)) {
-      const auto* column = segment.column_reader(it->value().id());
+      const auto* column = segment.column(it->value().id());
 
       if (!column) {
         continue;

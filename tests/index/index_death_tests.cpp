@@ -343,7 +343,7 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
 
     // validate columnstore
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -489,7 +489,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
 
     // validate columnstore
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -596,7 +596,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
 
     // validate columnstore
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -697,7 +697,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
     // validate columnstore
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -760,7 +760,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
     // validate columnstore
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -834,7 +834,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
     // validate columnstore (segment 0)
     {
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -856,7 +856,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
     // validate columnstore (segment 1)
     {
       auto& segment = reader[1]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -993,7 +993,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
 
     // validate columnstore
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1133,7 +1133,7 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
 
     // validate columnstore
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1260,7 +1260,7 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
 
     // validate columnstore
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -1355,7 +1355,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
     // validate columnstore (segment 0)
     {
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -1377,7 +1377,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
     // validate columnstore (segment 1)
     {
       auto& segment = reader[1]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -1490,7 +1490,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
     // validate columnstore (segment 0)
     {
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -1512,7 +1512,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
     // validate columnstore (segment 1)
     {
       auto& segment = reader[1]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -1534,7 +1534,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
     // validate columnstore (segment 2)
     {
       auto& segment = reader[2]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -1556,7 +1556,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
     // validate columnstore (segment 3)
     {
       auto& segment = reader[3]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -1664,7 +1664,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
     // validate columnstore (segment 0)
     {
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -1686,7 +1686,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
     // validate columnstore (segment 1)
     {
       auto& segment = reader[1]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -1708,7 +1708,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
     // validate columnstore (segment 2)
     {
       auto& segment = reader[2]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -1802,7 +1802,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
     // validate columnstore (segment 0)
     {
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -1824,7 +1824,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
     // validate columnstore (segment 1)
     {
       auto& segment = reader[1]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -1846,7 +1846,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
     // validate columnstore (segment 2)
     {
       auto& segment = reader[2]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -1938,7 +1938,7 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
     // validate columnstore (segment 0)
     {
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -1960,7 +1960,7 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
     // validate columnstore (segment 1)
     {
       auto& segment = reader[1]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -2053,7 +2053,7 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
     // validate columnstore (segment 0)
     {
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -2075,7 +2075,7 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
     // validate columnstore (segment 1)
     {
       auto& segment = reader[1]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -2217,7 +2217,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     // validate columnstore (segment 0)
     {
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -2325,7 +2325,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     // validate columnstore (segment 0)
     {
       auto& segment = reader[0]; // assume 0 is id of first/only segment
-      const auto* column = segment.column_reader("name");
+      const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator();
       ASSERT_NE(nullptr, values);
@@ -2474,7 +2474,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
 
     // validate columnstore
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2556,7 +2556,7 @@ TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flu
 
     // validate columnstore
     auto& segment = reader[0]; // assume 0 is id of first/only segment
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator();
     ASSERT_NE(nullptr, values);
@@ -2701,7 +2701,7 @@ TEST(index_death_test_formats_10, open_reader) {
 
   // validate columnstore
   auto& segment = reader[0]; // assume 0 is id of first/only segment
-  const auto* column = segment.column_reader("name");
+  const auto* column = segment.column("name");
   ASSERT_NE(nullptr, column);
   auto values = column->iterator();
   ASSERT_NE(nullptr, values);
@@ -2790,7 +2790,7 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
 
   // validate columnstore
   auto& segment = reader[0]; // assume 0 is id of first/only segment
-  const auto* column = segment.column_reader("name");
+  const auto* column = segment.column("name");
   ASSERT_NE(nullptr, column);
   auto values = column->iterator();
   ASSERT_NE(nullptr, values);
@@ -2890,7 +2890,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
 
   // validate columnstore
   auto& segment = reader[0]; // assume 0 is id of first/only segment
-  const auto* column = segment.column_reader("name");
+  const auto* column = segment.column("name");
   ASSERT_NE(nullptr, column);
   auto values = column->iterator();
   ASSERT_NE(nullptr, values);

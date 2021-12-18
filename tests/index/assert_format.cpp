@@ -981,8 +981,8 @@ void assert_columnstore(
       ASSERT_TRUE(irs::field_limits::valid(actual_column.id()));
       ASSERT_LT(expected_columns_begin->second, expected_segment.columns().size());
 
-      const auto* actual_column_reader = actual_segment.column_reader(actual_column.id());
-      ASSERT_EQ(actual_column_reader, actual_segment.column_reader(actual_column.name()));
+      const auto* actual_column_reader = actual_segment.column(actual_column.id());
+      ASSERT_EQ(actual_column_reader, actual_segment.column(actual_column.name()));
 
       assert_column(actual_column_reader,
                     expected_segment.columns()[expected_columns_begin->second]);
@@ -1002,7 +1002,7 @@ void assert_columnstore(
           ASSERT_FALSE(irs::field_limits::valid(actual_field_feature->second));
         } else {
           ASSERT_LT(expected_field_feature.second, expected_segment.columns().size());
-          const auto* actual_column = actual_segment.column_reader(actual_field_feature->second);
+          const auto* actual_column = actual_segment.column(actual_field_feature->second);
           assert_column(actual_column, expected_segment.columns()[expected_field_feature.second]);
         }
         ++actual_field_feature;

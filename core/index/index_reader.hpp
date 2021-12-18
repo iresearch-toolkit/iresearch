@@ -129,23 +129,29 @@ struct IRESEARCH_API sub_reader : index_reader {
 
   static const sub_reader& empty() noexcept;
 
-  // returns iterator over the live documents in current segment
+  // Live & deleted docs
+
+  // Returns an iterator over live documents in current segment.
   virtual doc_iterator::ptr docs_iterator() const = 0;
 
   virtual doc_iterator::ptr mask(doc_iterator::ptr&& it) const {
     return std::move(it);
   }
 
+  // Inverted index
+
   virtual field_iterator::ptr fields() const = 0;
 
-  // Returns corresponding term_reader by the specified field
+  // Returns corresponding term_reader by the specified field name.
   virtual const term_reader* field(const string_ref& field) const = 0;
+
+  // Columnstore
 
   virtual column_iterator::ptr columns() const = 0;
 
-  virtual const irs::column_reader* column_reader(field_id field) const = 0;
+  virtual const irs::column_reader* column(field_id field) const = 0;
 
-  virtual const irs::column_reader* column_reader(const string_ref& field) const = 0;
+  virtual const irs::column_reader* column(const string_ref& field) const = 0;
 
   virtual const irs::column_reader* sort() const = 0;
 }; // sub_reader

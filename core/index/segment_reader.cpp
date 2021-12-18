@@ -238,9 +238,9 @@ class segment_reader_impl : public sub_reader {
     return sort_;
   }
 
-  virtual const irs::column_reader* column_reader(field_id field) const override;
+  virtual const irs::column_reader* column(field_id field) const override;
 
-  virtual const irs::column_reader* column_reader(const string_ref& name) const override;
+  virtual const irs::column_reader* column(const string_ref& name) const override;
 
  private:
   using named_columns = absl::flat_hash_map<hashed_string_ref, const irs::column_reader*>;
@@ -331,7 +331,7 @@ segment_reader_impl::segment_reader_impl(
     meta_version_(meta_version) {
 }
 
-const irs::column_reader* segment_reader_impl::column_reader(
+const irs::column_reader* segment_reader_impl::column(
     const string_ref& name) const {
   auto it = named_columns_.find(make_hashed_ref(name));
   return it == named_columns_.end() ? nullptr : it->second;
@@ -439,7 +439,7 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
   return reader;
 }
 
-const irs::column_reader* segment_reader_impl::column_reader(field_id field) const {
+const irs::column_reader* segment_reader_impl::column(field_id field) const {
   return columnstore_reader_ ? columnstore_reader_->column(field) : nullptr;
 }
 
