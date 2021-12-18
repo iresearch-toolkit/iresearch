@@ -105,7 +105,11 @@ TEST_P(sorted_column_test_case, flush_empty) {
 
     std::tie(order, column_id) = col.flush(
         *writer,
-        [](auto&){ EXPECT_TRUE(false); }, // Must not be called
+        [](auto&){
+          // Must not be called
+          EXPECT_TRUE(false);
+          return irs::string_ref::NIL;
+        },
         0, less);
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
@@ -212,6 +216,7 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
         [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
           out += 42;
+          return irs::string_ref::NIL;
         },
         IRESEARCH_COUNTOF(values), less);
     ASSERT_TRUE(col.empty());
@@ -340,6 +345,7 @@ TEST_P(sorted_column_test_case, sort) {
         [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
           out += 42;
+          return irs::string_ref::NIL;
         },
         IRESEARCH_COUNTOF(values), less);
     ASSERT_TRUE(col.empty());

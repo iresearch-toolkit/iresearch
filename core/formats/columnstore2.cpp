@@ -40,35 +40,35 @@ using column_ptr = std::unique_ptr<column_reader>;
 using column_index = std::vector<sparse_bitmap_writer::block>;
 
 std::string data_file_name(string_ref prefix) {
-  return file_name(prefix, writer::DATA_FORMAT_EXT);
+  return file_name(prefix, writer::kDataFormatExt);
 }
 
 std::string index_file_name(string_ref prefix) {
-  return file_name(prefix, writer::INDEX_FORMAT_EXT);
+  return file_name(prefix, writer::kIndexFormatExt);
 }
 
 void write_header(index_output& out, const column_header& hdr) {
+  out.write_long(hdr.docs_index);
+  out.write_int(hdr.min);
+  out.write_int(hdr.id);
+  out.write_int(hdr.docs_count);
   write_enum(out, hdr.type);
   write_enum(out, hdr.props);
-  out.write_int(hdr.min);
-  out.write_int(hdr.docs_count);
-  out.write_long(hdr.docs_index);
-  write_string(out, hdr.payload);
 }
 
 column_header read_header(index_input& in) {
   column_header hdr;
+  hdr.docs_index = in.read_long();
+  hdr.min = in.read_int();
+  hdr.id = in.read_int();
+  hdr.docs_count = in.read_int();
   hdr.type = read_enum<ColumnType>(in);
   hdr.props = read_enum<ColumnProperty>(in);
-  hdr.min = in.read_int();
-  hdr.docs_count = in.read_int();
-  hdr.docs_index = in.read_long();
-  hdr.payload = read_string<decltype(hdr.payload)>(in);
   return hdr;
 }
 
 bool is_encrypted(const column_header& hdr) noexcept {
-  return ColumnProperty::ENCRYPT == (hdr.props & ColumnProperty::ENCRYPT);
+  return ColumnProperty::kEncrypt == (hdr.props & ColumnProperty::kEncrypt);
 }
 
 void write_bitmap_index(index_output& out, const column_index& blocks) {
@@ -315,8 +315,8 @@ class column_base : public column_reader::column_reader,
                     private util::noncopyable {
  public:
   column_base(
-      field_id id,
       std::optional<std::string>&& name,
+      bstring&& payload,
       column_header&& hdr,
       column_index&& index,
       const index_input& stream,
@@ -325,26 +325,25 @@ class column_base : public column_reader::column_reader,
       cipher_{cipher},
       hdr_{std::move(hdr)},
       index_{std::move(index)},
-      name_{std::move(name).value_or(std::string{})},
-      name_ref_{name.has_value() ? name_ : string_ref::NIL},
+      payload_{std::move(payload)},
+      name_{std::move(name)},
       opts_{
         index_.empty()
           ? sparse_bitmap_iterator::block_index_t{}
-          : sparse_bitmap_iterator::block_index_t{ index_.data(), index_.size() },  true },
-      id_{id} {
+          : sparse_bitmap_iterator::block_index_t{ index_.data(), index_.size() },  true } {
     assert(!is_encrypted(hdr_) || cipher_);
   }
 
   virtual string_ref name() const final {
-    return name_ref_;
+    return name_.has_value() ? name_.value() : string_ref::NIL;
   }
 
   virtual field_id id() const noexcept final {
-    return id_;
+    return hdr_.id;
   }
 
   virtual bytes_ref payload() const final {
-    return hdr_.payload;
+    return payload_;
   }
 
   virtual bool visit(const column_reader::values_visitor_f& visitor) const final;
@@ -378,10 +377,9 @@ class column_base : public column_reader::column_reader,
   encryption::stream* cipher_;
   column_header hdr_;
   column_index index_;
-  std::string name_;
-  string_ref name_ref_;
+  bstring payload_;
+  std::optional<std::string> name_;
   sparse_bitmap_iterator::options opts_;
-  field_id id_;
 }; // column_base
 
 bool column_base::visit(const column_reader::values_visitor_f& visitor) const {
@@ -557,8 +555,8 @@ struct mask_column final : public column_base {
   }; // payload_reader
 
   static column_ptr read(
-      field_id id,
       std::optional<std::string>&& name,
+      bstring&& payload,
       column_header&& hdr,
       column_index&& index,
       index_input& /*index_in*/,
@@ -566,18 +564,22 @@ struct mask_column final : public column_base {
       compression::decompressor::ptr&& /*inflater*/,
       encryption::stream* cipher) {
     return memory::make_unique<mask_column>(
-        id, std::move(name), std::move(hdr), std::move(index), data_in, cipher);
+        std::move(name), std::move(payload),
+        std::move(hdr), std::move(index),
+        data_in, cipher);
   }
 
   mask_column(
-      field_id id,
       std::optional<std::string>&& name,
+      bstring&& payload,
       column_header&& hdr,
       column_index&& index,
       const index_input& data_in,
       encryption::stream* cipher)
-    : column_base{id, std::move(name), std::move(hdr), std::move(index), data_in, cipher} {
-    assert(ColumnType::MASK == header().type);
+    : column_base{ std::move(name), std::move(payload),
+                   std::move(hdr), std::move(index),
+                   data_in, cipher } {
+    assert(ColumnType::kMask == header().type);
   }
 
   virtual doc_iterator::ptr iterator() const override;
@@ -616,8 +618,8 @@ doc_iterator::ptr mask_column::iterator() const {
 class dense_fixed_length_column final : public column_base {
  public:
   static column_ptr read(
-    field_id id,
     std::optional<std::string>&& name,
+    bstring&& payload,
     column_header&& hdr,
     column_index&& index,
     index_input& index_in,
@@ -626,8 +628,8 @@ class dense_fixed_length_column final : public column_base {
     encryption::stream* cipher);
 
   dense_fixed_length_column(
-      field_id id,
       std::optional<std::string>&& name,
+      bstring&& payload,
       column_header&& hdr,
       column_index&& index,
       const index_input& data_in,
@@ -635,12 +637,14 @@ class dense_fixed_length_column final : public column_base {
       encryption::stream* cipher,
       uint64_t data,
       uint64_t len)
-    : column_base{id, std::move(name), std::move(hdr), std::move(index), data_in, cipher},
+    : column_base{ std::move(name), std::move(payload),
+                   std::move(hdr), std::move(index),
+                   data_in, cipher },
       inflater_{std::move(inflater)},
       data_{data},
       len_{len} {
     assert(header().docs_count);
-    assert(ColumnType::DENSE_FIXED == header().type);
+    assert(ColumnType::kDenseFixed == header().type);
   }
 
   virtual doc_iterator::ptr iterator() const override;
@@ -675,8 +679,8 @@ class dense_fixed_length_column final : public column_base {
 }; // dense_fixed_length_column
 
 /*static*/ column_ptr dense_fixed_length_column::read(
-    field_id id,
     std::optional<std::string>&& name,
+    bstring&& payload,
     column_header&& hdr,
     column_index&& index,
     index_input& index_in,
@@ -687,8 +691,9 @@ class dense_fixed_length_column final : public column_base {
   const uint64_t len = index_in.read_long();
 
   return memory::make_unique<dense_fixed_length_column>(
-    id, std::move(name), std::move(hdr), std::move(index), data_in,
-    std::move(inflater), cipher,
+    std::move(name), std::move(payload),
+    std::move(hdr), std::move(index),
+    data_in, std::move(inflater), cipher,
     data, len);
 }
 
@@ -719,8 +724,8 @@ doc_iterator::ptr dense_fixed_length_column::iterator() const {
 class fixed_length_column final : public column_base {
  public:
   static column_ptr read(
-      field_id id,
       std::optional<std::string>&& name,
+      bstring&& payload,
       column_header&& hdr,
       column_index&& index,
       index_input& index_in,
@@ -731,15 +736,15 @@ class fixed_length_column final : public column_base {
     auto blocks = read_blocks_dense(hdr, index_in);
 
     return memory::make_unique<fixed_length_column>(
-      id, std::move(name), std::move(hdr),
-      std::move(index), data_in,
+      std::move(name), std::move(payload),
+      std::move(hdr), std::move(index), data_in,
       std::move(inflater), cipher,
       std::move(blocks), len);
   }
 
   fixed_length_column(
-      field_id id,
       std::optional<std::string>&& name,
+      bstring&& payload,
       column_header&& hdr,
       column_index&& index,
       const index_input& data_in,
@@ -747,12 +752,14 @@ class fixed_length_column final : public column_base {
       encryption::stream* cipher,
       std::vector<uint64_t>&& blocks,
       uint64_t len)
-    : column_base{id, std::move(name), std::move(hdr), std::move(index), data_in, cipher},
+    : column_base{ std::move(name), std::move(payload),
+                   std::move(hdr), std::move(index),
+                   data_in, cipher },
       blocks_{blocks},
       inflater_{std::move(inflater)},
       len_{len} {
     assert(header().docs_count);
-    assert(ColumnType::FIXED == header().type);
+    assert(ColumnType::kFixed == header().type);
   }
 
   virtual doc_iterator::ptr iterator() const override;
@@ -824,8 +831,8 @@ class sparse_column final : public column_base {
   };
 
   static column_ptr read(
-      field_id id,
       std::optional<std::string>&& name,
+      bstring&& payload,
       column_header&& hdr,
       column_index&& index,
       index_input& index_in,
@@ -835,25 +842,28 @@ class sparse_column final : public column_base {
     auto blocks = read_blocks_sparse(hdr, index_in);
 
     return memory::make_unique<sparse_column>(
-      id, std::move(name), std::move(hdr), std::move(index),
-      data_in, std::move(inflater), cipher, std::move(blocks));
+        std::move(name), std::move(payload),
+        std::move(hdr), std::move(index),
+        data_in, std::move(inflater), cipher,
+        std::move(blocks));
   }
 
   sparse_column(
-      field_id id,
       std::optional<std::string>&& name,
+      bstring&& payload,
       column_header&& hdr,
       column_index&& index,
       const index_input& data_in,
       compression::decompressor::ptr&& inflater,
       encryption::stream* cipher,
       std::vector<column_block>&& blocks)
-    : column_base{ id, std::move(name), std::move(hdr),
-                   std::move(index), data_in, cipher },
+    : column_base{ std::move(name), std::move(payload),
+                   std::move(hdr), std::move(index),
+                   data_in, cipher },
       blocks_{std::move(blocks)},
       inflater_{std::move(inflater)} {
     assert(header().docs_count);
-    assert(ColumnType::SPARSE == header().type);
+    assert(ColumnType::kSparse == header().type);
   }
 
   virtual doc_iterator::ptr iterator() const override;
@@ -985,7 +995,7 @@ doc_iterator::ptr sparse_column::iterator() const {
 }
 
 using column_factory_f = column_ptr(*)(
-  field_id, std::optional<std::string>&&,
+  std::optional<std::string>&&, bstring&&,
   column_header&&, column_index&&, index_input&,
   const index_input&, compression::decompressor::ptr&&,
   encryption::stream*);
@@ -1132,11 +1142,10 @@ void column::flush_block() {
 }
 
 void column::finish(index_output& index_out) {
-  assert(ord_ < field_limits::invalid());
+  assert(id_ < field_limits::invalid());
   assert(ctx_.data_out);
 
   docs_writer_.finish();
-  flush();
   docs_.stream.flush();
 
   column_header hdr;
@@ -1158,17 +1167,17 @@ void column::finish(index_output& index_out) {
     docs_.file >> data_out;
   }
 
-  if (!name_.has_value()) {
-    hdr.props |= ColumnProperty::NO_NAME;
+  if (!name_.null()) {
+    hdr.props |= ColumnProperty::kNoName;
   }
 
   if (ctx_.cipher) {
-    hdr.props |= ColumnProperty::ENCRYPT;
+    hdr.props |= ColumnProperty::kEncrypt;
   }
 
   if (fixed_length_) {
     if (0 == prev_avg_) {
-      hdr.type = ColumnType::MASK;
+      hdr.type = ColumnType::kMask;
     } else if (ctx_.consolidation) {
 #ifdef IRESEARCH_DEBUG
       // ensure blocks are dense after consolidation
@@ -1182,29 +1191,27 @@ void column::finish(index_output& index_out) {
         }
       }
 #endif
-      hdr.type = ColumnType::DENSE_FIXED;
+      hdr.type = ColumnType::kDenseFixed;
     } else {
-      hdr.type = ColumnType::FIXED;
+      hdr.type = ColumnType::kFixed;
     }
-  }
-
-  if (header_writer_) {
-    header_writer_(hdr.payload);
   }
 
   irs::write_string(index_out, compression_.name());
   write_header(index_out, hdr);
-  index_out.write_int(ord_); // ordinal position
-  if (name_.has_value()) {
-    auto& name = name_.value();
-
+  write_string(index_out, payload_);
+  if (!name_.null()) {
     if (ctx_.cipher) {
+      auto name = static_cast<std::string>(name_);
       ctx_.cipher->encrypt(index_out.file_pointer(),
                            reinterpret_cast<byte_type*>(name.data()),
                            name.size());
+      irs::write_string(index_out, name);
+    } else {
+      irs::write_string(index_out, name_);
     }
-
-    irs::write_string(index_out, name);
+  } else {
+    assert(ColumnProperty::kNoName == (ColumnProperty::kNoName & hdr.props));
   }
 
   if (hdr.docs_index) {
@@ -1212,14 +1219,14 @@ void column::finish(index_output& index_out) {
     write_bitmap_index(index_out, docs_writer_.index());
   }
 
-  if (ColumnType::SPARSE == hdr.type) {
+  if (ColumnType::kSparse == hdr.type) {
     write_blocks_sparse(index_out, blocks_);
-  } else if (ColumnType::MASK != hdr.type) {
+  } else if (ColumnType::kMask != hdr.type) {
     index_out.write_long(blocks_.front().avg);
-    if (ColumnType::DENSE_FIXED == hdr.type) {
+    if (ColumnType::kDenseFixed == hdr.type) {
       index_out.write_long(blocks_.front().data);
     } else {
-      assert(ColumnType::FIXED == hdr.type);
+      assert(ColumnType::kFixed == hdr.type);
       write_blocks_dense(index_out, blocks_);
     }
   }
@@ -1248,7 +1255,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
       filename.c_str())};
   }
 
-  format_utils::write_header(*data_out, DATA_FORMAT_NAME, FORMAT_MIN);
+  format_utils::write_header(*data_out, kDataFormatName, static_cast<int32_t>(Version::kMin));
 
   encryption::stream::ptr data_cipher;
   bstring enc_header;
@@ -1268,7 +1275,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
 
 columnstore_writer::column_t writer::push_column(
     const column_info& info,
-    column_header_writer_f header_writer) {
+    column_finalizer_f finalizer) {
   // FIXME
   // Since current implementation doesn't support custom compression,
   // we ignore the compression option set in column_info.
@@ -1289,7 +1296,7 @@ columnstore_writer::column_t writer::push_column(
 
   const auto id = columns_.size();
 
-  if (id >= field_limits::invalid()) {
+  if (id >= std::numeric_limits<uint32_t>::max()) {
     // FIXME(gnusi): message
     // Too many columns
     throw illegal_state{};
@@ -1308,8 +1315,9 @@ columnstore_writer::column_t writer::push_column(
       cipher,
       { buf_.get() },
       consolidation_ },
+    static_cast<field_id>(id),
     compression,
-    std::move(header_writer),
+    std::move(finalizer),
     std::move(compressor));
 
   return std::make_pair(id, [&column] (doc_id_t doc) -> column_output& {
@@ -1342,26 +1350,14 @@ bool writer::commit(const flush_state& /*state*/) {
     return false; // nothing to flush
   }
 
-  const irs::string_ref segment_name{
-    data_filename_,
-    data_filename_.size() - DATA_FORMAT_EXT.size() - 1 };
-  auto index_filename = index_file_name(segment_name);
-  auto index_out = dir_->create(index_filename);
-
-  if (!index_out) {
-    throw io_error{string_utils::to_string(
-      "Failed to create file, path: %s",
-      index_filename.c_str())};
-  }
-
-  format_utils::write_header(*index_out, INDEX_FORMAT_NAME, FORMAT_MIN);
-
-  // Flush column index in sorted order
   assert(sorted_columns_.empty());
   sorted_columns_.reserve(columns_.size());
-  std::copy(std::begin(columns_),
-            std::end(columns_),
-            std::back_inserter(sorted_columns_));
+
+  for (auto& column : columns_) {
+    column.finalize(); // Flush remain blocks and execute finalizer
+    sorted_columns_.emplace_back(column);
+  }
+
   std::sort(std::begin(sorted_columns_),
             std::end(sorted_columns_),
             [](const column& lhs, const column& rhs) {
@@ -1372,17 +1368,23 @@ bool writer::commit(const flush_state& /*state*/) {
   assert(columns_.size() < field_limits::invalid());
   const field_id count = static_cast<field_id>(columns_.size());
 
-  // Set ordinal positions
-  field_id ord = 0;
-  for (column& column : sorted_columns_) {
-    column.set_ordinal(ord++);
+  const irs::string_ref segment_name{
+      data_filename_,
+      data_filename_.size() - kDataFormatExt.size() - 1 };
+  auto index_filename = index_file_name(segment_name);
+  auto index_out = dir_->create(index_filename);
+
+  if (!index_out) {
+    throw io_error{string_utils::to_string(
+      "Failed to create file, path: %s",
+      index_filename.c_str())};
   }
 
-  // Flush all remain data including potentially
-  // empty columns among the filled ones
-  index_out->write_vint(count); // number of columns
+  format_utils::write_header(*index_out, kIndexFormatName, static_cast<int32_t>(Version::kMin));
+
+  index_out->write_vint(static_cast<uint32_t>(count));
   for (auto& column : columns_) {
-    column.finish(*index_out); // Commit and flush remaining blocks
+    column.finish(*index_out);
   }
 
   format_utils::write_footer(*index_out);
@@ -1408,13 +1410,13 @@ void writer::rollback() noexcept {
 const column_header* reader::header(field_id field) const {
   auto* column = field >= columns_.size()
     ? nullptr // can't find column with the specified identifier
-    : columns_[field].get();
+    : columns_[field];
 
   if (column) {
 #ifdef IRESEARCH_DEBUG
-    auto& impl = dynamic_cast<column_base&>(*column);
+    auto& impl = dynamic_cast<const column_base&>(*column);
 #else
-    auto& impl = static_cast<column_base&>(*column);
+    auto& impl = static_cast<const column_base&>(*column);
 #endif
 
     return &impl.header();
@@ -1435,9 +1437,9 @@ void reader::prepare_data(const directory& dir, const std::string& filename) {
   [[maybe_unused]] const auto version =
     format_utils::check_header(
       *data_in,
-      writer::DATA_FORMAT_NAME,
-      writer::FORMAT_MIN,
-      writer::FORMAT_MAX);
+      writer::kDataFormatName,
+      static_cast<int32_t>(Version::kMin),
+      static_cast<int32_t>(Version::kMax));
 
   encryption::stream::ptr cipher;
   auto* enc = dir.attributes().encryption();
@@ -1475,9 +1477,9 @@ void reader::prepare_index(
   [[maybe_unused]] const auto version =
     format_utils::check_header(
       *index_in,
-      writer::INDEX_FORMAT_NAME,
-      writer::FORMAT_MIN,
-      writer::FORMAT_MAX);
+      writer::kIndexFormatName,
+      static_cast<int32_t>(Version::kMin),
+      static_cast<int32_t>(Version::kMax));
 
   const field_id count = index_in->read_vint();
 
@@ -1510,22 +1512,22 @@ void reader::prepare_index(
         i)};
     }
 
-    if (ColumnType::MASK != hdr.type && 0 == hdr.docs_count) {
+    if (ColumnType::kMask != hdr.type && 0 == hdr.docs_count) {
       throw index_error{string_utils::to_string(
         "Failed to load column id=%u, only mask column may be empty",
         i)};
     }
 
-    const field_id ord = index_in->read_vint();
-
-    if (ord >= field_limits::invalid() || ord >= count) {
+    if (hdr.id >= std::numeric_limits<uint32_t>::max() || hdr.id >= count) {
       throw index_error{string_utils::to_string(
         "Failed to load column id=%u, invalid ordinal position",
         i)};
     }
 
+    auto payload = read_string<bstring>(*index_in);
+
     std::optional<std::string> name;
-    if (ColumnProperty::NO_NAME != (hdr.props & ColumnProperty::NO_NAME)) {
+    if (ColumnProperty::kNoName != (hdr.props & ColumnProperty::kNoName)) {
       name = irs::read_string<std::string>(*index_in);
 
       if (data_cipher_) {
@@ -1539,15 +1541,24 @@ void reader::prepare_index(
       ? read_bitmap_index(*index_in)
       : column_index{};
 
-    const size_t idx = static_cast<size_t>(hdr.type);
-    if (IRS_LIKELY(idx < IRESEARCH_COUNTOF(FACTORIES))) {
-      auto column = FACTORIES[idx](i, std::move(name),
+    if (const size_t idx = static_cast<size_t>(hdr.type);
+        IRS_LIKELY(idx < IRESEARCH_COUNTOF(FACTORIES))) {
+      auto column = FACTORIES[idx](std::move(name), std::move(payload),
                                    std::move(hdr), std::move(index),
                                    *index_in, *data_in_,
                                    std::move(inflater), data_cipher_.get());
       assert(column);
-      sorted_columns[ord] = column.get();
-      columns.emplace_back(std::move(column));
+
+      if (!sorted_columns.empty() &&
+          !::less(sorted_columns.back()->name(), column->name())) {
+        throw irs::index_error(irs::string_utils::to_string(
+            "invalid column order in segment '%s'",
+            meta.name.c_str()));
+      }
+
+      assert(hdr.id < columns.size());
+      columns[hdr.id] = column.get();
+      sorted_columns.emplace_back(std::move(column));
     } else {
       throw index_error{string_utils::to_string(
         "Failed to load column id=%u, got invalid type=%u",
@@ -1557,19 +1568,11 @@ void reader::prepare_index(
 
   format_utils::check_footer(*index_in, checksum);
 
-  if (!std::is_sorted(std::begin(sorted_columns),
-                      std::end(sorted_columns),
-                      [](const auto* lhs, const auto* rhs) {
-                        return ::less(lhs->name(), rhs->name());
-                      })) {
-    throw irs::index_error(irs::string_utils::to_string(
-        "invalid column order in segment '%s'",
-        meta.name.c_str()));
-  }
-
   // noexcept block
   columns_ = std::move(columns);
   sorted_columns_ = std::move(sorted_columns);
+
+  assert(columns_.size() == sorted_columns_.size());
 }
 
 bool reader::prepare(const directory& dir, const segment_meta& meta) {
@@ -1612,7 +1615,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
 }
 
 bool reader::visit(const column_visitor_f& visitor) const {
-  for (const auto* column : sorted_columns_) {
+  for (const auto& column : sorted_columns_) {
     assert(column);
     if (!visitor(*column)) {
       return false;

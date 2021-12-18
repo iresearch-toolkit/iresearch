@@ -31,7 +31,7 @@ namespace iresearch {
 
 std::pair<doc_map, field_id> sorted_column::flush(
     columnstore_writer& writer,
-    columnstore_writer::column_header_writer_f header_writer,
+    columnstore_writer::column_finalizer_f finalizer,
     doc_id_t max,
     const comparer& less) {
   assert(index_.size() <= max);
@@ -92,7 +92,7 @@ std::pair<doc_map, field_id> sorted_column::flush(
   }
 
   // flush sorted data
-  auto column = writer.push_column(info_, std::move(header_writer));
+  auto column = writer.push_column(info_, std::move(finalizer));
   const auto& column_writer = column.second;
 
   new_doc_id = doc_limits::min();
@@ -183,7 +183,7 @@ void sorted_column::flush_sparse(
 
 field_id sorted_column::flush(
     columnstore_writer& writer,
-    columnstore_writer::column_header_writer_f header_writer,
+    columnstore_writer::column_finalizer_f finalizer,
     const doc_map& docmap,
     std::vector<std::pair<doc_id_t, doc_id_t>>& buffer) {
   assert(docmap.size() < irs::doc_limits::eof());
@@ -192,7 +192,7 @@ field_id sorted_column::flush(
     return field_limits::invalid();
   }
 
-  auto column = writer.push_column(info_, std::move(header_writer));
+  auto column = writer.push_column(info_, std::move(finalizer));
   const auto& column_writer = column.second;
 
   // temporarily push sentinel

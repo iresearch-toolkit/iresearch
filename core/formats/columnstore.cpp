@@ -428,7 +428,7 @@ bool meta_reader::prepare(
 
   constexpr const size_t FOOTER_LEN =
       sizeof(uint64_t) // count
-    + sizeof(field_id) // max id
+    + sizeof(uint64_t) // max id
     + format_utils::FOOTER_LEN;
 
   // seek to start of meta footer (before count and max_id)
@@ -651,7 +651,7 @@ class writer final : public irs::columnstore_writer {
   virtual void prepare(directory& dir, const segment_meta& meta) override;
   // Current implmentation doesn't support column headers
   virtual column_t push_column(const column_info& info,
-                               column_header_writer_f /*writer*/) override;
+                               column_finalizer_f /*writer*/) override;
   virtual bool commit(const flush_state& state) override;
   virtual void rollback() noexcept override;
 
@@ -902,7 +902,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
 
 columnstore_writer::column_t writer::push_column(
     const column_info& info,
-    column_header_writer_f /*writer*/) {
+    column_finalizer_f /*writer*/) {
   encryption::stream* cipher;
   irs::type_info compression;
 
@@ -937,7 +937,7 @@ columnstore_writer::column_t writer::push_column(
   });
 }
 
-bool writer::commit(const flush_state& /*state*/) {
+bool writer::commit(const flush_state& state) {
   assert(dir_);
 
   // remove all empty columns from tail
@@ -972,6 +972,8 @@ bool writer::commit(const flush_state& /*state*/) {
 
   data_out_->write_long(block_index_ptr);
   format_utils::write_footer(*data_out_);
+
+  flush_meta(state);
 
   rollback();
 

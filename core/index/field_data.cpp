@@ -744,7 +744,7 @@ field_data::field_data(
     int_writer_(&int_writer),
     proc_table_(TERM_PROCESSING_TABLES[size_t(random_access)]),
     last_doc_(doc_limits::invalid()) {
-  // FIXME
+  // FIXME(gnusi)
   //features_.reserve(field_features.size());
   for (const type_info::type_id feature : features) {
     assert(feature_columns);
@@ -755,8 +755,11 @@ field_data::field_data(
       : nullptr;
 
     if (feature_writer) {
-      columnstore_writer::column_header_writer_f header_writer =
-          [writer = feature_writer.get()](bstring& out) { writer->finish(out); };
+      columnstore_writer::column_finalizer_f finalizer =
+          [writer = feature_writer.get()](bstring& out) {
+              writer->finish(out);
+              return string_ref::NIL;
+          };
 
       if (random_access) {
         // sorted index case
@@ -764,7 +767,7 @@ field_data::field_data(
         *id = field_limits::invalid();
         auto& stream = cached_features.emplace_back(
             id, feature_column_info,
-            std::move(header_writer));
+            std::move(finalizer));
         features_.emplace_back(
             std::move(feature_writer),
             [stream = &stream.stream](doc_id_t doc) mutable -> column_output& {
@@ -773,7 +776,7 @@ field_data::field_data(
       } else {
         auto [id, handler] = columns.push_column(
             feature_column_info,
-            std::move(header_writer));
+            std::move(finalizer));
         features_.emplace_back(std::move(feature_writer), std::move(handler));
         meta_.features[feature] = id;
       }

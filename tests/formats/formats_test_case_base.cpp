@@ -28,13 +28,15 @@
 
 namespace tests {
 
-irs::columnstore_writer::column_header_writer_f column_header_writer(
-    uint32_t value) {
-  return [value](irs::bstring& out) {
+irs::columnstore_writer::column_finalizer_f column_finalizer(
+    uint32_t value,
+    irs::string_ref name = irs::string_ref::NIL) {
+  return [value, name](irs::bstring& out) {
     EXPECT_TRUE(out.empty());
     out.resize(sizeof(value));
     auto* p = out.data();
     irs::write(p, value);
+    return name;
   };
 }
 
@@ -1086,7 +1088,7 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
     auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), seg);
     auto column = writer->push_column(lz4_column_info(),
-                                      column_header_writer(42));
+                                      column_finalizer(42));
     column_id = column.first;
     auto& column_handler = column.second;
 
@@ -1149,7 +1151,7 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
     auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), seg);
     auto column = writer->push_column(lz4_column_info(),
-                                      column_header_writer(42));
+                                      column_finalizer(42));
     column_id = column.first;
     auto& column_handler = column.second;
 
@@ -1196,7 +1198,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
     writer->prepare(dir(), segment);
 
     auto column = writer->push_column(lz4_column_info(),
-                                      column_header_writer(42));
+                                      column_finalizer(42));
 
     id = column.first;
     auto& handle = column.second;
@@ -1467,9 +1469,9 @@ TEST_P(format_test_case, columns_rw_empty) {
     auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), meta0);
 
-    column0_id = writer->push_column(lz4_column_info(), column_header_writer(42)).first;
+    column0_id = writer->push_column(lz4_column_info(), column_finalizer(42)).first;
     ASSERT_EQ(0, column0_id);
-    column1_id = writer->push_column(lz4_column_info(), column_header_writer(43)).first;
+    column1_id = writer->push_column(lz4_column_info(), column_finalizer(43)).first;
     ASSERT_EQ(1, column1_id);
 
     irs::flush_state state;
@@ -1539,7 +1541,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
 
         if (res.second) {
           res.first->second = writer->push_column(lz4_column_info(),
-                                                  column_header_writer(42));
+                                                  column_finalizer(42));
         }
 
         auto& column = res.first->second.second;
@@ -1624,7 +1626,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
     writer->prepare(dir(), segment);
 
     auto column = writer->push_column(lz4_column_info(),
-                                      column_header_writer(42));
+                                      column_finalizer(42));
     id = column.first;
 
     {
@@ -1795,7 +1797,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
         if (res.second) {
           res.first->second = writer->push_column(lz4_column_info(),
-                                                  column_header_writer(42));
+                                                  column_finalizer(42));
         }
 
         auto& column = res.first->second.second;
@@ -1831,7 +1833,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
         if (res.second) {
           res.first->second = writer->push_column(lz4_column_info(),
-                                                  column_header_writer(42));
+                                                  column_finalizer(42));
         }
 
         auto& column = res.first->second.second;
@@ -1866,7 +1868,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
         if (res.second) {
           res.first->second = writer->push_column(lz4_column_info(),
-                                                  column_header_writer(42));
+                                                  column_finalizer(42));
         }
 
         auto& column = res.first->second.second;
@@ -2083,7 +2085,7 @@ TEST_P(format_test_case, columns_rw_typed) {
 
         if (res.second) {
           res.first->second = writer->push_column(lz4_column_info(),
-                                                  column_header_writer(42));
+                                                  column_finalizer(42));
         }
 
         auto& column = res.first->second.second;
@@ -2325,7 +2327,7 @@ TEST_P(format_test_case, columns_issue700) {
     writer->prepare(dir(), meta);
 
     auto dense_fixed_offset_column = writer->push_column(none_column_info(),
-                                                         column_header_writer(42));
+                                                         column_finalizer(42));
 
     ASSERT_EQ(0, dense_fixed_offset_column.first);
     ASSERT_TRUE(dense_fixed_offset_column.second);
@@ -2387,7 +2389,7 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
 
     dense_fixed_offset_column = writer->push_column(lz4_column_info(), {});
     sparse_fixed_offset_column = writer->push_column(lz4_column_info(),
-                                                     column_header_writer(42));
+                                                     column_finalizer(42));
 
     irs::doc_id_t doc = irs::doc_limits::min();
 
@@ -3439,7 +3441,8 @@ TEST_P(format_test_case, columnstore_read_write_wrong_encryption) {
     writer->prepare(dir(), meta);
 
     {
-      auto [id, handle] = writer->push_column(info, [](auto&){});
+      auto [id, handle] = writer->push_column(
+          info, [](auto&){return irs::string_ref::NIL;});
       handle(0).write_byte(0);
       handle(1).write_byte(1);
       handle(2).write_byte(2);

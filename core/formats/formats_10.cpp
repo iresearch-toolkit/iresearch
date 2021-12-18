@@ -3112,7 +3112,7 @@ irs::field_writer::ptr format14::get_field_writer(bool consolidation) const {
 
 columnstore_writer::ptr format14::get_columnstore_writer(
     bool consolidation) const {
-  return columnstore2::make_writer(columnstore2::Version::MIN, consolidation);
+  return columnstore2::make_writer(columnstore2::Version::kMin, consolidation);
 }
 
 columnstore_reader::ptr format14::get_columnstore_reader() const {
@@ -3281,7 +3281,7 @@ irs::field_writer::ptr format14simd::get_field_writer(bool consolidation) const 
 
 columnstore_writer::ptr format14simd::get_columnstore_writer(
     bool consolidation) const {
-  return columnstore2::make_writer(columnstore2::Version::MIN, consolidation);
+  return columnstore2::make_writer(columnstore2::Version::kMin, consolidation);
 }
 
 columnstore_reader::ptr format14simd::get_columnstore_reader() const {

@@ -65,13 +65,13 @@ class sorting_doc_iterator;
 struct cached_column {
   cached_column(
       field_id* id, column_info info,
-      columnstore_writer::column_header_writer_f header_writer) noexcept
+      columnstore_writer::column_finalizer_f header_writer) noexcept
     : id{id}, stream{info}, header_writer{std::move(header_writer)} {
   }
 
   field_id* id;
   sorted_column stream;
-  columnstore_writer::column_header_writer_f header_writer;
+  columnstore_writer::column_finalizer_f header_writer;
 };
 
 class IRESEARCH_API field_data : util::noncopyable {

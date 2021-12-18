@@ -71,13 +71,16 @@ class column final : public irs::column_output {
 
   explicit column(
       const context& ctx,
+      field_id id,
       const irs::type_info& compression,
-      columnstore_writer::column_header_writer_f&& header_writer,
+      columnstore_writer::column_finalizer_f&& finalizer,
       compression::compressor::ptr deflater)
     : ctx_{ctx},
       compression_{compression},
       deflater_{std::move(deflater)},
-      header_writer_{std::move(header_writer)} {
+      finalizer_{std::move(finalizer)},
+      id_{id} {
+    assert(field_limits::valid(id_));
   }
 
   virtual void write_byte(byte_type b) override {
@@ -155,33 +158,36 @@ class column final : public irs::column_output {
     }
   }
 
+  void finalize() {
+    flush();
+
+    if (finalizer_) {
+      name_ = finalizer_(payload_);
+    }
+  }
+
   void finish(index_output& index_out);
 
-  void set_ordinal(field_id ord) noexcept {
-    ord_ = ord;
-  }
-
-  string_ref name() const noexcept {
-    return name_.has_value() ? name_.value() : string_ref::NIL;
-  }
+  string_ref name() const noexcept { return name_; }
 
   void flush_block();
 
   context ctx_;
-  std::optional<std::string> name_;
   irs::type_info compression_;
   compression::compressor::ptr deflater_;
-  columnstore_writer::column_header_writer_f header_writer_;
+  columnstore_writer::column_finalizer_f finalizer_;
   std::vector<column_block> blocks_; // at most 65536 blocks
   memory_output data_{*ctx_.alloc};
   memory_output docs_{*ctx_.alloc};
   sparse_bitmap_writer docs_writer_{docs_.stream};
   address_table addr_table_;
+  bstring payload_;
+  string_ref name_;
   uint64_t prev_avg_{};
   doc_id_t docs_count_{};
   doc_id_t prev_{}; // last committed doc_id_t
   doc_id_t pend_{}; // last pushed doc_id_t
-  field_id ord_{field_limits::invalid()}; // ordinal position
+  field_id id_;
   bool fixed_length_{true};
 #ifdef IRESEARCH_DEBUG
   bool sealed_{false};
@@ -193,20 +199,17 @@ class column final : public irs::column_output {
 ////////////////////////////////////////////////////////////////////////////////
 class writer final : public columnstore_writer {
  public:
-  static constexpr int32_t FORMAT_MIN = 0;
-  static constexpr int32_t FORMAT_MAX = 0;
-
-  static constexpr string_ref DATA_FORMAT_NAME = "iresearch_11_columnstore_data";
-  static constexpr string_ref INDEX_FORMAT_NAME = "iresearch_11_columnstore_index";
-  static constexpr string_ref DATA_FORMAT_EXT = "csd";
-  static constexpr string_ref INDEX_FORMAT_EXT = "csi";
+  static constexpr string_ref kDataFormatName = "iresearch_11_columnstore_data";
+  static constexpr string_ref kIndexFormatName = "iresearch_11_columnstore_index";
+  static constexpr string_ref kDataFormatExt = "csd";
+  static constexpr string_ref kIndexFormatExt = "csi";
 
   explicit writer(bool consolidation);
 
   virtual void prepare(directory& dir, const segment_meta& meta) override;
   virtual column_t push_column(
       const column_info& info,
-      column_header_writer_f header_writer) override;
+      column_finalizer_f finalizer) override;
   virtual bool commit(const flush_state& state) override;
   virtual void rollback() noexcept override;
 
@@ -229,22 +232,22 @@ enum class ColumnType : uint16_t {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief variable length data
   //////////////////////////////////////////////////////////////////////////////
-  SPARSE = 0,
+  kSparse = 0,
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief no data
   //////////////////////////////////////////////////////////////////////////////
-  MASK,
+  kMask,
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fixed length data
   //////////////////////////////////////////////////////////////////////////////
-  FIXED,
+  kFixed,
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fixed length data in adjacent blocks
   //////////////////////////////////////////////////////////////////////////////
-  DENSE_FIXED
+  kDenseFixed
 }; // ColumnType
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,17 +257,17 @@ enum class ColumnProperty : uint16_t {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Regular column
   //////////////////////////////////////////////////////////////////////////////
-  NORMAL = 0,
+  kNormal = 0,
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Encrytped data
   //////////////////////////////////////////////////////////////////////////////
-  ENCRYPT = 1,
+  kEncrypt = 1,
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Annonymous column
   //////////////////////////////////////////////////////////////////////////////
-  NO_NAME = 2
+  kNoName = 2
 }; // ColumnProperty
 
 ENABLE_BITMASK_ENUM(ColumnProperty);
@@ -273,11 +276,6 @@ ENABLE_BITMASK_ENUM(ColumnProperty);
 /// @struct column_header
 ////////////////////////////////////////////////////////////////////////////////
 struct column_header {
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief column header payload
-  //////////////////////////////////////////////////////////////////////////////
-  bstring payload;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief bitmap index offset, 0 if not present
   /// @note 0 - not present, meaning dense column
@@ -295,14 +293,19 @@ struct column_header {
   doc_id_t min{doc_limits::invalid()};
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief column identifier
+  //////////////////////////////////////////////////////////////////////////////
+  field_id id{field_limits::invalid()};
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief column properties
   //////////////////////////////////////////////////////////////////////////////
-  ColumnProperty props{ColumnProperty::NORMAL};
+  ColumnProperty props{ColumnProperty::kNormal};
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief column type
   //////////////////////////////////////////////////////////////////////////////
-  ColumnType type{ColumnType::SPARSE};
+  ColumnType type{ColumnType::kSparse};
 }; // column_header
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -319,7 +322,7 @@ class reader final : public columnstore_reader {
   virtual const column_reader* column(field_id field) const override {
     return field >= columns_.size()
       ? nullptr // can't find column with the specified identifier
-      : columns_[field].get();
+      : columns_[field];
   }
 
   virtual bool visit(const column_visitor_f& visitor) const override;
@@ -340,15 +343,16 @@ class reader final : public columnstore_reader {
     const segment_meta& meta,
     const std::string& filename);
 
-  std::vector<column_ptr> columns_;
-  std::vector<const column_ptr::element_type*> sorted_columns_;
+  std::vector<column_ptr> sorted_columns_;
+  std::vector<const column_ptr::element_type*> columns_;
   encryption::stream::ptr data_cipher_;
   index_input::ptr data_in_;
 }; // reader
 
 enum class Version : int32_t {
-  MIN = 0,
-}; // Version
+  kMin = 0,
+  kMax = kMin
+};
 
 IRESEARCH_API irs::columnstore_writer::ptr make_writer(Version version, bool consolidation);
 IRESEARCH_API irs::columnstore_reader::ptr make_reader();

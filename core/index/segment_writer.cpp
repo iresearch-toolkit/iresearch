@@ -64,13 +64,17 @@ segment_writer::stored_column::stored_column(
     bool cache)
   : name(name.c_str(), name.size()),
     name_hash(name.hash()) {
-  auto info = column_info(name);
+  const auto info = column_info(name);
+
+  columnstore_writer::column_finalizer_f finalizer =
+      [this](bstring&) noexcept {
+    return string_ref{this->name};
+  };
 
   if (!cache) {
-    std::tie(id, writer) = columnstore.push_column(info, {});
+    std::tie(id, writer) = columnstore.push_column(info, std::move(finalizer));
   } else {
-    auto& cached = cached_columns.emplace_back(
-        &id, info, columnstore_writer::column_header_writer_f{});
+    auto& cached = cached_columns.emplace_back(&id, info, std::move(finalizer));
 
     writer = [stream = &cached.stream](irs::doc_id_t doc)-> column_output& {
       stream->prepare(doc);

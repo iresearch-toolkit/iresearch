@@ -290,14 +290,14 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   struct sorted_column : util::noncopyable {
     explicit sorted_column(
         const column_info_provider_t& column_info,
-        columnstore_writer::column_header_writer_f header_writer) noexcept
+        columnstore_writer::column_finalizer_f header_writer) noexcept
       : stream(column_info(string_ref::NIL)), // get compression for sorted column
         header_writer{std::move(header_writer)} {
     }
 
     field_id id{ field_limits::invalid() };
     irs::sorted_column stream;
-    columnstore_writer::column_header_writer_f header_writer;
+    columnstore_writer::column_finalizer_f header_writer;
   }; // sorted_column
 
   segment_writer(
