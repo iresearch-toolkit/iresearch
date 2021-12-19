@@ -38,9 +38,6 @@ class IRESEARCH_API segment_reader final : public sub_reader {
   typedef segment_reader element_type; // type same as self
   typedef segment_reader ptr; // pointer to self
 
-  template<typename T>
-  static bool has(const segment_meta& meta) noexcept;
-
   static segment_reader open(const directory& dir, const segment_meta& meta);
 
   segment_reader() = default; // required for context<segment_reader>
@@ -136,16 +133,6 @@ class IRESEARCH_API segment_reader final : public sub_reader {
 
   segment_reader(impl_ptr&& impl) noexcept;
 }; // segment_reade
-
-template<>
-/*static*/ IRESEARCH_API bool segment_reader::has<columnstore_reader>(
-    const segment_meta& meta
-) noexcept;
-
-template<>
-/*static*/ IRESEARCH_API bool segment_reader::has<document_mask_reader>(
-    const segment_meta& meta
-) noexcept;
 
 }
 

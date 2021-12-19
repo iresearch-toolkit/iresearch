@@ -335,8 +335,8 @@ TEST(segment_reader_test, segment_reader_has) {
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
-    ASSERT_FALSE(irs::segment_reader::has<irs::columnstore_reader>(meta));
-    ASSERT_FALSE(irs::segment_reader::has<irs::document_mask_reader>(meta));
+    ASSERT_FALSE(irs::has_columnstore(meta));
+    ASSERT_FALSE(irs::has_removals(meta));
   }
 
   // has column store
@@ -354,8 +354,8 @@ TEST(segment_reader_test, segment_reader_has) {
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
-    ASSERT_TRUE(irs::segment_reader::has<irs::columnstore_reader>(meta));
-    ASSERT_FALSE(irs::segment_reader::has<irs::document_mask_reader>(meta));
+    ASSERT_TRUE(irs::has_columnstore(meta));
+    ASSERT_FALSE(irs::has_removals(meta));
   }
 
   // has document mask
@@ -377,8 +377,8 @@ TEST(segment_reader_test, segment_reader_has) {
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
-    ASSERT_FALSE(irs::segment_reader::has<irs::columnstore_reader>(meta));
-    ASSERT_TRUE(irs::segment_reader::has<irs::document_mask_reader>(meta));
+    ASSERT_FALSE(irs::has_columnstore(meta));
+    ASSERT_TRUE(irs::has_removals(meta));
   }
 
   // has all
@@ -401,8 +401,8 @@ TEST(segment_reader_test, segment_reader_has) {
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
-    ASSERT_TRUE(irs::segment_reader::has<irs::columnstore_reader>(meta));
-    ASSERT_TRUE(irs::segment_reader::has<irs::document_mask_reader>(meta));
+    ASSERT_TRUE(irs::has_columnstore(meta));
+    ASSERT_TRUE(irs::has_removals(meta));
   }
 }
 

@@ -283,19 +283,6 @@ segment_reader& segment_reader::operator=(
   return *this;
 }
 
-template<>
-/*static*/ bool segment_reader::has<columnstore_reader>(
-    const segment_meta& meta) noexcept {
-  return meta.column_store; // a separate flag to track presence of column store
-}
-
-template<>
-/*static*/ bool segment_reader::has<document_mask_reader>(
-    const segment_meta& meta) noexcept {
-//  return meta.version > 0; // all version > 0 have document mask
-  return meta.live_docs_count != meta.docs_count;
-}
-
 /*static*/ segment_reader segment_reader::open(
     const directory& dir,
     const segment_meta& meta) {
@@ -378,7 +365,7 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
   field_reader->prepare(dir, meta, reader->docs_mask_);
 
   // initialize optional columnstore
-  if (segment_reader::has<irs::columnstore_reader>(meta)) {
+  if (irs::has_columnstore(meta)) {
     auto& columnstore_reader = reader->columnstore_reader_;
     columnstore_reader = codec.get_columnstore_reader();
 
