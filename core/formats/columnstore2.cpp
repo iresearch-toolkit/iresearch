@@ -1534,11 +1534,13 @@ void reader::prepare_index(
 
     std::optional<std::string> name;
     if (ColumnProperty::kNoName != (hdr.props & ColumnProperty::kNoName)) {
+      [[maybe_unused]] const auto offset = index_in->file_pointer();
+
       name = irs::read_string<std::string>(*index_in);
 
       if (encrypted) {
         assert(data_cipher_);
-        data_cipher_->decrypt(index_in->file_pointer() - name->size(),
+        data_cipher_->decrypt(offset,
                               reinterpret_cast<byte_type*>(name->data()),
                               name->size());
       }

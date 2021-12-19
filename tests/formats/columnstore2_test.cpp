@@ -26,6 +26,8 @@
 #include "formats/columnstore2.hpp"
 #include "search/score.hpp"
 
+using namespace irs::columnstore2;
+
 class columnstore2_test_case : public virtual tests::directory_test_case_base<bool> {
  public:
   static std::string to_string(
@@ -96,7 +98,7 @@ TEST_P(columnstore2_test_case, empty_column) {
       [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
           out += 1;
-          return irs::string_ref::NIL;
+          return "foobar";
       });
   [[maybe_unused]] auto [id1, handle1] = writer.push_column(
       info,
@@ -127,12 +129,14 @@ TEST_P(columnstore2_test_case, empty_column) {
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::invalid(), header->min);
     ASSERT_EQ(irs::columnstore2::ColumnType::kMask, header->type);
-    ASSERT_EQ(has_encryption ? irs::columnstore2::ColumnProperty::kEncrypt
-                             : irs::columnstore2::ColumnProperty::kNormal,
+    ASSERT_EQ(has_encryption ? ColumnProperty::kEncrypt
+                             : ColumnProperty::kNormal,
               header->props);
 
     auto column = reader.column(0);
     ASSERT_NE(nullptr, column);
+    ASSERT_EQ(0, column->id());
+    ASSERT_EQ("foobar", column->name());
     ASSERT_EQ(0, column->size());
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
@@ -151,12 +155,14 @@ TEST_P(columnstore2_test_case, empty_column) {
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(42, header->min);
     ASSERT_EQ(irs::columnstore2::ColumnType::kSparse, header->type); // FIXME why sparse?
-    ASSERT_EQ(has_encryption ? irs::columnstore2::ColumnProperty::kEncrypt
-                             : irs::columnstore2::ColumnProperty::kNormal,
+    ASSERT_EQ(has_encryption ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
+                             : ColumnProperty::kNoName,
               header->props);
 
     auto column = reader.column(1);
     ASSERT_NE(nullptr, column);
+    ASSERT_EQ(1, column->id());
+    ASSERT_TRUE(column->name().null());
     ASSERT_EQ(1, column->size());
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
