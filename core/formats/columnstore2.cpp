@@ -1010,7 +1010,7 @@ constexpr column_factory_f FACTORIES[] {
 
 bool less(string_ref lhs, string_ref rhs) noexcept {
   if (lhs.null()) {
-    return true;
+    return !rhs.null();
   }
 
   if (rhs.null()) {
@@ -1357,13 +1357,13 @@ bool writer::commit(const flush_state& /*state*/) {
 
   for (auto& column : columns_) {
     column.finalize(); // Flush remain blocks and execute finalizer
-    sorted_columns_.emplace_back(column);
+    sorted_columns_.emplace_back(&column);
   }
 
   std::sort(std::begin(sorted_columns_),
             std::end(sorted_columns_),
-            [](const column& lhs, const column& rhs) {
-              return ::less(lhs.name(), rhs.name());
+            [](const auto* lhs, const auto* rhs) {
+              return ::less(lhs->name(), rhs->name());
             });
 
   // Ensured by `push_column(...)`
@@ -1387,8 +1387,8 @@ bool writer::commit(const flush_state& /*state*/) {
                              static_cast<int32_t>(Version::kMin));
 
   index_out->write_vint(static_cast<uint32_t>(count));
-  for (column& column : sorted_columns_) {
-    column.finish(*index_out);
+  for (auto* column : sorted_columns_) {
+    column->finish(*index_out);
   }
 
   format_utils::write_footer(*index_out);
@@ -1557,7 +1557,7 @@ void reader::prepare_index(
       assert(column);
 
       if (!sorted_columns.empty() &&
-          !::less(sorted_columns.back()->name(), column->name())) {
+          ::less(column->name(), sorted_columns.back()->name())) {
         throw irs::index_error(irs::string_utils::to_string(
             "invalid column order in segment '%s'",
             meta.name.c_str()));

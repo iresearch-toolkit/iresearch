@@ -277,7 +277,7 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
 
   if (fields_.comparator()) {
     std::tie(docmap, sort_.id) = sort_.stream.flush(
-        *col_writer_, std::move(sort_.header_writer),
+        *col_writer_, std::move(sort_.finalizer),
         doc_id_t(docs_cached()), *fields_.comparator());
 
     // flush all cached columns
@@ -285,7 +285,7 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
     for (auto& column : cached_columns_) {
       if (IRS_LIKELY(!field_limits::valid(*column.id))) {
         *column.id = column.stream.flush(
-            *col_writer_, std::move(column.header_writer), docmap, buffer);
+            *col_writer_, std::move(column.finalizer), docmap, buffer);
       }
     }
 

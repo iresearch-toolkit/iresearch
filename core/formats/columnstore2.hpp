@@ -218,7 +218,7 @@ class writer final : public columnstore_writer {
   std::string data_filename_;
   memory_allocator* alloc_;
   std::deque<column> columns_; // pointers remain valid
-  std::vector<std::reference_wrapper<column>> sorted_columns_;
+  std::vector<column*> sorted_columns_;
   index_output::ptr data_out_;
   encryption::stream::ptr data_cipher_;
   std::unique_ptr<byte_type[]> buf_;
