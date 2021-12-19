@@ -403,7 +403,7 @@ class compound_column_iterator {
     return true;
   }
 
-  const column_reader& operator*() const {
+  const column_reader& value() const {
     if (IRS_LIKELY(current_value_)) {
       return *current_value_;
     }
@@ -944,10 +944,10 @@ class columnstore {
     return true;
   }
 
-  void reset(const column_info& info) {
+  void reset(const column_info& info, string_ref name) {
     if (!empty_ || info_ != info) {
       info_ = info;
-      column_ = writer_->push_column(info, {}); // FIXME(gnusi): proper writer
+      column_ = writer_->push_column(info, [name](bstring&){return name;}); // FIXME(gnusi): proper writer
       empty_ = true;
     }
   }
@@ -1059,13 +1059,13 @@ bool write_columns(
     columnstore& cs,
     sorting_compound_doc_iterator& columns,
     const column_info_provider_t& column_info,
-    compound_column_iterator& column_meta_itr,
+    compound_column_iterator& column_itr,
     const merge_writer::flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
   assert(cs);
   assert(progress);
 
-  auto add_iterators = [&column_meta_itr](compound_doc_iterator::iterators_t& itrs) {
+  auto add_iterators = [&column_itr](compound_doc_iterator::iterators_t& itrs) {
     auto add_iterators = [&itrs](
         const sub_reader& segment,
         const doc_map_f& doc_map,
@@ -1081,12 +1081,12 @@ bool write_columns(
     };
 
     itrs.clear();
-    return column_meta_itr.visit(add_iterators);
+    return column_itr.visit(add_iterators);
   };
 
-  while (column_meta_itr.next()) {
-    const auto& column_name = (*column_meta_itr).name();
-    cs.reset(column_info(column_name));
+  while (column_itr.next()) {
+    const string_ref column_name = column_itr.value().name();
+    cs.reset(column_info(column_name), column_name);
 
     // visit matched columns from merging segments and
     // write all survived values to the new segment
@@ -1119,8 +1119,8 @@ bool write_columns(
   };
 
   while (column_itr.next()) {
-    const auto& column_name = (*column_itr).name();
-    cs.reset(column_info(column_name));
+    const string_ref column_name = column_itr.value().name();
+    cs.reset(column_info(column_name), column_name);
 
     // visit matched columns from merging segments and
     // write all survived values to the new segment 
@@ -1179,7 +1179,7 @@ bool write_fields(
     for (; begin != end; ++begin) {
       std::tie(feature, std::ignore) = *begin;
 
-      cs.reset(column_info(feature).first);
+      cs.reset(column_info(feature).first, string_ref::NIL);
 
       // remap merge features
       if (!progress() || !field_itr.visit(merge_features)) {
@@ -1264,7 +1264,7 @@ bool write_fields(
 
     for (; begin != end; ++begin) {
       std::tie(feature, std::ignore) = *begin;
-      cs.reset(column_info(feature).first);
+      cs.reset(column_info(feature).first, string_ref::NIL);
 
       // remap merge norms
       if (!progress() || !feature_itr.reset(add_iterators)) {

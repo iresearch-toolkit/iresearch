@@ -3610,7 +3610,7 @@ TEST_P(format_test_case_with_encryption, open_ecnrypted_with_wrong_encryption) {
   ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
 }
 
-TEST_P(format_test_case, open_ecnrypted_with_non_encrypted) {
+TEST_P(format_test_case_with_encryption, open_ecnrypted_with_non_encrypted) {
   if (!supports_encryption()) {
     return;
   }
@@ -3642,7 +3642,7 @@ TEST_P(format_test_case, open_ecnrypted_with_non_encrypted) {
   ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
 }
 
-TEST_P(format_test_case, open_non_ecnrypted_with_encrypted) {
+TEST_P(format_test_case_with_encryption, open_non_ecnrypted_with_encrypted) {
   if (!supports_encryption()) {
     return;
   }
