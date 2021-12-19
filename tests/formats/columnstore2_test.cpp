@@ -128,7 +128,7 @@ TEST_P(columnstore2_test_case, empty_column) {
     ASSERT_EQ(0, header->docs_count);
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::invalid(), header->min);
-    ASSERT_EQ(irs::columnstore2::ColumnType::kMask, header->type);
+    ASSERT_EQ(ColumnType::kMask, header->type);
     ASSERT_EQ(has_encryption ? ColumnProperty::kEncrypt
                              : ColumnProperty::kNormal,
               header->props);
@@ -154,7 +154,7 @@ TEST_P(columnstore2_test_case, empty_column) {
     ASSERT_EQ(1, header->docs_count);
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(42, header->min);
-    ASSERT_EQ(irs::columnstore2::ColumnType::kSparse, header->type); // FIXME why sparse?
+    ASSERT_EQ(ColumnType::kSparse, header->type); // FIXME why sparse?
     ASSERT_EQ(has_encryption ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
                              : ColumnProperty::kNoName,
               header->props);
@@ -224,14 +224,16 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
     ASSERT_EQ(MAX/2, header->docs_count);
     ASSERT_NE(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
-    ASSERT_EQ(irs::columnstore2::ColumnType::kMask, header->type);
-    ASSERT_EQ(has_encryption ? irs::columnstore2::ColumnProperty::kEncrypt
-                             : irs::columnstore2::ColumnProperty::kNormal,
+    ASSERT_EQ(ColumnType::kMask, header->type);
+    ASSERT_EQ(has_encryption ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
+                             : ColumnProperty::kNoName,
               header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
     ASSERT_EQ(MAX/2, column->size());
+    ASSERT_EQ(0, column->id());
+    ASSERT_TRUE(column->name().null());
 
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
@@ -340,7 +342,7 @@ TEST_P(columnstore2_test_case, sparse_column) {
         [](irs::bstring& out) {
             EXPECT_TRUE(out.empty());
             out += 42;
-            return irs::string_ref::NIL;
+            return "foobaz";
         });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
@@ -362,14 +364,16 @@ TEST_P(columnstore2_test_case, sparse_column) {
     ASSERT_EQ(MAX/2, header->docs_count);
     ASSERT_NE(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
-    ASSERT_EQ(irs::columnstore2::ColumnType::kSparse, header->type);
-    ASSERT_EQ(has_encryption ? irs::columnstore2::ColumnProperty::kEncrypt
-                             : irs::columnstore2::ColumnProperty::kNormal,
+    ASSERT_EQ(ColumnType::kSparse, header->type);
+    ASSERT_EQ(has_encryption ? ColumnProperty::kEncrypt
+                             : ColumnProperty::kNormal,
               header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
     ASSERT_EQ(MAX/2, column->size());
+    ASSERT_EQ(0, column->id());
+    ASSERT_EQ("foobaz", column->name());
 
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
@@ -497,7 +501,7 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
         [](irs::bstring& out) {
             EXPECT_TRUE(out.empty());
             out += 42;
-            return irs::string_ref::NIL;
+            return "foobarbaz";
         });
 
     auto write_payload = [](irs::doc_id_t doc, irs::data_output& stream) {
@@ -535,14 +539,17 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
     ASSERT_EQ(MAX, header->docs_count);
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
-    ASSERT_EQ(irs::columnstore2::ColumnType::kSparse, header->type);
-    ASSERT_EQ(has_encryption ? irs::columnstore2::ColumnProperty::kEncrypt
-                             : irs::columnstore2::ColumnProperty::kNormal,
+    ASSERT_EQ(ColumnType::kSparse, header->type);
+    ASSERT_EQ(has_encryption ? ColumnProperty::kEncrypt
+                             : ColumnProperty::kNormal,
               header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
     ASSERT_EQ(MAX, column->size());
+
+    ASSERT_EQ(0, column->id());
+    ASSERT_EQ("foobarbaz", column->name());
 
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
@@ -694,14 +701,17 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
     ASSERT_EQ(MAX, header->docs_count);
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
-    ASSERT_EQ(irs::columnstore2::ColumnType::kSparse, header->type);
-    ASSERT_EQ(has_encryption ? irs::columnstore2::ColumnProperty::kEncrypt
-                             : irs::columnstore2::ColumnProperty::kNormal,
+    ASSERT_EQ(ColumnType::kSparse, header->type);
+    ASSERT_EQ(has_encryption ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
+                             : ColumnProperty::kNoName,
               header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
     ASSERT_EQ(MAX, column->size());
+
+    ASSERT_EQ(0, column->id());
+    ASSERT_TRUE(column->name().null());
 
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
@@ -861,14 +871,17 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
     ASSERT_EQ(MAX, header->docs_count);
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
-    ASSERT_EQ(irs::columnstore2::ColumnType::kSparse, header->type);
-    ASSERT_EQ(has_encryption ? irs::columnstore2::ColumnProperty::kEncrypt
-                             : irs::columnstore2::ColumnProperty::kNormal,
+    ASSERT_EQ(ColumnType::kSparse, header->type);
+    ASSERT_EQ(has_encryption ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
+                             : ColumnProperty::kNoName,
               header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
     ASSERT_EQ(MAX, column->size());
+
+    ASSERT_EQ(0, column->id());
+    ASSERT_TRUE(column->name().null());
 
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
@@ -1000,7 +1013,7 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
         [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
           out += 42;
-          return irs::string_ref::NIL;
+          return "foobar";
         });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
@@ -1020,14 +1033,17 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
     ASSERT_EQ(MAX, header->docs_count);
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
-    ASSERT_EQ(irs::columnstore2::ColumnType::kMask, header->type);
-    ASSERT_EQ(has_encryption ? irs::columnstore2::ColumnProperty::kEncrypt
-                             : irs::columnstore2::ColumnProperty::kNormal,
+    ASSERT_EQ(ColumnType::kMask, header->type);
+    ASSERT_EQ(has_encryption ? ColumnProperty::kEncrypt
+                             : ColumnProperty::kNormal,
               header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
     ASSERT_EQ(MAX, column->size());
+
+    ASSERT_EQ(0, column->id());
+    ASSERT_EQ("foobar", column->name());
 
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
@@ -1146,7 +1162,7 @@ TEST_P(columnstore2_test_case, dense_column) {
         [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
           out += 42;
-          return irs::string_ref::NIL;
+          return "foobar";
         });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
@@ -1168,14 +1184,17 @@ TEST_P(columnstore2_test_case, dense_column) {
     ASSERT_EQ(MAX, header->docs_count);
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
-    ASSERT_EQ(irs::columnstore2::ColumnType::kSparse, header->type);
-    ASSERT_EQ(has_encryption ? irs::columnstore2::ColumnProperty::kEncrypt
-                             : irs::columnstore2::ColumnProperty::kNormal,
+    ASSERT_EQ(ColumnType::kSparse, header->type);
+    ASSERT_EQ(has_encryption ? ColumnProperty::kEncrypt
+                             : ColumnProperty::kNormal,
               header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
     ASSERT_EQ(MAX, column->size());
+
+    ASSERT_EQ(0, column->id());
+    ASSERT_EQ("foobar", column->name());
 
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
@@ -1321,14 +1340,17 @@ TEST_P(columnstore2_test_case, dense_column_range) {
     ASSERT_EQ(MAX-MIN+1, header->docs_count);
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(MIN, header->min);
-    ASSERT_EQ(irs::columnstore2::ColumnType::kSparse, header->type);
-    ASSERT_EQ(has_encryption ? irs::columnstore2::ColumnProperty::kEncrypt
-                             : irs::columnstore2::ColumnProperty::kNormal,
+    ASSERT_EQ(ColumnType::kSparse, header->type);
+    ASSERT_EQ(has_encryption ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
+                             : ColumnProperty::kNoName,
               header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
     ASSERT_EQ(MAX-MIN+1, column->size());
+
+    ASSERT_EQ(0, column->id());
+    ASSERT_TRUE(column->name().null());
 
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
@@ -1504,16 +1526,19 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
       ASSERT_EQ(irs::doc_limits::min(), header->min);
       ASSERT_EQ(
         this->consolidation()
-          ? irs::columnstore2::ColumnType::kDenseFixed
-          : irs::columnstore2::ColumnType::kFixed,
+          ? ColumnType::kDenseFixed
+          : ColumnType::kFixed,
         header->type);
-      ASSERT_EQ(has_encryption ? irs::columnstore2::ColumnProperty::kEncrypt
-                               : irs::columnstore2::ColumnProperty::kNormal,
+      ASSERT_EQ(has_encryption ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
+                               : ColumnProperty::kNoName,
                 header->props);
 
       auto* column = reader.column(kColumnId);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(MAX, column->size());
+
+      ASSERT_EQ(0, column->id());
+      ASSERT_TRUE(column->name().null());
 
       const auto header_payload = column->payload();
       ASSERT_EQ(1, header_payload.size());
@@ -1628,16 +1653,19 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
       ASSERT_EQ(irs::doc_limits::min(), header->min);
       ASSERT_EQ(
         this->consolidation()
-          ? irs::columnstore2::ColumnType::kDenseFixed
-          : irs::columnstore2::ColumnType::kFixed,
+          ? ColumnType::kDenseFixed
+          : ColumnType::kFixed,
         header->type);
-      ASSERT_EQ(has_encryption ? irs::columnstore2::ColumnProperty::kEncrypt
-                               : irs::columnstore2::ColumnProperty::kNormal,
+      ASSERT_EQ(has_encryption ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
+                               : ColumnProperty::kNoName,
                 header->props);
 
       auto* column = reader.column(kColumnId);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(MAX, column->size());
+
+      ASSERT_EQ(1, column->id());
+      ASSERT_TRUE(column->name().null());
 
       const auto header_payload = column->payload();
       ASSERT_EQ(1, header_payload.size());
@@ -1799,16 +1827,19 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
       ASSERT_EQ(irs::doc_limits::min(), header->min);
       ASSERT_EQ(
         this->consolidation()
-          ? irs::columnstore2::ColumnType::kDenseFixed
-          : irs::columnstore2::ColumnType::kFixed,
+          ? ColumnType::kDenseFixed
+          : ColumnType::kFixed,
         header->type);
-      ASSERT_EQ(has_encryption ? irs::columnstore2::ColumnProperty::kEncrypt
-                               : irs::columnstore2::ColumnProperty::kNormal,
+      ASSERT_EQ(has_encryption ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
+                               : ColumnProperty::kNoName,
                 header->props);
 
       auto* column = reader.column(kColumnId);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(MAX, column->size());
+
+      ASSERT_EQ(0, column->id());
+      ASSERT_TRUE(column->name().null());
 
       const auto header_payload = column->payload();
       ASSERT_EQ(1, header_payload.size());
