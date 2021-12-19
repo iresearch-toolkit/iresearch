@@ -84,6 +84,6 @@ INSTANTIATE_TEST_SUITE_P(
     format_14_test,
     format_test_case,
     ::testing::Combine(kDirectories, kFormats),
-    format_test_case_with_encryption::to_string);
+    format_test_case::to_string);
 
 }

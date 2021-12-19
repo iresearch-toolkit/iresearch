@@ -28,6 +28,7 @@
 
 namespace {
 
+using tests::format_test_case;
 using tests::format_test_case_with_encryption;
 
 class format_12_test_case : public format_test_case_with_encryption { };
@@ -235,6 +236,12 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     format_12_test,
     format_test_case_with_encryption,
+    kTestValues,
+    format_12_test_case::to_string);
+
+INSTANTIATE_TEST_SUITE_P(
+    format_12_test,
+    format_test_case,
     kTestValues,
     format_12_test_case::to_string);
 
