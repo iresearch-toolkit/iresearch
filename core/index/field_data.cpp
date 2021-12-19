@@ -744,8 +744,6 @@ field_data::field_data(
     int_writer_(&int_writer),
     proc_table_(TERM_PROCESSING_TABLES[size_t(random_access)]),
     last_doc_(doc_limits::invalid()) {
-  // FIXME(gnusi)
-  //features_.reserve(field_features.size());
   for (const type_info::type_id feature : features) {
     assert(feature_columns);
     auto [feature_column_info, feature_writer_factory] = feature_columns(feature);

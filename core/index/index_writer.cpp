@@ -547,7 +547,7 @@ segment_reader readers_cache::emplace(const segment_meta& meta) {
 
   segment_reader cached_reader;
 
-  // FIXME consider moving open/reopen out of the scope of the lock
+  // FIXME(gnusi) consider moving open/reopen out of the scope of the lock
   // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(lock_);
   auto& reader = cache_[meta];
