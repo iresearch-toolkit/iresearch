@@ -1450,7 +1450,7 @@ doc_id_t compute_doc_ids(
   return next_id;
 }
 
-const merge_writer::flush_progress_t PROGRESS_NOOP = [](){ return true; };
+const merge_writer::flush_progress_t kProgressNoop = [](){ return true; };
 
 } // LOCAL
 
@@ -1797,7 +1797,7 @@ bool merge_writer::flush(
     meta.version = 0;
   });
 
-  const auto& progress_callback = progress ? progress : PROGRESS_NOOP;
+  const auto& progress_callback = progress ? progress : kProgressNoop;
 
   tracking_directory track_dir(dir_); // track writer created files
 

@@ -141,6 +141,7 @@ class format_test_case : public index_test_base {
         const docs_t::const_iterator& end,
         irs::IndexFeatures features = irs::IndexFeatures::NONE)
       : next_(begin), end_(end), pos_(features) {
+      attrs_[irs::type<irs::document>::id()] = &doc_;
       attrs_[irs::type<irs::attribute_provider_change>::id()] = &callback_;
       if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::FREQ)) {
         freq_.value = 10;
@@ -152,17 +153,17 @@ class format_test_case : public index_test_base {
     }
 
     bool next() override {
-      if (!irs::doc_limits::valid(doc_)) {
+      if (!irs::doc_limits::valid(doc_.value)) {
         callback_(*this);
       }
 
       if (next_ == end_) {
-        doc_ = irs::doc_limits::eof();
+        doc_.value = irs::doc_limits::eof();
         return false;
       }
 
-      doc_ = *next_;
-      pos_.value_ = doc_;
+      doc_.value = *next_;
+      pos_.value_ = doc_.value;
       pos_.end_ = pos_.value_ + 10;
       pos_.clear();
       ++next_;
@@ -171,7 +172,7 @@ class format_test_case : public index_test_base {
     }
 
     irs::doc_id_t value() const override {
-      return doc_;
+      return doc_.value;
     }
 
     irs::doc_id_t seek(irs::doc_id_t target) override {
@@ -191,7 +192,7 @@ class format_test_case : public index_test_base {
     irs::frequency freq_;
     irs::attribute_provider_change callback_;
     tests::format_test_case::position pos_;
-    irs::doc_id_t doc_{ irs::doc_limits::invalid() };
+    irs::document doc_;
   }; // postings 
 
   template<typename Iterator>

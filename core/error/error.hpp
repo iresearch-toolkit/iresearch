@@ -174,10 +174,13 @@ struct IRESEARCH_API not_impl_error : error_base {
 //////////////////////////////////////////////////////////////////////////////
 /// @struct illegal_argument
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API illegal_argument : error_base {
+struct IRESEARCH_API illegal_argument : detailed_error_base {
   DECLARE_ERROR_CODE(illegal_argument);
 
-  virtual const char* what() const noexcept override;
+  template<typename T>
+  explicit illegal_argument(T&& error)
+    : detailed_error_base(std::forward<T>(error)) {
+  }
 }; // illegal_argument
 
 //////////////////////////////////////////////////////////////////////////////

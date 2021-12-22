@@ -849,8 +849,16 @@ class postings_writer final: public postings_writer_base {
 #endif
 
 template<typename FormatTraits, bool VolatileAttributes>
-irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::write(irs::doc_iterator& docs) {
+irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::write(
+    irs::doc_iterator& docs) {
   REGISTER_TIMER_DETAILED();
+
+  auto* doc = irs::get<document>(docs);
+
+  if (!doc) {
+    assert(false);
+    throw illegal_argument{"'document' attribute is missing"};
+  }
 
   if constexpr (VolatileAttributes) {
     auto* subscription = irs::get<attribute_provider_change>(docs);
@@ -868,8 +876,7 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
   begin_term();
 
   while (docs.next()) {
-    // FIXME(gnusi): try to use `const document*` instead of `docs.value()`
-    const auto did = docs.value();
+    const auto did = doc->value;
     assert(doc_limits::valid(did));
 
     begin_doc<FormatTraits>(did, freq_);

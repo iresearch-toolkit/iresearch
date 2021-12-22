@@ -274,7 +274,7 @@ class doc_iterator final : public irs::doc_iterator {
       const irs::posting& posting,
       const byte_block_pool::sliced_reader& freq,
       const byte_block_pool::sliced_reader* prox) {
-    doc_.value = 0;
+    std::get<document>(attrs_).value = 0;
     freq_.value = 0;
     cookie_ = 0;
     freq_in_ = freq;
@@ -307,16 +307,18 @@ class doc_iterator final : public irs::doc_iterator {
   }
 
   virtual doc_id_t value() const noexcept override {
-    return doc_.value;
+    return std::get<document>(attrs_).value;
   }
 
   virtual bool next() override {
+    auto& doc = std::get<document>(attrs_);
+
     if (freq_in_.eof()) {
       if (!posting_) {
         return false;
       }
 
-      doc_.value = posting_->doc;
+      doc.value = posting_->doc;
       freq_.value = posting_->freq;
 
       if (has_cookie_) {
@@ -336,16 +338,16 @@ class doc_iterator final : public irs::doc_iterator {
         }
 
         assert(delta < doc_limits::eof());
-        doc_.value += doc_id_t(delta);
+        doc.value += doc_id_t(delta);
 
         if (has_cookie_) {
           cookie_ += read_cookie(freq_in_);
         }
       } else {
-        doc_.value += irs::vread<uint32_t>(freq_in_);
+        doc.value += irs::vread<uint32_t>(freq_in_);
       }
 
-      assert(doc_.value != posting_->doc);
+      assert(doc.value != posting_->doc);
     }
 
     pos_.clear();
@@ -355,11 +357,10 @@ class doc_iterator final : public irs::doc_iterator {
 
  private:
   using attributes = std::tuple<
-    attribute_ptr<frequency>, attribute_ptr<position>>;
+    document, attribute_ptr<frequency>, attribute_ptr<position>>;
 
   const field_data* field_{};
   uint64_t cookie_{};
-  document doc_;
   frequency freq_;
   pos_iterator<byte_block_pool::sliced_reader> pos_;
   byte_block_pool::sliced_reader freq_in_;
