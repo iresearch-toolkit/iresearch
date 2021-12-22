@@ -868,6 +868,7 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
   begin_term();
 
   while (docs.next()) {
+    // FIXME(gnusi): try to use `const document*` instead of `docs.value()`
     const auto did = docs.value();
     assert(doc_limits::valid(did));
 

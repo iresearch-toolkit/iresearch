@@ -71,10 +71,8 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
   operator bool() const noexcept;
 
   void add(const sub_reader& reader) {
-    // add reference
-    readers_.emplace_back(
-      sub_reader_ptr(sub_reader_ptr(), &reader) // noexcept aliasing ctor
-    );
+    // add reference, noexcept aliasing ctor
+    readers_.emplace_back(sub_reader_ptr(sub_reader_ptr(), &reader));
   }
 
   void add(const sub_reader_ptr& reader) {
@@ -90,8 +88,7 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   bool flush(
     index_meta::index_segment_t& segment,
-    const flush_progress_t& progress = {}
-  );
+    const flush_progress_t& progress = {});
 
   const reader_ctx& operator[](size_t i) const noexcept {
     assert(i < readers_.size());
