@@ -342,8 +342,6 @@ MSVC_ONLY(template class IRESEARCH_API std::function<irs::column_output&(irs::do
 namespace iresearch {
 
 struct column_reader {
-  using values_visitor_f = std::function<bool(doc_id_t, const bytes_ref&)>;
-
   virtual ~column_reader() = default;
 
   // Returns column id.
@@ -359,8 +357,6 @@ struct column_reader {
   // If the column implementation supports document payloads then it
   // can be accessed via the 'payload' attribute.
   virtual doc_iterator::ptr iterator() const = 0;
-
-  virtual bool visit(const values_visitor_f& reader) const = 0;
 
   virtual doc_id_t size() const = 0;
 };

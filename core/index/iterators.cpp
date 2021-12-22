@@ -156,10 +156,6 @@ struct empty_column_reader final : irs::column_reader {
     return irs::doc_iterator::empty();
   }
 
-  virtual bool visit(const values_visitor_f&) const override {
-    return false;
-  }
-
   virtual irs::doc_id_t size() const override { return 0; }
 };
 

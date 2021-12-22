@@ -74,7 +74,7 @@ namespace {
 using namespace iresearch;
 using columnstore::ColumnMetaVersion;
 
-irs::bytes_ref DUMMY; // placeholder for visiting logic in columnstore
+irs::bytes_ref kDummy; // placeholder for visiting logic in columnstore
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct column_meta
@@ -1056,7 +1056,7 @@ class sparse_block : util::noncopyable {
       const auto vend = (++next_ == end_ ? data_->size() : next_->offset);
 
       assert(vend >= vbegin);
-      assert(payload_ != &DUMMY);
+      assert(payload_ != &kDummy);
       *payload_ = bytes_ref(
         data_->c_str() + vbegin, // start
         vend - vbegin); // length
@@ -1065,7 +1065,7 @@ class sparse_block : util::noncopyable {
 
     void seal() noexcept {
       value_ = doc_limits::eof();
-      payload_ = &DUMMY;
+      payload_ = &kDummy;
       next_ = begin_ = end_;
     }
 
@@ -1093,7 +1093,7 @@ class sparse_block : util::noncopyable {
     }
 
    private:
-    irs::bytes_ref* payload_{ &DUMMY };
+    irs::bytes_ref* payload_{ &kDummy };
     irs::doc_id_t value_ { doc_limits::invalid() };
     const sparse_block::ref* next_{}; // next position
     const sparse_block::ref* begin_{};
@@ -1163,36 +1163,6 @@ class sparse_block : util::noncopyable {
     return true;
   }
 
-  bool visit(const column_reader::values_visitor_f& visitor) const {
-    bytes_ref payload;
-
-    // visit first [begin;end-1) blocks
-    auto begin = std::begin(index_);
-    for (const auto end = end_-1; begin != end;) { // -1 for tail item
-      const doc_id_t key = begin->key;
-      const size_t vbegin = begin->offset;
-
-      ++begin;
-
-      assert(begin->offset >= vbegin);
-      payload = bytes_ref(
-        data_.c_str() + vbegin, // start
-        begin->offset - vbegin); // length
-
-      if (!visitor(key, payload)) {
-        return false;
-      }
-    }
-
-    // visit tail block
-    assert(data_.size() >= begin->offset);
-    payload = bytes_ref(
-      data_.c_str() + begin->offset, // start
-      data_.size() - begin->offset); // length
-
-    return visitor(begin->key, payload);
-  }
-
  private:
   // TODO: use single memory block for both index & data
 
@@ -1238,7 +1208,7 @@ class dense_block : util::noncopyable {
 
     void seal() noexcept {
       value_ = doc_limits::eof();
-      payload_ = &DUMMY;
+      payload_ = &kDummy;
       it_ = begin_ = end_;
     }
 
@@ -1267,13 +1237,13 @@ class dense_block : util::noncopyable {
       const auto vend = (++it_ == end_ ? data_->size() : *it_);
 
       assert(vend >= vbegin);
-      assert(payload_ != &DUMMY);
+      assert(payload_ != &kDummy);
       *payload_ = bytes_ref(
         data_->c_str() + vbegin, // start
         vend - vbegin); // length
     }
 
-    irs::bytes_ref* payload_{ &DUMMY };
+    irs::bytes_ref* payload_{ &kDummy };
     irs::doc_id_t value_ { doc_limits::invalid() };
     const uint32_t* begin_{};
     const uint32_t* it_{};
@@ -1336,35 +1306,6 @@ class dense_block : util::noncopyable {
     return true;
   }
 
-  bool visit(const column_reader::values_visitor_f& visitor) const {
-    bytes_ref payload;
-
-    doc_id_t key = base_; // visit first [begin;end-1) blocks
-    auto begin = std::begin(index_);
-    for (const auto end = end_ - 1; begin != end; ++key) { // -1 for tail item
-      size_t vbegin = *begin;
-
-      ++begin;
-
-      assert(*begin >= vbegin);
-      payload = bytes_ref(
-        data_.c_str() + vbegin, // start
-        *begin - vbegin); // length
-
-      if (!visitor(key, payload)) {
-        return false;
-      }
-    }
-
-    // visit tail block
-    assert(data_.size() >= *begin);
-    payload = bytes_ref(
-      data_.c_str() + *begin, // start
-      data_.size() - *begin); // length
-
-    return visitor(key, payload);
-  }
-
  private:
   // TODO: use single memory block for both index & data
 
@@ -1409,7 +1350,7 @@ class dense_fixed_offset_block : util::noncopyable {
       value_ = value_next_++;
       const auto offset = (value_ - value_min_)*avg_length_;
 
-      assert(payload_ != &DUMMY);
+      assert(payload_ != &kDummy);
       *payload_ = bytes_ref(
         data_.c_str() + offset,
         value_ == value_back_ ? data_.size() - offset : avg_length_);
@@ -1422,7 +1363,7 @@ class dense_fixed_offset_block : util::noncopyable {
       value_next_ = doc_limits::eof();
       value_min_ = doc_limits::eof();
       value_end_ = doc_limits::eof();
-      payload_ = &DUMMY;
+      payload_ = &kDummy;
     }
 
     void reset(const dense_fixed_offset_block& block, irs::payload& payload) noexcept {
@@ -1448,7 +1389,7 @@ class dense_fixed_offset_block : util::noncopyable {
    private:
     uint64_t avg_length_{}; // average value length
     bytes_ref data_;
-    irs::bytes_ref* payload_{ &DUMMY };
+    irs::bytes_ref* payload_{ &kDummy };
     doc_id_t value_ { doc_limits::invalid() }; // current value
     doc_id_t value_next_{ doc_limits::invalid() }; // next value
     doc_id_t value_min_{}; // min doc_id
@@ -1504,30 +1445,6 @@ class dense_fixed_offset_block : util::noncopyable {
 
     out = bytes_ref(data_.c_str() + vbegin, vlength);
     return true;
-  }
-
-  bool visit(const column_reader::values_visitor_f& visitor) const {
-    assert(size_);
-
-    bytes_ref payload;
-
-    // visit first 'size_-1' blocks
-    doc_id_t key = base_key_;
-    size_t offset = base_offset_;
-    for (const doc_id_t end = key + size_ - 1;  key < end; ++key, offset += avg_length_) {
-      payload = bytes_ref(data_.c_str() + offset, avg_length_);
-      if (!visitor(key, payload)) {
-        return false;
-      }
-    }
-
-    // visit tail block
-    assert(data_.size() >= offset);
-    payload = bytes_ref(
-      data_.c_str() + offset, // start
-      data_.size() - offset); // length
-
-    return visitor(key, payload);
   }
 
  private:
@@ -1629,15 +1546,6 @@ class sparse_mask_block : util::noncopyable {
       std::begin(keys_), std::end(keys_), key);
 
     return !(std::end(keys_) == it || *it > key);
-  }
-
-  bool visit(const column_reader::values_visitor_f& reader) const {
-    for (auto begin = std::begin(keys_), end = begin + size_; begin != end; ++begin) {
-      if (!reader(*begin, DUMMY)) {
-        return false;
-      }
-    }
-    return true;
   }
 
  private:
@@ -1742,16 +1650,6 @@ class dense_mask_block {
 
   bool value(doc_id_t key, bytes_ref& /*reader*/) const noexcept {
     return min_ <= key && key < max_;
-  }
-
-  bool visit(const column_reader::values_visitor_f& visitor) const {
-    for (auto doc = min_; doc < max_; ++doc) {
-      if (!visitor(doc, DUMMY)) {
-        return false;
-      }
-    }
-
-    return true;
   }
 
  private:
@@ -2187,19 +2085,6 @@ class sparse_column final : public column {
     return cached.value(key, value);
   }
 
-  virtual bool visit(
-      const column_reader::values_visitor_f& visitor) const override {
-    block_t block; // don't cache new blocks
-    for (auto begin = refs_.begin(), end = refs_.end()-1; begin != end; ++begin) { // -1 for upper bound
-      const auto& cached = load_block(*ctxs_, decompressor(), encrypted(), *begin, block);
-
-      if (!cached.visit(visitor)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   virtual irs::doc_iterator::ptr iterator() const override {
     typedef column_iterator<column_t> iterator_t;
 
@@ -2364,19 +2249,6 @@ class dense_fixed_offset_column final : public column {
     return cached.value(key, value);
   }
 
-  virtual bool visit(const column_reader::values_visitor_f& visitor) const override {
-    block_t block; // don't cache new blocks
-    for (auto& ref : refs_) {
-      const auto& cached = load_block(*ctxs_, decompressor(), encrypted(), ref, block);
-
-      if (!cached.visit(visitor)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
   virtual irs::doc_iterator::ptr iterator() const override {
     typedef column_iterator<column_t> iterator_t;
 
@@ -2509,19 +2381,6 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     return key > min_ && key <= this->max();
   }
 
-  virtual bool visit(
-      const column_reader::values_visitor_f& visitor) const override {
-    auto doc = min_;
-
-    for (auto left = this->size(); left; --left) {
-      if (!visitor(++doc, bytes_ref::NIL)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
   virtual irs::doc_iterator::ptr iterator() const override;
 
  private:
@@ -2636,9 +2495,9 @@ class reader final: public columnstore_reader, public context_provider {
     const directory& dir,
     const segment_meta& meta) override;
 
-  virtual bool visit(const column_visitor_f& visitor) const override;
-
   virtual const column_reader* column(field_id field) const override;
+
+  virtual bool visit(const column_visitor_f& visitor) const override;
 
   virtual size_t size() const noexcept override {
     return columns_.size();

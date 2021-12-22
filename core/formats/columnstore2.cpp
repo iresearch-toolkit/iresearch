@@ -347,8 +347,6 @@ class column_base : public column_reader::column_reader,
     return payload_;
   }
 
-  virtual bool visit(const column_reader::values_visitor_f& visitor) const final;
-
   virtual doc_id_t size() const noexcept final {
     return hdr_.docs_count;
   }
@@ -383,27 +381,27 @@ class column_base : public column_reader::column_reader,
   sparse_bitmap_iterator::options opts_;
 }; // column_base
 
-bool column_base::visit(const column_reader::values_visitor_f& visitor) const {
-  auto it = this->iterator();
-
-  irs::payload dummy;
-  auto* doc = irs::get<document>(*it);
-  if (!doc) {
-    return false;
-  }
-  auto* payload = irs::get<irs::payload>(*it);
-  if (!payload) {
-    payload = &dummy;
-  }
-
-  while (it->next()) {
-    if (!visitor(doc->value, payload->value)) {
-      return false;
-    }
-  }
-
-  return true;
-}
+//bool column_base::visit(const column_reader::values_visitor_f& visitor) const {
+//  auto it = this->iterator();
+//
+//  irs::payload dummy;
+//  auto* doc = irs::get<document>(*it);
+//  if (!doc) {
+//    return false;
+//  }
+//  auto* payload = irs::get<irs::payload>(*it);
+//  if (!payload) {
+//    payload = &dummy;
+//  }
+//
+//  while (it->next()) {
+//    if (!visitor(doc->value, payload->value)) {
+//      return false;
+//    }
+//  }
+//
+//  return true;
+//}
 
 template<typename ValueReader>
 doc_iterator::ptr column_base::make_iterator(

@@ -26,6 +26,33 @@
 #include "index/norm.hpp"
 #include "utils/lz4compression.hpp"
 
+namespace {
+
+bool visit(const irs::column_reader& reader,
+           const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
+  auto it = reader.iterator();
+
+  irs::payload dummy;
+  auto* doc = irs::get<irs::document>(*it);
+  if (!doc) {
+    return false;
+  }
+  auto* payload = irs::get<irs::payload>(*it);
+  if (!payload) {
+    payload = &dummy;
+  }
+
+  while (it->next()) {
+    if (!visitor(doc->value, payload->value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+}
+
 namespace tests {
 
 irs::columnstore_writer::column_finalizer_f column_finalizer(
@@ -2459,7 +2486,8 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     {
       auto expected_value = expected_values.begin();
 
-      const auto res = column->visit([&expected_value](irs::doc_id_t actual_doc, const irs::bytes_ref& actual_value) {
+      const auto res = visit(*column,
+                             [&expected_value](irs::doc_id_t actual_doc, const irs::bytes_ref& actual_value) {
         if (expected_value->first != actual_doc) {
           return false;
         }
@@ -2510,18 +2538,20 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     {
       auto expected_value = expected_values.begin();
 
-      ASSERT_TRUE(column->visit([&expected_value](irs::doc_id_t actual_doc, const irs::bytes_ref& actual_value) {
-        if (expected_value->first != actual_doc) {
-          return false;
-        }
+      ASSERT_TRUE(
+        visit(*column, [&expected_value](irs::doc_id_t actual_doc,
+                                         irs::bytes_ref actual_value) {
+          if (expected_value->first != actual_doc) {
+            return false;
+          }
 
-        if (expected_value->second != actual_value) {
-          return false;
-        }
+          if (expected_value->second != actual_value) {
+            return false;
+          }
 
-        ++expected_value;
+          ++expected_value;
 
-        return true;
+          return true;
       }));
 
       ASSERT_EQ(expected_values.end(), expected_value);
@@ -2761,7 +2791,7 @@ TEST_P(format_test_case, columns_rw) {
         {"field0_doc33", 33}
       };
 
-      auto visitor = [&expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
+      auto visitor = [&expected_values] (irs::doc_id_t doc, irs::bytes_ref value) {
         const auto actual_value = irs::to_string<irs::string_ref>(value.c_str());
 
         auto it = expected_values.find(actual_value);
@@ -2781,7 +2811,7 @@ TEST_P(format_test_case, columns_rw) {
 
       auto column = reader->column(segment0_field0_id);
       ASSERT_NE(nullptr, column);
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_TRUE(expected_values.empty());
     }
 
@@ -2794,7 +2824,7 @@ TEST_P(format_test_case, columns_rw) {
       };
 
       size_t calls_count = 0;
-      auto visitor = [&expected_values, &calls_count] (irs::doc_id_t doc, const irs::bytes_ref& in) {
+      auto visitor = [&expected_values, &calls_count] (irs::doc_id_t doc, irs::bytes_ref in) {
         ++calls_count;
 
         if (calls_count > 2) {
@@ -2821,7 +2851,7 @@ TEST_P(format_test_case, columns_rw) {
 
       auto column = reader->column(segment0_field0_id);
       ASSERT_NE(nullptr, column);
-      ASSERT_FALSE(column->visit(visitor));
+      ASSERT_FALSE(visit(*column, visitor));
       ASSERT_FALSE(expected_values.empty());
       ASSERT_EQ(1, expected_values.size());
       ASSERT_NE(expected_values.end(), expected_values.find("field0_doc33"));
@@ -2889,7 +2919,7 @@ TEST_P(format_test_case, columns_rw) {
 
       auto column_reader = reader->column(segment0_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      ASSERT_TRUE(column_reader->visit(visitor));
+      ASSERT_TRUE(visit(*column_reader, visitor));
       ASSERT_TRUE(expected_values.empty());
     }
 
@@ -3069,7 +3099,7 @@ TEST_P(format_test_case, columns_rw) {
 
       auto column_reader = reader->column(segment0_empty_column_id);
       ASSERT_NE(nullptr, column_reader);
-      ASSERT_TRUE(column_reader->visit(visitor));
+      ASSERT_TRUE(visit(*column_reader, visitor));
       ASSERT_EQ(0, calls_count);
     }
 
@@ -3116,7 +3146,7 @@ TEST_P(format_test_case, columns_rw) {
 
       auto column_reader = reader->column(segment0_field2_id);
       ASSERT_NE(nullptr, column_reader);
-      ASSERT_TRUE(column_reader->visit(visitor));
+      ASSERT_TRUE(visit(*column_reader, visitor));
       ASSERT_TRUE(expected_values.empty());
     }
 

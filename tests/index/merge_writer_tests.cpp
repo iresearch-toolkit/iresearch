@@ -33,6 +33,29 @@
 
 namespace tests {
 
+bool visit(const irs::column_reader& reader,
+           const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
+  auto it = reader.iterator();
+
+  irs::payload dummy;
+  auto* doc = irs::get<irs::document>(*it);
+  if (!doc) {
+    return false;
+  }
+  auto* payload = irs::get<irs::payload>(*it);
+  if (!payload) {
+    payload = &dummy;
+  }
+
+  while (it->next()) {
+    if (!visitor(doc->value, payload->value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 struct norm2 { };
 
 REGISTER_ATTRIBUTE(tests::norm2);
@@ -290,7 +313,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
       auto* column = segment.column(meta->id());
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->name()));
-      ASSERT_TRUE(column->visit(reader));
+      ASSERT_TRUE(visit(*column, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -327,7 +350,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
       auto* column = segment.column(meta->id());
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->name()));
-      ASSERT_TRUE(column->visit(reader));
+      ASSERT_TRUE(visit(*column, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -386,7 +409,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
       auto* column = segment.column(meta->id());
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->name()));
-      ASSERT_TRUE(column->visit(reader));
+      ASSERT_TRUE(visit(*column, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -423,7 +446,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
       auto* column = segment.column(meta->id());
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->name()));
-      ASSERT_TRUE(column->visit(reader));
+      ASSERT_TRUE(visit(*column, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -459,7 +482,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
       auto* column = segment.column(meta->id());
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->name()));
-      ASSERT_TRUE(column->visit(reader));
+      ASSERT_TRUE(visit(*column, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -527,7 +550,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
       auto* column = segment.column(meta->id());
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->name()));
-      ASSERT_TRUE(column->visit(reader));
+      ASSERT_TRUE(visit(*column, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -567,7 +590,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
       auto* column = segment.column(meta->id());
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->name()));
-      ASSERT_TRUE(column->visit(reader));
+      ASSERT_TRUE(visit(*column, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -694,7 +717,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
       auto* column = segment.column(meta->id());
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->name()));
-      ASSERT_TRUE(column->visit(reader));
+      ASSERT_TRUE(visit(*column, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -731,7 +754,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
       auto* column = segment.column(meta->id());
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->name()));
-      ASSERT_TRUE(column->visit(reader));
+      ASSERT_TRUE(visit(*column, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -787,7 +810,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
       auto* column = segment.column(meta->id());
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->name()));
-      ASSERT_TRUE(column->visit(reader));
+      ASSERT_TRUE(visit(*column, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -824,7 +847,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
       auto* column = segment.column(meta->id());
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->name()));
-      ASSERT_TRUE(column->visit(reader));
+      ASSERT_TRUE(visit(*column, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -892,7 +915,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
       auto* column = segment.column(meta->id());
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->name()));
-      ASSERT_TRUE(column->visit(reader));
+      ASSERT_TRUE(visit(*column, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
@@ -933,7 +956,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
       auto* column = segment.column(meta->id());
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->name()));
-      ASSERT_TRUE(column->visit(reader));
+      ASSERT_TRUE(visit(*column, reader));
       ASSERT_EQ(expected_values.size(), calls_count);
     }
   }
@@ -1239,7 +1262,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
 
         auto* column = segment.column(norm->second);
         ASSERT_NE(nullptr, column);
-        ASSERT_TRUE(column->visit(reader));
+        ASSERT_TRUE(visit(*column, reader));
         ASSERT_TRUE(expected_values.empty());
       }
 
@@ -1631,7 +1654,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
 
         auto* column = segment.column(norm->second);
         ASSERT_NE(nullptr, column);
-        ASSERT_TRUE(column->visit(reader));
+        ASSERT_TRUE(visit(*column, reader));
         ASSERT_TRUE(expected_values.empty());
       }
 
@@ -2026,7 +2049,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
 
       auto* column = segment.column(norm->second);
       ASSERT_NE(nullptr, column);
-      ASSERT_TRUE(column->visit(reader));
+      ASSERT_TRUE(visit(*column, reader));
       ASSERT_TRUE(expected_values.empty());
     }
 
@@ -3062,7 +3085,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
 
         auto* column = segment.column(norm->second);
         ASSERT_NE(nullptr, column);
-        ASSERT_TRUE(column->visit(reader));
+        ASSERT_TRUE(visit(*column, reader));
         ASSERT_TRUE(expected_values.empty());
       }
 
@@ -3099,7 +3122,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
 
         auto* column = segment.column(norm->second);
         ASSERT_NE(nullptr, column);
-        ASSERT_TRUE(column->visit(reader));
+        ASSERT_TRUE(visit(*column, reader));
         ASSERT_TRUE(expected_values.empty());
       }
     }
@@ -3483,7 +3506,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
 
         auto* column = segment.column(norm->second);
         ASSERT_NE(nullptr, column);
-        ASSERT_TRUE(column->visit(reader));
+        ASSERT_TRUE(visit(*column, reader));
         ASSERT_TRUE(expected_values.empty());
       }
 
@@ -3518,7 +3541,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
 
         auto* column = segment.column(norm->second);
         ASSERT_NE(nullptr, column);
-        ASSERT_TRUE(column->visit(reader));
+        ASSERT_TRUE(visit(*column, reader));
         ASSERT_TRUE(expected_values.empty());
       }
     }
@@ -3907,7 +3930,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
 
       auto* column = segment.column(norm->second);
       ASSERT_NE(nullptr, column);
-      ASSERT_TRUE(column->visit(reader));
+      ASSERT_TRUE(visit(*column, reader));
       ASSERT_TRUE(expected_values.empty());
     }
 
@@ -3944,7 +3967,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
 
       auto* column = segment.column(norm->second);
       ASSERT_NE(nullptr, column);
-      ASSERT_TRUE(column->visit(reader));
+      ASSERT_TRUE(visit(*column, reader));
       ASSERT_TRUE(expected_values.empty());
     }
   }

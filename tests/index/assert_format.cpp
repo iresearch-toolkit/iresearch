@@ -49,6 +49,33 @@
 
 #include "tests_shared.hpp"
 
+namespace {
+
+bool visit(const irs::column_reader& reader,
+           const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
+  auto it = reader.iterator();
+
+  irs::payload dummy;
+  auto* doc = irs::get<irs::document>(*it);
+  if (!doc) {
+    return false;
+  }
+  auto* payload = irs::get<irs::payload>(*it);
+  if (!payload) {
+    payload = &dummy;
+  }
+
+  while (it->next()) {
+    if (!visitor(doc->value, payload->value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+}
+
 namespace tests {
 
 void assert_term(
@@ -877,13 +904,13 @@ void assert_pk(
     auto begin = expected_values.begin();
     irs::doc_id_t expected_key = irs::doc_limits::min();
 
-    actual_reader.visit(
-      [&begin, &expected_key](auto actual_key, auto& actual_value) mutable {
-        EXPECT_EQ(expected_key, actual_key);
-        EXPECT_EQ(begin->first, actual_value);
-        ++begin;
-        ++expected_key;
-        return true;
+    visit(actual_reader,
+          [&begin, &expected_key](auto actual_key, const auto& actual_value) mutable {
+            EXPECT_EQ(expected_key, actual_key);
+            EXPECT_EQ(begin->first, actual_value);
+            ++begin;
+            ++expected_key;
+            return true;
     });
     ASSERT_EQ(begin, expected_values.end());
   }
@@ -932,13 +959,13 @@ void assert_column(
   {
     auto begin = expected_values.begin();
 
-    actual_reader->visit(
-      [&begin](auto actual_key, auto& actual_value) mutable {
-        auto& [expected_key, expected_value] = *begin;
-        EXPECT_EQ(expected_key, actual_key);
-        EXPECT_EQ(expected_value, actual_value);
-        ++begin;
-        return true;
+    visit(*actual_reader,
+          [&begin](auto actual_key, const auto& actual_value) mutable {
+            auto& [expected_key, expected_value] = *begin;
+            EXPECT_EQ(expected_key, actual_key);
+            EXPECT_EQ(expected_value, actual_value);
+            ++begin;
+            return true;
     });
     ASSERT_EQ(begin, expected_values.end());
   }

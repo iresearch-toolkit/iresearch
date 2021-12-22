@@ -31,6 +31,31 @@
 #include "utils/index_utils.hpp"
 #include "utils/file_utils.hpp"
 
+namespace  {
+bool visit(const irs::column_reader& reader,
+           const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
+  auto it = reader.iterator();
+
+  irs::payload dummy;
+  auto* doc = irs::get<irs::document>(*it);
+  if (!doc) {
+    return false;
+  }
+  auto* payload = irs::get<irs::payload>(*it);
+  if (!payload) {
+    payload = &dummy;
+  }
+
+  while (it->next()) {
+    if (!visitor(doc->value, payload->value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+}
+
 class index_profile_test_case : public tests::index_test_base {
  public:
   void profile_bulk_index(
@@ -343,13 +368,13 @@ class index_profile_test_case : public tests::index_test_base {
       const auto* column = reader[i].column("same");
       if (column) {
         // field present in all docs from simple_sequential.json
-        column->visit(imported_visitor);
+        visit(*column, imported_visitor);
       }
 
       column = reader[i].column("updated");
       if (column) {
         // field insterted by updater threads
-        column->visit(updated_visitor);
+        visit(*column, updated_visitor);
       }
     }
 

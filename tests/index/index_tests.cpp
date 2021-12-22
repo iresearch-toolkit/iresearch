@@ -38,6 +38,31 @@
 #include "utils/wildcard_utils.hpp"
 #include "utils/fstext/fst_table_matcher.hpp"
 
+namespace {
+bool visit(const irs::column_reader& reader,
+           const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
+  auto it = reader.iterator();
+
+  irs::payload dummy;
+  auto* doc = irs::get<irs::document>(*it);
+  if (!doc) {
+    return false;
+  }
+  auto* payload = irs::get<irs::payload>(*it);
+  if (!payload) {
+    payload = &dummy;
+  }
+
+  while (it->next()) {
+    if (!visitor(doc->value, payload->value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+}
+
 namespace tests {
 
 struct incompatible_attribute : irs::attribute {
@@ -1020,7 +1045,7 @@ class index_test_case : public tests::index_test_base {
           return false;
         }
 
-        return column->visit(visitor);
+        return ::visit(*column, visitor);
       };
 
       auto read_column_offset = [&segment](const irs::string_ref& column_name, irs::doc_id_t offset) {
@@ -4166,7 +4191,7 @@ TEST_P(index_test_case, document_context) {
       ASSERT_NE(nullptr, actual_value);
       std::unordered_set<irs::string_ref> expected = { "B" };
       ASSERT_EQ(1, column->size());
-      ASSERT_TRUE(column->visit([&expected](irs::doc_id_t, const irs::bytes_ref& data)->bool {
+      ASSERT_TRUE(::visit(*column, [&expected](irs::doc_id_t, const irs::bytes_ref& data)->bool {
         auto* value = data.c_str();
         auto actual_value = irs::ref_cast<char>(irs::vread_string<irs::string_ref>(value));
         return 1 == expected.erase(actual_value);

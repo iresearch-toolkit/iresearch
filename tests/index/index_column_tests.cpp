@@ -28,6 +28,31 @@
 
 #include "index_tests.hpp"
 
+namespace {
+bool visit(const irs::column_reader& reader,
+           const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
+  auto it = reader.iterator();
+
+  irs::payload dummy;
+  auto* doc = irs::get<irs::document>(*it);
+  if (!doc) {
+    return false;
+  }
+  auto* payload = irs::get<irs::payload>(*it);
+  if (!payload) {
+    payload = &dummy;
+  }
+
+  while (it->next()) {
+    if (!visitor(doc->value, payload->value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+}
+
 class index_column_test_case : public tests::index_test_base { };
 
 TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_variable_length) {
@@ -127,7 +152,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // visit values (cached)
@@ -158,7 +183,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // iterate over column (cached)
@@ -242,7 +267,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     {
@@ -311,7 +336,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // iterate over column (cached)
@@ -395,7 +420,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // seek over column (not cached)
@@ -964,7 +989,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // iterate over column (cached)
@@ -1096,7 +1121,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
@@ -1126,7 +1151,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
@@ -1204,7 +1229,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
@@ -1266,7 +1291,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
@@ -1343,7 +1368,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
@@ -1728,7 +1753,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
@@ -1873,7 +1898,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // visit values (cached)
@@ -1910,7 +1935,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // iterate over column (cached)
@@ -2005,7 +2030,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     {
@@ -2084,7 +2109,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // iterate over column (cached)
@@ -2179,7 +2204,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // seek over column (not cached)
@@ -2720,7 +2745,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // iterate over column (cached)
@@ -2894,7 +2919,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // visit values (cached)
@@ -2930,7 +2955,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // iterate over column (cached)
@@ -3083,7 +3108,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // visit values (cached)
@@ -3116,7 +3141,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // iterate over column (cached)
@@ -3262,7 +3287,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // visit values (cached)
@@ -3293,7 +3318,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // iterate over column (cached)
@@ -3377,7 +3402,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     {
@@ -3445,7 +3470,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // iterate over column (cached)
@@ -3529,7 +3554,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // seek over column (not cached)
@@ -4014,7 +4039,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // iterate over column (cached)
@@ -4131,7 +4156,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
 
@@ -4156,7 +4181,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
 
@@ -4225,7 +4250,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
 
@@ -4278,7 +4303,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
 
@@ -4347,7 +4372,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
 
@@ -4799,7 +4824,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS/2), docs_count);
     }
 
@@ -4909,7 +4934,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
@@ -4934,7 +4959,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
@@ -4998,7 +5023,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
@@ -5046,7 +5071,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
@@ -5110,7 +5135,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
@@ -5392,7 +5417,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), docs_count);
     }
 
@@ -5504,7 +5529,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // visit values (cached)
@@ -5529,7 +5554,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // iterate over column (cached)
@@ -5600,7 +5625,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     {
@@ -5655,7 +5680,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // iterate over column (cached)
@@ -5726,7 +5751,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // seek over column (not cached)
@@ -6107,7 +6132,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // iterate over column (cached)
@@ -6233,7 +6258,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // visit values (cached)
@@ -6264,7 +6289,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // iterate over column (cached)
@@ -6346,7 +6371,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     {
@@ -6412,7 +6437,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // iterate over column (cached)
@@ -6494,7 +6519,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // seek over column (not cached)
@@ -6969,7 +6994,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       ASSERT_EQ(column, segment.column(meta->id()));
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
     }
 
     // iterate over column (cached)
@@ -7101,7 +7126,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
         ASSERT_EQ(column, segment.column(meta->id()));
-        ASSERT_TRUE(column->visit(visitor));
+        ASSERT_TRUE(visit(*column, visitor));
       }
 
       // visit column (cached)
@@ -7131,7 +7156,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
         ASSERT_EQ(column, segment.column(meta->id()));
-        ASSERT_TRUE(column->visit(visitor));
+        ASSERT_TRUE(visit(*column, visitor));
       }
 
       // iterate over column (cached)
@@ -7201,7 +7226,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
         ASSERT_EQ(column, segment.column(meta->id()));
-        ASSERT_TRUE(column->visit(visitor));
+        ASSERT_TRUE(visit(*column, visitor));
       }
 
       // visit column (cached)
@@ -7230,7 +7255,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
         ASSERT_EQ(column, segment.column(meta->id()));
-        ASSERT_TRUE(column->visit(visitor));
+        ASSERT_TRUE(visit(*column, visitor));
       }
 
       // iterate over 'label' column (cached)
@@ -7321,7 +7346,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
         ASSERT_EQ(column, segment.column(meta->id()));
-        ASSERT_TRUE(column->visit(visitor));
+        ASSERT_TRUE(visit(*column, visitor));
       }
 
       // iterate over column (not cached)
@@ -7384,7 +7409,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
         ASSERT_EQ(column, segment.column(meta->id()));
-        ASSERT_TRUE(column->visit(visitor));
+        ASSERT_TRUE(visit(*column, visitor));
       }
 
       // iterate over column (cached)
@@ -7453,7 +7478,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
         ASSERT_EQ(column, segment.column(meta->id()));
-        ASSERT_TRUE(column->visit(visitor));
+        ASSERT_TRUE(visit(*column, visitor));
       }
 
       // iterate over 'label' column (not cached)
@@ -7515,7 +7540,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
         ASSERT_EQ(column, segment.column(meta->id()));
-        ASSERT_TRUE(column->visit(visitor));
+        ASSERT_TRUE(visit(*column, visitor));
       }
 
       // iterate over 'label' column (cached)
