@@ -99,14 +99,6 @@ const char* not_impl_error::what() const noexcept {
 //                                                             illegal_argument
 // ----------------------------------------------------------------------------
 
-const char* illegal_argument::what() const noexcept{ 
-  return "Invalid argument."; 
-}
-
-// ----------------------------------------------------------------------------
-//                                                             illegal_argument
-// ----------------------------------------------------------------------------
-
 const char* illegal_state::what() const noexcept{
   return "Illegal state."; 
 }
