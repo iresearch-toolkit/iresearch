@@ -1386,11 +1386,11 @@ bool write_fields(
     auto end = field_meta.features.end();
 
     for (; begin != end; ++begin) {
+      std::tie(feature, std::ignore) = *begin;
+
       if (!progress() || !feature_itr.reset(add_iterators)) {
         return false;
       }
-
-      std::tie(feature, std::ignore) = *begin;
 
       const auto res = cs.insert(feature_itr, column_info(feature).first,
                                  feature);
