@@ -406,7 +406,7 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
         if (IRS_UNLIKELY(!is_new)) {
           throw index_error(string_utils::to_string(
             "duplicate named column '%s' in segment '%s'",
-            static_cast<std::string>(name), meta.name.c_str()));
+            static_cast<std::string>(name).c_str(), meta.name.c_str()));
         }
 
         if (!sorted_named_columns.empty() &&
