@@ -312,7 +312,7 @@ class bitmap_column_iterator final
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct column_base
 ////////////////////////////////////////////////////////////////////////////////
-class column_base : public column_reader::column_reader,
+class column_base : public column_reader,
                     private util::noncopyable {
  public:
   column_base(
