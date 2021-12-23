@@ -1096,7 +1096,7 @@ class sorting_compound_column_iterator : util::noncopyable {
       return false;
     }
 
-    auto it = segment.mask(segment.sort()->iterator());
+    auto it = segment.mask(segment.sort()->iterator(true));
 
     if (!it) {
       return false;
@@ -1184,7 +1184,7 @@ bool write_columns(
         return false;
       }
 
-      itrs.emplace_back(reader->iterator(), &doc_map);
+      itrs.emplace_back(reader->iterator(true), &doc_map);
       return true;
     };
 
@@ -1222,7 +1222,7 @@ bool write_columns(
       const sub_reader& /*segment*/,
       const doc_map_f& doc_map,
       const irs::column_reader& column) {
-    itrs.emplace_back(column.iterator(), doc_map);
+    itrs.emplace_back(column.iterator(true), doc_map);
     return true;
   };
 
@@ -1280,7 +1280,7 @@ bool write_fields(
         return false;
       }
 
-      itrs.emplace_back(reader->iterator(), doc_map);
+      itrs.emplace_back(reader->iterator(true), doc_map);
     }
 
     return true;
@@ -1368,7 +1368,7 @@ bool write_fields(
         return false;
       }
 
-      itrs.emplace_back(reader->iterator(), &doc_map);
+      itrs.emplace_back(reader->iterator(true), &doc_map);
       return true;
     };
 

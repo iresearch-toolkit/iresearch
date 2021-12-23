@@ -2006,7 +2006,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2056,7 +2056,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2108,7 +2108,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2158,7 +2158,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);

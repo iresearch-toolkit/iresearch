@@ -58,7 +58,7 @@ class column_existence_query : public irs::filter::prepared {
       const sub_reader& segment,
       const column_reader& column,
       const order::prepared& ord) const {
-    auto it = column.iterator();
+    auto it = column.iterator(false);
 
     if (IRS_UNLIKELY(!it)) {
       return doc_iterator::empty();

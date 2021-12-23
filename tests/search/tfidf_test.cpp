@@ -135,7 +135,7 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
 
   // by_range multiple
   {
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -176,7 +176,7 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
 
   // by_range multiple (3 values)
   {
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -403,7 +403,7 @@ TEST_P(tfidf_test_case, test_phrase) {
 
     auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -455,7 +455,7 @@ TEST_P(tfidf_test_case, test_phrase) {
 
     auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -506,7 +506,7 @@ TEST_P(tfidf_test_case, test_query) {
   ASSERT_NE(nullptr, column);
   // by_term
   {
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -545,7 +545,7 @@ TEST_P(tfidf_test_case, test_query) {
 
   // by term multi-segment, same term (same score for all docs)
   {
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -609,7 +609,7 @@ TEST_P(tfidf_test_case, test_query) {
     for (auto& segment: reader) {
       const auto* column = segment.column("seq");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator();
+      auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -639,7 +639,7 @@ TEST_P(tfidf_test_case, test_query) {
 
   // by_term disjunction multi-segment, different terms (same score for all docs)
   {
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -713,7 +713,7 @@ TEST_P(tfidf_test_case, test_query) {
     for (auto& segment: reader) {
       const auto* column = segment.column("seq");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator();
+      auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -743,7 +743,7 @@ TEST_P(tfidf_test_case, test_query) {
 
   // by_prefix empty multi-segment, different terms (same score for all docs)
   {
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -808,7 +808,7 @@ TEST_P(tfidf_test_case, test_query) {
     for (auto& segment: reader) {
       const auto* column = segment.column("seq");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator();
+      auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -838,7 +838,7 @@ TEST_P(tfidf_test_case, test_query) {
 
   // by_range single
   {
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -880,7 +880,7 @@ TEST_P(tfidf_test_case, test_query) {
 
   // by_range single + scored_terms_limit(1)
   {
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -924,7 +924,7 @@ TEST_P(tfidf_test_case, test_query) {
   //FIXME!!!
   // by_range single + scored_terms_limit(0)
 //  {
-//    auto values = column->iterator();
+//    auto values = column->iterator(false);
 //    ASSERT_NE(nullptr, values);
 //    auto* actual_value = irs::get<irs::payload>(*values);
 //    ASSERT_NE(nullptr, actual_value);
@@ -967,7 +967,7 @@ TEST_P(tfidf_test_case, test_query) {
 
   // by_range multiple
   {
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1016,7 +1016,7 @@ TEST_P(tfidf_test_case, test_query) {
 
   // by_range multiple (3 values)
   {
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1066,7 +1066,7 @@ TEST_P(tfidf_test_case, test_query) {
 
   // by_phrase
   {
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1116,7 +1116,7 @@ TEST_P(tfidf_test_case, test_query) {
 
   // all
   {
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1144,7 +1144,7 @@ TEST_P(tfidf_test_case, test_query) {
 
   // all
   {
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1172,7 +1172,7 @@ TEST_P(tfidf_test_case, test_query) {
 
   // column existence
   {
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1201,7 +1201,7 @@ TEST_P(tfidf_test_case, test_query) {
 
   // column existence
   {
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1454,7 +1454,7 @@ TEST_P(tfidf_test_case, test_order) {
   ASSERT_NE(nullptr, column);
 
   {
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);

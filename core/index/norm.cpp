@@ -26,7 +26,7 @@
 
 namespace {
 
-const irs::document INVALID_DOCUMENT;
+const irs::document kInvalidDocument;
 
 }
 
@@ -38,11 +38,11 @@ namespace iresearch {
 
 norm_base::norm_base() noexcept
   : payload_(nullptr),
-    doc_(&INVALID_DOCUMENT) {
+    doc_(&kInvalidDocument) {
 }
 
 bool norm_base::empty() const noexcept {
-  return doc_ == &INVALID_DOCUMENT;
+  return doc_ == &kInvalidDocument;
 }
 
 bool norm_base::reset(
@@ -55,7 +55,7 @@ bool norm_base::reset(
     return false;
   }
 
-  column_it_ = column_reader->iterator();
+  column_it_ = column_reader->iterator(false);
   if (!column_it_) {
     return false;
   }

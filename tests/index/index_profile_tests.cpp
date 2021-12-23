@@ -34,7 +34,7 @@
 namespace  {
 bool visit(const irs::column_reader& reader,
            const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
-  auto it = reader.iterator();
+  auto it = reader.iterator(true);
 
   irs::payload dummy;
   auto* doc = irs::get<irs::document>(*it);
@@ -239,7 +239,7 @@ class index_profile_test_case : public tests::index_test_base {
 
       // register update jobs
       for (size_t i = 0; i < num_update_threads; ++i) {
-        thread_pool.run([&mutex, &commit_mutex, &writer, num_update_threads, i, update_skip, writer_batch_size, &writer_commit_count, this]()->void {
+        thread_pool.run([&mutex, &commit_mutex, &writer, num_update_threads, i, update_skip, writer_batch_size, &writer_commit_count]()->void {
           {
             // wait for all threads to be registered
             std::lock_guard<std::mutex> lock(mutex);

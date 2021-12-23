@@ -356,7 +356,7 @@ struct column_reader {
   // Returns the corresponding column iterator.
   // If the column implementation supports document payloads then it
   // can be accessed via the 'payload' attribute.
-  virtual doc_iterator::ptr iterator() const = 0;
+  virtual doc_iterator::ptr iterator(bool consolidation) const = 0;
 
   virtual doc_id_t size() const = 0;
 };

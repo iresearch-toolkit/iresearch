@@ -75,7 +75,7 @@ TEST_P(format_11_test_case, open_10_with_11) {
     std::unordered_set<irs::string_ref> expectedName = { "A" };
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -150,7 +150,7 @@ TEST_P(format_11_test_case, formats_10_11) {
     std::unordered_set<irs::string_ref> expectedName = { "A" };
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -178,7 +178,7 @@ TEST_P(format_11_test_case, formats_10_11) {
     std::unordered_set<irs::string_ref> expectedName = { "B" };
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);

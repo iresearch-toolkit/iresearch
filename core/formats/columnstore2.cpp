@@ -139,7 +139,7 @@ std::vector<uint64_t> read_blocks_dense(
     const column_header& hdr,
     index_input& in) {
   std::vector<uint64_t> blocks(
-    math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE));
+    math::div_ceil32(hdr.docs_count, column::kBlockSize));
 
   in.read_bytes(
     reinterpret_cast<byte_type*>(blocks.data()),
@@ -381,28 +381,6 @@ class column_base : public column_reader::column_reader,
   sparse_bitmap_iterator::options opts_;
 }; // column_base
 
-//bool column_base::visit(const column_reader::values_visitor_f& visitor) const {
-//  auto it = this->iterator();
-//
-//  irs::payload dummy;
-//  auto* doc = irs::get<document>(*it);
-//  if (!doc) {
-//    return false;
-//  }
-//  auto* payload = irs::get<irs::payload>(*it);
-//  if (!payload) {
-//    payload = &dummy;
-//  }
-//
-//  while (it->next()) {
-//    if (!visitor(doc->value, payload->value)) {
-//      return false;
-//    }
-//  }
-//
-//  return true;
-//}
-
 template<typename ValueReader>
 doc_iterator::ptr column_base::make_iterator(
     ValueReader&& rdr,
@@ -581,10 +559,10 @@ struct mask_column final : public column_base {
     assert(ColumnType::kMask == header().type);
   }
 
-  virtual doc_iterator::ptr iterator() const override;
+  virtual doc_iterator::ptr iterator(bool /*consolidation*/) const override;
 }; // mask_column
 
-doc_iterator::ptr mask_column::iterator() const {
+doc_iterator::ptr mask_column::iterator(bool /*consolidation*/) const {
   if (0 == header().docs_count) {
     // only mask column can be empty
     return doc_iterator::empty();
@@ -646,7 +624,7 @@ class dense_fixed_length_column final : public column_base {
     assert(ColumnType::kDenseFixed == header().type);
   }
 
-  virtual doc_iterator::ptr iterator() const override;
+  virtual doc_iterator::ptr iterator(bool /*consolidation*/) const override;
 
  private:
   template<typename ValueReader>
@@ -696,7 +674,7 @@ class dense_fixed_length_column final : public column_base {
     data, len);
 }
 
-doc_iterator::ptr dense_fixed_length_column::iterator() const {
+doc_iterator::ptr dense_fixed_length_column::iterator(bool /*consolidation*/) const {
   struct factory {
     payload_reader<encrypted_value_reader<false>> operator()(
         index_input::ptr&& stream, encryption::stream& cipher) const {
@@ -761,7 +739,7 @@ class fixed_length_column final : public column_base {
     assert(ColumnType::kFixed == header().type);
   }
 
-  virtual doc_iterator::ptr iterator() const override;
+  virtual doc_iterator::ptr iterator(bool /*consolidation*/) const override;
 
  private:
   using column_block = uint64_t;
@@ -780,8 +758,8 @@ class fixed_length_column final : public column_base {
     }
 
     bytes_ref payload(doc_id_t i) {
-      const auto block_idx = i / column::BLOCK_SIZE;
-      const auto value_idx = i % column::BLOCK_SIZE;
+      const auto block_idx = i / column::kBlockSize;
+      const auto value_idx = i % column::kBlockSize;
 
       const auto offset = blocks_[block_idx] + len_*value_idx;
 
@@ -798,7 +776,7 @@ class fixed_length_column final : public column_base {
   uint64_t len_;
 }; // fixed_length_column
 
-doc_iterator::ptr fixed_length_column::iterator() const {
+doc_iterator::ptr fixed_length_column::iterator(bool /*consolidation*/) const {
   struct factory {
     payload_reader<encrypted_value_reader<false>> operator()(
         index_input::ptr&& stream,
@@ -865,7 +843,7 @@ class sparse_column final : public column_base {
     assert(ColumnType::kSparse == header().type);
   }
 
-  virtual doc_iterator::ptr iterator() const override;
+  virtual doc_iterator::ptr iterator(bool /*consolidation*/) const override;
 
  private:
   template<typename ValueReader>
@@ -894,8 +872,8 @@ class sparse_column final : public column_base {
 
 template<typename ValueReader>
 bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
-  const auto& block = blocks_[i / column::BLOCK_SIZE];
-  const size_t index = i % column::BLOCK_SIZE;
+  const auto& block = blocks_[i / column::kBlockSize];
+  const size_t index = i % column::kBlockSize;
 
   if (bitpack::ALL_EQUAL == block.bits) {
     const size_t addr = block.data + block.avg*index;
@@ -955,7 +933,7 @@ bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
 /*static*/ std::vector<sparse_column::column_block> sparse_column::read_blocks_sparse(
     const column_header& hdr, index_input& in) {
   std::vector<sparse_column::column_block> blocks{
-    math::div_ceil32(hdr.docs_count, column::BLOCK_SIZE)};
+    math::div_ceil32(hdr.docs_count, column::kBlockSize)};
 
   // FIXME optimize
   for (auto& block : blocks) {
@@ -964,14 +942,14 @@ bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
     block.bits = in.read_byte();
     block.data = in.read_long();
     block.last_size = in.read_long();
-    block.last = column::BLOCK_SIZE - 1;
+    block.last = column::kBlockSize - 1;
   }
-  blocks.back().last = (hdr.docs_count % column::BLOCK_SIZE - 1);
+  blocks.back().last = (hdr.docs_count % column::kBlockSize - 1);
 
   return blocks;
 }
 
-doc_iterator::ptr sparse_column::iterator() const {
+doc_iterator::ptr sparse_column::iterator(bool /*consolidation*/) const {
   struct factory {
     payload_reader<encrypted_value_reader<true>> operator()(
         index_input::ptr&& stream,
@@ -999,7 +977,7 @@ using column_factory_f = column_ptr(*)(
   const index_input&, compression::decompressor::ptr&&,
   encryption::stream*);
 
-constexpr column_factory_f FACTORIES[] {
+constexpr column_factory_f kFactories[] {
   &sparse_column::read,
   &mask_column::read,
   &fixed_length_column::read,
@@ -1239,7 +1217,7 @@ void column::finish(index_output& index_out) {
 writer::writer(bool consolidation)
   : dir_{nullptr},
     alloc_{&memory_allocator::global()},
-    buf_{memory::make_unique<byte_type[]>(column::BLOCK_SIZE*sizeof(uint64_t))},
+    buf_{memory::make_unique<byte_type[]>(column::kBlockSize*sizeof(uint64_t))},
     consolidation_{consolidation} {
 }
 
@@ -1549,8 +1527,8 @@ void reader::prepare_index(
       : column_index{};
 
     if (const size_t idx = static_cast<size_t>(hdr.type);
-        IRS_LIKELY(idx < IRESEARCH_COUNTOF(FACTORIES))) {
-      auto column = FACTORIES[idx](std::move(name), std::move(payload),
+        IRS_LIKELY(idx < IRESEARCH_COUNTOF(kFactories))) {
+      auto column = kFactories[idx](std::move(name), std::move(payload),
                                    std::move(hdr), std::move(index),
                                    *index_in, *data_in_,
                                    std::move(inflater), data_cipher_.get());

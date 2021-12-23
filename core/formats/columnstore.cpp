@@ -1593,6 +1593,7 @@ class dense_mask_block {
     void seal() noexcept {
       value_ = doc_limits::eof();
       doc_ = max_;
+      block_ = nullptr;
     }
 
     void reset(const dense_mask_block& block, irs::payload& payload) noexcept {
@@ -1898,11 +1899,13 @@ class column_iterator final : public irs::doc_iterator {
   explicit column_iterator(
       const column_t& column,
       const typename column_t::block_ref* begin,
-      const typename column_t::block_ref* end)
+      const typename column_t::block_ref* end,
+      bool cache)
     : begin_(begin),
       seek_origin_(begin),
       end_(end),
-      column_(&column) {
+      column_(&column),
+      cache_(cache) {
     std::get<cost>(attrs_).reset(column.size());
   }
 
@@ -1960,7 +1963,9 @@ class column_iterator final : public irs::doc_iterator {
     }
 
     try {
-      const auto& cached = load_block(*column_->ctxs_, column_->decompressor(), column_->encrypted(), *begin_);
+      const auto& cached = cache_
+        ? load_block(*column_->ctxs_, column_->decompressor(), column_->encrypted(), *begin_)
+        : load_block(*column_->ctxs_, column_->decompressor(), column_->encrypted(), *begin_, cached_block_);
 
       if (block_ != cached) {
         block_.reset(cached, payload);
@@ -1986,6 +1991,8 @@ class column_iterator final : public irs::doc_iterator {
   const typename column_t::block_ref* seek_origin_;
   const typename column_t::block_ref* end_;
   const column_t* column_;
+  block_t cached_block_;
+  bool cache_;
 }; // column_iterator
 
 // -----------------------------------------------------------------------------
@@ -2085,7 +2092,7 @@ class sparse_column final : public column {
     return cached.value(key, value);
   }
 
-  virtual irs::doc_iterator::ptr iterator() const override {
+  virtual irs::doc_iterator::ptr iterator(bool consolidation) const override {
     typedef column_iterator<column_t> iterator_t;
 
     if (empty()) {
@@ -2093,9 +2100,10 @@ class sparse_column final : public column {
     }
 
     return memory::make_managed<iterator_t>(
-      *this,
-      refs_.data(),
-      refs_.data() + refs_.size() - 1); // -1 for upper bound
+        *this,
+        refs_.data(),
+        refs_.data() + refs_.size() - 1,
+        !consolidation); // -1 for upper bound
   }
 
  private:
@@ -2249,7 +2257,7 @@ class dense_fixed_offset_column final : public column {
     return cached.value(key, value);
   }
 
-  virtual irs::doc_iterator::ptr iterator() const override {
+  virtual irs::doc_iterator::ptr iterator(bool consolidation) const override {
     typedef column_iterator<column_t> iterator_t;
 
     if (empty()) {
@@ -2257,9 +2265,7 @@ class dense_fixed_offset_column final : public column {
     }
 
     return memory::make_managed<iterator_t>(
-      *this,
-      refs_.data(),
-      refs_.data() + refs_.size());
+        *this, refs_.data(), refs_.data() + refs_.size(), !consolidation);
   }
 
  private:
@@ -2381,7 +2387,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     return key > min_ && key <= this->max();
   }
 
-  virtual irs::doc_iterator::ptr iterator() const override;
+  virtual irs::doc_iterator::ptr iterator(bool consolidation) const override;
 
  private:
   class column_iterator final : public irs::doc_iterator {
@@ -2448,7 +2454,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   doc_id_t min_{}; // min key (less than any key in column)
 }; // dense_fixed_offset_column
 
-irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator() const {
+irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator(bool) const {
   return empty()
     ? irs::doc_iterator::empty()
     : memory::make_managed<column_iterator>(*this);

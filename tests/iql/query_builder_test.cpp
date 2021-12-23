@@ -226,7 +226,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   {
     auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -278,7 +278,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     irs::bytes_ref_input in;
     auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -308,7 +308,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   {
     auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -367,13 +367,13 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     double_t seq;
     auto seq_column = segment.column("seq");
     ASSERT_NE(nullptr, seq_column);
-    auto seq_values = seq_column->iterator();
+    auto seq_values = seq_column->iterator(false);
     ASSERT_NE(nullptr, seq_values);
     auto* actual_seq_value = irs::get<irs::payload>(*seq_values);
     ASSERT_NE(nullptr, actual_seq_value);
     auto name_column = segment.column("name");
     ASSERT_NE(nullptr, name_column);
-    auto name_values = name_column->iterator();
+    auto name_values = name_column->iterator(false);
     ASSERT_NE(nullptr, name_values);
     auto* actual_name_value = irs::get<irs::payload>(*name_values);
     ASSERT_NE(nullptr, actual_name_value);
@@ -411,13 +411,13 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     double_t seq;
     auto seq_column = segment.column("seq");
     ASSERT_NE(nullptr, seq_column);
-    auto seq_values = seq_column->iterator();
+    auto seq_values = seq_column->iterator(false);
     ASSERT_NE(nullptr, seq_values);
     auto* actual_seq_value = irs::get<irs::payload>(*seq_values);
     ASSERT_NE(nullptr, actual_seq_value);
     auto name_column = segment.column("name");
     ASSERT_NE(nullptr, name_column);
-    auto name_values = name_column->iterator();
+    auto name_values = name_column->iterator(false);
     ASSERT_NE(nullptr, name_values);
     auto* actual_name_value = irs::get<irs::payload>(*name_values);
     ASSERT_NE(nullptr, actual_name_value);
@@ -455,13 +455,13 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     double_t seq;
     auto seq_column = segment.column("seq");
     ASSERT_NE(nullptr, seq_column);
-    auto seq_values = seq_column->iterator();
+    auto seq_values = seq_column->iterator(false);
     ASSERT_NE(nullptr, seq_values);
     auto* actual_seq_value = irs::get<irs::payload>(*seq_values);
     ASSERT_NE(nullptr, actual_seq_value);
     auto name_column = segment.column("name");
     ASSERT_NE(nullptr, name_column);
-    auto name_values = name_column->iterator();
+    auto name_values = name_column->iterator(false);
     ASSERT_NE(nullptr, name_values);
     auto* actual_name_value = irs::get<irs::payload>(*name_values);
     ASSERT_NE(nullptr, actual_name_value);
@@ -499,13 +499,13 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     double_t seq;
     auto seq_column = segment.column("seq");
     ASSERT_NE(nullptr, seq_column);
-    auto seq_values = seq_column->iterator();
+    auto seq_values = seq_column->iterator(false);
     ASSERT_NE(nullptr, seq_values);
     auto* actual_seq_value = irs::get<irs::payload>(*seq_values);
     ASSERT_NE(nullptr, actual_seq_value);
     auto name_column = segment.column("name");
     ASSERT_NE(nullptr, name_column);
-    auto name_values = name_column->iterator();
+    auto name_values = name_column->iterator(false);
     ASSERT_NE(nullptr, name_values);
     auto* actual_name_value = irs::get<irs::payload>(*name_values);
     ASSERT_NE(nullptr, actual_name_value);
@@ -539,7 +539,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   {
     auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -634,7 +634,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -658,7 +658,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -682,7 +682,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -706,7 +706,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     auto pQuery = query.filter->prepare(reader);
     ASSERT_NE(nullptr, pQuery.get());
 
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -731,7 +731,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
     auto& analyzed_segment = analyzed_reader[0]; // assume 0 is id of first/only segment
     auto column = analyzed_segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto analyzed_segment_values = column->iterator();
+    auto analyzed_segment_values = column->iterator(false);
     ASSERT_NE(nullptr, analyzed_segment_values);
     auto* analyzed_payload = irs::get<irs::payload>(*analyzed_segment_values);
     ASSERT_NE(nullptr, analyzed_payload);
@@ -784,7 +784,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
   auto& segment = reader[0]; // assume 0 is id of first/only segment
   auto column = segment.column("name");
   ASSERT_NE(nullptr, column);
-  auto values = column->iterator();
+  auto values = column->iterator(false);
   ASSERT_NE(nullptr, values);
   auto* actual_value = irs::get<irs::payload>(*values);
   ASSERT_NE(nullptr, actual_value);
@@ -912,7 +912,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
   {
     auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -943,7 +943,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
     irs::bytes_ref_input in;
     auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1019,7 +1019,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
     std::unordered_set<irs::string_ref> expected = { "A", "C", "D", "E" };
     auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1049,7 +1049,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_sequence_fns) {
   auto& segment = reader[0]; // assume 0 is id of first/only segment
   auto column = segment.column("name");
   ASSERT_NE(nullptr, column);
-  auto values = column->iterator();
+  auto values = column->iterator(false);
   ASSERT_NE(nullptr, values);
   auto* actual_value = irs::get<irs::payload>(*values);
   ASSERT_NE(nullptr, actual_value);
@@ -1148,7 +1148,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
   {
     auto column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator();
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);

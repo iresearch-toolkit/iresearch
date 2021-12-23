@@ -44,8 +44,8 @@ namespace columnstore2 {
 ////////////////////////////////////////////////////////////////////////////////
 class column final : public irs::column_output {
  public:
-  static constexpr size_t BLOCK_SIZE = sparse_bitmap_writer::BLOCK_SIZE;
-  static_assert(math::is_power2(BLOCK_SIZE));
+  static constexpr size_t kBlockSize = sparse_bitmap_writer::kBlockSize;
+  static_assert(math::is_power2(kBlockSize));
 
   struct context {
     memory_allocator* alloc;
@@ -105,7 +105,7 @@ class column final : public irs::column_output {
 
     void push_back(uint64_t offset) noexcept {
       assert(offset_ >= offsets_);
-      assert(offset_ < offsets_ + BLOCK_SIZE);
+      assert(offset_ < offsets_ + kBlockSize);
       *offset_++ = offset;
       assert(offset >= offset_[-1]);
     }
@@ -139,7 +139,7 @@ class column final : public irs::column_output {
     uint64_t* end() noexcept { return std::end(offsets_); }
 
    private:
-    uint64_t offsets_[BLOCK_SIZE]{};
+    uint64_t offsets_[kBlockSize]{};
     uint64_t* offset_{offsets_};
   }; // address_table
 
