@@ -2073,25 +2073,6 @@ class sparse_column final : public column {
     refs_ = std::move(refs);
   }
 
-  bool value(doc_id_t key, bytes_ref& value) const {
-    // find the right block
-    const auto rbegin = refs_.rbegin(); // upper bound
-    const auto rend = refs_.rend();
-    const auto it = std::lower_bound(
-      rbegin, rend, key,
-      [] (const block_ref& lhs, doc_id_t rhs) {
-        return lhs.key > rhs;
-    });
-
-    if (it == rend || it == rbegin) {
-      return false;
-    }
-
-    const auto& cached = load_block(*ctxs_, decompressor(), encrypted(), *it);
-
-    return cached.value(key, value);
-  }
-
   virtual irs::doc_iterator::ptr iterator(bool consolidation) const override {
     typedef column_iterator<column_t> iterator_t;
 
@@ -2238,23 +2219,6 @@ class dense_fixed_offset_column final : public column {
 
     refs_ = std::move(refs);
     min_ = this->max() - this->count() + 1;
-  }
-
-  bool value(doc_id_t key, bytes_ref& value) const {
-    const auto base_key = key - min_;
-
-    if (base_key >= this->count()) {
-      return false;
-    }
-
-    const auto block_idx = base_key / this->avg_block_count();
-    assert(block_idx < refs_.size());
-
-    auto& ref = const_cast<block_ref&>(refs_[block_idx]);
-
-    const auto& cached = load_block(*ctxs_, decompressor(), encrypted(), ref);
-
-    return cached.value(key, value);
   }
 
   virtual irs::doc_iterator::ptr iterator(bool consolidation) const override {
