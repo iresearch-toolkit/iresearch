@@ -978,7 +978,7 @@ class columnstore {
   template<typename T>
   auto push_column(const column_info& info, T key) {
     static_assert(std::is_same_v<decltype(key), string_ref> ||
-                  std::is_same_v<decltype(key), type_info::type_id>);
+                  std::is_same_v<decltype(key), irs::type_info::type_id>);
 
     if constexpr (std::is_same_v<decltype(key), string_ref>) {
       // Named column

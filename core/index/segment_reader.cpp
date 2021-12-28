@@ -227,6 +227,7 @@ class segment_reader_impl : public sub_reader {
 
   virtual const sub_reader& operator[](size_t i) const noexcept override {
     assert(!i);
+    UNUSED(i);
     return *this;
   }
 
