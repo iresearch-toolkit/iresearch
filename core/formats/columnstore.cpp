@@ -1963,13 +1963,13 @@ class column_iterator final : public irs::doc_iterator {
     }
 
     try {
-      const auto& cached =  load_block(*column_->ctxs_, column_->decompressor(), column_->encrypted(), *begin_);
+      const auto& cached = cache_
+        ? load_block(*column_->ctxs_, column_->decompressor(),
+                     column_->encrypted(), *begin_)
+        : load_block(*column_->ctxs_, column_->decompressor(),
+                     column_->encrypted(), *begin_, cached_block_);
 
-//      const auto& cached = cache_
-//        ? load_block(*column_->ctxs_, column_->decompressor(), column_->encrypted(), *begin_)
-//        : load_block(*column_->ctxs_, column_->decompressor(), column_->encrypted(), *begin_, cached_block_);
-
-      if (block_ != cached) {
+      if (block_ != cached || &cached == &cached_block_) {
         block_.reset(cached, payload);
       }
     } catch (...) {
