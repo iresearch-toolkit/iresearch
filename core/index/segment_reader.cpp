@@ -388,7 +388,7 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
       }
     }
 
-    // FIXME(gnusi): too rough, we must exlude unnamed columns
+    // FIXME(gnusi): too rough, we must exclude unnamed columns
     const size_t num_columns = columnstore_reader->size();
 
     auto& named_columns = reader->named_columns_;

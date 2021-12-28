@@ -3480,13 +3480,13 @@ TEST_P(format_test_case_with_encryption, columnstore_read_write_wrong_encryption
 
     const std::set<irs::type_info::type_id> features;
 
-    const irs::flush_state state{
-        .dir = &dir(),
-        .docmap = nullptr,
-        .features = &features,
-        .name = meta.name,
-        .doc_count = 3,
-        .index_features = irs::IndexFeatures::NONE };
+    irs::flush_state state;
+    state.dir = &dir();
+    state.docmap = nullptr;
+    state.features = &features;
+    state.name = meta.name;
+    state.doc_count = 3;
+    state.index_features = irs::IndexFeatures::NONE;
 
     writer->commit(state);
   }
