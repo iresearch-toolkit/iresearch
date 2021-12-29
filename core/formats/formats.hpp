@@ -358,6 +358,7 @@ struct column_reader {
   // can be accessed via the 'payload' attribute.
   virtual doc_iterator::ptr iterator(bool consolidation) const = 0;
 
+  // Returns total number of columns.
   virtual doc_id_t size() const = 0;
 };
 

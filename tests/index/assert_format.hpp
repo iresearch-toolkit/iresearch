@@ -126,8 +126,8 @@ struct field : public irs::field_meta {
 
 class column_values {
  public:
-  explicit column_values(irs::field_id id)
-    : id_{id} {
+  explicit column_values(irs::field_id id, irs::feature_writer* writer)
+    : id_{id}, writer_{writer} {
   }
 
   column_values(std::string name, irs::field_id id)
@@ -141,6 +141,16 @@ class column_values {
     return name_.has_value() ? name_.value() : irs::string_ref::NIL;
   }
 
+  irs::bstring payload() const {
+    irs::bstring payload;
+
+    if (writer_) {
+      writer_->finish(payload);
+    }
+
+    return payload;
+  }
+
   auto begin() const { return values_.begin(); }
   auto end() const { return values_.end(); }
   auto size() const { return values_.size(); }
@@ -152,6 +162,7 @@ class column_values {
   irs::field_id id_;
   std::optional<std::string> name_;
   std::map<irs::doc_id_t, irs::bstring> values_;
+  irs::feature_writer* writer_{};
 };
 
 class index_segment: irs::util::noncopyable {

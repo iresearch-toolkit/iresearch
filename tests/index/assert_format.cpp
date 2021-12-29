@@ -305,7 +305,7 @@ void index_segment::insert_indexed(const ifield& f) {
       if (feature_writer) {
         const size_t id = columns_.size();
         ASSERT_LE(id, std::numeric_limits<irs::field_id>::max());
-        columns_.emplace_back(id);
+        columns_.emplace_back(id, feature_writer.get());
 
         feature.second = irs::field_id{id};
 
@@ -929,6 +929,11 @@ void assert_column(
     ASSERT_TRUE(actual_reader->name().null());
   } else {
     ASSERT_EQ(expected_values.name(), actual_reader->name());
+  }
+
+  if (!actual_reader->payload().null()) {
+    // old formats may not support column header payload
+    ASSERT_EQ(expected_values.payload(), actual_reader->payload());
   }
 
   ASSERT_EQ(expected_values.size(), actual_reader->size());
