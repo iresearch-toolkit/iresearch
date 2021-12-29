@@ -924,6 +924,13 @@ void assert_column(
     return;
   }
 
+  if (expected_values.name().null()) {
+    // field features are stored as annonymous columns
+    ASSERT_TRUE(actual_reader->name().null());
+  } else {
+    ASSERT_EQ(expected_values.name(), actual_reader->name());
+  }
+
   ASSERT_EQ(expected_values.size(), actual_reader->size());
 
   // check iterators & values
@@ -1030,7 +1037,6 @@ void assert_columnstore(
         } else {
           ASSERT_LT(expected_field_feature.second, expected_segment.columns().size());
           const auto* actual_column = actual_segment.column(actual_field_feature->second);
-          ASSERT_TRUE(actual_column->name().null()); // features are stored as annonymous columns
           assert_column(actual_column, expected_segment.columns()[expected_field_feature.second]);
         }
         ++actual_field_feature;
