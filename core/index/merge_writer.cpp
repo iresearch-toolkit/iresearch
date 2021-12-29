@@ -581,14 +581,14 @@ class compound_column_iterator final {
 //////////////////////////////////////////////////////////////////////////////
 class compound_term_iterator final : public term_iterator {
  public:
-  static constexpr const size_t PROGRESS_STEP_TERMS = size_t(1) << 7;
+  static constexpr const size_t kProgressStepTerms = size_t(1) << 7;
 
   explicit compound_term_iterator(
       const merge_writer::flush_progress_t& progress,
       const comparer* comparator)
     : doc_itr_(progress),
       psorting_doc_itr_(nullptr == comparator ? nullptr : &sorting_doc_itr_),
-      progress_(progress, PROGRESS_STEP_TERMS) {
+      progress_(progress, kProgressStepTerms) {
   }
 
   bool aborted() const {
