@@ -221,7 +221,7 @@ bool remapping_doc_iterator::next() {
 //////////////////////////////////////////////////////////////////////////////
 class compound_doc_iterator : public doc_iterator {
  public:
-  typedef std::pair<doc_iterator::ptr, const doc_map_f*> doc_iterator_t;
+  typedef std::pair<doc_iterator::ptr, std::reference_wrapper<const doc_map_f>> doc_iterator_t;
   typedef std::vector<doc_iterator_t> iterators_t;
 
   static constexpr const size_t kProgressStepDocs = size_t(1) << 14;
@@ -232,7 +232,7 @@ class compound_doc_iterator : public doc_iterator {
   }
 
   template<typename Func>
-  bool reset(Func func) {
+  bool reset(Func&& func) {
     if (!func(iterators_)) {
       return false;
     }
@@ -296,7 +296,7 @@ bool compound_doc_iterator::next() {
        notify = true, ++current_itr_) {
     auto& itr_entry = iterators_[current_itr_];
     auto& itr = itr_entry.first;
-    auto& id_map = itr_entry.second;
+    auto& id_map = itr_entry.second.get();
 
     if (!itr) {
       continue;
@@ -307,7 +307,7 @@ bool compound_doc_iterator::next() {
     }
 
     while (itr->next()) {
-      doc_.value = (*id_map)(itr->value());
+      doc_.value = id_map(itr->value());
 
       if (doc_limits::eof(doc_.value)) {
         continue; // masked doc_id
@@ -332,13 +332,13 @@ class sorting_compound_doc_iterator final : public doc_iterator {
  public:
   explicit sorting_compound_doc_iterator(
       compound_doc_iterator& doc_it) noexcept
-    : doc_it_(&doc_it),
-      heap_it_(min_heap_context(doc_it.iterators_)) {
+    : doc_it_{&doc_it},
+      heap_it_{min_heap_context{doc_it.iterators_}} {
   }
 
   template<typename Func>
-  bool reset(Func func) {
-    if (!doc_it_->reset(func)) {
+  bool reset(Func&& func) {
+    if (!doc_it_->reset(std::forward<Func>(func))) {
       return false;
     }
 
@@ -367,14 +367,14 @@ class sorting_compound_doc_iterator final : public doc_iterator {
   class min_heap_context {
    public:
     explicit min_heap_context(compound_doc_iterator::iterators_t& itrs) noexcept
-      : itrs_(itrs) {
+      : itrs_{&itrs} {
     }
 
     // advance
     bool operator()(const size_t i) const {
-      assert(i < itrs_.get().size());
-      auto& doc_it = itrs_.get()[i];
-      auto const& map = *doc_it.second;
+      assert(i < itrs_->size());
+      auto& doc_it = (*itrs_)[i];
+      auto const& map = doc_it.second.get();
       while (doc_it.first->next()) {
         if (!doc_limits::eof(map(doc_it.first->value()))) {
           return true;
@@ -390,12 +390,12 @@ class sorting_compound_doc_iterator final : public doc_iterator {
 
    private:
     doc_id_t remap(const size_t i) const {
-      assert(i < itrs_.get().size());
-      auto& doc_it = itrs_.get()[i];
-      return (*doc_it.second)(doc_it.first->value());
+      assert(i < itrs_->size());
+      auto& doc_it = (*itrs_)[i];
+      return doc_it.second.get()(doc_it.first->value());
     }
 
-    std::reference_wrapper<compound_doc_iterator::iterators_t> itrs_;
+    compound_doc_iterator::iterators_t* itrs_;
   }; // min_heap_context
 
   compound_doc_iterator* doc_it_;
@@ -418,7 +418,7 @@ bool sorting_compound_doc_iterator::next() {
   while (heap_it_.next()) {
     auto& new_lead = iterators[heap_it_.value()];
     auto& it = new_lead.first;
-    auto& doc_map = *new_lead.second;
+    auto& doc_map = new_lead.second.get();
 
     if (&new_lead != lead_) {
       // update attributes
@@ -439,6 +439,24 @@ bool sorting_compound_doc_iterator::next() {
 
   return false;
 }
+
+class doc_iterator_container {
+ public:
+  explicit doc_iterator_container(size_t size) {
+    itrs_.reserve(size);
+  }
+
+  auto begin() { return std::begin(itrs_); }
+  auto end() { return std::end(itrs_); }
+
+  template<typename Func>
+  bool reset(Func&& func) {
+    return func(itrs_);
+  }
+
+ private:
+  std::vector<remapping_doc_iterator> itrs_;
+};
 
 class compound_column_iterator final {
  public:
@@ -697,7 +715,7 @@ doc_iterator::ptr compound_term_iterator::postings(IndexFeatures /*features*/) c
     for (auto& itr_id : term_iterator_mask_) {
       auto& term_itr = term_iterators_[itr_id];
 
-      itrs.emplace_back(term_itr.first->postings(meta().index_features), term_itr.second);
+      itrs.emplace_back(term_itr.first->postings(meta().index_features), *term_itr.second);
       assert(itrs.back().first);
     }
 
@@ -956,7 +974,7 @@ class columnstore {
   //  field_limits::invalid() in case if no data were inserted,
   //  empty value is case if operation was interrupted.
   template<typename Writer>
-  std::optional<field_id> insert(std::vector<remapping_doc_iterator>& itrs,
+  std::optional<field_id> insert(doc_iterator_container& itrs,
                                  const column_info& info,
                                  columnstore_writer::column_finalizer_f&& finalizer,
                                  Writer&& writer);
@@ -983,7 +1001,7 @@ class columnstore {
 
 template<typename Writer>
 std::optional<field_id> columnstore::insert(
-    std::vector<remapping_doc_iterator>& itrs,
+    doc_iterator_container& itrs,
     const column_info& info,
     columnstore_writer::column_finalizer_f&& finalizer,
     Writer&& writer) {
@@ -1023,7 +1041,7 @@ std::optional<field_id> columnstore::insert(
   do {
     if (!write_column(*begin)) {
       // Stop was requsted
-      return {};
+      return std::nullopt;
     }
 
     begin = next_iterator(++begin);
@@ -1055,7 +1073,7 @@ std::optional<field_id> columnstore::insert(
     do {
       if (!progress_()) {
         // Stop was requsted
-        return {};
+        return std::nullopt;
       }
 
       auto& out = column.second(it.value());
@@ -1153,9 +1171,10 @@ class sorting_compound_column_iterator : util::noncopyable {
   external_heap_iterator<min_heap_context> heap_it_;
 }; // sorting_compound_column_iterator
 
+template<typename Iterator>
 bool write_columns(
     columnstore& cs,
-    sorting_compound_doc_iterator& columns,
+    Iterator& columns,
     const column_info_provider_t& column_info,
     compound_column_iterator& column_itr,
     const merge_writer::flush_progress_t& progress) {
@@ -1163,18 +1182,12 @@ bool write_columns(
   assert(cs.valid());
   assert(progress);
 
-  auto add_iterators = [&column_itr](compound_doc_iterator::iterators_t& itrs) {
+  auto add_iterators = [&column_itr](auto& itrs) {
     auto add_iterators = [&itrs](
-        const sub_reader& segment,
+        const sub_reader& /*segment*/,
         const doc_map_f& doc_map,
         const irs::column_reader& column) {
-      auto* reader = segment.column(column.id());
-
-      if (!reader) {
-        return false;
-      }
-
-      itrs.emplace_back(reader->iterator(true), &doc_map);
+      itrs.emplace_back(column.iterator(true), doc_map);
       return true;
     };
 
@@ -1210,183 +1223,13 @@ bool write_columns(
   return true;
 }
 
-bool write_columns(
-    columnstore& cs,
-    std::vector<remapping_doc_iterator>& itrs,
-    const column_info_provider_t& column_info,
-    compound_column_iterator& column_itr,
-    const merge_writer::flush_progress_t& progress) {
-  REGISTER_TIMER_DETAILED();
-  assert(cs.valid());
-  assert(progress);
-
-  auto add_iterators = [&itrs](
-      const sub_reader& /*segment*/,
-      const doc_map_f& doc_map,
-      const irs::column_reader& column) {
-    itrs.emplace_back(column.iterator(true), doc_map);
-    return true;
-  };
-
-  while (column_itr.next()) {
-    itrs.clear();
-
-    // Visit matched columns from merging segments and
-    // write all survived values to the new segment
-    if (!progress() || !column_itr.visit(add_iterators)) {
-      return false; // Failed to visit all values
-    }
-
-    const string_ref column_name = column_itr.value().name();
-
-    const auto res = cs.insert(
-        itrs, column_info(column_name),
-        [column_name](bstring&) {
-          return column_name;
-        },
-        [](data_output& out, bytes_ref payload) {
-          if (!payload.empty()) {
-            out.write_bytes(payload.c_str(), payload.size());
-          }
-        });
-
-    if (!res.has_value()) {
-      return false; // Failed to write values
-    }
-  }
-
-  return true;
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief write field term data
 //////////////////////////////////////////////////////////////////////////////
+template<typename Iterator>
 bool write_fields(
     columnstore& cs,
-    std::vector<remapping_doc_iterator>& itrs,
-    const flush_state& flush_state,
-    const segment_meta& meta,
-    const feature_info_provider_t& column_info,
-    compound_field_iterator& field_itr,
-    const merge_writer::flush_progress_t& progress) {
-  REGISTER_TIMER_DETAILED();
-  assert(cs.valid());
-
-  auto field_writer = meta.codec->get_field_writer(true);
-  field_writer->prepare(flush_state);
-
-  irs::type_info::type_id feature{};
-
-  std::vector<bytes_ref> hdrs;
-  hdrs.reserve(itrs.capacity());
-
-  auto add_iterators = [&itrs, &feature, &hdrs] (
-      const sub_reader& segment,
-      const doc_map_f& doc_map,
-      const field_meta& field) {
-    const auto column = field.features.find(feature);
-
-    // merge field norms if present
-    if (column != field.features.end() &&
-        field_limits::valid(column->second)) {
-      auto* reader = segment.column(column->second);
-
-      if (!reader) {
-        // Invalid column id
-        return false;
-      }
-
-      hdrs.emplace_back(reader->payload());
-      itrs.emplace_back(reader->iterator(true), doc_map);
-    }
-
-    return true;
-  };
-
-  feature_map_t features;
-
-  while (field_itr.next()) {
-    features.clear();
-
-    auto& field_meta = field_itr.meta();
-
-    auto begin = field_meta.features.begin();
-    auto end = field_meta.features.end();
-
-    for (; begin != end; ++begin) {
-      if (!progress()) {
-        return false;
-      }
-
-      std::tie(feature, std::ignore) = *begin;
-
-      const auto [info, factory] = column_info(feature);
-
-      itrs.clear();
-      hdrs.clear();
-
-      if (!field_itr.visit(add_iterators)) {
-        return false;
-      }
-
-      std::optional<field_id> res;
-      auto feature_writer = factory ? (*factory)({ hdrs.data(), hdrs.size() }) : nullptr;
-
-      if (feature_writer) {
-        auto value_writer = [writer = feature_writer.get()](
-            data_output& out, bytes_ref payload) {
-          writer->write(out, payload);
-        };
-
-        res = cs.insert(
-            itrs, info,
-            [feature_writer = make_move_on_copy(std::move(feature_writer))](bstring& out) {
-              feature_writer.value()->finish(out);
-              return string_ref::NIL;
-            },
-            std::move(value_writer));
-      } else {
-        res = cs.insert(
-            itrs, info,
-            [](bstring&) {
-              return string_ref::NIL;
-            },
-            [](data_output& out, bytes_ref payload) {
-              if (!payload.empty()) {
-                out.write_bytes(payload.c_str(), payload.size());
-              }
-            });
-      }
-
-      if (!res.has_value()) {
-        return false;
-      }
-
-      features[feature] = res.value();
-    }
-
-    // write field terms
-    auto terms = field_itr.iterator();
-
-    field_writer->write(
-      field_meta.name,
-      field_meta.index_features,
-      features,
-      *terms);
-  }
-
-  field_writer->end();
-  field_writer.reset();
-
-  return !field_itr.aborted();
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief write field term data
-//////////////////////////////////////////////////////////////////////////////
-bool write_fields(
-    columnstore& cs,
-    sorting_compound_doc_iterator& feature_itr,
+    Iterator& feature_itr,
     const flush_state& flush_state,
     const segment_meta& meta,
     const feature_info_provider_t& column_info,
@@ -1403,7 +1246,7 @@ bool write_fields(
   std::vector<bytes_ref> hdrs;
   hdrs.reserve(field_itr.size());
 
-  auto add_iterators = [&field_itr, &hdrs, &feature](compound_doc_iterator::iterators_t& itrs) {
+  auto add_iterators = [&field_itr, &hdrs, &feature](auto& itrs) {
     auto add_iterators = [&itrs, &hdrs, &feature](
         const sub_reader& segment,
         const doc_map_f& doc_map,
@@ -1423,7 +1266,7 @@ bool write_fields(
       }
 
       hdrs.emplace_back(reader->payload());
-      itrs.emplace_back(reader->iterator(true), &doc_map);
+      itrs.emplace_back(reader->iterator(true), doc_map);
       return true;
     };
 
@@ -1579,8 +1422,7 @@ bool merge_writer::flush(
   feature_set_t fields_features;
   IndexFeatures index_features{IndexFeatures::NONE};
 
-  std::vector<remapping_doc_iterator> remapping_itrs;
-  remapping_itrs.reserve(size);
+  doc_iterator_container remapping_itrs{size};
 
   doc_id_t base_id = doc_limits::min(); // next valid doc_id
 
