@@ -299,7 +299,7 @@ void index_segment::insert_indexed(const ifield& f) {
       auto handler = field_features_(feature.first);
 
       auto feature_writer = handler.second
-        ? (*handler.second)(irs::bytes_ref::NIL)
+        ? (*handler.second)({})
         : nullptr;
 
       if (feature_writer) {

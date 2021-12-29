@@ -130,6 +130,15 @@ struct custom_feature {
       writer(doc).write_int(doc);
     }
 
+    virtual void write(
+        data_output& out,
+        irs::bytes_ref payload) {
+      if (!payload.empty()) {
+        ++count;
+        out.write_bytes(payload.c_str(), payload.size());
+      }
+    }
+
     virtual void finish(irs::bstring& out) final {
       EXPECT_TRUE(out.empty());
       out.resize(sizeof(size_t));
@@ -141,7 +150,7 @@ struct custom_feature {
     size_t count{0}; // FIXME(gnusi): check header payload in tests
   };
 
-  static irs::feature_writer::ptr make_writer(irs::bytes_ref /*payload*/) {
+  static irs::feature_writer::ptr make_writer(irs::range<irs::bytes_ref> /*payload*/) {
     return irs::memory::make_managed<writer>();
   }
 

@@ -14149,7 +14149,12 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
       stream.write_int(stats.num_overlap);
       stream.write_int(stats.max_term_freq);
       stream.write_int(stats.num_unique);
+    }
 
+    virtual void write(data_output& out, irs::bytes_ref payload) final {
+      if (!payload.empty()) {
+        out.write_bytes(payload.c_str(), payload.size());
+      }
     }
 
     virtual void finish(irs::bstring& out) final {
@@ -14169,11 +14174,11 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
       irs::feature_writer_factory_t handler{};
 
       if (irs::type<feature1>::id() == id) {
-        handler = [](irs::bytes_ref) -> irs::feature_writer::ptr {
+        handler = [](irs::range<irs::bytes_ref>) -> irs::feature_writer::ptr {
           return irs::memory::make_managed<feature_writer>(2);
         };
       } else if (irs::type<feature3>::id() == id) {
-        handler = [](irs::bytes_ref) -> irs::feature_writer::ptr {
+        handler = [](irs::range<irs::bytes_ref>) -> irs::feature_writer::ptr {
           return irs::memory::make_managed<feature_writer>(1);
         };
       }

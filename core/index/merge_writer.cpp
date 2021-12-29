@@ -955,19 +955,21 @@ class columnstore {
   // Returns column id of the inserted column on success,
   //  field_limits::invalid() in case if no data were inserted,
   //  empty value is case if operation was interrupted.
-  template<typename T>
+  template<typename Writer>
   std::optional<field_id> insert(std::vector<remapping_doc_iterator>& itrs,
                                  const column_info& info,
-                                 T key);
+                                 columnstore_writer::column_finalizer_f&& finalizer,
+                                 Writer&& writer);
 
   // Inserts live values from the specified 'iterator' into a column.
   // Returns column id of the inserted column on success,
   //  field_limits::invalid() in case if no data were inserted,
   //  empty value is case if operation was interrupted.
-  template<typename T>
+  template<typename Writer>
   std::optional<field_id> insert(sorting_compound_doc_iterator& it,
                                  const column_info& info,
-                                 T key);
+                                 columnstore_writer::column_finalizer_f&& finalizer,
+                                 Writer&& writer);
 
   // Returns `true` if anything was actually flushed
   bool flush(const flush_state& state) { return writer_->commit(state); }
@@ -975,30 +977,16 @@ class columnstore {
   bool valid() const noexcept { return static_cast<bool>(writer_); }
 
  private:
-  template<typename T>
-  auto push_column(const column_info& info, T key) {
-    static_assert(std::is_same_v<decltype(key), string_ref> ||
-                  std::is_same_v<decltype(key), irs::type_info::type_id>);
-
-    if constexpr (std::is_same_v<decltype(key), string_ref>) {
-      // Named column
-      return writer_->push_column(info, [key](bstring&) { return key; });
-    } else {
-      // Annonymous feature column
-      // FIXME(gnusi): write header
-      return writer_->push_column(info, [](bstring&) { return string_ref::NIL; });
-    }
-  }
-
   progress_tracker progress_;
   columnstore_writer::ptr writer_;
 };
 
-template<typename T>
+template<typename Writer>
 std::optional<field_id> columnstore::insert(
     std::vector<remapping_doc_iterator>& itrs,
     const column_info& info,
-    T key) {
+    columnstore_writer::column_finalizer_f&& finalizer,
+    Writer&& writer) {
   auto next_iterator = [end = std::end(itrs)](auto begin) {
     return std::find_if(begin, end,
                         [](auto& it) { return it.next(); });
@@ -1011,9 +999,9 @@ std::optional<field_id> columnstore::insert(
     return std::make_optional(field_limits::invalid());
   }
 
-  auto column = push_column(info, key);
+  auto column = writer_->push_column(info, std::move(finalizer));
 
-  auto write_column = [&column, this](auto& it) -> bool {
+  auto write_column = [&column, &writer, this](auto& it) -> bool {
     auto* payload = irs::get<irs::payload>(it);
 
     do {
@@ -1024,8 +1012,8 @@ std::optional<field_id> columnstore::insert(
 
       auto& out = column.second(it.value());
 
-      if (payload && payload->value.size()) {
-        out.write_bytes(payload->value.c_str(), payload->value.size());
+      if (payload) {
+        writer(out, payload->value);
       }
     } while (it.next());
 
@@ -1044,9 +1032,11 @@ std::optional<field_id> columnstore::insert(
   return std::make_optional(column.first);
 }
 
-template<typename T>
+template<typename Writer>
 std::optional<field_id> columnstore::insert(
-    sorting_compound_doc_iterator& it, const column_info& info, T key) {
+    sorting_compound_doc_iterator& it, const column_info& info,
+    columnstore_writer::column_finalizer_f&& finalizer,
+    Writer&& writer) {
   const payload* payload = nullptr;
 
   auto* callback = irs::get<attribute_provider_change>(it);
@@ -1060,7 +1050,7 @@ std::optional<field_id> columnstore::insert(
   }
 
   if (it.next()) {
-    auto column = push_column(info, key);
+    auto column = writer_->push_column(info, std::move(finalizer));
 
     do {
       if (!progress_()) {
@@ -1070,8 +1060,8 @@ std::optional<field_id> columnstore::insert(
 
       auto& out = column.second(it.value());
 
-      if (payload && payload->value.size()) {
-        out.write_bytes(payload->value.c_str(), payload->value.size());
+      if (payload) {
+        writer(out, payload->value);
       }
     } while (it.next());
 
@@ -1200,7 +1190,19 @@ bool write_columns(
     }
 
     const string_ref column_name = column_itr.value().name();
-    if (!cs.insert(columns, column_info(column_name), column_name).has_value()) {
+
+    const auto res = cs.insert(
+        columns, column_info(column_name),
+        [column_name](bstring&) {
+          return column_name;
+        },
+        [](data_output& out, bytes_ref payload) {
+          if (!payload.empty()) {
+            out.write_bytes(payload.c_str(), payload.size());
+          }
+        });
+
+    if (!res.has_value()) {
       return false; // failed to insert all values
     }
   }
@@ -1210,8 +1212,8 @@ bool write_columns(
 
 bool write_columns(
     columnstore& cs,
-    const column_info_provider_t& column_info,
     std::vector<remapping_doc_iterator>& itrs,
+    const column_info_provider_t& column_info,
     compound_column_iterator& column_itr,
     const merge_writer::flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
@@ -1237,7 +1239,18 @@ bool write_columns(
 
     const string_ref column_name = column_itr.value().name();
 
-    if (!cs.insert(itrs, column_info(column_name), column_name).has_value()) {
+    const auto res = cs.insert(
+        itrs, column_info(column_name),
+        [column_name](bstring&) {
+          return column_name;
+        },
+        [](data_output& out, bytes_ref payload) {
+          if (!payload.empty()) {
+            out.write_bytes(payload.c_str(), payload.size());
+          }
+        });
+
+    if (!res.has_value()) {
       return false; // Failed to write values
     }
   }
@@ -1250,10 +1263,10 @@ bool write_columns(
 //////////////////////////////////////////////////////////////////////////////
 bool write_fields(
     columnstore& cs,
+    std::vector<remapping_doc_iterator>& itrs,
     const flush_state& flush_state,
     const segment_meta& meta,
     const feature_info_provider_t& column_info,
-    std::vector<remapping_doc_iterator>& itrs,
     compound_field_iterator& field_itr,
     const merge_writer::flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
@@ -1264,7 +1277,10 @@ bool write_fields(
 
   irs::type_info::type_id feature{};
 
-  auto add_iterators = [&itrs, &feature] (
+  std::vector<bytes_ref> hdrs;
+  hdrs.reserve(itrs.capacity());
+
+  auto add_iterators = [&itrs, &feature, &hdrs] (
       const sub_reader& segment,
       const doc_map_f& doc_map,
       const field_meta& field) {
@@ -1280,6 +1296,7 @@ bool write_fields(
         return false;
       }
 
+      hdrs.emplace_back(reader->payload());
       itrs.emplace_back(reader->iterator(true), doc_map);
     }
 
@@ -1297,15 +1314,49 @@ bool write_fields(
     auto end = field_meta.features.end();
 
     for (; begin != end; ++begin) {
-      std::tie(feature, std::ignore) = *begin;
-      itrs.clear();
-
-      // remap merge features
-      if (!progress() || !field_itr.visit(add_iterators)) {
+      if (!progress()) {
         return false;
       }
 
-      const auto res = cs.insert(itrs, column_info(feature).first, feature);
+      std::tie(feature, std::ignore) = *begin;
+
+      const auto [info, factory] = column_info(feature);
+
+      itrs.clear();
+      hdrs.clear();
+
+      if (!field_itr.visit(add_iterators)) {
+        return false;
+      }
+
+      std::optional<field_id> res;
+      auto feature_writer = factory ? (*factory)({ hdrs.data(), hdrs.size() }) : nullptr;
+
+      if (feature_writer) {
+        auto value_writer = [writer = feature_writer.get()](
+            data_output& out, bytes_ref payload) {
+          writer->write(out, payload);
+        };
+
+        res = cs.insert(
+            itrs, info,
+            [feature_writer = make_move_on_copy(std::move(feature_writer))](bstring& out) {
+              feature_writer.value()->finish(out);
+              return string_ref::NIL;
+            },
+            std::move(value_writer));
+      } else {
+        res = cs.insert(
+            itrs, info,
+            [](bstring&) {
+              return string_ref::NIL;
+            },
+            [](data_output& out, bytes_ref payload) {
+              if (!payload.empty()) {
+                out.write_bytes(payload.c_str(), payload.size());
+              }
+            });
+      }
 
       if (!res.has_value()) {
         return false;
@@ -1349,8 +1400,11 @@ bool write_fields(
 
   irs::type_info::type_id feature{};
 
-  auto add_iterators = [&field_itr, &feature](compound_doc_iterator::iterators_t& itrs) {
-    auto add_iterators = [&itrs, &feature](
+  std::vector<bytes_ref> hdrs;
+  hdrs.reserve(field_itr.size());
+
+  auto add_iterators = [&field_itr, &hdrs, &feature](compound_doc_iterator::iterators_t& itrs) {
+    auto add_iterators = [&itrs, &hdrs, &feature](
         const sub_reader& segment,
         const doc_map_f& doc_map,
         const field_meta& field) {
@@ -1368,10 +1422,12 @@ bool write_fields(
         return false;
       }
 
+      hdrs.emplace_back(reader->payload());
       itrs.emplace_back(reader->iterator(true), &doc_map);
       return true;
     };
 
+    hdrs.clear();
     itrs.clear();
     return field_itr.visit(add_iterators);
   };
@@ -1386,14 +1442,46 @@ bool write_fields(
     auto end = field_meta.features.end();
 
     for (; begin != end; ++begin) {
-      std::tie(feature, std::ignore) = *begin;
-
-      if (!progress() || !feature_itr.reset(add_iterators)) {
+      if (!progress()) {
         return false;
       }
 
-      const auto res = cs.insert(feature_itr, column_info(feature).first,
-                                 feature);
+      std::tie(feature, std::ignore) = *begin;
+
+      if (!feature_itr.reset(add_iterators)) {
+        return false;
+      }
+
+      const auto [info, factory] = column_info(feature);
+
+      std::optional<field_id> res;
+      auto feature_writer = factory ? (*factory)({hdrs.data(), hdrs.size()}) : nullptr;
+
+      if (feature_writer) {
+        auto value_writer = [writer = feature_writer.get()](
+            data_output& out, bytes_ref payload) {
+          writer->write(out, payload);
+        };
+
+        res = cs.insert(
+            feature_itr, info,
+            [feature_writer = make_move_on_copy(std::move(feature_writer))](bstring& out) {
+              feature_writer.value()->finish(out);
+              return string_ref::NIL;
+            },
+            std::move(value_writer));
+      } else {
+        res = cs.insert(
+            feature_itr, info,
+            [](bstring&) {
+              return string_ref::NIL;
+            },
+            [](data_output& out, bytes_ref payload) {
+              if (!payload.empty()) {
+                out.write_bytes(payload.c_str(), payload.size());
+              }
+            });
+      }
 
       if (!res.has_value()) {
         return false; // failed to insert all values
@@ -1554,7 +1642,7 @@ bool merge_writer::flush(
     return false; // progress callback requested termination
   }
 
-  if (!write_columns(cs, *column_info_, remapping_itrs, columns_itr, progress)) {
+  if (!write_columns(cs, remapping_itrs, *column_info_, columns_itr, progress)) {
     return false; // flush failure
   }
 
@@ -1570,8 +1658,8 @@ bool merge_writer::flush(
   state.name = segment.meta.name;
 
   // write field meta and field term data
-  if (!write_fields(cs, state, segment.meta, *feature_info_,
-                    remapping_itrs, fields_itr, progress)) {
+  if (!write_fields(cs, remapping_itrs, state, segment.meta,
+                    *feature_info_, fields_itr, progress)) {
     return false; // flush failure
   }
 

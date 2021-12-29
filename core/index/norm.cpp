@@ -85,7 +85,7 @@ void norm_writer::write(
   }
 }
 
-/*static*/ feature_writer::ptr norm::make_writer(bytes_ref /*payload*/) {
+/*static*/ feature_writer::ptr norm::make_writer(range<bytes_ref> /*payload*/) {
   static norm_writer kWriter;
 
   return memory::to_managed<feature_writer, false>(&kWriter);
@@ -121,5 +121,29 @@ REGISTER_ATTRIBUTE(norm);
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(norm2);
+
+/*static*/ feature_writer::ptr norm2::make_writer(range<bytes_ref> headers) {
+  if (headers.empty()) {
+    return memory::make_managed<norm2_writer<sizeof(uint32_t)>>(norm2_header{});
+  }
+
+  norm2_header hdr{};
+  for (auto header : headers) {
+    if (!hdr.reset(header)) {
+      return nullptr;
+    }
+  }
+
+  switch (hdr.num_bytes()) {
+    case sizeof(byte_type):
+      return memory::make_managed<norm2_writer<sizeof(byte_type)>>(hdr);
+    case sizeof(uint16_t):
+      return memory::make_managed<norm2_writer<sizeof(uint16_t)>>(hdr);
+    default:
+      return memory::make_managed<norm2_writer<sizeof(uint32_t)>>(hdr);
+  }
+
+  return nullptr;
+}
 
 } // iresearch

@@ -750,7 +750,7 @@ field_data::field_data(
     auto [feature_column_info, feature_writer_factory] = feature_columns(feature);
 
     auto feature_writer = feature_writer_factory
-      ? (*feature_writer_factory)(bytes_ref::NIL)
+      ? (*feature_writer_factory)({})
       : nullptr;
 
     if (feature_writer) {

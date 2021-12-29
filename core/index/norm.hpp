@@ -53,6 +53,14 @@ class norm_writer final : public feature_writer {
       // cppcheck-suppress constParameter
       columnstore_writer::values_writer_f& writer) final;
 
+  virtual void write(
+      data_output& out,
+      bytes_ref payload) {
+    if (!payload.empty()) {
+      out.write_bytes(payload.c_str(), payload.size());
+    }
+  }
+
   virtual void finish(bstring& /*out*/) final { }
 };
 
@@ -70,7 +78,7 @@ class IRESEARCH_API norm : public norm_base {
     return 1.f;
   }
 
-  static feature_writer::ptr make_writer(bytes_ref payload);
+  static feature_writer::ptr make_writer(range<bytes_ref> payload);
 
   static void compute(
     const field_stats& stats,
@@ -155,6 +163,17 @@ class norm2_writer final : public feature_writer {
 //    }
   }
 
+  virtual void write(
+      data_output& out,
+      bytes_ref payload) {
+    if (payload.size() == sizeof(uint32_t)) {
+      auto* p = payload.c_str();
+      hdr_.update(irs::read<uint32_t>(p));
+
+      out.write_bytes(payload.c_str(), sizeof(uint32_t));
+    }
+  }
+
   virtual void finish(bstring& out) final {
     hdr_.write(out);
   }
@@ -173,34 +192,7 @@ class IRESEARCH_API norm2 : public norm_base {
     return "iresearch::norm2";
   }
 
-  static feature_writer::ptr make_writer(bytes_ref payload) {
-    norm2_header hdr{};
-
-    if (payload.empty()) {
-      return memory::make_managed<norm2_writer<sizeof(uint32_t)>>(hdr);
-    }
-
-    if (hdr.reset(payload)) {
-      switch (hdr.num_bytes()) {
-        case sizeof(byte_type):
-          return memory::make_managed<norm2_writer<sizeof(byte_type)>>(hdr);
-        case sizeof(uint16_t):
-          return memory::make_managed<norm2_writer<sizeof(uint16_t)>>(hdr);
-        default:
-          return memory::make_managed<norm2_writer<sizeof(uint32_t)>>(hdr);
-      }
-    }
-
-    return nullptr;
-  }
-
-  static void compute(
-      const field_stats& stats,
-      doc_id_t doc,
-      // cppcheck-suppress constParameter
-      columnstore_writer::values_writer_f& writer) {
-    writer(doc).write_int(stats.len);
-  }
+  static feature_writer::ptr make_writer(range<bytes_ref> payload);
 
   uint32_t read() const {
     assert(column_it_);
