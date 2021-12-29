@@ -115,7 +115,8 @@ struct long_comparer : irs::comparer {
     auto* plhs = lhs.c_str();
     auto* prhs = rhs.c_str();
 
-    return irs::zig_zag_decode64(irs::vread<uint64_t>(plhs)) < irs::zig_zag_decode64(irs::vread<uint64_t>(prhs));
+    return irs::zig_zag_decode64(irs::vread<uint64_t>(plhs)) <
+           irs::zig_zag_decode64(irs::vread<uint64_t>(prhs));
   }
 };
 

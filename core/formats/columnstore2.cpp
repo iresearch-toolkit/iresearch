@@ -1275,9 +1275,7 @@ columnstore_writer::column_t writer::push_column(
   const auto id = columns_.size();
 
   if (id >= std::numeric_limits<uint32_t>::max()) {
-    // FIXME(gnusi): message
-    // Too many columns
-    throw illegal_state{};
+    throw illegal_state{"Too many columns."};
   }
 
   // in case of consolidation we write columns one-by-one to

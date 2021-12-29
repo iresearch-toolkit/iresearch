@@ -271,16 +271,16 @@ void index_segment::insert_stored(const ifield& f) {
   const size_t id = columns_.size();
   EXPECT_LE(id, std::numeric_limits<irs::field_id>::max());
 
-  auto res = columns_meta_.emplace(static_cast<std::string>(f.name()), id);
+  auto res = named_columns_.emplace(static_cast<std::string>(f.name()), nullptr);
 
   if (res.second) {
-    columns_.emplace_back();
+    res.first->second = &columns_.emplace_back(static_cast<std::string>(f.name()), id);
   }
 
-  const auto column_id = res.first->second;
-  EXPECT_LT(column_id, columns_.size()) ;
-
-  columns_[column_id].insert(doc(), buf_);
+  auto* column = res.first->second;
+  ASSERT_NE(nullptr, column);
+  EXPECT_LT(column->id(), columns_.size()) ;
+  column->insert(doc(), buf_);
 }
 
 void index_segment::insert_indexed(const ifield& f) {
@@ -305,7 +305,7 @@ void index_segment::insert_indexed(const ifield& f) {
       if (feature_writer) {
         const size_t id = columns_.size();
         ASSERT_LE(id, std::numeric_limits<irs::field_id>::max());
-        columns_.emplace_back();
+        columns_.emplace_back(id);
 
         feature.second = irs::field_id{id};
 
@@ -996,7 +996,7 @@ void assert_columnstore(
     }
 
     // check stored columns
-    auto& expected_columns = expected_segment.columns_meta();
+    auto& expected_columns = expected_segment.named_columns();
     auto expected_columns_begin = expected_columns.begin();
     auto actual_columns = actual_segment.columns();
 
@@ -1004,15 +1004,15 @@ void assert_columnstore(
       auto& actual_column = actual_columns->value();
       ASSERT_EQ(expected_columns_begin->first, actual_column.name());
       // column id is format dependent
-      ASSERT_TRUE(irs::field_limits::valid(expected_columns_begin->second));
+      ASSERT_TRUE(irs::field_limits::valid(expected_columns_begin->second->id()));
       ASSERT_TRUE(irs::field_limits::valid(actual_column.id()));
-      ASSERT_LT(expected_columns_begin->second, expected_segment.columns().size());
+      ASSERT_LT(expected_columns_begin->second->id(), expected_segment.columns().size());
 
       const auto* actual_column_reader = actual_segment.column(actual_column.id());
       ASSERT_EQ(actual_column_reader, actual_segment.column(actual_column.name()));
 
       assert_column(actual_column_reader,
-                    expected_segment.columns()[expected_columns_begin->second]);
+                    expected_segment.columns()[expected_columns_begin->second->id()]);
     }
     ASSERT_FALSE(actual_columns->next());
     ASSERT_EQ(expected_columns_begin, expected_columns.end());
@@ -1030,6 +1030,7 @@ void assert_columnstore(
         } else {
           ASSERT_LT(expected_field_feature.second, expected_segment.columns().size());
           const auto* actual_column = actual_segment.column(actual_field_feature->second);
+          ASSERT_TRUE(actual_column->name().null()); // features are stored as annonymous columns
           assert_column(actual_column, expected_segment.columns()[expected_field_feature.second]);
         }
         ++actual_field_feature;

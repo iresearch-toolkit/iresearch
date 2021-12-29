@@ -1277,7 +1277,7 @@ void index_writer::clear(uint64_t tick) {
 
   // write 1st phase of index_meta transaction
   if (!writer_->prepare(dir, pending_meta)) {
-    throw illegal_state();
+    throw illegal_state{"Failed to write index metadata."};
   }
 
   auto ref = directory_utils::reference(dir, writer_->filename(pending_meta), true);
@@ -2433,7 +2433,7 @@ bool index_writer::start() {
 
   // write 1st phase of index_meta transaction
   if (!writer_->prepare(dir, pending_meta)) {
-    throw illegal_state();
+    throw illegal_state{"Failed to write index metadata."};
   }
 
   auto update_generation = make_finally([this, &pending_meta]()noexcept{
@@ -2508,7 +2508,7 @@ void index_writer::finish() {
 
   try {
     if (!writer_->commit()) {
-      throw illegal_state();
+      throw illegal_state{"Failed to commit index metadata."};
     }
 #ifndef __APPLE__
     // atomic_store may throw
