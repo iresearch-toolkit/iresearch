@@ -14097,17 +14097,12 @@ const auto index_test_case_14_values = ::testing::Values(tests::format_info{"1_4
 #endif
 }
 
-class index_test_case_14 : public index_test_case { };
-
-TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
+class index_test_case_14 : public index_test_case {
+ public:
   struct feature1 { };
   struct feature2 { };
   struct feature3 { };
-
-  REGISTER_ATTRIBUTE(feature1);
-  REGISTER_ATTRIBUTE(feature2);
-  REGISTER_ATTRIBUTE(feature3);
-
+ protected:
   struct test_field {
     irs::string_ref name() const { return "test"; };
     irs::IndexFeatures index_features() const {
@@ -14128,17 +14123,41 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
     };
     std::string value_;
     mutable irs::string_token_stream stream_;
-  } field;
+  };
+
+  struct stats {
+    size_t num_factory_calls{};
+    size_t num_write_calls{};
+    size_t num_write_consolidation_calls{};
+    size_t num_finish_calls{};
+  };
 
   class feature_writer final : public irs::feature_writer {
    public:
-    explicit feature_writer(irs::doc_id_t filter_doc) noexcept
-      : filter_doc_{filter_doc} {
+    static auto make(stats& call_stats,
+                     irs::doc_id_t filter_doc,
+                     irs::range<irs::bytes_ref> headers) -> irs::feature_writer::ptr {
+      ++call_stats.num_factory_calls;
+
+      irs::doc_id_t min_doc{irs::doc_limits::eof()};
+      for (auto header : headers) {
+        auto* p = header.c_str();
+        min_doc = std::min(irs::read<irs::doc_id_t>(p), min_doc);
+      }
+
+      return irs::memory::make_managed<feature_writer>(call_stats, filter_doc, min_doc);
     }
 
-    virtual void write(const irs::field_stats& stats,
-               irs::doc_id_t doc,
-               std::function<irs::column_output&(irs::doc_id_t)>& writer) final {
+    feature_writer(stats& call_stats, irs::doc_id_t filter_doc, irs::doc_id_t min_doc) noexcept
+      : call_stats_{&call_stats}, filter_doc_{filter_doc}, min_doc_{min_doc} {
+    }
+
+    virtual void write(
+        const irs::field_stats& stats,
+        irs::doc_id_t doc,
+        std::function<irs::column_output&(irs::doc_id_t)>& writer) final {
+      ++call_stats_->num_write_calls;
+
       if (doc == filter_doc_) {
         return;
       }
@@ -14149,24 +14168,46 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
       stream.write_int(stats.num_overlap);
       stream.write_int(stats.max_term_freq);
       stream.write_int(stats.num_unique);
+
+      min_doc_ = std::min(doc, min_doc_);
     }
 
     virtual void write(data_output& out, irs::bytes_ref payload) final {
+      ++call_stats_->num_write_consolidation_calls;
+
       if (!payload.empty()) {
+        auto* p = payload.c_str();
+        min_doc_ = std::min(irs::read<irs::doc_id_t>(p), min_doc_);
+
         out.write_bytes(payload.c_str(), payload.size());
       }
     }
 
     virtual void finish(irs::bstring& out) final {
+      ++call_stats_->num_finish_calls;
+
       EXPECT_TRUE(out.empty());
-      out.resize(sizeof(filter_doc_));
+      out.resize(sizeof(min_doc_));
       auto* p = out.data();
-      irs::write(p, filter_doc_);
+      irs::write(p, min_doc_);
     }
 
    private:
+    stats* call_stats_;
     irs::doc_id_t filter_doc_;
+    irs::doc_id_t min_doc_;
   };
+};
+
+REGISTER_ATTRIBUTE(index_test_case_14::feature1);
+REGISTER_ATTRIBUTE(index_test_case_14::feature2);
+REGISTER_ATTRIBUTE(index_test_case_14::feature3);
+
+TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
+  static std::unordered_map<irs::type_info::type_id, stats> sNumCalls;
+  sNumCalls.clear();
+
+  test_field field;
 
   {
     irs::index_writer::init_options opts;
@@ -14174,12 +14215,12 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
       irs::feature_writer_factory_t handler{};
 
       if (irs::type<feature1>::id() == id) {
-        handler = [](irs::range<irs::bytes_ref>) -> irs::feature_writer::ptr {
-          return irs::memory::make_managed<feature_writer>(2);
+        handler = [](irs::range<irs::bytes_ref> headers) -> irs::feature_writer::ptr {
+          return feature_writer::make(sNumCalls[irs::type<feature1>::id()], 2, headers);
         };
       } else if (irs::type<feature3>::id() == id) {
-        handler = [](irs::range<irs::bytes_ref>) -> irs::feature_writer::ptr {
-          return irs::memory::make_managed<feature_writer>(1);
+        handler = [](irs::range<irs::bytes_ref> headers) -> irs::feature_writer::ptr {
+          return feature_writer::make(sNumCalls[irs::type<feature3>::id()], 1, headers);
         };
       }
 
@@ -14224,7 +14265,40 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
       ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
     }
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
+  }
+
+  ASSERT_EQ(2, sNumCalls.size());
+
+  // feature1
+  {
+    auto it = sNumCalls.find(irs::type<feature1>::id());
+    ASSERT_NE(sNumCalls.end(), it);
+    // We have 1 field containing this feature.
+    ASSERT_EQ(1, it->second.num_factory_calls);
+    // We have 3 docs referencing this feature.
+    ASSERT_EQ(3, it->second.num_write_calls);
+    // Finish is called once per segment per feature.
+    ASSERT_EQ(1, it->second.num_finish_calls);
+    // We don't consolidate.
+    ASSERT_EQ(0, it->second.num_write_consolidation_calls);
+  }
+
+  // feature2 is a marker feature
+  ASSERT_EQ(sNumCalls.end(), sNumCalls.find(irs::type<feature2>::id()));
+
+  // feature3
+  {
+    auto it = sNumCalls.find(irs::type<feature1>::id());
+    ASSERT_NE(sNumCalls.end(), it);
+    // We have 1 field containing this feature.
+    ASSERT_EQ(1, it->second.num_factory_calls);
+    // We have 3 docs referencing this feature.
+    ASSERT_EQ(3, it->second.num_write_calls);
+    // Finish is called once per segment per feature.
+    ASSERT_EQ(1, it->second.num_finish_calls);
+    // We don't consolidate.
+    ASSERT_EQ(0, it->second.num_write_consolidation_calls);
   }
 
   {
@@ -14266,6 +14340,15 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
       auto column_reader = segment.column(feature->second);
       ASSERT_NE(nullptr, column_reader);
       ASSERT_EQ(2, column_reader->size());
+      ASSERT_TRUE(column_reader->name().null());
+      {
+        auto header_payload = column_reader->payload();
+        ASSERT_FALSE(header_payload.null());
+        ASSERT_EQ(sizeof(irs::doc_id_t), header_payload.size());
+        auto* p = header_payload.c_str();
+        ASSERT_EQ(1, irs::read<irs::doc_id_t>(p));
+      }
+
       auto it = column_reader->iterator(false);
       ASSERT_NE(nullptr, it);
       auto payload = irs::get<irs::payload>(*it);
@@ -14310,6 +14393,14 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
       auto column_reader = segment.column(feature->second);
       ASSERT_NE(nullptr, column_reader);
       ASSERT_EQ(2, column_reader->size());
+      ASSERT_TRUE(column_reader->name().null());
+      {
+        auto header_payload = column_reader->payload();
+        ASSERT_FALSE(header_payload.null());
+        ASSERT_EQ(sizeof(irs::doc_id_t), header_payload.size());
+        auto* p = header_payload.c_str();
+        ASSERT_EQ(2, irs::read<irs::doc_id_t>(p));
+      }
       auto it = column_reader->iterator(false);
       ASSERT_NE(nullptr, it);
       auto payload = irs::get<irs::payload>(*it);
@@ -14336,6 +14427,501 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
         ASSERT_EQ(3, it->value());
         auto* p = payload->value.c_str();
         ASSERT_EQ(3, irs::read<uint32_t>(p)); // doc id
+        ASSERT_EQ(6, irs::read<uint32_t>(p)); // field length
+        ASSERT_EQ(0, irs::read<uint32_t>(p)); // num overlapped terms
+        ASSERT_EQ(4, irs::read<uint32_t>(p)); // max term freq
+        ASSERT_EQ(2, irs::read<uint32_t>(p)); // num unique terms
+      }
+
+      ASSERT_FALSE(it->next());
+      ASSERT_FALSE(it->next());
+      ASSERT_TRUE(irs::doc_limits::eof(it->value()));
+    }
+
+    ASSERT_FALSE(fields->next());
+    ASSERT_FALSE(fields->next());
+  }
+}
+
+TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
+  static std::unordered_map<irs::type_info::type_id, stats> sNumCalls;
+  sNumCalls.clear();
+
+  test_field field;
+
+  irs::index_writer::init_options opts;
+  opts.features = [](irs::type_info::type_id id) {
+    irs::feature_writer_factory_t handler{};
+
+    if (irs::type<feature1>::id() == id) {
+      handler = [](irs::range<irs::bytes_ref> headers) -> irs::feature_writer::ptr {
+        return feature_writer::make(sNumCalls[irs::type<feature1>::id()], 2, headers);
+      };
+    } else if (irs::type<feature3>::id() == id) {
+      handler = [](irs::range<irs::bytes_ref> headers) -> irs::feature_writer::ptr {
+        return feature_writer::make(sNumCalls[irs::type<feature3>::id()], 1, headers);
+      };
+    }
+
+    return std::make_pair(
+      irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
+      std::move(handler));
+  };
+
+  auto writer = open_writer(irs::OM_CREATE, opts);
+
+  // doc1
+  {
+    auto docs = writer->documents();
+    auto doc = docs.insert();
+    field.value_ = "foo";
+    ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+  }
+
+  ASSERT_TRUE(writer->commit());
+
+  // doc2
+  {
+    auto docs = writer->documents();
+    auto doc = docs.insert();
+
+    field.value_ = "foo";
+    ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+    ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+  }
+
+  ASSERT_TRUE(writer->commit());
+
+  // doc3
+  {
+    auto docs = writer->documents();
+    auto doc = docs.insert();
+
+    field.value_ = "foo";
+    ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+    ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+    ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+    ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+
+    field.value_ = "bar";
+    ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+    ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+  }
+
+  ASSERT_TRUE(writer->commit());
+
+  ASSERT_EQ(2, sNumCalls.size());
+
+  // feature1
+  {
+    auto it = sNumCalls.find(irs::type<feature1>::id());
+    ASSERT_NE(sNumCalls.end(), it);
+    // We have 1 field containing this feature.
+    ASSERT_EQ(3, it->second.num_factory_calls);
+    // We have 3 docs referencing this feature.
+    ASSERT_EQ(3, it->second.num_write_calls);
+    // Finish is called once per segment per feature.
+    ASSERT_EQ(3, it->second.num_finish_calls);
+    // We don't consolidate.
+    ASSERT_EQ(0, it->second.num_write_consolidation_calls);
+  }
+
+  // feature2 is a marker feature
+  ASSERT_EQ(sNumCalls.end(), sNumCalls.find(irs::type<feature2>::id()));
+
+  // feature3
+  {
+    auto it = sNumCalls.find(irs::type<feature1>::id());
+    ASSERT_NE(sNumCalls.end(), it);
+    // We have 1 field containing this feature.
+    ASSERT_EQ(3, it->second.num_factory_calls);
+    // We have 3 docs referencing this feature.
+    ASSERT_EQ(3, it->second.num_write_calls);
+    // Finish is called once per segment per feature.
+    ASSERT_EQ(3, it->second.num_finish_calls);
+    // We don't consolidate.
+    ASSERT_EQ(0, it->second.num_write_consolidation_calls);
+  }
+
+  {
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_EQ(3, reader.size());
+
+    {
+      auto& segment = (*reader)[0];
+      ASSERT_EQ(1, segment.docs_count());
+      ASSERT_EQ(1, segment.live_docs_count());
+
+      auto fields = segment.fields();
+      ASSERT_NE(nullptr, fields);
+      ASSERT_TRUE(fields->next());
+      auto& field_reader = fields->value();
+      ASSERT_EQ(field.name(), field_reader.meta().name);
+      ASSERT_EQ(3, field_reader.meta().features.size());
+      {
+        ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature1>::id()));
+        const auto [type, id] = *field_reader.meta().features.find(irs::type<feature1>::id());
+        ASSERT_EQ(irs::type<feature1>::id(), type);
+        ASSERT_EQ(0, id);
+      }
+      {
+        ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature2>::id()));
+        const auto [type, id] = *field_reader.meta().features.find(irs::type<feature2>::id());
+        ASSERT_EQ(irs::type<feature2>::id(), type);
+        ASSERT_FALSE(irs::field_limits::valid(id));
+      }
+      {
+        ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature3>::id()));
+        const auto [type, id] = *field_reader.meta().features.find(irs::type<feature3>::id());
+        ASSERT_EQ(irs::type<feature3>::id(), type);
+        ASSERT_EQ(1, id);
+      }
+
+      // check feature1
+      {
+        auto feature = field_reader.meta().features.find(irs::type<feature1>::id());
+        ASSERT_NE(feature, field_reader.meta().features.end());
+        auto column_reader = segment.column(feature->second);
+        ASSERT_NE(nullptr, column_reader);
+        ASSERT_EQ(1, column_reader->size());
+        ASSERT_TRUE(column_reader->name().null());
+        {
+          auto header_payload = column_reader->payload();
+          ASSERT_FALSE(header_payload.null());
+          ASSERT_EQ(sizeof(irs::doc_id_t), header_payload.size());
+          auto* p = header_payload.c_str();
+          ASSERT_EQ(1, irs::read<irs::doc_id_t>(p));
+        }
+
+        auto it = column_reader->iterator(false);
+        ASSERT_NE(nullptr, it);
+        auto payload = irs::get<irs::payload>(*it);
+        ASSERT_NE(nullptr, payload);
+
+        // doc1
+        {
+          ASSERT_TRUE(it->next());
+          ASSERT_EQ(sizeof(uint32_t)*5, payload->value.size());
+          ASSERT_EQ(1, it->value());
+          auto* p = payload->value.c_str();
+
+          ASSERT_EQ(1, irs::read<uint32_t>(p)); // doc id
+          ASSERT_EQ(1, irs::read<uint32_t>(p)); // field length
+          ASSERT_EQ(0, irs::read<uint32_t>(p)); // num overlapped terms
+          ASSERT_EQ(1, irs::read<uint32_t>(p)); // max term freq
+          ASSERT_EQ(1, irs::read<uint32_t>(p)); // num unique terms
+        }
+
+        ASSERT_FALSE(it->next());
+        ASSERT_FALSE(it->next());
+        ASSERT_TRUE(irs::doc_limits::eof(it->value()));
+      }
+
+      // Check feature3
+      {
+        auto feature = field_reader.meta().features.find(irs::type<feature3>::id());
+        ASSERT_NE(feature, field_reader.meta().features.end());
+        // No documents written, tail column was filtered out.
+        ASSERT_EQ(nullptr, segment.column(feature->second));
+      }
+
+      ASSERT_FALSE(fields->next());
+      ASSERT_FALSE(fields->next());
+    }
+
+    {
+      auto& segment = (*reader)[1];
+      ASSERT_EQ(1, segment.docs_count());
+      ASSERT_EQ(1, segment.live_docs_count());
+
+      auto fields = segment.fields();
+      ASSERT_NE(nullptr, fields);
+      ASSERT_TRUE(fields->next());
+      auto& field_reader = fields->value();
+      ASSERT_EQ(field.name(), field_reader.meta().name);
+      ASSERT_EQ(3, field_reader.meta().features.size());
+      {
+        ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature1>::id()));
+        const auto [type, id] = *field_reader.meta().features.find(irs::type<feature1>::id());
+        ASSERT_EQ(irs::type<feature1>::id(), type);
+        ASSERT_EQ(0, id);
+      }
+      {
+        ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature2>::id()));
+        const auto [type, id] = *field_reader.meta().features.find(irs::type<feature2>::id());
+        ASSERT_EQ(irs::type<feature2>::id(), type);
+        ASSERT_FALSE(irs::field_limits::valid(id));
+      }
+      {
+        ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature3>::id()));
+        const auto [type, id] = *field_reader.meta().features.find(irs::type<feature3>::id());
+        ASSERT_EQ(irs::type<feature3>::id(), type);
+        ASSERT_EQ(1, id);
+      }
+
+      // check feature1
+      {
+        auto feature = field_reader.meta().features.find(irs::type<feature1>::id());
+        ASSERT_NE(feature, field_reader.meta().features.end());
+        auto column_reader = segment.column(feature->second);
+        ASSERT_NE(nullptr, column_reader);
+        ASSERT_EQ(1, column_reader->size());
+        ASSERT_TRUE(column_reader->name().null());
+        {
+          auto header_payload = column_reader->payload();
+          ASSERT_FALSE(header_payload.null());
+          ASSERT_EQ(sizeof(irs::doc_id_t), header_payload.size());
+          auto* p = header_payload.c_str();
+          ASSERT_EQ(1, irs::read<irs::doc_id_t>(p));
+        }
+
+        auto it = column_reader->iterator(false);
+        ASSERT_NE(nullptr, it);
+        auto payload = irs::get<irs::payload>(*it);
+        ASSERT_NE(nullptr, payload);
+
+        // doc1
+        {
+          ASSERT_TRUE(it->next());
+          ASSERT_EQ(sizeof(uint32_t)*5, payload->value.size());
+          ASSERT_EQ(1, it->value());
+          auto* p = payload->value.c_str();
+
+          ASSERT_EQ(1, irs::read<uint32_t>(p)); // doc id
+          ASSERT_EQ(2, irs::read<uint32_t>(p)); // field length
+          ASSERT_EQ(0, irs::read<uint32_t>(p)); // num overlapped terms
+          ASSERT_EQ(2, irs::read<uint32_t>(p)); // max term freq
+          ASSERT_EQ(1, irs::read<uint32_t>(p)); // num unique terms
+        }
+
+        ASSERT_FALSE(it->next());
+        ASSERT_FALSE(it->next());
+        ASSERT_TRUE(irs::doc_limits::eof(it->value()));
+      }
+
+      // Check feature3
+      {
+        auto feature = field_reader.meta().features.find(irs::type<feature3>::id());
+        ASSERT_NE(feature, field_reader.meta().features.end());
+        // No documents written, tail column was filtered out.
+        ASSERT_EQ(nullptr, segment.column(feature->second));
+      }
+
+      ASSERT_FALSE(fields->next());
+      ASSERT_FALSE(fields->next());
+    }
+
+    {
+      auto& segment = (*reader)[2];
+      ASSERT_EQ(1, segment.docs_count());
+      ASSERT_EQ(1, segment.live_docs_count());
+
+      auto fields = segment.fields();
+      ASSERT_NE(nullptr, fields);
+      ASSERT_TRUE(fields->next());
+      auto& field_reader = fields->value();
+      ASSERT_EQ(field.name(), field_reader.meta().name);
+      ASSERT_EQ(3, field_reader.meta().features.size());
+      {
+        ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature1>::id()));
+        const auto [type, id] = *field_reader.meta().features.find(irs::type<feature1>::id());
+        ASSERT_EQ(irs::type<feature1>::id(), type);
+        ASSERT_EQ(0, id);
+      }
+      {
+        ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature2>::id()));
+        const auto [type, id] = *field_reader.meta().features.find(irs::type<feature2>::id());
+        ASSERT_EQ(irs::type<feature2>::id(), type);
+        ASSERT_FALSE(irs::field_limits::valid(id));
+      }
+      {
+        ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature3>::id()));
+        const auto [type, id] = *field_reader.meta().features.find(irs::type<feature3>::id());
+        ASSERT_EQ(irs::type<feature3>::id(), type);
+        ASSERT_EQ(1, id);
+      }
+
+      // check feature1
+      {
+        auto feature = field_reader.meta().features.find(irs::type<feature1>::id());
+        ASSERT_NE(feature, field_reader.meta().features.end());
+        auto column_reader = segment.column(feature->second);
+        ASSERT_NE(nullptr, column_reader);
+        ASSERT_EQ(1, column_reader->size());
+        ASSERT_TRUE(column_reader->name().null());
+        {
+          auto header_payload = column_reader->payload();
+          ASSERT_FALSE(header_payload.null());
+          ASSERT_EQ(sizeof(irs::doc_id_t), header_payload.size());
+          auto* p = header_payload.c_str();
+          ASSERT_EQ(1, irs::read<irs::doc_id_t>(p));
+        }
+
+        auto it = column_reader->iterator(false);
+        ASSERT_NE(nullptr, it);
+        auto payload = irs::get<irs::payload>(*it);
+        ASSERT_NE(nullptr, payload);
+
+        // doc1
+        {
+          ASSERT_TRUE(it->next());
+          ASSERT_EQ(sizeof(uint32_t)*5, payload->value.size());
+          ASSERT_EQ(1, it->value());
+          auto* p = payload->value.c_str();
+
+          ASSERT_EQ(1, irs::read<uint32_t>(p)); // doc id
+          ASSERT_EQ(6, irs::read<uint32_t>(p)); // field length
+          ASSERT_EQ(0, irs::read<uint32_t>(p)); // num overlapped terms
+          ASSERT_EQ(4, irs::read<uint32_t>(p)); // max term freq
+          ASSERT_EQ(2, irs::read<uint32_t>(p)); // num unique terms
+        }
+
+        ASSERT_FALSE(it->next());
+        ASSERT_FALSE(it->next());
+        ASSERT_TRUE(irs::doc_limits::eof(it->value()));
+      }
+
+      // check feature3
+      {
+        auto feature = field_reader.meta().features.find(irs::type<feature3>::id());
+        ASSERT_NE(feature, field_reader.meta().features.end());
+        // No documents written, tail column was filtered out.
+        ASSERT_EQ(nullptr, segment.column(feature->second));
+      }
+
+      ASSERT_FALSE(fields->next());
+      ASSERT_FALSE(fields->next());
+    }
+  }
+
+  sNumCalls.clear();
+  const auto res = writer->consolidate(
+      irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count{}));
+  ASSERT_TRUE(res);
+  ASSERT_EQ(3, res.size);
+  ASSERT_TRUE(writer->commit());
+
+  ASSERT_EQ(2, sNumCalls.size());
+
+  // feature1
+  {
+    auto it = sNumCalls.find(irs::type<feature1>::id());
+    ASSERT_NE(sNumCalls.end(), it);
+    // We have 1 field containing this feature.
+    ASSERT_EQ(1, it->second.num_factory_calls);
+    // We have 3 docs referencing this feature.
+    ASSERT_EQ(0, it->second.num_write_calls);
+    // Finish is called once per consolidation.
+    ASSERT_EQ(1, it->second.num_finish_calls);
+    // We've consolidated 3 docs.
+    ASSERT_EQ(3, it->second.num_write_consolidation_calls);
+  }
+
+  // feature2 is a marker feature
+  ASSERT_EQ(sNumCalls.end(), sNumCalls.find(irs::type<feature2>::id()));
+
+  // feature3 doesn't have any data
+  {
+    auto it = sNumCalls.find(irs::type<feature3>::id());
+    ASSERT_NE(sNumCalls.end(), it);
+    // We have 1 field containing this feature.
+    ASSERT_EQ(1, it->second.num_factory_calls);
+    // We have 3 docs referencing this feature.
+    ASSERT_EQ(0, it->second.num_write_calls);
+    // Finish is called once per consolidation.
+    ASSERT_EQ(0, it->second.num_finish_calls);
+    // We've consolidated 3 docs.
+    ASSERT_EQ(0, it->second.num_write_consolidation_calls);
+  }
+
+  {
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = (*reader)[0];
+    ASSERT_EQ(3, segment.docs_count());
+    ASSERT_EQ(3, segment.live_docs_count());
+
+    auto fields = segment.fields();
+    ASSERT_NE(nullptr, fields);
+    ASSERT_TRUE(fields->next());
+    auto& field_reader = fields->value();
+    ASSERT_EQ(field.name(), field_reader.meta().name);
+    ASSERT_EQ(3, field_reader.meta().features.size());
+    {
+      ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature1>::id()));
+      const auto [type, id] = *field_reader.meta().features.find(irs::type<feature1>::id());
+      ASSERT_EQ(irs::type<feature1>::id(), type);
+      ASSERT_EQ(0, id);
+    }
+    {
+      ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature2>::id()));
+      const auto [type, id] = *field_reader.meta().features.find(irs::type<feature2>::id());
+      ASSERT_EQ(irs::type<feature2>::id(), type);
+      ASSERT_FALSE(irs::field_limits::valid(id));
+    }
+    {
+      ASSERT_EQ(1, field_reader.meta().features.count(irs::type<feature3>::id()));
+      const auto [type, id] = *field_reader.meta().features.find(irs::type<feature3>::id());
+      ASSERT_EQ(irs::type<feature3>::id(), type);
+      ASSERT_FALSE(irs::field_limits::valid(id));
+    }
+
+    // check feature1
+    {
+      auto feature = field_reader.meta().features.find(irs::type<feature1>::id());
+      ASSERT_NE(feature, field_reader.meta().features.end());
+      auto column_reader = segment.column(feature->second);
+      ASSERT_NE(nullptr, column_reader);
+      ASSERT_EQ(3, column_reader->size());
+      ASSERT_TRUE(column_reader->name().null());
+      {
+        auto header_payload = column_reader->payload();
+        ASSERT_FALSE(header_payload.null());
+        ASSERT_EQ(sizeof(irs::doc_id_t), header_payload.size());
+        auto* p = header_payload.c_str();
+        ASSERT_EQ(1, irs::read<irs::doc_id_t>(p));
+      }
+
+      auto it = column_reader->iterator(false);
+      ASSERT_NE(nullptr, it);
+      auto payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+
+      // doc1
+      {
+        ASSERT_TRUE(it->next());
+        ASSERT_EQ(sizeof(uint32_t)*5, payload->value.size());
+        ASSERT_EQ(1, it->value());
+        auto* p = payload->value.c_str();
+
+        ASSERT_EQ(1, irs::read<uint32_t>(p)); // original doc id
+        ASSERT_EQ(1, irs::read<uint32_t>(p)); // field length
+        ASSERT_EQ(0, irs::read<uint32_t>(p)); // num overlapped terms
+        ASSERT_EQ(1, irs::read<uint32_t>(p)); // max term freq
+        ASSERT_EQ(1, irs::read<uint32_t>(p)); // num unique terms
+      }
+
+      // doc2
+      {
+        ASSERT_TRUE(it->next());
+        ASSERT_EQ(sizeof(uint32_t)*5, payload->value.size());
+        ASSERT_EQ(2, it->value());
+        auto* p = payload->value.c_str();
+
+        ASSERT_EQ(1, irs::read<uint32_t>(p)); // original doc id
+        ASSERT_EQ(2, irs::read<uint32_t>(p)); // field length
+        ASSERT_EQ(0, irs::read<uint32_t>(p)); // num overlapped terms
+        ASSERT_EQ(2, irs::read<uint32_t>(p)); // max term freq
+        ASSERT_EQ(1, irs::read<uint32_t>(p)); // num unique terms
+      }
+
+      // doc3
+      {
+        ASSERT_TRUE(it->next());
+        ASSERT_EQ(sizeof(uint32_t)*5, payload->value.size());
+        ASSERT_EQ(3, it->value());
+        auto* p = payload->value.c_str();
+        ASSERT_EQ(1, irs::read<uint32_t>(p)); // original doc id
         ASSERT_EQ(6, irs::read<uint32_t>(p)); // field length
         ASSERT_EQ(0, irs::read<uint32_t>(p)); // num overlapped terms
         ASSERT_EQ(4, irs::read<uint32_t>(p)); // max term freq

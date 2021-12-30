@@ -469,9 +469,13 @@ class compound_column_iterator final {
 
   void add(const sub_reader& reader,
            const doc_map_f& doc_map) {
-    iterator_mask_.emplace_back(iterators_.size());
-    iterators_.emplace_back(reader.columns(), reader, doc_map);
-    assert(iterators_.back().it);
+    auto it = reader.columns();
+    assert(it);
+
+    if (IRS_LIKELY(it)) {
+      iterator_mask_.emplace_back(iterators_.size());
+      iterators_.emplace_back(std::move(it), reader, doc_map);
+    }
   }
 
   // visit matched iterators
@@ -658,8 +662,13 @@ class compound_term_iterator final : public term_iterator {
 void compound_term_iterator::add(
     const term_reader& reader,
     const doc_map_f& doc_id_map) {
-  term_iterator_mask_.emplace_back(term_iterators_.size()); // mark as used to trigger next()
-  term_iterators_.emplace_back(reader.iterator(SeekMode::NORMAL), &doc_id_map);
+  auto it = reader.iterator(SeekMode::NORMAL);
+  assert(it);
+
+  if (IRS_LIKELY(it)) {
+    term_iterator_mask_.emplace_back(term_iterators_.size()); // mark as used to trigger next()
+    term_iterators_.emplace_back(std::move(it), &doc_id_map);
+  }
 }
 
 bool compound_term_iterator::next() {
@@ -715,8 +724,12 @@ doc_iterator::ptr compound_term_iterator::postings(IndexFeatures /*features*/) c
     for (auto& itr_id : term_iterator_mask_) {
       auto& term_itr = term_iterators_[itr_id];
 
-      itrs.emplace_back(term_itr.first->postings(meta().index_features), *term_itr.second);
-      assert(itrs.back().first);
+      auto it = term_itr.first->postings(meta().index_features);
+      assert(it);
+
+      if (IRS_LIKELY(it)) {
+        itrs.emplace_back(std::move(it), *term_itr.second);
+      }
     }
 
     return true;
@@ -833,11 +846,16 @@ class compound_field_iterator final : public basic_term_reader {
 void compound_field_iterator::add(
     const sub_reader& reader,
     const doc_map_f& doc_id_map) {
-  field_iterator_mask_.emplace_back(term_iterator_t{
-      field_iterators_.size(),
-      nullptr,
-      nullptr}); // mark as used to trigger next()
-  field_iterators_.emplace_back(reader.fields(), reader,  doc_id_map);
+  auto it = reader.fields();
+  assert(it);
+
+  if (IRS_LIKELY(it)) {
+    field_iterator_mask_.emplace_back(term_iterator_t{
+        field_iterators_.size(),
+        nullptr,
+        nullptr}); // mark as used to trigger next()
+    field_iterators_.emplace_back(std::move(it), reader,  doc_id_map);
+  }
 }
 
 bool compound_field_iterator::next() {
@@ -1187,7 +1205,12 @@ bool write_columns(
         const sub_reader& /*segment*/,
         const doc_map_f& doc_map,
         const irs::column_reader& column) {
-      itrs.emplace_back(column.iterator(true), doc_map);
+      auto it = column.iterator(true);
+      assert(it);
+
+      if (IRS_LIKELY(it)) {
+        itrs.emplace_back(std::move(it), doc_map);
+      }
       return true;
     };
 
@@ -1261,12 +1284,17 @@ bool write_fields(
 
       auto* reader = segment.column(column->second);
 
-      if (!reader) {
-        return false;
+      // Tail columns can be removed if empty.
+      if (reader) {
+        auto it = reader->iterator(true);
+        assert(it);
+
+        if (IRS_LIKELY(it)) {
+          hdrs.emplace_back(reader->payload());
+          itrs.emplace_back(std::move(it), doc_map);
+        }
       }
 
-      hdrs.emplace_back(reader->payload());
-      itrs.emplace_back(reader->iterator(true), doc_map);
       return true;
     };
 
