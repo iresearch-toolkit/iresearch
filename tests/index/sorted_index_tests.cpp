@@ -240,7 +240,9 @@ TEST_P(sorted_index_test_case, simple_sequential) {
   // build index
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [&sorted_column, this] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [&sorted_column, this](tests::document& doc,
+                           const std::string& name,
+                           const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::string_field>(
           name, data.str, irs::IndexFeatures::ALL,
@@ -401,7 +403,9 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
   // build index
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [&sorted_column, this] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [&sorted_column, this](tests::document& doc,
+                           const std::string& name,
+                           const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::string_field>(
           name, data.str, irs::IndexFeatures::ALL,
@@ -488,6 +492,8 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
         auto& sorted_column = *segment.sort();
         ASSERT_EQ(segment.docs_count(), sorted_column.size());
+        ASSERT_TRUE(sorted_column.name().null());
+        ASSERT_TRUE(sorted_column.payload().empty());
 
         auto sorted_column_it = sorted_column.iterator(false);
         ASSERT_NE(nullptr, sorted_column_it);
@@ -551,6 +557,8 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
         ASSERT_NE(nullptr, column_meta);
         auto* column = segment.column(column_meta->id());
         ASSERT_NE(nullptr, column);
+        ASSERT_EQ(column_meta, column);
+        ASSERT_TRUE(column->payload().empty());
 
         ASSERT_EQ(id-1, column->size());
 
@@ -637,6 +645,8 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
       auto& sorted_column = *segment.sort();
       ASSERT_EQ(segment.docs_count(), sorted_column.size());
+      ASSERT_TRUE(sorted_column.payload().empty());
+      ASSERT_TRUE(sorted_column.name().null());
 
       auto sorted_column_it = sorted_column.iterator(false);
       ASSERT_NE(nullptr, sorted_column_it);
@@ -700,6 +710,8 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
       ASSERT_NE(nullptr, column_meta);
       auto* column = segment.column(column_meta->id());
       ASSERT_NE(nullptr, column);
+      ASSERT_EQ(column_meta, column);
+      ASSERT_TRUE(column->payload().empty());
 
       ASSERT_EQ(id-1, column->size());
 
@@ -728,12 +740,14 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 }
 
 TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
-  const irs::string_ref sorted_column = "seq";
+  constexpr irs::string_ref sorted_column = "seq";
 
   // build index
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [&sorted_column, this] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [&sorted_column, this](tests::document& doc,
+                           const std::string& name,
+                           const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::string_field>(
           name, data.str, irs::IndexFeatures::ALL,
@@ -797,6 +811,8 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
 
       auto& sorted_column = *segment.sort();
       ASSERT_EQ(segment.docs_count(), sorted_column.size());
+      ASSERT_TRUE(sorted_column.name().null());
+      ASSERT_TRUE(sorted_column.payload().empty());
 
       auto sorted_column_it = sorted_column.iterator(false);
       ASSERT_NE(nullptr, sorted_column_it);
@@ -860,6 +876,8 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
       ASSERT_NE(nullptr, column_meta);
       auto* column = segment.column(column_meta->id());
       ASSERT_NE(nullptr, column);
+      ASSERT_EQ(column_meta, column);
+      ASSERT_EQ(0, column->payload().size());
 
       ASSERT_EQ(id-1, column->size());
 
@@ -965,6 +983,8 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
       auto& segment = reader[0];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(column->name().null());
+      ASSERT_TRUE(column->payload().empty());
       auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
@@ -1052,6 +1072,8 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       auto& segment = reader[0];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(column->name().null());
+      ASSERT_TRUE(column->payload().empty());
       auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
@@ -1113,6 +1135,8 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       auto& segment = reader[0];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(column->name().null());
+      ASSERT_TRUE(column->payload().empty());
       auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
@@ -1230,6 +1254,8 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       auto& segment = reader[0];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(column->name().null());
+      ASSERT_TRUE(column->payload().empty());
       auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
@@ -1253,6 +1279,8 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       auto& segment = reader[1];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(column->name().null());
+      ASSERT_EQ(0, column->payload().size());
       auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
@@ -1290,6 +1318,8 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       auto& segment = reader[0];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(column->name().null());
+      ASSERT_EQ(0, column->payload().size());
       auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
@@ -1310,6 +1340,8 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       auto& segment = reader[1];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(column->name().null());
+      ASSERT_EQ(0, column->payload().size());
       auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
@@ -1348,6 +1380,8 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       auto& segment = reader[0];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(column->name().null());
+      ASSERT_EQ(0, column->payload().size());
       auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
@@ -1456,6 +1490,8 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       auto& segment = reader[0];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(column->name().null());
+      ASSERT_EQ(0, column->payload().size());
       ASSERT_EQ(2, column->size());
       auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
@@ -1480,6 +1516,8 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       auto& segment = reader[1];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(column->name().null());
+      ASSERT_EQ(0, column->payload().size());
       ASSERT_EQ(2, column->size());
       auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
@@ -1520,6 +1558,8 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       const auto* column = segment.sort();
       ASSERT_EQ(4, column->size());
       ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(column->name().null());
+      ASSERT_EQ(0, column->payload().size());
       auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
@@ -1570,7 +1610,6 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
 }
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
-namespace {
 #ifdef IRESEARCH_SSE2
 const auto kSortedIndexTestCaseValues = ::testing::Values(
     tests::format_info{"1_1", "1_0"},
@@ -1586,7 +1625,6 @@ const auto kSortedIndexTestCaseValues = ::testing::Values(
     tests::format_info{"1_3", "1_0"},
     tests::format_info{"1_4", "1_0"});
 #endif
-}
 
 INSTANTIATE_TEST_SUITE_P(
   sorted_index_test,
