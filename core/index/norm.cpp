@@ -101,18 +101,6 @@ float_t norm::read() const {
   bytes_ref_input in(payload_->value);
   return read_zvfloat(in);
 }
-void norm::compute(
-    const field_stats& stats,
-    doc_id_t doc,
-    columnstore_writer::values_writer_f& writer) {
-  if (stats.len > 0) {
-    const float_t value = 1.f / float_t(std::sqrt(double_t(stats.len)));
-    if (value != norm::DEFAULT()) {
-      auto& stream = writer(doc);
-      write_zvfloat(stream, value);
-    }
-  }
-}
 
 REGISTER_ATTRIBUTE(norm);
 

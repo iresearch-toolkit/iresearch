@@ -121,13 +121,41 @@ struct long_comparer : irs::comparer {
 };
 
 struct custom_feature {
+  struct header {
+    void write(irs::bstring& out) {
+      EXPECT_TRUE(out.empty());
+      out.resize(sizeof(size_t));
+
+      auto* p = out.data();
+      irs::write<size_t>(p, count);
+    }
+
+    void update(irs::bytes_ref in) {
+      EXPECT_EQ(sizeof(count), in.size());
+      auto* p = in.c_str();
+      count += irs::read<decltype(count)>(p);
+    }
+
+    bool operator==(header rhs) const {
+      return count == rhs.count;
+    }
+
+    size_t count{0};
+  };
+
   struct writer : irs::feature_writer {
+    writer() = default;
+    explicit writer(header hdr) noexcept
+      : init_header{hdr} {
+    }
+
     virtual void write(
         const irs::field_stats& stats,
         irs::doc_id_t doc,
         // cppcheck-suppress constParameter
         irs::columnstore_writer::values_writer_f& writer) final {
-      ++count;
+      ++hdr.count;
+
       // We intentionally call `writer(doc)` multiple
       // times to check concatenation logic.
       writer(doc).write_int(stats.len);
@@ -140,32 +168,32 @@ struct custom_feature {
         data_output& out,
         irs::bytes_ref payload) {
       if (!payload.empty()) {
-        ++count;
+        ++hdr.count;
         out.write_bytes(payload.c_str(), payload.size());
       }
     }
 
     virtual void finish(irs::bstring& out) final {
-      EXPECT_TRUE(out.empty());
-      out.resize(sizeof(size_t));
-
-      auto* p = out.data();
-      irs::write<size_t>(p, count);
+      EXPECT_TRUE(!init_header.has_value() || init_header.value() == hdr);
+      hdr.write(out);
     }
 
-    size_t count{0}; // FIXME(gnusi): check header payload in tests
+    header hdr;
+    std::optional<header> init_header;
+    std::optional<size_t> expected_count;
   };
 
-  static irs::feature_writer::ptr make_writer(irs::range<irs::bytes_ref> /*payload*/) {
-    return irs::memory::make_managed<writer>();
-  }
+  static irs::feature_writer::ptr make_writer(irs::range<irs::bytes_ref> payload) {
+    if (payload.empty()) {
+      return irs::memory::make_managed<writer>();
+    }
 
-  static void compute(
-      const irs::field_stats& /*stats*/,
-      irs::doc_id_t doc,
-      // cppcheck-suppress constParameter
-      irs::columnstore_writer::values_writer_f& writer) {
-    writer(doc).write_int(doc);
+    header hdr;
+    for (auto value : payload) {
+      hdr.update(value);
+    }
+
+    return irs::memory::make_managed<writer>(hdr);
   }
 };
 
@@ -876,7 +904,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
 
   assert_index();
 
-  // check columns
+  // Check columns
   {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
@@ -886,7 +914,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
     ASSERT_EQ(segment.docs_count(), segment.live_docs_count());
     ASSERT_NE(nullptr, segment.sort());
 
-    // check sorted column
+    // Check sorted column
     {
       std::vector<irs::bstring> column_payload;
       gen.reset();
@@ -929,7 +957,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
       ASSERT_FALSE(sorted_column_it->next());
     }
 
-    // check regular columns
+    // Check stored columns
     constexpr irs::string_ref column_names[] {
         "name", "value", "duplicated", "prefix" };
 
@@ -1000,6 +1028,14 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
       }
       ASSERT_FALSE(column_it->next());
     }
+
+    // Check pluggable features
+    if (supports_pluggable_features()) {
+      check_features(segment, "name", 32);
+      check_features(segment, "same", 32);
+      check_features(segment, "duplicated", 13);
+      check_features(segment, "prefix", 10);
+    }
   }
 }
 
@@ -1013,7 +1049,7 @@ TEST_P(sorted_index_test_case, europarl) {
   opts.comparator = &less;
   opts.features = features();
 
-  add_segment(gen, irs::OM_CREATE, opts); // add segment
+  add_segment(gen, irs::OM_CREATE, opts);
 
   assert_index();
 }
@@ -1021,7 +1057,8 @@ TEST_P(sorted_index_test_case, europarl) {
 TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
   struct {
     bool write(irs::data_output& out) {
-      out.write_bytes(reinterpret_cast<const irs::byte_type*>(value.c_str()), value.size());
+      out.write_bytes(reinterpret_cast<const irs::byte_type*>(value.c_str()),
+                      value.size());
       return true;
     }
 
@@ -1031,7 +1068,7 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
   tests::string_ref_field same("same");
   same.value("A");
 
-  // open writer
+  // Open writer
   string_comparer less;
   irs::index_writer::init_options opts;
   opts.comparator = &less;
@@ -1041,42 +1078,42 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
   ASSERT_NE(nullptr, writer);
   ASSERT_EQ(&less, writer->comparator());
 
-  // write documents
+  // Write documents
   {
     auto docs = writer->documents();
 
     {
       auto doc = docs.insert();
 
-      // compund sorted field
+      // Compound sorted field
       field.value = "A"; doc.insert<irs::Action::STORE_SORTED>(field);
       field.value = "B"; doc.insert<irs::Action::STORE_SORTED>(field);
 
-      // indexed field
+      // Indexed field
       doc.insert<irs::Action::INDEX>(same);
     }
 
     {
       auto doc = docs.insert();
 
-      // compund sorted field
+      // Compound sorted field
       field.value = "C"; doc.insert<irs::Action::STORE_SORTED>(field);
       field.value = "D"; doc.insert<irs::Action::STORE_SORTED>(field);
 
-      // indexed field
+      // Indexed field
       doc.insert<irs::Action::INDEX>(same);
     }
   }
 
   writer->commit();
 
-  // read documents
+  // Read documents
   {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
 
-    // check segment 0
+    // Check segment 0
     {
       auto& segment = reader[0];
       const auto* column = segment.sort();
@@ -1107,7 +1144,9 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
 TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [this] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [this](tests::document& doc,
+           const std::string& name,
+           const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::string_field>(
           name, data.str, irs::IndexFeatures::ALL,
@@ -1137,7 +1176,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
   ASSERT_NE(nullptr, writer);
   ASSERT_EQ(&less, writer->comparator());
 
-  // segment 0
+  // Segment 0
   ASSERT_TRUE(insert(*writer,
     doc0->indexed.begin(), doc0->indexed.end(),
     doc0->stored.begin(), doc0->stored.end(),
@@ -1148,7 +1187,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
    doc2->sorted));
   writer->commit();
 
-  // segment 1
+  // Segment 1
   ASSERT_TRUE(insert(*writer,
     doc1->indexed.begin(), doc1->indexed.end(),
     doc1->stored.begin(), doc1->stored.end(),
@@ -1159,13 +1198,13 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
     doc3->sorted));
   writer->commit();
 
-  // read documents
+  // Read documents
   {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
-    // check segment 0
+    // Check segment 0
     {
       auto& segment = reader[0];
       const auto* column = segment.sort();
@@ -1188,9 +1227,17 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_FALSE(docsItr->next());
+
+      // Check pluggable features
+      if (supports_pluggable_features()) {
+        check_features(segment, "name", 2);
+        check_features(segment, "same", 2);
+        check_features(segment, "duplicated", 2);
+        check_features(segment, "prefix", 1);
+      }
     }
 
-    // check segment 1
+    // Check segment 1
     {
       auto& segment = reader[1];
       const auto* column = segment.sort();
@@ -1211,24 +1258,31 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_FALSE(docsItr->next());
+
+      // Check pluggable features
+      if (supports_pluggable_features()) {
+        check_features(segment, "name", 2);
+        check_features(segment, "same", 2);
+        check_features(segment, "duplicated", 1);
+        check_features(segment, "prefix", 1);
+      }
     }
   }
 
-  // consolidate segments
+  // Consolidate segments
   {
     irs::index_utils::consolidate_count consolidate_all;
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
     writer->commit();
   }
 
-  // check consolidated segment
+  // Check consolidated segment
   {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
 
-    // check segment 0
     {
       auto& segment = reader[0];
       const auto* column = segment.sort();
@@ -1257,10 +1311,18 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_FALSE(docsItr->next());
+
+      // Check pluggable features in consolidated segment
+      if (supports_pluggable_features()) {
+        check_features(segment, "name", 4);
+        check_features(segment, "same", 4);
+        check_features(segment, "duplicated", 3);
+        check_features(segment, "prefix", 2);
+      }
     }
   }
 
-  // create expected index
+  // Create expected index
   auto& expected_index = index();
   expected_index.emplace_back(writer->feature_info());
   expected_index.back().insert(
@@ -1286,7 +1348,9 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
 TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_with_removals) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [this] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    [this](tests::document& doc,
+           const std::string& name,
+           const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::string_field>(
           name, data.str, irs::IndexFeatures::ALL,
@@ -1341,13 +1405,13 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
     doc3->sorted));
   writer->commit();
 
-  // read documents
+  // Read documents
   {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
-    // check segment 0
+    // Check segment 0
     {
       auto& segment = reader[0];
       const auto* column = segment.sort();
@@ -1370,9 +1434,17 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_FALSE(docsItr->next());
+
+      // Check pluggable features
+      if (supports_pluggable_features()) {
+        check_features(segment, "name", 2);
+        check_features(segment, "same", 2);
+        check_features(segment, "duplicated", 2);
+        check_features(segment, "prefix", 1);
+      }
     }
 
-    // check segment 1
+    // Check segment 1
     {
       auto& segment = reader[1];
       const auto* column = segment.sort();
@@ -1395,23 +1467,31 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_FALSE(docsItr->next());
+
+      // Check pluggable features
+      if (supports_pluggable_features()) {
+        check_features(segment, "name", 2);
+        check_features(segment, "same", 2);
+        check_features(segment, "duplicated", 1);
+        check_features(segment, "prefix", 1);
+      }
     }
   }
 
-  // remove document
+  // Remove document
   {
     auto query_doc1 = irs::iql::query_builder().build("name==C", "C");
     writer->documents().remove(*query_doc1.filter);
     writer->commit();
   }
 
-  // read documents
+  // Read documents
   {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
-    // check segment 0
+    // Check segment 0
     {
       auto& segment = reader[0];
       const auto* column = segment.sort();
@@ -1431,9 +1511,17 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_FALSE(docsItr->next());
+
+      // Check pluggable features
+      if (supports_pluggable_features()) {
+        check_features(segment, "name", 2);
+        check_features(segment, "same", 2);
+        check_features(segment, "duplicated", 2);
+        check_features(segment, "prefix", 1);
+      }
     }
 
-    // check segment 1
+    // Check segment 1
     {
       auto& segment = reader[1];
       const auto* column = segment.sort();
@@ -1456,24 +1544,32 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_FALSE(docsItr->next());
+
+      // Check pluggable features
+      if (supports_pluggable_features()) {
+        check_features(segment, "name", 2);
+        check_features(segment, "same", 2);
+        check_features(segment, "duplicated", 1);
+        check_features(segment, "prefix", 1);
+      }
     }
   }
 
-  // consolidate segments
+  // Consolidate segments
   {
     irs::index_utils::consolidate_count consolidate_all;
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
     writer->commit();
   }
 
-  // check consolidated segment
+  // Check consolidated segment
   {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
 
-    // check segment 0
+    // Check segment 0
     {
       auto& segment = reader[0];
       const auto* column = segment.sort();
@@ -1499,10 +1595,18 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_FALSE(docsItr->next());
+
+      // Check pluggable features in consolidated segment
+      if (supports_pluggable_features()) {
+        check_features(segment, "name", 3);
+        check_features(segment, "same", 3);
+        check_features(segment, "duplicated", 2);
+        check_features(segment, "prefix", 2);
+      }
     }
   }
 
-  // create expected index
+  // Create expected index
   auto& expected_index = index();
   expected_index.emplace_back(writer->feature_info());
   expected_index.back().insert(
@@ -1557,7 +1661,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
   ASSERT_NE(nullptr, writer);
   ASSERT_NE(nullptr, writer->comparator());
 
-  // create segment 0
+  // Create segment 0
   ASSERT_TRUE(insert(*writer,
     doc2->indexed.begin(), doc2->indexed.end(),
     doc2->stored.begin(), doc2->stored.end()));
@@ -1567,7 +1671,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
     doc0->sorted));
   writer->commit();
 
-  // create segment 1
+  // Create segment 1
   ASSERT_TRUE(insert(*writer,
     doc1->indexed.begin(), doc1->indexed.end(),
     doc1->stored.begin(), doc1->stored.end(),
@@ -1577,13 +1681,13 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
     doc3->stored.begin(), doc3->stored.end()));
   writer->commit();
 
-  // read documents
+  // Read documents
   {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
-    // check segment 0
+    // Check segment 0
     {
       auto& segment = reader[0];
       const auto* column = segment.sort();
@@ -1607,9 +1711,17 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_TRUE(actual_value->value.empty());
       ASSERT_FALSE(docsItr->next());
+
+      // Check pluggable features
+      if (supports_pluggable_features()) {
+        check_features(segment, "name", 2);
+        check_features(segment, "same", 2);
+        check_features(segment, "duplicated", 2);
+        check_features(segment, "prefix", 1);
+      }
     }
 
-    // check segment 1
+    // Check segment 1
     {
       auto& segment = reader[1];
       const auto* column = segment.sort();
@@ -1633,24 +1745,32 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_TRUE(actual_value->value.empty());
       ASSERT_FALSE(docsItr->next());
+
+      // Check pluggable features
+      if (supports_pluggable_features()) {
+        check_features(segment, "name", 2);
+        check_features(segment, "same", 2);
+        check_features(segment, "duplicated", 1);
+        check_features(segment, "prefix", 1);
+      }
     }
   }
 
-  // consolidate segments
+  // Consolidate segments
   {
     irs::index_utils::consolidate_count consolidate_all;
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
     writer->commit();
   }
 
-  // check consolidated segment
+  // Check consolidated segment
   {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
 
-    // check segment 0
+    // Check segment 0
     {
       auto& segment = reader[0];
       const auto* column = segment.sort();
@@ -1680,10 +1800,18 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_TRUE(actual_value->value.empty());
       ASSERT_FALSE(docsItr->next());
+
+      // Check pluggable features in consolidated segment
+      if (supports_pluggable_features()) {
+        check_features(segment, "name", 4);
+        check_features(segment, "same", 4);
+        check_features(segment, "duplicated", 3);
+        check_features(segment, "prefix", 2);
+      }
     }
   }
 
-  // create expected index
+  // Create expected index
   auto& expected_index = index();
   expected_index.emplace_back(writer->feature_info());
   expected_index.back().insert(

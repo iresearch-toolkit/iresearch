@@ -80,11 +80,6 @@ class IRESEARCH_API norm : public norm_base {
 
   static feature_writer::ptr make_writer(range<bytes_ref> payload);
 
-  static void compute(
-    const field_stats& stats,
-    doc_id_t doc,
-    columnstore_writer::values_writer_f& writer);
-
   float_t read() const;
 }; // norm
 
