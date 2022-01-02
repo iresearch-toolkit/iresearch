@@ -342,7 +342,9 @@ void index_segment::insert_indexed(const ifield& f) {
     field.stats.num_overlap += static_cast<uint32_t>(0 == inc->value);
     ++field.stats.len;
     pst.insert(field.stats.pos, field.stats.offs, stream);
-    field.stats.max_term_freq = pst.positions().size();
+    field.stats.max_term_freq = std::max(
+        field.stats.max_term_freq,
+        static_cast<decltype(field.stats.max_term_freq)>(pst.positions().size()));
 
     empty = false;
   }
