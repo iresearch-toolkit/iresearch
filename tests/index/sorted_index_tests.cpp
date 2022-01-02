@@ -123,12 +123,17 @@ struct long_comparer : irs::comparer {
 struct custom_feature {
   struct writer : irs::feature_writer {
     virtual void write(
-        const irs::field_stats& /*stats*/,
+        const irs::field_stats& stats,
         irs::doc_id_t doc,
         // cppcheck-suppress constParameter
         irs::columnstore_writer::values_writer_f& writer) final {
       ++count;
-      writer(doc).write_int(doc);
+      // We intentionally call `writer(doc)` multiple
+      // times to check concatenation logic.
+      writer(doc).write_int(stats.len);
+      writer(doc).write_int(stats.max_term_freq);
+      writer(doc).write_int(stats.num_overlap);
+      writer(doc).write_int(stats.num_unique);
     }
 
     virtual void write(
@@ -163,6 +168,8 @@ struct custom_feature {
     writer(doc).write_int(doc);
   }
 };
+
+REGISTER_ATTRIBUTE(custom_feature);
 
 class sorted_index_test_case : public tests::index_test_base {
  protected:
@@ -205,7 +212,8 @@ class sorted_index_test_case : public tests::index_test_base {
   std::vector<irs::type_info::type_id> field_features() {
     return supports_pluggable_features()
       ? std::vector<irs::type_info::type_id>{ irs::type<irs::norm>::id(),
-                                              irs::type<irs::norm2>::id() }
+                                              irs::type<irs::norm2>::id(),
+                                              irs::type<custom_feature>::id() }
       : std::vector<irs::type_info::type_id>{ irs::type<irs::norm>::id() };
   }
 
@@ -232,12 +240,73 @@ class sorted_index_test_case : public tests::index_test_base {
       skip, matcher);
     index_test_base::assert_columnstore();
   }
+
+  void check_feature_header(const irs::sub_reader& segment,
+                            const irs::field_meta& field,
+                            irs::type_info::type_id type,
+                            irs::bytes_ref header) {
+    ASSERT_TRUE(supports_pluggable_features());
+    auto feature = field.features.find(type);
+    ASSERT_NE(feature, field.features.end());
+    ASSERT_TRUE(irs::field_limits::valid(feature->second));
+    auto* column = segment.column(feature->second);
+    ASSERT_NE(nullptr, column);
+    ASSERT_FALSE(column->payload().null());
+    ASSERT_EQ(header, column->payload());
+  }
+
+  void check_empty_feature(const irs::sub_reader& segment,
+                           const irs::field_meta& field,
+                           irs::type_info::type_id type) {
+    ASSERT_TRUE(supports_pluggable_features());
+    auto feature = field.features.find(type);
+    ASSERT_NE(feature, field.features.end());
+    ASSERT_FALSE(irs::field_limits::valid(feature->second));
+    auto* column = segment.column(feature->second);
+    ASSERT_EQ(nullptr, column);
+  }
+
+  void check_features(const irs::sub_reader& segment,
+                      irs::string_ref field_name,
+                      size_t count) {
+     auto* field_reader = segment.field(field_name);
+     ASSERT_NE(nullptr, field_reader);
+     auto& field = field_reader->meta();
+     ASSERT_EQ(3, field.features.size());
+
+     // irs::norm, nothing is written since all values are equal to 1
+     check_empty_feature(segment, field, irs::type<irs::norm>::id());
+
+     // custom_feature
+     {
+       irs::byte_type buf[sizeof(count)];
+       auto* p = buf;
+       irs::write<size_t>(p, count);
+
+       check_feature_header(segment, field,
+                            irs::type<custom_feature>::id(),
+                            { buf, sizeof buf });
+     }
+
+     // irs::norm2
+     {
+       irs::norm2_header hdr;
+       hdr.update(1);
+
+       irs::bstring buf(hdr.num_bytes(), 0);
+       hdr.write(buf);
+
+       check_feature_header(segment, field,
+                            irs::type<irs::norm2>::id(),
+                            buf);
+     }
+  }
 };
 
 TEST_P(sorted_index_test_case, simple_sequential) {
-  const irs::string_ref sorted_column = "name";
+  constexpr irs::string_ref sorted_column = "name";
 
-  // build index
+  // Build index
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [&sorted_column, this](tests::document& doc,
@@ -270,10 +339,10 @@ TEST_P(sorted_index_test_case, simple_sequential) {
 
   add_segment(gen, irs::OM_CREATE, opts); // add segment
 
-  // check inverted index
+  // Check index
   assert_index();
 
-  // check columns
+  // Check columns
   {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
@@ -324,10 +393,9 @@ TEST_P(sorted_index_test_case, simple_sequential) {
       ASSERT_FALSE(sorted_column_it->next());
     }
 
-    // check regular columns
-    std::vector<irs::string_ref> column_names {
-      "seq", "value", "duplicated", "prefix"
-    };
+    // Check regular columns
+    constexpr irs::string_ref column_names[] {
+        "seq", "value", "duplicated", "prefix" };
 
     for (auto& column_name : column_names) {
       struct doc {
@@ -394,13 +462,21 @@ TEST_P(sorted_index_test_case, simple_sequential) {
       }
       ASSERT_FALSE(column_it->next());
     }
+
+    // Check pluggable features
+    if (supports_pluggable_features()) {
+      check_features(segment, "name", 32);
+      check_features(segment, "same", 32);
+      check_features(segment, "duplicated", 13);
+      check_features(segment, "prefix", 10);
+    }
   }
 }
 
 TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
-  const irs::string_ref sorted_column = "name";
+  constexpr irs::string_ref sorted_column = "name";
 
-  // build index
+  // Build index
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [&sorted_column, this](tests::document& doc,
@@ -425,9 +501,8 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
       }
   });
 
-  std::vector<std::pair<size_t, size_t>> segment_offsets {
-    { 0, 15 }, { 15, 17 }
-  };
+  constexpr std::pair<size_t, size_t> segment_offsets[] {
+      { 0, 15 }, { 15, 17 } };
 
   string_comparer less;
 
@@ -439,26 +514,26 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
   ASSERT_NE(nullptr, writer);
   ASSERT_EQ(&less, writer->comparator());
 
-  // add segment 0
+  // Add segment 0
   {
     auto& offset = segment_offsets[0];
     tests::limiting_doc_generator segment_gen(gen, offset.first, offset.second);
-    add_segment(*writer, segment_gen); // add segment
+    add_segment(*writer, segment_gen);
   }
 
-  // add segment 1
-  add_segment(*writer, gen); // add segment
+  // Add segment 1
+  add_segment(*writer, gen);
 
-  // check inverted index
+  // Check index
   assert_index();
 
-  // check columns
+  // Check columns
   {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
-    // check segments
+    // Check segments
     size_t i = 0;
     for (auto& segment : *reader) {
       auto& offset = segment_offsets[i++];
@@ -468,7 +543,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
       ASSERT_EQ(segment.docs_count(), segment.live_docs_count());
       ASSERT_NE(nullptr, segment.sort());
 
-      // check sorted column
+      // Check sorted column
       {
         segment_gen.reset();
         std::vector<irs::bstring> column_payload;
@@ -511,10 +586,9 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
         ASSERT_FALSE(sorted_column_it->next());
       }
 
-      // check regular columns
-      std::vector<irs::string_ref> column_names {
-        "seq", "value", "duplicated", "prefix"
-      };
+      // Check stored columns
+      constexpr irs::string_ref column_names[] {
+          "seq", "value", "duplicated", "prefix" };
 
       for (auto& column_name : column_names) {
         struct doc {
@@ -583,10 +657,30 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
         }
         ASSERT_FALSE(column_it->next());
       }
+
+      // Check pluggable features
+      if (supports_pluggable_features()) {
+        check_features(segment, "name", offset.second);
+        check_features(segment, "same", offset.second);
+
+        {
+          constexpr irs::string_ref kColumnName = "duplicated";
+          auto* column = segment.column(kColumnName);
+          ASSERT_NE(nullptr, column);
+          check_features(segment, kColumnName, column->size());
+        }
+
+        {
+          constexpr irs::string_ref kColumnName = "prefix";
+          auto* column = segment.column(kColumnName);
+          ASSERT_NE(nullptr, column);
+          check_features(segment, kColumnName, column->size());
+        }
+      }
     }
   }
 
-  // consolidate segments
+  // Consolidate segments
   {
     irs::index_utils::consolidate_count consolidate_all;
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
@@ -608,20 +702,18 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
   assert_index();
 
-  // check columns in consolidated segment
+  // Check columns in consolidated segment
   {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
 
-    // check segments
     auto& segment = reader[0];
-
     ASSERT_EQ(segment_offsets[0].second + segment_offsets[1].second, segment.docs_count());
     ASSERT_EQ(segment.docs_count(), segment.live_docs_count());
     ASSERT_NE(nullptr, segment.sort());
 
-    // check sorted column
+    // Check sorted column
     {
       gen.reset();
       std::vector<irs::bstring> column_payload;
@@ -664,10 +756,9 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
       ASSERT_FALSE(sorted_column_it->next());
     }
 
-    // check regular columns
-    std::vector<irs::string_ref> column_names {
-      "seq", "value", "duplicated", "prefix"
-    };
+    // Check stored columns
+    constexpr irs::string_ref column_names[] {
+        "seq", "value", "duplicated", "prefix" };
 
     for (auto& column_name : column_names) {
       struct doc {
@@ -736,13 +827,21 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
       }
       ASSERT_FALSE(column_it->next());
     }
+
+    // Check pluggable features in consolidated segment
+    if (supports_pluggable_features()) {
+      check_features(segment, "name", 32);
+      check_features(segment, "same", 32);
+      check_features(segment, "duplicated", 13);
+      check_features(segment, "prefix", 10);
+    }
   }
 }
 
 TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
   constexpr irs::string_ref sorted_column = "seq";
 
-  // build index
+  // Build index
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [&sorted_column, this](tests::document& doc,
@@ -831,9 +930,8 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
     }
 
     // check regular columns
-    std::vector<irs::string_ref> column_names {
-      "name", "value", "duplicated", "prefix"
-    };
+    constexpr irs::string_ref column_names[] {
+        "name", "value", "duplicated", "prefix" };
 
     for (auto& column_name : column_names) {
       struct doc {
