@@ -122,7 +122,13 @@ struct long_comparer : irs::comparer {
 
 struct custom_feature {
   struct header {
-    void write(irs::bstring& out) {
+    explicit header(irs::range<irs::bytes_ref> headers) noexcept {
+      for (const auto header : headers) {
+        update(header);
+      }
+    }
+
+    void write(irs::bstring& out) const {
       EXPECT_TRUE(out.empty());
       out.resize(sizeof(size_t));
 
@@ -136,17 +142,15 @@ struct custom_feature {
       count += irs::read<decltype(count)>(p);
     }
 
-    bool operator==(header rhs) const {
-      return count == rhs.count;
-    }
-
     size_t count{0};
   };
 
   struct writer : irs::feature_writer {
-    writer() = default;
-    explicit writer(header hdr) noexcept
-      : init_header{hdr} {
+    explicit writer(irs::range<irs::bytes_ref> headers) noexcept
+      : hdr{{}} {
+      if (!headers.empty()) {
+        init_header.emplace(headers);
+      }
     }
 
     virtual void write(
@@ -174,7 +178,10 @@ struct custom_feature {
     }
 
     virtual void finish(irs::bstring& out) final {
-      EXPECT_TRUE(!init_header.has_value() || init_header.value() == hdr);
+      if (init_header.has_value()) {
+        // <= due to removals
+        EXPECT_LE(hdr.count, init_header.value().count);
+      }
       hdr.write(out);
     }
 
@@ -183,17 +190,9 @@ struct custom_feature {
     std::optional<size_t> expected_count;
   };
 
-  static irs::feature_writer::ptr make_writer(irs::range<irs::bytes_ref> payload) {
-    if (payload.empty()) {
-      return irs::memory::make_managed<writer>();
-    }
-
-    header hdr;
-    for (auto value : payload) {
-      hdr.update(value);
-    }
-
-    return irs::memory::make_managed<writer>(hdr);
+  static irs::feature_writer::ptr make_writer(
+      irs::range<irs::bytes_ref> payload) {
+    return irs::memory::make_managed<writer>(payload);
   }
 };
 
