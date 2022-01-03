@@ -74,7 +74,7 @@ class IRESEARCH_API norm2_header final {
     : ver_{ver} {
   }
 
-  void update(uint32_t value) noexcept {
+  void reset(uint32_t value) noexcept {
     min_ = std::min(min_, value);
     max_ = std::max(max_, value);
   }
@@ -126,7 +126,7 @@ class norm2_writer final : public feature_writer {
       doc_id_t doc,
       // cppcheck-suppress constParameter
       columnstore_writer::values_writer_f& writer) final {
-    hdr_.update(stats.len);
+    hdr_.reset(stats.len);
     writer(doc).write_int(stats.len);
 
 //    if constexpr (NumBytes == sizeof(byte_type)) {
@@ -147,7 +147,7 @@ class norm2_writer final : public feature_writer {
       bytes_ref payload) {
     if (payload.size() == sizeof(uint32_t)) {
       auto* p = payload.c_str();
-      hdr_.update(irs::read<uint32_t>(p));
+      hdr_.reset(irs::read<uint32_t>(p));
 
       out.write_bytes(payload.c_str(), sizeof(uint32_t));
     }

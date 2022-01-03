@@ -318,7 +318,7 @@ class sorted_index_test_case : public tests::index_test_base {
      // irs::norm2
      {
        irs::norm2_header hdr{irs::Norm2Version::kMin};
-       hdr.update(1);
+       hdr.reset(1);
 
        irs::bstring buf(hdr.num_bytes(), 0);
        hdr.write(buf);
