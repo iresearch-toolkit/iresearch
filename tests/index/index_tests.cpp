@@ -153,8 +153,8 @@ class index_test_case : public tests::index_test_base {
     return [](irs::type_info::type_id id) {
       const irs::column_info info{irs::type<irs::compression::lz4>::get(), {}, false};
 
-      if (irs::type<irs::norm>::id() == id) {
-        return std::make_pair(info, &irs::norm::make_writer);
+      if (irs::type<irs::Norm>::id() == id) {
+        return std::make_pair(info, &irs::Norm::MakeWriter);
       }
 
       return std::make_pair(info, irs::feature_writer_factory_t{});
@@ -6383,7 +6383,7 @@ TEST_P(index_test_case, segment_column_user_system) {
   // document to add a system column not present in subsequent documents
   tests::document doc0;
 
-  const std::vector<irs::type_info::type_id> features{ irs::type<irs::norm>::id() };
+  const std::vector<irs::type_info::type_id> features{ irs::type<irs::Norm>::id() };
 
   // add 2 identical fields (without storing) to trigger non-default norm value
   for (size_t i = 2; i; --i) {
@@ -6425,7 +6425,7 @@ TEST_P(index_test_case, segment_column_user_system) {
   auto* field = segment.field("test-field"); // 'norm' column added by doc0 above
   ASSERT_NE(nullptr, field);
 
-  const auto norm = field->meta().features.find(irs::type<irs::norm>::id());
+  const auto norm = field->meta().features.find(irs::type<irs::Norm>::id());
   ASSERT_NE(field->meta().features.end(), norm);
   ASSERT_TRUE(irs::field_limits::valid(norm->second));
 
@@ -13939,7 +13939,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
       return stream;
     }
 
-    irs::type_info::type_id features_{irs::type<irs::norm>::id()};
+    irs::type_info::type_id features_{irs::type<irs::Norm>::id()};
     mutable empty_token_stream stream;
   } empty;
 
@@ -13995,8 +13995,8 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     ASSERT_TRUE(field->next());
     auto& field_reader = field->value();
     ASSERT_EQ(empty.name(), field_reader.meta().name);
-    ASSERT_EQ(1, field_reader.meta().features.count(irs::type<irs::norm>::id()));
-    const auto norm = field_reader.meta().features.find(irs::type<irs::norm>::id());
+    ASSERT_EQ(1, field_reader.meta().features.count(irs::type<irs::Norm>::id()));
+    const auto norm = field_reader.meta().features.find(irs::type<irs::Norm>::id());
     ASSERT_NE(field_reader.meta().features.end(), norm);
     ASSERT_TRUE(irs::field_limits::valid(norm->second));
     ASSERT_FALSE(field->next());
@@ -14013,7 +14013,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     ASSERT_EQ(3, it->value());
     irs::bytes_ref_input in(payload->value);
     const auto value = irs::read_zvfloat(in);
-    ASSERT_NE(irs::norm::DEFAULT(), value);
+    ASSERT_NE(irs::Norm::DEFAULT(), value);
     ASSERT_FALSE(it->next());
     ASSERT_FALSE(it->next());
   }

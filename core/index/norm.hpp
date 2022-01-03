@@ -25,27 +25,29 @@
 
 #include "shared.hpp"
 #include "analysis/token_attributes.hpp"
+#include "store/store_utils.hpp"
 #include "utils/lz4compression.hpp"
 
 namespace iresearch {
 
-class norm_base {
- public:
-  bool reset(const sub_reader& segment, field_id column, const document& doc);
-  bool empty() const noexcept;
+struct NormReaderContext {
+  bool Reset(const sub_reader& segment,
+             field_id column,
+             const document& doc);
+  bool Valid() const noexcept {
+    return doc != nullptr;
+  }
 
- protected:
-  norm_base() noexcept;
-
-  doc_iterator::ptr column_it_;
-  const payload* payload_;
-  const document* doc_;
+  bytes_ref header;
+  doc_iterator::ptr it;
+  const irs::payload* payload{};
+  const document* doc{};
 };
 
-static_assert(std::is_nothrow_move_constructible_v<norm_base>);
-static_assert(std::is_nothrow_move_assignable_v<norm_base>);
+static_assert(std::is_nothrow_move_constructible_v<NormReaderContext>);
+static_assert(std::is_nothrow_move_assignable_v<NormReaderContext>);
 
-class IRESEARCH_API norm : public norm_base {
+class IRESEARCH_API Norm : public attribute {
  public:
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept {
@@ -56,32 +58,45 @@ class IRESEARCH_API norm : public norm_base {
     return 1.f;
   }
 
-  static feature_writer::ptr make_writer(range<bytes_ref> payload);
+  static feature_writer::ptr MakeWriter(range<bytes_ref> payload);
 
-  float_t read() const;
+  static auto MakeReader(NormReaderContext&& ctx) {
+    assert(ctx.it);
+    assert(ctx.payload);
+    assert(ctx.doc);
+
+    return [ctx = std::move(ctx)]() mutable -> float_t {
+      if (const auto doc = ctx.doc->value;
+          doc != ctx.it->seek(doc)) {
+        return Norm::DEFAULT();
+      }
+      bytes_ref_input in{ctx.payload->value};
+      return read_zvfloat(in);
+    };
+  }
 };
 
-static_assert(std::is_nothrow_move_constructible_v<norm>);
-static_assert(std::is_nothrow_move_assignable_v<norm>);
+static_assert(std::is_nothrow_move_constructible_v<Norm>);
+static_assert(std::is_nothrow_move_assignable_v<Norm>);
 
 enum class Norm2Version : uint32_t {
   kMin = 0
 };
 
-class IRESEARCH_API norm2_header final {
+class IRESEARCH_API Norm2Header final {
  public:
-  explicit norm2_header(Norm2Version ver) noexcept
+  explicit Norm2Header(Norm2Version ver) noexcept
     : ver_{ver} {
   }
 
-  void reset(uint32_t value) noexcept {
+  void Reset(uint32_t value) noexcept {
     min_ = std::min(min_, value);
     max_ = std::max(max_, value);
   }
 
-  bool reset(bytes_ref payload) noexcept;
+  bool Reset(bytes_ref payload) noexcept;
 
-  size_t num_bytes() const noexcept {
+  size_t NumBytes() const noexcept {
     if (max_ <= std::numeric_limits<byte_type>::max()) {
       return sizeof(byte_type);
     } else if (max_ <= std::numeric_limits<uint16_t>::max()) {
@@ -91,8 +106,8 @@ class IRESEARCH_API norm2_header final {
     }
   }
 
-  void write(bstring& out) const {
-    out.resize(byte_size());
+  void Write(bstring& out) const {
+    out.resize(ByteSize());
 
     auto* p = out.data();
     irs::write(p, static_cast<uint32_t>(ver_));
@@ -101,7 +116,7 @@ class IRESEARCH_API norm2_header final {
   }
 
  private:
-  constexpr static size_t byte_size() noexcept {
+  constexpr static size_t ByteSize() noexcept {
     return sizeof(ver_) + sizeof(min_) + sizeof(max_);
   }
 
@@ -111,14 +126,10 @@ class IRESEARCH_API norm2_header final {
 };
 
 template<size_t NumBytes>
-class norm2_writer final : public feature_writer {
-  static_assert(NumBytes == sizeof(byte_type) ||
-                NumBytes == sizeof(uint16_t) ||
-                NumBytes == sizeof(uint32_t));
-
+class Norm2Writer final : public feature_writer {
  public:
-  explicit norm2_writer(norm2_header hdr) noexcept
-    : hdr_{hdr} {
+  explicit Norm2Writer(Norm2Version ver) noexcept
+    : hdr_{ver} {
   }
 
   virtual void write(
@@ -126,69 +137,135 @@ class norm2_writer final : public feature_writer {
       doc_id_t doc,
       // cppcheck-suppress constParameter
       columnstore_writer::values_writer_f& writer) final {
-    hdr_.reset(stats.len);
-    writer(doc).write_int(stats.len);
+    hdr_.Reset(stats.len);
 
-//    if constexpr (NumBytes == sizeof(byte_type)) {
-//      writer(doc).write_byte(static_cast<byte_type>(stats.len & 0xFF));
-//    }
-//
-//    if constexpr (NumBytes == sizeof(uint16_t)) {
-//      writer(doc).write_short(static_cast<uint16_t>(stats.len & 0xFFFF));
-//    }
-//
-//    if constexpr (NumBytes == sizeof(uint32_t)) {
-//      writer(doc).write_int(stats.len);
-//    }
+    auto& stream = writer(doc);
+    WriteValue(stream, stats.len);
   }
 
   virtual void write(
       data_output& out,
       bytes_ref payload) {
-    if (payload.size() == sizeof(uint32_t)) {
-      auto* p = payload.c_str();
-      hdr_.reset(irs::read<uint32_t>(p));
+    uint32_t value;
 
-      out.write_bytes(payload.c_str(), sizeof(uint32_t));
+    switch (payload.size()) {
+      case sizeof(irs::byte_type): {
+        value = payload.front();
+      } break;
+      case sizeof(uint16_t): {
+        auto* p = payload.c_str();
+        value = irs::read<uint16_t>(p);
+      } break;
+      case sizeof(uint32_t): {
+        auto* p = payload.c_str();
+        value = irs::read<uint32_t>(p);
+      } break;
+      default:
+        return;
     }
+
+    hdr_.Reset(value);
+    WriteValue(out, value);
   }
 
   virtual void finish(bstring& out) final {
-    hdr_.write(out);
+    hdr_.Write(out);
   }
 
  private:
-  norm2_header hdr_;
+  static void WriteValue(data_output& out, uint32_t value) {
+    static_assert(NumBytes == sizeof(byte_type) ||
+                  NumBytes == sizeof(uint16_t) ||
+                  NumBytes == sizeof(uint32_t));
+
+    if constexpr (NumBytes == sizeof(byte_type)) {
+      out.write_byte(static_cast<byte_type>(value & 0xFF));
+    }
+
+    if constexpr (NumBytes == sizeof(uint16_t)) {
+      out.write_short(static_cast<uint16_t>(value & 0xFFFF));
+    }
+
+    if constexpr (NumBytes == sizeof(uint32_t)) {
+      out.write_int(value);
+    }
+  }
+
+  Norm2Header hdr_;
 };
 
-class IRESEARCH_API norm2 : public norm_base {
+
+struct Norm2ReaderContext : NormReaderContext {
+  bool Reset(const sub_reader& segment,
+             field_id column,
+             const document& doc);
+  bool Valid() const noexcept {
+    return NormReaderContext::Valid() && num_bytes;
+  }
+
+  uint32_t num_bytes{};
+};
+
+class IRESEARCH_API Norm2 : public attribute {
  public:
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept {
     return "iresearch::norm2";
   }
 
-  static feature_writer::ptr make_writer(range<bytes_ref> payload);
+  static feature_writer::ptr MakeWriter(range<bytes_ref> payload);
 
-  uint32_t read() const {
-    assert(column_it_);
-    assert(payload_);
+  template<size_t NumBytes>
+  static auto MakeReader(NormReaderContext&& ctx) {
+    static_assert(NumBytes == sizeof(byte_type) ||
+                  NumBytes == sizeof(uint16_t) ||
+                  NumBytes == sizeof(uint32_t));
+    assert(ctx.it);
+    assert(ctx.payload);
+    assert(ctx.doc);
 
-    if (IRS_LIKELY(doc_->value == column_it_->seek(doc_->value))) {
-      assert(sizeof(uint32_t) == payload_->value.size());
-      const auto* value = payload_->value.c_str();
-      return irs::read<uint32_t>(value);
+    return [ctx = std::move(ctx)]() mutable -> uint32_t {
+      const doc_id_t doc = ctx.doc->value;
+
+      if (IRS_LIKELY(doc == ctx.it->seek(doc))) {
+        assert(NumBytes == ctx.payload->value.size());
+        const auto* value = ctx.payload->value.c_str();
+
+        if constexpr (NumBytes == sizeof(irs::byte_type)) {
+          return *value;
+        }
+
+        if constexpr (NumBytes == sizeof(uint16_t)) {
+          return irs::read<uint16_t>(value);
+        }
+
+        if constexpr (NumBytes == sizeof(uint32_t)) {
+          return irs::read<uint32_t>(value);
+        }
+      }
+
+      // we should investigate why we failed to find a norm2 value for doc
+      assert(false);
+
+      return 1;
+    };
+  }
+
+  template<typename Func>
+  static auto MakeReader(Norm2ReaderContext&& ctx, Func&& func) {
+    switch (ctx.num_bytes) {
+      case sizeof(uint8_t):
+        return func(MakeReader<sizeof(uint8_t)>(std::move(ctx)));
+      case sizeof(uint16_t):
+        return func(MakeReader<sizeof(uint16_t)>(std::move(ctx)));
+      default:
+        return func(MakeReader<sizeof(uint32_t)>(std::move(ctx)));
     }
-
-    // we should investigate why we failed to find a norm2 value for doc
-    assert(false);
-
-    return 1;
   }
 };
 
-static_assert(std::is_nothrow_move_constructible_v<norm2>);
-static_assert(std::is_nothrow_move_assignable_v<norm2>);
+static_assert(std::is_nothrow_move_constructible_v<Norm2>);
+static_assert(std::is_nothrow_move_assignable_v<Norm2>);
 
 } // iresearch
 

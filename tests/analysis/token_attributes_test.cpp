@@ -71,19 +71,13 @@ TEST(token_attributes_test, granularity_prefix) {
   static_assert("iresearch::granularity_prefix" == irs::type<irs::granularity_prefix>::name());
 }
 
-TEST(token_attributes_test, norm) {
-  static_assert("norm" == irs::type<irs::norm>::name());
-  static_assert(1.f == irs::norm::DEFAULT());
-
-  irs::norm norm;
-  ASSERT_TRUE(norm.empty());
+TEST(token_attributes_test, Norm) {
+  static_assert("norm" == irs::type<irs::Norm>::name());
+  static_assert(1.f == irs::Norm::DEFAULT());
 }
 
-TEST(token_attributes_test, norm2) {
-  static_assert("iresearch::norm2" == irs::type<irs::norm2>::name());
-
-  irs::norm2 norm;
-  ASSERT_TRUE(norm.empty());
+TEST(token_attributes_test, Norm2) {
+  static_assert("iresearch::norm2" == irs::type<irs::Norm2>::name());
 }
 
 TEST(token_attributes_test, position) {

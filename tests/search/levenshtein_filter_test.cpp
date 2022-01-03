@@ -434,7 +434,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
       : value_(std::move(value)), analyzer_(&analyzer) {
       this->name("id");
       this->index_features_ = irs::IndexFeatures::FREQ;
-      this->features_.emplace_back(irs::type<irs::norm>::id());
+      this->features_.emplace_back(irs::type<irs::Norm>::id());
     }
 
     bool write(data_output&) const noexcept {
@@ -469,8 +469,8 @@ TEST_P(by_edit_distance_test_case, bm25) {
     opts.features = [](irs::type_info::type_id id) {
       const irs::column_info info{irs::type<irs::compression::lz4>::get(), {}, false};
 
-      if (irs::type<irs::norm>::id() == id) {
-        return std::make_pair(info, &irs::norm::make_writer);
+      if (irs::type<irs::Norm>::id() == id) {
+        return std::make_pair(info, &irs::Norm::MakeWriter);
       }
 
       return std::make_pair(info, irs::feature_writer_factory_t{});

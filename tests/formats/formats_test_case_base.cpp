@@ -640,7 +640,7 @@ TEST_P(format_test_case, fields_read_write) {
   // define field
   irs::field_meta field;
   field.name = "field";
-  field.features[irs::type<irs::norm>::id()] = 5;
+  field.features[irs::type<irs::Norm>::id()] = 5;
 
   irs::feature_set_t features;
   for (auto& feature : field.features) {
@@ -3568,13 +3568,13 @@ TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
   // define field
   irs::field_meta field;
   field.name = "field";
-  field.features[irs::type<irs::norm>::id()] = 5;
+  field.features[irs::type<irs::Norm>::id()] = 5;
 
   ASSERT_NE(nullptr, dir().attributes().encryption());
 
   // write fields
   {
-    const irs::feature_set_t features{irs::type<irs::norm>::id()};
+    const irs::feature_set_t features{irs::type<irs::Norm>::id()};
 
     irs::flush_state state;
     state.dir = &dir();

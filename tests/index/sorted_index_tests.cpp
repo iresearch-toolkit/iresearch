@@ -212,17 +212,17 @@ class sorted_index_test_case : public tests::index_test_base {
 
   irs::feature_info_provider_t features() {
     return [this](irs::type_info::type_id id) {
-      if (id == irs::type<irs::norm>::id()) {
+      if (id == irs::type<irs::Norm>::id()) {
         return std::make_pair(
           irs::column_info{irs::type<irs::compression::lz4>::get(), {}, false},
-          &irs::norm::make_writer);
+          &irs::Norm::MakeWriter);
       }
 
       if (supports_pluggable_features()) {
-          if (irs::type<irs::norm2>::id() == id) {
+          if (irs::type<irs::Norm2>::id() == id) {
             return std::make_pair(
                 irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
-                &irs::norm2::make_writer);
+                &irs::Norm2::MakeWriter);
           } else if (irs::type<custom_feature>::id() == id) {
             return std::make_pair(
                 irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
@@ -238,10 +238,10 @@ class sorted_index_test_case : public tests::index_test_base {
 
   std::vector<irs::type_info::type_id> field_features() {
     return supports_pluggable_features()
-      ? std::vector<irs::type_info::type_id>{ irs::type<irs::norm>::id(),
-                                              irs::type<irs::norm2>::id(),
+      ? std::vector<irs::type_info::type_id>{ irs::type<irs::Norm>::id(),
+                                              irs::type<irs::Norm2>::id(),
                                               irs::type<custom_feature>::id() }
-      : std::vector<irs::type_info::type_id>{ irs::type<irs::norm>::id() };
+      : std::vector<irs::type_info::type_id>{ irs::type<irs::Norm>::id() };
   }
 
   void assert_index(size_t skip = 0, irs::automaton_table_matcher* matcher = nullptr) const {
@@ -302,7 +302,7 @@ class sorted_index_test_case : public tests::index_test_base {
      ASSERT_EQ(3, field.features.size());
 
      // irs::norm, nothing is written since all values are equal to 1
-     check_empty_feature(segment, field, irs::type<irs::norm>::id());
+     check_empty_feature(segment, field, irs::type<irs::Norm>::id());
 
      // custom_feature
      {
@@ -315,16 +315,16 @@ class sorted_index_test_case : public tests::index_test_base {
                             { buf, sizeof buf });
      }
 
-     // irs::norm2
+     // irs::Norm2
      {
-       irs::norm2_header hdr{irs::Norm2Version::kMin};
-       hdr.reset(1);
+       irs::Norm2Header hdr{irs::Norm2Version::kMin};
+       hdr.Reset(1);
 
-       irs::bstring buf(hdr.num_bytes(), 0);
-       hdr.write(buf);
+       irs::bstring buf(hdr.NumBytes(), 0);
+       hdr.Write(buf);
 
        check_feature_header(segment, field,
-                            irs::type<irs::norm2>::id(),
+                            irs::type<irs::Norm2>::id(),
                             buf);
      }
   }

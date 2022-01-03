@@ -1013,28 +1013,28 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     auto& field = doc1.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes1);
-    field.features_.emplace_back(irs::type<irs::norm>::id());
+    field.features_.emplace_back(irs::type<irs::Norm>::id());
     field.features_.emplace_back(irs::type<norm2>::id());
   }
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes1);
-    field.features_.emplace_back(irs::type<irs::norm>::id());
+    field.features_.emplace_back(irs::type<irs::Norm>::id());
     field.features_.emplace_back(irs::type<norm2>::id());
   }
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes1);
-    field.features_.emplace_back(irs::type<irs::norm>::id());
+    field.features_.emplace_back(irs::type<irs::Norm>::id());
     field.features_.emplace_back(irs::type<norm2>::id());
   }
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes1);
-    field.features_.emplace_back(irs::type<irs::norm>::id());
+    field.features_.emplace_back(irs::type<irs::Norm>::id());
     field.features_.emplace_back(irs::type<norm2>::id());
   }
 
@@ -1056,21 +1056,21 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     auto& field = doc3.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes3);
-    field.features_.emplace_back(irs::type<irs::norm>::id());
+    field.features_.emplace_back(irs::type<irs::Norm>::id());
     field.features_.emplace_back(irs::type<norm2>::id());
   }
   doc3.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc3.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes3);
-    field.features_.emplace_back(irs::type<irs::norm>::id());
+    field.features_.emplace_back(irs::type<irs::Norm>::id());
     field.features_.emplace_back(irs::type<norm2>::id());
   }
   doc3.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc3.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes3);
-    field.features_.emplace_back(irs::type<irs::norm>::id());
+    field.features_.emplace_back(irs::type<irs::Norm>::id());
     field.features_.emplace_back(irs::type<norm2>::id());
   }
 
@@ -1145,7 +1145,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   irs::index_writer::init_options opts;
   opts.features = [](irs::type_info::type_id id) {
     irs::feature_writer_factory_t writer_factory{};
-    if (irs::type<irs::norm>::id() == id) {
+    if (irs::type<irs::Norm>::id() == id) {
       writer_factory = [](irs::range<irs::bytes_ref>) -> irs::feature_writer::ptr {
         return irs::memory::make_managed<test_feature_writer>(0);
       };
@@ -1220,7 +1220,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("bytes2_data"))].emplace(2);
 
       ASSERT_EQ(2, docs_count(segment, "doc_bytes"));
-      ASSERT_EQ(1, field.features.count(irs::type<irs::norm>::id())); // 'norm' attribute has been specified
+      ASSERT_EQ(1, field.features.count(irs::type<irs::Norm>::id())); // 'norm' attribute has been specified
 
       ASSERT_EQ(features, field.index_features);
       validate_terms(
@@ -1231,7 +1231,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
         bytes2,
         2,
         features,
-        { irs::type<irs::norm>::id(), irs::type<norm2>::id() },
+        { irs::type<irs::Norm>::id(), irs::type<norm2>::id() },
         expected_terms);
 
       // norm
@@ -1259,7 +1259,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
           return true;
         };
 
-        const auto norm = field.features.find(irs::type<irs::norm>::id());
+        const auto norm = field.features.find(irs::type<irs::Norm>::id());
         ASSERT_NE(field.features.end(), norm);
         ASSERT_TRUE(irs::field_limits::valid(norm->second));
         ASSERT_LT(norm->second, field.features.size());
@@ -1612,7 +1612,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
 
       ASSERT_EQ(1, docs_count(segment, "doc_bytes"));
       ASSERT_EQ(2, field.features.size());
-      ASSERT_EQ(1, field.features.count(irs::type<irs::norm>::id())); // 'norm' attribute has been specified
+      ASSERT_EQ(1, field.features.count(irs::type<irs::Norm>::id())); // 'norm' attribute has been specified
       ASSERT_EQ(1, field.features.count(irs::type<norm2>::id())); // 'norm2' attribute has been specified
       ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
@@ -1624,7 +1624,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
         bytes3,
         1,
         features,
-        { irs::type<irs::norm>::id(), irs::type<norm2>::id() },
+        { irs::type<irs::Norm>::id(), irs::type<norm2>::id() },
         expected_terms);
 
       {
@@ -1651,7 +1651,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
           return true;
         };
 
-        const auto norm = field.features.find(irs::type<irs::norm>::id());
+        const auto norm = field.features.find(irs::type<irs::Norm>::id());
         ASSERT_NE(field.features.end(), norm);
         ASSERT_TRUE(irs::field_limits::valid(norm->second));
         ASSERT_LT(norm->second, field.features.size());
@@ -2005,7 +2005,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
 
     ASSERT_EQ(3, docs_count(segment, "doc_bytes"));
     ASSERT_EQ(2, field.features.size());
-    ASSERT_EQ(1, field.features.count(irs::type<irs::norm>::id()));
+    ASSERT_EQ(1, field.features.count(irs::type<irs::Norm>::id()));
     ASSERT_EQ(1, field.features.count(irs::type<norm2>::id()));
     ASSERT_EQ(features, field.index_features);
     ASSERT_NE(nullptr, terms);
@@ -2017,7 +2017,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       bytes3,
       3,
       features,
-      { irs::type<irs::norm>::id(), irs::type<norm2>::id() },
+      { irs::type<irs::Norm>::id(), irs::type<norm2>::id() },
       expected_terms);
 
     {
@@ -2046,7 +2046,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
         return true;
       };
 
-      const auto norm = field.features.find(irs::type<irs::norm>::id());
+      const auto norm = field.features.find(irs::type<irs::Norm>::id());
       ASSERT_NE(field.features.end(), norm);
       ASSERT_TRUE(irs::field_limits::valid(norm->second));
       ASSERT_LT(norm->second, field.features.size() + 6); // +6 because of stored values
@@ -2836,28 +2836,28 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     auto& field = doc1.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes1);
-    field.features_.emplace_back(irs::type<irs::norm>::id());
+    field.features_.emplace_back(irs::type<irs::Norm>::id());
     field.features_.emplace_back(irs::type<norm2>::id());
   }
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes1);
-    field.features_.emplace_back(irs::type<irs::norm>::id());
+    field.features_.emplace_back(irs::type<irs::Norm>::id());
     field.features_.emplace_back(irs::type<norm2>::id());
   }
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes1);
-    field.features_.emplace_back(irs::type<irs::norm>::id());
+    field.features_.emplace_back(irs::type<irs::Norm>::id());
     field.features_.emplace_back(irs::type<norm2>::id());
   }
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes1);
-    field.features_.emplace_back(irs::type<irs::norm>::id());
+    field.features_.emplace_back(irs::type<irs::Norm>::id());
     field.features_.emplace_back(irs::type<norm2>::id());
   }
 
@@ -2879,21 +2879,21 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     auto& field = doc3.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes3);
-    field.features_.emplace_back(irs::type<irs::norm>::id());
+    field.features_.emplace_back(irs::type<irs::Norm>::id());
     field.features_.emplace_back(irs::type<norm2>::id());
   }
   doc3.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc3.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes3);
-    field.features_.emplace_back(irs::type<irs::norm>::id());
+    field.features_.emplace_back(irs::type<irs::Norm>::id());
     field.features_.emplace_back(irs::type<norm2>::id());
   }
   doc3.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc3.indexed.back<tests::binary_field>();
     field.name("doc_bytes");
     field.value(bytes3);
-    field.features_.emplace_back(irs::type<irs::norm>::id());
+    field.features_.emplace_back(irs::type<irs::Norm>::id());
     field.features_.emplace_back(irs::type<norm2>::id());
   }
 
@@ -2968,7 +2968,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   irs::index_writer::init_options opts;
   opts.features = [](irs::type_info::type_id type) {
     irs::feature_writer_factory_t handler{};
-    if (irs::type<irs::norm>::id() == type) {
+    if (irs::type<irs::Norm>::id() == type) {
       handler = [](irs::range<irs::bytes_ref>) -> irs::feature_writer::ptr {
         return irs::memory::make_managed<test_feature_writer>(0);
       };
@@ -3043,7 +3043,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("bytes2_data"))].emplace(2);
 
       ASSERT_EQ(2, docs_count(segment, "doc_bytes"));
-      ASSERT_EQ(1, field.features.count(irs::type<irs::norm>::id())); // 'norm' attribute has been specified
+      ASSERT_EQ(1, field.features.count(irs::type<irs::Norm>::id())); // 'norm' attribute has been specified
 
       ASSERT_EQ(features, field.index_features);
       validate_terms(
@@ -3054,7 +3054,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
         bytes2,
         2,
         features,
-        { irs::type<irs::norm>::id(), irs::type<norm2>::id() },
+        { irs::type<irs::Norm>::id(), irs::type<norm2>::id() },
         expected_terms);
 
       // norm
@@ -3082,7 +3082,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
           return true;
         };
 
-        const auto norm = field.features.find(irs::type<irs::norm>::id());
+        const auto norm = field.features.find(irs::type<irs::Norm>::id());
         ASSERT_NE(field.features.end(), norm);
         ASSERT_TRUE(irs::field_limits::valid(norm->second));
         ASSERT_LT(norm->second, field.features.size());
@@ -3464,7 +3464,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
 
       ASSERT_EQ(1, docs_count(segment, "doc_bytes"));
       ASSERT_EQ(2, field.features.size());
-      ASSERT_EQ(1, field.features.count(irs::type<irs::norm>::id())); // 'norm' attribute has been specified
+      ASSERT_EQ(1, field.features.count(irs::type<irs::Norm>::id())); // 'norm' attribute has been specified
       ASSERT_EQ(1, field.features.count(irs::type<norm2>::id())); // 'norm2' attribute has been specified
       ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
@@ -3476,7 +3476,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
         bytes3,
         1,
         features,
-        { irs::type<irs::norm>::id(), irs::type<norm2>::id() },
+        { irs::type<irs::Norm>::id(), irs::type<norm2>::id() },
         expected_terms);
 
       {
@@ -3503,7 +3503,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
           return true;
         };
 
-        const auto norm = field.features.find(irs::type<irs::norm>::id());
+        const auto norm = field.features.find(irs::type<irs::Norm>::id());
         ASSERT_NE(field.features.end(), norm);
         ASSERT_TRUE(irs::field_limits::valid(norm->second));
         ASSERT_LT(norm->second, field.features.size());
@@ -3886,7 +3886,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
 
     ASSERT_EQ(3, docs_count(segment, "doc_bytes"));
     ASSERT_EQ(2, field.features.size());
-    ASSERT_EQ(1, field.features.count(irs::type<irs::norm>::id()));
+    ASSERT_EQ(1, field.features.count(irs::type<irs::Norm>::id()));
     ASSERT_EQ(1, field.features.count(irs::type<norm2>::id()));
     ASSERT_EQ(features, field.index_features);
     ASSERT_NE(nullptr, terms);
@@ -3898,7 +3898,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       bytes3,
       3,
       features,
-      { irs::type<irs::norm>::id(), irs::type<norm2>::id() }, // columns 0-5 are occupied by stored fields
+      { irs::type<irs::Norm>::id(), irs::type<norm2>::id() }, // columns 0-5 are occupied by stored fields
       expected_terms);
 
     {
@@ -3927,7 +3927,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
         return true;
       };
 
-      const auto norm = field.features.find(irs::type<irs::norm>::id());
+      const auto norm = field.features.find(irs::type<irs::Norm>::id());
       ASSERT_NE(field.features.end(), norm);
       ASSERT_TRUE(irs::field_limits::valid(norm->second));
       ASSERT_LT(norm->second, field.features.size() + 6); // +6 because of stored values

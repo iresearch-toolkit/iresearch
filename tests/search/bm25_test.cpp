@@ -1219,7 +1219,7 @@ TEST_P(bm25_test_case, test_query) {
 }
 
 TEST_P(bm25_test_case, test_query_norms) {
-  test_query_norms(irs::type<irs::norm>::id(), &irs::norm::make_writer);
+  test_query_norms(irs::type<irs::Norm>::id(), &irs::Norm::MakeWriter);
 }
 
 #ifndef IRESEARCH_DLL
@@ -1545,7 +1545,7 @@ INSTANTIATE_TEST_SUITE_P(
 class bm25_test_case_14 : public bm25_test_case { };
 
 TEST_P(bm25_test_case_14, test_query_norms) {
-  test_query_norms(irs::type<irs::norm2>::id(), &irs::norm2::make_writer);
+  test_query_norms(irs::type<irs::Norm2>::id(), &irs::Norm2::MakeWriter);
 }
 
 INSTANTIATE_TEST_SUITE_P(

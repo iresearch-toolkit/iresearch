@@ -28,7 +28,7 @@ namespace {
 
 using namespace irs;
 
-class norm_writer final : public feature_writer {
+class NormWriter final : public feature_writer {
  public:
   virtual void write(
       const field_stats& stats,
@@ -37,7 +37,7 @@ class norm_writer final : public feature_writer {
       columnstore_writer::values_writer_f& writer) final {
     if (stats.len > 0) {
       const float_t value = 1.f / float_t(std::sqrt(double_t(stats.len)));
-      if (value != norm::DEFAULT()) {
+      if (value != Norm::DEFAULT()) {
         auto& stream = writer(doc);
         write_zvfloat(stream, value);
       }
@@ -55,34 +55,27 @@ class norm_writer final : public feature_writer {
   virtual void finish(bstring& /*out*/) final { }
 };
 
-const document kInvalidDocument;
-norm_writer kNormWriter;
+NormWriter kNormWriter;
 
 }
 
 namespace iresearch {
 
-norm_base::norm_base() noexcept
-  : payload_{nullptr},
-    doc_{&kInvalidDocument} {
-}
-
-bool norm_base::empty() const noexcept {
-  return doc_ == &kInvalidDocument;
-}
-
-bool norm_base::reset(
+bool NormReaderContext::Reset(
     const sub_reader& reader,
     field_id column_id,
     const document& doc) {
   const auto* column = reader.column(column_id);
 
   if (column) {
-    column_it_ = column->iterator(false);
-    if (IRS_LIKELY(column_it_)) {
-      payload_ = irs::get<irs::payload>(*column_it_);
-      if (IRS_LIKELY(payload_)) {
-        doc_ = &doc;
+    auto it = column->iterator(false);
+    if (IRS_LIKELY(it)) {
+      auto* payload = irs::get<irs::payload>(*it);
+      if (IRS_LIKELY(payload)) {
+        this->header = column->payload();
+        this->it = std::move(it);
+        this->payload = payload;
+        this->doc = &doc;
         return true;
       }
     }
@@ -91,22 +84,28 @@ bool norm_base::reset(
   return false;
 }
 
-/*static*/ feature_writer::ptr norm::make_writer(range<bytes_ref> /*payload*/) {
+bool Norm2ReaderContext::Reset(
+    const sub_reader& reader,
+    field_id column_id,
+    const document& doc) {
+  if (NormReaderContext::Reset(reader, column_id, doc)) {
+    Norm2Header hdr{Norm2Version::kMin};
+    if (hdr.Reset(header)) {
+      num_bytes = hdr.NumBytes();
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
+/*static*/ feature_writer::ptr Norm::MakeWriter(range<bytes_ref> /*payload*/) {
   return memory::to_managed<feature_writer, false>(&kNormWriter);
 }
 
-float_t norm::read() const {
-  assert(column_it_);
-  if (doc_->value != column_it_->seek(doc_->value)) {
-    return DEFAULT();
-  }
-  assert(payload_);
-  bytes_ref_input in{payload_->value};
-  return read_zvfloat(in);
-}
-
-bool norm2_header::reset(bytes_ref payload) noexcept {
-  if (IRS_LIKELY(payload.size() == byte_size())) {
+bool Norm2Header::Reset(bytes_ref payload) noexcept {
+  if (IRS_LIKELY(payload.size() == ByteSize())) {
     auto* p = payload.c_str();
 
     const Norm2Version ver{irs::read<uint32_t>(p)};
@@ -126,32 +125,36 @@ bool norm2_header::reset(bytes_ref payload) noexcept {
   return false;
 }
 
-/*static*/ feature_writer::ptr norm2::make_writer(range<bytes_ref> headers) {
-  norm2_header hdr{Norm2Version::kMin};
+/*static*/ feature_writer::ptr Norm2::MakeWriter(range<bytes_ref> headers) {
+  constexpr Norm2Version kVersion{Norm2Version::kMin};
 
-  if (headers.empty()) {
-    return memory::make_managed<norm2_writer<sizeof(uint32_t)>>(hdr);
-  }
+  size_t num_bytes{sizeof(uint32_t)};
 
-  for (auto header : headers) {
-    if (!hdr.reset(header)) {
-      return nullptr;
+  if (!headers.empty()) {
+    Norm2Header hdr{kVersion};
+    for (auto header : headers) {
+      if (!hdr.Reset(header)) {
+        return nullptr;
+      }
     }
+
+    num_bytes = hdr.NumBytes();
   }
 
-  switch (hdr.num_bytes()) {
+  switch (num_bytes) {
     case sizeof(byte_type):
-      return memory::make_managed<norm2_writer<sizeof(byte_type)>>(hdr);
+      return memory::make_managed<Norm2Writer<sizeof(byte_type)>>(kVersion);
     case sizeof(uint16_t):
-      return memory::make_managed<norm2_writer<sizeof(uint16_t)>>(hdr);
+      return memory::make_managed<Norm2Writer<sizeof(uint16_t)>>(kVersion);
     default:
-      return memory::make_managed<norm2_writer<sizeof(uint32_t)>>(hdr);
+      assert(num_bytes == sizeof(uint32_t));
+      return memory::make_managed<Norm2Writer<sizeof(uint32_t)>>(kVersion);
   }
 
   return nullptr;
 }
 
-REGISTER_ATTRIBUTE(norm);
-REGISTER_ATTRIBUTE(norm2);
+REGISTER_ATTRIBUTE(Norm);
+REGISTER_ATTRIBUTE(Norm2);
 
 } // iresearch
