@@ -31,7 +31,7 @@ void AssertNorm2Header(irs::bytes_ref header,
                        uint32_t min,
                        uint32_t max) {
   ASSERT_FALSE(header.null());
-  ASSERT_EQ(12, header.size());
+  ASSERT_EQ(9, header.size());
 
   auto* p = header.c_str();
   ASSERT_EQ(static_cast<uint32_t>(version),
@@ -46,7 +46,7 @@ TEST(Norm2HeaderTest, Construct) {
   ASSERT_EQ(1, hdr.NumBytes());
 
   irs::bstring buf;
-  hdr.Write(buf);
+  irs::Norm2Header::Write(hdr, buf);
   AssertNorm2Header(buf,
                     irs::Norm2Version::kMin,
                     std::numeric_limits<uint32_t>::max(),
@@ -64,7 +64,7 @@ TEST(Norm2HeaderTest, ResetByValue) {
     ASSERT_EQ(sizeof(value_type), hdr.NumBytes());
 
     irs::bstring buf;
-    hdr.Write(buf);
+    irs::Norm2Header::Write(hdr, buf);
     AssertNorm2Header(buf,
                       irs::Norm2Version::kMin,
                       std::numeric_limits<value_type>::max()-2,
@@ -74,6 +74,15 @@ TEST(Norm2HeaderTest, ResetByValue) {
   AssertNumBytes(irs::byte_type{}); // 1-byte header
   AssertNumBytes(uint16_t{}); // 2-byte header
   AssertNumBytes(uint32_t{}); // 4-byte header
+}
+
+TEST(Norm2HeaderTest, ReadInvalid) {
+  ASSERT_FALSE(irs::Norm2Header::Read(irs::bytes_ref::NIL).has_value());
+  ASSERT_FALSE(irs::Norm2Header::Read(irs::bytes_ref::EMPTY).has_value());
+  {
+    constexpr irs::byte_type kBuf[3]{};
+    ASSERT_FALSE(irs::Norm2Header::Read({ kBuf, sizeof kBuf}).has_value());
+  }
 }
 
 TEST(Norm2HeaderTest, ResetByPayload) {
@@ -88,7 +97,7 @@ TEST(Norm2HeaderTest, ResetByPayload) {
     ASSERT_EQ(sizeof(value_type), hdr.NumBytes());
 
     buf.clear();
-    hdr.Write(buf);
+    irs::Norm2Header::Write(hdr, buf);
     AssertNorm2Header(buf,
                       version,
                       std::numeric_limits<value_type>::max()-2,
@@ -101,9 +110,11 @@ TEST(Norm2HeaderTest, ResetByPayload) {
   {
     irs::bstring buf;
     WriteHeader(irs::byte_type{}, irs::Norm2Version::kMin, buf);
-    ASSERT_TRUE(acc.Reset(buf));
+    auto hdr = irs::Norm2Header::Read(buf);
+    ASSERT_TRUE(hdr.has_value());
+    ASSERT_TRUE(acc.Reset(hdr.value()));
     buf.clear();
-    acc.Write(buf);
+    irs::Norm2Header::Write(acc, buf);
 
     AssertNorm2Header(buf,
                       irs::Norm2Version::kMin,
@@ -115,9 +126,11 @@ TEST(Norm2HeaderTest, ResetByPayload) {
   {
     irs::bstring buf;
     WriteHeader(uint16_t{}, static_cast<irs::Norm2Version>(42), buf);
-    ASSERT_FALSE(acc.Reset(buf));
+    auto hdr = irs::Norm2Header::Read(buf);
+    ASSERT_TRUE(hdr.has_value());
+    ASSERT_TRUE(acc.Reset(hdr.value()));
     buf.clear();
-    acc.Write(buf);
+    irs::Norm2Header::Write(acc, buf);
 
     AssertNorm2Header(buf,
                       irs::Norm2Version::kMin,
@@ -129,9 +142,11 @@ TEST(Norm2HeaderTest, ResetByPayload) {
   {
     irs::bstring buf;
     WriteHeader(uint16_t{}, irs::Norm2Version::kMin, buf);
-    ASSERT_TRUE(acc.Reset(buf));
+    auto hdr = irs::Norm2Header::Read(buf);
+    ASSERT_TRUE(hdr.has_value());
+    ASSERT_TRUE(acc.Reset(hdr.value()));
     buf.clear();
-    acc.Write(buf);
+    irs::Norm2Header::Write(acc, buf);
 
     AssertNorm2Header(buf,
                       irs::Norm2Version::kMin,
@@ -143,9 +158,11 @@ TEST(Norm2HeaderTest, ResetByPayload) {
   {
     irs::bstring buf;
     WriteHeader(uint32_t{}, irs::Norm2Version::kMin, buf);
-    ASSERT_TRUE(acc.Reset(buf));
+    auto hdr = irs::Norm2Header::Read(buf);
+    ASSERT_TRUE(hdr.has_value());
+    ASSERT_TRUE(acc.Reset(hdr.value()));
     buf.clear();
-    acc.Write(buf);
+    irs::Norm2Header::Write(acc, buf);
 
     AssertNorm2Header(buf,
                       irs::Norm2Version::kMin,

@@ -79,7 +79,7 @@ class IRESEARCH_API Norm : public attribute {
 static_assert(std::is_nothrow_move_constructible_v<Norm>);
 static_assert(std::is_nothrow_move_assignable_v<Norm>);
 
-enum class Norm2Version : uint32_t {
+enum class Norm2Version : byte_type {
   kMin = 0
 };
 
@@ -94,7 +94,7 @@ class IRESEARCH_API Norm2Header final {
     max_ = std::max(max_, value);
   }
 
-  bool Reset(bytes_ref payload) noexcept;
+  bool Reset(const Norm2Header& hdr) noexcept;
 
   size_t NumBytes() const noexcept {
     if (max_ <= std::numeric_limits<byte_type>::max()) {
@@ -106,28 +106,26 @@ class IRESEARCH_API Norm2Header final {
     }
   }
 
-  void Write(bstring& out) const {
-    out.resize(ByteSize());
-
-    auto* p = out.data();
-    irs::write(p, static_cast<uint32_t>(ver_));
-    irs::write(p, min_);
-    irs::write(p, max_);
-  }
+  static void Write(const Norm2Header& hdr, bstring& out);
+  static std::optional<Norm2Header> Read(irs::bytes_ref payload) noexcept;
 
  private:
   constexpr static size_t ByteSize() noexcept {
     return sizeof(ver_) + sizeof(min_) + sizeof(max_);
   }
 
-  Norm2Version ver_;
   uint32_t min_{std::numeric_limits<uint32_t>::max()};
   uint32_t max_{std::numeric_limits<uint32_t>::min()};
+  Norm2Version ver_;
 };
 
-template<size_t NumBytes>
+template<typename T>
 class Norm2Writer final : public feature_writer {
  public:
+  static_assert(std::is_same_v<T, byte_type> ||
+                std::is_same_v<T, uint16_t>  ||
+                std::is_same_v<T, uint32_t>);
+
   explicit Norm2Writer(Norm2Version ver) noexcept
     : hdr_{ver} {
   }
@@ -169,31 +167,26 @@ class Norm2Writer final : public feature_writer {
   }
 
   virtual void finish(bstring& out) final {
-    hdr_.Write(out);
+    Norm2Header::Write(hdr_, out);
   }
 
  private:
   static void WriteValue(data_output& out, uint32_t value) {
-    static_assert(NumBytes == sizeof(byte_type) ||
-                  NumBytes == sizeof(uint16_t) ||
-                  NumBytes == sizeof(uint32_t));
-
-    if constexpr (NumBytes == sizeof(byte_type)) {
+    if constexpr (sizeof(T) == sizeof(byte_type)) {
       out.write_byte(static_cast<byte_type>(value & 0xFF));
     }
 
-    if constexpr (NumBytes == sizeof(uint16_t)) {
+    if constexpr (sizeof(T) == sizeof(uint16_t)) {
       out.write_short(static_cast<uint16_t>(value & 0xFFFF));
     }
 
-    if constexpr (NumBytes == sizeof(uint32_t)) {
+    if constexpr (sizeof(T) == sizeof(uint32_t)) {
       out.write_int(value);
     }
   }
 
   Norm2Header hdr_;
 };
-
 
 struct Norm2ReaderContext : NormReaderContext {
   bool Reset(const sub_reader& segment,
@@ -208,6 +201,8 @@ struct Norm2ReaderContext : NormReaderContext {
 
 class IRESEARCH_API Norm2 : public attribute {
  public:
+  using value_type = uint32_t;
+
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept {
     return "iresearch::norm2";
@@ -215,33 +210,27 @@ class IRESEARCH_API Norm2 : public attribute {
 
   static feature_writer::ptr MakeWriter(range<bytes_ref> payload);
 
-  template<size_t NumBytes>
+  template<typename T>
   static auto MakeReader(NormReaderContext&& ctx) {
-    static_assert(NumBytes == sizeof(byte_type) ||
-                  NumBytes == sizeof(uint16_t) ||
-                  NumBytes == sizeof(uint32_t));
+    static_assert(std::is_same_v<T, byte_type> ||
+                  std::is_same_v<T, uint16_t>  ||
+                  std::is_same_v<T, uint32_t>);
+
     assert(ctx.it);
     assert(ctx.payload);
     assert(ctx.doc);
 
-    return [ctx = std::move(ctx)]() mutable -> uint32_t {
-      const doc_id_t doc = ctx.doc->value;
-
-      if (IRS_LIKELY(doc == ctx.it->seek(doc))) {
-        assert(NumBytes == ctx.payload->value.size());
+    return [ctx = std::move(ctx)]() -> value_type {
+      if (const doc_id_t doc = ctx.doc->value;
+          IRS_LIKELY(doc == ctx.it->seek(doc))) {
+        assert(sizeof(T) == ctx.payload->value.size());
         const auto* value = ctx.payload->value.c_str();
 
-        if constexpr (NumBytes == sizeof(irs::byte_type)) {
+        if constexpr (std::is_same_v<T, irs::byte_type>) {
           return *value;
         }
 
-        if constexpr (NumBytes == sizeof(uint16_t)) {
-          return irs::read<uint16_t>(value);
-        }
-
-        if constexpr (NumBytes == sizeof(uint32_t)) {
-          return irs::read<uint32_t>(value);
-        }
+        return irs::read<T>(value);
       }
 
       // we should investigate why we failed to find a norm2 value for doc
@@ -255,11 +244,11 @@ class IRESEARCH_API Norm2 : public attribute {
   static auto MakeReader(Norm2ReaderContext&& ctx, Func&& func) {
     switch (ctx.num_bytes) {
       case sizeof(uint8_t):
-        return func(MakeReader<sizeof(uint8_t)>(std::move(ctx)));
+        return func(MakeReader<uint8_t>(std::move(ctx)));
       case sizeof(uint16_t):
-        return func(MakeReader<sizeof(uint16_t)>(std::move(ctx)));
+        return func(MakeReader<uint16_t>(std::move(ctx)));
       default:
-        return func(MakeReader<sizeof(uint32_t)>(std::move(ctx)));
+        return func(MakeReader<uint32_t>(std::move(ctx)));
     }
   }
 };

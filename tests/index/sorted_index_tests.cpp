@@ -321,7 +321,7 @@ class sorted_index_test_case : public tests::index_test_base {
        hdr.Reset(1);
 
        irs::bstring buf(hdr.NumBytes(), 0);
-       hdr.Write(buf);
+       irs::Norm2Header::Write(hdr, buf);
 
        check_feature_header(segment, field,
                             irs::type<irs::Norm2>::id(),
