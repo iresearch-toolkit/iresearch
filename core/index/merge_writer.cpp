@@ -1261,11 +1261,8 @@ bool write_fields(
   REGISTER_TIMER_DETAILED();
   assert(cs.valid());
 
-  auto field_writer = meta.codec->get_field_writer(true);
-  field_writer->prepare(flush_state);
-
+  feature_map_t features;
   irs::type_info::type_id feature{};
-
   std::vector<bytes_ref> hdrs;
   hdrs.reserve(field_itr.size());
 
@@ -1303,7 +1300,8 @@ bool write_fields(
     return field_itr.visit(add_iterators);
   };
 
-  feature_map_t features;
+  auto field_writer = meta.codec->get_field_writer(true);
+  field_writer->prepare(flush_state);
 
   while (field_itr.next()) {
     features.clear();
@@ -1341,7 +1339,7 @@ bool write_fields(
               return string_ref::NIL;
             },
             std::move(value_writer));
-      } else {
+      } else if (!factory) { // Otherwise factory has failed to instantiate writer
         res = cs.insert(
             feature_itr, info,
             [](bstring&) {
@@ -1355,7 +1353,7 @@ bool write_fields(
       }
 
       if (!res.has_value()) {
-        return false; // failed to insert all values
+        return false; // Failed to insert all values
       }
 
       features[feature] = res.value();
@@ -1411,7 +1409,7 @@ doc_id_t compute_doc_ids(
 
 const merge_writer::flush_progress_t kProgressNoop = [](){ return true; };
 
-} // LOCAL
+} // namespace {
 
 namespace iresearch {
 

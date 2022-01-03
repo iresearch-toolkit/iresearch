@@ -26,19 +26,45 @@
 
 namespace {
 
-const irs::document kInvalidDocument;
+using namespace irs;
+
+class norm_writer final : public feature_writer {
+ public:
+  virtual void write(
+      const field_stats& stats,
+      doc_id_t doc,
+      // cppcheck-suppress constParameter
+      columnstore_writer::values_writer_f& writer) final {
+    if (stats.len > 0) {
+      const float_t value = 1.f / float_t(std::sqrt(double_t(stats.len)));
+      if (value != norm::DEFAULT()) {
+        auto& stream = writer(doc);
+        write_zvfloat(stream, value);
+      }
+    }
+  }
+
+  virtual void write(
+      data_output& out,
+      bytes_ref payload) {
+    if (!payload.empty()) {
+      out.write_bytes(payload.c_str(), payload.size());
+    }
+  }
+
+  virtual void finish(bstring& /*out*/) final { }
+};
+
+const document kInvalidDocument;
+norm_writer kNormWriter;
 
 }
 
 namespace iresearch {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         norm_base
-// -----------------------------------------------------------------------------
-
 norm_base::norm_base() noexcept
-  : payload_(nullptr),
-    doc_(&kInvalidDocument) {
+  : payload_{nullptr},
+    doc_{&kInvalidDocument} {
 }
 
 bool norm_base::empty() const noexcept {
@@ -47,48 +73,26 @@ bool norm_base::empty() const noexcept {
 
 bool norm_base::reset(
     const sub_reader& reader,
-    field_id column,
+    field_id column_id,
     const document& doc) {
-  const auto* column_reader = reader.column(column);
+  const auto* column = reader.column(column_id);
 
-  if (!column_reader) {
-    return false;
-  }
-
-  column_it_ = column_reader->iterator(false);
-  if (!column_it_) {
-    return false;
-  }
-
-  payload_ = irs::get<irs::payload>(*column_it_);
-  if (!payload_) {
-    return false;
-  }
-  doc_ = &doc;
-  return true;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              norm
-// -----------------------------------------------------------------------------
-
-void norm_writer::write(
-    const field_stats& stats,
-    doc_id_t doc,
-    columnstore_writer::values_writer_f& writer) {
-  if (stats.len > 0) {
-    const float_t value = 1.f / float_t(std::sqrt(double_t(stats.len)));
-    if (value != norm::DEFAULT()) {
-      auto& stream = writer(doc);
-      write_zvfloat(stream, value);
+  if (column) {
+    column_it_ = column->iterator(false);
+    if (IRS_LIKELY(column_it_)) {
+      payload_ = irs::get<irs::payload>(*column_it_);
+      if (IRS_LIKELY(payload_)) {
+        doc_ = &doc;
+        return true;
+      }
     }
   }
+
+  return false;
 }
 
 /*static*/ feature_writer::ptr norm::make_writer(range<bytes_ref> /*payload*/) {
-  static norm_writer kWriter;
-
-  return memory::to_managed<feature_writer, false>(&kWriter);
+  return memory::to_managed<feature_writer, false>(&kNormWriter);
 }
 
 float_t norm::read() const {
@@ -97,25 +101,38 @@ float_t norm::read() const {
     return DEFAULT();
   }
   assert(payload_);
-  // TODO: create set of helpers to decode float from buffer directly
-  bytes_ref_input in(payload_->value);
+  bytes_ref_input in{payload_->value};
   return read_zvfloat(in);
 }
 
-REGISTER_ATTRIBUTE(norm);
+bool norm2_header::reset(bytes_ref payload) noexcept {
+  if (IRS_LIKELY(payload.size() == byte_size())) {
+    auto* p = payload.c_str();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                             norm2
-// -----------------------------------------------------------------------------
+    const Norm2Version ver{irs::read<uint32_t>(p)};
+    if (ver != ver_) {
+      IR_FRMT_ERROR("'norm2' header version mismatch, expected '%u', got '%u'",
+                    static_cast<uint32_t>(ver_), static_cast<uint32_t>(ver));
+      return false;
+    }
 
-REGISTER_ATTRIBUTE(norm2);
-
-/*static*/ feature_writer::ptr norm2::make_writer(range<bytes_ref> headers) {
-  if (headers.empty()) {
-    return memory::make_managed<norm2_writer<sizeof(uint32_t)>>(norm2_header{});
+    min_ = std::min(irs::read<decltype(min_)>(p), min_);
+    max_ = std::max(irs::read<decltype(max_)>(p), max_);
+    return true;
   }
 
-  norm2_header hdr{};
+  IR_FRMT_ERROR("Invalid 'norm2' header size " IR_SIZE_T_SPECIFIER "",
+                payload.size());
+  return false;
+}
+
+/*static*/ feature_writer::ptr norm2::make_writer(range<bytes_ref> headers) {
+  norm2_header hdr{Norm2Version::kMin};
+
+  if (headers.empty()) {
+    return memory::make_managed<norm2_writer<sizeof(uint32_t)>>(hdr);
+  }
+
   for (auto header : headers) {
     if (!hdr.reset(header)) {
       return nullptr;
@@ -133,5 +150,8 @@ REGISTER_ATTRIBUTE(norm2);
 
   return nullptr;
 }
+
+REGISTER_ATTRIBUTE(norm);
+REGISTER_ATTRIBUTE(norm2);
 
 } // iresearch

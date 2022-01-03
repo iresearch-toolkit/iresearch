@@ -40,33 +40,11 @@ class norm_base {
   doc_iterator::ptr column_it_;
   const payload* payload_;
   const document* doc_;
-}; // norm_base
+};
 
 static_assert(std::is_nothrow_move_constructible_v<norm_base>);
 static_assert(std::is_nothrow_move_assignable_v<norm_base>);
 
-class norm_writer final : public feature_writer {
- public:
-  virtual void write(
-      const field_stats& stats,
-      doc_id_t doc,
-      // cppcheck-suppress constParameter
-      columnstore_writer::values_writer_f& writer) final;
-
-  virtual void write(
-      data_output& out,
-      bytes_ref payload) {
-    if (!payload.empty()) {
-      out.write_bytes(payload.c_str(), payload.size());
-    }
-  }
-
-  virtual void finish(bstring& /*out*/) final { }
-};
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class norm
-//////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API norm : public norm_base {
  public:
   // DO NOT CHANGE NAME
@@ -81,27 +59,27 @@ class IRESEARCH_API norm : public norm_base {
   static feature_writer::ptr make_writer(range<bytes_ref> payload);
 
   float_t read() const;
-}; // norm
+};
 
 static_assert(std::is_nothrow_move_constructible_v<norm>);
 static_assert(std::is_nothrow_move_assignable_v<norm>);
 
-class norm2_header final {
+enum class Norm2Version : uint32_t {
+  kMin = 0
+};
+
+class IRESEARCH_API norm2_header final {
  public:
+  explicit norm2_header(Norm2Version ver) noexcept
+    : ver_{ver} {
+  }
+
   void update(uint32_t value) noexcept {
     min_ = std::min(min_, value);
     max_ = std::max(max_, value);
   }
 
-  bool reset(bytes_ref payload) noexcept {
-    if (IRS_LIKELY(payload.size() == sizeof(min_) + sizeof(max_))) {
-      auto* p = payload.c_str();
-      min_ = std::min(irs::read<decltype(min_)>(p), min_);
-      max_ = std::max(irs::read<decltype(max_)>(p), max_);
-      return true;
-    }
-    return false;
-  }
+  bool reset(bytes_ref payload) noexcept;
 
   size_t num_bytes() const noexcept {
     if (max_ <= std::numeric_limits<byte_type>::max()) {
@@ -114,14 +92,20 @@ class norm2_header final {
   }
 
   void write(bstring& out) const {
-    out.resize(sizeof(min_) + sizeof(max_));
+    out.resize(byte_size());
 
     auto* p = out.data();
+    irs::write(p, static_cast<uint32_t>(ver_));
     irs::write(p, min_);
     irs::write(p, max_);
   }
 
  private:
+  constexpr static size_t byte_size() noexcept {
+    return sizeof(ver_) + sizeof(min_) + sizeof(max_);
+  }
+
+  Norm2Version ver_;
   uint32_t min_{std::numeric_limits<uint32_t>::max()};
   uint32_t max_{std::numeric_limits<uint32_t>::min()};
 };
@@ -177,9 +161,6 @@ class norm2_writer final : public feature_writer {
   norm2_header hdr_;
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class norm2
-//////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API norm2 : public norm_base {
  public:
   // DO NOT CHANGE NAME
@@ -204,7 +185,7 @@ class IRESEARCH_API norm2 : public norm_base {
 
     return 1;
   }
-}; // norm2
+};
 
 static_assert(std::is_nothrow_move_constructible_v<norm2>);
 static_assert(std::is_nothrow_move_assignable_v<norm2>);
