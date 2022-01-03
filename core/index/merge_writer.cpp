@@ -1042,7 +1042,7 @@ std::optional<field_id> columnstore::insert(
 
     do {
       if (!progress_()) {
-        // Stop was requsted
+        // Stop was requested
         return false;
       }
 
@@ -1058,7 +1058,7 @@ std::optional<field_id> columnstore::insert(
 
   do {
     if (!write_column(*begin)) {
-      // Stop was requsted
+      // Stop was requested
       return std::nullopt;
     }
 
@@ -1090,7 +1090,7 @@ std::optional<field_id> columnstore::insert(
 
     do {
       if (!progress_()) {
-        // Stop was requsted
+        // Stop was requested
         return std::nullopt;
       }
 

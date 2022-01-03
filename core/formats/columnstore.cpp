@@ -205,7 +205,7 @@ void read_compact(
 
   // -ve to mark uncompressed
   if (size < 0) {
-    decode_buf.resize(buf_size); // ensure that we have enough space to store decompressed data
+    decode_buf.resize(buf_size); // Ensure that we have enough space to store decompressed data
 
 #ifdef IRESEARCH_DEBUG
     const auto read = in.read_bytes(const_cast<byte_type*>(decode_buf.c_str()), buf_size);
@@ -229,8 +229,11 @@ void read_compact(
       size));
   }
 
-  // try direct buffer access
-  const byte_type* buf = cipher ? nullptr : in.read_buffer(buf_size + bytes_io<uint64_t>::const_max_vsize, BufferHint::NORMAL);
+  // Try direct buffer access
+  const byte_type* buf = cipher
+      ? nullptr
+      : in.read_buffer(buf_size + bytes_io<uint64_t>::const_max_vsize,
+                       BufferHint::NORMAL);
 
   uint64_t buff_size = 0;
   if (buf) {
@@ -256,7 +259,7 @@ void read_compact(
     buff_size = irs::read_zvlong(in);
   }
 
-  // ensure that we have enough space to store decompressed data
+  // Ensure that we have enough space to store decompressed data
   decode_buf.resize(buff_size + MAX_DATA_BLOCK_SIZE);
 
   const auto decoded = decompressor->decompress(
@@ -300,13 +303,14 @@ class meta_writer final {
  private:
   encryption::stream::ptr out_cipher_;
   index_output::ptr out_;
-  size_t count_{}; // number of written objects
-  field_id max_id_{}; // the highest column id written (optimization for vector resize on read to highest id)
+  size_t count_{}; // Number of written objects
+  field_id max_id_{}; // The highest column id written (optimization for vector resize on read to highest id)
   ColumnMetaVersion version_;
 }; // meta_writer
 
 void meta_writer::prepare(directory& dir, string_ref segment) {
   auto filename = irs::file_name(segment, meta_writer::FORMAT_EXT);
+  assert(0 == count_); // Make sure there were no writes or flush was called
 
   out_ = dir.create(filename);
 
@@ -407,13 +411,22 @@ bool meta_reader::prepare(
 
   const auto checksum = format_utils::checksum(*in_);
 
-  constexpr const size_t FOOTER_LEN =
+  constexpr size_t kFooterLength =
       sizeof(uint64_t) // count
     + sizeof(uint64_t) // max id
     + format_utils::FOOTER_LEN;
 
+  const size_t length = in_->length();
+
+  if (length < kFooterLength) {
+    throw index_error(string_utils::to_string(
+      "invalid column id: " IR_UINT64_T_SPECIFIER " footer length, "
+        "got " IR_UINT64_T_SPECIFIER ", path: %s",
+      max_id, length, filename.c_str()));
+  }
+
   // seek to start of meta footer (before count and max_id)
-  in_->seek(in_->length() - FOOTER_LEN);
+  in_->seek(length - kFooterLength);
   count = in_->read_long(); // read number of objects to read
   max_id = in_->read_long(); // read highest column id written
 
@@ -448,7 +461,7 @@ bool meta_reader::prepare(
         std::move(in_),
         *in_cipher_,
         blocks_in_buffer,
-        FOOTER_LEN);
+        kFooterLength);
     }
   }
 
@@ -2596,7 +2609,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
 
     if (factory_id >= IRESEARCH_COUNTOF(COLUMN_FACTORIES)) {
       throw index_error(string_utils::to_string(
-        "Failed to load column id=" IR_SIZE_T_SPECIFIER "), got invalid properties=%d",
+        "Failed to load column id=" IR_SIZE_T_SPECIFIER ", got invalid properties=%d",
         i, static_cast<uint32_t>(props)));
     }
 
