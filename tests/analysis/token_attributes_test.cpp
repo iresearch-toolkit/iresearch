@@ -79,6 +79,13 @@ TEST(token_attributes_test, norm) {
   ASSERT_TRUE(norm.empty());
 }
 
+TEST(token_attributes_test, norm2) {
+  static_assert("iresearch::norm2" == irs::type<irs::norm2>::name());
+
+  irs::norm2 norm;
+  ASSERT_TRUE(norm.empty());
+}
+
 TEST(token_attributes_test, position) {
   static_assert("position" == irs::type<irs::position>::name());
 }
