@@ -230,11 +230,11 @@ class IRESEARCH_API Norm2 : public attribute {
   static feature_writer::ptr MakeWriter(range<const bytes_ref> payload);
 
   template<typename T>
-  static auto MakeReader(NormReaderContext&& ctx) {
+  static auto MakeReader(Context&& ctx) {
     static_assert(std::is_same_v<T, byte_type> ||
                   std::is_same_v<T, uint16_t>  ||
                   std::is_same_v<T, uint32_t>);
-
+    assert(ctx.num_bytes == sizeof(T));
     assert(ctx.it);
     assert(ctx.payload);
     assert(ctx.doc);

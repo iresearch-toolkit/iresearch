@@ -23,6 +23,7 @@
 #include "index_tests.hpp"
 
 #include "index/norm.hpp"
+#include "search/cost.hpp"
 
 namespace  {
 
@@ -36,11 +37,16 @@ void AssertNorm2Header(irs::bytes_ref header,
   ASSERT_EQ(10, header.size());
 
   auto* p = header.c_str();
-  ASSERT_EQ(static_cast<uint32_t>(kVersion), *p++); // Version
-  ASSERT_EQ(num_bytes, *p++); // Number of bytes
-  ASSERT_EQ(min, irs::read<uint32_t>(p)); // Min
-  ASSERT_EQ(max, irs::read<uint32_t>(p)); // Max
+  const auto actual_verson = *p++;
+  const auto actual_num_bytes = *p++;
+  const auto actual_min = irs::read<uint32_t>(p);
+  const auto actual_max = irs::read<uint32_t>(p);
   ASSERT_EQ(p, header.end());
+
+  ASSERT_EQ(static_cast<uint32_t>(kVersion), actual_verson);
+  ASSERT_EQ(num_bytes, actual_num_bytes);
+  ASSERT_EQ(min, actual_min);
+  ASSERT_EQ(max, actual_max);
 }
 
 TEST(Norm2HeaderTest, Construct) {
@@ -264,6 +270,7 @@ TEST_P(Norm2TestCase, CheckNorms) {
             doc.sorted = field;
           }
         }
+        count += static_cast<size_t>(is_name);
       }
   });
 
@@ -308,6 +315,78 @@ TEST_P(Norm2TestCase, CheckNorms) {
     doc3->indexed.begin(), doc3->indexed.end(),
     doc3->stored.begin(), doc3->stored.end());
   assert_index();
+
+  auto reader = open_reader();
+  ASSERT_EQ(1, reader.size());
+
+  auto& segment = reader[0];
+  ASSERT_EQ(1, segment.size());
+  ASSERT_EQ(4, segment.docs_count());
+  ASSERT_EQ(4, segment.live_docs_count());
+
+  auto assert_norm_column = [&](irs::string_ref name,
+                                std::vector<uint32_t> expected_values) {
+    auto* field = segment.field(name);
+    ASSERT_NE(nullptr, field);
+    auto& meta = field->meta();
+    ASSERT_EQ(name, meta.name);
+    ASSERT_EQ(1, meta.features.size());
+
+    auto it = meta.features.find(irs::type<irs::Norm2>::id());
+    ASSERT_NE(it, meta.features.end());
+    ASSERT_TRUE(irs::field_limits::valid(it->second));
+
+    auto* column = segment.column(it->second);
+    ASSERT_NE(nullptr, column);
+    ASSERT_EQ(it->second, column->id());
+    ASSERT_TRUE(column->name().null());
+
+    const auto min = std::min_element(std::begin(expected_values),
+                                      std::end(expected_values));
+    ASSERT_NE(min, std::end(expected_values));
+    const auto max = std::max_element(std::begin(expected_values),
+                                      std::end(expected_values));
+    ASSERT_NE(max, std::end(expected_values));
+    ASSERT_LE(min, max);
+    AssertNorm2Header(column->payload(), sizeof(uint32_t), *min, *max);
+
+    auto values = column->iterator(false);
+    auto* cost = irs::get<irs::cost>(*values);
+    ASSERT_NE(nullptr, cost);
+    ASSERT_EQ(cost->estimate(), expected_values.size());
+    ASSERT_NE(nullptr, values);
+    auto* payload = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, payload);
+    auto* doc = irs::get<irs::document>(*values);
+    ASSERT_NE(nullptr, doc);
+
+    irs::Norm2ReaderContext ctx;
+    ASSERT_EQ(0, ctx.num_bytes);
+    ASSERT_EQ(nullptr, ctx.it);
+    ASSERT_EQ(nullptr, ctx.payload);
+    ASSERT_EQ(nullptr, ctx.doc);
+    ASSERT_TRUE(ctx.Reset(segment, it->second, *doc));
+    ASSERT_EQ(sizeof(uint32_t), ctx.num_bytes);
+    ASSERT_NE(nullptr, ctx.it);
+    ASSERT_NE(nullptr, ctx.payload);
+    ASSERT_EQ(irs::get<irs::payload>(*ctx.it), ctx.payload);
+    ASSERT_EQ(doc, ctx.doc);
+
+    auto reader = irs::Norm2::MakeReader<uint32_t>(std::move(ctx));
+
+    for (auto expected_value = std::begin(expected_values);
+         values->next();
+         ++expected_value) {
+      ASSERT_EQ(4, payload->value.size());
+
+      auto* p = payload->value.c_str();
+      const auto value = irs::read<uint32_t>(p);
+      ASSERT_EQ(*expected_value , value);
+      ASSERT_EQ(value, reader());
+    }
+  };
+
+  assert_norm_column("name", { 1, 2, 3, 4});
 }
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
