@@ -49,6 +49,8 @@ static_assert(std::is_nothrow_move_assignable_v<NormReaderContext>);
 
 class IRESEARCH_API Norm : public attribute {
  public:
+  using Context = NormReaderContext;
+
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept {
     return "norm";
@@ -60,7 +62,7 @@ class IRESEARCH_API Norm : public attribute {
 
   static feature_writer::ptr MakeWriter(range<bytes_ref> payload);
 
-  static auto MakeReader(NormReaderContext&& ctx) {
+  static auto MakeReader(Context&& ctx) {
     assert(ctx.it);
     assert(ctx.payload);
     assert(ctx.doc);
@@ -83,10 +85,28 @@ enum class Norm2Version : byte_type {
   kMin = 0
 };
 
+enum class Norm2Encoding : byte_type {
+  Byte = sizeof(byte_type),
+  Short = sizeof(uint16_t),
+  Int = sizeof(uint32_t)
+};
+
 class IRESEARCH_API Norm2Header final {
  public:
-  explicit Norm2Header(Norm2Version ver) noexcept
-    : ver_{ver} {
+  constexpr static size_t ByteSize() noexcept {
+    return sizeof(Norm2Version) + sizeof(encoding_) +
+           sizeof(min_) + sizeof(max_);
+  }
+
+  constexpr static bool CheckNumBytes(size_t num_bytes) noexcept {
+    return num_bytes == sizeof(byte_type) ||
+           num_bytes == sizeof(uint16_t) ||
+           num_bytes == sizeof(uint32_t);
+  }
+
+  explicit Norm2Header(Norm2Encoding encoding) noexcept
+    : encoding_{encoding} {
+    assert(CheckNumBytes(static_cast<size_t>(encoding_)));
   }
 
   void Reset(uint32_t value) noexcept {
@@ -94,9 +114,9 @@ class IRESEARCH_API Norm2Header final {
     max_ = std::max(max_, value);
   }
 
-  bool Reset(const Norm2Header& hdr) noexcept;
+  void Reset(const Norm2Header& hdr) noexcept;
 
-  size_t NumBytes() const noexcept {
+  size_t MaxNumBytes() const noexcept {
     if (max_ <= std::numeric_limits<byte_type>::max()) {
       return sizeof(byte_type);
     } else if (max_ <= std::numeric_limits<uint16_t>::max()) {
@@ -106,17 +126,17 @@ class IRESEARCH_API Norm2Header final {
     }
   }
 
+  size_t NumBytes() const noexcept {
+    return static_cast<size_t>(encoding_);
+  }
+
   static void Write(const Norm2Header& hdr, bstring& out);
   static std::optional<Norm2Header> Read(irs::bytes_ref payload) noexcept;
 
  private:
-  constexpr static size_t ByteSize() noexcept {
-    return sizeof(ver_) + sizeof(min_) + sizeof(max_);
-  }
-
   uint32_t min_{std::numeric_limits<uint32_t>::max()};
   uint32_t max_{std::numeric_limits<uint32_t>::min()};
-  Norm2Version ver_;
+  Norm2Encoding encoding_; // Number of bytes used for encoding
 };
 
 template<typename T>
@@ -126,8 +146,8 @@ class Norm2Writer final : public feature_writer {
                 std::is_same_v<T, uint16_t>  ||
                 std::is_same_v<T, uint32_t>);
 
-  explicit Norm2Writer(Norm2Version ver) noexcept
-    : hdr_{ver} {
+  explicit Norm2Writer() noexcept
+    : hdr_{Norm2Encoding{sizeof(T)}} {
   }
 
   virtual void write(
@@ -141,9 +161,7 @@ class Norm2Writer final : public feature_writer {
     WriteValue(stream, stats.len);
   }
 
-  virtual void write(
-      data_output& out,
-      bytes_ref payload) {
+  virtual void write(data_output& out, bytes_ref payload) {
     uint32_t value;
 
     switch (payload.size()) {
@@ -201,7 +219,8 @@ struct Norm2ReaderContext : NormReaderContext {
 
 class IRESEARCH_API Norm2 : public attribute {
  public:
-  using value_type = uint32_t;
+  using ValueType = uint32_t;
+  using Context = Norm2ReaderContext;
 
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept {
@@ -220,7 +239,7 @@ class IRESEARCH_API Norm2 : public attribute {
     assert(ctx.payload);
     assert(ctx.doc);
 
-    return [ctx = std::move(ctx)]() -> value_type {
+    return [ctx = std::move(ctx)]() -> ValueType {
       if (const doc_id_t doc = ctx.doc->value;
           IRS_LIKELY(doc == ctx.it->seek(doc))) {
         assert(sizeof(T) == ctx.payload->value.size());
@@ -241,7 +260,9 @@ class IRESEARCH_API Norm2 : public attribute {
   }
 
   template<typename Func>
-  static auto MakeReader(Norm2ReaderContext&& ctx, Func&& func) {
+  static auto MakeReader(Context&& ctx, Func&& func) {
+    assert(Norm2Header::CheckNumBytes(ctx.num_bytes));
+
     switch (ctx.num_bytes) {
       case sizeof(uint8_t):
         return func(MakeReader<uint8_t>(std::move(ctx)));

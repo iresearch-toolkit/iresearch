@@ -89,7 +89,7 @@ bool Norm2ReaderContext::Reset(
     field_id column_id,
     const document& doc) {
   if (NormReaderContext::Reset(reader, column_id, doc)) {
-    auto hdr = Norm2Header::Read(header);
+    const auto hdr = Norm2Header::Read(header);
     if (hdr.has_value()) {
       num_bytes = hdr.value().NumBytes();
       return true;
@@ -104,67 +104,76 @@ bool Norm2ReaderContext::Reset(
   return memory::to_managed<feature_writer, false>(&kNormWriter);
 }
 
-bool Norm2Header::Reset(const Norm2Header& hdr) noexcept {
-  if (hdr.ver_ != ver_) {
-    IR_FRMT_ERROR("'norm2' header version mismatch, expected '%u', got '%u'",
-                  static_cast<uint32_t>(ver_), static_cast<uint32_t>(hdr.ver_));
-    return false;
-  }
-
+void Norm2Header::Reset(const Norm2Header& hdr) noexcept {
   min_ = std::min(hdr.min_, min_);
   max_ = std::max(hdr.max_, max_);
-  return true;
+  encoding_ = std::max(hdr.encoding_, encoding_);
 }
 
 /*static*/ void Norm2Header::Write(const Norm2Header& hdr, bstring& out) {
   out.resize(ByteSize());
 
   auto* p = out.data();
-  irs::write(p, static_cast<byte_type>(hdr.ver_));
+  *p++ = static_cast<byte_type>(Norm2Version::kMin);
+  *p++ = static_cast<byte_type>(hdr.encoding_);
   irs::write(p, hdr.min_);
   irs::write(p, hdr.max_);
 }
 
 /*static*/ std::optional<Norm2Header> Norm2Header::Read(bytes_ref payload) noexcept {
-  if (IRS_LIKELY(payload.size() == ByteSize())) {
-    auto* p = payload.c_str();
-
-    Norm2Header hdr{Norm2Version{irs::read<byte_type>(p)}};
-    hdr.min_ = irs::read<decltype(min_)>(p);
-    hdr.max_ = irs::read<decltype(min_)>(p);
-
-    return hdr;
+  if (IRS_UNLIKELY(payload.size() != ByteSize())) {
+    IR_FRMT_ERROR("Invalid 'norm2' header size " IR_SIZE_T_SPECIFIER "",
+                  payload.size());
+    return std::nullopt;
   }
 
-  IR_FRMT_ERROR("Invalid 'norm2' header size " IR_SIZE_T_SPECIFIER "",
-                payload.size());
-  return std::nullopt;
+  const auto* p = payload.c_str();
+
+  if (const byte_type ver = *p++;
+      IRS_UNLIKELY(ver != static_cast<byte_type>(Norm2Version::kMin))) {
+    IR_FRMT_ERROR("'norm2' header version mismatch, expected '%u', got '%u'",
+                  static_cast<uint32_t>(Norm2Version::kMin),
+                  static_cast<uint32_t>(ver));
+    return std::nullopt;
+  }
+
+  const byte_type num_bytes = *p++;
+  if (IRS_UNLIKELY(!CheckNumBytes(num_bytes))) {
+    IR_FRMT_ERROR("Malformed 'norm2' header, invalid number of bytes '%u'",
+                  static_cast<uint32_t>(num_bytes));
+    return std::nullopt;
+  }
+
+  Norm2Header hdr{Norm2Encoding{num_bytes}};
+  hdr.min_ = irs::read<decltype(min_)>(p);
+  hdr.max_ = irs::read<decltype(max_)>(p);
+
+  return hdr;
 }
 
 /*static*/ feature_writer::ptr Norm2::MakeWriter(range<bytes_ref> headers) {
-  constexpr Norm2Version kVersion{Norm2Version::kMin};
-
-  size_t num_bytes{sizeof(value_type)};
+  size_t num_bytes{sizeof(ValueType)};
 
   if (!headers.empty()) {
-    Norm2Header acc{kVersion};
+    Norm2Header acc{Norm2Encoding::Byte};
     for (auto header : headers) {
       auto hdr = Norm2Header::Read(header);
-      if (!hdr.has_value() || acc.Reset(hdr.value())) {
+      if (!hdr.has_value()) {
         return nullptr;
       }
+      acc.Reset(hdr.value());
     }
-    num_bytes = acc.NumBytes();
+    num_bytes = acc.MaxNumBytes();
   }
 
   switch (num_bytes) {
     case sizeof(byte_type):
-      return memory::make_managed<Norm2Writer<byte_type>>(kVersion);
+      return memory::make_managed<Norm2Writer<byte_type>>();
     case sizeof(uint16_t):
-      return memory::make_managed<Norm2Writer<uint16_t>>(kVersion);
+      return memory::make_managed<Norm2Writer<uint16_t>>();
     default:
       assert(num_bytes == sizeof(uint32_t));
-      return memory::make_managed<Norm2Writer<uint32_t>>(kVersion);
+      return memory::make_managed<Norm2Writer<uint32_t>>();
   }
 
   return nullptr;

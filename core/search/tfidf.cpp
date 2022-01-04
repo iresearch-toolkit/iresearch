@@ -433,14 +433,14 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
       const auto& features = field.meta().features;
 
       if (auto it = features.find(irs::type<Norm2>::id()); it != features.end()) {
-         if (Norm2ReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
+         if (Norm2::Context ctx; ctx.Reset(segment, it->second, *doc)) {
            return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
                return prepare_norm_scorer(MakeNormAdapter<true>(std::move(reader))); });
          }
       }
 
       if (auto it = features.find(irs::type<Norm>::id()); it != features.end()) {
-         if (NormReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
+         if (Norm::Context ctx; ctx.Reset(segment, it->second, *doc)) {
            return prepare_norm_scorer(MakeNormAdapter<false>(
                Norm::MakeReader(std::move(ctx))));
          }
@@ -454,7 +454,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
           auto& state = *static_cast<tfidf::score_ctx*>(ctx);
           assert(state.filter_boost);
           irs::sort::score_cast<score_t>(state.score_buf) =
-            ::tfidf(state.freq->value, state.idf * state.filter_boost->value);
+              ::tfidf(state.freq->value, state.idf * state.filter_boost->value);
           return state.score_buf;
         }
       };
@@ -464,7 +464,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
         [](irs::score_ctx* ctx) noexcept -> const byte_type* {
           auto& state = *static_cast<tfidf::score_ctx*>(ctx);
           irs::sort::score_cast<score_t>(state.score_buf) =
-            ::tfidf(state.freq->value, state.idf);
+              ::tfidf(state.freq->value, state.idf);
 
           return state.score_buf;
         }
