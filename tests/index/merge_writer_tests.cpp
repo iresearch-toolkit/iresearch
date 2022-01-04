@@ -1146,11 +1146,11 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   opts.features = [](irs::type_info::type_id id) {
     irs::feature_writer_factory_t writer_factory{};
     if (irs::type<irs::Norm>::id() == id) {
-      writer_factory = [](irs::range<irs::bytes_ref>) -> irs::feature_writer::ptr {
+      writer_factory = [](irs::range<const irs::bytes_ref>) -> irs::feature_writer::ptr {
         return irs::memory::make_managed<test_feature_writer>(0);
       };
     } else if (irs::type<norm2>::id() == id) {
-      writer_factory = [](irs::range<irs::bytes_ref>) -> irs::feature_writer::ptr {
+      writer_factory = [](irs::range<const irs::bytes_ref>) -> irs::feature_writer::ptr {
         return irs::memory::make_managed<test_feature_writer>(1);
       };
     }
@@ -2969,11 +2969,11 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   opts.features = [](irs::type_info::type_id type) {
     irs::feature_writer_factory_t handler{};
     if (irs::type<irs::Norm>::id() == type) {
-      handler = [](irs::range<irs::bytes_ref>) -> irs::feature_writer::ptr {
+      handler = [](irs::range<const irs::bytes_ref>) -> irs::feature_writer::ptr {
         return irs::memory::make_managed<test_feature_writer>(0);
       };
     } else if (irs::type<norm2>::id() == type) {
-      handler = [](irs::range<irs::bytes_ref>) -> irs::feature_writer::ptr {
+      handler = [](irs::range<const irs::bytes_ref>) -> irs::feature_writer::ptr {
         return irs::memory::make_managed<test_feature_writer>(1);
       };
     }

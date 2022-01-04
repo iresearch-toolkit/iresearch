@@ -122,7 +122,7 @@ struct long_comparer : irs::comparer {
 
 struct custom_feature {
   struct header {
-    explicit header(irs::range<irs::bytes_ref> headers) noexcept {
+    explicit header(irs::range<const irs::bytes_ref> headers) noexcept {
       for (const auto header : headers) {
         update(header);
       }
@@ -146,7 +146,7 @@ struct custom_feature {
   };
 
   struct writer : irs::feature_writer {
-    explicit writer(irs::range<irs::bytes_ref> headers) noexcept
+    explicit writer(irs::range<const irs::bytes_ref> headers) noexcept
       : hdr{{}} {
       if (!headers.empty()) {
         init_header.emplace(headers);
@@ -191,7 +191,7 @@ struct custom_feature {
   };
 
   static irs::feature_writer::ptr make_writer(
-      irs::range<irs::bytes_ref> payload) {
+      irs::range<const irs::bytes_ref> payload) {
     return irs::memory::make_managed<writer>(payload);
   }
 };
@@ -295,7 +295,7 @@ class sorted_index_test_case : public tests::index_test_base {
 
   void check_features(const irs::sub_reader& segment,
                       irs::string_ref field_name,
-                      size_t count) {
+                      size_t count, bool after_consolidation) {
      auto* field_reader = segment.field(field_name);
      ASSERT_NE(nullptr, field_reader);
      auto& field = field_reader->meta();
@@ -317,7 +317,8 @@ class sorted_index_test_case : public tests::index_test_base {
 
      // irs::Norm2
      {
-       irs::Norm2Header hdr{irs::Norm2Encoding::Byte};
+       irs::Norm2Header hdr{after_consolidation ? irs::Norm2Encoding::Byte
+                                                : irs::Norm2Encoding::Int};
        hdr.Reset(1);
 
        irs::bstring buf;
@@ -492,10 +493,10 @@ TEST_P(sorted_index_test_case, simple_sequential) {
 
     // Check pluggable features
     if (supports_pluggable_features()) {
-      check_features(segment, "name", 32);
-      check_features(segment, "same", 32);
-      check_features(segment, "duplicated", 13);
-      check_features(segment, "prefix", 10);
+      check_features(segment, "name", 32, false);
+      check_features(segment, "same", 32, false);
+      check_features(segment, "duplicated", 13, false);
+      check_features(segment, "prefix", 10, false);
     }
   }
 }
@@ -687,21 +688,21 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
       // Check pluggable features
       if (supports_pluggable_features()) {
-        check_features(segment, "name", offset.second);
-        check_features(segment, "same", offset.second);
+        check_features(segment, "name", offset.second, false);
+        check_features(segment, "same", offset.second, false);
 
         {
           constexpr irs::string_ref kColumnName = "duplicated";
           auto* column = segment.column(kColumnName);
           ASSERT_NE(nullptr, column);
-          check_features(segment, kColumnName, column->size());
+          check_features(segment, kColumnName, column->size(), false);
         }
 
         {
           constexpr irs::string_ref kColumnName = "prefix";
           auto* column = segment.column(kColumnName);
           ASSERT_NE(nullptr, column);
-          check_features(segment, kColumnName, column->size());
+          check_features(segment, kColumnName, column->size(), false);
         }
       }
     }
@@ -721,6 +722,10 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
     gen.reset();
     while (auto* doc = gen.next()) {
       segment.insert(*doc);
+    }
+
+    for (auto& column : segment.columns()) {
+      column.rewrite();
     }
 
     ASSERT_NE(nullptr, writer->comparator());
@@ -857,10 +862,10 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
     // Check pluggable features in consolidated segment
     if (supports_pluggable_features()) {
-      check_features(segment, "name", 32);
-      check_features(segment, "same", 32);
-      check_features(segment, "duplicated", 13);
-      check_features(segment, "prefix", 10);
+      check_features(segment, "name", 32, true);
+      check_features(segment, "same", 32, true);
+      check_features(segment, "duplicated", 13, true);
+      check_features(segment, "prefix", 10, true);
     }
   }
 }
@@ -1030,10 +1035,10 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
 
     // Check pluggable features
     if (supports_pluggable_features()) {
-      check_features(segment, "name", 32);
-      check_features(segment, "same", 32);
-      check_features(segment, "duplicated", 13);
-      check_features(segment, "prefix", 10);
+      check_features(segment, "name", 32, false);
+      check_features(segment, "same", 32, false);
+      check_features(segment, "duplicated", 13, false);
+      check_features(segment, "prefix", 10, false);
     }
   }
 }
@@ -1229,10 +1234,10 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
 
       // Check pluggable features
       if (supports_pluggable_features()) {
-        check_features(segment, "name", 2);
-        check_features(segment, "same", 2);
-        check_features(segment, "duplicated", 2);
-        check_features(segment, "prefix", 1);
+        check_features(segment, "name", 2, false);
+        check_features(segment, "same", 2, false);
+        check_features(segment, "duplicated", 2, false);
+        check_features(segment, "prefix", 1, false);
       }
     }
 
@@ -1260,10 +1265,10 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
 
       // Check pluggable features
       if (supports_pluggable_features()) {
-        check_features(segment, "name", 2);
-        check_features(segment, "same", 2);
-        check_features(segment, "duplicated", 1);
-        check_features(segment, "prefix", 1);
+        check_features(segment, "name", 2, false);
+        check_features(segment, "same", 2, false);
+        check_features(segment, "duplicated", 1, false);
+        check_features(segment, "prefix", 1, false);
       }
     }
   }
@@ -1313,10 +1318,10 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
 
       // Check pluggable features in consolidated segment
       if (supports_pluggable_features()) {
-        check_features(segment, "name", 4);
-        check_features(segment, "same", 4);
-        check_features(segment, "duplicated", 3);
-        check_features(segment, "prefix", 2);
+        check_features(segment, "name", 4, true);
+        check_features(segment, "same", 4, true);
+        check_features(segment, "duplicated", 3, true);
+        check_features(segment, "prefix", 2, true);
       }
     }
   }
@@ -1341,6 +1346,9 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
     doc3->stored.begin(), doc3->stored.end(),
     doc3->sorted.get());
   expected_index.back().sort(*writer->comparator());
+  for (auto& column : expected_index.back().columns()) {
+    column.rewrite();
+  }
   assert_index();
 }
 
@@ -1436,10 +1444,10 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
 
       // Check pluggable features
       if (supports_pluggable_features()) {
-        check_features(segment, "name", 2);
-        check_features(segment, "same", 2);
-        check_features(segment, "duplicated", 2);
-        check_features(segment, "prefix", 1);
+        check_features(segment, "name", 2, false);
+        check_features(segment, "same", 2, false);
+        check_features(segment, "duplicated", 2, false);
+        check_features(segment, "prefix", 1, false);
       }
     }
 
@@ -1469,10 +1477,10 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
 
       // Check pluggable features
       if (supports_pluggable_features()) {
-        check_features(segment, "name", 2);
-        check_features(segment, "same", 2);
-        check_features(segment, "duplicated", 1);
-        check_features(segment, "prefix", 1);
+        check_features(segment, "name", 2, false);
+        check_features(segment, "same", 2, false);
+        check_features(segment, "duplicated", 1, false);
+        check_features(segment, "prefix", 1, false);
       }
     }
   }
@@ -1513,10 +1521,10 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
 
       // Check pluggable features
       if (supports_pluggable_features()) {
-        check_features(segment, "name", 2);
-        check_features(segment, "same", 2);
-        check_features(segment, "duplicated", 2);
-        check_features(segment, "prefix", 1);
+        check_features(segment, "name", 2, false);
+        check_features(segment, "same", 2, false);
+        check_features(segment, "duplicated", 2, false);
+        check_features(segment, "prefix", 1, false);
       }
     }
 
@@ -1546,10 +1554,10 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
 
       // Check pluggable features
       if (supports_pluggable_features()) {
-        check_features(segment, "name", 2);
-        check_features(segment, "same", 2);
-        check_features(segment, "duplicated", 1);
-        check_features(segment, "prefix", 1);
+        check_features(segment, "name", 2, false);
+        check_features(segment, "same", 2, false);
+        check_features(segment, "duplicated", 1, false);
+        check_features(segment, "prefix", 1, false);
       }
     }
   }
@@ -1597,10 +1605,10 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
 
       // Check pluggable features in consolidated segment
       if (supports_pluggable_features()) {
-        check_features(segment, "name", 3);
-        check_features(segment, "same", 3);
-        check_features(segment, "duplicated", 2);
-        check_features(segment, "prefix", 2);
+        check_features(segment, "name", 3, true);
+        check_features(segment, "same", 3, true);
+        check_features(segment, "duplicated", 2, true);
+        check_features(segment, "prefix", 2, true);
       }
     }
   }
@@ -1620,6 +1628,9 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
     doc3->indexed.begin(), doc3->indexed.end(),
     doc3->stored.begin(), doc3->stored.end(),
     doc3->sorted.get());
+  for (auto& column : expected_index.back().columns()) {
+    column.rewrite();
+  }
   expected_index.back().sort(*writer->comparator());
 
   assert_index();
@@ -1713,10 +1724,10 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
 
       // Check pluggable features
       if (supports_pluggable_features()) {
-        check_features(segment, "name", 2);
-        check_features(segment, "same", 2);
-        check_features(segment, "duplicated", 2);
-        check_features(segment, "prefix", 1);
+        check_features(segment, "name", 2, false);
+        check_features(segment, "same", 2, false);
+        check_features(segment, "duplicated", 2, false);
+        check_features(segment, "prefix", 1, false);
       }
     }
 
@@ -1747,10 +1758,10 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
 
       // Check pluggable features
       if (supports_pluggable_features()) {
-        check_features(segment, "name", 2);
-        check_features(segment, "same", 2);
-        check_features(segment, "duplicated", 1);
-        check_features(segment, "prefix", 1);
+        check_features(segment, "name", 2, false);
+        check_features(segment, "same", 2, false);
+        check_features(segment, "duplicated", 1, false);
+        check_features(segment, "prefix", 1, false);
       }
     }
   }
@@ -1802,10 +1813,10 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
 
       // Check pluggable features in consolidated segment
       if (supports_pluggable_features()) {
-        check_features(segment, "name", 4);
-        check_features(segment, "same", 4);
-        check_features(segment, "duplicated", 3);
-        check_features(segment, "prefix", 2);
+        check_features(segment, "name", 4, true);
+        check_features(segment, "same", 4, true);
+        check_features(segment, "duplicated", 3, true);
+        check_features(segment, "prefix", 2, true);
       }
     }
   }
@@ -1829,6 +1840,9 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
     doc3->indexed.begin(), doc3->indexed.end(),
     doc3->stored.begin(), doc3->stored.end(),
     &empty_field);
+  for (auto& column : expected_index.back().columns()) {
+    column.rewrite();
+  }
   expected_index.back().sort(*writer->comparator());
 
   assert_index();

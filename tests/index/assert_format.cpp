@@ -192,6 +192,15 @@ void column_values::insert(irs::doc_id_t key, irs::bytes_ref value) {
   }
 }
 
+irs::bstring column_values::payload() const {
+  if (!payload_.has_value() && writer_) {
+    payload_.emplace();
+    writer_->finish(payload_.value());
+  }
+
+  return payload_.value_or(irs::bstring{});
+}
+
 void column_values::sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
   std::map<irs::doc_id_t, irs::bstring> resorted_values;
 
@@ -202,6 +211,26 @@ void column_values::sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
   }
 
   values_ = std::move(resorted_values);
+}
+
+void column_values::rewrite() {
+  if (writer_ && factory_) {
+    irs::bstring hdr = payload();
+    const irs::bytes_ref ref = hdr;
+    auto writer = factory_({&ref, 1});
+    ASSERT_NE(nullptr, writer);
+
+    std::map<irs::doc_id_t, irs::bstring> values;
+    for (auto& value : values_) {
+      irs::bytes_output out{values[value.first]};
+      writer->write(out, value.second);
+    }
+
+    ASSERT_TRUE(payload_.has_value());
+    payload_.value().clear();
+    writer->finish(payload_.value());
+    values_ = std::move(values);
+  }
 }
 
 void index_segment::compute_features() {
@@ -305,12 +334,12 @@ void index_segment::insert_indexed(const ifield& f) {
       if (feature_writer) {
         const size_t id = columns_.size();
         ASSERT_LE(id, std::numeric_limits<irs::field_id>::max());
-        columns_.emplace_back(id, feature_writer.get());
+        columns_.emplace_back(id, handler.second, feature_writer.get());
 
         feature.second = irs::field_id{id};
 
         new_field.feature_infos.emplace_back(field::feature_info{
-          irs::field_id{id}, std::move(feature_writer)});
+          irs::field_id{id}, handler.second, std::move(feature_writer)});
       }
     }
 

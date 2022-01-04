@@ -96,7 +96,7 @@ struct feature_writer {
   virtual void finish(bstring& out) = 0;
 };
 
-using feature_writer_factory_t = feature_writer::ptr(*)(range<bytes_ref>);
+using feature_writer_factory_t = feature_writer::ptr(*)(range<const bytes_ref>);
 
 using feature_info_provider_t = std::function<
     std::pair<column_info, feature_writer_factory_t>(type_info::type_id)>;

@@ -100,7 +100,7 @@ bool Norm2ReaderContext::Reset(
 }
 
 
-/*static*/ feature_writer::ptr Norm::MakeWriter(range<bytes_ref> /*payload*/) {
+/*static*/ feature_writer::ptr Norm::MakeWriter(range<const bytes_ref> /*payload*/) {
   return memory::to_managed<feature_writer, false>(&kNormWriter);
 }
 
@@ -151,8 +151,8 @@ void Norm2Header::Reset(const Norm2Header& hdr) noexcept {
   return hdr;
 }
 
-/*static*/ feature_writer::ptr Norm2::MakeWriter(range<bytes_ref> headers) {
-  size_t num_bytes{sizeof(ValueType)};
+/*static*/ feature_writer::ptr Norm2::MakeWriter(range<const bytes_ref> headers) {
+  size_t max_bytes{sizeof(ValueType)};
 
   if (!headers.empty()) {
     Norm2Header acc{Norm2Encoding::Byte};
@@ -163,16 +163,16 @@ void Norm2Header::Reset(const Norm2Header& hdr) noexcept {
       }
       acc.Reset(hdr.value());
     }
-    num_bytes = acc.MaxNumBytes();
+    max_bytes = acc.MaxNumBytes();
   }
 
-  switch (num_bytes) {
+  switch (max_bytes) {
     case sizeof(byte_type):
       return memory::make_managed<Norm2Writer<byte_type>>();
     case sizeof(uint16_t):
       return memory::make_managed<Norm2Writer<uint16_t>>();
     default:
-      assert(num_bytes == sizeof(uint32_t));
+      assert(max_bytes == sizeof(uint32_t));
       return memory::make_managed<Norm2Writer<uint32_t>>();
   }
 
