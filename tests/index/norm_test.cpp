@@ -23,9 +23,86 @@
 #include "index_tests.hpp"
 
 #include "index/norm.hpp"
+#include "iql/query_builder.hpp"
 #include "search/cost.hpp"
+#include "utils/index_utils.hpp"
 
 namespace  {
+
+class Analyzer : public irs::analysis::analyzer {
+ public:
+  static constexpr irs::string_ref type_name() noexcept {
+    return "NormTestAnalyzer";
+  }
+
+  explicit Analyzer(size_t count)
+    : irs::analysis::analyzer{irs::type<Analyzer>::get()},
+      count_{count} {
+  }
+
+  virtual irs::attribute* get_mutable(
+      irs::type_info::type_id id) noexcept override final {
+    return irs::get_mutable(attrs_, id);
+  }
+
+  virtual bool reset(const irs::string_ref& value) noexcept override {
+    value_ = value;
+    i_ = 0;
+    return true;
+  }
+
+  virtual bool next() override {
+    if (i_ < count_) {
+      std::get<irs::term_attribute>(attrs_).value = irs::ref_cast<irs::byte_type>(value_);
+      auto& offset = std::get<irs::offset>(attrs_);
+      offset.start = 0;
+      offset.end = static_cast<uint32_t>(value_.size());
+      ++i_;
+      return true;
+    }
+
+    return false;
+  }
+
+ private:
+  std::tuple<irs::offset, irs::increment, irs::term_attribute> attrs_;
+  irs::string_ref value_;
+  size_t count_;
+  size_t i_{};
+};
+
+class NormField final : public tests::ifield {
+ public:
+  NormField(std::string name, std::string value, size_t count)
+    : name_{std::move(name)}, value_{std::move(value)}, analyzer_{count} {
+  }
+
+  irs::string_ref name() const override { return name_; }
+
+  irs::token_stream& get_tokens() const override {
+    analyzer_.reset(value_);
+    return analyzer_;
+  }
+
+  irs::features_t features() const noexcept override {
+    return { &norm_, 1 };
+  }
+
+  irs::IndexFeatures index_features() const noexcept override {
+    return irs::IndexFeatures::ALL;
+  }
+
+  bool write(data_output& out) const override {
+    irs::write_string(out, value_);
+    return true;
+  }
+
+ private:
+  std::string name_;
+  std::string value_;
+  mutable Analyzer analyzer_;
+  irs::type_info::type_id norm_{irs::type<irs::Norm2>::id() };
+};
 
 void AssertNorm2Header(irs::bytes_ref header,
                        uint32_t num_bytes,
@@ -227,11 +304,7 @@ class Norm2TestCase : public tests::index_test_base {
     };
   }
 
-  std::vector<irs::type_info::type_id> FieldFeatures() {
-    return { irs::type<irs::Norm2>::id() };
-  }
-
-  void assert_index() {
+  void AssertIndex() {
     index_test_base::assert_index(irs::IndexFeatures::NONE);
     index_test_base::assert_index(
       irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ);
@@ -247,37 +320,125 @@ class Norm2TestCase : public tests::index_test_base {
     index_test_base::assert_index(irs::IndexFeatures::ALL);
     index_test_base::assert_columnstore();
   }
+
+  template<typename T>
+  void AssertNormColumn(
+      const irs::sub_reader& segment,
+      irs::string_ref name,
+      const std::vector<std::pair<irs::doc_id_t, uint32_t>>& expected_values);
 };
 
+
+template<typename T>
+void Norm2TestCase::AssertNormColumn(
+    const irs::sub_reader& segment,
+    irs::string_ref name,
+    const std::vector<std::pair<irs::doc_id_t, uint32_t>>& expected_docs) {
+  static_assert(std::is_same_v<T, irs::byte_type> ||
+                std::is_same_v<T, uint16_t> ||
+                std::is_same_v<T, uint32_t>);
+
+  auto* field = segment.field(name);
+  ASSERT_NE(nullptr, field);
+  auto& meta = field->meta();
+  ASSERT_EQ(name, meta.name);
+  ASSERT_EQ(1, meta.features.size());
+
+  auto it = meta.features.find(irs::type<irs::Norm2>::id());
+  ASSERT_NE(it, meta.features.end());
+  ASSERT_TRUE(irs::field_limits::valid(it->second));
+
+  auto* column = segment.column(it->second);
+  ASSERT_NE(nullptr, column);
+  ASSERT_EQ(it->second, column->id());
+  ASSERT_TRUE(column->name().null());
+
+  const auto min = std::min_element(std::begin(expected_docs),
+                                    std::end(expected_docs),
+                                    [](auto& lhs, auto& rhs) {
+                                      return lhs.second < rhs.second;
+                                    });
+  ASSERT_NE(std::end(expected_docs), min);
+  const auto max = std::max_element(std::begin(expected_docs),
+                                    std::end(expected_docs),
+                                    [](auto& lhs, auto& rhs) {
+                                      return lhs.second < rhs.second;
+                                    });
+  ASSERT_NE(std::end(expected_docs), max);
+  ASSERT_LE(*min, *max);
+  AssertNorm2Header(column->payload(), sizeof(T),
+                    min->second, max->second);
+
+  auto values = column->iterator(false);
+  auto* cost = irs::get<irs::cost>(*values);
+  ASSERT_NE(nullptr, cost);
+  ASSERT_EQ(cost->estimate(), expected_docs.size());
+  ASSERT_NE(nullptr, values);
+  auto* payload = irs::get<irs::payload>(*values);
+  ASSERT_NE(nullptr, payload);
+  auto* doc = irs::get<irs::document>(*values);
+  ASSERT_NE(nullptr, doc);
+
+  irs::Norm2ReaderContext ctx;
+  ASSERT_EQ(0, ctx.num_bytes);
+  ASSERT_EQ(nullptr, ctx.it);
+  ASSERT_EQ(nullptr, ctx.payload);
+  ASSERT_EQ(nullptr, ctx.doc);
+  ASSERT_TRUE(ctx.Reset(segment, it->second, *doc));
+  ASSERT_EQ(sizeof(T), ctx.num_bytes);
+  ASSERT_NE(nullptr, ctx.it);
+  ASSERT_NE(nullptr, ctx.payload);
+  ASSERT_EQ(irs::get<irs::payload>(*ctx.it), ctx.payload);
+  ASSERT_EQ(doc, ctx.doc);
+
+  auto reader = irs::Norm2::MakeReader<T>(std::move(ctx));
+
+  for (auto expected_doc = std::begin(expected_docs);
+       values->next();
+       ++expected_doc) {
+    ASSERT_EQ(expected_doc->first, values->value());
+    ASSERT_EQ(expected_doc->first, doc->value);
+    ASSERT_EQ(sizeof(T), payload->value.size());
+
+    auto* p = payload->value.c_str();
+    const auto value = irs::read<T>(p);
+    ASSERT_EQ(expected_doc->second, value);
+    ASSERT_EQ(value, reader());
+  }
+}
+
 TEST_P(Norm2TestCase, CheckNorms) {
-  size_t count = 1;
+  const ::frozen::map<frozen::string, uint32_t, 4> kSeedMapping{
+      { "name", uint32_t{1}},
+      { "same", uint32_t{1} << 8},
+      { "duplicated", uint32_t{1} << 15},
+      { "prefix", uint32_t{1} << 14} };
 
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [this, &count](tests::document& doc,
+    [count = size_t{0}, &kSeedMapping](tests::document& doc,
            const std::string& name,
-           const tests::json_doc_generator::json_value& data) {
+           const tests::json_doc_generator::json_value& data) mutable {
       if (data.is_string()) {
         const bool is_name = (name == "name");
-        const size_t n = is_name ? count : 1;
-
-        for (size_t i = 0; i < n; ++i) {
-          auto field = std::make_shared<tests::string_field>(
-            name, data.str, irs::IndexFeatures::ALL, FieldFeatures());
-          doc.insert(field);
-
-          if (is_name) {
-            doc.sorted = field;
-          }
-        }
         count += static_cast<size_t>(is_name);
+
+        const auto it = kSeedMapping.find(frozen::string{name});
+        ASSERT_NE(kSeedMapping.end(), it);
+
+        auto field = std::make_shared<NormField>(name, data.str, count*it->second);
+        doc.insert(field);
+
+        if (is_name) {
+          doc.sorted = field;
+        }
       }
   });
 
-  count = 1; auto* doc0 = gen.next(); // name == 'A'
-  count = 2; auto* doc1 = gen.next(); // name == 'B'
-  count = 3; auto* doc2 = gen.next(); // name == 'C'
-  count = 4; auto* doc3 = gen.next(); // name == 'D'
+  auto* doc0 = gen.next(); // name == 'A'
+  auto* doc1 = gen.next(); // name == 'B'
+  auto* doc2 = gen.next(); // name == 'C'
+  auto* doc3 = gen.next(); // name == 'D'
 
   irs::index_writer::init_options opts;
   opts.features = Features();
@@ -314,79 +475,715 @@ TEST_P(Norm2TestCase, CheckNorms) {
   expected_index.back().insert(
     doc3->indexed.begin(), doc3->indexed.end(),
     doc3->stored.begin(), doc3->stored.end());
-  assert_index();
+  AssertIndex();
 
   auto reader = open_reader();
   ASSERT_EQ(1, reader.size());
-
   auto& segment = reader[0];
   ASSERT_EQ(1, segment.size());
   ASSERT_EQ(4, segment.docs_count());
   ASSERT_EQ(4, segment.live_docs_count());
 
-  auto assert_norm_column = [&](irs::string_ref name,
-                                std::vector<uint32_t> expected_values) {
-    auto* field = segment.field(name);
-    ASSERT_NE(nullptr, field);
-    auto& meta = field->meta();
-    ASSERT_EQ(name, meta.name);
-    ASSERT_EQ(1, meta.features.size());
+  {
+     constexpr frozen::string kName = "duplicated";
+     const auto it = kSeedMapping.find(kName);
+     ASSERT_NE(kSeedMapping.end(), it);
+     const uint32_t seed{it->second};
+     AssertNormColumn<uint32_t>(
+         segment,
+         { kName.data(), kName.size() },
+         { {1, seed}, {2, seed*2}, {3, seed*3} });
+  }
 
-    auto it = meta.features.find(irs::type<irs::Norm2>::id());
-    ASSERT_NE(it, meta.features.end());
-    ASSERT_TRUE(irs::field_limits::valid(it->second));
+  {
+     constexpr frozen::string kName = "name";
+     const auto it = kSeedMapping.find(kName);
+     ASSERT_NE(kSeedMapping.end(), it);
+     const uint32_t seed{it->second};
+     AssertNormColumn<uint32_t>(
+         segment,
+         { kName.data(), kName.size() },
+         { {1, seed}, {2, seed*2}, {3, seed*3}, {4, seed*4} });
+  }
 
-    auto* column = segment.column(it->second);
-    ASSERT_NE(nullptr, column);
-    ASSERT_EQ(it->second, column->id());
-    ASSERT_TRUE(column->name().null());
+  {
+     constexpr frozen::string kName = "same";
+     const auto it = kSeedMapping.find(kName);
+     ASSERT_NE(kSeedMapping.end(), it);
+     const uint32_t seed{it->second};
+     AssertNormColumn<uint32_t>(
+         segment,
+         { kName.data(), kName.size() },
+         { {1, seed}, {2, seed*2}, {3, seed*3}, {4, seed*4} });
+  }
 
-    const auto min = std::min_element(std::begin(expected_values),
-                                      std::end(expected_values));
-    ASSERT_NE(min, std::end(expected_values));
-    const auto max = std::max_element(std::begin(expected_values),
-                                      std::end(expected_values));
-    ASSERT_NE(max, std::end(expected_values));
-    ASSERT_LE(min, max);
-    AssertNorm2Header(column->payload(), sizeof(uint32_t), *min, *max);
+  {
+     constexpr frozen::string kName = "prefix";
+     const auto it = kSeedMapping.find(kName);
+     ASSERT_NE(kSeedMapping.end(), it);
+     const uint32_t seed{it->second};
+     AssertNormColumn<uint32_t>(
+         segment,
+         { kName.data(), kName.size() },
+         { {1, seed}, {4, seed*4} });
+  }
+}
 
-    auto values = column->iterator(false);
-    auto* cost = irs::get<irs::cost>(*values);
-    ASSERT_NE(nullptr, cost);
-    ASSERT_EQ(cost->estimate(), expected_values.size());
-    ASSERT_NE(nullptr, values);
-    auto* payload = irs::get<irs::payload>(*values);
-    ASSERT_NE(nullptr, payload);
-    auto* doc = irs::get<irs::document>(*values);
-    ASSERT_NE(nullptr, doc);
+TEST_P(Norm2TestCase, CheckNormsConsolidation) {
+  const ::frozen::map<frozen::string, uint32_t, 4> kSeedMapping{
+      { "name", uint32_t{1}},
+      { "same", uint32_t{1} << 5},
+      { "duplicated", uint32_t{1} << 12},
+      { "prefix", uint32_t{1} << 14} };
 
-    irs::Norm2ReaderContext ctx;
-    ASSERT_EQ(0, ctx.num_bytes);
-    ASSERT_EQ(nullptr, ctx.it);
-    ASSERT_EQ(nullptr, ctx.payload);
-    ASSERT_EQ(nullptr, ctx.doc);
-    ASSERT_TRUE(ctx.Reset(segment, it->second, *doc));
-    ASSERT_EQ(sizeof(uint32_t), ctx.num_bytes);
-    ASSERT_NE(nullptr, ctx.it);
-    ASSERT_NE(nullptr, ctx.payload);
-    ASSERT_EQ(irs::get<irs::payload>(*ctx.it), ctx.payload);
-    ASSERT_EQ(doc, ctx.doc);
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [count = size_t{0}, &kSeedMapping](tests::document& doc,
+           const std::string& name,
+           const tests::json_doc_generator::json_value& data) mutable {
+      if (data.is_string()) {
+        const bool is_name = (name == "name");
+        count += static_cast<size_t>(is_name);
 
-    auto reader = irs::Norm2::MakeReader<uint32_t>(std::move(ctx));
+        const auto it = kSeedMapping.find(frozen::string{name});
+        ASSERT_NE(kSeedMapping.end(), it);
 
-    for (auto expected_value = std::begin(expected_values);
-         values->next();
-         ++expected_value) {
-      ASSERT_EQ(4, payload->value.size());
+        auto field = std::make_shared<NormField>(name, data.str, count*it->second);
+        doc.insert(field);
 
-      auto* p = payload->value.c_str();
-      const auto value = irs::read<uint32_t>(p);
-      ASSERT_EQ(*expected_value , value);
-      ASSERT_EQ(value, reader());
+        if (is_name) {
+          doc.sorted = field;
+        }
+      }
+  });
+
+  auto* doc0 = gen.next(); // name == 'A'
+  auto* doc1 = gen.next(); // name == 'B'
+  auto* doc2 = gen.next(); // name == 'C'
+  auto* doc3 = gen.next(); // name == 'D'
+  auto* doc4 = gen.next(); // name == 'E'
+  auto* doc5 = gen.next(); // name == 'F'
+  auto* doc6 = gen.next(); // name == 'G'
+
+  irs::index_writer::init_options opts;
+  opts.features = Features();
+
+  // Create actual index
+  auto writer = open_writer(irs::OM_CREATE, opts);
+  ASSERT_NE(nullptr, writer);
+  ASSERT_TRUE(insert(*writer,
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end()));
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end()));
+  ASSERT_TRUE(insert(*writer,
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end()));
+  ASSERT_TRUE(insert(*writer,
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end()));
+  writer->commit();
+  ASSERT_TRUE(insert(*writer,
+    doc4->indexed.begin(), doc4->indexed.end(),
+    doc4->stored.begin(), doc4->stored.end()));
+  ASSERT_TRUE(insert(*writer,
+    doc5->indexed.begin(), doc5->indexed.end(),
+    doc5->stored.begin(), doc5->stored.end()));
+  ASSERT_TRUE(insert(*writer,
+    doc6->indexed.begin(), doc6->indexed.end(),
+    doc6->stored.begin(), doc6->stored.end()));
+  writer->commit();
+
+  // Create expected index
+  auto& expected_index = index();
+  expected_index.emplace_back(writer->feature_info());
+  expected_index.back().insert(
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end());
+  expected_index.back().insert(
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end());
+  expected_index.back().insert(
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end());
+  expected_index.back().insert(
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end());
+  expected_index.emplace_back(writer->feature_info());
+  expected_index.back().insert(
+    doc4->indexed.begin(), doc4->indexed.end(),
+    doc4->stored.begin(), doc4->stored.end());
+  expected_index.back().insert(
+    doc5->indexed.begin(), doc5->indexed.end(),
+    doc5->stored.begin(), doc5->stored.end());
+  expected_index.back().insert(
+    doc6->indexed.begin(), doc6->indexed.end(),
+    doc6->stored.begin(), doc6->stored.end());
+
+  AssertIndex();
+
+  auto reader = open_reader();
+  ASSERT_EQ(2, reader.size());
+
+  {
+    auto& segment = reader[0];
+    ASSERT_EQ(1, segment.size());
+    ASSERT_EQ(4, segment.docs_count());
+    ASSERT_EQ(4, segment.live_docs_count());
+
+    {
+       constexpr frozen::string kName = "duplicated";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint32_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed}, {2, seed*2}, {3, seed*3} });
     }
-  };
 
-  assert_norm_column("name", { 1, 2, 3, 4});
+    {
+       constexpr frozen::string kName = "name";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint32_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed}, {2, seed*2}, {3, seed*3}, {4, seed*4} });
+    }
+
+    {
+       constexpr frozen::string kName = "same";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint32_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed}, {2, seed*2}, {3, seed*3}, {4, seed*4} });
+    }
+
+    {
+       constexpr frozen::string kName = "prefix";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint32_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed}, {4, seed*4} });
+    }
+  }
+
+  {
+    auto& segment = reader[1];
+    ASSERT_EQ(1, segment.size());
+    ASSERT_EQ(3, segment.docs_count());
+    ASSERT_EQ(3, segment.live_docs_count());
+
+    {
+       constexpr frozen::string kName = "duplicated";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint32_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { { 1, seed*5} });
+    }
+
+    {
+       constexpr frozen::string kName = "name";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint32_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed*5}, {2, seed*6}, {3, seed*7} });
+    }
+
+    {
+       constexpr frozen::string kName = "same";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint32_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed*5}, {2, seed*6}, {3, seed*7} });
+    }
+
+    {
+       constexpr irs::string_ref kName = "prefix";
+       ASSERT_EQ(nullptr, segment.field(kName));
+    }
+  }
+
+  // Consolidate segments
+  {
+    const irs::index_utils::consolidate_count consolidate_all;
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
+    writer->commit();
+
+    // Simulate consolidation
+    index().clear();
+    index().emplace_back(writer->feature_info());
+    auto& segment = index().back();
+    expected_index.back().insert(
+      doc0->indexed.begin(), doc0->indexed.end(),
+      doc0->stored.begin(), doc0->stored.end());
+    expected_index.back().insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end());
+    expected_index.back().insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end());
+    expected_index.back().insert(
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end());
+    expected_index.back().insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end());
+    expected_index.back().insert(
+      doc5->indexed.begin(), doc5->indexed.end(),
+      doc5->stored.begin(), doc5->stored.end());
+    expected_index.back().insert(
+      doc6->indexed.begin(), doc6->indexed.end(),
+      doc6->stored.begin(), doc6->stored.end());
+    for (auto& column : segment.columns()) {
+      column.rewrite();
+    }
+  }
+
+  AssertIndex();
+
+  reader = open_reader();
+  ASSERT_EQ(1, reader.size());
+
+  {
+    auto& segment = reader[0];
+    ASSERT_EQ(1, segment.size());
+    ASSERT_EQ(7, segment.docs_count());
+    ASSERT_EQ(7, segment.live_docs_count());
+
+    {
+       constexpr frozen::string kName = "duplicated";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint16_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed}, {2, seed*2}, {3, seed*3}, {5, seed*5} });
+    }
+
+    {
+       constexpr frozen::string kName = "name";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<irs::byte_type>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed}, {2, seed*2},
+             {3, seed*3}, {4, seed*4},
+             {5, seed*5 }, {6, seed*6},
+             {7, seed*7} });
+    }
+
+    {
+       constexpr frozen::string kName = "same";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<irs::byte_type>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed }, {2, seed*2},
+             {3, seed*3}, {4, seed*4},
+             {5, seed*5 }, {6, seed*6},
+             {7, seed*7} });
+    }
+
+    {
+       constexpr frozen::string kName = "prefix";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint32_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed}, {4, seed*4} });
+    }
+  }
+}
+
+TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
+  const ::frozen::map<frozen::string, uint32_t, 4> kSeedMapping{
+      { "name", uint32_t{1}},
+      { "same", uint32_t{1} << 5},
+      { "duplicated", uint32_t{1} << 12},
+      { "prefix", uint32_t{1} << 14} };
+
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [count = size_t{0}, &kSeedMapping](tests::document& doc,
+           const std::string& name,
+           const tests::json_doc_generator::json_value& data) mutable {
+      if (data.is_string()) {
+        const bool is_name = (name == "name");
+        count += static_cast<size_t>(is_name);
+
+        const auto it = kSeedMapping.find(frozen::string{name});
+        ASSERT_NE(kSeedMapping.end(), it);
+
+        auto field = std::make_shared<NormField>(name, data.str, count*it->second);
+        doc.insert(field);
+
+        if (is_name) {
+          doc.sorted = field;
+        }
+      }
+  });
+
+  auto* doc0 = gen.next(); // name == 'A'
+  auto* doc1 = gen.next(); // name == 'B'
+  auto* doc2 = gen.next(); // name == 'C'
+  auto* doc3 = gen.next(); // name == 'D'
+  auto* doc4 = gen.next(); // name == 'E'
+  auto* doc5 = gen.next(); // name == 'F'
+  auto* doc6 = gen.next(); // name == 'G'
+
+  irs::index_writer::init_options opts;
+  opts.features = Features();
+
+  // Create actual index
+  auto writer = open_writer(irs::OM_CREATE, opts);
+  ASSERT_NE(nullptr, writer);
+  ASSERT_TRUE(insert(*writer,
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end()));
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end()));
+  ASSERT_TRUE(insert(*writer,
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end()));
+  ASSERT_TRUE(insert(*writer,
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end()));
+  writer->commit();
+  ASSERT_TRUE(insert(*writer,
+    doc4->indexed.begin(), doc4->indexed.end(),
+    doc4->stored.begin(), doc4->stored.end()));
+  ASSERT_TRUE(insert(*writer,
+    doc5->indexed.begin(), doc5->indexed.end(),
+    doc5->stored.begin(), doc5->stored.end()));
+  ASSERT_TRUE(insert(*writer,
+    doc6->indexed.begin(), doc6->indexed.end(),
+    doc6->stored.begin(), doc6->stored.end()));
+  writer->commit();
+
+  // Create expected index
+  auto& expected_index = index();
+  expected_index.emplace_back(writer->feature_info());
+  expected_index.back().insert(
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end());
+  expected_index.back().insert(
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end());
+  expected_index.back().insert(
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end());
+  expected_index.back().insert(
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end());
+  expected_index.emplace_back(writer->feature_info());
+  expected_index.back().insert(
+    doc4->indexed.begin(), doc4->indexed.end(),
+    doc4->stored.begin(), doc4->stored.end());
+  expected_index.back().insert(
+    doc5->indexed.begin(), doc5->indexed.end(),
+    doc5->stored.begin(), doc5->stored.end());
+  expected_index.back().insert(
+    doc6->indexed.begin(), doc6->indexed.end(),
+    doc6->stored.begin(), doc6->stored.end());
+
+  AssertIndex();
+
+  auto reader = open_reader();
+  ASSERT_EQ(2, reader.size());
+
+  {
+    auto& segment = reader[0];
+    ASSERT_EQ(1, segment.size());
+    ASSERT_EQ(4, segment.docs_count());
+    ASSERT_EQ(4, segment.live_docs_count());
+
+    {
+       constexpr frozen::string kName = "duplicated";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint32_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed}, {2, seed*2}, {3, seed*3} });
+    }
+
+    {
+       constexpr frozen::string kName = "name";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint32_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed}, {2, seed*2}, {3, seed*3}, {4, seed*4} });
+    }
+
+    {
+       constexpr frozen::string kName = "same";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint32_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed}, {2, seed*2}, {3, seed*3}, {4, seed*4} });
+    }
+
+    {
+       constexpr frozen::string kName = "prefix";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint32_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed}, {4, seed*4} });
+    }
+  }
+
+  {
+    auto& segment = reader[1];
+    ASSERT_EQ(1, segment.size());
+    ASSERT_EQ(3, segment.docs_count());
+    ASSERT_EQ(3, segment.live_docs_count());
+
+    {
+       constexpr frozen::string kName = "duplicated";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint32_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { { 1, seed*5} });
+    }
+
+    {
+       constexpr frozen::string kName = "name";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint32_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed*5}, {2, seed*6}, {3, seed*7} });
+    }
+
+    {
+       constexpr frozen::string kName = "same";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint32_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed*5}, {2, seed*6}, {3, seed*7} });
+    }
+
+    {
+       constexpr irs::string_ref kName = "prefix";
+       ASSERT_EQ(nullptr, segment.field(kName));
+    }
+  }
+
+  // Remove document
+  {
+    auto query_doc3 = irs::iql::query_builder().build("name==D", "C");
+    writer->documents().remove(*query_doc3.filter);
+    writer->commit();
+  }
+
+  // Consolidate segments
+  {
+    const irs::index_utils::consolidate_count consolidate_all;
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
+    writer->commit();
+
+    // Simulate consolidation
+    index().clear();
+    index().emplace_back(writer->feature_info());
+    auto& segment = index().back();
+    expected_index.back().insert(
+      doc0->indexed.begin(), doc0->indexed.end(),
+      doc0->stored.begin(), doc0->stored.end());
+    expected_index.back().insert(
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end());
+    expected_index.back().insert(
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end());
+    expected_index.back().insert(
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end());
+    expected_index.back().insert(
+      doc5->indexed.begin(), doc5->indexed.end(),
+      doc5->stored.begin(), doc5->stored.end());
+    expected_index.back().insert(
+      doc6->indexed.begin(), doc6->indexed.end(),
+      doc6->stored.begin(), doc6->stored.end());
+    for (auto& column : segment.columns()) {
+      column.rewrite();
+    }
+  }
+
+  //FIXME(gnusi)
+  //AssertIndex();
+
+  reader = open_reader();
+  ASSERT_EQ(1, reader.size());
+
+  {
+    auto& segment = reader[0];
+    ASSERT_EQ(1, segment.size());
+    ASSERT_EQ(6, segment.docs_count());
+    ASSERT_EQ(6, segment.live_docs_count());
+
+    {
+       constexpr frozen::string kName = "duplicated";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint16_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed}, {2, seed*2}, {3, seed*3}, {4, seed*5}  });
+    }
+
+    {
+       constexpr frozen::string kName = "name";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<irs::byte_type>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed}, {2, seed*2},
+             {3, seed*3}, {4, seed*5},
+             {5, seed*6}, {6, seed*7} });
+    }
+
+    {
+       constexpr frozen::string kName = "same";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<irs::byte_type>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed }, {2, seed*2},
+             {3, seed*3}, {4, seed*5 },
+             {5, seed*6}, {6, seed*7} });
+    }
+
+    {
+       constexpr frozen::string kName = "prefix";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint32_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed} });
+    }
+  }
+
+  ASSERT_TRUE(insert(*writer,
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end()));
+  writer->commit();
+
+  // Consolidate segments
+  {
+    const irs::index_utils::consolidate_count consolidate_all;
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
+    writer->commit();
+  }
+
+  reader = open_reader();
+  ASSERT_EQ(1, reader.size());
+
+  {
+    auto& segment = reader[0];
+    ASSERT_EQ(1, segment.size());
+    ASSERT_EQ(7, segment.docs_count());
+    ASSERT_EQ(7, segment.live_docs_count());
+
+    {
+       constexpr frozen::string kName = "duplicated";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint16_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed}, {2, seed*2}, {3, seed*3}, {4, seed*5}, { 7, seed} });
+    }
+
+    {
+       constexpr frozen::string kName = "name";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<irs::byte_type>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed}, {2, seed*2},
+             {3, seed*3}, {4, seed*5},
+             {5, seed*6}, {6, seed*7}, {7, seed} });
+    }
+
+    {
+       constexpr frozen::string kName = "same";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<irs::byte_type>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed }, {2, seed*2},
+             {3, seed*3}, {4, seed*5 },
+             {5, seed*6}, {6, seed*7}, {7, seed}  });
+    }
+
+    {
+       constexpr frozen::string kName = "prefix";
+       const auto it = kSeedMapping.find(kName);
+       ASSERT_NE(kSeedMapping.end(), it);
+       const uint32_t seed{it->second};
+       AssertNormColumn<uint16_t>(
+           segment,
+           { kName.data(), kName.size() },
+           { {1, seed}, {7, seed}  });
+    }
+  }
 }
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
