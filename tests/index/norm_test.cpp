@@ -205,7 +205,110 @@ TEST(Norm2HeaderTest, ResetByPayload) {
   }
 }
 
-class Norm2TestCase : public tests::index_test_base { };
+class Norm2TestCase : public tests::index_test_base {
+ protected:
+  irs::feature_info_provider_t Features() {
+    return [](irs::type_info::type_id id) {
+      if (irs::type<irs::Norm2>::id() == id) {
+        return std::make_pair(
+            irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
+            &irs::Norm2::MakeWriter);
+      }
+
+      return std::make_pair(
+          irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
+          irs::feature_writer_factory_t{});
+    };
+  }
+
+  std::vector<irs::type_info::type_id> FieldFeatures() {
+    return { irs::type<irs::Norm2>::id() };
+  }
+
+  void assert_index() {
+    index_test_base::assert_index(irs::IndexFeatures::NONE);
+    index_test_base::assert_index(
+      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ);
+    index_test_base::assert_index(
+      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ
+        | irs::IndexFeatures::POS);
+    index_test_base::assert_index(
+      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ
+        | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS);
+    index_test_base::assert_index(
+      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ
+        | irs::IndexFeatures::POS | irs::IndexFeatures::PAY);
+    index_test_base::assert_index(irs::IndexFeatures::ALL);
+    index_test_base::assert_columnstore();
+  }
+};
+
+TEST_P(Norm2TestCase, CheckNorms) {
+  size_t count = 1;
+
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [this, &count](tests::document& doc,
+           const std::string& name,
+           const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        const bool is_name = (name == "name");
+        const size_t n = is_name ? count : 1;
+
+        for (size_t i = 0; i < n; ++i) {
+          auto field = std::make_shared<tests::string_field>(
+            name, data.str, irs::IndexFeatures::ALL, FieldFeatures());
+          doc.insert(field);
+
+          if (is_name) {
+            doc.sorted = field;
+          }
+        }
+      }
+  });
+
+  count = 1; auto* doc0 = gen.next(); // name == 'A'
+  count = 2; auto* doc1 = gen.next(); // name == 'B'
+  count = 3; auto* doc2 = gen.next(); // name == 'C'
+  count = 4; auto* doc3 = gen.next(); // name == 'D'
+
+  irs::index_writer::init_options opts;
+  opts.features = Features();
+
+  // Create actual index
+  auto writer = open_writer(irs::OM_CREATE, opts);
+  ASSERT_NE(nullptr, writer);
+  ASSERT_TRUE(insert(*writer,
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end()));
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end()));
+  ASSERT_TRUE(insert(*writer,
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end()));
+  ASSERT_TRUE(insert(*writer,
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end()));
+  writer->commit();
+
+  // Create expected index
+  auto& expected_index = index();
+  expected_index.emplace_back(writer->feature_info());
+  expected_index.back().insert(
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end());
+  expected_index.back().insert(
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end());
+  expected_index.back().insert(
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end());
+  expected_index.back().insert(
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end());
+  assert_index();
+}
 
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
 #ifdef IRESEARCH_SSE2

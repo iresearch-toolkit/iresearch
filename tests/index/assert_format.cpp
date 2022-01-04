@@ -1040,7 +1040,7 @@ void assert_columnstore(
     const tests::index_segment& expected_segment = expected_index[i];
 
     // check pk if present
-    if (auto& expected_pk = expected_segment.pk(); expected_pk.empty()) {
+    if (auto& expected_pk = expected_segment.pk(); !expected_pk.empty()) {
       auto* actual_pk = actual_segment.sort();
       ASSERT_NE(nullptr, actual_pk);
       assert_pk(*actual_pk, expected_pk);
