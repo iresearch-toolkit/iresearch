@@ -59,7 +59,7 @@ struct IRESEARCH_API segment_meta {
   segment_meta(const segment_meta&) = default;
   segment_meta(segment_meta&& rhs)
       noexcept(noexcept(std::is_nothrow_move_constructible_v<file_set>));
-  segment_meta(const string_ref& name, format_ptr codec);
+  segment_meta(string_ref name, format_ptr codec);
   segment_meta(std::string&& name,
                format_ptr codec,
                uint64_t docs_count,

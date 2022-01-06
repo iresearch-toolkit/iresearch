@@ -179,7 +179,7 @@ void visit(
 template<typename Collector>
 bool collect_terms(
     const index_reader& index,
-    const string_ref& field,
+    string_ref field,
     const bytes_ref& prefix,
     const bytes_ref& term,
     const parametric_description& d,
@@ -212,7 +212,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
     const index_reader& index,
     const order::prepared& order,
     boost_t boost,
-    const string_ref& field,
+    string_ref field,
     const bytes_ref& prefix,
     const bytes_ref& term,
     size_t terms_limit,
@@ -317,7 +317,7 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance) // cppcheck-suppress unknownMacro
     const index_reader& index,
     const order::prepared& order,
     boost_t boost,
-    const string_ref& field,
+    string_ref field,
     const bytes_ref& term,
     size_t scored_terms_limit,
     byte_type max_distance,

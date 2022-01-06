@@ -399,7 +399,7 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
 }
 
 filter::prepared::ptr prepare_automaton_filter(
-    const string_ref& field,
+    string_ref field,
     const automaton& acceptor,
     size_t scored_terms_limit,
     const index_reader& index,

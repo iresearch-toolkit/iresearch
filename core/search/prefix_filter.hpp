@@ -81,7 +81,7 @@ class IRESEARCH_API by_prefix : public filter_base<by_prefix_options> {
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const string_ref& field,
+    string_ref field,
     const bytes_ref& prefix,
     size_t scored_terms_limit);
 

@@ -116,7 +116,7 @@ class IRESEARCH_API by_edit_distance final
     const index_reader& index,
     const order::prepared& order,
     boost_t boost,
-    const string_ref& field,
+    string_ref field,
     const bytes_ref& term,
     size_t terms_limit,
     byte_type max_distance,

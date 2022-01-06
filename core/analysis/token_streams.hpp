@@ -44,7 +44,7 @@ class IRESEARCH_API basic_token_stream : public analysis::analyzer {
     return irs::get_mutable(attrs_, type);
   }
 
-  bool reset(const string_ref&) override {
+  bool reset(string_ref) override {
     return false;
   }
 
@@ -116,7 +116,7 @@ class IRESEARCH_API string_token_stream final
     in_use_ = false; 
   }
 
-  bool reset(const string_ref& value) noexcept override {
+  bool reset(string_ref value) noexcept override {
     value_ = ref_cast<byte_type>(value);
     in_use_ = false;
     return true;

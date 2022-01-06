@@ -59,7 +59,7 @@ enum WildcardMatch : byte_type {
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API automaton from_wildcard(const bytes_ref& expr);
 
-inline automaton from_wildcard(const string_ref& expr) {
+inline automaton from_wildcard(string_ref expr) {
   return from_wildcard(ref_cast<byte_type>(expr));
 }
 

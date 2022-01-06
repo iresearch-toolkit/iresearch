@@ -81,7 +81,7 @@ class ngram_token_stream_base
 
    explicit ngram_token_stream_base(const Options& options);
 
-   virtual bool reset(const string_ref& data) noexcept override;
+   virtual bool reset(string_ref data) noexcept override;
    virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
      return irs::get_mutable(attrs_, type);
    }

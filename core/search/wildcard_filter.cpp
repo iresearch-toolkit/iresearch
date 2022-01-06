@@ -157,7 +157,7 @@ field_visitor by_wildcard::visitor(const bytes_ref& term) {
     const index_reader& index,
     const order::prepared& order,
     boost_t boost,
-    const string_ref& field,
+    string_ref field,
     const bytes_ref& term,
     size_t scored_terms_limit) {
   bstring buf;

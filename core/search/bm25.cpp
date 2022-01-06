@@ -141,7 +141,7 @@ irs::sort::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-irs::sort::ptr make_vpack(const irs::string_ref& args) {
+irs::sort::ptr make_vpack(irs::string_ref args) {
   if (args.null()) {
     // default args
     return irs::memory::make_unique<irs::bm25_sort>();
@@ -151,7 +151,7 @@ irs::sort::ptr make_vpack(const irs::string_ref& args) {
   }
 }
 
-irs::sort::ptr make_json(const irs::string_ref& args) {
+irs::sort::ptr make_json(irs::string_ref args) {
   if (args.null()) {
     // default args
     return irs::memory::make_unique<irs::bm25_sort>();

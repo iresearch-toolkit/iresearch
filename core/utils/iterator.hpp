@@ -75,7 +75,7 @@ class iterator_adaptor
     return *cur_;
   }
 
-  bool seek(const key_type& key) noexcept override {
+  bool seek(key_type key) noexcept override {
     begin_ = std::lower_bound(cur_, end_, key, comparer_t::get());
     return next();
   }

@@ -511,7 +511,7 @@ inline automaton make_all() {
 /// @returns compiled filter
 //////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API filter::prepared::ptr prepare_automaton_filter(
-  const string_ref& field,
+  string_ref field,
   const automaton& acceptor,
   size_t scored_terms_limit,
   const index_reader& index,

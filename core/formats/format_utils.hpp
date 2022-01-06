@@ -39,15 +39,15 @@ const int32_t FOOTER_MAGIC = -FORMAT_MAGIC;
 
 const uint32_t FOOTER_LEN = 2 * sizeof(int32_t) + sizeof(int64_t);
 
-IRESEARCH_API void write_header(index_output& out, const string_ref& format, int32_t ver);
+IRESEARCH_API void write_header(index_output& out, string_ref format, int32_t ver);
 
 IRESEARCH_API void write_footer(index_output& out);
 
-IRESEARCH_API size_t header_length(const string_ref& format) noexcept;
+IRESEARCH_API size_t header_length(string_ref format) noexcept;
 
 IRESEARCH_API int32_t check_header(
   index_input& in,
-  const string_ref& format,
+  string_ref format,
   int32_t min_ver,
   int32_t max_ver);
 

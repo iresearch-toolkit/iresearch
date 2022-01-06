@@ -61,7 +61,7 @@ class IRESEARCH_API by_term : public filter_base<by_term_options> {
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const string_ref& field,
+    string_ref field,
     const bytes_ref& term);
 
   static void visit(

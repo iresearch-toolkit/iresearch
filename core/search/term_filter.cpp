@@ -116,7 +116,7 @@ DEFINE_FACTORY_DEFAULT(by_term)
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const string_ref& field,
+    string_ref field,
     const bytes_ref& term) {
   term_query::states_t states(index);
   field_collectors field_stats(ord);

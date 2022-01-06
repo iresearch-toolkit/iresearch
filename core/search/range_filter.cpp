@@ -127,7 +127,7 @@ DEFINE_FACTORY_DEFAULT(by_range) // cppcheck-suppress unknownMacro
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const string_ref& field,
+    string_ref field,
     const options_type::range_type& rng,
     size_t scored_terms_limit) {
   //TODO: optimize unordered case
