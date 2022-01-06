@@ -1024,7 +1024,7 @@ class field_writer final : public irs::field_writer {
   // count - number of entries to write into block
   void write_blocks(size_t prefix, size_t count);
 
-  void push(const irs::bytes_ref& term);
+  void push(bytes_ref term);
 
   absl::flat_hash_map<irs::type_info::type_id, size_t> feature_map_;
 #ifdef __cpp_lib_memory_resource
@@ -1234,7 +1234,7 @@ void field_writer::write_blocks(size_t prefix, size_t count) {
   }
 }
 
-void field_writer::push( const bytes_ref& term ) {
+void field_writer::push(bytes_ref term) {
   const irs::bytes_ref& last = last_term_;
   const size_t limit = std::min(last.size(), term.size());
 

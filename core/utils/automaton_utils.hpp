@@ -433,7 +433,7 @@ void visit(
 IRESEARCH_API void utf8_emplace_arc(
   automaton& a,
   automaton::StateId from,
-  const bytes_ref& label,
+  bytes_ref label,
   automaton::StateId to);
 
 //////////////////////////////////////////////////////////////////////////////
@@ -445,7 +445,7 @@ IRESEARCH_API void utf8_emplace_arc(
   automaton& a,
   automaton::StateId from,
   automaton::StateId rho_state,
-  const bytes_ref& label,
+  bytes_ref label,
   automaton::StateId to);
 
 //////////////////////////////////////////////////////////////////////////////
@@ -475,7 +475,7 @@ inline automaton make_char(const uint32_t c) {
   return a;
 }
 
-inline automaton make_char(const bytes_ref& c) {
+inline automaton make_char(bytes_ref c) {
   automaton a;
   a.AddStates(2);
   a.SetStart(0);

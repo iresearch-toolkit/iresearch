@@ -190,7 +190,7 @@ class IRESEARCH_API sort {
      /// @brief collect field related statistics from a serialized
      ///        representation as produced by write(...) below
      ///////////////////////////////////////////////////////////////////////////
-     virtual void collect(const bytes_ref& in) = 0;
+     virtual void collect(bytes_ref in) = 0;
 
      ///////////////////////////////////////////////////////////////////////////
      /// @brief serialize the internal data representation into 'out'
@@ -243,7 +243,7 @@ class IRESEARCH_API sort {
     /// @brief collect term related statistics from a serialized
     ///        representation as produced by write(...) below
     ///////////////////////////////////////////////////////////////////////////
-    virtual void collect(const bytes_ref& in) = 0;
+    virtual void collect(bytes_ref in) = 0;
 
     ///////////////////////////////////////////////////////////////////////////
     /// @brief serialize the internal data representation into 'out'

@@ -62,12 +62,12 @@ class IRESEARCH_API by_term : public filter_base<by_term_options> {
     const order::prepared& ord,
     boost_t boost,
     string_ref field,
-    const bytes_ref& term);
+    bytes_ref term);
 
   static void visit(
     const sub_reader& segment,
     const term_reader& field,
-    const bytes_ref& term,
+    bytes_ref term,
     filter_visitor& visitor);
 
   using filter::prepare;

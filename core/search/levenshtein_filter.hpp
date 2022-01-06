@@ -117,12 +117,12 @@ class IRESEARCH_API by_edit_distance final
     const order::prepared& order,
     boost_t boost,
     string_ref field,
-    const bytes_ref& term,
+    bytes_ref term,
     size_t terms_limit,
     byte_type max_distance,
     options_type::pdp_f provider,
     bool with_transpositions,
-    const bytes_ref& prefix);
+    bytes_ref prefix);
 
   static field_visitor visitor(
     const options_type::filter_options& options);

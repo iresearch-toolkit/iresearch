@@ -82,13 +82,13 @@ class IRESEARCH_API by_prefix : public filter_base<by_prefix_options> {
     const order::prepared& ord,
     boost_t boost,
     string_ref field,
-    const bytes_ref& prefix,
+    bytes_ref prefix,
     size_t scored_terms_limit);
 
   static void visit(
     const sub_reader& segment,
     const term_reader& reader,
-    const bytes_ref& prefix,
+    bytes_ref prefix,
     filter_visitor& visitor);
 
   using filter::prepare;

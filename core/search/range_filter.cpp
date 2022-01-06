@@ -98,19 +98,19 @@ void visit(
   switch (rng.max_type) {
     case BoundType::UNBOUNDED:
       ::collect_terms(
-        segment, reader, *terms, visitor, [](const bytes_ref&) {
+        segment, reader, *terms, visitor, [](bytes_ref) {
           return true;
       });
       break;
     case BoundType::INCLUSIVE:
       ::collect_terms(
-        segment, reader, *terms, visitor, [max](const bytes_ref& term) {
+        segment, reader, *terms, visitor, [max](bytes_ref term) {
           return term <= max;
       });
       break;
     case BoundType::EXCLUSIVE:
       ::collect_terms(
-        segment, reader, *terms, visitor, [max](const bytes_ref& term) {
+        segment, reader, *terms, visitor, [max](bytes_ref term) {
           return term < max;
       });
       break;

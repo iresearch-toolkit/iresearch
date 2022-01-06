@@ -170,7 +170,7 @@ struct byte_ref_iterator {
   const irs::byte_type* end_;
   const irs::byte_type* pos_;
 
-  explicit byte_ref_iterator(const irs::bytes_ref& in)
+  explicit byte_ref_iterator(irs::bytes_ref in)
     : end_(in.c_str() + in.size()), pos_(in.c_str()) {
   }
 
@@ -197,7 +197,7 @@ struct field_collector final: public irs::sort::field_collector {
     docs_with_field = 0;
   }
 
-  virtual void collect(const irs::bytes_ref& in) override {
+  virtual void collect(irs::bytes_ref in) override {
     byte_ref_iterator itr(in);
     auto docs_with_field_value = irs::vread<uint64_t>(itr);
 
@@ -230,7 +230,7 @@ struct term_collector final: public irs::sort::term_collector {
     docs_with_term = 0;
   }
 
-  virtual void collect(const irs::bytes_ref& in) override {
+  virtual void collect(irs::bytes_ref in) override {
     byte_ref_iterator itr(in);
     auto docs_with_term_value = irs::vread<uint64_t>(itr);
 

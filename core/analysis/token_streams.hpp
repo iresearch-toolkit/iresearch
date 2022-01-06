@@ -111,7 +111,7 @@ class IRESEARCH_API string_token_stream final
     return irs::get_mutable(attrs_, id);
   }
 
-  void reset(const bytes_ref& value) noexcept {
+  void reset(bytes_ref value) noexcept {
     value_ = value;
     in_use_ = false; 
   }

@@ -244,8 +244,8 @@ IRESEARCH_API parametric_description read(data_input& in);
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API automaton make_levenshtein_automaton(
   const parametric_description& description,
-  const bytes_ref& prefix,
-  const bytes_ref& target);
+  bytes_ref prefix,
+  bytes_ref target);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief evaluates edit distance between the specified words up to
@@ -276,8 +276,8 @@ IRESEARCH_API size_t edit_distance(
 ////////////////////////////////////////////////////////////////////////////////
 inline size_t edit_distance(
     const parametric_description& description,
-    const bytes_ref& lhs,
-    const bytes_ref& rhs) {
+    bytes_ref lhs,
+    bytes_ref rhs) {
   return edit_distance(description, lhs.begin(), lhs.size(), rhs.begin(), rhs.size());
 }
 
@@ -315,8 +315,8 @@ IRESEARCH_API bool edit_distance(
 inline bool edit_distance(
     size_t& distance,
     const parametric_description& description,
-    const bytes_ref& lhs,
-    const bytes_ref& rhs) {
+    bytes_ref lhs,
+    bytes_ref rhs) {
   return edit_distance(distance, description,
                        lhs.begin(), lhs.size(),
                        rhs.begin(), rhs.size());

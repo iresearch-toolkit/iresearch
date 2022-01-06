@@ -31,7 +31,7 @@
 
 namespace {
 
-irs::bytes_ref eval_term(irs::bstring& buf, const irs::bytes_ref& data) {
+irs::bytes_ref eval_term(irs::bstring& buf, irs::bytes_ref data) {
   if (!data.size() || '"' != data[0]) {
     return data; // not a quoted term (even if quotes inside
   }
@@ -62,7 +62,7 @@ irs::bytes_ref eval_term(irs::bstring& buf, const irs::bytes_ref& data) {
   return start != 1 && start == data.size() ? irs::bytes_ref(buf) : data; // return identity for mismatched quotes
 }
 
-size_t find_delimiter(const irs::bytes_ref& data, const irs::bytes_ref& delim) {
+size_t find_delimiter(irs::bytes_ref data, irs::bytes_ref delim) {
   if (delim.null()) {
     return data.size();
   }

@@ -375,7 +375,7 @@ class postings_writer_base : public irs::postings_writer {
   struct pay_buffer : skip_buffer {
     using ptr = std::unique_ptr<pay_buffer>;
 
-    void push_payload(uint32_t i, const bytes_ref& pay) {
+    void push_payload(uint32_t i, bytes_ref pay) {
       if (!pay.empty()) {
         pay_buf_.append(pay.c_str(), pay.size());
       }
