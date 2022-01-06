@@ -45,7 +45,7 @@ class Analyzer : public irs::analysis::analyzer {
     return irs::get_mutable(attrs_, id);
   }
 
-  virtual bool reset(const irs::string_ref& value) noexcept override {
+  virtual bool reset(irs::string_ref value) noexcept override {
     value_ = value;
     i_ = 0;
     return true;
