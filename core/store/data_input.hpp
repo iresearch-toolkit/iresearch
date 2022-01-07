@@ -261,13 +261,11 @@ class IRESEARCH_API buffered_index_input : public index_input {
     return std::distance(buf_, end_);
   }
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   byte_type* buf_{}; // buffer itself
   byte_type* begin_{ buf_ }; // current position in the buffer
   byte_type* end_{ buf_ }; // end of the valid bytes in the buffer
   size_t start_{}; // position of the buffer in file
   size_t buf_size_{}; // size of the buffer in bytes
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // buffered_index_input
 
 }

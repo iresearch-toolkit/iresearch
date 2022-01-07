@@ -85,9 +85,7 @@ class IRESEARCH_API utf8_path {
   void clear();
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   native_str_t path_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 // need this operator to be closer to std::filesystem::path

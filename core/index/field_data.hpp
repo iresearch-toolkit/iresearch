@@ -213,7 +213,6 @@ class IRESEARCH_API fields_data: util::noncopyable {
   void reset() noexcept;
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   const comparer* comparator_;
   const feature_info_provider_t* feature_info_;
   std::deque<field_data> fields_; // pointers remain valid
@@ -225,7 +224,6 @@ class IRESEARCH_API fields_data: util::noncopyable {
   byte_block_pool::inserter byte_writer_;
   int_block_pool int_pool_; // FIXME why don't to use std::vector<size_t>?
   int_block_pool::inserter int_writer_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // fields_data
 
 } // iresearch

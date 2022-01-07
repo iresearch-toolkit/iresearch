@@ -317,13 +317,11 @@ class IRESEARCH_API memory_directory final : public directory {
   using file_map = absl::flat_hash_map<std::string, std::unique_ptr<memory_file>>; // unique_ptr because of rename
   using lock_map = absl::flat_hash_set<std::string>;
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   directory_attributes attrs_;
   mutable std::shared_mutex flock_;
   std::mutex llock_;
   file_map files_;
   lock_map locks_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 ////////////////////////////////////////////////////////////////////////////////

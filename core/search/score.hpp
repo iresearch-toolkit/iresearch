@@ -102,12 +102,10 @@ class IRESEARCH_API score : public attribute {
   }
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   bstring buf_;
   score_function func_;
 //  memory::managed_ptr<score_ctx> ctx_; // arbitrary scoring context
 //  score_f func_; // scoring function
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // score
 
 IRESEARCH_API void reset(

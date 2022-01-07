@@ -145,13 +145,11 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     const segment_context_ptr& ctx() const noexcept { return ctx_; }
 
    private:
-    IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
     friend struct flush_context; // for flush_context::emplace(...)
     segment_context_ptr ctx_{nullptr};
     flush_context* flush_ctx_{nullptr}; // nullptr will not match any flush_context
     size_t pending_segment_context_offset_; // segment offset in flush_ctx_->pending_segment_contexts_
     std::atomic<size_t>* segments_active_; // reference to index_writer::segments_active_
-    IRESEARCH_API_PRIVATE_VARIABLES_END
   };
 
   static_assert(std::is_nothrow_move_constructible_v<active_segment_context>);
@@ -1115,7 +1113,6 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   void finish(); // finishes transaction
   void abort(); // aborts transaction
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   feature_info_provider_t feature_info_;
   column_info_provider_t column_info_;
   payload_provider_t meta_payload_provider_; // provides payload for new segments
@@ -1137,7 +1134,6 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   index_meta_writer::ptr writer_;
   index_lock::ptr write_lock_; // exclusive write lock for directory
   index_file_refs::ref_t write_lock_file_ref_; // track ref for lock file to preven removal
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_writer
 
 }

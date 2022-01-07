@@ -896,10 +896,8 @@ class IRESEARCH_API order final {
       }
 
      private:
-      IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
       std::vector<scorer> scorers_; // scorer + offset
       const byte_type* score_buf_;
-      IRESEARCH_API_PRIVATE_VARIABLES_END
     }; // scorers
 
     static_assert(std::is_nothrow_move_constructible_v<scorers>);
@@ -1117,12 +1115,10 @@ class IRESEARCH_API order final {
     }
 
 
-    IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
     prepared_order_t order_;
     size_t score_size_{ 0 };
     size_t stats_size_{ 0 };
     IndexFeatures index_features_{ IndexFeatures::NONE };
-    IRESEARCH_API_PRIVATE_VARIABLES_END
   }; // prepared
 
   // std::is_nothrow_move_constructible_v<flags> == false
@@ -1178,9 +1174,7 @@ class IRESEARCH_API order final {
   iterator end() noexcept { return order_.end(); }
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   order_t order_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // order
 
 static_assert(std::is_nothrow_move_constructible_v<order>);

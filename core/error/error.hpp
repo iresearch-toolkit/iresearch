@@ -81,9 +81,7 @@ class IRESEARCH_API detailed_error_base : public error_base {
   }
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::string error_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // detailed_error_base
 
 //////////////////////////////////////////////////////////////////////////////
@@ -120,9 +118,7 @@ class IRESEARCH_API lock_obtain_failed : public error_base {
   virtual const char* what() const noexcept override;
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::string error_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // lock_obtain_failed
 
 //////////////////////////////////////////////////////////////////////////////
@@ -136,9 +132,7 @@ class IRESEARCH_API file_not_found: public error_base {
   virtual const char* what() const noexcept override;
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::string error_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // file_not_found
 
 //////////////////////////////////////////////////////////////////////////////

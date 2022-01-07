@@ -110,7 +110,6 @@ namespace iresearch {
       static function_arg wrap(const function_arg& wrapped);
 
     private:
-      IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
       static const fn_branch_t NOT_IMPLEMENTED_BRANCH;
       fn_args_t m_fnArgs;
       bool m_bFnBranchRef;
@@ -120,7 +119,6 @@ namespace iresearch {
       const fn_value_t* m_pFnValue;
       fn_branch_t m_fnBranch;
       fn_value_t m_fnValue;
-      IRESEARCH_API_PRIVATE_VARIABLES_END
     };
 
     template<typename deterministic_buffer_type, typename contextual_buffer_type, typename... contextual_ctx_args_type>

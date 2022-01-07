@@ -116,7 +116,6 @@ class IRESEARCH_API encrypted_output : public irs::index_output, util::noncopyab
     return std::distance(pos_, end_);
   }
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   index_output::ptr managed_out_;
   index_output* out_;
   encryption::stream* cipher_;
@@ -125,7 +124,6 @@ class IRESEARCH_API encrypted_output : public irs::index_output, util::noncopyab
   size_t start_; // position of buffer in a file
   byte_type* pos_; // position in buffer
   byte_type* end_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // encrypted_output
 
 class IRESEARCH_API encrypted_input : public buffered_index_input, util::noncopyable {

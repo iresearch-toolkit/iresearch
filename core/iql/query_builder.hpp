@@ -68,9 +68,7 @@ namespace iresearch {
       }
 
      protected:
-      IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
       PTR filter_;
-      IRESEARCH_API_PRIVATE_VARIABLES_END
     };
 
     ////////////////////////////////////////////////////////////////////////////////

@@ -119,13 +119,10 @@ class IRESEARCH_API skip_writer: util::noncopyable {
  private:
   static void nop(size_t, index_output&) { }
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-
   std::vector<memory_output> levels_;
   size_t skip_0_; // skip interval for 0 level
   size_t skip_n_; // skip interval for 1..n levels
   write_f write_; // write function
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // skip_writer
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -247,12 +244,10 @@ class IRESEARCH_API skip_reader: util::noncopyable {
   void read_skip(skip_reader::level& level);
   levels_t::iterator find_level(doc_id_t);
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   read_f read_;
   levels_t levels_; // input streams for skip-list levels
   size_t skip_0_; // skip interval for 0 level
   size_t skip_n_; // skip interval for 1..n levels
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // skip_reader
 
 }

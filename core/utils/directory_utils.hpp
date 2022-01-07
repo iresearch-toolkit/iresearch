@@ -159,11 +159,9 @@ struct IRESEARCH_API tracking_directory final : public directory {
   }
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   mutable file_set files_;
   directory& impl_;
   bool track_open_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // tracking_directory
 
 //////////////////////////////////////////////////////////////////////////////
@@ -236,13 +234,11 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
     index_file_refs::counter_t::hash,
     index_file_refs::counter_t::equal_to> ;
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   index_file_refs& attribute_;
   directory& impl_;
   mutable std::mutex mutex_; // for use with refs_
   mutable refs_t refs_;
   bool track_open_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // ref_tracking_directory
 
 }

@@ -227,14 +227,12 @@ class IRESEARCH_API index_meta {
   friend struct index_meta_reader;
   friend struct index_meta_writer;
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   uint64_t gen_;
   uint64_t last_gen_;
   std::atomic<uint64_t> seg_counter_;
   index_segments_t segments_;
   bstring payload_buf_;
   bytes_ref payload_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 
   uint64_t next_generation() const noexcept;
 

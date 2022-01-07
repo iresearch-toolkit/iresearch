@@ -379,9 +379,7 @@ class IRESEARCH_API bytes_output : public data_output {
   }
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   bstring* buf_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // bytes_output
 
 //////////////////////////////////////////////////////////////////////////////

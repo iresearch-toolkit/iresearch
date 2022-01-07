@@ -82,11 +82,9 @@ class IRESEARCH_API fs_directory : public directory {
   virtual bool visit(const visitor_f& visitor) const override;
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   directory_attributes attrs_;
   utf8_path dir_;
   size_t fd_pool_size_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // fs_directory
 
 }

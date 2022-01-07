@@ -149,10 +149,8 @@ class collectors_base {
   }
 
  protected:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::vector<Collector> collectors_;
   const order::prepared* buckets_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // collectors_base
 
 ////////////////////////////////////////////////////////////////////////////

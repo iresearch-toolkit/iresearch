@@ -322,9 +322,7 @@ class raw_block_vector_base
     return buffers_.back();
   }
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::vector<buffer_entry_t> buffers_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // raw_block_vector_base
 
 //////////////////////////////////////////////////////////////////////////////

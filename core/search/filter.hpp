@@ -186,9 +186,7 @@ class filter_with_options : public filter {
   }
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   options_type options_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // filter_with_options
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,9 +220,7 @@ class filter_base : public filter_with_options<Options> {
   }
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::string field_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // filter_base
 
 ////////////////////////////////////////////////////////////////////////////////

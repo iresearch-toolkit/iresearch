@@ -102,11 +102,9 @@ class IRESEARCH_API cost final : public attribute {
   }
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   cost_f func_{[]{ return 0; }}; // evaluation function
   mutable cost_t value_{ 0 };
   mutable bool init_{ true };
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // cost
 
 } // ROOT

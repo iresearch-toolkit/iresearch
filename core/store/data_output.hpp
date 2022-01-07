@@ -158,13 +158,11 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
   }
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   byte_type* buf_{};
   byte_type* pos_{}; // position in buffer
   byte_type* end_{};
   size_t start_{};   // position of buffer in a file
   size_t buf_size_{};
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // buffered_index_output
 
 }

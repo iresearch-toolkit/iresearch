@@ -129,9 +129,7 @@ class IRESEARCH_API directory_reader final : public index_reader {
  private:
   typedef std::shared_ptr<const index_reader> impl_ptr;
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   impl_ptr impl_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 
   directory_reader(impl_ptr&& impl) noexcept;
 }; // directory_reader

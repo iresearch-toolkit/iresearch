@@ -127,9 +127,7 @@ class IRESEARCH_API segment_reader final : public sub_reader {
  private:
   using impl_ptr = std::shared_ptr<const sub_reader>;
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   impl_ptr impl_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 
   segment_reader(impl_ptr&& impl) noexcept;
 }; // segment_reade

@@ -87,9 +87,7 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl) const;
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   filters_t filters_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -199,9 +197,7 @@ class IRESEARCH_API Not: public filter {
   virtual bool equals(const irs::filter& rhs) const noexcept override;
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   filter::ptr filter_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 }
