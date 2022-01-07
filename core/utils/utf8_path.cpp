@@ -36,7 +36,7 @@ namespace {
 #endif
 
 // use inline to avoid GCC warning
-inline bool append_path(std::string& buf, string_ref value) {
+inline bool append_path(std::string& buf, irs::string_ref value) {
   buf.append(value.c_str(), value.size());
 
   return true;
