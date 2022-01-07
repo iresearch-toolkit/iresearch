@@ -39,7 +39,7 @@ struct tracking_directory;
 struct sub_reader;
 class comparer;
 
-class IRESEARCH_API merge_writer: public util::noncopyable {
+class merge_writer: public util::noncopyable {
  public:
   typedef std::shared_ptr<const irs::sub_reader> sub_reader_ptr;
   typedef std::function<bool()> flush_progress_t;

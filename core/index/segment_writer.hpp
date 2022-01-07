@@ -73,7 +73,7 @@ ENABLE_BITMASK_ENUM(Action);
 ///        an object that represents a single ongoing transaction
 ///        non-thread safe
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API segment_writer : util::noncopyable {
+class segment_writer : util::noncopyable {
  public:
   struct update_context {
     size_t generation;
@@ -457,8 +457,5 @@ class IRESEARCH_API segment_writer : util::noncopyable {
 }; // segment_writer
 
 }
-
-// segment_writer::ptr
-MSVC_ONLY(template class IRESEARCH_API std::unique_ptr<irs::segment_writer>;) // cppcheck-suppress unknownMacro 
 
 #endif // IRESEARCH_SEGMENT_WRITER_H

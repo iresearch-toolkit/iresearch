@@ -45,14 +45,14 @@ typedef std::shared_ptr<const format> format_ptr;
 }
 
 // format_ptr
-MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<const irs::format>;) // cppcheck-suppress unknownMacro 
+MSVC_ONLY(template class std::shared_ptr<const irs::format>;) // cppcheck-suppress unknownMacro
 
 namespace iresearch {
 
 struct directory;
 class index_writer;
 
-struct IRESEARCH_API segment_meta {
+struct segment_meta {
   using file_set = absl::flat_hash_set<std::string>;
 
   segment_meta() = default;
@@ -100,9 +100,9 @@ inline bool has_columnstore(const segment_meta& meta) noexcept {
 static_assert(std::is_nothrow_move_constructible_v<segment_meta>);
 static_assert(std::is_nothrow_move_assignable_v<segment_meta>);
 
-class IRESEARCH_API index_meta {
+class index_meta {
  public:
-  struct IRESEARCH_API index_segment_t {
+  struct index_segment_t {
     index_segment_t() = default;
     // cppcheck-suppress noExplicitConstructor
     index_segment_t(segment_meta&& meta);

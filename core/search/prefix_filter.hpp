@@ -31,7 +31,7 @@ namespace iresearch {
 class by_prefix;
 struct filter_visitor;
 
-struct IRESEARCH_API by_prefix_filter_options {
+struct by_prefix_filter_options {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief search prefix
   //////////////////////////////////////////////////////////////////////////////
@@ -50,7 +50,7 @@ struct IRESEARCH_API by_prefix_filter_options {
 /// @struct by_prefix_options
 /// @brief options for prefix filter
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_prefix_options : by_prefix_filter_options {
+struct by_prefix_options : by_prefix_filter_options {
   using filter_type = by_prefix;
   using filter_options = by_prefix_filter_options;
 
@@ -73,7 +73,7 @@ struct IRESEARCH_API by_prefix_options : by_prefix_filter_options {
 /// @class by_prefix
 /// @brief user-side prefix filter
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_prefix : public filter_base<by_prefix_options> {
+class by_prefix : public filter_base<by_prefix_options> {
  public:
   static ptr make();
 

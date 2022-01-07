@@ -33,7 +33,7 @@ namespace iresearch {
 // --SECTION--                                               scorer registration
 // -----------------------------------------------------------------------------
 
-class IRESEARCH_API scorer_registrar {
+class scorer_registrar {
  public:
   scorer_registrar(
     const type_info& type,
@@ -61,7 +61,7 @@ class IRESEARCH_API scorer_registrar {
 // --SECTION--                                               convinience methods
 // -----------------------------------------------------------------------------
 
-class IRESEARCH_API scorers {
+class scorers {
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether scorer with a specified name is registered

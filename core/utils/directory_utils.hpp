@@ -37,47 +37,28 @@ struct segment_meta;
 
 namespace directory_utils {
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                           memory_allocator utils
-// ----------------------------------------------------------------------------
-
-//// inserts memory_allocator with a specified pool size into a provided
-//// directory and returns a refernece to it
-//// if size equals to 0, returns 'memory_allocator::global' allocator
-//IRESEARCH_API memory_allocator& ensure_allocator(
-//  directory& dir, size_t size);
-//
-//// returns a memory allocator assigned to a specified directory or
-//// `memory_allocator::global()` allocator if there is no allocator assigned
-//IRESEARCH_API memory_allocator& get_allocator(
-//  const directory& dir);
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                            index_file_refs utils
-// ----------------------------------------------------------------------------
-
 // return a reference to a file or empty() if not found
-IRESEARCH_API index_file_refs::ref_t reference(
+index_file_refs::ref_t reference(
   const directory& dir,
   const std::string& name,
   bool include_missing = false);
 
 // return success, visitor gets passed references to files retrieved from source
-IRESEARCH_API bool reference(
+bool reference(
   const directory& dir,
   const std::function<const std::string*()>& source,
   const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
   bool include_missing = false);
 
 // return success, visitor gets passed references to files registered with index_meta
-IRESEARCH_API bool reference(
+bool reference(
   const directory& dir,
   const index_meta& meta,
   const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
   bool include_missing = false);
 
 // return success, visitor gets passed references to files registered with segment_meta
-IRESEARCH_API bool reference(
+bool reference(
   const directory& dir,
   const segment_meta& meta,
   const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
@@ -85,7 +66,7 @@ IRESEARCH_API bool reference(
 
 // remove all (tracked and non-tracked) files if they are unreferenced
 // return success
-IRESEARCH_API bool remove_all_unreferenced(directory& dir);
+bool remove_all_unreferenced(directory& dir);
 
 }
 
@@ -93,7 +74,7 @@ IRESEARCH_API bool remove_all_unreferenced(directory& dir);
 /// @class tracking_directory
 /// @brief track files created/opened via file names
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API tracking_directory final : public directory {
+struct tracking_directory final : public directory {
   using file_set = absl::flat_hash_set<std::string>;
 
   // @param track_open - track file refs for calls to open(...)
@@ -168,7 +149,7 @@ struct IRESEARCH_API tracking_directory final : public directory {
 /// @class ref_tracking_directory
 /// @brief track files created/opened via file refs instead of file names
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API ref_tracking_directory: public directory {
+struct ref_tracking_directory: public directory {
  public:
   using ptr = std::unique_ptr<ref_tracking_directory>;
 

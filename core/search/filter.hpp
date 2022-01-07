@@ -40,13 +40,13 @@ struct index_reader;
 /// @class filter
 /// @brief base class for all user-side filters
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API filter {
+class filter {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @class query
   /// @brief base class for all prepared(compiled) queries
   //////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API prepared {
+  class prepared {
    public:
     using ptr = memory::managed_ptr<const prepared>;
 
@@ -227,7 +227,7 @@ class filter_base : public filter_with_options<Options> {
 /// @class empty
 /// @brief filter which returns no documents
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API empty final : public filter {
+class empty final : public filter {
  public:
   static ptr make();
 

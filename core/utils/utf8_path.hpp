@@ -38,7 +38,7 @@ utf8_path current_path();
 
 namespace iresearch {
 
-class IRESEARCH_API utf8_path {
+class utf8_path {
  public:
   #ifdef _WIN32
     typedef wchar_t native_char_t;

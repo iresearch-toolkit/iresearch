@@ -32,7 +32,7 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief interface for a segment reader
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API segment_reader final : public sub_reader {
+class segment_reader final : public sub_reader {
  public:
   typedef atomic_shared_ptr_helper<const sub_reader> atomic_utils;
   typedef segment_reader element_type; // type same as self

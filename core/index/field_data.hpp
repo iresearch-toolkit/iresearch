@@ -74,7 +74,7 @@ struct cached_column {
   columnstore_writer::column_finalizer_f finalizer;
 };
 
-class IRESEARCH_API field_data : util::noncopyable {
+class field_data : util::noncopyable {
  public:
   field_data(
     string_ref name,
@@ -165,7 +165,7 @@ class IRESEARCH_API field_data : util::noncopyable {
   bool seen_{false};
 }; // field_data
 
-class IRESEARCH_API fields_data: util::noncopyable {
+class fields_data: util::noncopyable {
  private:
   struct field_ref_eq : value_ref_eq<field_data*> {
     using self_t::operator();

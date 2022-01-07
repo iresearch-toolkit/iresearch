@@ -32,7 +32,7 @@ namespace iresearch {
 /// @class score
 /// @brief represents a score related for the particular document
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API score : public attribute {
+class score : public attribute {
  public:
   static constexpr string_ref type_name() noexcept {
     return "iresearch::score";
@@ -108,8 +108,7 @@ class IRESEARCH_API score : public attribute {
 //  score_f func_; // scoring function
 }; // score
 
-IRESEARCH_API void reset(
-  irs::score& score, order::prepared::scorers&& scorers);
+void reset(irs::score& score, order::prepared::scorers&& scorers);
 
 } // ROOT
 

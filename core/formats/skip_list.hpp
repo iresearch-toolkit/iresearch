@@ -45,7 +45,7 @@ namespace iresearch {
 /// x - skip data
 /// c - skip data with child pointer
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API skip_writer: util::noncopyable {
+class skip_writer: util::noncopyable {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief this function will be called every skip allowing users to store
@@ -129,7 +129,7 @@ class IRESEARCH_API skip_writer: util::noncopyable {
 /// @class skip_reader
 /// @brief base write for searching in skip-lists in a directory 
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API skip_reader: util::noncopyable {
+class skip_reader: util::noncopyable {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief function will be called when reading of next skip 

@@ -114,7 +114,7 @@ ENABLE_BITMASK_ENUM(OpenMode);
 ///        the same directory simultaneously.
 ///        Thread safe.
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API index_writer : private util::noncopyable {
+class index_writer : private util::noncopyable {
  private:
   struct flush_context; // forward declaration
   struct segment_context; // forward declaration
@@ -130,7 +130,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   /// @brief segment references given out by flush_context to allow tracking
   ///        and updating flush_context::pending_segment_context
   //////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API active_segment_context: private util::noncopyable { // non-copyable to ensure only one copy for get/put
+  class active_segment_context: private util::noncopyable { // non-copyable to ensure only one copy for get/put
    public:
     active_segment_context() = default;
     active_segment_context(
@@ -161,12 +161,12 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   /// @note the object is non-thread-safe, each thread should use its own
   ///       separate instance
   //////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API documents_context: private util::noncopyable { // noncopyable because of segments_
+  class documents_context: private util::noncopyable { // noncopyable because of segments_
    public:
     ////////////////////////////////////////////////////////////////////////////
     /// @brief a wrapper around a segment_writer::document with commit/rollback
     ////////////////////////////////////////////////////////////////////////////
-    class IRESEARCH_API document : public segment_writer::document {
+    class document : public segment_writer::document {
      public:
       document(
         flush_context_ptr&& ctx,
@@ -840,7 +840,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   /// @note segment_writer::doc_contexts[...uncomitted_document_contexts_): generation == flush_context::generation
   /// @note segment_writer::doc_contexts[uncomitted_document_contexts_...]: generation == local generation (updated when segment_context registered once again with flush_context)
   //////////////////////////////////////////////////////////////////////////////
-  struct IRESEARCH_API segment_context { // IRESEARCH_API because of make_update_context(...)/remove(...) used by documents_context::replace(...)/documents_context::remove(...)
+  struct segment_context {
     struct flushed_t: public index_meta::index_segment_t {
       doc_id_t docs_mask_tail_doc_id{std::numeric_limits<doc_id_t>::max()}; // starting doc_id that should be added to docs_mask
       flushed_t() = default;

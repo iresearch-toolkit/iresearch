@@ -35,7 +35,7 @@ struct filter_visitor;
 /// @struct by_term_options
 /// @brief options for term filter
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_term_options {
+struct by_term_options {
   using filter_type = by_term;
 
   bstring term;
@@ -53,7 +53,7 @@ struct IRESEARCH_API by_term_options {
 /// @class by_term 
 /// @brief user-side term filter
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_term : public filter_base<by_term_options> {
+class by_term : public filter_base<by_term_options> {
  public:
   static ptr make();
 

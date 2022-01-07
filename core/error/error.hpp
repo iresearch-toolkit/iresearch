@@ -27,8 +27,6 @@
 
 #include "utils/string.hpp"
 
-MSVC_ONLY(class IRESEARCH_API std::exception); // cppcheck-suppress unknownMacro
-
 namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
@@ -56,7 +54,7 @@ enum class ErrorCode : uint32_t {
 //////////////////////////////////////////////////////////////////////////////
 /// @struct error_base
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API error_base: std::exception {
+struct error_base: std::exception {
   virtual ErrorCode code() const noexcept { return ErrorCode::undefined_error; }
   virtual const char* what() const noexcept override;
 }; // error_base
@@ -64,7 +62,7 @@ struct IRESEARCH_API error_base: std::exception {
 //////////////////////////////////////////////////////////////////////////////
 /// @class detailed_error_base
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API detailed_error_base : public error_base {
+class detailed_error_base : public error_base {
  public:
   detailed_error_base() = default;
 
@@ -87,7 +85,7 @@ class IRESEARCH_API detailed_error_base : public error_base {
 //////////////////////////////////////////////////////////////////////////////
 /// @struct not_supported
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API not_supported : error_base {
+struct not_supported : error_base {
   DECLARE_ERROR_CODE(not_supported);
 
   virtual const char* what() const noexcept override;
@@ -96,7 +94,7 @@ struct IRESEARCH_API not_supported : error_base {
 //////////////////////////////////////////////////////////////////////////////
 /// @struct io_error
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API io_error : detailed_error_base {
+struct io_error : detailed_error_base {
   DECLARE_ERROR_CODE(io_error);
 
   io_error() = default;
@@ -110,7 +108,7 @@ struct IRESEARCH_API io_error : detailed_error_base {
 //////////////////////////////////////////////////////////////////////////////
 /// @struct lock_obtain_failed
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API lock_obtain_failed : public error_base {
+class lock_obtain_failed : public error_base {
  public:
   DECLARE_ERROR_CODE(lock_obtain_failed);
 
@@ -124,7 +122,7 @@ class IRESEARCH_API lock_obtain_failed : public error_base {
 //////////////////////////////////////////////////////////////////////////////
 /// @class file_not_found
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API file_not_found: public error_base {
+class file_not_found: public error_base {
  public:
   DECLARE_ERROR_CODE(file_not_found);
 
@@ -138,7 +136,7 @@ class IRESEARCH_API file_not_found: public error_base {
 //////////////////////////////////////////////////////////////////////////////
 /// @struct file_not_found
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API index_not_found : error_base {
+struct index_not_found : error_base {
   DECLARE_ERROR_CODE(index_not_found);
 
   virtual const char* what() const noexcept override;
@@ -147,7 +145,7 @@ struct IRESEARCH_API index_not_found : error_base {
 //////////////////////////////////////////////////////////////////////////////
 /// @struct index_error
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API index_error : detailed_error_base {
+struct index_error : detailed_error_base {
   DECLARE_ERROR_CODE(index_error);
 
   template<typename T>
@@ -159,7 +157,7 @@ struct IRESEARCH_API index_error : detailed_error_base {
 //////////////////////////////////////////////////////////////////////////////
 /// @struct not_impl_error
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API not_impl_error : error_base {
+struct not_impl_error : error_base {
   DECLARE_ERROR_CODE(not_impl_error);
 
   virtual const char* what() const noexcept override;
@@ -168,7 +166,7 @@ struct IRESEARCH_API not_impl_error : error_base {
 //////////////////////////////////////////////////////////////////////////////
 /// @struct illegal_argument
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API illegal_argument : detailed_error_base {
+struct illegal_argument : detailed_error_base {
   DECLARE_ERROR_CODE(illegal_argument);
 
   template<typename T>
@@ -180,7 +178,7 @@ struct IRESEARCH_API illegal_argument : detailed_error_base {
 //////////////////////////////////////////////////////////////////////////////
 /// @struct illegal_state
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API illegal_state : detailed_error_base {
+struct illegal_state : detailed_error_base {
   DECLARE_ERROR_CODE(illegal_state);
 
   template<typename T>
