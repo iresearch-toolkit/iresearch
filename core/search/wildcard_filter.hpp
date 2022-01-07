@@ -31,7 +31,7 @@ namespace iresearch {
 class by_wildcard;
 struct filter_visitor;
 
-struct IRESEARCH_API by_wildcard_filter_options {
+struct by_wildcard_filter_options {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief search wildcard
   //////////////////////////////////////////////////////////////////////////////
@@ -50,7 +50,7 @@ struct IRESEARCH_API by_wildcard_filter_options {
 /// @struct by_prefix_options
 /// @brief options for wildcard filter
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_wildcard_options : by_wildcard_filter_options {
+struct by_wildcard_options : by_wildcard_filter_options {
   using filter_type = by_wildcard;
   using filter_options = by_wildcard_filter_options;
 
@@ -73,7 +73,7 @@ struct IRESEARCH_API by_wildcard_options : by_wildcard_filter_options {
 /// @class by_wildcard
 /// @brief user-side wildcard filter
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_wildcard final
+class by_wildcard final
     : public filter_base<by_wildcard_options> {
  public:
   static ptr make();

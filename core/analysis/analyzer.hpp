@@ -29,7 +29,7 @@
 namespace iresearch {
 namespace analysis {
 
-class IRESEARCH_API analyzer : public token_stream {
+class analyzer : public token_stream {
  public:
   using ptr = std::unique_ptr<analyzer>;
 

@@ -41,7 +41,7 @@ namespace analysis {
 typedef analysis::analyzer::ptr(*factory_f)(string_ref args);
 typedef bool(*normalizer_f)(string_ref args, std::string& config);
 
-class IRESEARCH_API analyzer_registrar {
+class analyzer_registrar {
  public:
    analyzer_registrar(
     const type_info& type,
@@ -71,7 +71,7 @@ class IRESEARCH_API analyzer_registrar {
 // --SECTION--                                               convinience methods
 // -----------------------------------------------------------------------------
 
-class IRESEARCH_API analyzers {
+class analyzers {
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether an analyzer with the specified name is registered

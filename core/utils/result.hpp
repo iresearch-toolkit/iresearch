@@ -29,7 +29,7 @@
 
 namespace iresearch {
 
-class IRESEARCH_API result {
+class result {
  public:
   enum Code : byte_type {
     OK = 0,

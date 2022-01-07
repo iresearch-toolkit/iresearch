@@ -99,10 +99,8 @@ class bytes_input final: public data_input, public bytes_ref {
   }
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   bstring buf_;
   const byte_type* pos_{ buf_.c_str() };
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // bytes_input
 
 // ----------------------------------------------------------------------------

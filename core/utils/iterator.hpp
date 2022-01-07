@@ -38,7 +38,7 @@ namespace iresearch {
 // ----------------------------------------------------------------------------
 
 template<typename T>
-struct IRESEARCH_API_TEMPLATE iterator {
+struct iterator {
   virtual ~iterator() = default;
   virtual T value() const = 0;
   virtual bool next() = 0;

@@ -112,11 +112,11 @@ constexpr inline uint32_t ceil32(uint32_t value, uint32_t step) noexcept {
   return div_ceil32(value, step)*step;
 }
 
-IRESEARCH_API uint32_t log2_64(uint64_t value);
+uint32_t log2_64(uint64_t value);
 
-IRESEARCH_API uint32_t log2_32(uint32_t value);
+uint32_t log2_32(uint32_t value);
 
-IRESEARCH_API uint32_t log(uint64_t x, uint64_t base);
+uint32_t log(uint64_t x, uint64_t base);
 
 /* returns number of set bits in a set of words */
 template<typename T>

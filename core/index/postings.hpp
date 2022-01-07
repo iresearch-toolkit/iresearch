@@ -72,7 +72,7 @@ struct posting {
   doc_id_t size{ 1 }; // length of postings
 };
 
-class IRESEARCH_API postings : util::noncopyable {
+class postings : util::noncopyable {
  public:
   using writer_t = byte_block_pool::inserter;
 
@@ -121,11 +121,9 @@ class IRESEARCH_API postings : util::noncopyable {
 
   using map_t = flat_hash_set<term_id_eq>;
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::vector<posting> postings_;
   map_t map_;
   writer_t& writer_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 }

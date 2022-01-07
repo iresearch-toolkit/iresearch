@@ -54,7 +54,7 @@ using features_t = range<const type_info::type_id>;
 /// @struct field_meta 
 /// @brief represents field metadata
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API field_meta { 
+struct field_meta {
  public:
   static const field_meta EMPTY;
 
