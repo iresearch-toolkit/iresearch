@@ -116,7 +116,7 @@ class IRESEARCH_API lock_obtain_failed : public error_base {
  public:
   DECLARE_ERROR_CODE(lock_obtain_failed);
 
-  explicit lock_obtain_failed(const irs::string_ref& filename = "");
+  explicit lock_obtain_failed(irs::string_ref filename = "");
   virtual const char* what() const noexcept override;
 
  private:
@@ -132,7 +132,7 @@ class IRESEARCH_API file_not_found: public error_base {
  public:
   DECLARE_ERROR_CODE(file_not_found);
 
-  explicit file_not_found(const irs::string_ref& filename = "");
+  explicit file_not_found(irs::string_ref filename = "");
   virtual const char* what() const noexcept override;
 
  private:

@@ -48,7 +48,7 @@ struct IRESEARCH_API by_terms_options {
       : term(std::move(term)), boost(boost) {
     }
 
-    explicit search_term(const bytes_ref& term, boost_t boost = no_boost())
+    explicit search_term(bytes_ref term, boost_t boost = no_boost())
       : term(term.c_str(), term.size()), boost(boost) {
     }
 

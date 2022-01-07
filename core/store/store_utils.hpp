@@ -390,7 +390,7 @@ class IRESEARCH_API bytes_output : public data_output {
 class IRESEARCH_API bytes_ref_input : public index_input {
  public:
   bytes_ref_input() = default;
-  explicit bytes_ref_input(const bytes_ref& data);
+  explicit bytes_ref_input(bytes_ref data);
 
   void skip(size_t size) noexcept {
     assert(pos_ + size <= data_.end());
@@ -454,7 +454,7 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     pos_ = data;
   }
 
-  void reset(const bytes_ref& ref) noexcept {
+  void reset(bytes_ref ref) noexcept {
     reset(ref.c_str(), ref.size());
   }
 

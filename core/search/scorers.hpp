@@ -38,7 +38,7 @@ class IRESEARCH_API scorer_registrar {
   scorer_registrar(
     const type_info& type,
     const type_info& args_format,
-    sort::ptr(*factory)(const irs::string_ref& args),
+    sort::ptr(*factory)(irs::string_ref args),
     const char* source = nullptr);
   operator bool() const noexcept;
 
@@ -67,7 +67,7 @@ class IRESEARCH_API scorers {
   /// @brief checks whether scorer with a specified name is registered
   ////////////////////////////////////////////////////////////////////////////////
   static bool exists(
-    const string_ref& name,
+    string_ref name,
     const type_info& args_format,
     bool load_library = true);
 
@@ -77,9 +77,9 @@ class IRESEARCH_API scorers {
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   ////////////////////////////////////////////////////////////////////////////////
   static sort::ptr get(
-    const string_ref& name,
+    string_ref name,
     const type_info& args_format,
-    const string_ref& args,
+    string_ref args,
     bool load_library = true) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -98,7 +98,7 @@ class IRESEARCH_API scorers {
   /// @brief visit all loaded scorers, terminate early if visitor returns false
   ////////////////////////////////////////////////////////////////////////////////
   static bool visit(
-    const std::function<bool(const string_ref&, const type_info&)>& visitor);
+    const std::function<bool(string_ref, const type_info&)>& visitor);
 
  private:
   scorers() = delete;

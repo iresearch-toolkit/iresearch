@@ -120,8 +120,8 @@ namespace iresearch {
        ////////////////////////////////////////////////////////////////////////////////
        typedef std::function<bool(
          proxy_filter& root,
-         const string_ref& locale,
-         const string_ref& field,
+         string_ref locale,
+         string_ref field,
          void* const& cookie,
          const function_arg::fn_args_t& args)> branch_builder_function_t;
 
@@ -166,7 +166,7 @@ namespace iresearch {
       ////////////////////////////////////////////////////////////////////////////////
       query build(
         const std::string& query,
-        const irs::string_ref& locale,
+        irs::string_ref locale,
         void* cookie = nullptr,
         proxy_filter* root = nullptr) const;
 

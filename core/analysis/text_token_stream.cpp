@@ -172,7 +172,7 @@ std::mutex mutex;
 bool get_stopwords(
     analysis::text_token_stream::stopwords_t& buf,
     string_ref language,
-    const string_ref& path = string_ref::NIL) {
+    string_ref path = string_ref::NIL) {
   utf8_path stopword_path;
 
   auto* custom_stopword_path = !path.null()
@@ -291,7 +291,7 @@ bool build_stopwords(const analysis::text_token_stream::options_t& options,
 /// @brief create an analyzer based on the supplied cache_key and options
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr construct(
-    const string_ref& cache_key,
+    string_ref cache_key,
     analysis::text_token_stream::options_t&& options,
     analysis::text_token_stream::stopwords_t&& stopwords) {
   auto generator = [](
@@ -857,7 +857,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   return nullptr;
 }
 
-analysis::analyzer::ptr make_vpack(const string_ref& args) {
+analysis::analyzer::ptr make_vpack(string_ref args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   return make_vpack(slice);
 }
@@ -871,7 +871,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* vpack_builder)
   }
 }
 
-bool normalize_vpack_config(const string_ref& args, std::string& definition) {
+bool normalize_vpack_config(string_ref args, std::string& definition) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
   bool res = normalize_vpack_config(slice, &builder);
@@ -884,7 +884,7 @@ bool normalize_vpack_config(const string_ref& args, std::string& definition) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a locale name
 ////////////////////////////////////////////////////////////////////////////////
-analysis::analyzer::ptr make_text(const string_ref& args) {
+analysis::analyzer::ptr make_text(string_ref args) {
   icu::Locale locale;
 
   if (locale_from_string(static_cast<std::string>(args), locale)) {
@@ -894,7 +894,7 @@ analysis::analyzer::ptr make_text(const string_ref& args) {
   }
 }
 
-bool normalize_text_config(const string_ref& args,
+bool normalize_text_config(string_ref args,
                            std::string& definition) {
   icu::Locale locale;
 
@@ -906,7 +906,7 @@ bool normalize_text_config(const string_ref& args,
   return false;
 }
 
-analysis::analyzer::ptr make_json(const string_ref& args) {
+analysis::analyzer::ptr make_json(string_ref args) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while constructing text_token_normalizing_stream");
@@ -925,7 +925,7 @@ analysis::analyzer::ptr make_json(const string_ref& args) {
   return nullptr;
 }
 
-bool normalize_json_config(const string_ref& args, std::string& definition) {
+bool normalize_json_config(string_ref args, std::string& definition) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while normalizing text_token_normalizing_stream");
@@ -1000,11 +1000,11 @@ text_token_stream::text_token_stream(
   cached_state_by_key.clear();
 }
 
-/*static*/ analyzer::ptr text_token_stream::make(const string_ref& locale) {
+/*static*/ analyzer::ptr text_token_stream::make(string_ref locale) {
   return make_text(locale);
 }
 
-bool text_token_stream::reset(const string_ref& data) {
+bool text_token_stream::reset(string_ref data) {
   if (data.size() > std::numeric_limits<uint32_t>::max()) {
     // can't handle data which is longer than std::numeric_limits<uint32_t>::max()
     return false;

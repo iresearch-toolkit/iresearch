@@ -297,7 +297,7 @@ struct IRESEARCH_API field_reader {
     const segment_meta& meta,
     const document_mask& mask) = 0;
 
-  virtual const term_reader* field(const string_ref& field) const = 0;
+  virtual const term_reader* field(string_ref field) const = 0;
   virtual field_iterator::ptr iterator() const = 0;
   virtual size_t size() const = 0;
 }; // field_reader
@@ -449,7 +449,7 @@ struct IRESEARCH_API segment_meta_reader {
   virtual void read(
     const directory& dir,
     segment_meta& meta,
-    const string_ref& filename = string_ref::NIL) = 0; // null == use meta
+    string_ref filename = string_ref::NIL) = 0; // null == use meta
 }; // segment_meta_reader
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -482,7 +482,7 @@ struct IRESEARCH_API index_meta_reader {
   virtual void read(
     const directory& dir, 
     index_meta& meta,
-    const string_ref& filename = string_ref::NIL) = 0; // null == use meta
+    string_ref filename = string_ref::NIL) = 0; // null == use meta
 
  protected:
   static void complete(
@@ -553,7 +553,7 @@ class IRESEARCH_API formats {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether a format with the specified name is registered
   ////////////////////////////////////////////////////////////////////////////////
-  static bool exists(const string_ref& name, bool load_library = true);
+  static bool exists(string_ref name, bool load_library = true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find a format by name, or nullptr if not found
@@ -561,8 +561,8 @@ class IRESEARCH_API formats {
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   //////////////////////////////////////////////////////////////////////////////
   static format::ptr get(
-    const string_ref& name,
-    const string_ref& module = string_ref::NIL,
+    string_ref name,
+    string_ref module = string_ref::NIL,
     bool load_library = true) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -580,7 +580,7 @@ class IRESEARCH_API formats {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief visit all loaded formats, terminate early if visitor returns false
   ////////////////////////////////////////////////////////////////////////////////
-  static bool visit(const std::function<bool(const string_ref&)>& visitor);
+  static bool visit(const std::function<bool(string_ref)>& visitor);
 
  private:
   formats() = delete;
@@ -594,7 +594,7 @@ class IRESEARCH_API format_registrar {
  public:
   format_registrar(
     const type_info& type,
-    const string_ref& module,
+    string_ref module,
     format::ptr(*factory)(),
     const char* source = nullptr);
 

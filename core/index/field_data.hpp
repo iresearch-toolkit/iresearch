@@ -77,7 +77,7 @@ struct cached_column {
 class IRESEARCH_API field_data : util::noncopyable {
  public:
   field_data(
-    const string_ref& name,
+    string_ref name,
     const features_t& features,
     const feature_info_provider_t& feature_columns,
     std::deque<cached_column>& cached_columns,

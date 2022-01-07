@@ -48,9 +48,7 @@ inline bool memcmp_less(
   return res < 0;
 }
 
-inline bool memcmp_less(
-    const bytes_ref& lhs,
-    const bytes_ref& rhs) noexcept {
+inline bool memcmp_less(bytes_ref lhs, bytes_ref rhs) noexcept {
   return memcmp_less(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
 }
 
@@ -94,7 +92,7 @@ class IRESEARCH_API postings : util::noncopyable {
 
   /// @note on error returns std::ptr(nullptr, false)
   /// @note returned poitern remains valid until the next call
-  std::pair<posting*, bool> emplace(const bytes_ref& term);
+  std::pair<posting*, bool> emplace(bytes_ref term);
 
   bool empty() const noexcept { return map_.empty(); }
   size_t size() const noexcept { return map_.size(); }

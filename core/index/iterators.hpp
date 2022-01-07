@@ -96,7 +96,7 @@ struct IRESEARCH_API field_iterator : iterator<const term_reader&> {
   /// @brief position iterator at a specified target
   /// @return if the target is found, false otherwise
   //////////////////////////////////////////////////////////////////////////////
-  virtual bool seek(const string_ref& target) = 0;
+  virtual bool seek(string_ref target) = 0;
 }; // field_iterator
 
 struct column_reader;
@@ -117,7 +117,7 @@ struct IRESEARCH_API column_iterator : iterator<const column_reader&> {
   /// @brief position iterator at a specified target
   /// @return if the target is found, false otherwise
   //////////////////////////////////////////////////////////////////////////////
-  virtual bool seek(const string_ref& name) = 0;
+  virtual bool seek(string_ref name) = 0;
 }; // column_iterator
 
 //////////////////////////////////////////////////////////////////////////////

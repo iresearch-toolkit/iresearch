@@ -37,11 +37,11 @@ namespace iresearch {
 
 struct IRESEARCH_API attributes {
   static bool exists(
-    const string_ref& name,
+    string_ref name,
     bool load_library = true);
 
   static type_info get(
-    const string_ref& name,
+    string_ref name,
     bool load_library = true) noexcept;
 
   attributes() = delete;

@@ -82,11 +82,11 @@ class IRESEARCH_API by_wildcard final
     const index_reader& index,
     const order::prepared& order,
     boost_t boost,
-    const string_ref& field,
-    const bytes_ref& term,
+    string_ref field,
+    bytes_ref term,
     size_t scored_terms_limit);
 
-  static field_visitor visitor(const bytes_ref& term);
+  static field_visitor visitor(bytes_ref term);
 
   using filter::prepare;
 

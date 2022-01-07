@@ -136,13 +136,13 @@ class IRESEARCH_API compression_registrar {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether an comopression with the specified name is registered
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API bool exists(const string_ref& name, bool load_library = true);
+IRESEARCH_API bool exists(string_ref name, bool load_library = true);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a compressor by name, or nullptr if not found
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API compressor::ptr get_compressor(
-    const string_ref& name,
+    string_ref name,
     const options& opts,
     bool load_library = true) noexcept;
 
@@ -160,7 +160,7 @@ inline compressor::ptr get_compressor(
 /// @brief creates a decompressor by name, or nullptr if not found
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API decompressor::ptr get_decompressor(
-    const string_ref& name,
+    string_ref name,
     bool load_library = true) noexcept;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -187,7 +187,7 @@ IRESEARCH_API void load_all(const std::string& path);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visit all loaded compressions, terminate early if visitor returns false
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API bool visit(const std::function<bool(const string_ref&)>& visitor);
+IRESEARCH_API bool visit(const std::function<bool(string_ref)>& visitor);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class raw
