@@ -30,6 +30,38 @@
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
+namespace {
+class CollationEncoder {
+ public:
+  void encode(irs::bytes_ref src) {
+    _buffer.clear();
+    _buffer.reserve(src.size() * 2);
+    for (auto b : src) {
+      auto enc = encode(b);
+      _buffer.insert(_buffer.end(), enc.begin(), enc.end());
+    }
+  }
+
+  irs::bytes_ref getByteArray() {
+    return irs::bytes_ref{_buffer.data(), _buffer.size()};
+  }
+
+ private:
+  std::vector<uint8_t> encode(uint8_t b) {
+    std::vector<uint8_t> res;
+    if (0x80 & b) {
+      res.push_back(0xc0 | (b >> 3));
+      res.push_back(0x80 | (b & 0x7));
+    } else {
+      res.push_back(b);
+    }
+    return res;
+  }
+
+  std::vector<uint8_t> _buffer;
+};
+}
+
 TEST(collation_token_stream_test, consts) {
   static_assert("collation" == irs::type<irs::analysis::collation_token_stream>::name());
 }
@@ -110,7 +142,7 @@ TEST(collation_token_stream_test, check_collation) {
   constexpr irs::string_ref locale_name = R"(en)";
   const icu::Locale icu_locale = icu::Locale::createFromName(locale_name.c_str());
 
-  icu::CollationKey key;
+  CollationEncoder encodedKey;
   std::unique_ptr<icu::Collator> coll{
     icu::Collator::createInstance(icu_locale, err) };
   ASSERT_NE(nullptr, coll);
@@ -118,6 +150,7 @@ TEST(collation_token_stream_test, check_collation) {
 
   auto get_collation_key = [&](irs::string_ref data) -> irs::bytes_ref {
     err = UErrorCode::U_ZERO_ERROR;
+    icu::CollationKey key;
     coll->getCollationKey(
       icu::UnicodeString::fromUTF8(
         icu::StringPiece{data.c_str(), static_cast<int32_t>(data.size())}),
@@ -128,8 +161,8 @@ TEST(collation_token_stream_test, check_collation) {
     const irs::byte_type* p = key.getByteArray(size);
     EXPECT_NE(nullptr, p);
     EXPECT_NE(0, size);
-
-    return { p, static_cast<size_t>(size)-1 };
+    encodedKey.encode({p, static_cast<size_t>(size-1)});
+    return encodedKey.getByteArray();
   };
 
   {
@@ -193,8 +226,8 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
 
   constexpr irs::string_ref locale_name = R"(de@collation=phonebook)";
   const icu::Locale icu_locale = icu::Locale::createFromName(locale_name.c_str());
-
-  icu::CollationKey key;
+  
+  CollationEncoder encodedKey;
   std::unique_ptr<icu::Collator> coll{
     icu::Collator::createInstance(icu_locale, err) };
   ASSERT_NE(nullptr, coll);
@@ -202,6 +235,7 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
 
   auto get_collation_key = [&](irs::string_ref data) -> irs::bytes_ref {
     err = UErrorCode::U_ZERO_ERROR;
+    icu::CollationKey key;
     coll->getCollationKey(
       icu::UnicodeString::fromUTF8(
         icu::StringPiece{data.c_str(), static_cast<int32_t>(data.size())}),
@@ -212,8 +246,8 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
     const irs::byte_type* p = key.getByteArray(size);
     EXPECT_NE(nullptr, p);
     EXPECT_NE(0, size);
-
-    return { p, static_cast<size_t>(size)-1 };
+    encodedKey.encode({p, static_cast<size_t>(size-1)});
+    return encodedKey.getByteArray();
   };
 
   // locale defined as object
@@ -474,7 +508,7 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
   constexpr irs::string_ref locale_name = "de_phonebook";
   const icu::Locale icu_locale = icu::Locale::createFromName(locale_name.c_str());
 
-  icu::CollationKey key;
+  CollationEncoder encodedKey;
   std::unique_ptr<icu::Collator> coll{
     icu::Collator::createInstance(icu_locale, err) };
   ASSERT_NE(nullptr, coll);
@@ -482,6 +516,7 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
 
   auto get_collation_key = [&](irs::string_ref data) -> irs::bytes_ref {
     err = UErrorCode::U_ZERO_ERROR;
+    icu::CollationKey key;
     coll->getCollationKey(
       icu::UnicodeString::fromUTF8(
         icu::StringPiece{data.c_str(), static_cast<int32_t>(data.size())}),
@@ -492,8 +527,8 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
     const irs::byte_type* p = key.getByteArray(size);
     EXPECT_NE(nullptr, p);
     EXPECT_NE(0, size);
-
-    return { p, static_cast<size_t>(size)-1 };
+    encodedKey.encode({p, static_cast<size_t>(size-1)});
+    return encodedKey.getByteArray();
   };
 
   // locale defined as object
@@ -642,7 +677,7 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
 
   const auto icu_locale =icu::Locale::createFromName(locale_name.c_str());
 
-  icu::CollationKey key;
+  CollationEncoder encodedKey;
   std::unique_ptr<icu::Collator> coll{
     icu::Collator::createInstance(icu_locale, err) };
   ASSERT_NE(nullptr, coll);
@@ -650,6 +685,7 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
 
   auto get_collation_key = [&](irs::string_ref data) -> irs::bytes_ref {
     err = UErrorCode::U_ZERO_ERROR;
+    icu::CollationKey key;
     coll->getCollationKey(
       icu::UnicodeString::fromUTF8(
         icu::StringPiece{data.c_str(), static_cast<int32_t>(data.size())}),
@@ -660,8 +696,8 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
     const irs::byte_type* p = key.getByteArray(size);
     EXPECT_NE(nullptr, p);
     EXPECT_NE(0, size);
-
-    return { p, static_cast<size_t>(size)-1 };
+    encodedKey.encode({p, static_cast<size_t>(size-1)});
+    return encodedKey.getByteArray();
   };
 
   {
@@ -742,7 +778,7 @@ TEST(collation_token_stream_test, check_tokens) {
 
   const auto icu_locale =icu::Locale::createFromName(locale_name.c_str());
 
-  icu::CollationKey key;
+  CollationEncoder encodedKey;
   std::unique_ptr<icu::Collator> coll{
     icu::Collator::createInstance(icu_locale, err) };
 
@@ -750,6 +786,7 @@ TEST(collation_token_stream_test, check_tokens) {
   ASSERT_TRUE(U_SUCCESS(err));
 
   auto get_collation_key = [&](irs::string_ref data) -> irs::bytes_ref {
+    icu::CollationKey key;
     err = UErrorCode::U_ZERO_ERROR;
     coll->getCollationKey(
       icu::UnicodeString::fromUTF8(
@@ -761,8 +798,8 @@ TEST(collation_token_stream_test, check_tokens) {
     const irs::byte_type* p = key.getByteArray(size);
     EXPECT_NE(nullptr, p);
     EXPECT_NE(0, size);
-
-    return { p, static_cast<size_t>(size)-1 };
+    encodedKey.encode({p, static_cast<size_t>(size-1)});
+    return encodedKey.getByteArray();
   };
 
   {
