@@ -423,7 +423,7 @@ TEST_P(Norm2TestCase, CheckNorms) {
         const bool is_name = (name == "name");
         count += static_cast<size_t>(is_name);
 
-        const auto it = kSeedMapping.find(frozen::string{name});
+        const auto it = kSeedMapping.find(frozen::string{name.c_str(), name.size()});
         ASSERT_NE(kSeedMapping.end(), it);
 
         auto field = std::make_shared<NormField>(name, data.str, count*it->second);
@@ -545,7 +545,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
         const bool is_name = (name == "name");
         count += static_cast<size_t>(is_name);
 
-        const auto it = kSeedMapping.find(frozen::string{name});
+        const auto it = kSeedMapping.find(frozen::string{name.c_str(), name.size()});
         ASSERT_NE(kSeedMapping.end(), it);
 
         auto field = std::make_shared<NormField>(name, data.str, count*it->second);
@@ -837,7 +837,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
         const bool is_name = (name == "name");
         count += static_cast<size_t>(is_name);
 
-        const auto it = kSeedMapping.find(frozen::string{name});
+        const auto it = kSeedMapping.find(frozen::string{name.c_str(), name.size()});
         ASSERT_NE(kSeedMapping.end(), it);
 
         auto field = std::make_shared<NormField>(name, data.str, count*it->second);
