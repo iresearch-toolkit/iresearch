@@ -280,10 +280,8 @@ bool collation_token_stream::reset(string_ref data) {
   // according to ICU docs sort keys are always zero-terminated,
   // there is no reason to store terminal zero in term dictionary
   assert(term_size > 0);
-
-  assert(0 == buf[term_size]);
-
   --term_size;
+  assert(0 == buf[term_size]);
   if (term_size > static_cast<int32_t>(sizeof raw_term_buf)) {
     IR_FRMT_ERROR(
       "Collated token is %d bytes length which exceeds maximum allowed length of %d bytes",
