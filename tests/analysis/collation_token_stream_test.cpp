@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "analysis/collation_token_stream.hpp"
+#include "analysis/collation_token_stream_encoder.hpp"
 
 #include <unicode/coll.h>
 #include <unicode/sortkey.h>
@@ -31,13 +32,26 @@
 #include "velocypack/velocypack-aliases.h"
 
 namespace {
+
+std::vector<uint8_t> encode(uint8_t b) {
+  std::vector<uint8_t> res;
+  if (0x80 & b) {
+    res.push_back(0xc0 | (b >> 3));
+    res.push_back(0x80 | (b & 0x7));
+  } else {
+    res.push_back(b);
+  }
+  return res;
+}
+
+
 class CollationEncoder {
  public:
   void encode(irs::bytes_ref src) {
     _buffer.clear();
     _buffer.reserve(src.size() * 2);
     for (auto b : src) {
-      auto enc = encode(b);
+      auto enc = ::encode(b);
       _buffer.insert(_buffer.end(), enc.begin(), enc.end());
     }
   }
@@ -45,25 +59,26 @@ class CollationEncoder {
   irs::bytes_ref getByteArray() {
     return irs::bytes_ref{_buffer.data(), _buffer.size()};
   }
-
- private:
-  std::vector<uint8_t> encode(uint8_t b) {
-    std::vector<uint8_t> res;
-    if (0x80 & b) {
-      res.push_back(0xc0 | (b >> 3));
-      res.push_back(0x80 | (b & 0x7));
-    } else {
-      res.push_back(b);
-    }
-    return res;
-  }
-
   std::vector<uint8_t> _buffer;
 };
 }
 
 TEST(collation_token_stream_test, consts) {
   static_assert("collation" == irs::type<irs::analysis::collation_token_stream>::name());
+}
+
+TEST(collation_token_stream_test, test_byte_encoder) {
+  uint8_t target{0x0};
+  ASSERT_EQ(256, kRecalcMap.size());
+  do {
+    --target;
+    auto const expected = encode(target);
+    auto const actual = kRecalcMap[target];
+    ASSERT_EQ(expected.size(), actual.second);
+    for (size_t i = 0; i < expected.size(); ++i) {
+      ASSERT_EQ(expected[i], kBytesRecalcMap[actual.first + i]);
+    }
+  } while(target != 0);
 }
 
 TEST(collation_token_stream_test, construct_from_str) {
