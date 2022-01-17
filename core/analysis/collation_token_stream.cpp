@@ -296,17 +296,18 @@ bool collation_token_stream::reset(string_ref data) {
     assert(buf == raw_term_buf);
     termBufIdx = 0;
     for (size_t i = 0; i < term_size; ++i) {
-      auto const& recalc = kRecalcMap[raw_term_buf[i]];
-      if ((termBufIdx + recalc.second) > sizeof state_->term_buf) {
+      assert(raw_term_buf[i] < kRecalcMap.size());
+      const auto [offset, size] = kRecalcMap[raw_term_buf[i]];
+      if ((termBufIdx + size) > sizeof state_->term_buf) {
         IR_FRMT_ERROR(
             "Collated token is more than %d bytes length after encoding.",
             static_cast<int32_t>(sizeof state_->term_buf));
         return false;
       }
-      assert(recalc.second <= 2);
-      state_->term_buf[termBufIdx++] = kBytesRecalcMap[recalc.first];
-      if (recalc.second == 2) {
-        state_->term_buf[termBufIdx++] = kBytesRecalcMap[recalc.first + 1];
+      assert(size <= 2);
+      state_->term_buf[termBufIdx++] = kBytesRecalcMap[offset];
+      if (size == 2) {
+        state_->term_buf[termBufIdx++] = kBytesRecalcMap[offset + 1];
       } 
     }
   }

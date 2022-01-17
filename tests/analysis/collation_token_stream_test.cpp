@@ -72,8 +72,8 @@ TEST(collation_token_stream_test, test_byte_encoder) {
   ASSERT_EQ(256, kRecalcMap.size());
   do {
     --target;
-    auto const expected = encode(target);
-    auto const actual = kRecalcMap[target];
+    const auto expected = encode(target);
+    const auto actual = kRecalcMap[target];
     ASSERT_EQ(expected.size(), actual.second);
     for (size_t i = 0; i < expected.size(); ++i) {
       ASSERT_EQ(expected[i], kBytesRecalcMap[actual.first + i]);
