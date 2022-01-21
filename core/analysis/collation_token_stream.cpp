@@ -293,7 +293,7 @@ bool collation_token_stream::reset(string_ref data) {
     // enforce valid UTF-8 string
     assert(buf == raw_term_buf);
     termBufIdx = 0;
-    for (size_t i = 0; i < term_size; ++i) {
+    for (decltype(term_size) i{}; i < term_size; ++i) {
       assert(raw_term_buf[i] < kRecalcMap.size());
       const auto [offset, size] = kRecalcMap[raw_term_buf[i]];
       if ((termBufIdx + size) > sizeof state_->term_buf) {
