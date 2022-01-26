@@ -98,6 +98,13 @@ else()
   )
 endif()
 
+# force c++17 for ofst as transitional step
+set_target_properties(${IResearch_TARGET_NAME}-ofst
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED YES
+)
+
 target_include_directories(
   ${IResearch_TARGET_NAME}-ofst
   SYSTEM

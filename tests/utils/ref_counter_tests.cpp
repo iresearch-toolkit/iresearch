@@ -65,7 +65,6 @@ TEST_F(ref_counter_tests, test_ref_counter_add) {
 
     auto ref1b = refs.add(1);
 
-    ASSERT_FALSE(ref1b.unique());
     ASSERT_EQ(3, ref1b.use_count());
     ASSERT_EQ(1, *(ref1b.get()));
     ASSERT_EQ(ref1a_val, ref1b.get());
@@ -123,7 +122,6 @@ TEST_F(ref_counter_tests, test_ref_counter_add) {
 
     auto ref1c = refs.add("abc");
 
-    ASSERT_FALSE(ref1c.unique());
     ASSERT_EQ(2, ref1c.use_count());
     ASSERT_EQ(std::string("abc"), *(ref1c.get()));
     ASSERT_EQ(ref1a_val, ref1c.get());
