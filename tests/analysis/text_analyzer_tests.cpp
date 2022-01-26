@@ -1072,9 +1072,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       options.locale = icu::Locale::createFromName("en_US.UTF-8");
       options.explicit_stopwords.emplace("a");
       options.min_gram = 4;
-      options.min_gram_set = 4;
+      options.min_gram_set = true;
       options.max_gram = 3;
-      options.max_gram_set = 3;
+      options.max_gram_set = true;
       options.preserve_original = false;
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
 
@@ -1105,9 +1105,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       options.locale = icu::Locale::createFromName("en_US.UTF-8");
       options.explicit_stopwords.emplace("a");
       options.min_gram = 4;
-      options.min_gram_set = 4;
+      options.min_gram_set = true;
       options.max_gram = 3;
-      options.max_gram_set = 3;
+      options.max_gram_set = true;
       options.preserve_original = true;
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
 
