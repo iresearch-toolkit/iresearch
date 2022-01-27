@@ -11,6 +11,8 @@ endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Force C++20 for boost::text
+set(CXX_STD 20 CACHE STRING "Set to 14, 17, etc., to enable C++14, C++17, etc." FORCE)
 
 ################################################################################
 ### interprocedural optimization (link time optimization)
