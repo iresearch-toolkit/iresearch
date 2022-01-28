@@ -183,8 +183,15 @@ endif()
 ################################################################################
 ### Boost::Text library
 ################################################################################
-
+# Force C++17 for boost::text
+set(CXX_STD 17 CACHE STRING "Set to 14, 17, etc., to enable C++14, C++17, etc." FORCE)
 add_subdirectory(text)
+# force c++17
+set_target_properties(text
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED YES
+)
 
 ################################################################################
 ### fastText library
