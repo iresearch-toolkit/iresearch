@@ -29,7 +29,7 @@
 
 namespace iresearch {
 
-class IRESEARCH_API result {
+class result {
  public:
   enum Code : byte_type {
     OK = 0,
@@ -97,8 +97,8 @@ class IRESEARCH_API result {
  private:
   std::unique_ptr<char[]> copyState(const char* rhs);
 
-  result(Code code, const string_ref& msg, const string_ref& msg2);
-  result(Code code);
+  result(Code code, string_ref msg, string_ref msg2);
+  explicit result(Code code);
 
   Code code_;
   std::unique_ptr<char[]> state_;

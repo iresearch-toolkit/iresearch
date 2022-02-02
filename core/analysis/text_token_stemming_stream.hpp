@@ -29,8 +29,7 @@
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
-
-struct sb_stemmer; // forward declaration
+#include "utils/snowball_stemmer.hpp"
 
 namespace iresearch {
 namespace analysis {
@@ -61,13 +60,9 @@ class stemming_token_stream final
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() override;
-  virtual bool reset(const string_ref& data) override;
+  virtual bool reset(string_ref data) override;
 
  private:
-  struct stemmer_deleter {
-    void operator()(sb_stemmer*) const noexcept;
-  };
-
   using attributes = std::tuple<
     increment,
     offset,
@@ -76,7 +71,7 @@ class stemming_token_stream final
    attributes attrs_;
    options_t options_;
    std::string buf_;
-   std::unique_ptr<sb_stemmer, stemmer_deleter> stemmer_;
+   stemmer_ptr stemmer_;
    bool term_eof_;
 };
 

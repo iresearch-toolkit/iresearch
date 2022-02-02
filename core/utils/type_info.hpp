@@ -44,7 +44,7 @@ class type_info {
   /// @brief default constructor produces invalid type identifier
   //////////////////////////////////////////////////////////////////////////////
   constexpr type_info() noexcept
-    : type_info(nullptr, string_ref::NIL) {
+    : type_info{nullptr, {}} {
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -69,16 +69,9 @@ class type_info {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @return true if current object is less than to a denoted by 'rhs'
-  //////////////////////////////////////////////////////////////////////////////
-  bool operator<(const type_info& rhs) const noexcept {
-    return id_ < rhs.id_;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @return type name
   //////////////////////////////////////////////////////////////////////////////
-  constexpr const string_ref& name() const noexcept { return name_; }
+  constexpr string_ref name() const noexcept { return name_; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return type identifier
@@ -89,7 +82,7 @@ class type_info {
   template<typename T>
   friend struct type;
 
-  constexpr type_info(type_id id, const string_ref& name) noexcept
+  constexpr type_info(type_id id, string_ref name) noexcept
     : id_(id), name_(name) {
   }
 

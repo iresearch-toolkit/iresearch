@@ -48,9 +48,7 @@ inline bool memcmp_less(
   return res < 0;
 }
 
-inline bool memcmp_less(
-    const bytes_ref& lhs,
-    const bytes_ref& rhs) noexcept {
+inline bool memcmp_less(bytes_ref lhs, bytes_ref rhs) noexcept {
   return memcmp_less(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
 }
 
@@ -74,10 +72,11 @@ struct posting {
   doc_id_t size{ 1 }; // length of postings
 };
 
-class IRESEARCH_API postings : util::noncopyable {
+class postings : util::noncopyable {
  public:
   using writer_t = byte_block_pool::inserter;
 
+  // cppcheck-suppress constParameter
   explicit postings(writer_t& writer)
     : map_{0, value_ref_hash{}, term_id_eq{postings_}},
       writer_(writer) {
@@ -93,7 +92,7 @@ class IRESEARCH_API postings : util::noncopyable {
 
   /// @note on error returns std::ptr(nullptr, false)
   /// @note returned poitern remains valid until the next call
-  std::pair<posting*, bool> emplace(const bytes_ref& term);
+  std::pair<posting*, bool> emplace(bytes_ref term);
 
   bool empty() const noexcept { return map_.empty(); }
   size_t size() const noexcept { return map_.size(); }
@@ -112,7 +111,7 @@ class IRESEARCH_API postings : util::noncopyable {
       return (*data_)[lhs.second].term == rhs;
     }
 
-    bool operator()(const hashed_bytes_ref& lhs, ref_t& rhs) const noexcept {
+    bool operator()(const hashed_bytes_ref& lhs, const ref_t& rhs) const noexcept {
       return this->operator()(rhs, lhs);
     }
 
@@ -122,11 +121,9 @@ class IRESEARCH_API postings : util::noncopyable {
 
   using map_t = flat_hash_set<term_id_eq>;
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::vector<posting> postings_;
   map_t map_;
   writer_t& writer_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 }

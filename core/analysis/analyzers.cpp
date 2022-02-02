@@ -27,6 +27,8 @@
 #ifndef IRESEARCH_DLL
 #include "analysis/delimited_token_stream.hpp"
 #include "analysis/collation_token_stream.hpp"
+#include "analysis/classification_stream.hpp"
+#include "analysis/nearest_neighbors_stream.hpp"
 #include "analysis/ngram_token_stream.hpp"
 #include "analysis/text_token_normalizing_stream.hpp"
 #include "analysis/text_token_stemming_stream.hpp"
@@ -44,10 +46,10 @@ namespace {
 using namespace irs;
 
 struct key {
-  key(const string_ref& type,
+  key(string_ref type,
       const irs::type_info& args_format)
-    : type(type),
-      args_format(args_format) {
+    : type{type},
+      args_format{args_format} {
   }
 
   bool operator==(const key& other) const noexcept {
@@ -130,7 +132,7 @@ namespace iresearch {
 namespace analysis {
 
 /*static*/ bool analyzers::exists(
-    const string_ref& name,
+    string_ref name,
     const type_info& args_format,
     bool load_library /*= true*/) {
   return !analyzer_register::instance().get(::key(name, args_format), load_library).empty();
@@ -138,9 +140,9 @@ namespace analysis {
 
 /*static*/ bool analyzers::normalize(
     std::string& out,
-    const string_ref& name,
+    string_ref name,
     const type_info& args_format,
-    const string_ref& args,
+    string_ref args,
     bool load_library /*= true*/) noexcept {
   try {
     auto* normalizer = analyzer_register::instance().get(
@@ -149,7 +151,8 @@ namespace analysis {
 
     return normalizer ? normalizer(args, out) : false;
   } catch (...) {
-    IR_FRMT_ERROR("Caught exception while normalizing analyzer '%s' arguments", name.c_str());
+    IR_FRMT_ERROR("Caught exception while normalizing analyzer '%s' arguments",
+                  static_cast<std::string>(name).c_str());
   }
 
   return false;
@@ -157,9 +160,9 @@ namespace analysis {
 
 /*static*/ result analyzers::get(
     analyzer::ptr& analyzer,
-    const string_ref& name,
+    string_ref name,
     const type_info& args_format,
-    const string_ref& args,
+    string_ref args,
     bool load_library /*= true*/) noexcept {
   try {
     auto* factory = analyzer_register::instance().get(
@@ -184,9 +187,9 @@ namespace analysis {
 }
 
 /*static*/ analyzer::ptr analyzers::get(
-    const string_ref& name,
+    string_ref name,
     const type_info& args_format,
-    const string_ref& args,
+    string_ref args,
     bool load_library /*= true*/) noexcept {
   try {
     auto* factory = analyzer_register::instance().get(
@@ -206,8 +209,10 @@ namespace analysis {
 #ifndef IRESEARCH_DLL
   irs::analysis::delimited_token_stream::init();
   irs::analysis::collation_token_stream::init();
+  irs::analysis::classification_stream::init();
   irs::analysis::ngram_token_stream_base::init();
   irs::analysis::normalizing_token_stream::init();
+  irs::analysis::nearest_neighbors_stream::init();
   irs::analysis::stemming_token_stream::init();
   irs::analysis::text_token_stream::init();
   irs::analysis::token_stopwords_stream::init();
@@ -221,7 +226,7 @@ namespace analysis {
 }
 
 /*static*/ bool analyzers::visit(
-    const std::function<bool(const string_ref&, const type_info&)>& visitor) {
+    const std::function<bool(string_ref, const type_info&)>& visitor) {
   analyzer_register::visitor_t wrapper = [&visitor](const ::key& key)->bool {
     return visitor(key.type, key.args_format);
   };
@@ -236,8 +241,8 @@ namespace analysis {
 analyzer_registrar::analyzer_registrar(
     const type_info& type,
     const type_info& args_format,
-    analyzer::ptr(*factory)(const string_ref& args),
-    bool(*normalizer)(const string_ref& args, std::string& config),
+    analyzer::ptr(*factory)(string_ref args),
+    bool(*normalizer)(string_ref args, std::string& config),
     const char* source /*= nullptr*/) {
   const string_ref source_ref(source);
   const auto new_entry = ::value(factory, normalizer);

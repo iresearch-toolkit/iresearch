@@ -54,10 +54,10 @@ namespace iresearch {
 
       function(const deterministic_function_t& fnDeterminitic, const contextual_function_t& fnContextual, size_t nFixedArg = 0, bool bVarArg = false):
         m_fnContextual(fnContextual), m_fnDeterminitic(fnDeterminitic), m_nFixedArg(nFixedArg), m_bVarArg(bVarArg) {}
-      function(const deterministic_function_t& fnDeterminitic, size_t nFixedArg = 0, bool bVarArg = false):
-        function(fnDeterminitic, NOT_IMPLEMENTED_C, nFixedArg, bVarArg) {}
-      function(const contextual_function_t& fnContextual, size_t nFixedArg = 0, bool bVarArg = false):
-        function(NOT_IMPLEMENTED_D, fnContextual, nFixedArg, bVarArg) {}
+      explicit function(const deterministic_function_t& fnDeterminitic, size_t nFixedArg = 0, bool bVarArg = false):
+                 function(fnDeterminitic, NOT_IMPLEMENTED_C, nFixedArg, bVarArg) {}
+      explicit function(const contextual_function_t& fnContextual, size_t nFixedArg = 0, bool bVarArg = false):
+                 function(NOT_IMPLEMENTED_D, fnContextual, nFixedArg, bVarArg) {}
       function& operator=(function&) = delete; // because of references
       bool operator==(const function& other) const {
         return
@@ -77,7 +77,7 @@ namespace iresearch {
       bool m_bVarArg;
     };
 
-    class IRESEARCH_API function_arg {
+    class function_arg {
      public:
       typedef std::vector<function_arg> fn_args_t;
       typedef std::function<bool(
@@ -99,7 +99,7 @@ namespace iresearch {
       function_arg(fn_args_t&& fnArgs, fn_branch_t&& fnBranch);
       function_arg(fn_args_t&& fnArgs, const bytes_ref& value, const fn_branch_t& fnBranch);
       function_arg(fn_args_t&& fnArgs, const bytes_ref& value, fn_branch_t&& fnBranch);
-      function_arg(const bytes_ref& value);
+      explicit function_arg(const bytes_ref& value);
       function_arg(function_arg&& other) noexcept;
       function_arg(const function_arg& other) = delete; // to avoid having multipe copies of args
       function_arg();
@@ -110,7 +110,6 @@ namespace iresearch {
       static function_arg wrap(const function_arg& wrapped);
 
     private:
-      IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
       static const fn_branch_t NOT_IMPLEMENTED_BRANCH;
       fn_args_t m_fnArgs;
       bool m_bFnBranchRef;
@@ -120,7 +119,6 @@ namespace iresearch {
       const fn_value_t* m_pFnValue;
       fn_branch_t m_fnBranch;
       fn_value_t m_fnValue;
-      IRESEARCH_API_PRIVATE_VARIABLES_END
     };
 
     template<typename deterministic_buffer_type, typename contextual_buffer_type, typename... contextual_ctx_args_type>
@@ -146,7 +144,7 @@ namespace iresearch {
     typedef std::unordered_multimap<std::string, order_function> order_functions;
     typedef std::unordered_multimap<std::string, sequence_function> sequence_functions;
 
-    struct IRESEARCH_API functions {
+    struct functions {
       const boolean_functions& boolFns;
       const order_functions& orderFns;
       const sequence_functions& seqFns;

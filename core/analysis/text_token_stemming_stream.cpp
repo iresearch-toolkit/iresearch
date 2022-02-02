@@ -23,7 +23,8 @@
 
 #include "text_token_stemming_stream.hpp"
 
-#include "libstemmer.h"
+#include <libstemmer.h>
+
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
@@ -61,6 +62,16 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
       locale_name.c_str());
 
     return false;
+  }
+
+  // validate creation of sb_stemmer, defaults to utf-8
+  stemmer_ptr stemmer = make_stemmer_ptr(locale.getLanguage(), nullptr);
+
+  if (!stemmer) {
+    IR_FRMT_WARN(
+      "Failed to instantiate sb_stemmer from locale '%s' "
+      "while constructing stemming_token_stream from VPack arguments",
+      locale_name.c_str());
   }
 
   return true;
@@ -110,7 +121,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-analysis::analyzer::ptr make_vpack(const string_ref& args) {
+analysis::analyzer::ptr make_vpack(string_ref args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   return make_vpack(slice);
 }
@@ -139,7 +150,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   }
 }
 
-bool normalize_vpack_config(const string_ref& args, std::string& config) {
+bool normalize_vpack_config(string_ref args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -149,7 +160,7 @@ bool normalize_vpack_config(const string_ref& args, std::string& config) {
   return false;
 }
 
-analysis::analyzer::ptr make_json(const string_ref& args) {
+analysis::analyzer::ptr make_json(string_ref args) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while constructing text_token_normalizing_stream");
@@ -168,7 +179,7 @@ analysis::analyzer::ptr make_json(const string_ref& args) {
   return nullptr;
 }
 
-bool normalize_json_config(const string_ref& args, std::string& definition) {
+bool normalize_json_config(string_ref args, std::string& definition) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while normalizing text_token_normalizing_stream");
@@ -201,11 +212,6 @@ REGISTER_ANALYZER_VPACK(analysis::stemming_token_stream, make_vpack,
 namespace iresearch {
 namespace analysis {
 
-void stemming_token_stream::stemmer_deleter::operator()(
-    sb_stemmer* p) const noexcept {
-  sb_stemmer_delete(p);
-}
-
 stemming_token_stream::stemming_token_stream(const options_t& options)
   : analyzer{irs::type<stemming_token_stream>::get()},
     options_{options},
@@ -229,10 +235,10 @@ bool stemming_token_stream::next() {
   return true;
 }
 
-bool stemming_token_stream::reset(const string_ref& data) {
+bool stemming_token_stream::reset(string_ref data) {
   if (!stemmer_) {
-    stemmer_.reset(
-      sb_stemmer_new(options_.locale.getLanguage(), nullptr)); // defaults to utf-8
+    // defaults to utf-8
+    stemmer_ = make_stemmer_ptr(options_.locale.getLanguage(), nullptr);
   }
 
   auto& term = std::get<term_attribute>(attrs_);

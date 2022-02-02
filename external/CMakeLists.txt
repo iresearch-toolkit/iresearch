@@ -7,6 +7,29 @@ if (SUPPRESS_EXTERNAL_WARNINGS)
   endif ()
 endif()
 
+################################################################################
+### Highway library
+################################################################################
+
+set(BUILD_TESTING OFF CACHE INTERNAL "" FORCE)
+add_subdirectory(highway)
+
+################################################################################
+### sse2neon
+### need this after highway and before simdcomp
+################################################################################
+
+add_library(sse2neon INTERFACE)
+
+if (IS_ARM)
+  set(SSE2NEON_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/sse2neon)
+
+  target_include_directories(
+    sse2neon
+    SYSTEM
+    INTERFACE ${SSE2NEON_ROOT}
+  )
+endif()
 
 ################################################################################
 ### CmdLine library
@@ -74,6 +97,13 @@ else()
     PRIVATE "-fPIC"
   )
 endif()
+
+# force c++17 for ofst as transitional step
+set_target_properties(${IResearch_TARGET_NAME}-ofst
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED YES
+)
 
 target_include_directories(
   ${IResearch_TARGET_NAME}-ofst
@@ -151,14 +181,39 @@ if (NOT TARGET velocypack)
 endif()
 
 ################################################################################
-### Highway library
-################################################################################
-
-set(BUILD_TESTING OFF CACHE INTERNAL "" FORCE)
-add_subdirectory(highway)
-
-################################################################################
 ### Boost::Text library
 ################################################################################
-
+# Force C++17 for boost::text
+set(CXX_STD 17 CACHE STRING "Set to 14, 17, etc., to enable C++14, C++17, etc." FORCE)
 add_subdirectory(text)
+# force c++17
+set_target_properties(text
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED YES
+)
+
+################################################################################
+### fastText library
+################################################################################
+
+add_subdirectory(fastText)
+
+# force c++17
+set_target_properties(fasttext-static
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED YES
+)
+
+set_target_properties(fasttext-shared
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED YES
+)
+
+set_target_properties(fasttext-static_pic
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED YES
+)

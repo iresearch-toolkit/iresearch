@@ -39,6 +39,11 @@
 
 namespace std {
 
+#if defined(__clang__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wtautological-pointer-compare"
+#endif
+
 // MSVC++ > v14.0 (Visual Studio >2015) already implements this in <xstring>
 // MacOS requires this definition to be before first usage (i.e. in bytes_ref)
 #if !defined(_MSC_VER) || (_MSC_VER <= 1900)
@@ -53,7 +58,10 @@ struct char_traits<::iresearch::byte_type> {
     dst = src;
   }
 
-  static char_type* assign(char_type* ptr, size_t count, char_type ch) noexcept {
+  static char_type* assign(
+      char_type* ptr,
+      size_t count,
+      char_type ch) noexcept IRESEARCH_ATTRIBUTE_NONNULL() {
     assert(nullptr != ptr);
     return reinterpret_cast<char_type*>(std::memset(ptr, ch, count));
   }
@@ -71,7 +79,10 @@ struct char_traits<::iresearch::byte_type> {
     return std::memcmp(lhs, rhs, count);
   }
 
-  static char_type* copy(char_type* dst, const char_type* src, size_t count) noexcept {
+  static char_type* copy(
+      char_type* dst,
+      const char_type* src,
+      size_t count) noexcept IRESEARCH_ATTRIBUTE_NONNULL() {
     if (0 == count) {
       return dst;
     }
@@ -87,7 +98,10 @@ struct char_traits<::iresearch::byte_type> {
 
   static constexpr bool eq_int_type(int_type lhs, int_type rhs) noexcept { return lhs == rhs; }
 
-  static const char_type* find(const char_type* ptr, size_t count, const char_type& ch) noexcept {
+  static const char_type* find(
+       const char_type* ptr,
+       size_t count,
+       const char_type& ch) noexcept IRESEARCH_ATTRIBUTE_NONNULL() {
     if (0 == count) {
       return nullptr;
     }
@@ -128,6 +142,10 @@ struct char_traits<::iresearch::byte_type> {
     char_type* /*dst*/, size_t /*dst_size*/,
     const char_type* /*src*/, size_t /*src_size*/) { assert(false); });
 }; // char_traits
+#endif
+
+#if defined(__clang__)
+  #pragma GCC diagnostic pop
 #endif
 
 } // std
@@ -172,15 +190,18 @@ class basic_string_ref {
 
   // Constructs a string reference object from a C string computing
   // the size with ``std::char_traits<Char>::length``.
+  // cppcheck-suppress noExplicitConstructor
   constexpr basic_string_ref(const char_type* s) noexcept
     : data_(s), size_(s ? traits_type::length(s) : 0) {
   }
 
+  // cppcheck-suppress noExplicitConstructor
   constexpr basic_string_ref(const std::basic_string<char_type>& s) noexcept
     : data_(s.c_str()), size_(s.size()) {
   }
 
   // Constructs a string reference object from a std::basic_string_view<Elem>
+  // cppcheck-suppress noExplicitConstructor
   constexpr basic_string_ref(const std::basic_string_view<Elem>& str) noexcept
     : data_(str.data()), size_(str.size()) {
   }
@@ -311,9 +332,6 @@ template<typename Elem, typename Traits>
   reinterpret_cast<const Elem*>(""), 0 // FIXME
 );
 
-template class IRESEARCH_API basic_string_ref<char>;
-template class IRESEARCH_API basic_string_ref<byte_type>;
-
 template< typename _Elem, typename _Traits >
 inline constexpr bool starts_with(
     const basic_string_ref<_Elem, _Traits >& first,
@@ -426,11 +444,22 @@ constexpr inline basic_string_ref<ElemDst> ref_cast(const std::basic_string_view
 
 namespace hash_utils {
 
-IRESEARCH_API size_t hash(const irs::bstring& value) noexcept;
-IRESEARCH_API size_t hash(const char* value) noexcept;
-IRESEARCH_API size_t hash(const wchar_t* value) noexcept;
-IRESEARCH_API size_t hash(const bytes_ref& value) noexcept;
-IRESEARCH_API size_t hash(const string_ref& value) noexcept;
+size_t hash(const char* value, size_t size) noexcept;
+size_t hash(const byte_type* value, size_t size) noexcept;
+
+inline size_t hash(bytes_ref value) noexcept {
+  return hash(value.c_str(), value.size());
+}
+inline size_t hash(string_ref value) noexcept {
+  return hash(value.c_str(), value.size());
+}
+inline size_t hash(const char* value) noexcept {
+  return hash(value, std::char_traits<char>::length(value));
+}
+inline size_t hash(const wchar_t* value) noexcept {
+  return hash(reinterpret_cast<const char*>(value),
+              std::char_traits<wchar_t>::length(value)*sizeof(wchar_t));
+}
 
 } // hash_utils
 

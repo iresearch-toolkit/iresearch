@@ -58,7 +58,7 @@ enum class BufferHint {
 /// @struct data_input
 /// @brief base interface for all low-level input data streams
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API data_input {
+struct data_input {
   using iterator_category = std::forward_iterator_tag;
   using value_type = byte_type;
   using pointer = void;
@@ -118,7 +118,7 @@ struct IRESEARCH_API data_input {
 //////////////////////////////////////////////////////////////////////////////
 /// @struct index_input
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API index_input : public data_input {
+struct index_input : public data_input {
  public:
   using ptr = std::unique_ptr<index_input>;
 
@@ -145,14 +145,18 @@ struct IRESEARCH_API index_input : public data_input {
   //////////////////////////////////////////////////////////////////////////////
   virtual int64_t checksum(size_t offset) const = 0;
 
+ protected:
+  index_input() = default;
+  index_input(const index_input&) = default;
+
  private:
-  index_input& operator=( const index_input& ) = delete;
+  index_input& operator=(const index_input&) = delete;
 }; // index_input
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class input_buf
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API input_buf final : public std::streambuf, util::noncopyable {
+class input_buf final : public std::streambuf, util::noncopyable {
  public:
   typedef std::streambuf::char_type char_type;
   typedef std::streambuf::int_type int_type;
@@ -167,7 +171,7 @@ class IRESEARCH_API input_buf final : public std::streambuf, util::noncopyable {
 
   virtual int_type underflow() override;
 
-  operator index_input&() { return *in_; }
+  operator index_input&() { return *in_; } // cppcheck-suppress syntaxError
 
   index_input* internal() const { return in_; }
 
@@ -178,7 +182,7 @@ class IRESEARCH_API input_buf final : public std::streambuf, util::noncopyable {
 //////////////////////////////////////////////////////////////////////////////
 /// @class buffered_index_input
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API buffered_index_input : public index_input {
+class buffered_index_input : public index_input {
  public:
   virtual byte_type read_byte() override final;
 

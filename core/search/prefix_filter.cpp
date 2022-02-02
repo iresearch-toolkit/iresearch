@@ -37,7 +37,7 @@ template<typename Visitor>
 void visit(
     const sub_reader& segment,
     const term_reader& reader,
-    const bytes_ref& prefix,
+    bytes_ref prefix,
     Visitor& visitor) {
   auto terms = reader.iterator(SeekMode::NORMAL);
 
@@ -67,15 +67,14 @@ void visit(
 }
 
 namespace iresearch {
-
-DEFINE_FACTORY_DEFAULT(by_prefix)
+DEFINE_FACTORY_DEFAULT(by_prefix) // cppcheck-suppress unknownMacro
 
 /*static*/ filter::prepared::ptr by_prefix::prepare(
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const string_ref& field,
-    const bytes_ref& prefix,
+    string_ref field,
+    bytes_ref prefix,
     size_t scored_terms_limit) {
   limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   multiterm_query::states_t states(index);
@@ -104,7 +103,7 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
 /*static*/ void by_prefix::visit(
     const sub_reader& segment,
     const term_reader& reader,
-    const bytes_ref& prefix,
+    bytes_ref prefix,
     filter_visitor& visitor) {
   ::visit(segment, reader, prefix, visitor);
 }

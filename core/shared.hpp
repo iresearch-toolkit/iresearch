@@ -186,37 +186,19 @@
 #endif
 
 // IRESEARCH_API is used for the public API symbols. It either DLL imports or DLL exports (or does nothing for static build)
-// IRESEARCH_LOCAL is used for non-api symbols.
-// IRESEARCH_PLUGIN is used for public API symbols of plugin modules
 #ifdef IRESEARCH_DLL
   #ifdef IRESEARCH_DLL_EXPORTS
     #define IRESEARCH_API IRESEARCH_HELPER_DLL_EXPORT    
-    #define IRESEARCH_API_TEMPLATE IRESEARCH_HELPER_TEMPLATE_EXPORT 
   #else
     #define IRESEARCH_API IRESEARCH_HELPER_DLL_IMPORT
-    #define IRESEARCH_API_TEMPLATE IRESEARCH_HELPER_TEMPLATE_IMPORT 
   #endif // IRESEARCH_DLL_EXPORTS
-  #define IRESEARCH_API_PRIVATE_VARIABLES_BEGIN MSVC_ONLY(__pragma(warning(disable: 4251)))
-  #define IRESEARCH_API_PRIVATE_VARIABLES_END MSVC_ONLY(__pragma(warning(default: 4251)))
-  #define IRESEARCH_LOCAL IRESEARCH_HELPER_DLL_LOCAL
   #ifdef IRESEARCH_DLL_PLUGIN
-    #define IRESEARCH_PLUGIN IRESEARCH_HELPER_DLL_EXPORT
     #define IRESEARCH_PLUGIN_EXPORT extern "C" IRESEARCH_HELPER_DLL_EXPORT
   #else
-    #define IRESEARCH_PLUGIN IRESEARCH_HELPER_DLL_IMPORT
     #define IRESEARCH_PLUGIN_EXPORT
   #endif // IRESEARCH_DLL_PLUGIN
-  #define IRESEARCH_TEMPLATE_EXPORT(x) template IRESEARCH_API x
-  #define IRESEARCH_TEMPLATE_IMPORT(x) extern template x
 #else // IRESEARCH_DLL is not defined: this means IRESEARCH is a static lib.
   #define IRESEARCH_API 
-  #define IRESEARCH_API_TEMPLATE
-  #define IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  #define IRESEARCH_API_PRIVATE_VARIABLES_END
-  #define IRESEARCH_LOCAL
-  #define IRESEARCH_PLUGIN
-  #define IRESEARCH_TEMPLATE_EXPORT(x)
-  #define IRESEARCH_TEMPLATE_IMPORT(x) 
 #endif // IRESEARCH_DLL
 
 // MSVC 2015 does not define __cpp_lib_generic_associative_lookup macro
@@ -280,7 +262,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // for MSVC on x64 architecture SSE2 is always enabled
-#if defined(__SSE2__) || (defined(_MSC_VER) && (defined(_M_AMD64) || defined(_M_X64)))
+#if defined(__SSE2__) || defined(__ARM_NEON) || defined(__ARM_NEON__) || (defined(_MSC_VER) && (defined(_M_AMD64) || defined(_M_X64)))
 #define IRESEARCH_SSE2
 #endif
 

@@ -57,6 +57,7 @@ class directory_reader;
 class readers_cache final : util::noncopyable {
  public:
   struct key_t {
+    // cppcheck-suppress noExplicitConstructor
     key_t(const segment_meta& meta); // implicit constructor
 
     bool operator==(const key_t& other) const noexcept {
@@ -73,6 +74,7 @@ class readers_cache final : util::noncopyable {
     }
   };
 
+  // cppcheck-suppress constParameter
   explicit readers_cache(directory& dir) noexcept
     : dir_(dir) {}
 
@@ -112,7 +114,7 @@ ENABLE_BITMASK_ENUM(OpenMode);
 ///        the same directory simultaneously.
 ///        Thread safe.
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API index_writer : private util::noncopyable {
+class index_writer : private util::noncopyable {
  private:
   struct flush_context; // forward declaration
   struct segment_context; // forward declaration
@@ -128,7 +130,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   /// @brief segment references given out by flush_context to allow tracking
   ///        and updating flush_context::pending_segment_context
   //////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API active_segment_context: private util::noncopyable { // non-copyable to ensure only one copy for get/put
+  class active_segment_context: private util::noncopyable { // non-copyable to ensure only one copy for get/put
    public:
     active_segment_context() = default;
     active_segment_context(
@@ -143,13 +145,11 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     const segment_context_ptr& ctx() const noexcept { return ctx_; }
 
    private:
-    IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
     friend struct flush_context; // for flush_context::emplace(...)
     segment_context_ptr ctx_{nullptr};
     flush_context* flush_ctx_{nullptr}; // nullptr will not match any flush_context
     size_t pending_segment_context_offset_; // segment offset in flush_ctx_->pending_segment_contexts_
     std::atomic<size_t>* segments_active_; // reference to index_writer::segments_active_
-    IRESEARCH_API_PRIVATE_VARIABLES_END
   };
 
   static_assert(std::is_nothrow_move_constructible_v<active_segment_context>);
@@ -161,12 +161,12 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   /// @note the object is non-thread-safe, each thread should use its own
   ///       separate instance
   //////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API documents_context: private util::noncopyable { // noncopyable because of segments_
+  class documents_context: private util::noncopyable { // noncopyable because of segments_
    public:
     ////////////////////////////////////////////////////////////////////////////
     /// @brief a wrapper around a segment_writer::document with commit/rollback
     ////////////////////////////////////////////////////////////////////////////
-    class IRESEARCH_API document : public segment_writer::document {
+    class document : public segment_writer::document {
      public:
       document(
         flush_context_ptr&& ctx,
@@ -182,6 +182,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
       size_t update_id_;
     };
 
+    // cppcheck-suppress constParameter
     explicit documents_context(index_writer& writer) noexcept
       : writer_(writer) {
     }
@@ -223,6 +224,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     template<typename Filter>
     void remove(Filter&& filter) {
       // thread-safe to use ctx_/segment_ while have lock since active flush_context will not change
+      // cppcheck-suppress unreadVariable
       auto ctx = update_segment(); // updates 'segment_' and 'ctx_'
       assert(segment_.ctx());
 
@@ -290,6 +292,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
       auto& writer = *(segment->writer_);
       segment_writer::document doc(writer);
       std::exception_ptr exception;
+      // cppcheck-suppress shadowFunction
       bitvector rollback; // 0-based offsets to roll back on failure for this specific replace(..) operation
       auto uncomitted_doc_id_begin =
         segment->uncomitted_doc_id_begin_ > segment->flushed_update_contexts_.size()
@@ -436,16 +439,10 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   struct init_options : public segment_options {
     ////////////////////////////////////////////////////////////////////////////
-    /// @brief a set of all allowed custom field features the index writer
-    ///        supports
-    ////////////////////////////////////////////////////////////////////////////
-    field_features_t features;
-
-    ////////////////////////////////////////////////////////////////////////////
     /// @brief returns column info for a feature the writer should use for
     ///        columnstore
     ////////////////////////////////////////////////////////////////////////////
-    feature_column_info_provider_t feature_column_info;
+    feature_info_provider_t features;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief returns column info the writer should use for columnstore
@@ -661,6 +658,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   /// @returns true if transaction has been sucessflully started
   ////////////////////////////////////////////////////////////////////////////
   bool begin() {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(commit_lock_);
 
     return start();
@@ -670,6 +668,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   /// @brief rollbacks the two-phase transaction 
   ////////////////////////////////////////////////////////////////////////////
   void rollback() {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(commit_lock_);
 
     abort();
@@ -684,6 +683,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   /// relatively lightweight operation 
   ////////////////////////////////////////////////////////////////////////////
   bool commit() {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(commit_lock_);
 
     const bool modified = start();
@@ -696,6 +696,13 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   ////////////////////////////////////////////////////////////////////////////
   void purge_cached_readers() noexcept {
     cached_readers_.clear();
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @returns field features
+  ////////////////////////////////////////////////////////////////////////////
+  const feature_info_provider_t& feature_info() const noexcept {
+    return feature_info_;
   }
 
  private:
@@ -833,12 +840,12 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   /// @note segment_writer::doc_contexts[...uncomitted_document_contexts_): generation == flush_context::generation
   /// @note segment_writer::doc_contexts[uncomitted_document_contexts_...]: generation == local generation (updated when segment_context registered once again with flush_context)
   //////////////////////////////////////////////////////////////////////////////
-  struct IRESEARCH_API segment_context { // IRESEARCH_API because of make_update_context(...)/remove(...) used by documents_context::replace(...)/documents_context::remove(...)
+  struct segment_context {
     struct flushed_t: public index_meta::index_segment_t {
       doc_id_t docs_mask_tail_doc_id{std::numeric_limits<doc_id_t>::max()}; // starting doc_id that should be added to docs_mask
       flushed_t() = default;
-      flushed_t(segment_meta&& meta)
-        : index_meta::index_segment_t(std::move(meta)) {}
+      explicit flushed_t(segment_meta&& meta)
+               : index_meta::index_segment_t(std::move(meta)) {}
     };
     using segment_meta_generator_t = std::function<segment_meta()>;
     using ptr = std::unique_ptr<segment_context>;
@@ -862,17 +869,15 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     static segment_context::ptr make(
       directory& dir,
       segment_meta_generator_t&& meta_generator,
-      const field_features_t& field_features,
       const column_info_provider_t& column_info,
-      const feature_column_info_provider_t& feature_column_info,
+      const feature_info_provider_t& feature_info,
       const comparer* comparator);
 
     segment_context(
       directory& dir,
       segment_meta_generator_t&& meta_generator,
-      const field_features_t& field_features,
       const column_info_provider_t& column_info,
-      const feature_column_info_provider_t& feature_column_info,
+      const feature_info_provider_t& feature_info,
       const comparer* comparator);
 
     ////////////////////////////////////////////////////////////////////////////
@@ -911,10 +916,10 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     std::atomic<size_t> segment_count_max; // @see segment_options::max_segment_count
     std::atomic<size_t> segment_docs_max; // @see segment_options::max_segment_docs
     std::atomic<size_t> segment_memory_max; // @see segment_options::max_segment_memory
-    segment_limits(const segment_options& opts) noexcept
-      : segment_count_max(opts.segment_count_max),
-        segment_docs_max(opts.segment_docs_max),
-        segment_memory_max(opts.segment_memory_max) {
+    explicit segment_limits(const segment_options& opts) noexcept
+             : segment_count_max(opts.segment_count_max),
+               segment_docs_max(opts.segment_docs_max),
+               segment_memory_max(opts.segment_memory_max) {
     }
     segment_limits& operator=(const segment_options& opts) noexcept {
       segment_count_max.store(opts.segment_count_max);
@@ -1013,6 +1018,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
 
     template<typename Visitor>
     bool visit(const Visitor& visitor, const index_meta& meta) const {
+      // cppcheck-suppress shadowFunction
       auto begin = files.begin();
 
       for (auto& entry : segments) {
@@ -1089,9 +1095,8 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     const segment_options& segment_limits,
     const comparer* comparator,
     const column_info_provider_t& column_info,
-    const feature_column_info_provider_t& feature_column_info,
+    const feature_info_provider_t& feature_info,
     const payload_provider_t& meta_payload_provider,
-    const field_features_t& field_features,
     index_meta&& meta,
     committed_state_t&& committed_state);
 
@@ -1108,10 +1113,8 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   void finish(); // finishes transaction
   void abort(); // aborts transaction
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  feature_info_provider_t feature_info_;
   std::vector<const std::string*> files_to_sync_;
-  field_features_t field_features_;
-  feature_column_info_provider_t feature_column_info_;
   column_info_provider_t column_info_;
   payload_provider_t meta_payload_provider_; // provides payload for new segments
   const comparer* comparator_;
@@ -1132,7 +1135,6 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   index_meta_writer::ptr writer_;
   index_lock::ptr write_lock_; // exclusive write lock for directory
   index_file_refs::ref_t write_lock_file_ref_; // track ref for lock file to preven removal
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_writer
 
 }

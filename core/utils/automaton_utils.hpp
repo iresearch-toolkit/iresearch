@@ -173,7 +173,7 @@ inline void add_or_expand_arc(
 ///        a specified root, a default (rho) state and a set of arcs with
 ///        UTF-8 encoded labels
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API utf8_transitions_builder {
+class utf8_transitions_builder {
  public:
   utf8_transitions_builder()
     : states_map_(16, state_emplace(weight_)) {
@@ -281,6 +281,7 @@ class IRESEARCH_API utf8_transitions_builder {
 
       for (auto& arc: arcs) {
         hash = hash_combine(hash, arc.ilabel);
+        // cppcheck-suppress redundantAssignment
         hash = hash_combine(hash, arc.id);
       }
 
@@ -297,6 +298,7 @@ class IRESEARCH_API utf8_transitions_builder {
       size_t hash = 0;
       for (; begin != end; ++begin) {
         hash = hash_combine(hash, begin->ilabel);
+        // cppcheck-suppress redundantAssignment
         hash = hash_combine(hash, begin->nextstate);
       }
 
@@ -428,10 +430,10 @@ void visit(
 /// @brief establish UTF-8 labeled connection between specified source and
 ///        target states
 //////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API void utf8_emplace_arc(
+void utf8_emplace_arc(
   automaton& a,
   automaton::StateId from,
-  const bytes_ref& label,
+  bytes_ref label,
   automaton::StateId to);
 
 //////////////////////////////////////////////////////////////////////////////
@@ -439,18 +441,18 @@ IRESEARCH_API void utf8_emplace_arc(
 ///        and target (to) states with the fallback to default (rho_state)
 ///        state
 //////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API void utf8_emplace_arc(
+void utf8_emplace_arc(
   automaton& a,
   automaton::StateId from,
   automaton::StateId rho_state,
-  const bytes_ref& label,
+  bytes_ref label,
   automaton::StateId to);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief establish default connnection between specified source (from) and
 ///        and target (to)
 //////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API void utf8_emplace_rho_arc(
+void utf8_emplace_rho_arc(
   automaton& a,
   automaton::StateId from,
   automaton::StateId to);
@@ -461,7 +463,7 @@ IRESEARCH_API void utf8_emplace_rho_arc(
 ///        defined over the alphabet of { [0..255], fst::fsa::kRho }
 /// @returns fst::kNoStateId on success, otherwise first failed state id
 //////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API automaton::StateId utf8_expand_labels(automaton& a);
+automaton::StateId utf8_expand_labels(automaton& a);
 */
 
 inline automaton make_char(const uint32_t c) {
@@ -473,7 +475,7 @@ inline automaton make_char(const uint32_t c) {
   return a;
 }
 
-inline automaton make_char(const bytes_ref& c) {
+inline automaton make_char(bytes_ref c) {
   automaton a;
   a.AddStates(2);
   a.SetStart(0);
@@ -508,8 +510,8 @@ inline automaton make_all() {
 /// @param bool query boost
 /// @returns compiled filter
 //////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API filter::prepared::ptr prepare_automaton_filter(
-  const string_ref& field,
+filter::prepared::ptr prepare_automaton_filter(
+  string_ref field,
   const automaton& acceptor,
   size_t scored_terms_limit,
   const index_reader& index,

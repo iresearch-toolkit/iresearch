@@ -160,7 +160,7 @@ class fs_lock : public index_lock {
 //////////////////////////////////////////////////////////////////////////////
 class fs_index_output : public buffered_index_output {
  public:
-  DEFINE_FACTORY_INLINE(index_output)
+  DEFINE_FACTORY_INLINE(index_output) // cppcheck-suppress unknownMacro
 
   static index_output::ptr open(const file_path_t name) noexcept {
     assert(name);
@@ -588,7 +588,7 @@ bool fs_directory::visit(const directory::visitor_f& visitor) const {
   auto dir_visitor = [&path, &visitor](const file_path_t name) {
     path = name;
 
-    auto filename = path.u8string();
+    auto filename = path.string();
     return visitor(filename);
   };
 #else
