@@ -134,7 +134,7 @@ void uring::reg_buffer(byte_type* b, size_t size) {
   iovec.iov_len = size;
 
   if (io_uring_register_buffers(&ring, &iovec, 1)) {
-    throw illegal_state();
+    throw illegal_state("failed to register buffer");
   }
 }
 
@@ -302,7 +302,10 @@ class async_index_output final : public index_output {
     });
 
     flush();
-//    async_->drain(true);
+
+    // FIXME(gnusi): we can avoid waiting here in case
+    // if we'll keep track of all unsynced files
+    async_->drain(true);
   }
 
   virtual int64_t checksum() const override {
@@ -539,34 +542,37 @@ bool async_directory::sync(const std::string** name, size_t size) noexcept {
   utf8_path path;
 
   try {
+    std::vector<file_utils::handle_t> handles(size);
     path/=directory();
 
     auto async = async_pool_.emplace(queue_size_, flags_);
 
-    std::vector<std::pair<file_utils::handle_t, io_uring_sqe*>> requests(size);
-
-    for (auto& request : requests) {
+    for (auto& handle : handles) {
       utf8_path full_path(path);
       full_path/=(**name);
       ++name;
 
-      request.first = file_utils::open(full_path.c_str(), file_utils::OpenMode::Write, IR_FADVICE_NORMAL);
+      const int fd = ::open(full_path.c_str(), O_WRONLY, S_IRWXU);
 
-      if (!request.first) {
+      if (fd < 0) {
         return false;
       }
+
+      handle.reset(reinterpret_cast<void*>(fd));
 
       auto* sqe = async->get_sqe();
 
-      if (!sqe) {
-        return false;
+      while (!sqe) {
+        async->submit();
+        sqe = async->get_sqe();
       }
 
-      io_uring_prep_fsync(sqe, handle_cast(request.first.get()), 0);
+      io_uring_prep_fsync(sqe, fd, 0);
       sqe->user_data = 0;
-      request.second = async->get_sqe();
     }
 
+    // FIXME(gnusi): or submit one-by-one?
+    async->submit();
     async->drain(true);
   } catch (...) {
     return false;
