@@ -103,13 +103,16 @@ class directory_test_case : public tests::directory_test_case_base<> {
     }
 
     // Check files count
+    std::vector<const std::string*> files_to_sync;
     std::set<std::string> files;
-    auto list_files = [&files] (std::string& name) {
-      files.emplace(std::move(name));
+    auto list_files = [&] (std::string& name) {
+      [[maybe_unused]] auto [it, inserted] = files.emplace(std::move(name));
+      files_to_sync.emplace_back(&*it);
       return true;
     };
     ASSERT_TRUE(dir.visit(list_files));
     ASSERT_EQ((std::set<std::string>{std::begin(names), std::end(names)}), files);
+    ASSERT_TRUE(dir.sync(files_to_sync.data(), files_to_sync.size()));
 
     // Read contents
     it = std::end(names);
@@ -375,15 +378,21 @@ class directory_test_case : public tests::directory_test_case_base<> {
 
     // Check read_bytes after the end of file
     {
+      const std::string name = "nonempty_file";
       // write to file
       {
         byte_type buf[1024]{};
-        auto out = dir.create("nonempty_file");
+        auto out = dir.create(name);
         ASSERT_FALSE(!out);
         out->write_bytes(buf, sizeof buf);
         out->write_bytes(buf, sizeof buf);
         out->write_bytes(buf, 691);
         out->flush();
+      }
+
+      {
+        std::vector to_sync{&name};
+        ASSERT_TRUE(dir.sync(to_sync.data(), to_sync.size()));
       }
 
       // read from file
