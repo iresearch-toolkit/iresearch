@@ -103,13 +103,13 @@ class directory_test_case : public tests::directory_test_case_base<> {
     }
 
     // Check files count
-    std::vector<std::string> files;
+    std::set<std::string> files;
     auto list_files = [&files] (std::string& name) {
-      files.emplace_back(std::move(name));
+      files.emplace(std::move(name));
       return true;
     };
     ASSERT_TRUE(dir.visit(list_files));
-    EXPECT_EQ(files.size(), IRESEARCH_COUNTOF(names));
+    ASSERT_EQ((std::set<std::string>{std::begin(names), std::end(names)}), files);
 
     // Read contents
     it = std::end(names);
@@ -190,6 +190,7 @@ class directory_test_case : public tests::directory_test_case_base<> {
           ASSERT_EQ(file->length()-1, file->file_pointer());
         }
 
+
         if (dynamic_cast<mmap_directory*>(&dir) ||
             dynamic_cast<memory_directory*>(&dir) ||
             dynamic_cast<fs_directory*>(&dir)) {
@@ -224,6 +225,13 @@ class directory_test_case : public tests::directory_test_case_base<> {
         // mmap direct buffer access
         if (dynamic_cast<mmap_directory*>(&dir)) {
           const auto fp = file->file_pointer();
+          auto cleanup = make_finally([fp, &file]() noexcept {
+            try {
+              file->seek(fp);
+            } catch (...) {
+              ASSERT_FALSE(true);
+            }
+          });
 
           // sequential direct access
           {
@@ -295,6 +303,16 @@ class directory_test_case : public tests::directory_test_case_base<> {
           ASSERT_EQ(b+1, reopened_file->read_byte());
         }
 
+        {
+          const size_t read = file->read_bytes(readbuf, sizeof readbuf);
+          ASSERT_EQ(read, sizeof readbuf);
+          ASSERT_TRUE(
+            std::all_of(std::begin(readbuf), std::end(readbuf),
+                        [b](auto v) { return b == v; })
+          );
+          ASSERT_EQ(b+1, file->read_byte());
+        }
+
         crc.process_bytes(buf.c_str(), buf.size());
         crc.process_bytes(readbuf, sizeof readbuf);
         crc.process_byte(b+1);
@@ -306,86 +324,86 @@ class directory_test_case : public tests::directory_test_case_base<> {
         // check that this is the end of the file
         EXPECT_EQ(expected_length, file->file_pointer());
       }
+    }
 
-      for (const auto& name : names) {
-        ASSERT_TRUE(dir.remove(name));
-        bool exists;
-        ASSERT_TRUE(dir.exists(exists, name) && !exists);
-      }
+    for (const auto& name : names) {
+      ASSERT_TRUE(dir.remove(name));
+      bool exists;
+      ASSERT_TRUE(dir.exists(exists, name) && !exists);
+    }
 
-      // Check files count
-      files.clear();
-      ASSERT_TRUE(dir.visit(list_files));
-      EXPECT_EQ(0, files.size());
+    // Check files count
+    files.clear();
+    ASSERT_TRUE(dir.visit(list_files));
+    EXPECT_EQ(0, files.size());
 
-      // Try to open non existing input
-      ASSERT_FALSE(dir.open("invalid_file_name", irs::IOAdvice::NORMAL));
+    // Try to open non existing input
+    ASSERT_FALSE(dir.open("invalid_file_name", irs::IOAdvice::NORMAL));
 
-      // Check locking logic
-      auto l = dir.make_lock("sample_lock");
-      ASSERT_FALSE(!l);
-      ASSERT_TRUE(l->lock());
-      bool locked;
-      ASSERT_TRUE(l->is_locked(locked) && locked);
-      ASSERT_TRUE(l->unlock());
-      ASSERT_TRUE(l->is_locked(locked) && !locked);
+    // Check locking logic
+    auto l = dir.make_lock("sample_lock");
+    ASSERT_FALSE(!l);
+    ASSERT_TRUE(l->lock());
+    bool locked;
+    ASSERT_TRUE(l->is_locked(locked) && locked);
+    ASSERT_TRUE(l->unlock());
+    ASSERT_TRUE(l->is_locked(locked) && !locked);
 
-      // empty file
+    // empty file
+    {
+      byte_type buf[10];
+
+      // create file
       {
-        byte_type buf[10];
-
-        // create file
-        {
-          auto out = dir.create("empty_file");
-          ASSERT_FALSE(!out);
-        }
-
-        {
-          auto in = dir.open("empty_file", irs::IOAdvice::NORMAL);
-          ASSERT_FALSE(!in);
-          ASSERT_TRUE(in->eof());
-
-          ASSERT_EQ(0, in->read_bytes(buf, sizeof buf));
-          ASSERT_TRUE(in->eof());
-          ASSERT_EQ(0, in->checksum(0));
-          ASSERT_EQ(0, in->checksum(42));
-        }
-
-        ASSERT_TRUE(dir.remove("empty_file"));
+        auto out = dir.create("empty_file");
+        ASSERT_FALSE(!out);
       }
 
-      // Check read_bytes after the end of file
       {
-        // write to file
-        {
-          byte_type buf[1024]{};
-          auto out = dir.create("nonempty_file");
-          ASSERT_FALSE(!out);
-          out->write_bytes(buf, sizeof buf);
-          out->write_bytes(buf, sizeof buf);
-          out->write_bytes(buf, 691);
-          out->flush();
-        }
+        auto in = dir.open("empty_file", irs::IOAdvice::NORMAL);
+        ASSERT_FALSE(!in);
+        ASSERT_TRUE(in->eof());
 
-        // read from file
-        {
-          byte_type buf[1024 + 691]{}; // 1024 + 691 from above
-          auto in = dir.open("nonempty_file", irs::IOAdvice::NORMAL);
-          ASSERT_FALSE(in->eof());
-          size_t expected = sizeof buf;
-          ASSERT_FALSE(!in);
-          ASSERT_EQ(expected, in->read_bytes(buf, sizeof buf));
-
-          expected = in->length() - sizeof buf; // 'sizeof buf' already read above
-          const size_t read = in->read_bytes(buf, sizeof buf);
-          ASSERT_EQ(expected, read);
-          ASSERT_TRUE(in->eof());
-          ASSERT_EQ(0, in->read_bytes(buf, sizeof buf));
-          ASSERT_TRUE(in->eof());
-        }
-
-        ASSERT_TRUE(dir.remove("nonempty_file"));
+        ASSERT_EQ(0, in->read_bytes(buf, sizeof buf));
+        ASSERT_TRUE(in->eof());
+        ASSERT_EQ(0, in->checksum(0));
+        ASSERT_EQ(0, in->checksum(42));
       }
+
+      ASSERT_TRUE(dir.remove("empty_file"));
+    }
+
+    // Check read_bytes after the end of file
+    {
+      // write to file
+      {
+        byte_type buf[1024]{};
+        auto out = dir.create("nonempty_file");
+        ASSERT_FALSE(!out);
+        out->write_bytes(buf, sizeof buf);
+        out->write_bytes(buf, sizeof buf);
+        out->write_bytes(buf, 691);
+        out->flush();
+      }
+
+      // read from file
+      {
+        byte_type buf[1024 + 691]{}; // 1024 + 691 from above
+        auto in = dir.open("nonempty_file", irs::IOAdvice::NORMAL);
+        ASSERT_FALSE(in->eof());
+        size_t expected = sizeof buf;
+        ASSERT_FALSE(!in);
+        ASSERT_EQ(expected, in->read_bytes(buf, sizeof buf));
+
+        expected = in->length() - sizeof buf; // 'sizeof buf' already read above
+        const size_t read = in->read_bytes(buf, sizeof buf);
+        ASSERT_EQ(expected, read);
+        ASSERT_TRUE(in->eof());
+        ASSERT_EQ(0, in->read_bytes(buf, sizeof buf));
+        ASSERT_TRUE(in->eof());
+      }
+
+      ASSERT_TRUE(dir.remove("nonempty_file"));
     }
   }
 };
