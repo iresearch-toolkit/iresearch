@@ -24,12 +24,6 @@
 #ifndef IRESEARCH_SHARED_H
 #define IRESEARCH_SHARED_H
 
-#ifdef __APPLE__
-#include <machine/endian.h>
-#elif __linux__
-#include <endian.h>
-#endif
-
 #include <cfloat>
 #include <cstdlib>
 #include <iostream>
@@ -37,6 +31,7 @@
 #include <stdint.h>
 #include <math.h>
 #include <string>
+#include <bit>
 
 #include "types.hpp" // iresearch types
 
@@ -283,24 +278,6 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// Endianess
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __APPLE__
-#if BYTE_ORDER == BIG_ENDIAN
-#define IRESEARCH_BIG_ENDIAN
-#endif
-#elif _WIN32
-// always LE
-#elif __linux__
-#if __BYTE_ORDER == __BIG_ENDIAN
-#define IRESEARCH_BIG_ENDIAN
-#endif
-#elif !defined(_MSC_VER)
-#error "unsupported os or compiler"
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 
 // likely/unlikely branch indicator
 // macro definitions similar to the ones at
@@ -325,11 +302,7 @@
 namespace iresearch_absl { }
 namespace iresearch {
 constexpr bool is_big_endian() noexcept {
-#ifdef IRESEARCH_BIG_ENDIAN
- return true;
-#else
- return false;
-#endif
+  return std::endian::native == std::endian::big;
 }
 // we are using custom absl namespace (and also prefixed macros names)
 // as absl does not support side-by-side compiling in single project
