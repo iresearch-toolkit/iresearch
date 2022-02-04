@@ -246,54 +246,26 @@ uint64_t ntoh64(uint64_t value) {
 int32_t ftoi32(float_t value) {
   static_assert(std::numeric_limits<float_t>::is_iec559,
                 "compiler does not support ieee754 (float)");
-
-  union {
-    float_t in;
-    int32_t out;
-  } conv;
-
-  conv.in = value;
-  return make_sortable32(conv.out);
+  return make_sortable32(std::bit_cast<int32_t>(value));
 }
 
 float_t i32tof(int32_t value) {
   static_assert(std::numeric_limits<float_t>::is_iec559,
                 "compiler does not support ieee754 (float)");
-
-  union {
-    float_t out;
-    int32_t in;
-  } conv;
-
-  conv.in = make_sortable32(value);
-  return conv.out;
+  return std::bit_cast<float_t>(make_sortable32(value));
 
 }
 
 int64_t dtoi64(double_t value) {
   static_assert(std::numeric_limits<double_t>::is_iec559,
                 "compiler does not support ieee754 (double)");
-
-  union {
-    double_t in;
-    int64_t out;
-  } conv;
-
-  conv.in = value;
-  return make_sortable64(conv.out);
+  return make_sortable64(std::bit_cast<int64_t>(value));
 }
 
 double_t i64tod(int64_t value) {
   static_assert(std::numeric_limits<double_t>::is_iec559,
                 "compiler does not support ieee754 (double)");
-
-  union {
-    double_t out;
-    int64_t in;
-  } conv;
-
-  conv.in = make_sortable64(value);
-  return conv.out;
+  return std::bit_cast<double_t>(make_sortable64(value));
 }
 
 const bytes_ref& finf32() {
