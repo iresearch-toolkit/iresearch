@@ -503,7 +503,7 @@ void write_segment_features_legacy(
   const auto index_features = state.index_features;
 
   const size_t count = (features ? features->size() : 0) +
-                       math::math_traits<uint32_t>::pop(static_cast<uint32_t>(index_features));
+                        std::popcount(static_cast<uint32_t>(index_features));
 
   feature_map.clear();
   feature_map.reserve(count);
@@ -586,7 +586,7 @@ void write_field_features_legacy(
   };
 
   const size_t count = features.size() +
-                       math::math_traits<uint32_t>::pop(static_cast<uint32_t>(index_features));
+                       std::popcount(static_cast<uint32_t>(index_features));
 
   out.write_vlong(count);
 
