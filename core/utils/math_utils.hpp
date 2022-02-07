@@ -42,8 +42,8 @@
 namespace iresearch {
 namespace math {
 
-/// @brief sum two unsigned integral values with overflow check
-/// @returns false if sum is overflowed, true - otherwise
+// Sum two unsigned integral values with overflow check.
+// Returns false if sum is overflowed, true - otherwise.
 template<
   typename T,
   typename = typename std::enable_if_t<
@@ -64,47 +64,34 @@ inline constexpr size_t roundup_power2(size_t v) noexcept {
   return v;
 }
 
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
-#define is_power2(v) (std::is_integral<decltype(v)>::value && !(v & (v-1)))
-#else
-// undefined for 0
-template<typename T>
-constexpr inline bool is_power2(T v) noexcept {
-  static_assert(std::is_integral_v<T>,
-                "T must be an integral type");
-
-  return !(v & (v-1));
-}
-#endif
-
 inline bool approx_equals(double_t lhs, double_t rhs) noexcept {
   return std::fabs(rhs - lhs) < std::numeric_limits<double_t>::epsilon();
 }
 
-/// @brief rounds the result of division (num/den) to
-///        the next greater integer value
+// Rounds the result of division (num/den) to
+// the next greater integer value
 constexpr inline uint64_t div_ceil64(uint64_t num, uint64_t den) noexcept {
   // ensure no overflow
   return IRS_ASSERT(den != 0 && (num + den) >= num && (num + den >= den)),
          (num + den - 1)/den;
 }
 
-/// @brief rounds the result of division (num/den) to
-///        the next greater integer value
+// Rounds the result of division (num/den) to
+// the next greater integer value
 constexpr inline uint32_t div_ceil32(uint32_t num, uint32_t den) noexcept {
   // ensure no overflow
   return IRS_ASSERT(den != 0 && (num + den) >= num && (num + den >= den)),
          (num + den - 1)/den;
 }
 
-/// @brief rounds the specified 'value' to the next greater
-/// value that is multiple of the specified 'step'
+// Rounds the specified 'value' to the next greater
+// value that is multiple of the specified 'step'
 constexpr inline uint64_t ceil64(uint64_t value, uint64_t step) noexcept {
   return div_ceil64(value,step)*step;
 }
 
-/// @brief rounds the specified 'value' to the next greater
-/// value that is multiple of the specified 'step'
+// Rounds the specified 'value' to the next greater
+// value that is multiple of the specified 'step'
 constexpr inline uint32_t ceil32(uint32_t value, uint32_t step) noexcept {
   return div_ceil32(value, step)*step;
 }
@@ -127,10 +114,6 @@ FORCE_INLINE uint32_t log2_floor_32(uint32_t v) {
 #endif
 }
 
-FORCE_INLINE uint32_t log2_ceil_32(uint32_t v) {
-  return log2_floor_32(v) + uint32_t{!is_power2(v)};
-}
-
 FORCE_INLINE uint64_t log2_floor_64(uint64_t v) {
 #if __GNUC__ >= 4
   return 63 ^ __builtin_clzll(v);
@@ -141,10 +124,6 @@ FORCE_INLINE uint64_t log2_floor_64(uint64_t v) {
 #else
   return log2_64(v);
 #endif
-}
-
-FORCE_INLINE uint64_t log2_ceil_64(uint64_t v) {
-  return log2_floor_64(v) + uint64_t{!is_power2(v)};
 }
 
 template<typename T, size_t N = sizeof(T)>

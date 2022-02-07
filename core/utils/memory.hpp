@@ -37,18 +37,9 @@ namespace iresearch {
 namespace memory {
 
 inline constexpr size_t align_up(size_t size, size_t alignment) noexcept {
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
-  assert(math::is_power2(alignment));
-  return (size + alignment - 1) & (0 - alignment);
-#else
-  return IRS_ASSERT(math::is_power2(alignment)),
+  return IRS_ASSERT(std::has_single_bit(alignment)),
          (size + alignment - 1) & (0 - alignment);
-#endif
 }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                    is_shared_ptr
-// ----------------------------------------------------------------------------
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief dump memory statistics and stack trace to stderr

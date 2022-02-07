@@ -149,12 +149,12 @@ order::prepared order::prepare() const {
     // cppcheck-suppress shadowFunction
     const auto score_size = prepared->score_size();
     assert(score_size.second <= alignof(std::max_align_t));
-    assert(math::is_power2(score_size.second)); // math::is_power2(0) returns true
+    assert(0 == score_size.second || std::has_signle_bit(score_size.second));
 
     // cppcheck-suppress shadowFunction
     const auto stats_size = prepared->stats_size();
     assert(stats_size.second <= alignof(std::max_align_t));
-    assert(math::is_power2(stats_size.second)); // math::is_power2(0) returns true
+    assert(0 == stats_size.second || std::has_single_bit(stats_size.second));
 
     stats_align = std::max(stats_align, stats_size.second);
     score_align = std::max(score_align, score_size.second);
