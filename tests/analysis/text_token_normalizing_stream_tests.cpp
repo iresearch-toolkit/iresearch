@@ -255,7 +255,7 @@ TEST_F(normalizing_token_stream_tests, test_load) {
     
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(data.size(), offset->end);
-    ASSERT_EQ(u8"\u006F\u006F", irs::ref_cast<char8_t>(term->value));
+    ASSERT_TRUE(u8"\u006F\u006F" == irs::ref_cast<char8_t>(term->value));
     
     ASSERT_FALSE(stream->next());
   }
