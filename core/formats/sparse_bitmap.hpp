@@ -58,7 +58,7 @@ class sparse_bitmap_writer {
   static constexpr uint32_t kBlockSize = 1 << 16;
   static constexpr uint32_t kNumBlocks = kBlockSize / bits_required<size_t>();
 
-  static_assert(std::has_single_bit(kBlockSize));
+  static_assert(math::is_power2(kBlockSize));
 
   struct block {
     doc_id_t index;
@@ -71,7 +71,7 @@ class sparse_bitmap_writer {
   }
 
   void push_back(doc_id_t value) {
-    static_assert(std::has_single_bit(kBlockSize));
+    static_assert(math::is_power2(kBlockSize));
     assert(doc_limits::valid(value));
     assert(!doc_limits::eof(value));
 

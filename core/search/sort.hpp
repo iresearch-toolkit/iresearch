@@ -627,8 +627,9 @@ template<typename ScoreType,
     );
 
     static_assert (
-      std::has_single_bit(alignof(score_t)),
-      "alignof(score_t) must be a power of 2");
+      math::is_power2(alignof(score_t)),
+      "alignof(score_t) must be a power of 2"
+    );
 
     return std::make_pair(sizeof(score_t), alignof(score_t));
   }
@@ -643,8 +644,9 @@ template<typename ScoreType,
     );
 
     static_assert (
-      std::has_single_bit(alignof(stats_t)),
-      "alignof(stats_t) must be a power of 2");
+      math::is_power2(alignof(stats_t)),
+      "alignof(stats_t) must be a power of 2"
+    );
 
     return std::make_pair(sizeof(stats_t), alignof(stats_t));
   }

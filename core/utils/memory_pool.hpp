@@ -422,8 +422,7 @@ template<
 
   static size_t adjust_slot_size(size_t slot_size) noexcept {
     using namespace iresearch::math;
-    static_assert(std::has_single_bit(freelist::MIN_ALIGN),
-                  "MIN_ALIGN must be a power of 2");
+    static_assert(is_power2(freelist::MIN_ALIGN), "MIN_ALIGN must be a power of 2");
 
     slot_size = align_up(
       (std::max)(slot_size, size_t(freelist::MIN_SIZE)),

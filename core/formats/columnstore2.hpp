@@ -45,7 +45,7 @@ namespace columnstore2 {
 class column final : public irs::column_output {
  public:
   static constexpr size_t kBlockSize = sparse_bitmap_writer::kBlockSize;
-  static_assert(std::has_single_bit(kBlockSize));
+  static_assert(math::is_power2(kBlockSize));
 
   struct context {
     memory_allocator* alloc;
