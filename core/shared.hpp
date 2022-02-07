@@ -301,7 +301,7 @@
 
 namespace iresearch_absl { }
 namespace iresearch {
-constexpr bool is_big_endian() noexcept {
+consteval bool is_big_endian() noexcept {
   return std::endian::native == std::endian::big;
 }
 // we are using custom absl namespace (and also prefixed macros names)
