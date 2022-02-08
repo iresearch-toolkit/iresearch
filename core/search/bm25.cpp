@@ -318,7 +318,7 @@ struct score_ctx : public irs::score_ctx {
     : score_buf{score_buf},
       freq{freq ? freq : &EMPTY_FREQ},
       filter_boost{fb},
-      num_{boost * (k + 1) * stats.idf},
+      num{boost * (k + 1) * stats.idf},
       norm_const{k}  {
     assert(freq_);
   }
@@ -326,7 +326,7 @@ struct score_ctx : public irs::score_ctx {
   byte_type* score_buf;
   const frequency* freq; // document frequency
   const irs::filter_boost* filter_boost;
-  float_t num_; // partially precomputed numerator : boost * (k + 1) * idf
+  float_t num; // partially precomputed numerator : boost * (k + 1) * idf
   float_t norm_const; // 'k' factor
 }; // score_ctx
 
@@ -338,7 +338,7 @@ struct NormAdapter {
 
   FORCE_INLINE float_t operator()() {
     if constexpr (IsNorm2) {
-      return SQRT(reader());
+      return SQRT.get<true>(reader());
     }
 
     return 1.f/reader();
@@ -390,22 +390,22 @@ score_function make_score_function_impl(Args&&... args) noexcept {
 
        auto& state = *static_cast<Ctx*>(ctx);
 
-       const float_t tf = ::SQRT(state.freq->value);
+       const float_t tf = ::SQRT.get<true>(state.freq->value);
 
        // FIXME(gnusi) optimize for norm2
        // at least we can cache "state.norm_const + state.norm_length_ * state.norm_()"
        auto& buf = irs::sort::score_cast<score_t>(state.score_buf);
 
        if constexpr (HasFilterBoost && HasNorms) {
-         assert(state.filter_boost_);
-         buf = state.filter_boost->value * state.num_ * tf / (state.norm_const + state.norm_length * state.norm() + tf);
+         assert(state.filter_boost);
+         buf = state.filter_boost->value * state.num * tf / (state.norm_const + state.norm_length * state.norm() + tf);
        } else if constexpr (HasFilterBoost) {
-         assert(state.filter_boost_);
-         buf = state.filter_boost->value * state.num_ * tf / (state.norm_const + tf);
+         assert(state.filter_boost);
+         buf = state.filter_boost->value * state.num * tf / (state.norm_const + tf);
        } else if constexpr (HasNorms) {
-         buf = state.num_ * tf / (state.norm_const + state.norm_length * state.norm() + tf);
+         buf = state.num * tf / (state.norm_const + state.norm_length * state.norm() + tf);
        } else {
-         buf = state.num_ * tf / (state.norm_const + tf);
+         buf = state.num * tf / (state.norm_const + tf);
        }
 
        return state.score_buf;
@@ -473,6 +473,13 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
     if (total_term_freq && docs_with_field) {
       stats.norm_length /= float_t(total_term_freq) / docs_with_field;
     }
+
+    // idf(term) * ((k + 1) * tf(doc, term)) / (k * (1.0 - b + b * |doc|/avgDL) + tf(doc, term))
+
+    const auto norm2cache = irs::cache_func<uint32_t, 256>(
+      0, [avg_dl = stats.norm_length, k = k_, b = b_](uint32_t i) noexcept {
+        return 1.f/k*(1.f - b + b * float_t(i)/avg_dl);
+    });
   }
 
   virtual IndexFeatures features() const noexcept override {

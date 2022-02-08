@@ -247,7 +247,7 @@ struct term_collector final: public irs::sort::term_collector {
 };
 
 FORCE_INLINE float_t tfidf(uint32_t freq, float_t idf) noexcept {
-  return idf * SQRT(freq);
+  return idf * SQRT.get<true>(freq);
 }
 
 } // LOCAL
@@ -292,7 +292,7 @@ struct NormAdapter {
 
   FORCE_INLINE float_t operator()() {
     if constexpr (IsNorm2) {
-      return RSQRT(reader());
+      return RSQRT.get<true>(reader());
     }
 
     return reader();
