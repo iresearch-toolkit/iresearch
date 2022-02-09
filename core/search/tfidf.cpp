@@ -339,8 +339,6 @@ struct MakeScoreFunctionImpl<ScoreContext> {
         [](irs::score_ctx* ctx) noexcept -> const byte_type* {
           auto& state = *static_cast<Ctx*>(ctx);
 
-          auto& buf = irs::sort::score_cast<score_t>(state.score_buf);
-
           float_t idf;
           if constexpr (HasFilterBoost) {
             assert(state.filter_boost);
@@ -349,6 +347,7 @@ struct MakeScoreFunctionImpl<ScoreContext> {
             idf = state.idf;
           }
 
+          auto& buf = irs::sort::score_cast<score_t>(state.score_buf);
           buf = ::tfidf(state.freq->value, idf);
 
           return state.score_buf;
@@ -368,8 +367,6 @@ struct MakeScoreFunctionImpl<NormScoreContext<Norm>> {
         [](irs::score_ctx* ctx) noexcept -> const byte_type* {
           auto& state = *static_cast<Ctx*>(ctx);
 
-          auto& buf = irs::sort::score_cast<score_t>(state.score_buf);
-
           float_t idf;
           if constexpr (HasFilterBoost) {
             assert(state.filter_boost);
@@ -378,6 +375,7 @@ struct MakeScoreFunctionImpl<NormScoreContext<Norm>> {
             idf = state.idf;
           }
 
+          auto& buf = sort::score_cast<score_t>(state.score_buf);
           buf = ::tfidf(state.freq->value, idf) * state.norm();
 
           return state.score_buf;
@@ -387,8 +385,8 @@ struct MakeScoreFunctionImpl<NormScoreContext<Norm>> {
 };
 
 template<typename Ctx, typename... Args>
-score_function make_score_function(const filter_boost* filter_boost,
-                                   Args&&... args) noexcept {
+score_function MakeScoreFunction(const filter_boost* filter_boost,
+                                 Args&&... args) noexcept {
   if (filter_boost) {
     return MakeScoreFunctionImpl<Ctx>::template Make<true>(
         std::forward<Args>(args)..., filter_boost);
@@ -476,7 +474,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
       }
 
       auto prepare_norm_scorer = [&]<typename Norm>(Norm&& norm) -> score_function {
-        return make_score_function<NormScoreContext<Norm>>(
+        return MakeScoreFunction<NormScoreContext<Norm>>(
             filter_boost, score_buf, std::move(norm), boost, stats, freq);
       };
 
@@ -497,7 +495,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
       }
     }
 
-    return make_score_function<ScoreContext>(
+    return MakeScoreFunction<ScoreContext>(
         filter_boost, score_buf, boost, stats, freq);
   }
 

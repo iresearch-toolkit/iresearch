@@ -461,8 +461,6 @@ struct MakeScoreFunctionImpl<ScoreContext> {
         [](irs::score_ctx* ctx) noexcept -> const byte_type* {
           auto& state = *static_cast<Ctx*>(ctx);
 
-          auto& buf = irs::sort::score_cast<score_t>(state.score_buf);
-
           // FIXME???
           const float_t tf = SQRT.get<true>(state.freq->value);
 
@@ -474,7 +472,9 @@ struct MakeScoreFunctionImpl<ScoreContext> {
             c0 = state.num;
           }
 
-          buf = c0 - c0 / (1 + tf/state.norm_const);
+          const float_t c1 = state.norm_const;
+
+          sort::score_cast<score_t>(state.score_buf) = c0 - c0 / (1.f + tf/c1);
 
           return state.score_buf;
         }
@@ -493,8 +493,6 @@ struct MakeScoreFunctionImpl<NormScoreContext<Norm>> {
         [](irs::score_ctx* ctx) noexcept -> const byte_type* {
           auto& state = *static_cast<Ctx*>(ctx);
 
-          auto& buf = irs::sort::score_cast<score_t>(state.score_buf);
-
           const float_t tf = ::SQRT.get<true>(state.freq->value);
           //if constexpr (Norm::kIsNorm2) {
           //  tf = state.freq->value;
@@ -512,8 +510,7 @@ struct MakeScoreFunctionImpl<NormScoreContext<Norm>> {
 
           const float_t c1 = state.norm_const + state.norm_length * state.norm();
 
-          buf = c0 - c0 / (1.f + tf / c1);
-
+          sort::score_cast<score_t>(state.score_buf) = c0 - c0 / (1.f + tf / c1);
           return state.score_buf;
         }
     };
