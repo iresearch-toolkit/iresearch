@@ -31,7 +31,7 @@
 
 namespace iresearch {
 
-class proxy_query_cache;
+struct proxy_query_cache;
 
 class proxy_filter final : public filter {
  public:
@@ -44,8 +44,8 @@ class proxy_filter final : public filter {
   proxy_filter() noexcept : filter(irs::type<proxy_filter>::get()) {}
 
   filter::prepared::ptr prepare(const index_reader& rdr,
-                                const order::prepared& ord, boost_t boost,
-    const attribute_provider* ctx) const override;
+                                const order::prepared&, boost_t boost,
+                                const attribute_provider*) const override;
 
   proxy_filter& add(filter::ptr&& real_filter) {
     real_filter_ = std::move(real_filter);
