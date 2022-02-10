@@ -1,0 +1,184 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Andrei Lobov
+////////////////////////////////////////////////////////////////////////////////
+
+#include "tests_shared.hpp"
+#include "filter_test_case_base.hpp"
+#include "index/index_writer.hpp"
+#include "search/proxy_filter.hpp"
+#include "store/memory_directory.hpp"
+
+namespace  {
+
+using namespace tests;
+using namespace iresearch;
+
+class doclist_test_iterator final : public doc_iterator,
+                                    private util::noncopyable {
+ public:
+  doclist_test_iterator(const std::vector<doc_id_t>& documents)
+      : begin_(documents.begin()), end_(documents.end()) {
+    reset();
+  }
+
+  bool next() override {
+    if (resetted_) {
+      resetted_ = false;
+      current_ = begin_;
+    }
+
+    if (current_ != end_) {
+      doc_.value = *current_;
+      ++current_;
+      return true;
+    } else {
+      doc_.value = doc_limits::eof();
+    }
+    return false;
+  }
+
+  doc_id_t seek(doc_id_t target) override {
+    while (doc_.value < target && next()) {}
+    return doc_.value;
+  }
+
+  doc_id_t value() const noexcept final { return doc_.value; }
+
+  attribute* get_mutable(iresearch::type_info::type_id id) noexcept override {
+    if (irs::type<irs::document>::id() == id) {
+      return &doc_;
+    }
+    return nullptr;
+  }
+
+  void reset() noexcept {
+    current_ = end_;
+    resetted_ = true;
+    doc_.value = doc_limits::invalid();
+  }
+
+ private:
+  std::vector<doc_id_t>::const_iterator begin_;
+  std::vector<doc_id_t>::const_iterator current_;
+  std::vector<doc_id_t>::const_iterator end_;
+  iresearch::document doc_;
+  bool resetted_;
+};
+
+class doclist_test_query final : public filter::prepared {
+ public:
+  doclist_test_query(const std::vector<doc_id_t>& documents, boost_t)
+      : documents_(documents){};
+
+  doc_iterator::ptr execute(const sub_reader& rdr, const order::prepared& order,
+                            const attribute_provider* ctx) const override {
+    ++executes_;
+    return memory::make_managed<doclist_test_iterator>(documents_);
+  }
+
+  static size_t get_execs() noexcept { return executes_; }
+
+  static void reset_execs() noexcept { executes_ = 0; }
+
+ private:
+  const std::vector<doc_id_t>& documents_;
+  static size_t executes_;
+};
+
+size_t doclist_test_query::executes_{0};
+
+class doclist_test_filter final : public filter {
+ public:
+
+  doclist_test_filter(const std::vector<doc_id_t>&  documents) noexcept
+      : filter(irs::type<doclist_test_filter>::get()), documents_(documents) {}
+
+  filter::prepared::ptr prepare(const index_reader&, const order::prepared&,
+                                boost_t boost,
+                                const attribute_provider*) const override {
+    ++prepares_;
+    return memory::make_managed<doclist_test_query>(documents_, boost);
+  }
+    
+  static size_t get_prepares() noexcept { return prepares_; }
+
+  static void reset_prepares() noexcept { prepares_ = 0;}
+
+ private:
+  const std::vector<doc_id_t>& documents_;
+  static size_t prepares_;
+};
+
+size_t doclist_test_filter::prepares_;
+
+class proxy_filter_test_case : public ::testing::Test {
+ public:
+  proxy_filter_test_case() {
+    auto codec = irs::formats::get("1_0");
+    auto writer = irs::index_writer::make(dir_, codec, irs::OM_CREATE);
+    { // make dummy document so we could have non-empty index
+      auto ctx = writer->documents();
+      auto doc = ctx.insert();
+      auto field = std::make_shared<tests::string_field>("foo", "bar");
+      doc.insert<Action::INDEX>(*field);
+    }
+    writer->commit();
+    index_ = irs::directory_reader::open(dir_, codec);
+  }
+
+ protected:
+  void SetUp() override {
+    doclist_test_query::reset_execs();
+    doclist_test_filter::reset_prepares();
+  }
+
+  void verify_filter(std::vector<doc_id_t> const& expected, size_t line) {
+    SCOPED_TRACE(::testing::Message("Failed on line: ") << line);
+    auto cache = proxy_filter::make_cache();
+    for (size_t i = 0; i < 3; ++i) {
+      auto real = irs::memory::make_unique<doclist_test_filter>(expected);
+      proxy_filter proxy;
+      proxy.add(std::move(real));
+      proxy.set_cache(cache);
+      auto prepared_proxy = proxy.prepare(index_[0]);
+      auto docs = prepared_proxy->execute(index_[0]);
+      auto expected_doc = expected.begin();
+      while (docs->next() && expected_doc != expected.end()) {
+        EXPECT_EQ(docs->value(), *expected_doc);
+        ++expected_doc;
+      }
+      EXPECT_FALSE(docs->next());
+      EXPECT_EQ(expected_doc, expected.end());
+    }
+    // Real filter should be exectued just once
+    EXPECT_EQ(doclist_test_query::get_execs(), 1);
+    EXPECT_EQ(doclist_test_filter::get_prepares(), 1);
+  }
+
+  irs::memory_directory dir_;
+  irs::directory_reader index_;
+};
+
+TEST_F(proxy_filter_test_case, test_corner_cases) {
+  std::vector<doc_id_t> documents{irs::doc_limits::min()};
+  verify_filter(documents, __LINE__);
+}
+} // namespace iresearch::tests

@@ -43,6 +43,8 @@ class proxy_filter final : public filter {
 
   proxy_filter() noexcept : filter(irs::type<proxy_filter>::get()) {}
 
+  using filter::prepare;
+
   filter::prepared::ptr prepare(const index_reader& rdr,
                                 const order::prepared&, boost_t boost,
                                 const attribute_provider*) const override;
@@ -52,7 +54,7 @@ class proxy_filter final : public filter {
     return *this;
   }
 
-  proxy_filter& set_cache(cache_ptr cache) {
+  proxy_filter& set_cache(const cache_ptr& cache) {
     cache_ = cache;
     return *this;
   }
