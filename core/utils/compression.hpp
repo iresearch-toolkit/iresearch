@@ -19,26 +19,29 @@
 ///
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifndef IRESEARCH_COMPRESSION_H
-#define IRESEARCH_COMPRESSION_H
+#pragma once
 
 #include "memory.hpp"
-#include "type_id.hpp"
 #include "noncopyable.hpp"
+#include "type_id.hpp"
 
-#include <map>
+#define REGISTER_COMPRESSION_IMPL(compression_name, compressor_factory,   \
+                                  decompressor_factory, line, source)     \
+  static iresearch::compression::compression_registrar                    \
+      compression_registrar##_##line(                                     \
+          ::iresearch::type<compression_name>::get(), compressor_factory, \
+          decompressor_factory, source)
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          compression registration
-// -----------------------------------------------------------------------------
+#define REGISTER_COMPRESSION_EXPANDER_IMPL(                                 \
+    compression_name, compressor_factory, decompressor_factory, file, line) \
+  REGISTER_COMPRESSION_IMPL(compression_name, compressor_factory,           \
+                            decompressor_factory, line,                     \
+                            file ":" TOSTRING(line))
 
-#define REGISTER_COMPRESSION__(compression_name, compressor_factory, decompressor_factory, line, source) \
-  static iresearch::compression::compression_registrar compression_registrar ## _ ## line(::iresearch::type<compression_name>::get(), compressor_factory, decompressor_factory, source)
-#define REGISTER_COMPRESSION_EXPANDER__(compression_name, compressor_factory, decompressor_factory, file, line) \
-  REGISTER_COMPRESSION__(compression_name, compressor_factory, decompressor_factory, line, file ":" TOSTRING(line))
-#define REGISTER_COMPRESSION(compression_name, compressor_factory, decompressor_factory) \
-  REGISTER_COMPRESSION_EXPANDER__(compression_name, compressor_factory, decompressor_factory, __FILE__, __LINE__)
+#define REGISTER_COMPRESSION(compression_name, compressor_factory,         \
+                             decompressor_factory)                         \
+  REGISTER_COMPRESSION_EXPANDER_IMPL(compression_name, compressor_factory, \
+                                     decompressor_factory, __FILE__, __LINE__)
 
 namespace iresearch {
 
@@ -59,19 +62,16 @@ struct options {
     COMPRESSION
   };
 
-  /// @brief
-  Hint hint{ Hint::DEFAULT };
+  Hint hint{Hint::DEFAULT};
 
-  options(Hint hint = Hint::DEFAULT)
-    : hint(hint) {
-  }
+  options(Hint _hint = Hint::DEFAULT) : hint(_hint) {}
 
   bool operator==(const options& rhs) const noexcept {
     return hint == rhs.hint;
   }
 
   bool operator!=(const options& rhs) const noexcept {
-    return !(*this == rhs);
+    return !(*this == rhs);  // for breakpoint
   }
 };
 
@@ -90,7 +90,9 @@ struct compressor {
   virtual bytes_ref compress(byte_type* in, size_t size, bstring& buf) = 0;
 
   /// @brief flush arbitrary payload relevant to compression
-  virtual void flush(data_output& /*out*/) { /*NOOP*/ }
+  virtual void flush(data_output& /*out*/) {
+    // for breakpoint
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,27 +108,23 @@ struct decompressor {
                                byte_type* dst, size_t dst_size) = 0;
 
   virtual bool prepare(data_input& /*in*/) {
-    // NOOP
-    return true;
+    return true;  // for breakpoint
   }
 };
 
-typedef irs::compression::compressor::ptr(*compressor_factory_f)(const options&);
-typedef irs::compression::decompressor::ptr(*decompressor_factory_f)();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                          compression registration
-// -----------------------------------------------------------------------------
+using compressor_factory_f =
+    irs::compression::compressor::ptr (*)(const options&);
+using decompressor_factory_f = irs::compression::decompressor::ptr (*)();
 
 class compression_registrar {
  public:
-   compression_registrar(const type_info& type,
-                         compressor_factory_f compressor_factory,
-                         decompressor_factory_f decompressor_factory,
-                         const char* source = nullptr);
+  compression_registrar(const type_info& type,
+                        compressor_factory_f compressor_factory,
+                        decompressor_factory_f decompressor_factory,
+                        const char* source = nullptr);
 
-  operator bool() const noexcept {
-    return registered_;
+  explicit operator bool() const noexcept {
+    return registered_;  // for breakpoint
   }
 
  private:
@@ -141,40 +139,34 @@ bool exists(string_ref name, bool load_library = true);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a compressor by name, or nullptr if not found
 ////////////////////////////////////////////////////////////////////////////////
-compressor::ptr get_compressor(
-    string_ref name,
-    const options& opts,
-    bool load_library = true) noexcept;
+compressor::ptr get_compressor(string_ref name, const options& opts,
+                               bool load_library = true) noexcept;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a compressor by name, or nullptr if not found
 ////////////////////////////////////////////////////////////////////////////////
-inline compressor::ptr get_compressor(
-    const type_info& type,
-    const options& opts,
-    bool load_library = true) noexcept {
+inline compressor::ptr get_compressor(const type_info& type,
+                                      const options& opts,
+                                      bool load_library = true) noexcept {
   return get_compressor(type.name(), opts, load_library);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a decompressor by name, or nullptr if not found
 ////////////////////////////////////////////////////////////////////////////////
-decompressor::ptr get_decompressor(
-    string_ref name,
-    bool load_library = true) noexcept;
+decompressor::ptr get_decompressor(string_ref name,
+                                   bool load_library = true) noexcept;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a decompressor by name, or nullptr if not found
 ////////////////////////////////////////////////////////////////////////////////
-inline decompressor::ptr get_decompressor(
-    const type_info& type,
-    bool load_library = true) noexcept {
+inline decompressor::ptr get_decompressor(const type_info& type,
+                                          bool load_library = true) noexcept {
   return get_decompressor(type.name(), load_library);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief for static lib reference all known compressions in lib
-///        for shared lib NOOP
 ///        no explicit call of fn is required, existence of fn is sufficient
 ////////////////////////////////////////////////////////////////////////////////
 void init();
@@ -182,15 +174,15 @@ void init();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief load all compressions from plugins directory
 ////////////////////////////////////////////////////////////////////////////////
-void load_all(const std::string& path);
+void load_all(std::string_view path);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief visit all loaded compressions, terminate early if visitor returns false
+/// @brief visit all loaded compressions, terminate early if visitor returns
+/// false
 ////////////////////////////////////////////////////////////////////////////////
 bool visit(const std::function<bool(string_ref)>& visitor);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class raw
 /// @brief no compression
 ////////////////////////////////////////////////////////////////////////////////
 struct none {
@@ -205,11 +197,9 @@ struct none {
   }
 
   static compression::decompressor::ptr decompressor() {
-    return nullptr;
+    return nullptr;  // for breakpoint
   }
-}; // raw
+};
 
-} // compression
-}
-
-#endif // IRESEARCH_COMPRESSION_H
+}  // namespace compression
+}  // namespace iresearch

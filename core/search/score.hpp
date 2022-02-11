@@ -19,9 +19,7 @@
 ///
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifndef IRESEARCH_SCORE_H
-#define IRESEARCH_SCORE_H
+#pragma once
 
 #include "sort.hpp"
 #include "utils/attributes.hpp"
@@ -64,8 +62,7 @@ class score : public attribute {
 
   void reset(const score& score) noexcept {
     assert(score.func_);
-    func_.reset(const_cast<score_ctx*>(score.func_.ctx()),
-                score.func_.func());
+    func_.reset(const_cast<score_ctx*>(score.func_.ctx()), score.func_.func());
   }
 
   void reset(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept {
@@ -92,9 +89,7 @@ class score : public attribute {
     return const_cast<byte_type*>(buf_.c_str());
   }
 
-  size_t size() const noexcept {
-    return buf_.size();
-  }
+  size_t size() const noexcept { return buf_.size(); }
 
   void clear() noexcept {
     assert(!buf_.empty());
@@ -104,13 +99,10 @@ class score : public attribute {
  private:
   bstring buf_;
   score_function func_;
-//  memory::managed_ptr<score_ctx> ctx_; // arbitrary scoring context
-//  score_f func_; // scoring function
-}; // score
+  //  memory::managed_ptr<score_ctx> ctx_; // arbitrary scoring context
+  //  score_f func_; // scoring function
+};
 
 void reset(irs::score& score, order::prepared::scorers&& scorers);
 
-} // ROOT
-
-#endif // IRESEARCH_SCORE_H
-
+}  // namespace iresearch

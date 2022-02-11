@@ -19,26 +19,21 @@
 ///
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
-
 #include "formats.hpp"
 
-// list of statically loaded formats via init()
-#ifndef IRESEARCH_DLL
-  #include "formats_10.hpp"
-#endif
-
 #include "analysis/token_attributes.hpp"
+#include "formats_10.hpp"
 #include "utils/hash_utils.hpp"
-#include "utils/type_limits.hpp"
 #include "utils/register.hpp"
+#include "utils/type_limits.hpp"
 
 namespace {
 
-const std::string FILENAME_PREFIX("libformat-");
+constexpr std::string_view kFileNamePrefix = "libformat-";
 
 // first - format name
 // second - module name, nullptr => matches format name
-typedef std::pair<irs::string_ref, irs::string_ref> key_t;
+using key_t = std::pair<irs::string_ref, irs::string_ref>;
 
 struct equal_to {
   bool operator()(const key_t& lhs, const key_t& rhs) const noexcept {
@@ -52,41 +47,41 @@ struct hash {
   }
 };
 
-class format_register :
-  public irs::tagged_generic_register<key_t, irs::format::ptr(*)(), irs::string_ref, format_register, hash, equal_to> {
+class format_register
+    : public irs::tagged_generic_register<key_t, irs::format::ptr (*)(),
+                                          irs::string_ref, format_register,
+                                          hash, equal_to> {
  protected:
-  virtual std::string key_to_filename(const key_type& key) const override {
+  std::string key_to_filename(const key_type& key) const override {
     auto const& module = key.second.null() ? key.first : key.second;
-
-    std::string filename(FILENAME_PREFIX.size() + module.size(), 0);
-
-    std::memcpy(&filename[0], FILENAME_PREFIX.c_str(), FILENAME_PREFIX.size());
-
-    irs::string_ref::traits_type::copy(
-      &filename[0] + FILENAME_PREFIX.size(),
-      module.c_str(), module.size());
-
+    std::string filename(kFileNamePrefix.size() + module.size(), 0);
+    std::memcpy(&filename[0], kFileNamePrefix.data(), kFileNamePrefix.size());
+    irs::string_ref::traits_type::copy(&filename[0] + kFileNamePrefix.size(),
+                                       module.c_str(), module.size());
     return filename;
   }
-}; // format_register
+};
 
-}
+}  // namespace
 
 namespace iresearch {
 
-/* static */void index_meta_writer::complete(index_meta& meta) noexcept {
+postings_writer::~postings_writer() = default;
+basic_term_reader::~basic_term_reader() = default;
+term_reader::~term_reader() = default;
+format::~format() = default;
+
+void index_meta_writer::complete(index_meta& meta) noexcept {
   meta.last_gen_ = meta.gen_;
 }
-/* static */ void index_meta_writer::prepare(index_meta& meta) noexcept {
+void index_meta_writer::prepare(index_meta& meta) noexcept {
   meta.gen_ = meta.next_generation();
 }
 
-/* static */ void index_meta_reader::complete(
-    index_meta& meta,
-    uint64_t generation,
-    uint64_t counter,
-    index_meta::index_segments_t&& segments,
-    bstring* payload) {
+void index_meta_reader::complete(index_meta& meta, uint64_t generation,
+                                 uint64_t counter,
+                                 index_meta::index_segments_t&& segments,
+                                 bstring* payload) {
   meta.gen_ = generation;
   meta.last_gen_ = generation;
   meta.seg_counter_ = counter;
@@ -98,96 +93,76 @@ namespace iresearch {
   }
 }
 
-/*static*/ bool formats::exists(
-    string_ref name,
-    bool load_library /*= true*/) {
+bool formats::exists(string_ref name, bool load_library /*= true*/) {
   auto const key = std::make_pair(name, string_ref::NIL);
   return nullptr != format_register::instance().get(key, load_library);
 }
 
-/*static*/ format::ptr formats::get(
-    string_ref name,
-    string_ref module /*= string_ref::NIL*/,
-    bool load_library /*= true*/) noexcept {
+format::ptr formats::get(string_ref name,
+                         string_ref module /*= string_ref::NIL*/,
+                         bool load_library /*= true*/) noexcept {
   try {
     auto const key = std::make_pair(name, module);
     auto* factory = format_register::instance().get(key, load_library);
-
     return factory ? factory() : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting a format instance");
   }
-
   return nullptr;
 }
 
-/*static*/ void formats::init() {
-#ifndef IRESEARCH_DLL
-  irs::version10::init();
-#endif
+void formats::init() {
+  irs::version10::init();  // for breakpoint
 }
 
-/*static*/ void formats::load_all(const std::string& path) {
-  load_libraries(path, FILENAME_PREFIX, "");
+void formats::load_all(std::string_view path) {
+  load_libraries(path, kFileNamePrefix, "");
 }
 
-/*static*/ bool formats::visit(
-    const std::function<bool(string_ref)>& visitor) {
+bool formats::visit(const std::function<bool(string_ref)>& visitor) {
   auto visit_all = [&visitor](const format_register::key_type& key) {
-    if (!visitor(key.first)) {
-      return false;
-    }
-    return true;
+    return visitor(key.first);
   };
-
   return format_register::instance().visit(visit_all);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               format registration
-// -----------------------------------------------------------------------------
-
-format_registrar::format_registrar(
-    const type_info& type,
-    string_ref module,
-    format::ptr(*factory)(),
-    const char* source /*= nullptr*/) {
+format_registrar::format_registrar(const type_info& type, string_ref module,
+                                   format::ptr (*factory)(),
+                                   const char* source /*= nullptr*/) {
   string_ref source_ref(source);
 
   auto entry = format_register::instance().set(
-    std::make_pair(type.name(), module),
-    factory,
-    source_ref.null() ? nullptr : &source_ref
-  );
+      std::make_pair(type.name(), module), factory,
+      source_ref.null() ? nullptr : &source_ref);
 
   registered_ = entry.second;
 
   if (!registered_ && factory != entry.first) {
     const auto key = std::make_pair(type.name(), string_ref::NIL);
-    auto* registered_source = format_register::instance().tag(key);
+    const auto* registered_source = format_register::instance().tag(key);
 
     if (source && registered_source) {
       IR_FRMT_WARN(
-        "type name collision detected while registering format, ignoring: type '%s' from %s, previously from %s",
-        type.name().c_str(),
-        source,
-        registered_source->c_str());
+          "type name collision detected while registering format, ignoring: "
+          "type '%s' from %s, previously from %s",
+          type.name().c_str(), source, registered_source->c_str());
     } else if (source) {
       IR_FRMT_WARN(
-        "type name collision detected while registering format, ignoring: type '%s' from %s",
-        type.name().c_str(),
-        source);
+          "type name collision detected while registering format, ignoring: "
+          "type '%s' from %s",
+          type.name().c_str(), source);
     } else if (registered_source) {
       IR_FRMT_WARN(
-        "type name collision detected while registering format, ignoring: type '%s', previously from %s",
-        type.name().c_str(),
-        registered_source->c_str());
+          "type name collision detected while registering format, ignoring: "
+          "type '%s', previously from %s",
+          type.name().c_str(), registered_source->c_str());
     } else {
       IR_FRMT_WARN(
-        "type name collision detected while registering format, ignoring: type '%s'",
-        type.name().c_str());
+          "type name collision detected while registering format, ignoring: "
+          "type '%s'",
+          type.name().c_str());
     }
   }
 }
 
-}
+}  // namespace iresearch
