@@ -177,8 +177,34 @@ class proxy_filter_test_case : public ::testing::Test {
   irs::directory_reader index_;
 };
 
-TEST_F(proxy_filter_test_case, test_corner_cases) {
-  std::vector<doc_id_t> documents{irs::doc_limits::min()};
+TEST_F(proxy_filter_test_case, test_1first_bit) {
+  std::vector<doc_id_t> documents{1};
   verify_filter(documents, __LINE__);
 }
+
+TEST_F(proxy_filter_test_case, test_1last_bit) {
+  std::vector<doc_id_t> documents{63};
+  verify_filter(documents, __LINE__);
+}
+
+TEST_F(proxy_filter_test_case, test_2first_bit) {
+  std::vector<doc_id_t> documents{64};
+  verify_filter(documents, __LINE__);
+}
+
+TEST_F(proxy_filter_test_case, test_2last_bit) {
+  std::vector<doc_id_t> documents{127};
+  verify_filter(documents, __LINE__);
+}
+
+TEST_F(proxy_filter_test_case, test_1last_2first_bit) {
+  std::vector<doc_id_t> documents{63, 64};
+  verify_filter(documents, __LINE__);
+}
+
+TEST_F(proxy_filter_test_case, test_1first_2last_bit) {
+  std::vector<doc_id_t> documents{1,127};
+  verify_filter(documents, __LINE__);
+}
+
 } // namespace iresearch::tests
