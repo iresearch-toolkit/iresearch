@@ -279,7 +279,7 @@ struct term_collector final: public irs::sort::term_collector {
 namespace iresearch {
 
 // bm25 similarity
-// bm25(doc, term) = idf(term) * ((k + 1) * tf(doc, term)) / (k * (1.0 - b + b * |doc|/avgDL) + tf(doc, term))
+// bm25(doc, term) = idf(term) * ((k + 1) * tf(doc, term)) / (k * (1 - b + b * |doc|/avgDL) + tf(doc, term))
 
 // inverted document frequency
 // idf(term) = log(1 + (# documents with this field - # documents with this term + 0.5)/(# documents with this term + 0.5))
@@ -300,15 +300,20 @@ namespace bm25 {
 const frequency EMPTY_FREQ;
 
 struct stats final {
-  float_t idf; // precomputed idf value
-  float_t norm_const; // precomputed k*(1-b)
-  float_t norm_length; // precomputed k*b/avgD
+  // precomputed idf value
+  float_t idf;
+  // precomputed k*(1-b)
+  float_t norm_const;
+  // precomputed k*b/avgD
+  float_t norm_length;
+  // precomputed 1/(k*(1-b+b*|doc|/avgDL)) for |doc| E [0..255]
+  float_t norm_cache[256];
 }; // stats
 
 using score_t = bm25_sort::score_t;
 
-struct ScoreContext : public irs::score_ctx {
-  ScoreContext(
+struct BM15Context : public irs::score_ctx {
+  BM15Context(
       byte_type* score_buf,
       float_t k, 
       irs::boost_t boost,
@@ -328,35 +333,11 @@ struct ScoreContext : public irs::score_ctx {
   const irs::filter_boost* filter_boost;
   float_t num; // partially precomputed numerator : boost * (k + 1) * idf
   float_t norm_const; // 'k' factor
-}; // score_ctx
-
-template<typename Reader, bool IsNorm2>
-struct NormAdapter {
-  static constexpr bool kIsNorm2 = IsNorm2;
-
-  explicit NormAdapter(Reader&& reader)
-    : reader{std::move(reader)} {
-  }
-
-  FORCE_INLINE float_t operator()() {
-    if constexpr (IsNorm2) {
-      return SQRT.get<true>(reader());
-    }
-
-    return 1.f/reader();
-   }
-
-  Reader reader;
 };
 
-template<bool IsNorm2, typename Reader>
-auto MakeNormAdapter(Reader&& reader) {
-  return NormAdapter<Reader, IsNorm2>(std::move(reader));
-}
-
 template<typename Norm>
-struct NormScoreContext final : public ScoreContext {
-  NormScoreContext(
+struct BM25Context final : public BM15Context {
+  BM25Context(
       byte_type* score_buf,
       float_t k, 
       irs::boost_t boost,
@@ -364,85 +345,50 @@ struct NormScoreContext final : public ScoreContext {
       const frequency* freq,
       Norm&& norm,
       const irs::filter_boost* filter_boost = nullptr) noexcept
-    : ScoreContext{score_buf, k, boost, stats, freq, filter_boost},
-      norm{std::move(norm)} {
-    // if there is no norms, assume that b==0
-//    if (!norm_.empty()) {
+    : BM15Context{score_buf, k, boost, stats, freq, filter_boost},
+      norm{std::move(norm)},
+      norm_cache{stats.norm_cache},
+      norm_length{stats.norm_length} {
+      assert(stats.norm_const);
       norm_const = stats.norm_const;
-      norm_length = stats.norm_length;
- //   }
-    assert(stats.norm_const);
   }
 
   Norm norm;
-  float_t norm_length{ 0.f }; // precomputed 'k*b/avgD' if norms present, '0' otherwise
-}; // norm_score_ctx
+  float_t norm_length; // precomputed 'k*b/avgD'
+  const float_t* norm_cache;
+};
 
-//template<typename Ctx>
-//struct has_norms : std::false_type { };
-//
-//template<typename Norm>
-//struct has_norms<norm_score_ctx<Norm>> : std::true_type { };
-//
-//template<typename Ctx, bool HasFilterBoost, typename... Args>
-//score_function make_score_function_impl(Args&&... args) noexcept {
-//   return {
-//     memory::make_unique<Ctx>(std::forward<Args>(args)...),
-//     [](irs::score_ctx* ctx) noexcept -> const byte_type* {
-//       constexpr bool HasNorms = has_norms<Ctx>::value;
-//
-//       auto& state = *static_cast<Ctx*>(ctx);
-//
-//       float_t tf;
-//       if constexpr (HasNorms) {
-//         if constexpr (Ctx::kIsNorm2) {
-//           tf = state.freq->value;
-//         } else {
-//           tf = ::SQRT.get<true>(state.freq->value);
-//         }
-//       }
-//
-//       // FIXME(gnusi) optimize for norm2
-//       // at least we can cache "state.norm_const + state.norm_length_ * state.norm_()"
-//       auto& buf = irs::sort::score_cast<score_t>(state.score_buf);
-//
-//
-//       // idf(term) * ((k + 1) * tf(doc, term)) / (k * (1.0 - b + b * |doc|/avgDL) + tf(doc, term))
-//       // C0 * (1 - 1 + tf / (C1 + tf))
-//       //
-//       // filter_boost(C0  - C0 / (1 + tf * 1/C1))
-//       //
-//
-//
-//       // num* tf / (k + tf) -> C0 - C0 /(1+ tf/k)
-//
-//
-//       //state.filter_boost->value * (state.num - state.num/(1.f + tf * inv_norm));
-//       //(state.num - state.num/(1.f + tf * inv_norm));
-//
-//       if constexpr (HasFilterBoost && HasNorms) {
-//         assert(state.filter_boost);
-//         buf = state.filter_boost->value * state.num * tf / (state.norm_const + state.norm_length * state.norm() + tf);
-//       } else if constexpr (HasFilterBoost) {
-//         assert(state.filter_boost);
-//         buf = state.filter_boost->value * state.num * tf / (state.norm_const + tf);
-//       } else if constexpr (HasNorms) {
-//         buf = state.num * tf / (state.norm_const + state.norm_length * state.norm() + tf);
-//       } else {
-//         buf = state.num * tf / (state.norm_const + tf);
-//       }
-//
-//       return state.score_buf;
-//     }
-//   };
-//}
+enum class NormType {
+  Norm2 = 0,
+  // 1-byte norms
+  Norm2Tiny,
+  // old norms, 1/sqrt(|doc|)
+  Norm
+};
 
-//// idf(term) * ((k + 1) * tf(doc, term)) / (k * (1.0 - b + b * |doc|/avgDL) + tf(doc, term))
+template<typename Reader, NormType Type>
+struct NormAdapter : Reader {
+  static constexpr auto kType = Type;
 
-//const auto norm2cache = irs::cache_func<uint32_t, 256>(
-//  0, [norm_length = stats.norm_length, norm_const = stats.norm_const](uint32_t i) noexcept {
-//    return 1.f/(norm_const + norm_length * float_t(i));
-//});
+  explicit NormAdapter(Reader&& reader)
+    : Reader{std::move(reader)} {
+  }
+
+  FORCE_INLINE auto operator()() -> std::invoke_result_t<Reader> {
+    if constexpr (kType < NormType::Norm) {
+      // norms are stored |doc| as uint32_t
+      return Reader::operator()();
+    } else {
+      // norms are stored 1/sqrt(|doc|) as float
+      return 1.f/Reader::operator()();
+    }
+   }
+};
+
+template<NormType Type, typename Reader>
+auto MakeNormAdapter(Reader&& reader) {
+  return NormAdapter<Reader, Type>(std::move(reader));
+}
 
 template<typename Ctx>
 struct MakeScoreFunctionImpl{
@@ -451,8 +397,8 @@ struct MakeScoreFunctionImpl{
 };
 
 template<>
-struct MakeScoreFunctionImpl<ScoreContext> {
-  using Ctx = ScoreContext;
+struct MakeScoreFunctionImpl<BM15Context> {
+  using Ctx = BM15Context;
 
   template<bool HasFilterBoost, typename... Args>
   static score_function Make(Args&&... args) {
@@ -474,7 +420,7 @@ struct MakeScoreFunctionImpl<ScoreContext> {
 
           const float_t c1 = state.norm_const;
 
-          sort::score_cast<score_t>(state.score_buf) = c0 - c0 / (1.f + tf/c1);
+          sort::score_cast<score_t>(state.score_buf) = c0 - c0 / (1.f + tf / c1);
 
           return state.score_buf;
         }
@@ -483,8 +429,8 @@ struct MakeScoreFunctionImpl<ScoreContext> {
 };
 
 template<typename Norm>
-struct MakeScoreFunctionImpl<NormScoreContext<Norm>> {
-  using Ctx = NormScoreContext<Norm>;
+struct MakeScoreFunctionImpl<BM25Context<Norm>> {
+  using Ctx = BM25Context<Norm>;
 
   template<bool HasFilterBoost, typename... Args>
   static score_function Make(Args&&... args) {
@@ -493,12 +439,12 @@ struct MakeScoreFunctionImpl<NormScoreContext<Norm>> {
         [](irs::score_ctx* ctx) noexcept -> const byte_type* {
           auto& state = *static_cast<Ctx*>(ctx);
 
-          const float_t tf = ::SQRT.get<true>(state.freq->value);
-          //if constexpr (Norm::kIsNorm2) {
-          //  tf = state.freq->value;
-          //} else {
-          //  tf = ::SQRT.get<true>(state.freq->value);
-          //}
+          float_t tf;
+          if constexpr (Norm::kType < NormType::Norm) {
+            tf = static_cast<float_t>(state.freq->value);
+          } else {
+            tf = ::SQRT.get<true>(state.freq->value);
+          }
 
           float_t c0;
           if constexpr (HasFilterBoost) {
@@ -508,9 +454,15 @@ struct MakeScoreFunctionImpl<NormScoreContext<Norm>> {
             c0 = state.num;
           }
 
-          const float_t c1 = state.norm_const + state.norm_length * state.norm();
+          float_t c1;
+          if constexpr (NormType::Norm2Tiny == Norm::kType) {
+            static_assert(std::is_same_v<uint32_t, decltype(state.norm())>);
+            c1 = state.norm_cache[state.norm() & 0xFF];
+          } else {
+            c1 = 1.f/(state.norm_const + state.norm_length * state.norm());
+          }
 
-          sort::score_cast<score_t>(state.score_buf) = c0 - c0 / (1.f + tf / c1);
+          sort::score_cast<score_t>(state.score_buf) = c0 - c0 / (1.f + tf * c1);
           return state.score_buf;
         }
     };
@@ -578,6 +530,11 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
     } else {
       stats.norm_length = kb;
     }
+
+    auto begin = std::begin(stats.norm_cache);
+    for (uint32_t i = 0; i < IRESEARCH_COUNTOF(stats.norm_cache); ++i) {
+      *begin++ = 1.f/(stats.norm_const + stats.norm_length * i);
+    }
   }
 
   virtual IndexFeatures features() const noexcept override {
@@ -606,7 +563,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
       irs::sort::score_cast<score_t>(score_buf) = boost;
 
       return {
-        reinterpret_cast<ScoreContext*>(score_buf),
+        reinterpret_cast<BM15Context*>(score_buf),
         [](irs::score_ctx* ctx) noexcept -> const byte_type* {
           return reinterpret_cast<byte_type*>(ctx);
         }
@@ -620,12 +577,12 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
       auto* doc = irs::get<document>(doc_attrs);
 
       if (!doc) {
-        // we need 'document' attribute to be exposed
+        // We need 'document' attribute to be exposed.
         return { nullptr, nullptr };
       }
 
       auto prepare_norm_scorer = [&]<typename Norm>(Norm&& norm) -> score_function {
-        return MakeScoreFunction<bm25::NormScoreContext<Norm>>(
+        return MakeScoreFunction<BM25Context<Norm>>(
             filter_boost, score_buf, k_, boost, stats, freq, std::move(norm));
       };
 
@@ -634,19 +591,22 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
       if (auto it = features.find(irs::type<Norm2>::id()); it != features.end()) {
         if (Norm2ReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
           return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
-              return prepare_norm_scorer(MakeNormAdapter<true>(std::move(reader))); });
+              return prepare_norm_scorer(MakeNormAdapter<NormType::Norm2>(std::move(reader))); });
         }
       }
 
       if (auto it = features.find(irs::type<Norm>::id()); it != features.end()) {
         if (NormReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
-          return prepare_norm_scorer(MakeNormAdapter<false>(Norm::MakeReader(std::move(ctx))));
+          return prepare_norm_scorer(MakeNormAdapter<NormType::Norm>(Norm::MakeReader(std::move(ctx))));
         }
       }
+
+      // No norms, pretend all fields have the same length 1.
+      return prepare_norm_scorer(MakeNormAdapter<NormType::Norm2>([](){ return 1U; }));
     }
 
     // BM15
-    return MakeScoreFunction<bm25::ScoreContext>(
+    return MakeScoreFunction<BM15Context>(
         filter_boost, score_buf, k_, boost, stats, freq);
   }
 
