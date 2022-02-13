@@ -359,11 +359,11 @@ struct BM25Context final : public BM15Context {
 };
 
 enum class NormType {
-  Norm2 = 0,
+  kNorm2 = 0,
   // 1-byte norms
-  Norm2Tiny,
-  // old norms, 1/sqrt(|doc|)
-  Norm
+  kNorm2Tiny,
+  // Old norms, 1/sqrt(|doc|)
+  kNorm
 };
 
 template<typename Reader, NormType Type>
@@ -375,7 +375,7 @@ struct NormAdapter : Reader {
   }
 
   FORCE_INLINE auto operator()() -> std::invoke_result_t<Reader> {
-    if constexpr (kType < NormType::Norm) {
+    if constexpr (kType < NormType::kNorm) {
       // norms are stored |doc| as uint32_t
       return Reader::operator()();
     } else {
@@ -440,7 +440,7 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
           auto& state = *static_cast<Ctx*>(ctx);
 
           float_t tf;
-          if constexpr (Norm::kType < NormType::Norm) {
+          if constexpr (Norm::kType < NormType::kNorm) {
             tf = static_cast<float_t>(state.freq->value);
           } else {
             tf = ::SQRT.get<true>(state.freq->value);
@@ -455,7 +455,7 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
           }
 
           float_t c1;
-          if constexpr (NormType::Norm2Tiny == Norm::kType) {
+          if constexpr (NormType::kNorm2Tiny == Norm::kType) {
             static_assert(std::is_same_v<uint32_t, decltype(state.norm())>);
             c1 = state.norm_cache[state.norm() & 0xFF];
           } else {
@@ -590,19 +590,24 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
 
       if (auto it = features.find(irs::type<Norm2>::id()); it != features.end()) {
         if (Norm2ReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
+          if (ctx.num_bytes == sizeof(byte_type)) {
+            return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
+                return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm2Tiny>(std::move(reader))); });
+          }
+
           return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
-              return prepare_norm_scorer(MakeNormAdapter<NormType::Norm2>(std::move(reader))); });
+              return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm2>(std::move(reader))); });
         }
       }
 
       if (auto it = features.find(irs::type<Norm>::id()); it != features.end()) {
         if (NormReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
-          return prepare_norm_scorer(MakeNormAdapter<NormType::Norm>(Norm::MakeReader(std::move(ctx))));
+          return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm>(Norm::MakeReader(std::move(ctx))));
         }
       }
 
       // No norms, pretend all fields have the same length 1.
-      return prepare_norm_scorer(MakeNormAdapter<NormType::Norm2>([](){ return 1U; }));
+      return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm2Tiny>([](){ return 1U; }));
     }
 
     // BM15
