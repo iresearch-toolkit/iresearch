@@ -136,9 +136,12 @@ class proxy_filter_test_case : public ::testing::Test {
     auto writer = irs::index_writer::make(dir_, codec, irs::OM_CREATE);
     { // make dummy document so we could have non-empty index
       auto ctx = writer->documents();
-      auto doc = ctx.insert();
-      auto field = std::make_shared<tests::string_field>("foo", "bar");
-      doc.insert<Action::INDEX>(*field);
+      // we need two words filled to test all corner cases
+      for (size_t i = 0; i < sizeof(size_t) * 16; ++i) {
+        auto doc = ctx.insert();
+        auto field = std::make_shared<tests::string_field>("foo", "bar");
+        doc.insert<Action::INDEX>(*field);
+      }
     }
     writer->commit();
     index_ = irs::directory_reader::open(dir_, codec);
@@ -182,7 +185,7 @@ TEST_F(proxy_filter_test_case, test_1first_bit) {
   verify_filter(documents, __LINE__);
 }
 
-TEST_F(proxy_filter_test_case, test_1last_bit) {
+TEST_F(proxy_filter_test_case, test_last_bit) {
   std::vector<doc_id_t> documents{63};
   verify_filter(documents, __LINE__);
 }
@@ -207,4 +210,9 @@ TEST_F(proxy_filter_test_case, test_1first_2last_bit) {
   verify_filter(documents, __LINE__);
 }
 
+TEST_F(proxy_filter_test_case, test_full_dense) {
+  std::vector<doc_id_t> documents(128);
+  std::iota(documents.begin(), documents.end(), irs::doc_limits::min());
+  verify_filter(documents, __LINE__);
+}
 } // namespace iresearch::tests

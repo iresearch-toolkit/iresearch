@@ -107,7 +107,7 @@ class lazy_filter_bitset_iterator final : public doc_iterator,
     }
     const irs::doc_id_t delta = irs::doc_id_t(std::countr_zero(word_));
     assert(delta < irs::bits_required<lazy_filter_bitset::word_t>());
-    word_ >>= (delta + 1);
+    word_ = (word_ >> delta) >> 1;
     doc_.value += 1 + delta;
     return true;
   }
