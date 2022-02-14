@@ -459,7 +459,7 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
           float_t c1;
           if constexpr (NormType::kNorm2Tiny == Norm::kType) {
             static_assert(std::is_same_v<uint32_t, decltype(state.norm())>);
-            c1 = state.norm_cache[state.norm() & 0xFF];
+            c1 = state.norm_cache[state.norm() & uint32_t{0xFF}];
           } else {
             c1 = 1.f/(state.norm_const + state.norm_length * state.norm());
           }
@@ -533,9 +533,8 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
       stats.norm_length = kb;
     }
 
-    auto begin = std::begin(stats.norm_cache);
-    for (uint32_t i = 0; i < IRESEARCH_COUNTOF(stats.norm_cache); ++i) {
-      *begin++ = 1.f/(stats.norm_const + stats.norm_length * i);
+    for (uint32_t i = 0; auto& norm : stats.norm_cache) {
+      norm = 1.f/(stats.norm_const + stats.norm_length * i++);
     }
   }
 

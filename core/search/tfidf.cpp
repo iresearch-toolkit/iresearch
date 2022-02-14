@@ -272,14 +272,17 @@ struct ScoreContext : public irs::score_ctx {
       const frequency* freq,
       const irs::filter_boost* filter_boost = nullptr) noexcept
     : score_buf{score_buf},
-      freq{freq ? freq : &EMPTY_FREQ},
+      freq{freq ? *freq : EMPTY_FREQ},
       filter_boost{filter_boost},
       idf{boost * idf.value} {
     assert(freq);
   }
 
+  ScoreContext(const ScoreContext&) = delete;
+  ScoreContext& operator=(const ScoreContext&) = delete;
+
   byte_type* score_buf;
-  const frequency* freq;
+  const frequency& freq;
   const irs::filter_boost* filter_boost;
   float_t idf; // precomputed : boost * idf
 };
@@ -304,9 +307,9 @@ struct NormAdapter {
   FORCE_INLINE float_t operator()() {
     if constexpr (kType < NormType::kNorm) {
       return kRSQRT.get<kType != NormType::kNorm2Tiny>(reader());
+    } else {
+      return reader();
     }
-
-    return reader();
   }
 
   Reader reader;
@@ -359,7 +362,7 @@ struct MakeScoreFunctionImpl<ScoreContext> {
           }
 
           auto& buf = irs::sort::score_cast<score_t>(state.score_buf);
-          buf = ::tfidf(state.freq->value, idf);
+          buf = ::tfidf(state.freq.value, idf);
 
           return state.score_buf;
         }
@@ -387,7 +390,7 @@ struct MakeScoreFunctionImpl<NormScoreContext<Norm>> {
           }
 
           auto& buf = sort::score_cast<score_t>(state.score_buf);
-          buf = ::tfidf(state.freq->value, idf) * state.norm();
+          buf = ::tfidf(state.freq.value, idf) * state.norm();
 
           return state.score_buf;
         }

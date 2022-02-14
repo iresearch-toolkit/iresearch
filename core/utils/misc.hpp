@@ -24,7 +24,7 @@
 #define IRESEARCH_MISC_H
 
 #include <array>
-#include <assert.h>
+#include <cassert>
 
 #include "shared.hpp"
 
@@ -119,8 +119,8 @@ class cached_func {
 
   constexpr explicit cached_func(input_type offset, Func&& func)
     : func_{std::forward<Func>(func)} {
-    for (input_type i{offset}; i < size(); ++i) {
-      cache_[i] = func_(i);
+    for (; offset < Size; ++offset) {
+      cache_[offset] = func_(offset);
     }
   }
 
@@ -141,7 +141,7 @@ class cached_func {
 
  private:
   Func func_;
-  std::array<output_type, Size> cache_;
+  std::array<output_type, Size> cache_{};
 }; // cached_func
 
 template<typename Input, size_t Size, typename Func>
