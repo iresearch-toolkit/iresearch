@@ -210,25 +210,25 @@ TEST(segmentation_token_stream_test, chinese_glyphs_test) {
     ASSERT_NE(nullptr, pValue);
 
     ASSERT_TRUE(pStream->next());
-    ASSERT_EQ(u8"\u4ECA", irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u4ECA" == irs::ref_cast<char8_t>(pValue->value));
     ASSERT_TRUE(pStream->next());
-    ASSERT_EQ(u8"\u5929", irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u5929" == irs::ref_cast<char8_t>(pValue->value));
     ASSERT_TRUE(pStream->next());
-    ASSERT_EQ(u8"\u4E0B", irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u4E0B" == irs::ref_cast<char8_t>(pValue->value));
     ASSERT_TRUE(pStream->next());
-    ASSERT_EQ(u8"\u5348", irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u5348" == irs::ref_cast<char8_t>(pValue->value));
     ASSERT_TRUE(pStream->next());
-    ASSERT_EQ(u8"\u7684", irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u7684" == irs::ref_cast<char8_t>(pValue->value));
     ASSERT_TRUE(pStream->next());
-    ASSERT_EQ(u8"\u592A", irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u592A" == irs::ref_cast<char8_t>(pValue->value));
     ASSERT_TRUE(pStream->next());
-    ASSERT_EQ(u8"\u9633", irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u9633" == irs::ref_cast<char8_t>(pValue->value));
     ASSERT_TRUE(pStream->next());
-    ASSERT_EQ(u8"\u5F88", irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u5F88" == irs::ref_cast<char8_t>(pValue->value));
     ASSERT_TRUE(pStream->next());
-    ASSERT_EQ(u8"\u6E29", irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u6E29" == irs::ref_cast<char8_t>(pValue->value));
     ASSERT_TRUE(pStream->next());
-    ASSERT_EQ(u8"\u6696", irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u6696" == irs::ref_cast<char8_t>(pValue->value));
     ASSERT_FALSE(pStream->next());
   };
 
