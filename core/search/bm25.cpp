@@ -316,7 +316,7 @@ using score_t = bm25_sort::score_t;
 struct BM15Context : public irs::score_ctx {
   BM15Context(
       byte_type* score_buf,
-      float_t k, 
+      float_t k,
       irs::boost_t boost,
       const bm25::stats& stats,
       const frequency* freq,
@@ -341,7 +341,7 @@ template<typename Norm>
 struct BM25Context final : public BM15Context {
   BM25Context(
       byte_type* score_buf,
-      float_t k, 
+      float_t k,
       irs::boost_t boost,
       const bm25::stats& stats,
       const frequency* freq,
@@ -349,10 +349,10 @@ struct BM25Context final : public BM15Context {
       const irs::filter_boost* filter_boost = nullptr) noexcept
     : BM15Context{score_buf, k, boost, stats, freq, filter_boost},
       norm{std::move(norm)},
-      norm_cache{stats.norm_cache},
-      norm_length{stats.norm_length} {
-      assert(stats.norm_const);
-      norm_const = stats.norm_const;
+      norm_length{stats.norm_length},
+      norm_cache{stats.norm_cache} {
+    assert(stats.norm_const);
+    norm_const = stats.norm_const;
   }
 
   Norm norm;
@@ -456,15 +456,19 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
             c0 = state.num;
           }
 
-          float_t c1;
+          auto& buf = sort::score_cast<score_t>(state.score_buf);
+
           if constexpr (NormType::kNorm2Tiny == Norm::kType) {
             static_assert(std::is_same_v<uint32_t, decltype(state.norm())>);
-            c1 = state.norm_cache[state.norm() & uint32_t{0xFF}];
+            const float_t inv_c1 = state.norm_cache[state.norm() & uint32_t{0xFF}];
+
+            buf = c0 - c0 / (1.f + tf * inv_c1);
           } else {
-            c1 = 1.f/(state.norm_const + state.norm_length * state.norm());
+            const float_t c1 = state.norm_const + state.norm_length * state.norm();
+
+            buf = c0 - c0 * c1 / (c1 + tf);
           }
 
-          sort::score_cast<score_t>(state.score_buf) = c0 - c0 / (1.f + tf * c1);
           return state.score_buf;
         }
     };
