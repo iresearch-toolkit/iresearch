@@ -43,7 +43,7 @@ struct sub_reader;
 /// @struct index_reader
 /// @brief generic interface for accessing an index
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API index_reader {
+struct index_reader {
   class reader_iterator {
    public:
     using iterator_category = std::forward_iterator_tag;
@@ -124,36 +124,40 @@ struct IRESEARCH_API index_reader {
 /// @struct sub_reader
 /// @brief generic interface for accessing an index segment
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API sub_reader : index_reader {
+struct sub_reader : index_reader {
   using ptr = std::shared_ptr<const sub_reader>;
 
   static const sub_reader& empty() noexcept;
 
-  // returns iterator over the live documents in current segment
-  virtual doc_iterator::ptr docs_iterator() const = 0;
+  // Live & deleted docs
 
-  virtual field_iterator::ptr fields() const = 0;
+  // Returns an iterator over live documents in current segment.
+  virtual doc_iterator::ptr docs_iterator() const = 0;
 
   virtual doc_iterator::ptr mask(doc_iterator::ptr&& it) const {
     return std::move(it);
   }
 
-  // returns corresponding term_reader by the specified field
-  virtual const term_reader* field(const string_ref& field) const = 0;
+  // Inverted index
+
+  virtual field_iterator::ptr fields() const = 0;
+
+  // Returns corresponding term_reader by the specified field name.
+  virtual const term_reader* field(string_ref field) const = 0;
+
+  // Columnstore
 
   virtual column_iterator::ptr columns() const = 0;
 
-  virtual const column_meta* column(const string_ref& name) const = 0;
+  virtual const irs::column_reader* column(field_id field) const = 0;
 
-  virtual const columnstore_reader::column_reader* sort() const = 0;
+  virtual const irs::column_reader* column(string_ref field) const = 0;
 
-  virtual const columnstore_reader::column_reader* column_reader(field_id field) const = 0;
-
-  const columnstore_reader::column_reader* column_reader(const string_ref& field) const;
+  virtual const irs::column_reader* sort() const = 0;
 }; // sub_reader
 
 template<typename Visitor, typename FilterVisitor>
-void visit(const index_reader& index, const string_ref& field,
+void visit(const index_reader& index, string_ref field,
            const FilterVisitor& field_visitor, Visitor& visitor) {
   for (auto& segment : index) {
     const auto* reader = segment.field(field);
@@ -165,7 +169,5 @@ void visit(const index_reader& index, const string_ref& field,
 }
 
 }
-// sub_reader::value_visitor_f
-MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t)>;) // cppcheck-suppress unknownMacro 
 
 #endif

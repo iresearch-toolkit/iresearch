@@ -42,7 +42,7 @@ field_meta::field_meta(field_meta&& rhs) noexcept
 }
 
 field_meta::field_meta(
-    const string_ref& name,
+    string_ref name,
     IndexFeatures index_features)
   : name(name.c_str(), name.size()),
     index_features(index_features) {
@@ -63,33 +63,6 @@ bool field_meta::operator==(const field_meta& rhs) const {
   return index_features == rhs.index_features &&
          name == rhs.name &&
          features == rhs.features;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        column_meta implementation
-// -----------------------------------------------------------------------------
-
-column_meta::column_meta(column_meta&& rhs) noexcept
-  : name(std::move(rhs.name)), id(rhs.id) {
-  rhs.id = field_limits::invalid();
-}
-
-column_meta::column_meta(const string_ref& name, field_id id)
-  : name(name.c_str(), name.size()), id(id) {
-}
-
-column_meta& column_meta::operator=(column_meta&& rhs) noexcept {
-  if (this != &rhs) {
-    name = std::move(rhs.name);
-    id = rhs.id;
-    rhs.id = field_limits::invalid();
-  }
-
-  return *this;
-}
-
-bool column_meta::operator==(const column_meta& rhs) const {
-  return name == rhs.name;
 }
 
 }

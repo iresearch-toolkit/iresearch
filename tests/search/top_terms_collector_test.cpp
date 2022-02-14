@@ -81,7 +81,7 @@ struct sort : irs::sort {
         total_term_freq = 0;
       }
 
-      virtual void collect(const irs::bytes_ref& in) override { }
+      virtual void collect(irs::bytes_ref in) override { }
       virtual void write(irs::data_output& out) const override { }
     };
 
@@ -102,7 +102,7 @@ struct sort : irs::sort {
         docs_with_term = 0;
       }
 
-      virtual void collect(const irs::bytes_ref& in) override { }
+      virtual void collect(irs::bytes_ref in) override { }
       virtual void write(irs::data_output& out) const override { }
     };
 
@@ -224,19 +224,16 @@ class seek_term_iterator final : public irs::seek_term_iterator {
 }; // term_iterator
 
 struct sub_reader final : irs::sub_reader {
-  sub_reader(size_t num_docs)
+  explicit sub_reader(size_t num_docs)
     : num_docs(num_docs) {
-  }
-
-  virtual const irs::column_meta* column(const irs::string_ref& name) const override {
-    UNUSED(name);
-    return nullptr;
   }
   virtual irs::column_iterator::ptr columns() const override {
     return irs::column_iterator::empty();
   }
-  virtual const irs::columnstore_reader::column_reader* column_reader(irs::field_id field) const override {
-    UNUSED(field);
+  virtual const irs::column_reader* column(irs::field_id) const override {
+    return nullptr;
+  }
+  virtual const irs::column_reader* column(irs::string_ref) const override {
     return nullptr;
   }
   virtual uint64_t docs_count() const override {
@@ -245,8 +242,7 @@ struct sub_reader final : irs::sub_reader {
   virtual irs::doc_iterator::ptr docs_iterator() const override {
     return irs::doc_iterator::empty();
   }
-  virtual const irs::term_reader* field(const irs::string_ref& field) const override {
-    UNUSED(field);
+  virtual const irs::term_reader* field(irs::string_ref) const override {
     return nullptr;
   }
   virtual irs::field_iterator::ptr fields() const override {
@@ -259,7 +255,7 @@ struct sub_reader final : irs::sub_reader {
     throw std::out_of_range("index out of range");
   }
   virtual size_t size() const override { return 0; }
-  virtual const irs::columnstore_reader::column_reader* sort() const override {
+  virtual const irs::column_reader* sort() const override {
     return nullptr;
   }
 

@@ -39,38 +39,35 @@
 
 namespace iresearch {
 
-/* -------------------------------------------------------------------
- * segment_meta
- * ------------------------------------------------------------------*/
-
 class format;
 typedef std::shared_ptr<const format> format_ptr;
 
 }
 
 // format_ptr
-MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<const irs::format>;) // cppcheck-suppress unknownMacro 
+MSVC_ONLY(template class std::shared_ptr<const irs::format>;) // cppcheck-suppress unknownMacro
 
 namespace iresearch {
 
-struct IRESEARCH_API segment_meta {
+struct directory;
+class index_writer;
+
+struct segment_meta {
   using file_set = absl::flat_hash_set<std::string>;
 
   segment_meta() = default;
   segment_meta(const segment_meta&) = default;
   segment_meta(segment_meta&& rhs)
-    noexcept(noexcept(std::is_nothrow_move_constructible_v<file_set>));
-  segment_meta(const string_ref& name, format_ptr codec);
-  segment_meta(
-    std::string&& name,
-    format_ptr codec,
-    uint64_t docs_count,
-    uint64_t live_docs_count,
-    bool column_store,
-    file_set&& files,
-    size_t size = 0,
-    field_id sort = field_limits::invalid()
-  ) noexcept;
+      noexcept(noexcept(std::is_nothrow_move_constructible_v<file_set>));
+  segment_meta(string_ref name, format_ptr codec);
+  segment_meta(std::string&& name,
+               format_ptr codec,
+               uint64_t docs_count,
+               uint64_t live_docs_count,
+               bool column_store,
+               file_set&& files,
+               size_t size = 0,
+               field_id sort = field_limits::invalid()) noexcept;
 
   segment_meta& operator=(segment_meta&& rhs)
     noexcept(noexcept(std::is_nothrow_move_assignable_v<file_set>));
@@ -81,28 +78,31 @@ struct IRESEARCH_API segment_meta {
 
   file_set files;
   std::string name;
-  uint64_t docs_count{}; // total number of documents in a segment
-  uint64_t live_docs_count{}; // total number of live documents in a segment
+  uint64_t docs_count{}; // Total number of documents in a segment
+  uint64_t live_docs_count{}; // Total number of live documents in a segment
   format_ptr codec;
-  size_t size{}; // size of a segment in bytes
+  size_t size{}; // Size of a segment in bytes
   uint64_t version{};
   field_id sort{ field_limits::invalid() };
   bool column_store{};
 };
 
+inline bool has_removals(const segment_meta& meta) noexcept {
+  //  return meta.version > 0; // all version > 0 have document mask
+  return meta.live_docs_count != meta.docs_count;
+}
+
+inline bool has_columnstore(const segment_meta& meta) noexcept {
+  // A separate flag to track presence of column store
+  return meta.column_store;
+}
+
 static_assert(std::is_nothrow_move_constructible_v<segment_meta>);
 static_assert(std::is_nothrow_move_assignable_v<segment_meta>);
 
-/* -------------------------------------------------------------------
- * index_meta
- * ------------------------------------------------------------------*/
-
-struct directory;
-class index_writer;
-
-class IRESEARCH_API index_meta {
+class index_meta {
  public:
-  struct IRESEARCH_API index_segment_t {
+  struct index_segment_t {
     index_segment_t() = default;
     // cppcheck-suppress noExplicitConstructor
     index_segment_t(segment_meta&& meta);
@@ -180,11 +180,11 @@ class IRESEARCH_API index_meta {
   uint64_t counter() const noexcept { return seg_counter_; }
   uint64_t generation() const noexcept { return gen_; }
 
-  index_segments_t::iterator begin() noexcept { return segments_.begin(); }
-  index_segments_t::iterator end() noexcept { return segments_.end(); }
+  auto begin() noexcept { return segments_.begin(); }
+  auto end() noexcept { return segments_.end(); }
 
-  index_segments_t::const_iterator begin() const noexcept { return segments_.begin(); }
-  index_segments_t::const_iterator end() const noexcept { return segments_.end(); }
+  auto begin() const noexcept { return segments_.begin(); }
+  auto end() const noexcept { return segments_.end(); }
 
   void update_generation(const index_meta& rhs) noexcept {
     gen_ = rhs.gen_;
@@ -227,14 +227,12 @@ class IRESEARCH_API index_meta {
   friend struct index_meta_reader;
   friend struct index_meta_writer;
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   uint64_t gen_;
   uint64_t last_gen_;
   std::atomic<uint64_t> seg_counter_;
   index_segments_t segments_;
   bstring payload_buf_;
   bytes_ref payload_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 
   uint64_t next_generation() const noexcept;
 
@@ -243,7 +241,7 @@ class IRESEARCH_API index_meta {
     payload_ = payload_buf_;
   }
 
-  void payload(const bytes_ref& payload) {
+  void payload(bytes_ref payload) {
     if (payload.null()) {
       payload_buf_.clear();
       payload_ = bytes_ref::NIL;

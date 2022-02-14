@@ -30,6 +30,18 @@
 namespace iresearch {
 namespace columnstore {
 
+enum class ColumnMetaVersion : int32_t {
+  ////////////////////////////////////////////////////////////////////////////
+  /// * no encryption support
+  ////////////////////////////////////////////////////////////////////////////
+  MIN = 0,
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// * encryption support
+  ////////////////////////////////////////////////////////////////////////////
+  MAX = 1
+};
+
 enum class Version : int32_t {
   ////////////////////////////////////////////////////////////////////////////
   /// * no encryption support
@@ -44,8 +56,10 @@ enum class Version : int32_t {
   MAX = 1,
 }; // Version
 
-IRESEARCH_API irs::columnstore_writer::ptr make_writer(Version version);
-IRESEARCH_API irs::columnstore_reader::ptr make_reader();
+irs::columnstore_writer::ptr make_writer(
+    Version version,
+    ColumnMetaVersion meta_version);
+irs::columnstore_reader::ptr make_reader();
 
 } // columnstore
 } // iresearch
