@@ -22,8 +22,12 @@
 
 #include "formats.hpp"
 
+// list of statically loaded formats via init()
+#ifndef IRESEARCH_DLL
+  #include "formats_10.hpp"
+#endif
+
 #include "analysis/token_attributes.hpp"
-#include "formats/formats_10.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/register.hpp"
@@ -118,7 +122,9 @@ namespace iresearch {
 }
 
 /*static*/ void formats::init() {
+#ifndef IRESEARCH_DLL
   irs::version10::init();
+#endif
 }
 
 /*static*/ void formats::load_all(const std::string& path) {

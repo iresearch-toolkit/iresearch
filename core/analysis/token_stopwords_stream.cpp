@@ -244,6 +244,9 @@ bool normalize_json_config(irs::string_ref args, std::string& definition) {
   return false;
 }
 
+REGISTER_ANALYZER_VPACK(irs::analysis::token_stopwords_stream, make_vpack, normalize_vpack_config);
+REGISTER_ANALYZER_JSON(irs::analysis::token_stopwords_stream, make_json, normalize_json_config);
+
 } // namespace
 
 namespace iresearch {
@@ -257,7 +260,7 @@ token_stopwords_stream::token_stopwords_stream(token_stopwords_stream::stopwords
 
 /*static*/ void token_stopwords_stream::init() {
   REGISTER_ANALYZER_VPACK(irs::analysis::token_stopwords_stream, make_vpack, normalize_vpack_config);
-  REGISTER_ANALYZER_JSON(token_stopwords_stream, make_json, normalize_json_config);
+  REGISTER_ANALYZER_JSON(token_stopwords_stream, make_json, normalize_json_config);  // match registration above
 }
 
 bool token_stopwords_stream::next() {

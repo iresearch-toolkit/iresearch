@@ -237,6 +237,10 @@ bool normalize_text_config(irs::string_ref delimiter, std::string& definition) {
   return true;
 }
 
+REGISTER_ANALYZER_VPACK(irs::analysis::delimited_token_stream, make_vpack, normalize_vpack_config);
+REGISTER_ANALYZER_JSON(irs::analysis::delimited_token_stream, make_json, normalize_json_config);
+REGISTER_ANALYZER_TEXT(irs::analysis::delimited_token_stream, make_text, normalize_text_config);
+
 }
 
 namespace iresearch {
@@ -256,9 +260,9 @@ delimited_token_stream::delimited_token_stream(string_ref delimiter)
 }
 
 /*static*/ void delimited_token_stream::init() {
-  REGISTER_ANALYZER_VPACK(delimited_token_stream, make_vpack, normalize_vpack_config);
-  REGISTER_ANALYZER_JSON(delimited_token_stream, make_json, normalize_json_config);
-  REGISTER_ANALYZER_TEXT(delimited_token_stream, make_text, normalize_text_config);
+  REGISTER_ANALYZER_VPACK(delimited_token_stream, make_vpack, normalize_vpack_config); // match registration above
+  REGISTER_ANALYZER_JSON(delimited_token_stream, make_json, normalize_json_config); // match registration above
+  REGISTER_ANALYZER_TEXT(delimited_token_stream, make_text, normalize_text_config); // match registration above
 }
 
 bool delimited_token_stream::next() {

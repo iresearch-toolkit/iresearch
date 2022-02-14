@@ -948,6 +948,12 @@ bool normalize_json_config(string_ref args, std::string& definition) {
   return false;
 }
 
+REGISTER_ANALYZER_VPACK(analysis::text_token_stream, make_vpack,
+                       normalize_vpack_config);
+REGISTER_ANALYZER_JSON(analysis::text_token_stream, make_json,
+                       normalize_json_config);
+REGISTER_ANALYZER_TEXT(analysis::text_token_stream, make_text,
+                       normalize_text_config);
 }
 
 namespace iresearch {
@@ -981,11 +987,11 @@ text_token_stream::text_token_stream(
 
 /*static*/ void text_token_stream::init() {
   REGISTER_ANALYZER_VPACK(analysis::text_token_stream, make_vpack,
-                         normalize_vpack_config);
+                         normalize_vpack_config); // match registration above
   REGISTER_ANALYZER_JSON(text_token_stream, make_json,
-                         normalize_json_config);
+                         normalize_json_config);  // match registration above
   REGISTER_ANALYZER_TEXT(text_token_stream, make_text,
-                         normalize_text_config);
+                         normalize_text_config); // match registration above
 }
 
 /*static*/ void text_token_stream::clear_cache() {

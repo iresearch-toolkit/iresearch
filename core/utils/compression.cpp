@@ -20,11 +20,15 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "utils/register.hpp"
+
 #include "compression.hpp"
 
-#include "lz4compression.hpp"
-#include "delta_compression.hpp"
-#include "utils/register.hpp"
+// list of statically loaded scorers via init()
+#ifndef IRESEARCH_DLL
+  #include "lz4compression.hpp"
+  #include "delta_compression.hpp"
+#endif
 
 namespace {
 
@@ -174,9 +178,11 @@ decompressor::ptr get_decompressor(string_ref name, bool load_library /*= true*/
 }
 
 void init() {
+#ifndef IRESEARCH_DLL
   lz4::init();
   delta::init();
   none::init();
+#endif
 }
 
 void load_all(const std::string& path) {
@@ -196,8 +202,13 @@ bool visit(const std::function<bool(string_ref)>& visitor) {
 // -----------------------------------------------------------------------------
 
 /*static*/ void none::init() {
+#ifndef IRESEARCH_DLL
+  // match registration below
   REGISTER_COMPRESSION(none, &none::compressor, &none::decompressor);
+#endif
 }
+
+REGISTER_COMPRESSION(none, &none::compressor, &none::decompressor);
 
 compressor::ptr compressor::identity() noexcept {
   return memory::to_managed<compressor, false>(&IDENTITY_COMPRESSOR);

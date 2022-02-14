@@ -274,6 +274,12 @@ bool normalize_json_config(irs::string_ref args, std::string& definition) {
   return false;
 }
 
+REGISTER_ANALYZER_JSON(irs::analysis::pipeline_token_stream, make_json,
+  normalize_json_config);
+
+REGISTER_ANALYZER_VPACK(irs::analysis::pipeline_token_stream, make_vpack,
+  normalize_vpack_config);
+
 irs::payload* find_payload(const std::vector<irs::analysis::analyzer::ptr>& pipeline) {
   for (auto it = pipeline.rbegin(); it != pipeline.rend(); ++it) {
     auto payload = irs::get_mutable<irs::payload>(it->get());
@@ -391,10 +397,10 @@ bool pipeline_token_stream::reset(string_ref data) {
 
 /*static*/ void pipeline_token_stream::init() {
   REGISTER_ANALYZER_JSON(pipeline_token_stream, make_json,
-    normalize_json_config);
+    normalize_json_config);  // match registration above
 
   REGISTER_ANALYZER_VPACK(irs::analysis::pipeline_token_stream, make_vpack,
-    normalize_vpack_config);
+    normalize_vpack_config); // match registration above
 }
 
 pipeline_token_stream::sub_analyzer_t::sub_analyzer_t(
