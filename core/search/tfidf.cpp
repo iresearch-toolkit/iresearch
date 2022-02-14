@@ -337,43 +337,7 @@ struct NormScoreContext final : public ScoreContext {
 };
 
 template<typename Ctx>
-struct MakeScoreFunctionImpl{
-  template<bool HasFilterBoost, typename... Args>
-  static score_function Make(Args&&... args);
-};
-
-template<>
-struct MakeScoreFunctionImpl<ScoreContext> {
-  using Ctx = ScoreContext;
-
-  template<bool HasFilterBoost, typename... Args>
-  static score_function Make(Args&&... args) {
-    return {
-        memory::make_unique<Ctx>(std::forward<Args>(args)...),
-        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
-          auto& state = *static_cast<Ctx*>(ctx);
-
-          float_t idf;
-          if constexpr (HasFilterBoost) {
-            assert(state.filter_boost);
-            idf = state.idf * state.filter_boost->value;
-          } else {
-            idf = state.idf;
-          }
-
-          auto& buf = irs::sort::score_cast<score_t>(state.score_buf);
-          buf = ::tfidf(state.freq.value, idf);
-
-          return state.score_buf;
-        }
-    };
-  }
-};
-
-template<typename Norm>
-struct MakeScoreFunctionImpl<NormScoreContext<Norm>> {
-  using Ctx = NormScoreContext<Norm>;
-
+struct MakeScoreFunctionImpl {
   template<bool HasFilterBoost, typename... Args>
   static score_function Make(Args&&... args) {
     return {
@@ -390,7 +354,12 @@ struct MakeScoreFunctionImpl<NormScoreContext<Norm>> {
           }
 
           auto& buf = sort::score_cast<score_t>(state.score_buf);
-          buf = ::tfidf(state.freq.value, idf) * state.norm();
+
+          if constexpr (std::is_same_v<Ctx, ScoreContext>) {
+            buf = ::tfidf(state.freq.value, idf);
+          } else {
+            buf = ::tfidf(state.freq.value, idf) * state.norm();
+          }
 
           return state.score_buf;
         }
