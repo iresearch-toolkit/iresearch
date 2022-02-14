@@ -3310,7 +3310,6 @@ namespace iresearch {
 namespace version10 {
 
 void init() {
-#ifndef IRESEARCH_DLL
   REGISTER_FORMAT(::format10);
   REGISTER_FORMAT(::format11);
   REGISTER_FORMAT(::format12);
@@ -3321,7 +3320,6 @@ void init() {
   REGISTER_FORMAT(::format13simd);
   REGISTER_FORMAT(::format14simd);
 #endif // IRESEARCH_SSE2
-#endif // IRESEARCH_DLL
 }
 
 // ----------------------------------------------------------------------------

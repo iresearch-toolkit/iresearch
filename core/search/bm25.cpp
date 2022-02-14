@@ -36,7 +36,7 @@
 
 namespace {
 
-const auto SQRT = irs::cache_func<uint32_t, 2048>(
+const auto kSQRT = irs::cache_func<uint32_t, 2048>(
   0, [](uint32_t i) noexcept { return std::sqrt(static_cast<float_t>(i)); });
 
 irs::sort::ptr make_from_object(const VPackSlice slice) {
@@ -171,9 +171,6 @@ irs::sort::ptr make_json(irs::string_ref args) {
   }
 }
 
-REGISTER_SCORER_JSON(irs::bm25_sort, make_json);
-REGISTER_SCORER_VPACK(irs::bm25_sort, make_vpack);
-
 struct byte_ref_iterator {
   using iterator_category = std::input_iterator_tag;
   using value_type = irs::byte_type;
@@ -278,26 +275,27 @@ struct term_collector final: public irs::sort::term_collector {
 
 namespace iresearch {
 
-// bm25 similarity
+// BM25 Similarity
 // bm25(doc, term) = idf(term) * ((k + 1) * tf(doc, term)) / (k * (1 - b + b * |doc|/avgDL) + tf(doc, term))
-
-// inverted document frequency
-// idf(term) = log(1 + (# documents with this field - # documents with this term + 0.5)/(# documents with this term + 0.5))
-
-// term frequency
-// tf(doc, term) = sqrt(frequency(doc, term));
-
-// document length
-// Current implementation is using the following as the document length
-// |doc| = 1 / sqrt(# of terms in a field within a document)
-
-// average document length
-// avgDL = sum(field_term_count) / (# documents with this field)
+//
+// Inverted document frequency
+// idf(term) = log(1 + (#documents with this field - #documents with this term + 0.5)/(#documents with this term + 0.5))
+//
+// Term frequency
+//   Norm2: tf(doc, term) = frequency(doc, term);
+//   Norm:  tf(doc, term) = sqrt(frequency(doc, term));
+//
+// Document length
+//   Norm2: |doc| # of terms in a field within a document
+//   Norm:  |doc| = 1 / sqrt(# of terms in a field within a document)
+//
+// Average document length
+// avgDL = sum(field_term_count) / (#documents with this field)
 
 namespace bm25 {
 
-// empty frequency
-const frequency EMPTY_FREQ;
+// Empty frequency
+const frequency kEmptyFreq;
 
 struct stats final {
   // precomputed idf value
@@ -321,7 +319,7 @@ struct BM15Context : public irs::score_ctx {
       const frequency* freq,
       const filter_boost* fb = nullptr) noexcept
     : score_buf{score_buf},
-      freq{freq ? freq : &EMPTY_FREQ},
+      freq{freq ? freq : &kEmptyFreq},
       filter_boost{fb},
       num{boost * (k + 1) * stats.idf},
       norm_const{k}  {
@@ -360,8 +358,9 @@ struct BM25Context final : public BM15Context {
 };
 
 enum class NormType {
+  // Norm2 values
   kNorm2 = 0,
-  // 1-byte norms
+  // Norm2 values fit 1-byte
   kNorm2Tiny,
   // Old norms, 1/sqrt(|doc|)
   kNorm
@@ -408,8 +407,7 @@ struct MakeScoreFunctionImpl<BM15Context> {
         [](irs::score_ctx* ctx) noexcept -> const byte_type* {
           auto& state = *static_cast<Ctx*>(ctx);
 
-          // FIXME???
-          const float_t tf = SQRT.get<true>(state.freq->value);
+          const float_t tf = static_cast<float_t>(state.freq->value);
 
           float_t c0;
           if constexpr (HasFilterBoost) {
@@ -444,7 +442,7 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
           if constexpr (Norm::kType < NormType::kNorm) {
             tf = static_cast<float_t>(state.freq->value);
           } else {
-            tf = ::SQRT.get<true>(state.freq->value);
+            tf = ::kSQRT.get<true>(state.freq->value);
           }
 
           float_t c0;
@@ -644,8 +642,8 @@ bm25_sort::bm25_sort(
 }
 
 /*static*/ void bm25_sort::init() {
-  REGISTER_SCORER_JSON(bm25_sort, make_json); // match registration above
-  REGISTER_SCORER_VPACK(bm25_sort, make_vpack); // match registration above
+  REGISTER_SCORER_JSON(bm25_sort, make_json);
+  REGISTER_SCORER_VPACK(bm25_sort, make_vpack);
 }
 
 sort::prepared::ptr bm25_sort::prepare() const {

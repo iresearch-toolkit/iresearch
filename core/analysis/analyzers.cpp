@@ -21,10 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "utils/register.hpp"
+#include "analysis/analyzers.hpp"
 
-// list of statically loaded scorers via init()
-#ifndef IRESEARCH_DLL
 #include "analysis/delimited_token_stream.hpp"
 #include "analysis/collation_token_stream.hpp"
 #include "analysis/classification_stream.hpp"
@@ -36,10 +34,8 @@
 #include "analysis/token_stopwords_stream.hpp"
 #include "analysis/pipeline_token_stream.hpp"
 #include "analysis/segmentation_token_stream.hpp"
-#endif
-
-#include "analysis/analyzers.hpp"
 #include "utils/hash_utils.hpp"
+#include "utils/register.hpp"
 
 namespace {
 
@@ -206,7 +202,6 @@ namespace analysis {
 }
 
 /*static*/ void analyzers::init() {
-#ifndef IRESEARCH_DLL
   irs::analysis::delimited_token_stream::init();
   irs::analysis::collation_token_stream::init();
   irs::analysis::classification_stream::init();
@@ -218,7 +213,6 @@ namespace analysis {
   irs::analysis::token_stopwords_stream::init();
   irs::analysis::pipeline_token_stream::init();
   irs::analysis::segmentation_token_stream::init();
-#endif
 }
 
 /*static*/ void analyzers::load_all(const std::string& path) {

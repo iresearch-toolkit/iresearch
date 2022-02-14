@@ -288,16 +288,11 @@ void segmentation_token_stream::state_deleter_t::operator()(state_t* p) const no
   delete p;
 }
 
-REGISTER_ANALYZER_VPACK(segmentation_token_stream, make_vpack,
-                        normalize_vpack_config);
-REGISTER_ANALYZER_JSON(segmentation_token_stream, make_json,
-                        normalize_json_config);
-
 /*static*/ void segmentation_token_stream::init() {
   REGISTER_ANALYZER_VPACK(segmentation_token_stream, make_vpack,
-                          normalize_vpack_config);  // match registration above
+                          normalize_vpack_config);
   REGISTER_ANALYZER_JSON(segmentation_token_stream, make_json,
-                         normalize_json_config);  // match registration above
+                         normalize_json_config);
 }
 
 segmentation_token_stream::segmentation_token_stream(

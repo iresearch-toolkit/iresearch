@@ -310,11 +310,6 @@ bool normalize_json_config(string_ref args, std::string& definition) {
   return false;
 }
 
-REGISTER_ANALYZER_JSON(analysis::normalizing_token_stream, make_json,
-                       normalize_json_config);
-REGISTER_ANALYZER_VPACK(analysis::normalizing_token_stream, make_vpack,
-                       normalize_vpack_config);
-
 }
 
 namespace iresearch {
@@ -334,9 +329,9 @@ normalizing_token_stream::normalizing_token_stream(
 
 /*static*/ void normalizing_token_stream::init() {
   REGISTER_ANALYZER_JSON(normalizing_token_stream, make_json,
-                         normalize_json_config); // match registration above
+                         normalize_json_config);
   REGISTER_ANALYZER_VPACK(normalizing_token_stream, make_vpack,
-                         normalize_vpack_config); // match registration above
+                         normalize_vpack_config);
 }
 
 bool normalizing_token_stream::next() {

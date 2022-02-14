@@ -157,9 +157,6 @@ irs::sort::ptr make_json(irs::string_ref args) {
   }
 }
 
-REGISTER_SCORER_JSON(irs::tfidf_sort, make_json);
-REGISTER_SCORER_VPACK(irs::tfidf_sort, make_vpack);
-
 struct byte_ref_iterator {
   using iterator_category = std::input_iterator_tag;
   using value_type = irs::byte_type;
@@ -521,8 +518,8 @@ tfidf_sort::tfidf_sort(bool normalize, bool boost_as_score) noexcept
 }
 
 /*static*/ void tfidf_sort::init() {
-  REGISTER_SCORER_JSON(tfidf_sort, make_json); // match registration above
-  REGISTER_SCORER_VPACK(tfidf_sort, make_vpack); // match registration above
+  REGISTER_SCORER_JSON(tfidf_sort, make_json);
+  REGISTER_SCORER_VPACK(tfidf_sort, make_vpack);
 }
 
 sort::prepared::ptr tfidf_sort::prepare() const {

@@ -24,12 +24,9 @@
 #include "scorers.hpp"
 
 #include "shared.hpp"
-// list of statically loaded scorers via init()
-#ifndef IRESEARCH_DLL
-  #include "tfidf.hpp"
-  #include "bm25.hpp"
-  #include "boost_sort.hpp"
-#endif
+#include "search/boost_sort.hpp"
+#include "search/bm25.hpp"
+#include "search/tfidf.hpp"
 #include "utils/register.hpp"
 #include "utils/hash_utils.hpp"
 
@@ -122,11 +119,9 @@ namespace iresearch {
 }
 
 /*static*/ void scorers::init() {
-  #ifndef IRESEARCH_DLL
-    irs::bm25_sort::init();
-    irs::tfidf_sort::init();
-    irs::boost_sort::init();
-  #endif
+  irs::bm25_sort::init();
+  irs::tfidf_sort::init();
+  irs::boost_sort::init();
 }
 
 /*static*/ void scorers::load_all(const std::string& path) {

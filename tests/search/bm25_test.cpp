@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <array>
+
 #include "tests_shared.hpp"
 #include "index/index_tests.hpp"
 #include "index/norm.hpp"
@@ -47,10 +49,6 @@ struct bstring_data_output: public data_output {
 };
 
 using namespace tests;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
 
 /////////////////
 // Freq | Term //
@@ -80,7 +78,6 @@ class bm25_test_case : public index_test_base {
   void test_query_norms(irs::type_info::type_id norm,
                         irs::feature_writer_factory_t handler);
 };
-
 
 void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
                                       irs::feature_writer_factory_t handler) {
@@ -146,15 +143,8 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
     filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
-    std::vector<uint64_t> expected{
-      // FIXME the following calculation is based on old formula
-      7, // 5.62794 = (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
-      3, // 3.22245 = (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8)))
-      0, // 2.68195 = (log(8/(4+1))+1)*(1.2+1)*sqrt(3)/(sqrt(3)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8)))
-      1, // 2.60158 = (log(8/(4+1))+1)*(1.2+1)*sqrt(2)/(sqrt(2)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8)))
-      5, // 2.39742 = (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
-    };
+    std::multimap<irs::bstring, uint32_t, decltype(comparer)> sorted(comparer);
+    std::array expected{ 7, 3, 0, 1, 5 };
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
@@ -194,16 +184,10 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
     filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
-    std::vector<uint64_t> expected{
-      // FIXME the following calculation is based on old formula
-      7, // 5.62794 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
-      0, // 5.42788 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(3)/(sqrt(3)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8)))
-      5, // 5.15876 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
-      3, // 3.22245 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8)))
-      2, // 2.73505 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(5))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(5))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(5))/(52/8)))
-      1, // 2.60158 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(2)/(sqrt(2)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8)))
-    };
+    std::multimap<irs::bstring, uint32_t, decltype(comparer)> sorted(comparer);
+    const auto expected = norm == irs::type<irs::Norm2>::id()
+        ? std::array{ 0, 7, 5, 3, 2, 1, }
+        : std::array{ 7, 0, 5, 3, 2, 1, };
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
@@ -393,12 +377,11 @@ TEST_P(bm25_test_case, test_phrase) {
 
     std::multimap<irs::bstring, std::string, decltype(comparer)> sorted(comparer);
 
-    std::vector<std::string> expected{
-      "O", // jumps high jumps high hotdog
-      "P", // jumps high jumps left jumps right jumps down jumps back
-      "Q", // jumps high jumps left jumps right jumps down walks back
-      "R"  // jumps high jumps left jumps right walks down walks back
-    };
+    const std::array<std::string_view, 4> expected{
+      "O",   // jumps high jumps high hotdog
+      "P",   // jumps high jumps left jumps right jumps down jumps back
+      "Q",   // jumps high jumps left jumps right jumps down walks back
+      "R"};  // jumps high jumps left jumps right walks down walks back
 
     auto prepared_filter = filter.prepare(*index, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);

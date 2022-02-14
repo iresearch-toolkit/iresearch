@@ -309,9 +309,6 @@ bool normalize_json_config(irs::string_ref args, std::string& definition) {
   return false;
 }
 
-REGISTER_ANALYZER_VPACK(irs::analysis::ngram_token_stream_base, make_vpack, normalize_vpack_config);
-REGISTER_ANALYZER_JSON(irs::analysis::ngram_token_stream_base, make_json, normalize_json_config);
-
 }
 
 namespace iresearch {
@@ -326,9 +323,9 @@ template<irs::analysis::ngram_token_stream_base::InputType StreamType>
 /*static*/ void ngram_token_stream_base::init() {
 
   REGISTER_ANALYZER_VPACK(ngram_token_stream_base, make_vpack,
-                            normalize_vpack_config); // match registration above
+                            normalize_vpack_config);
   REGISTER_ANALYZER_JSON(ngram_token_stream_base, make_json,
-                            normalize_json_config); // match registration above
+                            normalize_json_config);
 }
 
 ngram_token_stream_base::ngram_token_stream_base(
