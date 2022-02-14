@@ -297,7 +297,7 @@ namespace iresearch {
 
 namespace bm25 {
 
-// Mmpty frequency
+// Empty frequency
 const frequency kEmptyFreq;
 
 struct stats final {
