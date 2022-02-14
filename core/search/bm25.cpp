@@ -325,7 +325,8 @@ struct BM15Context : public irs::score_ctx {
       filter_boost{fb},
       num{boost * (k + 1) * stats.idf},
       norm_const{k}  {
-    assert(freq_);
+    assert(this->freq);
+    assert(this->score_buf);
   }
 
   byte_type* score_buf;
@@ -590,7 +591,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
 
       if (auto it = features.find(irs::type<Norm2>::id()); it != features.end()) {
         if (Norm2ReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
-          if (ctx.num_bytes == sizeof(byte_type)) {
+          if (ctx.max_num_bytes == sizeof(byte_type)) {
             return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
                 return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm2Tiny>(std::move(reader))); });
           }
