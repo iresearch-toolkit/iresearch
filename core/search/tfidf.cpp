@@ -40,10 +40,10 @@
 
 namespace {
 
-const auto SQRT = irs::cache_func<uint32_t, 2048>(
+const auto kSQRT = irs::cache_func<uint32_t, 2048>(
   0, [](uint32_t i) noexcept { return std::sqrt(static_cast<float_t>(i)); });
 
-const auto RSQRT = irs::cache_func<uint32_t, 2048>(
+const auto kRSQRT = irs::cache_func<uint32_t, 2048>(
   1, [](uint32_t i) noexcept { return 1.f/std::sqrt(static_cast<float_t>(i)); });
 
 irs::sort::ptr make_from_bool(const VPackSlice slice) {
@@ -244,7 +244,7 @@ struct term_collector final: public irs::sort::term_collector {
 };
 
 FORCE_INLINE float_t tfidf(uint32_t freq, float_t idf) noexcept {
-  return idf * SQRT.get<true>(freq);
+  return idf * kSQRT.get<true>(freq);
 }
 
 } // LOCAL
@@ -281,15 +281,26 @@ struct ScoreContext : public irs::score_ctx {
   float_t idf; // precomputed : boost * idf
 };
 
-template<typename Reader, bool IsNorm2>
+enum class NormType {
+  // Norm2 values
+  kNorm2 = 0,
+  // Norm2 values fit 1-byte
+  kNorm2Tiny,
+  // Old norms, 1/sqrt(|doc|)
+  kNorm
+};
+
+template<typename Reader, NormType Type>
 struct NormAdapter {
+  static constexpr auto kType = Type;
+
   explicit NormAdapter(Reader&& reader)
     : reader{std::move(reader)} {
   }
 
   FORCE_INLINE float_t operator()() {
-    if constexpr (IsNorm2) {
-      return RSQRT.get<true>(reader());
+    if constexpr (kType < NormType::kNorm) {
+      return kRSQRT.get<kType != NormType::kNorm2Tiny>(reader());
     }
 
     return reader();
@@ -298,9 +309,9 @@ struct NormAdapter {
   Reader reader;
 };
 
-template<bool IsNorm2, typename Reader>
+template<NormType Type, typename Reader>
 auto MakeNormAdapter(Reader&& reader) {
-  return NormAdapter<Reader, IsNorm2>(std::move(reader));
+  return NormAdapter<Reader, Type>(std::move(reader));
 }
 
 template<typename Norm>
@@ -479,14 +490,19 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
 
       if (auto it = features.find(irs::type<Norm2>::id()); it != features.end()) {
          if (Norm2::Context ctx; ctx.Reset(segment, it->second, *doc)) {
+           if (ctx.max_num_bytes == sizeof(byte_type)) {
+             return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
+                 return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm2Tiny>(std::move(reader))); });
+           }
+
            return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
-               return prepare_norm_scorer(MakeNormAdapter<true>(std::move(reader))); });
+               return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm2>(std::move(reader))); });
          }
       }
 
       if (auto it = features.find(irs::type<Norm>::id()); it != features.end()) {
          if (Norm::Context ctx; ctx.Reset(segment, it->second, *doc)) {
-           return prepare_norm_scorer(MakeNormAdapter<false>(
+           return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm>(
                Norm::MakeReader(std::move(ctx))));
          }
       }
