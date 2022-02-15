@@ -243,7 +243,7 @@ struct default_allocator {
 template<size_t SkipBits>
 size_t compute_bucket_offset(size_t position) noexcept {
   // 63 == 64 bits per size_t - 1 for allignment, +1 == align first value to start of bucket
-  return 63 - math::clz64((position >> SkipBits) + 1);
+  return 63 - std::countl_zero((position >> SkipBits) + 1);
 }
 
 template<typename Allocator>

@@ -396,7 +396,7 @@ TEST_F(IqlParserTestSuite, test_sequence) {
 
     ASSERT_EQ(pNode->SEQUENCE, pNode->type);
     std::basic_string<wchar_t> actual;
-    ASSERT_EQ(u8"\u041F\u043E", irs::ref_cast<char8_t>(pNode->sValue));
+    ASSERT_TRUE(u8"\u041F\u043E" == irs::ref_cast<char8_t>(pNode->sValue));
   }
 
   // ...........................................................................
