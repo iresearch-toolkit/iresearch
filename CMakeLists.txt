@@ -9,7 +9,7 @@ endif()
 ### set required standard version
 ################################################################################
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 ################################################################################
@@ -112,6 +112,12 @@ if (MSVC)
 
   # min/max macros interferes with our codebase
   add_definitions(-DNOMINMAX)
+  
+  # fix strange issue with utf_8_to_32_iterator failing
+  # to follow std::bidirectional_iterator concept
+  add_definitions(-DBOOST_TEXT_DISABLE_CONCEPTS)
+  
+  add_definitions(-D_USE_MATH_DEFINES)
   
   # we don't want obvious warning
   add_compile_options(/wd4324)

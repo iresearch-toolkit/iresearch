@@ -1,12 +1,22 @@
 master
 -------------------------
 
+* Speedup BM25 scorer.
+
+* Move to C++20.
+
 * Add `classification_stream` capable of classifying input data based on FastText NN model.
 
 * Add `nearest_neighbors_stream` capable of generating synonyms based on FastText NN model.
 
-v1.1 (2021-11-04)
+v1.1 (2022-01-05)
 -------------------------
+
+* Add support of column headers to columnstore.
+
+* Make column name and id a part of columnstore API.
+
+* Deprecate `column_meta`, `column_meta_writer`, `column_meta_reader`.
 
 * Fix possible race between file creation and directory cleaner.
 
@@ -39,7 +49,7 @@ v1.1 (2021-11-04)
 * Add new analyzer `collation` capable of producing tokens honoring language
   specific sorting.
 
-* Add new feature `iresearch::norm2` representing fixed length norm value.
+* Add new feature `iresearch::Norm2` representing fixed length norm value.
 
 * Split field features into built-in set of index features and pluggable field features.
 

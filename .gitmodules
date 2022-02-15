@@ -1,0 +1,3 @@
+[submodule "external/velocypack"]
+	path = external/velocypack
+	url = https://github.com/arangodb/velocypack.git

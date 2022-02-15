@@ -26,7 +26,7 @@
 
 #include <vector>
 
-#include "column_info.hpp"
+#include "index_features.hpp"
 #include "index_meta.hpp"
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
@@ -39,7 +39,7 @@ struct tracking_directory;
 struct sub_reader;
 class comparer;
 
-class IRESEARCH_API merge_writer: public util::noncopyable {
+class merge_writer: public util::noncopyable {
  public:
   typedef std::shared_ptr<const irs::sub_reader> sub_reader_ptr;
   typedef std::function<bool()> flush_progress_t;
@@ -57,11 +57,11 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
   explicit merge_writer(
       directory& dir,
       const column_info_provider_t& column_info,
-      const feature_column_info_provider_t& feature_column_info,
+      const feature_info_provider_t& feature_info,
       const comparer* comparator = nullptr) noexcept
     : dir_(dir),
       column_info_(&column_info),
-      feature_column_info_(&feature_column_info),
+      feature_info_(&feature_info),
       comparator_(comparator) {
     assert(column_info);
   }
@@ -71,10 +71,8 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
   operator bool() const noexcept;
 
   void add(const sub_reader& reader) {
-    // add reference
-    readers_.emplace_back(
-      sub_reader_ptr(sub_reader_ptr(), &reader) // noexcept aliasing ctor
-    );
+    // add reference, noexcept aliasing ctor
+    readers_.emplace_back(sub_reader_ptr(sub_reader_ptr(), &reader));
   }
 
   void add(const sub_reader_ptr& reader) {
@@ -90,8 +88,7 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   bool flush(
     index_meta::index_segment_t& segment,
-    const flush_progress_t& progress = {}
-  );
+    const flush_progress_t& progress = {});
 
   const reader_ctx& operator[](size_t i) const noexcept {
     assert(i < readers_.size());
@@ -116,13 +113,11 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
     const flush_progress_t& progress
   );
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   directory& dir_;
   std::vector<reader_ctx> readers_;
   const column_info_provider_t* column_info_;
-  const feature_column_info_provider_t* feature_column_info_;
+  const feature_info_provider_t* feature_info_;
   const comparer* comparator_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // merge_writer
 
 static_assert(std::is_nothrow_move_constructible_v<merge_writer>);

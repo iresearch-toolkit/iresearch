@@ -54,14 +54,14 @@ using features_t = range<const type_info::type_id>;
 /// @struct field_meta 
 /// @brief represents field metadata
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API field_meta { 
+struct field_meta {
  public:
   static const field_meta EMPTY;
 
   field_meta() = default;
   field_meta(const field_meta&) = default;
   field_meta(field_meta&& rhs) noexcept;
-  field_meta(const string_ref& field, IndexFeatures index_features);
+  field_meta(string_ref field, IndexFeatures index_features);
 
   field_meta& operator=(field_meta&& rhs) noexcept;
   field_meta& operator=(const field_meta&) = default;
@@ -77,32 +77,6 @@ struct IRESEARCH_API field_meta {
 }; // field_meta
 
 static_assert(std::is_move_constructible<field_meta>::value,
-              "default move constructor expected");
-
-//////////////////////////////////////////////////////////////////////////////
-/// @struct column_meta 
-/// @brief represents column metadata
-//////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API column_meta { 
- public:
-  column_meta() = default;
-  column_meta(const column_meta&) = default;
-  column_meta(column_meta&& rhs) noexcept;
-  column_meta(const string_ref& field, field_id id);
-
-  column_meta& operator=(column_meta&& rhs) noexcept;
-  column_meta& operator=(const column_meta&) = default;
-
-  bool operator==(const column_meta& rhs) const;
-  bool operator!=(const column_meta& rhs) const {
-    return !(*this == rhs);
-  }
-
-  std::string name;
-  field_id id{ field_limits::invalid() };
-}; // column_meta
-
-static_assert(std::is_nothrow_move_constructible<column_meta>::value,
               "default move constructor expected");
 
 }

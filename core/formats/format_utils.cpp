@@ -57,7 +57,7 @@ void validate_footer(index_input& in) {
 
 namespace format_utils {
 
-void write_header(index_output& out, const string_ref& format, int32_t ver) {
+void write_header(index_output& out, string_ref format, int32_t ver) {
   out.write_int(FORMAT_MAGIC);
   write_string(out, format);
   out.write_int(ver);
@@ -69,7 +69,7 @@ void write_footer(index_output& out) {
   out.write_long(out.checksum());
 }
 
-size_t header_length(const string_ref& format) noexcept {
+size_t header_length(string_ref format) noexcept {
   return sizeof(int32_t)*2 +
          bytes_io<uint64_t>::vsize(format.size()) +
          format.size();
@@ -77,12 +77,12 @@ size_t header_length(const string_ref& format) noexcept {
 
 int32_t check_header(
     index_input& in, 
-    const string_ref& req_format,
+    string_ref req_format,
     int32_t min_ver, int32_t max_ver) {
   const ptrdiff_t left = in.length() - in.file_pointer();
 
   if (left < 0) {
-    throw illegal_state();
+    throw illegal_state{"Header has invalid length."};
   }
 
   const size_t expected = header_length(req_format);

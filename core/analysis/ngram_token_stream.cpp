@@ -242,7 +242,7 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   return nullptr;
 }
 
-irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_vpack(irs::string_ref args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   return make_vpack(slice);
 }
@@ -258,7 +258,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* vpack_builder)
   }
 }
 
-bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
+bool normalize_vpack_config(irs::string_ref args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -268,7 +268,7 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
   return false;
 }
 
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR(
@@ -288,7 +288,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   return nullptr;
 }
 
-bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+bool normalize_json_config(irs::string_ref args, std::string& definition) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
@@ -394,7 +394,7 @@ void ngram_token_stream_base::emit_original() noexcept {
   next_inc_val_ = 0;
 }
 
-bool ngram_token_stream_base::reset(const irs::string_ref& value) noexcept {
+bool ngram_token_stream_base::reset(string_ref value) noexcept {
   if (value.size() > std::numeric_limits<uint32_t>::max()) {
     // can't handle data which is longer than std::numeric_limits<uint32_t>::max()
     return false;
