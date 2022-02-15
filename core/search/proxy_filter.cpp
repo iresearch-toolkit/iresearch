@@ -167,12 +167,10 @@ struct proxy_query_cache {
 
 class proxy_query final : public filter::prepared {
  public:
-  proxy_query(proxy_filter::cache_ptr cache, filter::ptr&& filter,
-              const index_reader& index, boost_t boost)
-      : cache_(cache),
-        real_filter_(std::move(filter)),
-        index_(index),
-        prepare_boost_(boost) {}
+  proxy_query(proxy_filter::cache_ptr cache)
+      : cache_(cache) {
+    assert(cache_->prepared_real_filter_);
+  }
 
   doc_iterator::ptr execute(const sub_reader& rdr, const order::prepared& order,
                             const attribute_provider* ctx) const override {
@@ -181,10 +179,6 @@ class proxy_query final : public filter::prepared {
         *cache_->readers_.emplace(&rdr, nullptr).first;
 
     if (!cached) {
-      if (!cache_->prepared_real_filter_) {
-        cache_->prepared_real_filter_ =
-            real_filter_->prepare(index_, order, prepare_boost_, ctx);
-      }
       cached = std::make_unique<lazy_filter_bitset>(
           rdr, *cache_->prepared_real_filter_, order, ctx);
     }
@@ -196,9 +190,6 @@ class proxy_query final : public filter::prepared {
 
  private:
   mutable proxy_filter::cache_ptr cache_;
-  filter::ptr real_filter_;
-  const index_reader& index_;
-  boost_t prepare_boost_;
 };
 
 DEFINE_FACTORY_DEFAULT(proxy_filter);
@@ -208,14 +199,16 @@ proxy_filter::cache_ptr proxy_filter::make_cache() {
 }
 
 filter::prepared::ptr proxy_filter::prepare(const index_reader& rdr,
-                                const order::prepared&, boost_t boost,
-                                const attribute_provider*) const {
+                                const order::prepared& ord, boost_t boost,
+                                const attribute_provider* ctx) const {
   if (!real_filter_ || !cache_) {
     assert(false);
     return filter::prepared::empty();
   }
-  return memory::make_managed<proxy_query>(cache_, std::move(real_filter_), rdr,
-                                           boost);
+  if (!cache_->prepared_real_filter_) {
+    cache_->prepared_real_filter_ = real_filter_->prepare(rdr, ord, boost, ctx);
+  }
+  return memory::make_managed<proxy_query>(cache_);
 }
 
 }  // namespace iresearch

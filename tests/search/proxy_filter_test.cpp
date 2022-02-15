@@ -23,7 +23,9 @@
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
 #include "index/index_writer.hpp"
+#include "search/boolean_filter.hpp"
 #include "search/proxy_filter.hpp"
+#include "search/term_filter.hpp"
 #include "store/memory_directory.hpp"
 
 namespace  {
@@ -161,7 +163,7 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
       proxy_filter proxy;
       proxy.add(std::move(real));
       proxy.set_cache(cache);
-      auto prepared_proxy = proxy.prepare(index_[0]);
+      auto prepared_proxy = proxy.prepare(index_);
       auto docs = prepared_proxy->execute(index_[0]);
       auto expected_doc = expected.begin();
       while (docs->next() && expected_doc != expected.end()) {
@@ -226,7 +228,7 @@ INSTANTIATE_TEST_SUITE_P(proxy_filter_test_case, proxy_filter_test_case,
 
 class proxy_filter_real_filter : public tests::filter_test_case_base {
  public:
-  proxy_filter_real_filter() {
+  void init_index() {
     auto writer = open_writer(irs::OM_CREATE);
 
     std::vector<doc_generator_base::ptr> gens;
@@ -236,17 +238,54 @@ class proxy_filter_real_filter : public tests::filter_test_case_base {
     gens.emplace_back(new tests::json_doc_generator(
         resource("simple_sequential_common_prefix.json"),
         &tests::generic_json_field_factory));
-    gens.emplace_back(new tests::json_doc_generator(
-        resource("Northwnd.json"), &tests::generic_json_field_factory));
-    gens.emplace_back(new tests::json_doc_generator(
-        resource("NorthwndEdges.json"), &tests::generic_json_field_factory));
-
     add_segments(*writer, gens);
   }
 
 };
 
-TEST_F(proxy_filter_real_filter, with_terms_filter) {
-
+TEST_P(proxy_filter_real_filter, with_terms_filter) {
+  init_index();
+  auto rdr = open_reader();
+  auto cache = proxy_filter::make_cache();
+  auto q = irs::memory::make_unique<by_term>();
+  *q->mutable_field() = "name";
+  q->mutable_options()->term =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+  proxy_filter proxy;
+  proxy.add(std::move(q)).set_cache(cache);
+  check_query(proxy, docs_t{1, 33}, rdr);
 }
+
+TEST_P(proxy_filter_real_filter, with_disjunction_filter) {
+  init_index();
+  auto rdr = open_reader();
+  auto cache = proxy_filter::make_cache();
+  auto root = irs::memory::make_unique<irs::Or>();
+  auto q = root->add<by_term>();
+  *q.mutable_field() = "name";
+  q.mutable_options()->term =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+  auto q1 = root->add<by_term>();
+  *q1.mutable_field() = "name";
+  q1.mutable_options()->term =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+  proxy_filter proxy;
+  proxy.add(std::move(root)).set_cache(cache);
+  check_query(proxy, docs_t{1, 2, 33, 34}, rdr);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+  proxy_filter_real_filter,
+  proxy_filter_real_filter,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(
+      tests::format_info{"1_0"},
+      tests::format_info{"1_1", "1_0"},
+      tests::format_info{"1_2", "1_0"},
+      tests::format_info{"1_3", "1_0"}))
+);
 } // namespace iresearch::tests
