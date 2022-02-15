@@ -116,12 +116,6 @@ bool numeric_token_stream::numeric_term::next(increment& inc, bytes_ref& out) {
   }
 
   out = value(data_, type_, val_, shift_);
-  std::cout << "numeric_term::next = ";
-  for (int i = 0; i < out.size(); ++i) {
-    std::cout << std::hex << int(out[i]);
-  }
-  std::cout << std::endl;
-
   shift_ += step_;
   inc.value = INCREMENT_VALUE[step_ == shift_];
 
@@ -141,20 +135,12 @@ bool numeric_token_stream::next() {
 void numeric_token_stream::reset(
     int32_t value, 
     uint32_t step /* = PRECISION_STEP_DEF */) {
-//  if (value == -30000) {
-//    std::cout << "here" << std::endl;
-//  }
-  std::cout << std::dec << "reset(int32) = " << value << std::endl;
   num_.reset(value, step);
 }
 
 void numeric_token_stream::reset(
     int64_t value, 
     uint32_t step /* = PRECISION_STEP_DEF */) { 
-//  if (value == -30000) {
-//    std::cout << "here" << std::endl;
-//  }
-  std::cout << std::dec << "reset(int64) = " << value << std::endl;
   num_.reset(value, step);
 }
 
@@ -162,7 +148,6 @@ void numeric_token_stream::reset(
 void numeric_token_stream::reset(
     float_t value, 
     uint32_t step /* = PRECISION_STEP_DEF */) {
-  std::cout <<  std::dec << "reset(float) = " << value << std::endl;
   num_.reset(value, step);
 }
 #endif
@@ -170,7 +155,6 @@ void numeric_token_stream::reset(
 void numeric_token_stream::reset(
     double_t value, 
     uint32_t step /* = PRECISION_STEP_DEF */) { 
-  std::cout <<  std::dec << "reset(double) = " << value << std::endl;
   num_.reset(value, step);
 }
 
