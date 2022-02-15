@@ -81,6 +81,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
     } else if (data.is_number()) {
       // 'value' can be interpreted as a double
       const auto dValue = data.as_number<double_t>();
+      std::cout << "as_number(double_t) = " << dValue << std::endl;
       {
         doc.insert(std::make_shared<granular_double_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
@@ -92,9 +93,12 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       doc.insert(std::make_shared<granular_float_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::float_field>();
       field.name(name);
-      field.value(data.as_number<float_t>());
+      auto fValue = data.as_number<float_t>();
+      std::cout << "as_number(float_t) = " << fValue << std::endl;
+      field.value(fValue);
 
       const uint64_t lValue = uint64_t(std::ceil(dValue));
+      std::cout << "lValue = " << lValue << std::endl;
       {
         doc.insert(std::make_shared<granular_long_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::long_field>();
