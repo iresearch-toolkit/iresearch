@@ -17,9 +17,9 @@
 /// @author Andrei Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "formats_test_case_base.hpp"
 #include "store/directory_attributes.hpp"
+#include "tests_shared.hpp"
 
 namespace {
 
@@ -27,19 +27,18 @@ namespace {
 using tests::format_test_case;
 
 INSTANTIATE_TEST_SUITE_P(
-  format_15_test,
-  format_test_case,
-  ::testing::Combine(
-    ::testing::Values(
-      &tests::directory<&tests::memory_directory>,
-      &tests::directory<&tests::fs_directory>,
-      &tests::directory<&tests::mmap_directory>,
-      &tests::rot13_directory<&tests::fs_directory, 16>,
-      &tests::rot13_directory<&tests::mmap_directory, 16>,
-      &tests::rot13_directory<&tests::memory_directory, 7>,
-      &tests::rot13_directory<&tests::fs_directory, 7>,
-      &tests::rot13_directory<&tests::mmap_directory, 7>),
-    ::testing::Values(tests::format_info{"1_5", "1_5simd"})),
-  format_test_case::to_string);
+    format_15_test, format_test_case,
+    ::testing::Combine(
+        ::testing::Values(&tests::directory<&tests::memory_directory>,
+                          &tests::directory<&tests::fs_directory>,
+                          &tests::directory<&tests::mmap_directory>,
+                          &tests::rot13_directory<&tests::fs_directory, 16>,
+                          &tests::rot13_directory<&tests::mmap_directory, 16>,
+                          &tests::rot13_directory<&tests::memory_directory, 7>,
+                          &tests::rot13_directory<&tests::fs_directory, 7>,
+                          &tests::rot13_directory<&tests::mmap_directory, 7>),
+        ::testing::Values(tests::format_info{"1_5", "1_0"},
+                          tests::format_info{"1_5simd", "1_0"})),
+    format_test_case::to_string);
 
-}
+}  // namespace

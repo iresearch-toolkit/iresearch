@@ -157,6 +157,7 @@ set(IResearch_core_sources
   ./utils/directory_utils.cpp
   ./utils/file_utils.cpp
   ./utils/mmap_utils.cpp
+  ./utils/math_utils.cpp
   ./utils/index_utils.cpp
   ./utils/levenshtein_utils.cpp
   ./utils/wildcard_utils.cpp

@@ -1097,7 +1097,7 @@ const auto kTestValues =
         &tests::directory<&tests::memory_directory>,
         &tests::directory<&tests::fs_directory>,
         &tests::directory<&tests::mmap_directory>),
-    ::testing::Values("1_0", "1_3", "1_3simd", "1_4simd", "1_4", "1_5simd", "1_5")),
+      ::testing::Values(tests::format_info{"1_0"}));
 
 // 1.0 specific tests
 INSTANTIATE_TEST_SUITE_P(
