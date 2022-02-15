@@ -215,6 +215,7 @@ struct Norm2ReaderContext : NormReaderContext {
   }
 
   uint32_t num_bytes{};
+  uint32_t max_num_bytes{};
 };
 
 class Norm2 : public attribute {
