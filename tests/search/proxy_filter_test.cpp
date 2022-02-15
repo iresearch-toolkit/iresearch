@@ -129,15 +129,15 @@ class doclist_test_filter final : public filter {
 
 size_t doclist_test_filter::prepares_;
 
-class proxy_filter_test_case : public ::testing::Test {
+
+class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
  public:
   proxy_filter_test_case() {
     auto codec = irs::formats::get("1_0");
     auto writer = irs::index_writer::make(dir_, codec, irs::OM_CREATE);
     { // make dummy document so we could have non-empty index
       auto ctx = writer->documents();
-      // we need two words filled to test all corner cases
-      for (size_t i = 0; i < sizeof(size_t) * 16; ++i) {
+      for (size_t i = 0; i < GetParam(); ++i) {
         auto doc = ctx.insert();
         auto field = std::make_shared<tests::string_field>("foo", "bar");
         doc.insert<Action::INDEX>(*field);
@@ -180,39 +180,73 @@ class proxy_filter_test_case : public ::testing::Test {
   irs::directory_reader index_;
 };
 
-TEST_F(proxy_filter_test_case, test_1first_bit) {
+
+TEST_P(proxy_filter_test_case, test_1first_bit) {
   std::vector<doc_id_t> documents{1};
   verify_filter(documents, __LINE__);
 }
 
-TEST_F(proxy_filter_test_case, test_last_bit) {
+TEST_P(proxy_filter_test_case, test_last_bit) {
   std::vector<doc_id_t> documents{63};
   verify_filter(documents, __LINE__);
 }
 
-TEST_F(proxy_filter_test_case, test_2first_bit) {
-  std::vector<doc_id_t> documents{64};
+TEST_P(proxy_filter_test_case, test_2first_bit) {
+  if (GetParam() >= 64) {
+    std::vector<doc_id_t> documents{64};
+    verify_filter(documents, __LINE__);
+  }
+}
+
+TEST_P(proxy_filter_test_case, test_2last_bit) {
+  std::vector<doc_id_t> documents{static_cast<doc_id_t>(GetParam()) - 1};
   verify_filter(documents, __LINE__);
 }
 
-TEST_F(proxy_filter_test_case, test_2last_bit) {
-  std::vector<doc_id_t> documents{127};
+TEST_P(proxy_filter_test_case, test_1last_2first_bit) {
+  if (GetParam() >= 64) {
+    std::vector<doc_id_t> documents{63, 64};
+    verify_filter(documents, __LINE__);
+  }
+}
+
+TEST_P(proxy_filter_test_case, test_1first_2last_bit) {
+  std::vector<doc_id_t> documents{1, static_cast<doc_id_t>(GetParam()) - 1};
   verify_filter(documents, __LINE__);
 }
 
-TEST_F(proxy_filter_test_case, test_1last_2first_bit) {
-  std::vector<doc_id_t> documents{63, 64};
-  verify_filter(documents, __LINE__);
-}
-
-TEST_F(proxy_filter_test_case, test_1first_2last_bit) {
-  std::vector<doc_id_t> documents{1,127};
-  verify_filter(documents, __LINE__);
-}
-
-TEST_F(proxy_filter_test_case, test_full_dense) {
-  std::vector<doc_id_t> documents(128);
+TEST_P(proxy_filter_test_case, test_full_dense) {
+  std::vector<doc_id_t> documents(GetParam());
   std::iota(documents.begin(), documents.end(), irs::doc_limits::min());
   verify_filter(documents, __LINE__);
+}
+
+INSTANTIATE_TEST_SUITE_P(proxy_filter_test_case, proxy_filter_test_case,
+                         ::testing::Values(10, 15, 64, 100, 128));
+
+class proxy_filter_real_filter : public tests::filter_test_case_base {
+ public:
+  proxy_filter_real_filter() {
+    auto writer = open_writer(irs::OM_CREATE);
+
+    std::vector<doc_generator_base::ptr> gens;
+    gens.emplace_back(
+        new tests::json_doc_generator(resource("simple_sequential.json"),
+                                      &tests::generic_json_field_factory));
+    gens.emplace_back(new tests::json_doc_generator(
+        resource("simple_sequential_common_prefix.json"),
+        &tests::generic_json_field_factory));
+    gens.emplace_back(new tests::json_doc_generator(
+        resource("Northwnd.json"), &tests::generic_json_field_factory));
+    gens.emplace_back(new tests::json_doc_generator(
+        resource("NorthwndEdges.json"), &tests::generic_json_field_factory));
+
+    add_segments(*writer, gens);
+  }
+
+};
+
+TEST_F(proxy_filter_real_filter, with_terms_filter) {
+
 }
 } // namespace iresearch::tests
