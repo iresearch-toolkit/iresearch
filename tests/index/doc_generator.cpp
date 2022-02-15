@@ -384,7 +384,6 @@ class parse_json_handler : irs::util::noncopyable {
     val_.vt = json_doc_generator::ValueType::INT;
     val_.i = i;
     AddField();
-    std::cout << "Int = " << i << std::endl;
     return true;
   }
 
@@ -392,7 +391,6 @@ class parse_json_handler : irs::util::noncopyable {
     val_.vt = json_doc_generator::ValueType::UINT;
     val_.ui = u;
     AddField();
-    std::cout << "Uint = " << u << std::endl;
     return true;
   }
 
@@ -400,7 +398,6 @@ class parse_json_handler : irs::util::noncopyable {
     val_.vt = json_doc_generator::ValueType::INT64;
     val_.i64 = i;
     AddField();
-    std::cout << "Int64 = " << i << std::endl;
     return true;
   }
 
@@ -408,7 +405,6 @@ class parse_json_handler : irs::util::noncopyable {
     val_.vt = json_doc_generator::ValueType::UINT64;
     val_.ui64 = u;
     AddField();
-    std::cout << "Uint64 = " << u << std::endl;
     return true;
   }
 
@@ -416,7 +412,6 @@ class parse_json_handler : irs::util::noncopyable {
     val_.vt = json_doc_generator::ValueType::DBL;
     val_.dbl = d;
     AddField();
-    std::cout << "Double = " << d << std::endl;
     return true;
   }
 
@@ -424,7 +419,6 @@ class parse_json_handler : irs::util::noncopyable {
     val_.vt = json_doc_generator::ValueType::RAWNUM;
     val_.str = irs::string_ref(str, length);
     AddField();
-    std::cout << "RawNumber = " << str << std::endl;
     return true;
   }
 
