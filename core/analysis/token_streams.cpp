@@ -141,14 +141,20 @@ bool numeric_token_stream::next() {
 void numeric_token_stream::reset(
     int32_t value, 
     uint32_t step /* = PRECISION_STEP_DEF */) {
-  printf("reset = %i\n", value);
+  if (value == -30000) {
+    std::cout << "here" << std::endl;
+  }
+  std::cout << "reset = " << value << std::endl;
   num_.reset(value, step);
 }
 
 void numeric_token_stream::reset(
     int64_t value, 
     uint32_t step /* = PRECISION_STEP_DEF */) { 
-  printf("reset = %li\n", value);
+  if (value == -30000) {
+    std::cout << "here" << std::endl;
+  }
+  std::cout << "reset = " << value << std::endl;
   num_.reset(value, step);
 }
 
@@ -156,7 +162,7 @@ void numeric_token_stream::reset(
 void numeric_token_stream::reset(
     float_t value, 
     uint32_t step /* = PRECISION_STEP_DEF */) {
-  printf("reset = %f\n", value);
+  std::cout << "reset = " << value << std::endl;
   num_.reset(value, step);
 }
 #endif
@@ -164,7 +170,7 @@ void numeric_token_stream::reset(
 void numeric_token_stream::reset(
     double_t value, 
     uint32_t step /* = PRECISION_STEP_DEF */) { 
-  printf("reset = %lf\n", value);
+  std::cout << "reset = " << value << std::endl;
   num_.reset(value, step);
 }
 

@@ -202,6 +202,8 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       ASSERT_EQ(expected, actual);
     }
 
+    return;
+
     // range under different granularity value for topmost element, (i.e. last value from numeric_token_stream)
     {
       irs::numeric_token_stream min_stream;
