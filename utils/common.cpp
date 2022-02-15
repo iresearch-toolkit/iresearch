@@ -22,42 +22,42 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "common.hpp"
-#include "store/async_directory.hpp"
-#include "store/mmap_directory.hpp"
-#include "store/fs_directory.hpp"
 
-#include <unordered_map>
+#include "shared.hpp"
+#ifdef IRESEARCH_URING
+#include "store/async_directory.hpp"
+#endif
 #include <functional>
+#include <unordered_map>
+
+#include "store/fs_directory.hpp"
+#include "store/mmap_directory.hpp"
 
 namespace {
 
 typedef std::function<irs::directory::ptr(const std::string&)> factory_f;
 
-const std::unordered_map<std::string, factory_f> kFactories {
-  { "async",
-    [](const std::string& path) {
-      return irs::memory::make_unique<irs::async_directory>(path); }
-  },
-  { "mmap",
-    [](const std::string& path) {
-      return irs::memory::make_unique<irs::mmap_directory>(path); }
-  },
-  { "fs",
-    [](const std::string& path) {
-      return irs::memory::make_unique<irs::fs_directory>(path); }
-  }
-};
+const std::unordered_map<std::string, factory_f> kFactories{
+#ifdef IRESEARCH_URING
+    {"async",
+     [](const std::string& path) {
+       return irs::memory::make_unique<irs::async_directory>(path);
+     }},
+#endif
+    {"mmap",
+     [](const std::string& path) {
+       return irs::memory::make_unique<irs::mmap_directory>(path);
+     }},
+    {"fs", [](const std::string& path) {
+       return irs::memory::make_unique<irs::fs_directory>(path);
+     }}};
 
-}
+}  // namespace
 
-irs::directory::ptr create_directory(
-    const std::string& type,
-    const std::string& path) {
+irs::directory::ptr create_directory(const std::string& type,
+                                     const std::string& path) {
   const auto it = kFactories.find(type);
 
-  return it == kFactories.end()
-    ? nullptr
-    : it->second(path);
+  return it == kFactories.end() ? nullptr : it->second(path);
 }

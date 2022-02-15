@@ -140,7 +140,6 @@ set(IResearch_core_sources
   ./store/directory.cpp 
   ./store/directory_attributes.cpp
   ./store/directory_cleaner.cpp
-  ./store/async_directory.cpp
   ./store/fs_directory.cpp
   ./store/mmap_directory.cpp
   ./store/memory_directory.cpp
@@ -270,6 +269,10 @@ set(IResearch_core_headers
   ./shared.hpp
   ./types.hpp
 )
+
+if (USE_URING)
+  list(APPEND IResearch_core_sources ./store/async_directory.cpp)
+endif()
 
 # TODO: use FindLibDL and check linux distr version
 if (NOT MSVC)
