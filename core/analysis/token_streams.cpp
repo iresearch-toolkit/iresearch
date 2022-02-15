@@ -24,6 +24,8 @@
 #include "token_streams.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/string_utils.hpp"
+#include <iostream>
+#include <bitset>
 
 namespace iresearch {
 
@@ -114,6 +116,12 @@ bool numeric_token_stream::numeric_term::next(increment& inc, bytes_ref& out) {
   }
 
   out = value(data_, type_, val_, shift_);
+  std::cout << "numeric_term::next = ";
+  for (int i = 0; i < out.size(); ++i) {
+    std::cout << std::hex << int(out[i]);
+  }
+  std::cout << std::endl;
+
   shift_ += step_;
   inc.value = INCREMENT_VALUE[step_ == shift_];
 
@@ -132,20 +140,23 @@ bool numeric_token_stream::next() {
 
 void numeric_token_stream::reset(
     int32_t value, 
-    uint32_t step /* = PRECISION_STEP_DEF */) { 
+    uint32_t step /* = PRECISION_STEP_DEF */) {
+  printf("reset = %i\n", value);
   num_.reset(value, step);
 }
 
 void numeric_token_stream::reset(
     int64_t value, 
     uint32_t step /* = PRECISION_STEP_DEF */) { 
+  printf("reset = %li\n", value);
   num_.reset(value, step);
 }
 
 #ifndef FLOAT_T_IS_DOUBLE_T
 void numeric_token_stream::reset(
     float_t value, 
-    uint32_t step /* = PRECISION_STEP_DEF */) { 
+    uint32_t step /* = PRECISION_STEP_DEF */) {
+  printf("reset = %f\n", value);
   num_.reset(value, step);
 }
 #endif
@@ -153,6 +164,7 @@ void numeric_token_stream::reset(
 void numeric_token_stream::reset(
     double_t value, 
     uint32_t step /* = PRECISION_STEP_DEF */) { 
+  printf("reset = %lf\n", value);
   num_.reset(value, step);
 }
 
