@@ -97,20 +97,23 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       std::cout << "as_number(float_t) = " << fValue << std::endl;
       field.value(fValue);
 
-      const uint64_t lValue = uint64_t(std::ceil(dValue));
-      std::cout << "lValue = " << lValue << std::endl;
+//      const int64_t lValue = int64_t(std::ceil(dValue));
       {
+        auto liValue = data.as_number<int64_t>();
+        std::cout << "liValue = " << liValue << std::endl;
         doc.insert(std::make_shared<granular_long_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::long_field>();
         field.name(name);
-        field.value(lValue);
+        field.value(liValue);
       }
 
       {
+        auto lValue = data.as_number<int32_t>();
+        std::cout << "lValue = " << lValue << std::endl;
         doc.insert(std::make_shared<granular_int_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::int_field>();
         field.name(name);
-        field.value(int32_t(lValue));
+        field.value(lValue);
       }
     }
   }
