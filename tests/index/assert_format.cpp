@@ -664,6 +664,9 @@ void assert_term(
   // check docs
   for (; expected_docs->next();) {
     ASSERT_TRUE(actual_docs->next());
+    if (expected_docs->value() != actual_docs->value()) {
+      std::cout << expected_term.value().c_str() << " " << actual_term.value().c_str() << std::endl;
+    }
     ASSERT_EQ(expected_docs->value(), actual_docs->value());
 
     // check document attributes
@@ -1138,6 +1141,9 @@ void assert_index(
     // iterate over fields
     auto actual_fields = actual_segment.fields();
     for (; actual_fields->next(); ++expected_field) {
+      if (expected_field->first != "date") {
+        continue;
+      }
       std::cout << "field = " << expected_field->first << std::endl;
       ASSERT_EQ(expected_field->first, actual_fields->value().meta().name);
       ASSERT_EQ(expected_field->second.name, actual_fields->value().meta().name);

@@ -671,7 +671,6 @@ void europarl_doc_template::value(size_t idx, const std::string& value) {
       indexed.get<text_ref_field>("title_anl_pay")->value(title_);
       break;
     case 1: // date
-      std::cout << value << " " << get_time(value) << std::endl;
       indexed.get<long_field>("date")->value(get_time(value));
       indexed.get<string_field>("datestr")->value(value);
       break;
