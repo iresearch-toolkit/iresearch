@@ -110,8 +110,10 @@ size_t doclist_test_query::executes_{0};
 class doclist_test_filter final : public filter {
  public:
 
-  doclist_test_filter(const std::vector<doc_id_t>&  documents) noexcept
-      : filter(irs::type<doclist_test_filter>::get()), documents_(documents) {}
+  static ptr make() { return irs::memory::maker<doclist_test_filter>::make(); }
+
+  doclist_test_filter() noexcept
+      : filter(irs::type<doclist_test_filter>::get()) {}
 
   filter::prepared::ptr prepare(const index_reader&, const order::prepared&,
                                 boost_t boost,
@@ -119,13 +121,18 @@ class doclist_test_filter final : public filter {
     ++prepares_;
     return memory::make_managed<doclist_test_query>(documents_, boost);
   }
+
+  // intentional copy here to simplify multiple runs of same expected
+  void set_expected(const std::vector<doc_id_t>& documents) {
+    documents_ = documents;
+  }
     
   static size_t get_prepares() noexcept { return prepares_; }
 
   static void reset_prepares() noexcept { prepares_ = 0;}
 
  private:
-  const std::vector<doc_id_t>& documents_;
+  std::vector<doc_id_t> documents_;
   static size_t prepares_;
 };
 
@@ -159,10 +166,8 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
     SCOPED_TRACE(::testing::Message("Failed on line: ") << line);
     auto cache = proxy_filter::make_cache();
     for (size_t i = 0; i < 3; ++i) {
-      auto real = irs::memory::make_unique<doclist_test_filter>(expected);
       proxy_filter proxy;
-      proxy.add(std::move(real));
-      proxy.set_cache(cache);
+      proxy.set_cache(cache).add<doclist_test_filter>().set_expected(expected);
       auto prepared_proxy = proxy.prepare(index_);
       auto docs = prepared_proxy->execute(index_[0]);
       auto expected_doc = expected.begin();
@@ -247,12 +252,13 @@ TEST_P(proxy_filter_real_filter, with_terms_filter) {
   init_index();
   auto rdr = open_reader();
   auto cache = proxy_filter::make_cache();
-  auto q = irs::memory::make_unique<by_term>();
-  *q->mutable_field() = "name";
-  q->mutable_options()->term =
-      irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
   proxy_filter proxy;
-  proxy.add(std::move(q)).set_cache(cache);
+  auto& q = proxy.add<by_term>();
+  *q.mutable_field() = "name";
+  q.mutable_options()->term =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+ 
+  proxy.set_cache(cache);
   check_query(proxy, docs_t{1, 33}, rdr);
 }
 
@@ -260,17 +266,18 @@ TEST_P(proxy_filter_real_filter, with_disjunction_filter) {
   init_index();
   auto rdr = open_reader();
   auto cache = proxy_filter::make_cache();
-  auto root = irs::memory::make_unique<irs::Or>();
-  auto q = root->add<by_term>();
+  proxy_filter proxy;
+  auto& root = proxy.add<irs::Or>();
+  auto& q = root.add<by_term>();
   *q.mutable_field() = "name";
   q.mutable_options()->term =
       irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
-  auto q1 = root->add<by_term>();
+  auto& q1 = root.add<by_term>();
   *q1.mutable_field() = "name";
   q1.mutable_options()->term =
       irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
-  proxy_filter proxy;
-  proxy.add(std::move(root)).set_cache(cache);
+  
+  proxy.set_cache(cache);
   check_query(proxy, docs_t{1, 2, 33, 34}, rdr);
 }
 

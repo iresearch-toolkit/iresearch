@@ -49,9 +49,14 @@ class proxy_filter final : public filter {
                                 const order::prepared&, boost_t boost,
                                 const attribute_provider*) const override;
 
-  proxy_filter& add(filter::ptr&& real_filter) {
-    real_filter_ = std::move(real_filter);
-    return *this;
+  template<typename T>
+  T& add() {
+    typedef typename std::enable_if <
+      std::is_base_of<filter, T>::value, T
+    >::type type;
+    assert(!real_filter_);
+    real_filter_ = type::make();
+    return static_cast<type&>(*real_filter_);
   }
 
   proxy_filter& set_cache(const cache_ptr& cache) {
