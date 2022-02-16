@@ -665,8 +665,17 @@ void assert_term(
   for (; expected_docs->next();) {
     ASSERT_TRUE(actual_docs->next());
     if (expected_docs->value() != actual_docs->value()) {
-      std::cout << expected_term.value().c_str() << " " << actual_term.value().c_str() << std::endl;
+
+      for(int i = 0; i < expected_term.value().size(); ++i) {
+        std::cout << std::hex << int(expected_term.value()[i]);
+      }
+      std::cout << " ";
+      for(int i = 0; i < actual_term.value().size(); ++i) {
+        std::cout << std::hex << int(actual_term.value()[i]);
+      }
+      std::cout << std::dec;
     }
+
     ASSERT_EQ(expected_docs->value(), actual_docs->value());
 
     // check document attributes
@@ -729,6 +738,9 @@ void assert_terms_next(
   irs::bstring actual_max_buf;
   size_t actual_size = 0;
 
+  for (auto& v : expected_field.terms) {
+    v.value;
+  }
   auto expected_term = expected_field.iterator();
   if (matcher) {
     expected_term = irs::memory::make_managed<irs::automaton_term_iterator>(
