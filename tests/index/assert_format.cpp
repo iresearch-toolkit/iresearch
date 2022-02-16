@@ -1117,6 +1117,7 @@ void assert_index(
   ASSERT_EQ(expected_index.size(), actual_index->size());
   size_t i = 0;
   for (auto& actual_segment : *actual_index) {
+      std::cout << "segment= " << i << std::endl;
     // skip segment if validation not required
     if (skip) {
       ++i;
@@ -1137,6 +1138,7 @@ void assert_index(
     // iterate over fields
     auto actual_fields = actual_segment.fields();
     for (; actual_fields->next(); ++expected_field) {
+      std::cout << "field = " << expected_field->first << std::endl;
       ASSERT_EQ(expected_field->first, actual_fields->value().meta().name);
       ASSERT_EQ(expected_field->second.name, actual_fields->value().meta().name);
       ASSERT_EQ(expected_field->second.index_features, actual_fields->value().meta().index_features);

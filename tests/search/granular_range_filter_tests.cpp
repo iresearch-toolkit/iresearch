@@ -97,6 +97,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
         field.value(fValue);
       }
 
+      // 'value' can be interpreted as int64
       {
         doc.insert(std::make_shared<granular_long_field>());
         const auto liValue = data.as_number<int64_t>();
@@ -105,6 +106,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
         field.value(liValue);
       }
 
+      // 'value' can be interpreted as int32
       {
         doc.insert(std::make_shared<granular_int_field>());
         auto lValue = data.as_number<int32_t>();
