@@ -20,15 +20,16 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
+#include "search/proxy_filter.hpp"
+
 #include "filter_test_case_base.hpp"
 #include "index/index_writer.hpp"
 #include "search/boolean_filter.hpp"
-#include "search/proxy_filter.hpp"
 #include "search/term_filter.hpp"
 #include "store/memory_directory.hpp"
+#include "tests_shared.hpp"
 
-namespace  {
+namespace {
 
 using namespace tests;
 using namespace iresearch;
@@ -58,7 +59,8 @@ class doclist_test_iterator final : public doc_iterator,
   }
 
   doc_id_t seek(doc_id_t target) override {
-    while (doc_.value < target && next()) {}
+    while (doc_.value < target && next()) {
+    }
     return doc_.value;
   }
 
@@ -109,7 +111,6 @@ size_t doclist_test_query::executes_{0};
 
 class doclist_test_filter final : public filter {
  public:
-
   static ptr make() { return irs::memory::maker<doclist_test_filter>::make(); }
 
   doclist_test_filter() noexcept
@@ -126,10 +127,10 @@ class doclist_test_filter final : public filter {
   void set_expected(const std::vector<doc_id_t>& documents) {
     documents_ = documents;
   }
-    
+
   static size_t get_prepares() noexcept { return prepares_; }
 
-  static void reset_prepares() noexcept { prepares_ = 0;}
+  static void reset_prepares() noexcept { prepares_ = 0; }
 
  private:
   std::vector<doc_id_t> documents_;
@@ -138,13 +139,12 @@ class doclist_test_filter final : public filter {
 
 size_t doclist_test_filter::prepares_;
 
-
 class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
  public:
   proxy_filter_test_case() {
     auto codec = irs::formats::get("1_0");
     auto writer = irs::index_writer::make(dir_, codec, irs::OM_CREATE);
-    { // make dummy document so we could have non-empty index
+    {  // make dummy document so we could have non-empty index
       auto ctx = writer->documents();
       for (size_t i = 0; i < GetParam(); ++i) {
         auto doc = ctx.insert();
@@ -186,7 +186,6 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
   irs::memory_directory dir_;
   irs::directory_reader index_;
 };
-
 
 TEST_P(proxy_filter_test_case, test_1first_bit) {
   std::vector<doc_id_t> documents{1};
@@ -245,7 +244,6 @@ class proxy_filter_real_filter : public tests::filter_test_case_base {
         &tests::generic_json_field_factory));
     add_segments(*writer, gens);
   }
-
 };
 
 TEST_P(proxy_filter_real_filter, with_terms_filter) {
@@ -257,7 +255,7 @@ TEST_P(proxy_filter_real_filter, with_terms_filter) {
   *q.mutable_field() = "name";
   q.mutable_options()->term =
       irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
- 
+
   proxy.set_cache(cache);
   check_query(proxy, docs_t{1, 33}, rdr);
 }
@@ -276,23 +274,19 @@ TEST_P(proxy_filter_real_filter, with_disjunction_filter) {
   *q1.mutable_field() = "name";
   q1.mutable_options()->term =
       irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
-  
+
   proxy.set_cache(cache);
   check_query(proxy, docs_t{1, 2, 33, 34}, rdr);
 }
 
 INSTANTIATE_TEST_SUITE_P(
-  proxy_filter_real_filter,
-  proxy_filter_real_filter,
-  ::testing::Combine(
-    ::testing::Values(
-      &tests::directory<&tests::memory_directory>,
-      &tests::directory<&tests::fs_directory>,
-      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values(
-      tests::format_info{"1_0"},
-      tests::format_info{"1_1", "1_0"},
-      tests::format_info{"1_2", "1_0"},
-      tests::format_info{"1_3", "1_0"}))
-);
-} // namespace iresearch::tests
+    proxy_filter_real_filter, proxy_filter_real_filter,
+    ::testing::Combine(
+        ::testing::Values(&tests::directory<&tests::memory_directory>,
+                          &tests::directory<&tests::fs_directory>,
+                          &tests::directory<&tests::mmap_directory>),
+        ::testing::Values(tests::format_info{"1_0"},
+                          tests::format_info{"1_1", "1_0"},
+                          tests::format_info{"1_2", "1_0"},
+                          tests::format_info{"1_3", "1_0"})));
+}  // namespace

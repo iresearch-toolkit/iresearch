@@ -45,15 +45,14 @@ class proxy_filter final : public filter {
 
   using filter::prepare;
 
-  filter::prepared::ptr prepare(const index_reader& rdr,
-                                const order::prepared&, boost_t boost,
+  filter::prepared::ptr prepare(const index_reader& rdr, const order::prepared&,
+                                boost_t boost,
                                 const attribute_provider*) const override;
 
   template<typename T>
   T& add() {
-    typedef typename std::enable_if <
-      std::is_base_of<filter, T>::value, T
-    >::type type;
+    typedef typename std::enable_if<std::is_base_of<filter, T>::value, T>::type
+        type;
     assert(!real_filter_);
     real_filter_ = type::make();
     return static_cast<type&>(*real_filter_);

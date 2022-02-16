@@ -37,8 +37,7 @@ class lazy_filter_bitset : private util::noncopyable {
  public:
   using word_t = size_t;
 
-  lazy_filter_bitset(const sub_reader& segment,
-                     const filter::prepared& filter,
+  lazy_filter_bitset(const sub_reader& segment, const filter::prepared& filter,
                      const order::prepared& order,
                      const attribute_provider* ctx) noexcept {
     const size_t bits = segment.docs_count() + irs::doc_limits::min();
@@ -167,16 +166,14 @@ struct proxy_query_cache {
 
 class proxy_query final : public filter::prepared {
  public:
-  proxy_query(proxy_filter::cache_ptr cache)
-      : cache_(cache) {
+  proxy_query(proxy_filter::cache_ptr cache) : cache_(cache) {
     assert(cache_->prepared_real_filter_);
   }
 
   doc_iterator::ptr execute(const sub_reader& rdr, const order::prepared& order,
                             const attribute_provider* ctx) const override {
     // first try to find segment in cache.
-    auto& [unused, cached] =
-        *cache_->readers_.emplace(&rdr, nullptr).first;
+    auto& [unused, cached] = *cache_->readers_.emplace(&rdr, nullptr).first;
 
     if (!cached) {
       cached = std::make_unique<lazy_filter_bitset>(
@@ -198,9 +195,9 @@ proxy_filter::cache_ptr proxy_filter::make_cache() {
   return std::make_shared<proxy_query_cache>();
 }
 
-filter::prepared::ptr proxy_filter::prepare(const index_reader& rdr,
-                                const order::prepared& ord, boost_t boost,
-                                const attribute_provider* ctx) const {
+filter::prepared::ptr proxy_filter::prepare(
+    const index_reader& rdr, const order::prepared& ord, boost_t boost,
+    const attribute_provider* ctx) const {
   if (!real_filter_ || !cache_) {
     assert(false);
     return filter::prepared::empty();
