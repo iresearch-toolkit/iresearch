@@ -663,6 +663,7 @@ void europarl_doc_template::value(size_t idx, const std::string& value) {
     return std::mktime( &tmb );
   };
 
+  static int date_count = 0;
   switch (idx) {
     case 0: // title
       title_ = value;
@@ -671,6 +672,8 @@ void europarl_doc_template::value(size_t idx, const std::string& value) {
       indexed.get<text_ref_field>("title_anl_pay")->value(title_);
       break;
     case 1: // date
+      ++date_count;
+      std::cout << "DATE COUNT : " << date_count << " DATE: " << value << std::endl;
       indexed.get<long_field>("date")->value(get_time(value));
       indexed.get<string_field>("datestr")->value(value);
       break;
