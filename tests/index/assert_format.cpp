@@ -661,19 +661,26 @@ void assert_term(
 
   ASSERT_TRUE(!irs::doc_limits::valid(expected_docs->value()));
   ASSERT_TRUE(!irs::doc_limits::valid(actual_docs->value()));
-  // check docs
-  for (; expected_docs->next();) {
-    ASSERT_TRUE(actual_docs->next());
-    if (expected_docs->value() != actual_docs->value()) {
 
-      for(int i = 0; i < expected_term.value().size(); ++i) {
-        std::cout << std::hex << int(expected_term.value()[i]);
-      }
-      std::cout << " ";
-      for(int i = 0; i < actual_term.value().size(); ++i) {
-        std::cout << std::hex << int(actual_term.value()[i]);
-      }
-      std::cout << std::dec;
+  size_t doc_count = 0;
+  // check docs
+  for (; expected_docs->next(); ++doc_count) {
+    ASSERT_TRUE(actual_docs->next());
+
+    std::string term_as_str;
+    std::string failed_term = "1281280014";
+
+    for(int i = 0; i < expected_term.value().size(); ++i) {
+      term_as_str += std::to_string(int(expected_term.value()[i]));
+    }
+
+//    if (term_as_str != failed_term) {
+//        continue;
+//    }
+
+
+    if (expected_docs->value() != actual_docs->value()) {
+       std::cout << "term = " << term_as_str << std::endl;
     }
 
     ASSERT_EQ(expected_docs->value(), actual_docs->value());
@@ -738,9 +745,6 @@ void assert_terms_next(
   irs::bstring actual_max_buf;
   size_t actual_size = 0;
 
-  for (auto& v : expected_field.terms) {
-    v.value;
-  }
   auto expected_term = expected_field.iterator();
   if (matcher) {
     expected_term = irs::memory::make_managed<irs::automaton_term_iterator>(
