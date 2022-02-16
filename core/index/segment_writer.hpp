@@ -387,8 +387,9 @@ class segment_writer : util::noncopyable {
     const IndexFeatures index_features = field.index_features();
 
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
-    int64_t min_val = doc_limits::min();
-    const auto doc_id = doc_id_t(docs_cached() + min_val - 1); // -1 for 0-based offset
+    static int64_t min_val = doc_limits::min();
+    static int64_t v = docs_cached() + min_val - 1;
+    const auto doc_id = doc_id_t(v); // -1 for 0-based offset
 
     return index(field_name, doc_id, index_features, features, tokens);
   }
@@ -404,8 +405,9 @@ class segment_writer : util::noncopyable {
     const IndexFeatures index_features = field.index_features();
 
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
-    int64_t min_val = doc_limits::min();
-    const auto doc_id = doc_id_t(docs_cached() + min_val - 1); // -1 for 0-based offset
+    static int64_t min_val = doc_limits::min();
+    static int64_t v = docs_cached() + min_val - 1;
+    const auto doc_id = doc_id_t(v); // -1 for 0-based offset
 
     if (IRS_UNLIKELY(!index(field_name, doc_id, index_features, features, tokens))) {
       return false; // indexing failed
