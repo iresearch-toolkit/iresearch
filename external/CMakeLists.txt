@@ -174,7 +174,7 @@ if (NOT TARGET velocypack)
   
   if ("${VPACK_ROOT}" STREQUAL "")
     message("VPACK_ROOT not set. Pulling velocypack submodule.")
-    execute_process(COMMAND git submodule update --init --depth=1 -- "external/velocypack"
+    execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --depth=1 -- "external/velocypack"
                     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} RESULT_VARIABLE GIT_SUBMOD_RESULT)
     if(NOT GIT_SUBMOD_RESULT EQUAL "0")
       message(
