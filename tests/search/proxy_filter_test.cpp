@@ -38,7 +38,9 @@ class doclist_test_iterator final : public doc_iterator,
                                     private util::noncopyable {
  public:
   doclist_test_iterator(const std::vector<doc_id_t>& documents)
-      : begin_(documents.begin()), end_(documents.end()) {
+      : begin_(documents.begin()),
+        end_(documents.end()),
+        cost_(documents.size()) {
     reset();
   }
 
@@ -70,6 +72,9 @@ class doclist_test_iterator final : public doc_iterator,
     if (irs::type<irs::document>::id() == id) {
       return &doc_;
     }
+    if (irs::type<irs::cost>::id() == id) {
+      return &cost_;
+    }
     return nullptr;
   }
 
@@ -84,6 +89,7 @@ class doclist_test_iterator final : public doc_iterator,
   std::vector<doc_id_t>::const_iterator current_;
   std::vector<doc_id_t>::const_iterator end_;
   iresearch::document doc_;
+  cost cost_;
   bool resetted_;
 };
 
@@ -170,6 +176,9 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
       proxy.set_cache(cache).add<doclist_test_filter>().set_expected(expected);
       auto prepared_proxy = proxy.prepare(index_);
       auto docs = prepared_proxy->execute(index_[0]);
+      auto costs = irs::get<irs::cost>(*docs);
+      EXPECT_TRUE(costs);
+      EXPECT_EQ(costs->estimate(), expected.size());
       auto expected_doc = expected.begin();
       while (docs->next() && expected_doc != expected.end()) {
         EXPECT_EQ(docs->value(), *expected_doc);

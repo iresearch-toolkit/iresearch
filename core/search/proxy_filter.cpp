@@ -43,6 +43,7 @@ class lazy_filter_bitset : private util::noncopyable {
     const size_t bits = segment.docs_count() + irs::doc_limits::min();
     real_doc_itr_ = segment.mask(filter.execute(segment, order, ctx));
     words_ = irs::bitset::bits_to_words(bits);
+    cost_ = cost::extract(*real_doc_itr_);
     set_ = irs::memory::make_unique<word_t[]>(words_);
     std::memset(set_.get(), 0, sizeof(word_t) * words_);
     real_doc_ = irs::get<irs::document>(*real_doc_itr_);
@@ -74,6 +75,8 @@ class lazy_filter_bitset : private util::noncopyable {
     return true;
   }
 
+  cost::cost_t get_cost() const noexcept { return cost_; }
+
  private:
   std::unique_ptr<word_t[]> set_;
   const word_t* begin_{nullptr};
@@ -81,14 +84,14 @@ class lazy_filter_bitset : private util::noncopyable {
   doc_iterator::ptr real_doc_itr_;
   const document* real_doc_{nullptr};
   size_t words_{0};
+  cost::cost_t cost_;
 };
 
 class lazy_filter_bitset_iterator final : public doc_iterator,
                                           private util::noncopyable {
  public:
-  lazy_filter_bitset_iterator(lazy_filter_bitset& bitset,
-                              cost::cost_t estimation) noexcept
-      : bitset_(bitset), cost_(estimation) {
+  lazy_filter_bitset_iterator(lazy_filter_bitset& bitset) noexcept
+      : bitset_(bitset), cost_(bitset_.get_cost()) {
     reset();
   }
 
@@ -181,8 +184,7 @@ class proxy_query final : public filter::prepared {
     }
 
     assert(cached);
-    return memory::make_managed<lazy_filter_bitset_iterator>(*cached,
-                                                             rdr.docs_count());
+    return memory::make_managed<lazy_filter_bitset_iterator>(*cached);
   }
 
  private:
@@ -199,6 +201,12 @@ filter::prepared::ptr proxy_filter::prepare(
     const index_reader& rdr, const order::prepared& ord, boost_t boost,
     const attribute_provider* ctx) const {
   if (!real_filter_ || !cache_) {
+    assert(false);
+    return filter::prepared::empty();
+  }
+  if (!ord.empty()) {
+    // Currently we do not support caching scores.
+    // Proxy filter should not be used with scorers!
     assert(false);
     return filter::prepared::empty();
   }

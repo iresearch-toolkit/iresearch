@@ -171,10 +171,21 @@ if (NOT TARGET velocypack)
   if ("${VPACK_ROOT}" STREQUAL "")
     set(VPACK_ROOT "$ENV{VPACK_ROOT}")
   endif()
+  
+  if ("${VPACK_ROOT}" STREQUAL "")
+    message("VPACK_ROOT not set. Pulling velocypack submodule.")
+    execute_process(COMMAND git submodule update --init --depth=1 -- "external/velocypack"
+                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} RESULT_VARIABLE GIT_SUBMOD_RESULT)
+    if(NOT GIT_SUBMOD_RESULT EQUAL "0")
+      message(
+        FATAL_ERROR
+        "git submodule update --init failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
+    endif()
+    set(VPACK_ROOT ${CMAKE_SOURCE_DIR}/external/velocypack)
+  endif()
 
   if (NOT ("${VPACK_ROOT}" STREQUAL ""))
     expand_path(${VPACK_ROOT} VPACK_ROOT_EXP)
-
     add_subdirectory(${VPACK_ROOT_EXP}
                      ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-velocypack.dir
                      EXCLUDE_FROM_ALL)
