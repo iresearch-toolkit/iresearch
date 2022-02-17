@@ -770,9 +770,11 @@ void postings_writer_base::add_position(uint32_t pos, const offset* offs, const 
   assert(!offs || offs->start <= offs->end);
   assert(features_.position() && pos_ && pos_out_); /* at least positions stream should be created */
 
-//  if (pos == 1) {
-    std::cout << "pos=1" << std::endl;
-//  }
+  static int c = 0;
+  if (pos == 1) {
+    ++c;
+    std::cout << "pos=1 " << c << std::endl;
+  }
   pos_->pos(pos - pos_->last);
 
   if (pay) {
