@@ -770,14 +770,6 @@ void postings_writer_base::add_position(uint32_t pos, const offset* offs, const 
   assert(!offs || offs->start <= offs->end);
   assert(features_.position() && pos_ && pos_out_); /* at least positions stream should be created */
 
-  static int c = 0;
-  if (pos == 1) {
-    ++c;
-    std::cout << "pos=1 " << c << std::endl;
-  }
-  if (pos == 2) {
-    std::cout << "pos=2 " << std::endl;
-  }
   pos_->pos(pos - pos_->last);
 
   if (pay) {
@@ -888,6 +880,9 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
     assert(doc_limits::valid(did));
 
     begin_doc<FormatTraits>(did, freq_);
+    if (did == 1) {
+      std::cout << "did == 1" << std::endl;
+    }
     docs_.value.set(did);
 
     assert(pos_);
