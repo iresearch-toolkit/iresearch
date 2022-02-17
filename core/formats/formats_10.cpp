@@ -439,7 +439,7 @@ class postings_writer_base : public irs::postings_writer {
 void postings_writer_base::prepare(index_output& out, const irs::flush_state& state) {
   assert(state.dir);
   assert(!state.name.null());
-
+   std::cout << "prepare" << std::endl;
   // reset writer state
   docs_count_ = 0;
 
@@ -770,6 +770,9 @@ void postings_writer_base::add_position(uint32_t pos, const offset* offs, const 
   assert(!offs || offs->start <= offs->end);
   assert(features_.position() && pos_ && pos_out_); /* at least positions stream should be created */
 
+//  if (pos == 1) {
+    std::cout << "pos=1" << std::endl;
+//  }
   pos_->pos(pos - pos_->last);
 
   if (pay) {

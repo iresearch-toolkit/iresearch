@@ -673,7 +673,7 @@ void europarl_doc_template::value(size_t idx, const std::string& value) {
       break;
     case 1: // date
       ++date_count;
-      std::cout << "DATE COUNT : " << date_count << " DATE: " << value << " " << get_time(value) << std::endl;
+//      std::cout << "DATE COUNT : " << date_count << " DATE: " << value << " " << get_time(value) << std::endl;
       indexed.get<long_field>("date")->value(get_time(value));
       indexed.get<string_field>("datestr")->value(value);
       break;
