@@ -89,6 +89,7 @@ set(IReSearch_tests_sources
   ./search/same_position_filter_tests.cpp
   ./search/ngram_similarity_filter_tests.cpp
   ./search/top_terms_collector_test.cpp
+  ./search/proxy_filter_test.cpp
   ./iql/parser_common_test.cpp
   ./iql/query_builder_test.cpp
   ./utils/async_utils_tests.cpp
