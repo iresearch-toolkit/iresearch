@@ -775,6 +775,9 @@ void postings_writer_base::add_position(uint32_t pos, const offset* offs, const 
     ++c;
     std::cout << "pos=1 " << c << std::endl;
   }
+  if (pos == 2) {
+    std::cout << "pos=2 " << std::endl;
+  }
   pos_->pos(pos - pos_->last);
 
   if (pay) {
