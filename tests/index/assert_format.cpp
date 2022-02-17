@@ -1160,9 +1160,9 @@ void assert_index(
     // iterate over fields
     auto actual_fields = actual_segment.fields();
     for (; actual_fields->next(); ++expected_field) {
-      if (expected_field->first == "date") {
-        continue;
-      }
+//      if (expected_field->first == "date") {
+//        continue;
+//      }
       std::cout << "field = " << expected_field->first << std::endl;
       ASSERT_EQ(expected_field->first, actual_fields->value().meta().name);
       ASSERT_EQ(expected_field->second.name, actual_fields->value().meta().name);
