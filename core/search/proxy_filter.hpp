@@ -46,9 +46,7 @@ class proxy_filter final : public filter {
 
   using cache_ptr = std::shared_ptr<proxy_query_cache>;
 
-  static cache_ptr make_cache();
-
-  proxy_filter() noexcept : filter(irs::type<proxy_filter>::get()) {}
+  proxy_filter() noexcept;
 
   using filter::prepare;
 
@@ -57,12 +55,10 @@ class proxy_filter final : public filter {
                                 const attribute_provider*) const override;
 
   template<typename T>
-  T& add() {
-    typedef typename std::enable_if<std::is_base_of<filter, T>::value, T>::type
-        type;
-    assert(!real_filter_);
-    real_filter_ = type::make();
-    return static_cast<type&>(*real_filter_);
+  std::pair<T&, cache_ptr> set_filter() {
+    using type = typename std::enable_if_t<std::is_base_of_v<filter, T>, T>;
+    auto& ptr = cache_filter(type::make());
+    return {static_cast<type&>(ptr), cache_};
   }
 
   proxy_filter& set_cache(const cache_ptr& cache) {
@@ -71,7 +67,8 @@ class proxy_filter final : public filter {
   }
 
  private:
-  mutable filter::ptr real_filter_{nullptr};
+  filter& cache_filter(filter::ptr&& ptr);
+
   mutable cache_ptr cache_;
 };
 }  // namespace iresearch

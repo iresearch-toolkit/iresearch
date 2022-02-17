@@ -170,10 +170,16 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
 
   void verify_filter(std::vector<doc_id_t> const& expected, size_t line) {
     SCOPED_TRACE(::testing::Message("Failed on line: ") << line);
-    auto cache = proxy_filter::make_cache();
+    irs::proxy_filter::cache_ptr cache;
     for (size_t i = 0; i < 3; ++i) {
       proxy_filter proxy;
-      proxy.set_cache(cache).add<doclist_test_filter>().set_expected(expected);
+      if (i == 0) {
+        auto res = proxy.set_filter<doclist_test_filter>();
+        cache = res.second;
+        res.first.set_expected(expected);
+      } else {
+        proxy.set_cache(cache);
+      }
       auto prepared_proxy = proxy.prepare(index_);
       auto docs = prepared_proxy->execute(index_[0]);
       auto costs = irs::get<irs::cost>(*docs);
@@ -258,23 +264,19 @@ class proxy_filter_real_filter : public tests::filter_test_case_base {
 TEST_P(proxy_filter_real_filter, with_terms_filter) {
   init_index();
   auto rdr = open_reader();
-  auto cache = proxy_filter::make_cache();
   proxy_filter proxy;
-  auto& q = proxy.add<by_term>();
+  auto [q, cache] = proxy.set_filter<by_term>();
   *q.mutable_field() = "name";
   q.mutable_options()->term =
       irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
-
-  proxy.set_cache(cache);
   check_query(proxy, docs_t{1, 33}, rdr);
 }
 
 TEST_P(proxy_filter_real_filter, with_disjunction_filter) {
   init_index();
   auto rdr = open_reader();
-  auto cache = proxy_filter::make_cache();
   proxy_filter proxy;
-  auto& root = proxy.add<irs::Or>();
+  auto [root, cache] = proxy.set_filter<irs::Or>();
   auto& q = root.add<by_term>();
   *q.mutable_field() = "name";
   q.mutable_options()->term =
@@ -283,8 +285,6 @@ TEST_P(proxy_filter_real_filter, with_disjunction_filter) {
   *q1.mutable_field() = "name";
   q1.mutable_options()->term =
       irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
-
-  proxy.set_cache(cache);
   check_query(proxy, docs_t{1, 2, 33, 34}, rdr);
 }
 
@@ -297,5 +297,6 @@ INSTANTIATE_TEST_SUITE_P(
         ::testing::Values(tests::format_info{"1_0"},
                           tests::format_info{"1_1", "1_0"},
                           tests::format_info{"1_2", "1_0"},
-                          tests::format_info{"1_3", "1_0"})));
+                          tests::format_info{"1_3", "1_0"},
+                          tests::format_info{"1_4", "1_4simd"})));
 }  // namespace
