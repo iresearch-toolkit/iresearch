@@ -670,9 +670,9 @@ void assert_term(
     term_as_str += std::to_string(int(expected_term.value()[i]));
   }
 
-  if (failed_terms[0] == term_as_str || failed_terms[1] == term_as_str) {
-      std::cout << " term = " << term_as_str << " , ";
-  }
+//  if (failed_terms[0] == term_as_str || failed_terms[1] == term_as_str) {
+//      std::cout << " term = " << term_as_str << " , ";
+//  }
 
   size_t doc_count = 0;
   // check docs
@@ -683,8 +683,8 @@ void assert_term(
 //       std::cout << "term = " << term_as_str << std::endl;
 //    }
 
-//    auto actual = actual_docs->value();
-//    ASSERT_EQ(expected_docs->value(), actual);
+    auto actual = actual_docs->value();
+    ASSERT_EQ(expected_docs->value(), actual);
 
     // check document attributes
     {
@@ -730,7 +730,7 @@ void assert_term(
       }
     }
   }
-  std::cout << "postings = " << doc_count << std::endl;
+//  std::cout << "postings = " << doc_count << std::endl;
   ASSERT_FALSE(actual_docs->next());
   ASSERT_TRUE(irs::doc_limits::eof(expected_docs->value()));
   ASSERT_TRUE(irs::doc_limits::eof(actual_docs->value()));
@@ -757,7 +757,7 @@ void assert_terms_next(
                              : actual_field.iterator(irs::SeekMode::NORMAL);
 
   for (; expected_term->next(); ++actual_size) {
-    std::cout << "index of term = " << actual_size << ", ";
+//    std::cout << "index of term = " << actual_size << ", ";
     ASSERT_TRUE(actual_term->next());
 
     assert_term(*expected_term, *actual_term, features);
@@ -1160,9 +1160,9 @@ void assert_index(
     // iterate over fields
     auto actual_fields = actual_segment.fields();
     for (; actual_fields->next(); ++expected_field) {
-      if (expected_field->first != "date") {
-        continue;
-      }
+//      if (expected_field->first != "date") {
+//        continue;
+//      }
       std::cout << "field = " << expected_field->first << std::endl;
       ASSERT_EQ(expected_field->first, actual_fields->value().meta().name);
       ASSERT_EQ(expected_field->second.name, actual_fields->value().meta().name);
