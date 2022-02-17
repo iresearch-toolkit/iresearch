@@ -1744,9 +1744,11 @@ class doc_iterator final : public irs::doc_iterator {
       refill();
     }
 
+    std::cout << "before doc.value " << doc.value << " " << *begin_ << std::endl;
+
     doc.value += *begin_++; // update document attribute
 
-    std::cout << "doc.value " << doc.value << " ";
+    std::cout << "acter doc.value " << doc.value << " " << std::endl;
 
     if constexpr (IteratorTraits::frequency()) {
       auto& freq = std::get<frequency>(attrs_);
