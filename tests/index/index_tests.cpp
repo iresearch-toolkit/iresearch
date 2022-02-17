@@ -14069,7 +14069,7 @@ INSTANTIATE_TEST_SUITE_P(
 namespace {
 #if defined(IRESEARCH_SSE2)
 const auto index_test_case_13_values = ::testing::Values(tests::format_info{"1_0"},
-                                                         tests::format_info{"1_0simd"});
+                                                         tests::format_info{"1_0"});
 #else
 const auto index_test_case_13_values = ::testing::Values(tests::format_info{"1_3", "1_0"});
 #endif
