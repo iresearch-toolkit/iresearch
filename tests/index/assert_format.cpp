@@ -684,7 +684,7 @@ void assert_term(
 //    }
 
     auto actual = actual_docs->value();
-    //ASSERT_EQ(expected_docs->value(), actual);
+    ASSERT_EQ(expected_docs->value(), actual);
 
     // check document attributes
     {
@@ -1160,7 +1160,7 @@ void assert_index(
     // iterate over fields
     auto actual_fields = actual_segment.fields();
     for (; actual_fields->next(); ++expected_field) {
-      if (expected_field->first != "date") {
+      if (expected_field->first == "date") {
         continue;
       }
       std::cout << "field = " << expected_field->first << std::endl;
