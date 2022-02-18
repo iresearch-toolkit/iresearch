@@ -8,8 +8,10 @@
 
 #include <boost/stl_interfaces/config.hpp>
 
+#if BOOST_TEXT_USE_CONCEPTS
 #if defined(__cpp_lib_concepts)
 #include <ranges>
+#endif
 #endif
 #if defined(__cpp_lib_three_way_comparison)
 #include <compare>
