@@ -135,6 +135,7 @@ set(IResearch_core_sources
   ./search/term_query.cpp
   ./search/boolean_filter.cpp
   ./search/ngram_similarity_filter.cpp
+  ./search/proxy_filter.cpp
   ./store/data_input.cpp 
   ./store/data_output.cpp 
   ./store/directory.cpp 
@@ -222,6 +223,7 @@ set(IResearch_core_headers
   ./search/exclusion.hpp
   ./search/ngram_similarity_filter.hpp
   ./search/filter_visitor.hpp
+  ./search/proxy_filter.hpp
   ./store/data_input.hpp
   ./store/data_output.hpp
   ./store/directory.hpp
@@ -387,6 +389,7 @@ target_include_directories(${IResearch_TARGET_NAME}-static
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
   PUBLIC ${VPACK_INCLUDE_PATH}
   PUBLIC $<TARGET_PROPERTY:hwy,INTERFACE_INCLUDE_DIRECTORIES>
+  PUBLIC $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_STATIC},INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 # setup MSVC specific compiler flags

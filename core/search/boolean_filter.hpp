@@ -25,34 +25,32 @@
 
 #include <vector>
 
-#include "filter.hpp"
 #include "all_filter.hpp"
+#include "filter.hpp"
 #include "utils/iterator.hpp"
 
 namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class boolean_filter
-/// @brief defines user-side boolean filter, as the container for other 
+/// @brief defines user-side boolean filter, as the container for other
 /// filters
 //////////////////////////////////////////////////////////////////////////////
 class boolean_filter : public filter, private util::noncopyable {
  public:
   typedef std::vector<filter::ptr> filters_t;
-  typedef ptr_iterator< filters_t::const_iterator > const_iterator;
-  typedef ptr_iterator< filters_t::iterator > iterator;
+  typedef ptr_iterator<filters_t::const_iterator> const_iterator;
+  typedef ptr_iterator<filters_t::iterator> iterator;
 
-  const_iterator begin() const { return const_iterator( filters_.begin() ); }
-  const_iterator end() const { return const_iterator( filters_.end() ); }
+  const_iterator begin() const { return const_iterator(filters_.begin()); }
+  const_iterator end() const { return const_iterator(filters_.end()); }
 
-  iterator begin() { return iterator( filters_.begin() ); }
-  iterator end() { return iterator( filters_.end() ); }
+  iterator begin() { return iterator(filters_.begin()); }
+  iterator end() { return iterator(filters_.end()); }
 
   template<typename T>
   T& add() {
-    typedef typename std::enable_if <
-      std::is_base_of<filter, T>::value, T
-    >::type type;
+    using type = typename std::enable_if_t<std::is_base_of_v<filter, T>, T>;
 
     filters_.emplace_back(type::make());
     return static_cast<type&>(*filters_.back());
@@ -65,27 +63,21 @@ class boolean_filter : public filter, private util::noncopyable {
   size_t size() const { return filters_.size(); }
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_provider* ctx) const override final;
+      const index_reader& rdr, const order::prepared& ord, boost_t boost,
+      const attribute_provider* ctx) const override final;
 
  protected:
   explicit boolean_filter(const type_info& type) noexcept;
   virtual bool equals(const filter& rhs) const noexcept override;
 
   virtual filter::prepared::ptr prepare(
-    std::vector<const filter*>& incl,
-    std::vector<const filter*>& excl,
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_provider* ctx) const = 0;
+      std::vector<const filter*>& incl, std::vector<const filter*>& excl,
+      const index_reader& rdr, const order::prepared& ord, boost_t boost,
+      const attribute_provider* ctx) const = 0;
 
  private:
-  void group_filters(
-    std::vector<const filter*>& incl,
-    std::vector<const filter*>& excl) const;
+  void group_filters(std::vector<const filter*>& incl,
+                     std::vector<const filter*>& excl) const;
 
   filters_t filters_;
 };
@@ -93,7 +85,7 @@ class boolean_filter : public filter, private util::noncopyable {
 //////////////////////////////////////////////////////////////////////////////
 /// @class And
 //////////////////////////////////////////////////////////////////////////////
-class And: public boolean_filter {
+class And : public boolean_filter {
  public:
   static ptr make();
 
@@ -103,13 +95,10 @@ class And: public boolean_filter {
 
  protected:
   virtual filter::prepared::ptr prepare(
-    std::vector<const filter*>& incl,
-    std::vector<const filter*>& excl,
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_provider* ctx) const override;
-}; // And
+      std::vector<const filter*>& incl, std::vector<const filter*>& excl,
+      const index_reader& rdr, const order::prepared& ord, boost_t boost,
+      const attribute_provider* ctx) const override;
+};  // And
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class Or
@@ -137,44 +126,35 @@ class Or : public boolean_filter {
 
  protected:
   virtual filter::prepared::ptr prepare(
-    std::vector<const filter*>& incl,
-    std::vector<const filter*>& excl,
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_provider* ctx) const override;
+      std::vector<const filter*>& incl, std::vector<const filter*>& excl,
+      const index_reader& rdr, const order::prepared& ord, boost_t boost,
+      const attribute_provider* ctx) const override;
 
  private:
   size_t min_match_count_;
-}; // Or
+};  // Or
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class not
 //////////////////////////////////////////////////////////////////////////////
-class Not: public filter {
+class Not : public filter {
  public:
   static ptr make();
 
   Not() noexcept;
 
-  const irs::filter* filter() const { 
-    return filter_.get(); 
-  }
+  const irs::filter* filter() const { return filter_.get(); }
 
   template<typename T>
   const T* filter() const {
-    typedef typename std::enable_if <
-      std::is_base_of<irs::filter, T>::value, T
-    >::type type;
+    using type = typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
 
     return static_cast<const type*>(filter_.get());
   }
 
   template<typename T>
   T& filter() {
-    typedef typename std::enable_if <
-      std::is_base_of<irs::filter, T >::value, T
-    >::type type;
+    using type = typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
 
     filter_ = type::make();
     return static_cast<type&>(*filter_);
@@ -185,11 +165,9 @@ class Not: public filter {
 
   using filter::prepare;
 
-  virtual filter::prepared::ptr prepare( 
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_provider* ctx) const override;
+  virtual filter::prepared::ptr prepare(
+      const index_reader& rdr, const order::prepared& ord, boost_t boost,
+      const attribute_provider* ctx) const override;
 
   virtual size_t hash() const noexcept override;
 
@@ -200,6 +178,6 @@ class Not: public filter {
   filter::ptr filter_;
 };
 
-}
+}  // namespace iresearch
 
 #endif
