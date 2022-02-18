@@ -1,6 +1,8 @@
 master
 -------------------------
 
+* Added proxy_filter for caching search results
+
 * Speedup BM25 scorer.
 
 * Move to C++20.

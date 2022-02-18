@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.8.2 FATAL_ERROR)
 
+find_package(Git 1.5.3 REQUIRED)
+
 # we use of xxx_ROOT variables for modules sources search
 if (POLICY CMP0074)
   cmake_policy(SET CMP0074 OLD)
@@ -106,20 +108,16 @@ if (MSVC)
   # MSVC2017.1 - MSVC2018.7 does not correctly support alignas()
   # MSVC2017.8 requires the following define
   add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
-  
+
   add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
   add_definitions(/bigobj)
 
   # min/max macros interferes with our codebase
   add_definitions(-DNOMINMAX)
-  
-  # fix strange issue with utf_8_to_32_iterator failing
-  # to follow std::bidirectional_iterator concept
-  add_definitions(-DBOOST_TEXT_DISABLE_CONCEPTS)
-  
+
   add_definitions(-D_USE_MATH_DEFINES)
-  
+
   # we don't want obvious warning
   add_compile_options(/wd4324)
 
@@ -134,6 +132,10 @@ elseif (NOT IS_ARM)
   # allow 16 byte compare-exchange
   add_compile_options(-mcx16)
 endif()
+
+# fix strange issue with utf_8_to_32_iterator failing
+# to follow std::bidirectional_iterator concept
+add_definitions(-DBOOST_TEXT_DISABLE_CONCEPTS)
 
 ################################################################################
 ### setup clang-tidy
