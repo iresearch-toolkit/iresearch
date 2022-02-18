@@ -1163,7 +1163,7 @@ void assert_index(
       if (expected_field->first != "date") {
         continue;
       }
-      std::cout << "field = " << expected_field->first << std::endl;
+//      std::cout << "field = " << expected_field->first << std::endl;
       ASSERT_EQ(expected_field->first, actual_fields->value().meta().name);
       ASSERT_EQ(expected_field->second.name, actual_fields->value().meta().name);
       ASSERT_EQ(expected_field->second.index_features, actual_fields->value().meta().index_features);

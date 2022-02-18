@@ -154,6 +154,12 @@ uint32_t write_block32(
   const size_t buf_size = packed::bytes_required_32(Size, bits);
   std::memset(encoded, 0, buf_size);
   pack(decoded, encoded, bits);
+  if(decoded[0] == 0) {
+    for(size_t i = 0; i < buf_size; ++i) {
+      std::cout << std::hex << int(encoded[i]) << " ";
+    }
+    std:: cout << std::dec << std::endl;
+  }
 
   out.write_byte(static_cast<byte_type>(bits & 0xFF));
   out.write_bytes(reinterpret_cast<byte_type*>(encoded), buf_size);
