@@ -163,11 +163,11 @@ class index_test_case : public tests::index_test_base {
 
   void assert_index(size_t skip = 0, irs::automaton_table_matcher* matcher = nullptr) const {
     index_test_base::assert_index(irs::IndexFeatures::NONE, skip, matcher);
-    //index_test_base::assert_index(irs::IndexFeatures::FREQ, skip, matcher);
-    //index_test_base::assert_index(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, skip, matcher);
-    //index_test_base::assert_index(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS, skip, matcher);
-    //index_test_base::assert_index(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::PAY, skip, matcher);
-    //index_test_base::assert_index(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY, skip, matcher);
+    index_test_base::assert_index(irs::IndexFeatures::FREQ, skip, matcher);
+    index_test_base::assert_index(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, skip, matcher);
+    index_test_base::assert_index(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS, skip, matcher);
+    index_test_base::assert_index(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::PAY, skip, matcher);
+    index_test_base::assert_index(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY, skip, matcher);
   }
 
   void clear_writer() {

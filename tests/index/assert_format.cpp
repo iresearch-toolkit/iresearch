@@ -666,13 +666,13 @@ void assert_term(
   //                                        1070          1071
   std::vector<std::string> failed_terms = {"1281280014", "1441280"};
 
-  for(int i = 0; i < expected_term.value().size(); ++i) {
-    term_as_str += std::to_string(int(expected_term.value()[i]));
-  }
+//  for(int i = 0; i < expected_term.value().size(); ++i) {
+//    term_as_str += std::to_string(int(expected_term.value()[i]));
+//  }
 
-  if (failed_terms[0] != term_as_str) {
-      return;
-  }
+//  if (failed_terms[0] != term_as_str) {
+//      return;
+//  }
 
   size_t doc_count = 0;
   // check docs
@@ -684,7 +684,6 @@ void assert_term(
 
     auto actual = actual_docs->value();
     ASSERT_EQ(expected_docs->value(), actual);
-    break;
 
     // check document attributes
     {
@@ -731,9 +730,9 @@ void assert_term(
     }
   }
 //  std::cout << "postings = " << doc_count << std::endl;
-  //ASSERT_FALSE(actual_docs->next());
-  //ASSERT_TRUE(irs::doc_limits::eof(expected_docs->value()));
-  //ASSERT_TRUE(irs::doc_limits::eof(actual_docs->value()));
+  ASSERT_FALSE(actual_docs->next());
+  ASSERT_TRUE(irs::doc_limits::eof(expected_docs->value()));
+  ASSERT_TRUE(irs::doc_limits::eof(actual_docs->value()));
 }
 
 void assert_terms_next(
