@@ -1599,7 +1599,9 @@ class doc_iterator final : public irs::doc_iterator {
     assert(!IteratorTraits::payload() || IteratorTraits::payload() == FieldTraits::payload());
 
     // add mandatory attributes
+    std::cout << "PREPARE()1602: begin_ = " << *begin_ << std::endl;
     begin_ = end_ = docs_;
+    std::cout << "PREPARE()1604: begin_ = " << *begin_ << std::endl;
 
     term_state_ = static_cast<const version10::term_meta&>(meta);
 
@@ -1667,13 +1669,14 @@ class doc_iterator final : public irs::doc_iterator {
     }
 
     seek_to_block(target);
-
+    std::cout << "SEEK()1672: begin_ = " << *begin_ << std::endl;
     if (begin_ == end_) {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
         doc.value = doc_limits::eof();
         begin_ = end_ = docs_; // seal the iterator
+        std::cout << "SEEK()1679: begin_ = " << *begin_ << std::endl;
         return doc_limits::eof();
       }
 
@@ -1682,6 +1685,7 @@ class doc_iterator final : public irs::doc_iterator {
 
     [[maybe_unused]] uint32_t notify{0};
     while (begin_ < end_) {
+      std::cout << "SEEK()1688: begin_ = " << *begin_ << std::endl;
       doc.value += *begin_++;
 
       if constexpr (!IteratorTraits::position()) {
@@ -1731,12 +1735,13 @@ class doc_iterator final : public irs::doc_iterator {
 
   virtual bool next() override {
     auto& doc = std::get<document>(attrs_);
-
+    std::cout << "NEXT()1739: begin_ = " << *begin_ << std::endl;
     if (begin_ == end_) {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
         doc.value = doc_limits::eof();
+        std::cout << "NEXT()1744: begin_ = " << *begin_ << std::endl;
         begin_ = end_ = docs_; // seal the iterator
         return false;
       }
@@ -1744,11 +1749,11 @@ class doc_iterator final : public irs::doc_iterator {
       refill();
     }
 
-    std::cout << "before doc.value " << doc.value << " " << *begin_ << std::endl;
+    std::cout << "NEXT()1752: begin_ = " << *begin_ << std::endl;
 
     doc.value += *begin_++; // update document attribute
 
-    std::cout << "acter doc.value " << doc.value << " " << std::endl;
+    std::cout << "NEXT()1756: begin_ = " << *begin_ << std::endl;
 
     if constexpr (IteratorTraits::frequency()) {
       auto& freq = std::get<frequency>(attrs_);
@@ -1775,6 +1780,7 @@ class doc_iterator final : public irs::doc_iterator {
 
   // returns current position in the document block 'docs_'
   size_t relative_pos() noexcept {
+    std::cout << "relative_pos()1783: begin_ = " << *begin_ << std::endl;
     assert(begin_ >= docs_);
     return begin_ - docs_;
   }
@@ -1847,8 +1853,9 @@ class doc_iterator final : public irs::doc_iterator {
         !doc_limits::valid(doc.value)) {
       doc.value = (doc_limits::min)();
     }
-
+    std::cout << "refill()1856: begin_ = " << *begin_ << std::endl;
     begin_ = docs_;
+    std::cout << "refill()1858: begin_ = " << *begin_ << std::endl;
     doc_freq_ = doc_freqs_;
   }
 
