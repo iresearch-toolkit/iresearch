@@ -1743,6 +1743,7 @@ class doc_iterator final : public irs::doc_iterator {
         doc.value = doc_limits::eof();
         std::cout << "NEXT()1744: begin_ = " << *begin_ << std::endl;
         begin_ = end_ = docs_; // seal the iterator
+        std::cout << "NEXT()1746: begin_ = " << *begin_ << std::endl;
         return false;
       }
 
@@ -1781,7 +1782,9 @@ class doc_iterator final : public irs::doc_iterator {
   // returns current position in the document block 'docs_'
   size_t relative_pos() noexcept {
     std::cout << "relative_pos()1783: begin_ = " << *begin_ << std::endl;
+    std::cout << "relative_pos()1784: docs_ = " << *docs_ << std::endl;
     assert(begin_ >= docs_);
+    std::cout << "relative_pos()1786: begin_ - docs_ = " << *begin_ - *docs_ << std::endl;
     return begin_ - docs_;
   }
 
@@ -1938,7 +1941,9 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
       doc_in_->seek(last.doc_ptr);
       std::get<document>(attrs_).value = last.doc;
       cur_pos_ = skipped;
+      std::cout << "seek_to_block()1941: begin_ = " << *begin_ << std::endl;
       begin_ = end_ = docs_; // will trigger refill in "next"
+      std::cout << "seek_to_block()1943: begin_ = " << *begin_ << std::endl;
       if constexpr (IteratorTraits::position()) {
         std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(last); // notify positions
       }
