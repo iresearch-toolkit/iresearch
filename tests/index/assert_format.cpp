@@ -678,13 +678,13 @@ void assert_term(
   // check docs
   for (; expected_docs->next(); ++doc_count) {
     ASSERT_TRUE(actual_docs->next());
-    break;
 //    if (expected_docs->value() != actual_docs->value()) {
 //       std::cout << "term = " << term_as_str << std::endl;
 //    }
 
     auto actual = actual_docs->value();
     ASSERT_EQ(expected_docs->value(), actual);
+    break;
 
     // check document attributes
     {
