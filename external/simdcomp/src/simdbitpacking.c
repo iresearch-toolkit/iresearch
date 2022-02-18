@@ -9151,10 +9151,14 @@ static void __SIMD_fastunpack1_32(const  __m128i*   in, uint32_t *    _out) {
     uint32_t i, shift = 0;
 
     for (i = 0; i < 8; ++i) {
-        OutReg1 = _mm_and_si128(  _mm_srli_epi32(InReg1,shift++) , mask);
-        OutReg2 = _mm_and_si128(  _mm_srli_epi32(InReg2,shift++) , mask);
-        OutReg3 = _mm_and_si128(  _mm_srli_epi32(InReg1,shift++) , mask);
-        OutReg4 = _mm_and_si128(  _mm_srli_epi32(InReg2,shift++) , mask);
+        OutReg1 = _mm_and_si128(  _mm_srli_epi32(InReg1, shift) , mask);
+        shift += 1;
+        OutReg2 = _mm_and_si128(  _mm_srli_epi32(InReg2, shift) , mask);
+        shift += 1;
+        OutReg3 = _mm_and_si128(  _mm_srli_epi32(InReg1, shift) , mask);
+        shift += 1;
+        OutReg4 = _mm_and_si128(  _mm_srli_epi32(InReg2, shift) , mask);
+        shift += 1;
         _mm_storeu_si128(out++, OutReg1);
         _mm_storeu_si128(out++, OutReg2);
         _mm_storeu_si128(out++, OutReg3);
