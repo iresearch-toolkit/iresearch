@@ -1828,9 +1828,11 @@ class doc_iterator final : public irs::doc_iterator {
     // should never call refill for singleton documents
     assert(1 != term_state_.docs_count);
     const auto left = term_state_.docs_count - cur_pos_;
+    std::cout << "left = " << std::dec <<left << std::endl;
 
     if (left >= postings_writer_base::BLOCK_SIZE) {
       // read doc deltas
+      std::cout << "read_block" << std::endl;
       IteratorTraits::read_block(
         *doc_in_,
         enc_buf_,
@@ -1847,9 +1849,12 @@ class doc_iterator final : public irs::doc_iterator {
 
       end_ = docs_ + postings_writer_base::BLOCK_SIZE;
     } else {
+      std::cout << "read_end_block" << std::endl;
       read_end_block(left);
       end_ = docs_ + left;
     }
+
+    std::cout << docs_[0] << std::endl;
 
     // if this is the initial doc_id then set it to min() for proper delta value
     if (auto& doc = std::get<document>(attrs_);
