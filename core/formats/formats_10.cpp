@@ -1599,9 +1599,7 @@ class doc_iterator final : public irs::doc_iterator {
     assert(!IteratorTraits::payload() || IteratorTraits::payload() == FieldTraits::payload());
 
     // add mandatory attributes
-    std::cout << "PREPARE()1602: begin_ = " << *begin_ << std::endl;
     begin_ = end_ = docs_;
-    std::cout << "PREPARE()1604: begin_ = " << *begin_ << std::endl;
 
     term_state_ = static_cast<const version10::term_meta&>(meta);
 
