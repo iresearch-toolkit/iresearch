@@ -51,21 +51,24 @@ class crc32c {
    }
  }
 
+ FORCE_INLINE void process_byte(unsigned char b) {
+   process_bytes(&b, sizeof(b));
+ }
+
  FORCE_INLINE uint32_t checksum() const noexcept {
    return value_;
  }
 
  private:
   FORCE_INLINE const uint8_t* process_block_32(const void* buffer_begin, const void* buffer_end) noexcept {
-    const size_t BLOCK_SIZE = 8*sizeof(uint32_t);
+    constexpr size_t BS = 8*sizeof(uint32_t);
 
     const auto k = std::distance(
       reinterpret_cast<const uint8_t*>(buffer_begin),
-      reinterpret_cast<const uint8_t*>(buffer_end)
-    ) / BLOCK_SIZE;
+      reinterpret_cast<const uint8_t*>(buffer_end)) / BS;
 
     const auto* begin = reinterpret_cast<const uint32_t*>(buffer_begin);
-    const auto* end = reinterpret_cast<const uint32_t*>(reinterpret_cast<const uint8_t*>(buffer_begin) + k*BLOCK_SIZE);
+    const auto* end = reinterpret_cast<const uint32_t*>(reinterpret_cast<const uint8_t*>(buffer_begin) + k*BS);
 
     for (; begin < end; ++begin) {
       value_ = _mm_crc32_u32(value_, *begin);

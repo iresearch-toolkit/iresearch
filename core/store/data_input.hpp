@@ -217,6 +217,10 @@ class buffered_index_input : public index_input {
 
   virtual uint64_t read_vlong() override final;
 
+  byte_type operator*() { return read_byte(); }
+  buffered_index_input& operator++() noexcept { return *this; }
+  buffered_index_input& operator++(int) noexcept { return *this; }
+
  protected:
   buffered_index_input() = default;
 

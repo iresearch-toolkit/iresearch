@@ -172,7 +172,7 @@ encrypted_output::encrypted_output(
 
 void encrypted_output::write_int(int32_t value) {
   if (remain() < sizeof(uint32_t)) {
-    index_output::write_int(value);
+    irs::write<uint32_t>(*this, value);
   } else {
     irs::write<uint32_t>(pos_, value);
   }
@@ -180,7 +180,7 @@ void encrypted_output::write_int(int32_t value) {
 
 void encrypted_output::write_long(int64_t value) {
   if (remain() < sizeof(uint64_t)) {
-    index_output::write_long(value);
+    irs::write<uint64_t>(*this, value);
   } else {
     irs::write<uint64_t>(pos_, value);
   }
@@ -188,7 +188,7 @@ void encrypted_output::write_long(int64_t value) {
 
 void encrypted_output::write_vint(uint32_t v) {
   if (remain() < bytes_io<uint32_t>::const_max_vsize) {
-    index_output::write_vint(v);
+    irs::vwrite<uint32_t>(*this, v);
   } else {
     irs::vwrite<uint32_t>(pos_, v);
   }
@@ -196,7 +196,7 @@ void encrypted_output::write_vint(uint32_t v) {
 
 void encrypted_output::write_vlong(uint64_t v) {
   if (remain() < bytes_io<uint64_t>::const_max_vsize) {
-    index_output::write_vlong(v);
+    irs::vwrite<uint64_t>(*this, v);
   } else {
     irs::vwrite<uint64_t>(pos_, v);
   }

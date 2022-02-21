@@ -185,6 +185,10 @@ class memory_index_input final : public index_input {
   virtual uint32_t read_vint() override;
   virtual uint64_t read_vlong() override;
 
+  byte_type operator*() { return read_byte(); }
+  memory_index_input& operator++() noexcept { return *this; }
+  memory_index_input& operator++(int) noexcept { return *this; }
+
  private:
   memory_index_input(const memory_index_input&) = default;
 
@@ -241,6 +245,14 @@ class memory_index_output : public index_output {
   virtual void write_vlong(uint64_t v) override final;
 
   void seek(size_t pos);
+
+  memory_index_output& operator=(byte_type b) {
+    write_byte(b);
+    return *this;
+  }
+  memory_index_output& operator*() noexcept { return *this; }
+  memory_index_output& operator++() noexcept { return *this; }
+  memory_index_output& operator++(int) noexcept { return *this; }
 
  protected:
   virtual void switch_buffer();

@@ -199,6 +199,10 @@ struct ref_tracking_directory: public directory {
 
   virtual bool rename(const std::string& src, const std::string& dst) noexcept override;
 
+  virtual bool sync(const std::string** name, size_t count) noexcept override {
+    return impl_.sync(name, count);
+  }
+
   virtual bool sync(const std::string& name) noexcept override {
     return impl_.sync(name);
   }

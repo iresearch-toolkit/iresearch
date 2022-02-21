@@ -2440,20 +2440,19 @@ bool index_writer::start() {
     meta_.update_generation(pending_meta);
   });
 
-  auto sync = [&dir](const std::string& file) {
-    if (!dir.sync(file)) {
-      throw io_error(string_utils::to_string(
-        "failed to sync file, path: %s",
-        file.c_str()
-      ));
-    }
-
+  files_to_sync_.clear();
+  auto sync = [this](const std::string& file) {
+    files_to_sync_.emplace_back(&file);
     return true;
   };
 
   try {
     // sync all pending files
     to_commit.to_sync.visit(sync, pending_meta);
+
+    if (!dir.sync(files_to_sync_.data(), files_to_sync_.size())) {
+      throw io_error(string_utils::to_string("failed to sync files"));
+    }
 
     // track all refs
     file_refs_t pending_refs;
