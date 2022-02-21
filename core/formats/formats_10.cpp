@@ -439,7 +439,7 @@ class postings_writer_base : public irs::postings_writer {
 void postings_writer_base::prepare(index_output& out, const irs::flush_state& state) {
   assert(state.dir);
   assert(!state.name.null());
-   std::cout << "prepare" << std::endl;
+
   // reset writer state
   docs_count_ = 0;
 
@@ -747,13 +747,7 @@ void postings_writer_base::begin_doc(doc_id_t id, const frequency* freq) {
 
   if (doc_.full()) {
     // FIXME do aligned
-    bool check = doc_.docs[0] == 1;
-
     simd::delta_encode<BLOCK_SIZE, false>(doc_.docs, doc_.block_last);
-    if (check) {
-      std::cout << std::hex <<  doc_.docs[0] << std::endl;
-    }
-
     FormatTraits::write_block(*doc_out_, doc_.docs, buf_);
 
     if (freq) {
@@ -886,11 +880,7 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
     assert(doc_limits::valid(did));
 
     begin_doc<FormatTraits>(did, freq_);
-
     docs_.value.set(did);
-//    if (did == 1) {
-//          std::cout << std::hex << "docs_.value.data()[0] = " << docs_.value.data()[0] << std::endl;
-//    }
 
     assert(pos_);
     while (pos_->next()) {
@@ -1667,14 +1657,13 @@ class doc_iterator final : public irs::doc_iterator {
     }
 
     seek_to_block(target);
-    std::cout << "SEEK()1672: begin_ = " << *begin_ << std::endl;
+
     if (begin_ == end_) {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
         doc.value = doc_limits::eof();
         begin_ = end_ = docs_; // seal the iterator
-        std::cout << "SEEK()1679: begin_ = " << *begin_ << std::endl;
         return doc_limits::eof();
       }
 
@@ -1683,7 +1672,6 @@ class doc_iterator final : public irs::doc_iterator {
 
     [[maybe_unused]] uint32_t notify{0};
     while (begin_ < end_) {
-      std::cout << "SEEK()1688: begin_ = " << *begin_ << std::endl;
       doc.value += *begin_++;
 
       if constexpr (!IteratorTraits::position()) {
@@ -1733,26 +1721,20 @@ class doc_iterator final : public irs::doc_iterator {
 
   virtual bool next() override {
     auto& doc = std::get<document>(attrs_);
-    std::cout << "NEXT()1739: begin_ = " << *begin_ << std::endl;
+
     if (begin_ == end_) {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
         doc.value = doc_limits::eof();
-        std::cout << "NEXT()1744: begin_ = " << *begin_ << std::endl;
         begin_ = end_ = docs_; // seal the iterator
-        std::cout << "NEXT()1746: begin_ = " << *begin_ << std::endl;
         return false;
       }
 
       refill();
     }
 
-    std::cout << "NEXT()1752: begin_ = " << *begin_ << std::endl;
-
     doc.value += *begin_++; // update document attribute
-
-    std::cout << "NEXT()1756: begin_ = " << *begin_ << std::endl;
 
     if constexpr (IteratorTraits::frequency()) {
       auto& freq = std::get<frequency>(attrs_);
@@ -1779,10 +1761,7 @@ class doc_iterator final : public irs::doc_iterator {
 
   // returns current position in the document block 'docs_'
   size_t relative_pos() noexcept {
-    std::cout << "relative_pos()1783: begin_ = " << *begin_ << std::endl;
-    std::cout << "relative_pos()1784: docs_ = " << *docs_ << std::endl;
     assert(begin_ >= docs_);
-    std::cout << "relative_pos()1786: begin_ - docs_ = " << *begin_ - *docs_ << std::endl;
     return begin_ - docs_;
   }
 
@@ -1826,11 +1805,9 @@ class doc_iterator final : public irs::doc_iterator {
     // should never call refill for singleton documents
     assert(1 != term_state_.docs_count);
     const auto left = term_state_.docs_count - cur_pos_;
-    std::cout << "left = " << std::dec <<left << std::endl;
 
     if (left >= postings_writer_base::BLOCK_SIZE) {
       // read doc deltas
-      std::cout << "read_block" << std::endl;
       IteratorTraits::read_block(
         *doc_in_,
         enc_buf_,
@@ -1847,21 +1824,16 @@ class doc_iterator final : public irs::doc_iterator {
 
       end_ = docs_ + postings_writer_base::BLOCK_SIZE;
     } else {
-      std::cout << "read_end_block" << std::endl;
       read_end_block(left);
       end_ = docs_ + left;
     }
-
-    std::cout << docs_[0] << std::endl;
 
     // if this is the initial doc_id then set it to min() for proper delta value
     if (auto& doc = std::get<document>(attrs_);
         !doc_limits::valid(doc.value)) {
       doc.value = (doc_limits::min)();
     }
-    std::cout << "refill()1856: begin_ = " << *begin_ << std::endl;
     begin_ = docs_;
-    std::cout << "refill()1858: begin_ = " << *begin_ << std::endl;
     doc_freq_ = doc_freqs_;
   }
 
@@ -1944,9 +1916,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
       doc_in_->seek(last.doc_ptr);
       std::get<document>(attrs_).value = last.doc;
       cur_pos_ = skipped;
-      std::cout << "seek_to_block()1941: begin_ = " << *begin_ << std::endl;
       begin_ = end_ = docs_; // will trigger refill in "next"
-      std::cout << "seek_to_block()1943: begin_ = " << *begin_ << std::endl;
       if constexpr (IteratorTraits::position()) {
         std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(last); // notify positions
       }

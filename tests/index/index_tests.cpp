@@ -14068,7 +14068,8 @@ INSTANTIATE_TEST_SUITE_P(
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
 namespace {
 #if defined(IRESEARCH_SSE2)
-const auto index_test_case_13_values = ::testing::Values(tests::format_info{"1_3simd"});
+const auto index_test_case_13_values = ::testing::Values(tests::format_info{"1_3", "1_0"},
+                                                         tests::format_info{"1_3simd", "1_0"});
 #else
 const auto index_test_case_13_values = ::testing::Values(tests::format_info{"1_3", "1_0"});
 #endif

@@ -24,8 +24,6 @@
 #include "token_streams.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/string_utils.hpp"
-#include <iostream>
-#include <bitset>
 
 namespace iresearch {
 

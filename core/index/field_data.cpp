@@ -52,7 +52,6 @@
 #include "utils/type_limits.hpp"
 #include "utils/bytes_utils.hpp"
 
-#include <iostream>
 namespace {
 
 using namespace irs;
@@ -1229,7 +1228,6 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 
     // write inverted data
     auto it = terms.iterator();
-    std::cout << "Field name = " << meta.name << std::endl;
     fw.write(meta.name, meta.index_features, meta.features, *it);
   }
 
