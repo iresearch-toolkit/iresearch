@@ -603,14 +603,16 @@ TEST_P(index_profile_test_case,
   profile_bulk_index(16, 0, 5, 10000);  // 5 does not divide evenly into 16
 }
 
+const auto kValues = ::testing::Values(
+#ifdef IRESEARCH_URING
+               &tests::directory<&tests::async_directory>,
+#endif
+               &tests::directory<&tests::memory_directory>,
+               &tests::directory<&tests::fs_directory>,
+               &tests::directory<&tests::mmap_directory>);
+
 INSTANTIATE_TEST_SUITE_P(
     index_profile_test, index_profile_test_case,
-    ::testing::Combine(::testing::Values(
-#ifdef IRESEARCH_URING
-                           &tests::directory<&tests::async_directory>,
-#endif
-                           &tests::directory<&tests::memory_directory>,
-                           &tests::directory<&tests::fs_directory>,
-                           &tests::directory<&tests::mmap_directory>),
+    ::testing::Combine(kValues,
                        ::testing::Values("1_0", "1_2", "1_3", "1_4")),
     index_profile_test_case::to_string);

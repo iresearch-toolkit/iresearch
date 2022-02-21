@@ -15318,17 +15318,17 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
   }
 }
 
+const auto kValues = ::testing::Values(
+#ifdef IRESEARCH_URING
+    &tests::directory<&tests::async_directory>,
+#endif
+    &tests::directory<tests::memory_directory>,
+    &tests::rot13_directory<&tests::memory_directory, 16>,
+    &tests::rot13_directory<&tests::mmap_directory, 16>);
+
 INSTANTIATE_TEST_SUITE_P(
     index_test_14, index_test_case_14,
-    ::testing::Combine(
-        ::testing::Values(
-#ifdef IRESEARCH_URING
-            &tests::directory<&tests::async_directory>,
-#endif
-            &tests::directory<tests::memory_directory>,
-            &tests::rot13_directory<&tests::memory_directory, 16>,
-            &tests::rot13_directory<&tests::mmap_directory, 16>),
-        index_test_case_14_values),
+    ::testing::Combine(kValues, index_test_case_14_values),
     index_test_case_14::to_string);
 
 class index_test_case_10 : public tests::index_test_base {};

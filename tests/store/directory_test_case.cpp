@@ -4420,14 +4420,16 @@ TEST_P(directory_test_case, directory_size) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(directory_test, directory_test_case,
-                         ::testing::Values(
+const auto kValues =  ::testing::Values(
 #ifdef IRESEARCH_URING
-                             &tests::directory<&tests::async_directory>,
+               &tests::directory<&tests::async_directory>,
 #endif
-                             &tests::directory<&tests::memory_directory>,
-                             &tests::directory<&tests::fs_directory>,
-                             &tests::directory<&tests::mmap_directory>),
+               &tests::directory<&tests::memory_directory>,
+               &tests::directory<&tests::fs_directory>,
+               &tests::directory<&tests::mmap_directory>);
+
+INSTANTIATE_TEST_SUITE_P(directory_test, directory_test_case,
+                         kValues,
                          tests::directory_test_case_base<>::to_string);
 
 class fs_directory_test : public test_base {
