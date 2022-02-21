@@ -80,33 +80,39 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
     } else if (data.is_number()) {
       // 'value' can be interpreted as a double
-      const auto dValue = data.as_number<double_t>();
       {
         doc.insert(std::make_shared<granular_double_field>());
+        const auto dValue = data.as_number<double_t>();
         auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
         field.name(name);
         field.value(dValue);
       }
 
       // 'value' can be interpreted as a float
-      doc.insert(std::make_shared<granular_float_field>());
-      auto& field = (doc.indexed.end() - 1).as<tests::float_field>();
-      field.name(name);
-      field.value(data.as_number<float_t>());
-
-      const uint64_t lValue = uint64_t(std::ceil(dValue));
       {
-        doc.insert(std::make_shared<granular_long_field>());
-        auto& field = (doc.indexed.end() - 1).as<tests::long_field>();
+        doc.insert(std::make_shared<granular_float_field>());
+        auto fValue = data.as_number<float_t>();
+        auto& field = (doc.indexed.end() - 1).as<tests::float_field>();
         field.name(name);
-        field.value(lValue);
+        field.value(fValue);
       }
 
+      // 'value' can be interpreted as int64
+      {
+        doc.insert(std::make_shared<granular_long_field>());
+        const auto liValue = data.as_number<int64_t>();
+        auto& field = (doc.indexed.end() - 1).as<tests::long_field>();
+        field.name(name);
+        field.value(liValue);
+      }
+
+      // 'value' can be interpreted as int32
       {
         doc.insert(std::make_shared<granular_int_field>());
+        auto lValue = data.as_number<int32_t>();
         auto& field = (doc.indexed.end() - 1).as<tests::int_field>();
         field.name(name);
-        field.value(int32_t(lValue));
+        field.value(lValue);
       }
     }
   }
