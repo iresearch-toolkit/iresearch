@@ -154,19 +154,6 @@ uint32_t write_block32(
   const size_t buf_size = packed::bytes_required_32(Size, bits);
   std::memset(encoded, 0, buf_size);
   pack(decoded, encoded, bits);
-  // if(decoded[0] == 0) {
-  //   std::cout << "decoded" << std::endl;
-  //   for(size_t i = 0; i < buf_size; ++i) {
-  //     std::cout << std::hex << int(decoded[i]) << " ";
-  //   }
-  //   std:: cout << std::dec << std::endl;
-
-  //   std::cout << "encoded" << std::endl;
-  //   for(size_t i = 0; i < buf_size; ++i) {
-  //     std::cout << std::hex << int(encoded[i]) << " ";
-  //   }
-  //   std:: cout << std::dec << std::endl;
-  // }
 
   out.write_byte(static_cast<byte_type>(bits & 0xFF));
   out.write_bytes(reinterpret_cast<byte_type*>(encoded), buf_size);
@@ -236,7 +223,6 @@ void read_block32(
   assert(encoded);
   assert(decoded);
 
-  // std::cout << "read_block32" << std::endl;
   const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
     std::fill_n(decoded, Size, in.read_vint());
@@ -244,18 +230,9 @@ void read_block32(
     const size_t required = packed::bytes_required_32(Size, bits);
 
     const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
-    // std::cout << "encoded" << std::endl;
-    // for (size_t i = 0; i < 16; ++i) {
-    //     std::cout << std::hex << int(buf[i]) << " ";
-    // }
-    // std::cout << std::dec << std::endl;
 
     if (buf) {
       unpack(decoded, reinterpret_cast<const uint32_t*>(buf), bits);
-      // std::cout << "decoded" << std::endl;
-      // for (size_t i = 0; i < 16; ++i) {
-      //     std::cout << std::hex << int(decoded[i]) << " ";
-      // }
       return;
     }
 
