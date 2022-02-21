@@ -15,9 +15,9 @@ set (fasttext_VERSION_MINOR 1)
 
 include_directories(src)
 
-if (NOT MSVC)
-  set(CMAKE_CXX_FLAGS " -pthread -std=c++11 -funroll-loops -O3 -march=native")
-endif()
+#if (NOT MSVC)
+#  set(CMAKE_CXX_FLAGS " -pthread -std=c++11 -funroll-loops -O3 -march=native")
+#endif()
 
 set(HEADER_FILES
     src/args.h
