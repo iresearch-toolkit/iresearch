@@ -212,6 +212,14 @@ struct directory : private util::noncopyable {
   ////////////////////////////////////////////////////////////////////////////
   virtual bool sync(const std::string& name) noexcept = 0;
 
+  virtual bool sync(const std::string** begin, size_t count) noexcept {
+    return std::all_of(
+      begin, begin + count,
+      [this](const std::string* name) mutable noexcept {
+        return this->sync(*name);
+    });
+  }
+
   ////////////////////////////////////////////////////////////////////////////
   /// @brief applies the specified 'visitor' to every filename in a directory
   /// @param[in] visitor to be applied

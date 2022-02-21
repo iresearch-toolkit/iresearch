@@ -90,25 +90,25 @@ int16_t buffered_index_input::read_short() {
 
 int32_t buffered_index_input::read_int() {
   return remain() < sizeof(uint32_t)
-    ? data_input::read_int()
+    ? irs::read<uint32_t>(*this)
     : irs::read<uint32_t>(begin_);
 }
 
 int64_t buffered_index_input::read_long() {
   return remain() < sizeof(uint64_t)
-    ? data_input::read_long()
+    ? irs::read<uint64_t>(*this)
     : irs::read<uint64_t>(begin_);
 }
 
 uint32_t buffered_index_input::read_vint() {
   return remain() < bytes_io<uint32_t>::const_max_vsize
-    ? data_input::read_vint()
+    ? irs::vread<uint32_t>(*this)
     : irs::vread<uint32_t>(begin_);
 }
 
 uint64_t buffered_index_input::read_vlong() {
   return remain() < bytes_io<uint64_t>::const_max_vsize
-    ? data_input::read_vlong()
+    ? irs::vread<uint64_t>(*this)
     : irs::vread<uint64_t>(begin_);
 }
 

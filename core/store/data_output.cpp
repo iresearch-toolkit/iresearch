@@ -55,7 +55,7 @@ output_buf::int_type output_buf::overflow(int_type c) {
 
 void buffered_index_output::write_int(int32_t value) {
   if (remain() < sizeof(uint32_t)) {
-    index_output::write_int(value);
+    irs::write<uint32_t>(*this, value);
   } else {
     irs::write<uint32_t>(pos_, value);
   }
@@ -63,7 +63,7 @@ void buffered_index_output::write_int(int32_t value) {
 
 void buffered_index_output::write_long(int64_t value) {
   if (remain() < sizeof(uint64_t)) {
-    index_output::write_long(value);
+    irs::write<uint64_t>(*this, value);
   } else {
     irs::write<uint64_t>(pos_, value);
   }
@@ -71,7 +71,7 @@ void buffered_index_output::write_long(int64_t value) {
 
 void buffered_index_output::write_vint(uint32_t v) {
   if (remain() < bytes_io<uint32_t>::const_max_vsize) {
-    index_output::write_vint(v);
+    irs::vwrite<uint32_t>(*this, v);
   } else {
     irs::vwrite<uint32_t>(pos_, v);
   }
@@ -79,7 +79,7 @@ void buffered_index_output::write_vint(uint32_t v) {
 
 void buffered_index_output::write_vlong(uint64_t v) {
   if (remain() < bytes_io<uint64_t>::const_max_vsize) {
-    index_output::write_vlong(v);
+    irs::vwrite<uint64_t>(*this, v);
   } else {
     irs::vwrite<uint64_t>(pos_, v);
   }
@@ -143,14 +143,16 @@ size_t buffered_index_output::file_pointer() const {
 void buffered_index_output::flush() {
   assert(buf_ <= pos_);
   const auto size = size_t(std::distance(buf_, pos_));
-  flush_buffer(buf_, size);
-  start_ += size;
-  pos_ = buf_;
+  if (size) {
+    flush_buffer(buf_, size);
+    start_ += size;
+    pos_ = buf_;
+  }
 }
 
 void buffered_index_output::close() {
   if (pos_ > buf_) {
-    flush();
+    flush_buffer(buf_, size_t(std::distance(buf_, pos_)));
   }
   start_ = 0;
   pos_ = buf_;
