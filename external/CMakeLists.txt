@@ -1,3 +1,5 @@
+include(UpdateModule)
+
 ### Suppressing all warnings from external libs
 if (SUPPRESS_EXTERNAL_WARNINGS)
   if (MSVC)
@@ -171,16 +173,10 @@ if (NOT TARGET velocypack)
   if ("${VPACK_ROOT}" STREQUAL "")
     set(VPACK_ROOT "$ENV{VPACK_ROOT}")
   endif()
-  
+
   if ("${VPACK_ROOT}" STREQUAL "")
     message("VPACK_ROOT not set. Pulling velocypack submodule.")
-    execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --depth=1 -- "external/velocypack"
-                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} RESULT_VARIABLE GIT_SUBMOD_RESULT)
-    if(NOT GIT_SUBMOD_RESULT EQUAL "0")
-      message(
-        FATAL_ERROR
-        "git submodule update --init failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
-    endif()
+    UpdateModule(${GIT_EXECUTABLE} "external/velocypack" ${CMAKE_SOURCE_DIR} "README.md")
     set(VPACK_ROOT ${CMAKE_SOURCE_DIR}/external/velocypack)
   endif()
 
