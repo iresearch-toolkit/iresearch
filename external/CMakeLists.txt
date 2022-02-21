@@ -1,3 +1,5 @@
+include(UpdateModule)
+
 ### Suppressing all warnings from external libs
 if (SUPPRESS_EXTERNAL_WARNINGS)
   if (MSVC)
@@ -92,10 +94,13 @@ if (MSVC)
     PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
   )
 else()
-  target_compile_options(
-    ${IResearch_TARGET_NAME}-ofst
-    PRIVATE "-fPIC"
-  )
+  CHECK_C_COMPILER_FLAG(-fPIC SUPPORT_FPIC)
+  if (SUPPORT_FPIC)
+    target_compile_options(
+      ${IResearch_TARGET_NAME}-ofst
+      PRIVATE "-fPIC"
+    )
+  endif ()
 endif()
 
 # force c++17 for ofst as transitional step
@@ -169,9 +174,14 @@ if (NOT TARGET velocypack)
     set(VPACK_ROOT "$ENV{VPACK_ROOT}")
   endif()
 
+  if ("${VPACK_ROOT}" STREQUAL "")
+    message("VPACK_ROOT not set. Pulling velocypack submodule.")
+    UpdateModule(${GIT_EXECUTABLE} "external/velocypack" ${CMAKE_SOURCE_DIR} "README.md")
+    set(VPACK_ROOT ${CMAKE_SOURCE_DIR}/external/velocypack)
+  endif()
+
   if (NOT ("${VPACK_ROOT}" STREQUAL ""))
     expand_path(${VPACK_ROOT} VPACK_ROOT_EXP)
-
     add_subdirectory(${VPACK_ROOT_EXP}
                      ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-velocypack.dir
                      EXCLUDE_FROM_ALL)
