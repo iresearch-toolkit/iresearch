@@ -256,25 +256,25 @@ int16_t memory_index_input::read_short() {
 
 int32_t memory_index_input::read_int() {
   return remain() < sizeof(uint32_t)
-    ? data_input::read_int()
+    ? irs::read<uint32_t>(*this)
     : irs::read<uint32_t>(begin_);
 }
 
 int64_t memory_index_input::read_long() {
   return remain() < sizeof(uint64_t)
-    ? data_input::read_long()
+    ? irs::read<uint64_t>(*this)
     : irs::read<uint64_t>(begin_);
 }
 
 uint32_t memory_index_input::read_vint() {
   return remain() < bytes_io<uint32_t>::const_max_vsize
-    ? data_input::read_vint()
+    ? irs::vread<uint32_t>(*this)
     : irs::vread<uint32_t>(begin_);
 }
 
 uint64_t memory_index_input::read_vlong() {
   return remain() < bytes_io<uint64_t>::const_max_vsize
-    ? data_input::read_vlong()
+    ? irs::vread<uint64_t>(*this)
     : irs::vread<uint64_t>(begin_);
 }
 
@@ -347,7 +347,7 @@ void memory_index_output::switch_buffer() {
 
 void memory_index_output::write_long(int64_t value) {
   if (remain() < sizeof(uint64_t)) {
-    index_output::write_long(value);
+    irs::write<uint64_t>(*this, value);
   } else {
     irs::write<uint64_t>(pos_, value);
   }
@@ -355,7 +355,7 @@ void memory_index_output::write_long(int64_t value) {
 
 void memory_index_output::write_int(int32_t value) {
   if (remain() < sizeof(uint32_t)) {
-    index_output::write_int(value);
+    irs::write<uint32_t>(*this, value);
   } else {
     irs::write<uint32_t>(pos_, value);
   }
@@ -363,7 +363,7 @@ void memory_index_output::write_int(int32_t value) {
 
 void memory_index_output::write_vlong(uint64_t v) {
   if (remain() < bytes_io<uint64_t>::const_max_vsize) {
-    index_output::write_vlong(v);
+    irs::vwrite<uint64_t>(*this, v);
   } else {
     irs::vwrite<uint64_t>(pos_, v);
   }
@@ -371,7 +371,7 @@ void memory_index_output::write_vlong(uint64_t v) {
 
 void memory_index_output::write_vint(uint32_t v) {
   if (remain() < bytes_io<uint32_t>::const_max_vsize) {
-    index_output::write_vint(v);
+    irs::vwrite<uint32_t>(*this, v);
   } else {
     irs::vwrite<uint32_t>(pos_, v);
   }

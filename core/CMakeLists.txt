@@ -272,6 +272,10 @@ set(IResearch_core_headers
   ./types.hpp
 )
 
+if (USE_URING)
+  list(APPEND IResearch_core_sources ./store/async_directory.cpp)
+endif()
+
 # TODO: use FindLibDL and check linux distr version
 if (NOT MSVC)
   set(DL_LIBRARY dl)

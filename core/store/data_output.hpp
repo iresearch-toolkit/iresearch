@@ -141,16 +141,27 @@ class buffered_index_output : public index_output, util::noncopyable {
 
   virtual void write_long(int64_t v) override final;
 
+  buffered_index_output& operator=(byte_type b) {
+    write_byte(b);
+    return *this;
+  }
+  buffered_index_output& operator*() noexcept { return *this; }
+  buffered_index_output& operator++() noexcept { return *this; }
+  buffered_index_output& operator++(int) noexcept { return *this; }
+
  protected:
   void reset(byte_type* buf, size_t size) noexcept {
     buf_ = buf;
     pos_ = buf;
     end_ = buf + size;
     buf_size_ = size;
-    start_ = 0;
   }
 
   virtual void flush_buffer(const byte_type* b, size_t len) = 0;
+
+  byte_type* buffer() const noexcept { return buf_; }
+
+  size_t buffer_offset() const noexcept { return start_; }
 
   // returns number of reamining bytes in the buffer
   FORCE_INLINE size_t remain() const {
