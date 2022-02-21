@@ -132,7 +132,7 @@ bool numeric_token_stream::next() {
 
 void numeric_token_stream::reset(
     int32_t value, 
-    uint32_t step /* = PRECISION_STEP_DEF */) {
+    uint32_t step /* = PRECISION_STEP_DEF */) { 
   num_.reset(value, step);
 }
 
@@ -145,7 +145,7 @@ void numeric_token_stream::reset(
 #ifndef FLOAT_T_IS_DOUBLE_T
 void numeric_token_stream::reset(
     float_t value, 
-    uint32_t step /* = PRECISION_STEP_DEF */) {
+    uint32_t step /* = PRECISION_STEP_DEF */) { 
   num_.reset(value, step);
 }
 #endif

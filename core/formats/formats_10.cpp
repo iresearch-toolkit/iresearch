@@ -1833,7 +1833,7 @@ class doc_iterator final : public irs::doc_iterator {
         !doc_limits::valid(doc.value)) {
       doc.value = (doc_limits::min)();
     }
-    
+
     begin_ = docs_;
     doc_freq_ = doc_freqs_;
   }
