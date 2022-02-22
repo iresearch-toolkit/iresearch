@@ -2451,7 +2451,7 @@ bool index_writer::start() {
     to_commit.to_sync.visit(sync, pending_meta);
 
     if (!dir.sync(files_to_sync_.data(), files_to_sync_.size())) {
-      throw io_error(string_utils::to_string("failed to sync files"));
+      throw io_error("Failed to sync files.");
     }
 
     // track all refs
