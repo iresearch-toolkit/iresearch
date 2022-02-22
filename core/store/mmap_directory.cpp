@@ -147,7 +147,7 @@ mmap_directory::mmap_directory(
 }
 
 index_input::ptr mmap_directory::open(
-    const std::string& name,
+    std::string_view name,
     IOAdvice advice) const noexcept {
   try {
     const auto path = directory() / name;

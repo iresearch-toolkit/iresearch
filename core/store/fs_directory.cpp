@@ -77,7 +77,7 @@ MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprec
 
 class fs_lock : public index_lock {
  public:
-  fs_lock(const irs::utf8_path& dir, const std::string& file)
+  fs_lock(const irs::utf8_path& dir, std::string_view file)
     : dir_{dir}, file_{file} {
   }
 
@@ -491,14 +491,14 @@ fs_directory::fs_directory(
     fd_pool_size_{fd_pool_size} {
 }
 
-index_output::ptr fs_directory::create(const std::string& name) noexcept {
+index_output::ptr fs_directory::create(std::string_view name) noexcept {
   try {
     const irs::utf8_path path = dir_ / name;
 
     auto out = fs_index_output::open(path.c_str());
 
     if (!out) {
-      IR_FRMT_ERROR("Failed to open output file, path: %s", name.c_str());
+      IR_FRMT_ERROR("Failed to open output file, path: %s", std::string{name}.c_str());
     }
 
     return out;
@@ -513,32 +513,32 @@ const irs::utf8_path& fs_directory::directory() const noexcept {
 }
 
 bool fs_directory::exists(
-    bool& result, const std::string& name) const noexcept {
+    bool& result, std::string_view name) const noexcept {
   const auto path = dir_ / name;
 
   return file_utils::exists(result, path.c_str());
 }
 
 bool fs_directory::length(
-    uint64_t& result, const std::string& name) const noexcept {
+    uint64_t& result, std::string_view name) const noexcept {
   const auto path = dir_ / name;
 
   return file_utils::byte_size(result, path.c_str());
 }
 
-index_lock::ptr fs_directory::make_lock(const std::string& name) noexcept {
+index_lock::ptr fs_directory::make_lock(std::string_view name) noexcept {
   return index_lock::make<fs_lock>(dir_, name);
 }
 
 bool fs_directory::mtime(
     std::time_t& result,
-    const std::string& name) const noexcept {
+    std::string_view name) const noexcept {
   const auto path = dir_ / name;
 
   return file_utils::mtime(result, path.c_str());
 }
 
-bool fs_directory::remove(const std::string& name) noexcept {
+bool fs_directory::remove(std::string_view name) noexcept {
   try {
     const auto path = dir_ / name;
 
@@ -550,7 +550,7 @@ bool fs_directory::remove(const std::string& name) noexcept {
 }
 
 index_input::ptr fs_directory::open(
-    const std::string& name,
+    std::string_view name,
     IOAdvice advice) const noexcept {
   try {
     const auto path = dir_ / name;
@@ -563,8 +563,8 @@ index_input::ptr fs_directory::open(
 }
 
 bool fs_directory::rename(
-    const std::string& src,
-    const std::string& dst) noexcept {
+    std::string_view src,
+    std::string_view dst) noexcept {
   try {
     const auto src_path = dir_ / src;
     const auto dst_path = dir_ / dst;
@@ -602,7 +602,7 @@ bool fs_directory::visit(const directory::visitor_f& visitor) const {
   return file_utils::visit_directory(dir_.c_str(), dir_visitor, false);
 }
 
-bool fs_directory::sync(const std::string& name) noexcept {
+bool fs_directory::sync(std::string_view name) noexcept {
   try {
     const auto path = dir_ / name;
 
@@ -618,7 +618,7 @@ bool fs_directory::sync(const std::string& name) noexcept {
 
     IR_FRMT_ERROR("Failed to sync file, error: %d, path: %s", error, path.u8string().c_str());
   } catch (...) {
-    IR_FRMT_ERROR("Failed to sync file, name : %s", name.c_str());
+    IR_FRMT_ERROR("Failed to sync file, name : %s", std::string{name}.c_str());
   }
 
   return false;

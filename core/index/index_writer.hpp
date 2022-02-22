@@ -1114,7 +1114,7 @@ class index_writer : private util::noncopyable {
   void abort(); // aborts transaction
 
   feature_info_provider_t feature_info_;
-  std::vector<const std::string*> files_to_sync_;
+  std::vector<std::string_view> files_to_sync_;
   column_info_provider_t column_info_;
   payload_provider_t meta_payload_provider_; // provides payload for new segments
   const comparer* comparator_;

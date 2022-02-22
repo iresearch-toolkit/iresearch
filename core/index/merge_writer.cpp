@@ -84,42 +84,42 @@ class noop_directory : public directory {
     return attrs_;
   }
 
-  virtual index_output::ptr create(const std::string&) noexcept override {
+  virtual index_output::ptr create(std::string_view) noexcept override {
     return nullptr;
   }
 
-  virtual bool exists(bool&, const std::string&) const noexcept override {
+  virtual bool exists(bool&, std::string_view) const noexcept override {
     return false;
   }
 
-  virtual bool length(uint64_t&, const std::string&) const noexcept override {
+  virtual bool length(uint64_t&, std::string_view) const noexcept override {
     return false;
   }
 
-  virtual index_lock::ptr make_lock(const std::string&) noexcept override {
+  virtual index_lock::ptr make_lock(std::string_view) noexcept override {
     return nullptr;
   }
 
-  virtual bool mtime(std::time_t&, const std::string&) const noexcept override {
+  virtual bool mtime(std::time_t&, std::string_view) const noexcept override {
     return false;
   }
 
   virtual index_input::ptr open(
-      const std::string&, IOAdvice) const noexcept override {
+      std::string_view, IOAdvice) const noexcept override {
     return nullptr;
   }
 
-  virtual bool remove(const std::string&) noexcept override {
+  virtual bool remove(std::string_view) noexcept override {
     return false;
   }
 
   virtual bool rename(
-    const std::string&, const std::string&
+    std::string_view, std::string_view
   ) noexcept override {
     return false;
   }
 
-  virtual bool sync(const std::string&) noexcept override {
+  virtual bool sync(std::string_view) noexcept override {
     return false;
   }
 

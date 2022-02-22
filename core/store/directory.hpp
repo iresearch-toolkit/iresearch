@@ -24,6 +24,7 @@
 #define IRESEARCH_DIRECTORY_H
 
 #include <ctime>
+#include <span>
 
 #include "store/data_input.hpp"
 #include "store/data_output.hpp"
@@ -140,7 +141,7 @@ struct directory : private util::noncopyable {
   /// @param[in] name name of the file to open
   /// @returns output stream associated with the file with the specified name
   ////////////////////////////////////////////////////////////////////////////
-  virtual index_output::ptr create(const std::string& name) noexcept = 0;
+  virtual index_output::ptr create(std::string_view name) noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief check whether the file specified by the given name exists
@@ -150,7 +151,7 @@ struct directory : private util::noncopyable {
   ////////////////////////////////////////////////////////////////////////////
   virtual bool exists(
     bool& result,
-    const std::string& name) const noexcept = 0;
+    std::string_view name) const noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief returns the length of the file specified by the given name
@@ -160,14 +161,14 @@ struct directory : private util::noncopyable {
   ////////////////////////////////////////////////////////////////////////////
   virtual bool length(
     uint64_t& result,
-    const std::string& name) const noexcept = 0;
+    std::string_view name) const noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief creates an index level lock with the specified name 
   /// @param[in] name name of the lock
   /// @returns lock hande
   ////////////////////////////////////////////////////////////////////////////
-  virtual index_lock::ptr make_lock(const std::string& name) noexcept = 0;
+  virtual index_lock::ptr make_lock(std::string_view name) noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief returns modification time of the file specified by the given name
@@ -177,7 +178,7 @@ struct directory : private util::noncopyable {
   ////////////////////////////////////////////////////////////////////////////
   virtual bool mtime(
     std::time_t& result,
-    const std::string& name) const noexcept = 0;
+    std::string_view name) const noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief opens input stream associated with the existing file
@@ -185,7 +186,7 @@ struct directory : private util::noncopyable {
   /// @returns input stream associated with the file with the specified name
   ////////////////////////////////////////////////////////////////////////////
   virtual index_input::ptr open(
-    const std::string& name,
+    std::string_view name,
     IOAdvice advice) const noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
@@ -193,7 +194,7 @@ struct directory : private util::noncopyable {
   /// @param[in] name name of the file
   /// @returns true if file has been removed
   ////////////////////////////////////////////////////////////////////////////
-  virtual bool remove(const std::string& name) noexcept = 0;
+  virtual bool remove(std::string_view name) noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief renames the 'src' file to 'dst'
@@ -202,21 +203,21 @@ struct directory : private util::noncopyable {
   /// @returns true if file has been renamed
   ////////////////////////////////////////////////////////////////////////////
   virtual bool rename(
-    const std::string& src,
-    const std::string& dst) noexcept = 0;
+    std::string_view src,
+    std::string_view dst) noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief ensures that all modification have been sucessfully persisted
   /// @param[in] name name of the file
   /// @returns call success
   ////////////////////////////////////////////////////////////////////////////
-  virtual bool sync(const std::string& name) noexcept = 0;
+  virtual bool sync(std::string_view name) noexcept = 0;
 
-  virtual bool sync(const std::string** begin, size_t count) noexcept {
+  virtual bool sync(std::span<std::string_view> files) noexcept {
     return std::all_of(
-      begin, begin + count,
-      [this](const std::string* name) mutable noexcept {
-        return this->sync(*name);
+      std::begin(files), std::end(files),
+      [this](std::string_view name) mutable noexcept {
+        return this->sync(name);
     });
   }
 

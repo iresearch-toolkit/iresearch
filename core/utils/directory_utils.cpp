@@ -207,7 +207,7 @@ tracking_directory::tracking_directory(
 }
 
 index_output::ptr tracking_directory::create(
-    const std::string& name) noexcept {
+    std::string_view name) noexcept {
   try {
     files_.emplace(name);
   } catch (...) {
@@ -228,7 +228,7 @@ index_output::ptr tracking_directory::create(
 }
 
 index_input::ptr tracking_directory::open(
-    const std::string& name,
+    std::string_view name,
     IOAdvice advice) const noexcept {
   if (track_open_) {
     try {
@@ -242,7 +242,7 @@ index_input::ptr tracking_directory::open(
   return impl_.open(name, advice);
 }
 
-bool tracking_directory::remove(const std::string& name) noexcept {
+bool tracking_directory::remove(std::string_view name) noexcept {
   if (!impl_.remove(name)) {
     return false;
   }
@@ -258,7 +258,7 @@ bool tracking_directory::remove(const std::string& name) noexcept {
 }
 
 bool tracking_directory::rename(
-    const std::string& src, const std::string& dst) noexcept {
+    std::string_view src, std::string_view dst) noexcept {
   if (!impl_.rename(src, dst)) {
     return false;
   }
@@ -310,7 +310,7 @@ void ref_tracking_directory::clear_refs() const {
 }
 
 index_output::ptr ref_tracking_directory::create(
-    const std::string& name) noexcept {
+    std::string_view name) noexcept {
   try {
     // Do not change the order of calls!
     // The cleaner should "see" the file in directory
@@ -334,7 +334,7 @@ index_output::ptr ref_tracking_directory::create(
 }
 
 index_input::ptr ref_tracking_directory::open(
-    const std::string& name,
+    std::string_view name,
     IOAdvice advice) const noexcept {
   if (!track_open_) {
     return impl_.open(name, advice);
@@ -362,7 +362,7 @@ index_input::ptr ref_tracking_directory::open(
   return nullptr;
 }
 
-bool ref_tracking_directory::remove(const std::string& name) noexcept {
+bool ref_tracking_directory::remove(std::string_view name) noexcept {
   if (!impl_.remove(name)) {
     return false;
   }
@@ -388,7 +388,7 @@ bool ref_tracking_directory::remove(const std::string& name) noexcept {
 }
 
 bool ref_tracking_directory::rename(
-    const std::string& src, const std::string& dst) noexcept {
+    std::string_view src, std::string_view dst) noexcept {
   if (!impl_.rename(src, dst)) {
     return false;
   }
