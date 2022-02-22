@@ -208,22 +208,3 @@ set_target_properties(text
 ################################################################################
 
 add_subdirectory(fastText)
-
-# force c++17
-set_target_properties(fasttext-static
-    PROPERTIES
-        CXX_STANDARD 17
-        CXX_STANDARD_REQUIRED YES
-)
-
-set_target_properties(fasttext-shared
-    PROPERTIES
-        CXX_STANDARD 17
-        CXX_STANDARD_REQUIRED YES
-)
-
-set_target_properties(fasttext-static_pic
-    PROPERTIES
-        CXX_STANDARD 17
-        CXX_STANDARD_REQUIRED YES
-)

@@ -15,9 +15,14 @@ set (fasttext_VERSION_MINOR 1)
 
 include_directories(src)
 
-#if (NOT MSVC)
-#  set(CMAKE_CXX_FLAGS " -pthread -std=c++11 -funroll-loops -O3 -march=native")
-#endif()
+set(CMAKE_CXX_STANDARD 11)
+
+if (NOT MSVC)
+  find_package(Threads REQUIRED)
+  link_libraries(Threads::Threads)
+
+  set(CMAKE_CXX_FLAGS "-funroll-loops")
+endif()
 
 set(HEADER_FILES
     src/args.h
