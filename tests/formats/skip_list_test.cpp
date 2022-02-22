@@ -325,7 +325,7 @@ TEST_F(skip_writer_test, reset) {
       size_t num_levels = in->read_vint();
 
       // check levels from n downto 1
-      for (num_levels; num_levels > 1; --num_levels) {
+      for (; num_levels > 1; --num_levels) {
         // skip level size
         in->read_vlong();
         auto& level = levels[num_levels-1];

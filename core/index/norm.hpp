@@ -60,7 +60,7 @@ class Norm : public attribute {
     return 1.f;
   }
 
-  static feature_writer::ptr MakeWriter(range<const bytes_ref> payload);
+  static feature_writer::ptr MakeWriter(std::span<const bytes_ref> payload);
 
   static auto MakeReader(Context&& ctx) {
     assert(ctx.it);
@@ -228,7 +228,7 @@ class Norm2 : public attribute {
     return "iresearch::norm2";
   }
 
-  static feature_writer::ptr MakeWriter(range<const bytes_ref> payload);
+  static feature_writer::ptr MakeWriter(std::span<const bytes_ref> payload);
 
   template<typename T>
   static auto MakeReader(Context&& ctx) {

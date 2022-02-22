@@ -24,36 +24,30 @@
 #ifndef IRESEARCH_FIELD_META_H
 #define IRESEARCH_FIELD_META_H
 
+#include <span>
+
 #include "index/index_features.hpp"
-#include "utils/range.hpp"
-#include "utils/type_limits.hpp"
 #include "utils/attributes.hpp"
+#include "utils/type_limits.hpp"
 
 namespace iresearch {
 
-//////////////////////////////////////////////////////////////////////////////
-/// @struct field_stats
-//////////////////////////////////////////////////////////////////////////////
 struct field_stats {
-  /// @brief total number of terms
+  // Total number of terms
   uint32_t len{};
-  /// @brief number of overlapped terms
+  // Number of overlapped terms
   uint32_t num_overlap{};
-  /// @brief maximum number of terms in a field
+  // Maximum number of terms in a field
   uint32_t max_term_freq{};
-  /// @brief number of unique terms
+  // Number of unique terms
   uint32_t num_unique{};
-}; // field_stats
-
+};
 
 using feature_map_t = std::map<type_info::type_id, field_id>;
 using feature_set_t = std::set<type_info::type_id>;
-using features_t = range<const type_info::type_id>;
+using features_t = std::span<const type_info::type_id>;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @struct field_meta 
-/// @brief represents field metadata
-//////////////////////////////////////////////////////////////////////////////
+// Represents field metadata
 struct field_meta {
  public:
   static const field_meta EMPTY;
@@ -67,18 +61,16 @@ struct field_meta {
   field_meta& operator=(const field_meta&) = default;
 
   bool operator==(const field_meta& rhs) const;
-  bool operator!=(const field_meta& rhs) const {
-    return !(*this == rhs);
-  }
+  bool operator!=(const field_meta& rhs) const { return !(*this == rhs); }
 
   feature_map_t features;
   std::string name;
   IndexFeatures index_features{IndexFeatures::NONE};
-}; // field_meta
+};
 
 static_assert(std::is_move_constructible<field_meta>::value,
               "default move constructor expected");
 
-}
+}  // namespace iresearch
 
 #endif

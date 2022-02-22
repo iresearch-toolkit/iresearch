@@ -28,14 +28,14 @@
 
 #include "formats/formats.hpp"
 #include "index/field_meta.hpp"
-#include "index/postings.hpp"
-#include "index/sorted_column.hpp"
 #include "index/index_features.hpp"
 #include "index/iterators.hpp"
+#include "index/postings.hpp"
+#include "index/sorted_column.hpp"
 #include "utils/block_pool.hpp"
+#include "utils/hash_set_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
-#include "utils/hash_set_utils.hpp"
 
 namespace iresearch {
 
@@ -58,16 +58,14 @@ namespace detail {
 class term_iterator;
 class doc_iterator;
 class sorting_doc_iterator;
-}
+}  // namespace detail
 
 // represents a mapping between cached column data
 // and a pointer to column identifier
 struct cached_column {
-  cached_column(
-      field_id* id, column_info info,
-      columnstore_writer::column_finalizer_f finalizer) noexcept
-    : id{id}, stream{info}, finalizer{std::move(finalizer)} {
-  }
+  cached_column(field_id* id, column_info info,
+                columnstore_writer::column_finalizer_f finalizer) noexcept
+      : id{id}, stream{info}, finalizer{std::move(finalizer)} {}
 
   field_id* id;
   sorted_column stream;
@@ -76,25 +74,20 @@ struct cached_column {
 
 class field_data : util::noncopyable {
  public:
-  field_data(
-    string_ref name,
-    const features_t& features,
-    const feature_info_provider_t& feature_columns,
-    std::deque<cached_column>& cached_columns,
-    columnstore_writer& columns,
-    byte_block_pool::inserter& byte_writer,
-    int_block_pool::inserter& int_writer,
-    IndexFeatures index_features,
-    bool random_access);
+  field_data(string_ref name, features_t features,
+             const feature_info_provider_t& feature_columns,
+             std::deque<cached_column>& cached_columns,
+             columnstore_writer& columns,
+             byte_block_pool::inserter& byte_writer,
+             int_block_pool::inserter& int_writer, IndexFeatures index_features,
+             bool random_access);
 
   doc_id_t doc() const noexcept { return last_doc_; }
 
   const field_meta& meta() const noexcept { return meta_; }
 
   // returns false if field contains indexed data
-  bool empty() const noexcept {
-    return !doc_limits::valid(last_doc_);
-  }
+  bool empty() const noexcept { return !doc_limits::valid(last_doc_); }
 
   bool invert(token_stream& tokens, doc_id_t id);
 
@@ -110,9 +103,7 @@ class field_data : util::noncopyable {
     }
   }
 
-  bool has_features() const noexcept {
-    return !features_.empty();
-  }
+  bool has_features() const noexcept { return !features_.empty(); }
 
  private:
   friend class detail::term_iterator;
@@ -121,30 +112,30 @@ class field_data : util::noncopyable {
   friend class fields_data;
 
   struct feature_info {
-    feature_info(
-        feature_writer::ptr handler,
-        columnstore_writer::values_writer_f writer)
-      : handler{std::move(handler)},
-        writer{std::move(writer)} {
-    }
+    feature_info(feature_writer::ptr handler,
+                 columnstore_writer::values_writer_f writer)
+        : handler{std::move(handler)}, writer{std::move(writer)} {}
 
     feature_writer::ptr handler;
     columnstore_writer::values_writer_f writer;
   };
 
-  using process_term_f = void(field_data::*)(
-    posting&, doc_id_t,
-    const payload*, const offset*);
+  using process_term_f = void (field_data::*)(posting&, doc_id_t,
+                                              const payload*, const offset*);
 
   static const process_term_f TERM_PROCESSING_TABLES[2][2];
 
   void reset(doc_id_t doc_id);
 
-  void new_term(posting& p, doc_id_t did, const payload* pay, const offset* offs);
-  void add_term(posting& p, doc_id_t did, const payload* pay, const offset* offs);
+  void new_term(posting& p, doc_id_t did, const payload* pay,
+                const offset* offs);
+  void add_term(posting& p, doc_id_t did, const payload* pay,
+                const offset* offs);
 
-  void new_term_random_access(posting& p, doc_id_t did, const payload* pay, const offset* offs);
-  void add_term_random_access(posting& p, doc_id_t did, const payload* pay, const offset* offs);
+  void new_term_random_access(posting& p, doc_id_t did, const payload* pay,
+                              const offset* offs);
+  void add_term_random_access(posting& p, doc_id_t did, const payload* pay,
+                              const offset* offs);
 
   bool prox_random_access() const noexcept {
     return TERM_PROCESSING_TABLES[1] == proc_table_;
@@ -157,24 +148,26 @@ class field_data : util::noncopyable {
   int_block_pool::inserter* int_writer_;
   const process_term_f* proc_table_;
   field_stats stats_;
-  doc_id_t last_doc_{ doc_limits::invalid() };
+  doc_id_t last_doc_{doc_limits::invalid()};
   uint32_t pos_;
   uint32_t last_pos_;
   uint32_t offs_;
   uint32_t last_start_offs_;
   bool seen_{false};
-}; // field_data
+};  // field_data
 
-class fields_data: util::noncopyable {
+class fields_data : util::noncopyable {
  private:
   struct field_ref_eq : value_ref_eq<field_data*> {
     using self_t::operator();
 
-    bool operator()(const ref_t& lhs, const hashed_string_ref& rhs) const noexcept {
+    bool operator()(const ref_t& lhs,
+                    const hashed_string_ref& rhs) const noexcept {
       return lhs.second->meta().name == rhs;
     }
 
-    bool operator()(const hashed_string_ref& lhs, const ref_t& rhs) const noexcept {
+    bool operator()(const hashed_string_ref& lhs,
+                    const ref_t& rhs) const noexcept {
       return this->operator()(rhs, lhs);
     }
   };
@@ -184,28 +177,20 @@ class fields_data: util::noncopyable {
  public:
   using postings_ref_t = std::vector<const posting*>;
 
-  explicit fields_data(
-    const feature_info_provider_t& feature_info,
-    std::deque<cached_column>& cached_features,
-    const comparer* comparator);
+  explicit fields_data(const feature_info_provider_t& feature_info,
+                       std::deque<cached_column>& cached_features,
+                       const comparer* comparator);
 
-  const comparer* comparator() const noexcept {
-    return comparator_;
-  }
+  const comparer* comparator() const noexcept { return comparator_; }
 
   field_data* emplace(const hashed_string_ref& name,
-                      IndexFeatures index_features,
-                      const features_t& features,
+                      IndexFeatures index_features, features_t features,
                       columnstore_writer& columns);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return approximate amount of memory actively in-use by this instance
-  //////////////////////////////////////////////////////////////////////////////
+  // Return approximate amount of memory actively in-use by this instance
   size_t memory_active() const noexcept;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return approximate amount of memory reserved by this instance
-  //////////////////////////////////////////////////////////////////////////////
+  // Return approximate amount of memory reserved by this instance
   size_t memory_reserved() const noexcept;
 
   size_t size() const { return fields_.size(); }
@@ -215,17 +200,17 @@ class fields_data: util::noncopyable {
  private:
   const comparer* comparator_;
   const feature_info_provider_t* feature_info_;
-  std::deque<field_data> fields_; // pointers remain valid
-  std::deque<cached_column>* cached_features_; // pointers remain valid
+  std::deque<field_data> fields_;               // pointers remain valid
+  std::deque<cached_column>* cached_features_;  // pointers remain valid
   fields_map fields_map_;
   postings_ref_t sorted_postings_;
   std::vector<const field_data*> sorted_fields_;
   byte_block_pool byte_pool_;
   byte_block_pool::inserter byte_writer_;
-  int_block_pool int_pool_; // FIXME why don't to use std::vector<size_t>?
+  int_block_pool int_pool_;  // FIXME why don't to use std::vector<size_t>?
   int_block_pool::inserter int_writer_;
-}; // fields_data
+};
 
-} // iresearch
+}  // namespace iresearch
 
 #endif

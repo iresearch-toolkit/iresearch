@@ -24,6 +24,7 @@
 #define IRESEARCH_INDEX_FEATURES_H
 
 #include <functional>
+#include <span>
 
 #include "index/column_info.hpp"
 #include "utils/bit_utils.hpp"
@@ -35,49 +36,31 @@ namespace iresearch {
 struct field_stats;
 struct column_output;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @enum IndexFeatures
-/// @brief represents a set of features that can be stored in the index
-//////////////////////////////////////////////////////////////////////////////
+// Represents a set of features that can be stored in the index
 enum class IndexFeatures : byte_type {
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief documents
-  ////////////////////////////////////////////////////////////////////////////
+  // Documents
   NONE = 0,
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief frequency
-  ////////////////////////////////////////////////////////////////////////////
+  // Frequency
   FREQ = 1,
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief positions, depends on frequency
-  ////////////////////////////////////////////////////////////////////////////
+  // Positions, depends on frequency
   POS = 2,
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief offsets, depends on positions
-  ////////////////////////////////////////////////////////////////////////////
+  // Offsets, depends on positions
   OFFS = 4,
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief payload, depends on positions
-  ////////////////////////////////////////////////////////////////////////////
+  // Payload, depends on positions
   PAY = 8,
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief all features
-  ////////////////////////////////////////////////////////////////////////////
+  // All features
   ALL = FREQ | POS | OFFS | PAY
-}; // IndexFeatures
+};
 
 ENABLE_BITMASK_ENUM(IndexFeatures);
 
-//////////////////////////////////////////////////////////////////////////////
-/// @return true if 'lhs' is a subset of 'rhs'
-//////////////////////////////////////////////////////////////////////////////
-FORCE_INLINE bool is_subset_of(
-    IndexFeatures lhs, IndexFeatures rhs) noexcept {
+// Returns true if 'lhs' is a subset of 'rhs'
+FORCE_INLINE bool is_subset_of(IndexFeatures lhs, IndexFeatures rhs) noexcept {
   return lhs == (lhs & rhs);
 }
 
@@ -86,21 +69,21 @@ struct feature_writer {
 
   virtual ~feature_writer() = default;
 
-  virtual void write(
-      const field_stats& stats,
-      doc_id_t doc,
-      std::function<column_output&(doc_id_t)>& writer) = 0;
+  virtual void write(const field_stats& stats, doc_id_t doc,
+                     std::function<column_output&(doc_id_t)>& writer) = 0;
 
   virtual void write(data_output& out, bytes_ref value) = 0;
 
   virtual void finish(bstring& out) = 0;
 };
 
-using feature_writer_factory_t = feature_writer::ptr(*)(range<const bytes_ref>);
+using feature_writer_factory_t =
+    feature_writer::ptr (*)(std::span<const bytes_ref>);
 
-using feature_info_provider_t = std::function<
-    std::pair<column_info, feature_writer_factory_t>(type_info::type_id)>;
+using feature_info_provider_t =
+    std::function<std::pair<column_info, feature_writer_factory_t>(
+        type_info::type_id)>;
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_INDEX_FEATURES_H
+#endif  // IRESEARCH_INDEX_FEATURES_H
