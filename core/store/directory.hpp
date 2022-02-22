@@ -128,7 +128,7 @@ ENABLE_BITMASK_ENUM(IOAdvice); // enable bitmap operations on the enum
 //////////////////////////////////////////////////////////////////////////////
 struct directory : private util::noncopyable {
  public:
-  using visitor_f = std::function<bool(std::string&)>;
+  using visitor_f = std::function<bool(std::string_view)>;
   using ptr = std::unique_ptr<directory>;
 
   ////////////////////////////////////////////////////////////////////////////

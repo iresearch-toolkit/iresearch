@@ -2012,12 +2012,12 @@ class index_test_case : public tests::index_test_base {
 
   void writer_atomicity_check() {
     struct override_sync_directory : tests::directory_mock {
-      typedef std::function<bool(const std::string&)> sync_f;
+      typedef std::function<bool(std::string_view)> sync_f;
 
       override_sync_directory(irs::directory& impl, sync_f&& sync)
           : directory_mock(impl), sync_(std::move(sync)) {}
 
-      virtual bool sync(const std::string& name) noexcept override {
+      virtual bool sync(std::string_view name) noexcept override {
         try {
           if (sync_(name)) {
             return true;

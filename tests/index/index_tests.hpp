@@ -56,46 +56,46 @@ class directory_mock: public irs::directory {
   }
 
   virtual irs::index_output::ptr create(
-      const std::string& name) noexcept override {
+      std::string_view name) noexcept override {
     return impl_.create(name);
   }
 
   virtual bool exists(
-      bool& result, const std::string& name) const noexcept override {
+      bool& result, std::string_view name) const noexcept override {
     return impl_.exists(result, name);
   }
 
   virtual bool length(
-      uint64_t& result, const std::string& name) const noexcept override {
+      uint64_t& result, std::string_view name) const noexcept override {
     return impl_.length(result, name);
   }
 
   virtual irs::index_lock::ptr make_lock(
-      const std::string& name) noexcept override {
+      std::string_view name) noexcept override {
     return impl_.make_lock(name);
   }
 
   virtual bool mtime(
-      std::time_t& result, const std::string& name) const noexcept override {
+      std::time_t& result, std::string_view name) const noexcept override {
     return impl_.mtime(result, name);
   }
 
   virtual irs::index_input::ptr open(
-      const std::string& name,
+      std::string_view name,
       irs::IOAdvice advice) const noexcept override {
     return impl_.open(name, advice);
   }
 
-  virtual bool remove(const std::string& name) noexcept override {
+  virtual bool remove(std::string_view name) noexcept override {
     return impl_.remove(name);
   }
 
   virtual bool rename(
-      const std::string& src, const std::string& dst) noexcept override {
+      std::string_view src, std::string_view dst) noexcept override {
     return impl_.rename(src, dst);
   }
 
-  virtual bool sync(const std::string& name) noexcept override {
+  virtual bool sync(std::string_view name) noexcept override {
     return impl_.sync(name);
   }
 
@@ -112,7 +112,7 @@ struct blocking_directory : directory_mock {
     : tests::directory_mock(impl), blocker(blocker) {
   }
 
-  irs::index_output::ptr create(const std::string& name) noexcept {
+  irs::index_output::ptr create(std::string_view name) noexcept {
     auto stream = tests::directory_mock::create(name);
 
     if (name == blocker) {
@@ -153,7 +153,7 @@ struct callback_directory : directory_mock {
     : tests::directory_mock(impl), after(p) {
   }
 
-  irs::index_output::ptr create(const std::string& name) noexcept override {
+  irs::index_output::ptr create(std::string_view name) noexcept override {
     auto stream = tests::directory_mock::create(name);
     after();
     return stream;

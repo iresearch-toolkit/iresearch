@@ -47,49 +47,49 @@ class directory_utils_tests: public ::testing::Test {
     }
 
     virtual irs::index_output::ptr create(
-        const std::string&) noexcept override {
+        std::string_view) noexcept override {
       return nullptr;
     }
 
     virtual bool exists(
         bool&,
-        const std::string&) const noexcept override {
+        std::string_view) const noexcept override {
       return false;
     }
 
     virtual bool length(
         uint64_t&,
-        const std::string&) const noexcept override {
+        std::string_view) const noexcept override {
       return false;
     }
 
     virtual irs::index_lock::ptr make_lock(
-        const std::string&) noexcept override {
+        std::string_view) noexcept override {
       return nullptr;
     }
 
     virtual bool mtime(
         std::time_t&,
-        const std::string&) const noexcept override {
+        std::string_view) const noexcept override {
       return false;
     }
 
     virtual irs::index_input::ptr open(
-        const std::string&,
+        std::string_view,
         irs::IOAdvice) const noexcept override {
       return nullptr;
     }
 
-    virtual bool remove(const std::string&) noexcept override {
+    virtual bool remove(std::string_view) noexcept override {
       return false;
     }
 
     virtual bool rename(
-        const std::string&, const std::string&) noexcept override {
+        std::string_view, std::string_view) noexcept override {
       return false;
     }
 
-    virtual bool sync(const std::string&) noexcept override {
+    virtual bool sync(std::string_view) noexcept override {
       return false;
     }
 
@@ -109,7 +109,7 @@ class directory_utils_tests: public ::testing::Test {
     }
 
     virtual irs::index_input::ptr open(
-        const std::string& name,
+        std::string_view name,
         irs::IOAdvice advice) const noexcept override {
       auto stream = tests::directory_mock::open(name, advice);
       after();
@@ -641,16 +641,16 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
   struct error_directory: public irs::directory {
     irs::directory_attributes attrs{};
     virtual irs::directory_attributes& attributes() noexcept override { return attrs; }
-    virtual irs::index_output::ptr create(const std::string&) noexcept override { return nullptr; }
-    virtual bool exists(bool&, const std::string&) const noexcept override { return false; }
-    virtual bool length(uint64_t&, const std::string&) const noexcept override { return false; }
+    virtual irs::index_output::ptr create(std::string_view) noexcept override { return nullptr; }
+    virtual bool exists(bool&, std::string_view) const noexcept override { return false; }
+    virtual bool length(uint64_t&, std::string_view) const noexcept override { return false; }
     virtual bool visit(const visitor_f&) const override { return false; }
-    virtual irs::index_lock::ptr make_lock(const std::string&) noexcept override { return nullptr; }
-    virtual bool mtime(std::time_t&, const std::string&) const noexcept override { return false; }
-    virtual irs::index_input::ptr open(const std::string&, irs::IOAdvice) const noexcept override { return nullptr; }
-    virtual bool remove(const std::string&) noexcept override { return false; }
-    virtual bool rename(const std::string&, const std::string&) noexcept override { return false; }
-    virtual bool sync(const std::string&) noexcept override { return false; }
+    virtual irs::index_lock::ptr make_lock(std::string_view) noexcept override { return nullptr; }
+    virtual bool mtime(std::time_t&, std::string_view) const noexcept override { return false; }
+    virtual irs::index_input::ptr open(std::string_view, irs::IOAdvice) const noexcept override { return nullptr; }
+    virtual bool remove(std::string_view) noexcept override { return false; }
+    virtual bool rename(std::string_view, std::string_view) noexcept override { return false; }
+    virtual bool sync(std::string_view) noexcept override { return false; }
   } error_dir;
 
   // test create failure
