@@ -214,13 +214,10 @@ struct skip_buffer {
   uint64_t end{};     // end position of block
 }; // skip_buffer
 
-//////////////////////////////////////////////////////////////////////////////
-/// @struct doc_buffer
-/// @brief buffer for stroring doc data
-//////////////////////////////////////////////////////////////////////////////
+// Buffer for stroring doc data
 struct doc_buffer : skip_buffer {
-  doc_buffer(const range<doc_id_t>& docs,
-             const range<uint32_t>& freqs,
+  doc_buffer(std::span<doc_id_t>& docs,
+             std::span<uint32_t>& freqs,
              doc_id_t* skip_doc,
              uint64_t* skip_ptr) noexcept
     : skip_buffer{skip_ptr},
@@ -238,8 +235,10 @@ struct doc_buffer : skip_buffer {
   }
 
   void push(doc_id_t doc, uint32_t freq) noexcept {
-    *this->doc++ = doc;
-    *this->freq++ = freq;
+    *this->doc = doc;
+    ++*this->doc;
+    *this->freq = freq;
+    ++this->freq;
     last = doc;
   }
 
@@ -251,14 +250,14 @@ struct doc_buffer : skip_buffer {
     block_last = doc_limits::min();
   }
 
-  range<doc_id_t> docs;
-  range<uint32_t> freqs;
+  std::span<doc_id_t> docs;
+  std::span<uint32_t> freqs;
   uint32_t* skip_doc;
-  doc_id_t* doc{ docs.begin() };
-  uint32_t* freq{ freqs.begin() };
+  std::span<doc_id_t>::iterator doc{ docs.begin() };
+  std::span<uint32_t>::iterator freq{ freqs.begin() };
   doc_id_t last{ doc_limits::invalid() }; // last buffered document id
   doc_id_t block_last{ doc_limits::min() }; // last document id in a block
-}; // doc_buffer
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct pos_buffer
@@ -266,7 +265,7 @@ struct doc_buffer : skip_buffer {
 //////////////////////////////////////////////////////////////////////////////
 struct pos_buffer : skip_buffer {
   explicit pos_buffer(
-      const range<uint32_t>& buf,
+      std::span<uint32_t> buf,
       uint64_t* skip_ptr) noexcept
     : skip_buffer{skip_ptr},
       buf{buf} {
@@ -292,7 +291,7 @@ struct pos_buffer : skip_buffer {
     size = 0;
   }
 
-  range<uint32_t> buf;   // buffer to store position deltas
+  std::span<uint32_t> buf;   // buffer to store position deltas
   uint32_t last{};       // last buffered position
   uint32_t block_last{}; // last position in a block
   uint32_t size{};       // number of buffered elements
@@ -456,11 +455,11 @@ class postings_writer_base : public irs::postings_writer {
  protected:
   postings_writer_base(
       doc_id_t block_size,
-      const range<doc_id_t>& docs,
-      const range<uint32_t>& freqs,
+      std::span<doc_id_t> docs,
+      std::span<uint32_t> freqs,
       doc_id_t* skip_doc,
       uint64_t* doc_skip_ptr,
-      const range<uint32_t>& prox_buf,
+      std::span<uint32_t> prox_buf,
       uint64_t* prox_skip_ptr,
       uint32_t* pay_sizes,
       uint32_t* offs_start_buf,
@@ -730,11 +729,11 @@ void postings_writer_base::end_term(version10::term_meta& meta) {
     // write remaining documents using
     // variable length encoding
     auto& out = *doc_out_;
-    auto* doc = doc_.docs.begin();
+    auto doc = doc_.docs.begin();
     auto prev = doc_.block_last;
 
     if (IndexFeatures::NONE != (features_ & IndexFeatures::FREQ)) {
-      auto* doc_freq = doc_.freqs.begin();
+      auto doc_freq = doc_.freqs.begin();
       for (; doc < doc_.doc; ++doc) {
         const uint32_t freq = *doc_freq;
         const doc_id_t delta = *doc - prev;
@@ -855,11 +854,11 @@ class postings_writer final: public postings_writer_base {
   explicit postings_writer(PostingsFormat version, bool volatile_attributes)
     : postings_writer_base{
         FormatTraits::block_size(),
-        { doc_buf_.docs, IRESEARCH_COUNTOF(doc_buf_.docs) },
-        { doc_buf_.freqs, IRESEARCH_COUNTOF(doc_buf_.freqs) },
+        std::span{doc_buf_.docs},
+        std::span{doc_buf_.freqs},
         doc_buf_.skip_doc,
         doc_buf_.skip_ptr,
-        { prox_buf_.buf, IRESEARCH_COUNTOF(prox_buf_.buf) },
+        std::span{prox_buf_.buf},
         prox_buf_.skip_ptr,
         pay_buf_.pay_sizes,
         pay_buf_.offs_start_buf,
@@ -913,11 +912,11 @@ void postings_writer<FormatTraits>::begin_doc(doc_id_t id, uint32_t freq) {
 
     if (doc_.full()) {
       // FIXME do aligned?
-      simd::delta_encode<FormatTraits::block_size(), false>(doc_.docs.begin(), doc_.block_last);
-      FormatTraits::write_block(*doc_out_, doc_.docs.begin(), buf_);
+      simd::delta_encode<FormatTraits::block_size(), false>(doc_.docs.data(), doc_.block_last);
+      FormatTraits::write_block(*doc_out_, doc_.docs.data(), buf_);
       if (attrs_.freq_) {
         assert(freq);
-        FormatTraits::write_block(*doc_out_, doc_.freqs.begin(), buf_);
+        FormatTraits::write_block(*doc_out_, doc_.freqs.data(), buf_);
       }
     }
 
@@ -952,7 +951,7 @@ void postings_writer<FormatTraits>::add_position(uint32_t pos) {
   pos_.next(pos);
 
   if (pos_.full()) {
-    FormatTraits::write_block(*pos_out_, pos_.buf.begin(), buf_);
+    FormatTraits::write_block(*pos_out_, pos_.buf.data(), buf_);
     pos_.size = 0;
 
     if (attrs_.pay_) {
