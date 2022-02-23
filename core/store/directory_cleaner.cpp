@@ -38,10 +38,10 @@ namespace iresearch {
   size_t remove_count = 0;
   index_file_refs::ref_t tmp_ref;
   auto visitor = [&dir, &refs, &acceptor, &remove_count, &tmp_ref](
-      const std::string& filename, size_t count )->bool {
+      std::string_view filename, size_t count )->bool {
     // for retained files add a temporary reference to avoid removal
     if (!acceptor(filename)) {
-      tmp_ref = refs.add(std::string(filename));
+      tmp_ref = refs.add(filename);
     } else if (!count && dir.remove(filename)) {
       ++remove_count;
     }

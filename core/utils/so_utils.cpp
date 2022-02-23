@@ -130,9 +130,9 @@ bool free_library(void* handle) {
 }
 
 void load_libraries(
-    const std::string& path,
-    const std::string& prefix,
-    const std::string& suffix) {
+    std::string_view path,
+    std::string_view prefix,
+    std::string_view suffix) {
   irs::utf8_path plugin_path{path};
   bool result;
 
@@ -166,8 +166,8 @@ void load_libraries(
     auto stem = irs::utf8_path{irs::utf8_path::string_type(path_parts.stem)}.string();
 
     if (stem.size() < prefix.size() + suffix.size() ||
-        strncmp(stem.c_str(), prefix.c_str(), prefix.size()) != 0 ||
-        strncmp(stem.c_str() + stem.size() - suffix.size(), suffix.c_str(), suffix.size()) != 0) {
+        strncmp(stem.c_str(), prefix.data(), prefix.size()) != 0 ||
+        strncmp(stem.c_str() + stem.size() - suffix.size(), suffix.data(), suffix.size()) != 0) {
       return true; // filename does not match
     }
 

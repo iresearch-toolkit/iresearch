@@ -1403,13 +1403,13 @@ const column_header* reader::header(field_id field) const {
   return nullptr;
 }
 
-void reader::prepare_data(const directory& dir, const std::string& filename) {
+void reader::prepare_data(const directory& dir, std::string_view filename) {
   auto data_in = dir.open(filename, irs::IOAdvice::RANDOM);
 
   if (!data_in) {
     throw io_error{string_utils::to_string(
       "Failed to open file, path: %s",
-      filename.c_str())};
+      std::string{filename}.c_str())};
   }
 
   [[maybe_unused]] const auto version =
@@ -1441,13 +1441,13 @@ void reader::prepare_data(const directory& dir, const std::string& filename) {
 void reader::prepare_index(
     const directory& dir,
     const segment_meta& meta,
-    const std::string& filename) {
+    std::string_view filename) {
   auto index_in = dir.open(filename, irs::IOAdvice::READONCE_SEQUENTIAL);
 
   if (!index_in) {
     throw io_error{string_utils::to_string(
       "Failed to open file, path: %s",
-      filename.c_str())};
+      std::string{filename}.c_str())};
   }
 
   const auto checksum = format_utils::checksum(*index_in);

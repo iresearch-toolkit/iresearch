@@ -1011,7 +1011,7 @@ class index_writer : private util::noncopyable {
       segments.emplace_back(i, 0);
     }
 
-    void register_partial_sync(size_t i, const std::string& file) {
+    void register_partial_sync(size_t i, std::string_view file) {
       segments.emplace_back(i, 1);
       files.emplace_back(file);
     }
@@ -1035,7 +1035,7 @@ class index_writer : private util::noncopyable {
           }
 
           for (auto end = begin + entry.second; begin != end; ++begin) {
-            if (!visitor(begin->get())) {
+            if (!visitor(*begin)) {
               return false;
             }
           }
@@ -1056,7 +1056,7 @@ class index_writer : private util::noncopyable {
       return true;
     }
 
-    std::vector<std::reference_wrapper<const std::string>> files; // files to sync
+    std::vector<std::string_view> files; // files to sync
     std::vector<std::pair<size_t, size_t>> segments; // segments to sync (index within index meta + number of files to sync)
   }; // sync_context
 

@@ -34,7 +34,7 @@
 
 namespace {
 
-const std::string FILENAME_PREFIX("libformat-");
+constexpr std::string_view FILENAME_PREFIX("libformat-");
 
 // first - format name
 // second - module name, nullptr => matches format name
@@ -60,7 +60,7 @@ class format_register :
 
     std::string filename(FILENAME_PREFIX.size() + module.size(), 0);
 
-    std::memcpy(&filename[0], FILENAME_PREFIX.c_str(), FILENAME_PREFIX.size());
+    std::memcpy(&filename[0], FILENAME_PREFIX.data(), FILENAME_PREFIX.size());
 
     irs::string_ref::traits_type::copy(
       &filename[0] + FILENAME_PREFIX.size(),
@@ -127,7 +127,7 @@ namespace iresearch {
 #endif
 }
 
-/*static*/ void formats::load_all(const std::string& path) {
+/*static*/ void formats::load_all(std::string_view path) {
   load_libraries(path, FILENAME_PREFIX, "");
 }
 

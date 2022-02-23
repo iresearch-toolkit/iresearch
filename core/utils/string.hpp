@@ -216,6 +216,7 @@ class basic_string_ref {
 
   // Returns the pointer to a C string.
   constexpr const char_type* c_str() const noexcept { return data_; }
+  constexpr const char_type* data() const noexcept { return data_; }
 
   // Returns the string size.
   constexpr size_t size() const noexcept { return size_; }

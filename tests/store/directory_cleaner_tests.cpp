@@ -40,7 +40,7 @@ using namespace irs;
 directory_cleaner::removal_acceptor_t remove_except_current_segments(
     const directory& dir, const format& codec) {
   const auto acceptor = [](
-      const std::string& filename,
+      std::string_view filename,
       const absl::flat_hash_set<std::string>& retain) {
     return !retain.contains(filename);
   };
@@ -53,7 +53,7 @@ directory_cleaner::removal_acceptor_t remove_except_current_segments(
 
   if (!index_exists) {
     // can't find segments file
-    return [](const std::string&)->bool { return true; };
+    return [](std::string_view)->bool { return true; };
   }
 
   reader->read(dir, meta, segment_file);
@@ -61,8 +61,8 @@ directory_cleaner::removal_acceptor_t remove_except_current_segments(
   absl::flat_hash_set<std::string> retain;
   retain.reserve(meta.size());
 
-  meta.visit_files([&retain] (std::string& file) {
-    retain.emplace(std::move(file));
+  meta.visit_files([&retain] (std::string_view file) {
+    retain.emplace(file);
     return true;
   });
 
@@ -164,14 +164,14 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
 
   // test clean without any changes (due to 'keep')
   {
-    std::unordered_set<std::string> retain = {
+    std::unordered_set<std::string_view> retain = {
       "tracked.file.1",
       "tracked.file.2"
     };
-    auto acceptor = [&retain] (const std::string &filename)->bool {
+    auto acceptor = [&retain] (std::string_view filename)->bool {
       return retain.find(filename) == retain.end();
     };
-    std::unordered_set<std::string> expected = {
+    std::unordered_set<std::string_view> expected = {
       "dummy.file.1",
       "dummy.file.2",
       "dummy.file.3",
@@ -221,16 +221,16 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
 
   // test clean removing tracked files without references (no 'tracked.file.1')
   {
-    std::unordered_set<std::string> retain = {
+    std::unordered_set<std::string_view> retain = {
       "dummy.file.1",
       "dummy.file.2",
       "dummy.file.3",
       "dummy.file.4"
     };
-    auto acceptor = [&retain](const std::string& filename)->bool {
+    auto acceptor = [&retain](std::string_view filename)->bool {
       return retain.find(filename) == retain.end();
     };
-    std::unordered_set<std::string> expected = {
+    std::unordered_set<std::string_view> expected = {
       "dummy.file.1",
       "dummy.file.2",
       "dummy.file.3",

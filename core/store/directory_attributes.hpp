@@ -88,11 +88,11 @@ struct encryption {
   virtual size_t header_length() = 0;
 
   // Creates cipher header in an allocated block for a new file
-  virtual bool create_header(const std::string& filename,
+  virtual bool create_header(std::string_view filename,
                              byte_type* header) = 0;
 
   // Returns a cipher stream for a file given file name
-  virtual stream::ptr create_stream(const std::string& filename,
+  virtual stream::ptr create_stream(std::string_view filename,
                                     byte_type* header) = 0;
 };
 

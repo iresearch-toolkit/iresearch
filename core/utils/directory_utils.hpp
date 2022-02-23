@@ -40,13 +40,13 @@ namespace directory_utils {
 // return a reference to a file or empty() if not found
 index_file_refs::ref_t reference(
   const directory& dir,
-  const std::string& name,
+  std::string_view name,
   bool include_missing = false);
 
 // return success, visitor gets passed references to files retrieved from source
 bool reference(
   const directory& dir,
-  const std::function<const std::string*()>& source,
+  const std::function<std::optional<std::string_view>()>& source,
   const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
   bool include_missing = false);
 

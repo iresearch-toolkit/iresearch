@@ -221,7 +221,7 @@ namespace analysis {
 #endif
 }
 
-/*static*/ void analyzers::load_all(const std::string& path) {
+/*static*/ void analyzers::load_all(std::string_view path) {
   load_libraries(path, FILENAME_PREFIX, "");
 }
 

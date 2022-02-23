@@ -57,7 +57,7 @@ struct value{
   const irs::compression::decompressor_factory_f decompressor_factory_;
 };
 
-const std::string FILENAME_PREFIX("libcompression-");
+constexpr std::string_view FILENAME_PREFIX("libcompression-");
 
 class compression_register
     : public irs::tagged_generic_register<irs::string_ref, value,
@@ -68,7 +68,7 @@ class compression_register
 
     std::memcpy(
       &filename[0],
-      FILENAME_PREFIX.c_str(),
+      FILENAME_PREFIX.data(),
       FILENAME_PREFIX.size()
     );
 
@@ -185,7 +185,7 @@ void init() {
 #endif
 }
 
-void load_all(const std::string& path) {
+void load_all(std::string_view path) {
   load_libraries(path, FILENAME_PREFIX, "");
 }
 

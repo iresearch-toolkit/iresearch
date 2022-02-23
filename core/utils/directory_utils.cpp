@@ -33,7 +33,7 @@ namespace iresearch {
 namespace directory_utils {
 
 // return a reference to a file or empty() if not found
-index_file_refs::ref_t reference(const directory& dir, const std::string& name,
+index_file_refs::ref_t reference(const directory& dir, std::string_view name,
                                  bool include_missing /*= false*/) {
   auto& refs = dir.attributes().refs();
 
@@ -63,12 +63,12 @@ index_file_refs::ref_t reference(const directory& dir, const std::string& name,
 
 // return success, visitor gets passed references to files retrieved from source
 bool reference(const directory& dir,
-               const std::function<const std::string*()>& source,
+               const std::function<std::optional<std::string_view>()>& source,
                const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
                bool include_missing /*= false*/) {
   auto& refs = dir.attributes().refs();
 
-  for (const std::string* file; file = source();) {
+  for (std::optional<std::string_view> file; (file = source()).has_value();) {
     if (include_missing) {
       if (!visitor(refs.add(*file))) {
         return false;
@@ -112,7 +112,7 @@ bool reference(const directory& dir, const index_meta& meta,
   auto& refs = dir.attributes().refs();
 
   return meta.visit_files(
-      [include_missing, &refs, &dir, &visitor](const std::string& file) {
+      [include_missing, &refs, &dir, &visitor](std::string_view file) {
         if (include_missing) {
           return visitor(refs.add(file));
         }

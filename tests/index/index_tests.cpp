@@ -390,8 +390,8 @@ class index_test_case : public tests::index_test_base {
 
     size_t thread_count = 16;                         // arbitrary value > 1
     std::vector<const tests::field*> expected_terms;  // used to validate terms
-    std::vector<irs::seek_term_iterator::ptr>
-        expected_term_itrs;  // used to validate docs
+     // used to validate docs
+    std::vector<irs::seek_term_iterator::ptr> expected_term_itrs;
 
     auto& actual_segment = actual_reader[0];
     auto actual_terms = actual_segment.field("name_anl_pay");
