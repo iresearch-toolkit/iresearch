@@ -21,96 +21,107 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_REF_COUNTER_H
-#define IRESEARCH_REF_COUNTER_H
+#pragma once
+
+#include <absl/container/flat_hash_set.h>
 
 #include <functional>
 #include <memory>
 #include <mutex>
 
-#include <absl/container/flat_hash_set.h>
-
 #include "shared.hpp"
 #include "utils/noncopyable.hpp"
-#include "utils/thread_utils.hpp"
-#include "utils/memory.hpp"
 
 namespace iresearch {
 
-template<typename Key, typename Hash = absl::Hash<Key>, typename Equal = std::equal_to<Key>>
-class ref_counter : public util::noncopyable { // noncopyable because shared_ptr refs hold reference to internal map keys
+template<typename Key, typename Hash = absl::Hash<Key>,
+         typename Equal = std::equal_to<Key>>
+class ref_counter : public util::noncopyable {
  public:
-  typedef std::shared_ptr<const Key> ref_t;
+  using ref_t = std::shared_ptr<const Key>;
 
   struct equal_to : Equal {
+    using is_transparent = void;
+
+    using Equal::operator();
+
+    template<typename T>
+    bool operator()(const T& lhs, const ref_t& rhs) const noexcept {
+      assert(rhs);
+      return Equal::operator()(lhs, *rhs);
+    }
+
+    template<typename T>
+    bool operator()(const ref_t& lhs, const T& rhs) const noexcept {
+      assert(lhs);
+      return Equal::operator()(*lhs, rhs);
+    }
+
     bool operator()(const ref_t& lhs, const ref_t& rhs) const noexcept {
       assert(lhs && rhs);
       return Equal::operator()(*lhs, *rhs);
     }
-  }; // equal_to
+  };
 
   struct hash : Hash {
+    using is_transparent = void;
+
+    using Hash::operator();
+
     size_t operator()(const ref_t& value) const noexcept {
       assert(value);
       return Hash::operator()(*value);
     }
-  }; // hash
+  };
 
-  ref_t add(Key&& key) {
-    auto lock = make_lock_guard(lock_);
+  template<typename T>
+  ref_t add(T&& key) {
+    std::lock_guard lock{lock_};
 
-    auto res = refs_.emplace(ref_t(), &key);
+    auto it = refs_.lazy_emplace(key, [&](const auto& ctor) {
+      ctor(std::make_shared<const Key>(std::forward<T>(key)));
+    });
 
-    if (res.second) {
-      try {
-        const_cast<ref_t&>(*res.first) = memory::make_shared<const Key>(std::forward<Key>(key));
-      } catch (...) {
-        // rollback
-        refs_.erase(res.first);
-        return ref_t();
-      }
-    }
-
-    return *res.first;
+    return *it;
   }
 
-  bool remove(const Key& key) {
-    const ref_t ref(ref_t(), &key); // aliasing ctor
-
-    auto lock = make_lock_guard(lock_);
-    return refs_.erase(ref) > 0;
+  template<typename T>
+  bool remove(T&& key) {
+    std::lock_guard lock{lock_};
+    return refs_.erase(std::forward<T>(key)) > 0;
   }
 
-  bool contains(const Key& key) const noexcept {
-    const ref_t ref(ref_t(), &key); // aliasing ctor
-
-    auto lock = make_lock_guard(lock_);
-    return refs_.find(ref) != refs_.end();
+  template<typename T>
+  bool contains(T&& key) const noexcept {
+    std::lock_guard lock{lock_};
+    return refs_.contains(std::forward<T>(key));
   }
 
-  size_t find(const Key& key) const noexcept {
-    const ref_t ref(ref_t(), &key); // aliasing ctor
+  template<typename T>
+  size_t find(T&& key) const noexcept {
+    std::lock_guard lock{lock_};
+    auto itr = refs_.find(std::forward<T>(key));
 
-    auto lock = make_lock_guard(lock_);
-    auto itr = refs_.find(ref);
-
-    return itr == refs_.end() ? 0 : (itr->use_count() - 1); // -1 for usage by refs_ itself
+    return itr == refs_.end()
+               ? 0
+               : (itr->use_count() - 1);  // -1 for usage by refs_ itself
   }
 
   bool empty() const noexcept {
-    auto lock = make_lock_guard(lock_);
+    std::lock_guard lock{lock_};
     return refs_.empty();
   }
 
   template<typename Visitor>
   bool visit(const Visitor& visitor, bool remove_unused = false) {
-    auto lock = make_lock_guard(lock_);
+    std::lock_guard lock{lock_};
 
     for (auto itr = refs_.begin(), end = refs_.end(); itr != end;) {
       auto& ref = *itr;
       assert(*itr);
 
-      auto visit_next = visitor(*ref, ref.use_count() - 1); // -1 for usage by refs_ itself
+      // -1 for usage by refs_ itself
+      auto visit_next = visitor(*ref, ref.use_count() - 1);
 
       if (remove_unused && ref.use_count() == 1) {
         const auto erase_me = itr++;
@@ -128,10 +139,9 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
   }
 
  private:
-  mutable std::recursive_mutex lock_; // recursive to allow usage for 'this' from withing visit(...)
+  // recursive to allow usage for 'this' from withing visit(...)
+  mutable std::recursive_mutex lock_;
   absl::flat_hash_set<ref_t, hash, equal_to> refs_;
-}; // ref_counter
+};
 
-}
-
-#endif
+}  // namespace iresearch

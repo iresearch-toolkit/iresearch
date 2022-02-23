@@ -124,7 +124,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
       "tracked.file.2"
     };
     std::vector<std::string> files;
-    auto list_files = [&files] (std::string& name) {
+    auto list_files = [&files] (std::string_view name) {
       files.emplace_back(std::move(name));
       return true;
     };
@@ -148,7 +148,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
       "tracked.file.2"
     };
     std::vector<std::string> files;
-    auto list_files = [&files] (std::string& name) {
+    auto list_files = [&files] (std::string_view name) {
       files.emplace_back(std::move(name));
       return true;
     };
@@ -180,7 +180,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
       "tracked.file.2"
     };
     std::vector<std::string> files;
-    auto list_files = [&files] (std::string& name) {
+    auto list_files = [&files] (std::string_view name) {
       files.emplace_back(std::move(name));
       return true;
     };
@@ -205,7 +205,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
       "tracked.file.1"
     };
     std::vector<std::string> files;
-    auto list_files = [&files] (std::string& name) {
+    auto list_files = [&files] (std::string_view name) {
       files.emplace_back(std::move(name));
       return true;
     };
@@ -237,7 +237,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner) {
       "dummy.file.4"
     };
     std::vector<std::string> files;
-    auto list_files = [&files] (std::string& name) {
+    auto list_files = [&files] (std::string_view name) {
       files.emplace_back(std::move(name));
       return true;
     };
@@ -277,7 +277,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     writer->commit();
 
     std::vector<std::string> files;
-    auto list_files = [&files] (std::string& name) {
+    auto list_files = [&files] (std::string_view name) {
       files.emplace_back(std::move(name));
       return true;
     };
@@ -327,7 +327,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   // no active refs keeps files from latest segments
   {
     std::vector<std::string> files;
-    auto list_files = [&files] (std::string& name) {
+    auto list_files = [&files] (std::string_view name) {
       files.emplace_back(std::move(name));
       return true;
     };
@@ -366,7 +366,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   // active reader refs keeps files referenced by reader
   {
     std::vector<std::string> files;
-    auto list_files = [&files] (std::string& name) {
+    auto list_files = [&files] (std::string_view name) {
       files.emplace_back(std::move(name));
       return true;
     };
@@ -387,7 +387,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   // no refs and no current segment removes all files
   {
     std::vector<std::string> files;
-    auto list_files = [&files] (std::string& name) {
+    auto list_files = [&files] (std::string_view name) {
       files.emplace_back(std::move(name));
       return true;
     };

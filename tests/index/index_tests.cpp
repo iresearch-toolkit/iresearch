@@ -260,7 +260,7 @@ class index_test_case : public tests::index_test_base {
       size_t file_count = 0;
 
       {
-        dir().visit([&file_count](std::string&) -> bool {
+        dir().visit([&file_count](std::string_view) -> bool {
           ++file_count;
           return true;
         });
@@ -275,7 +275,7 @@ class index_test_case : public tests::index_test_base {
         ASSERT_EQ(0, reader.docs_count());
         ASSERT_EQ(0, reader.live_docs_count());
         size_t file_count_post_clear = 0;
-        dir().visit([&file_count_post_clear](std::string const&) -> bool {
+        dir().visit([&file_count_post_clear](std::string_view) -> bool {
           ++file_count_post_clear;
           return true;
         });
@@ -293,7 +293,7 @@ class index_test_case : public tests::index_test_base {
         ASSERT_EQ(0, reader.docs_count());
         ASSERT_EQ(0, reader.live_docs_count());
         size_t file_count_post_commit = 0;
-        dir().visit([&file_count_post_commit](std::string&) -> bool {
+        dir().visit([&file_count_post_commit](std::string_view) -> bool {
           ++file_count_post_commit;
           return true;
         });
@@ -313,7 +313,7 @@ class index_test_case : public tests::index_test_base {
       {
         size_t file_count = 0;
 
-        dir.visit([&file_count](std::string&) -> bool {
+        dir.visit([&file_count](std::string_view) -> bool {
           ++file_count;
           return true;
         });
@@ -325,7 +325,7 @@ class index_test_case : public tests::index_test_base {
       {
         size_t file_count = 0;
 
-        dir.visit([&file_count](std::string&) -> bool {
+        dir.visit([&file_count](std::string_view) -> bool {
           ++file_count;
           return true;
         });
@@ -347,7 +347,7 @@ class index_test_case : public tests::index_test_base {
       writer->commit();
 
       size_t file_count0 = 0;
-      dir().visit([&file_count0](std::string&) -> bool {
+      dir().visit([&file_count0](std::string_view) -> bool {
         ++file_count0;
         return true;
       });
@@ -355,7 +355,7 @@ class index_test_case : public tests::index_test_base {
       writer->clear();
 
       size_t file_count1 = 0;
-      dir().visit([&file_count1](std::string&) -> bool {
+      dir().visit([&file_count1](std::string_view) -> bool {
         ++file_count1;
         return true;
       });
@@ -365,7 +365,7 @@ class index_test_case : public tests::index_test_base {
       writer->clear();
 
       size_t file_count2 = 0;
-      dir().visit([&file_count2](std::string&) -> bool {
+      dir().visit([&file_count2](std::string_view) -> bool {
         ++file_count2;
         return true;
       });
@@ -885,7 +885,7 @@ class index_test_case : public tests::index_test_base {
       ASSERT_TRUE(writer->begin());  // prepare for commit tx #1
       writer->commit();              // commit tx #1
       auto file_count = 0;
-      auto dir_visitor = [&file_count](std::string&) -> bool {
+      auto dir_visitor = [&file_count](std::string_view) -> bool {
         ++file_count;
         return true;
       };
@@ -7307,7 +7307,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
 
   size_t count = 0;
   auto get_number_of_files_in_segments =
-      [&count](const std::string& name) noexcept {
+      [&count](std::string_view name) noexcept {
         count += size_t(name.size() && '_' == name[0]);
         return true;
       };
@@ -7390,7 +7390,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     writer->prepare(dir, meta);
 
     std::string filename;
-    dir.visit([&filename](const std::string& name) {
+    dir.visit([&filename](std::string_view name) {
       filename = name;
       return false;
     });
@@ -7420,7 +7420,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
   size_t count = 0;
   auto get_number_of_files_in_segments =
-      [&count](const std::string& name) noexcept {
+      [&count](std::string_view name) noexcept {
         count += size_t(name.size() && '_' == name[0]);
         return true;
       };
@@ -8280,7 +8280,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
 
   size_t count = 0;
   auto get_number_of_files_in_segments =
-      [&count](const std::string& name) noexcept {
+      [&count](std::string_view name) noexcept {
         count += size_t(name.size() && '_' == name[0]);
         return true;
       };
@@ -8780,7 +8780,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
   size_t count = 0;
   auto get_number_of_files_in_segments =
-      [&count](const std::string& name) noexcept {
+      [&count](std::string_view name) noexcept {
         count += size_t(name.size() && '_' == name[0]);
         return true;
       };
@@ -13991,7 +13991,7 @@ TEST_P(index_test_case, writer_close) {
   }  // ensure writer is closed
 
   std::vector<std::string> files;
-  auto list_files = [&files](std::string& name) {
+  auto list_files = [&files](std::string_view name) {
     files.emplace_back(std::move(name));
     return true;
   };
@@ -14030,7 +14030,7 @@ TEST_P(index_test_case, writer_insert_immediate_remove) {
 
   size_t count = 0;
   auto get_number_of_files_in_segments =
-      [&count](const std::string& name) noexcept {
+      [&count](std::string_view name) noexcept {
         count += size_t(name.size() && '_' == name[0]);
         return true;
       };
@@ -14091,7 +14091,7 @@ TEST_P(index_test_case, writer_insert_immediate_remove_all) {
   writer->commit();  // index should be non-empty
   size_t count = 0;
   auto get_number_of_files_in_segments =
-      [&count](const std::string& name) noexcept {
+      [&count](std::string_view name) noexcept {
         count += size_t(name.size() && '_' == name[0]);
         return true;
       };
@@ -14153,7 +14153,7 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment) {
   writer->commit();  // index should be non-empty
   size_t count = 0;
   auto get_number_of_files_in_segments =
-      [&count](const std::string& name) noexcept {
+      [&count](std::string_view name) noexcept {
         count += size_t(name.size() && '_' == name[0]);
         return true;
       };
@@ -14238,7 +14238,7 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment_consolidation) {
     // validate that all files from old segments have been removed
     size_t count{0};
     auto get_number_of_files_in_segments =
-        [&count](const std::string& name) noexcept {
+        [&count](std::string_view name) noexcept {
           count += size_t(name.size() && '_' == name[0]);
           return true;
         };
@@ -15629,7 +15629,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
   writer->commit();
 
   size_t file_count0 = 0;
-  dir().visit([&file_count0](std::string&) -> bool {
+  dir().visit([&file_count0](std::string_view) -> bool {
     ++file_count0;
     return true;
   });

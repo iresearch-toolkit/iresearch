@@ -53,7 +53,7 @@ class failing_directory : public tests::directory_mock {
    public:
     explicit failing_index_input(
         index_input::ptr&& impl,
-        const std::string name,
+        std::string_view name,
         const failing_directory& dir)
       : impl_(std::move(impl)),
         dir_(&dir),
