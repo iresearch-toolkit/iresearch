@@ -77,13 +77,13 @@ class scorer_register:
     std::string filename(kFileNamePrefix.size() + name.size(), 0);
 
     std::memcpy(
-      &filename[0],
+      filename.data(),
       kFileNamePrefix.data(),
       kFileNamePrefix.size()
     );
 
     irs::string_ref::traits_type::copy(
-      &filename[0] + kFileNamePrefix.size(),
+      filename.data() + kFileNamePrefix.size(),
       name.c_str(),
       name.size()
     );

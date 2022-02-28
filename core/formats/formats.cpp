@@ -60,10 +60,10 @@ class format_register :
 
     std::string filename(kFileNamePrefix.size() + module.size(), 0);
 
-    std::memcpy(&filename[0], kFileNamePrefix.data(), kFileNamePrefix.size());
+    std::memcpy(filename.data(), kFileNamePrefix.data(), kFileNamePrefix.size());
 
     irs::string_ref::traits_type::copy(
-      &filename[0] + kFileNamePrefix.size(),
+      filename.data() + kFileNamePrefix.size(),
       module.c_str(), module.size());
 
     return filename;
