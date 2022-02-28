@@ -57,23 +57,23 @@ struct value{
   const irs::compression::decompressor_factory_f decompressor_factory_;
 };
 
-constexpr std::string_view FILENAME_PREFIX("libcompression-");
+constexpr std::string_view kFileNamePrefix("libcompression-");
 
 class compression_register
     : public irs::tagged_generic_register<irs::string_ref, value,
                                           irs::string_ref, compression_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
-    std::string filename(FILENAME_PREFIX.size() + key.size(), 0);
+    std::string filename(kFileNamePrefix.size() + key.size(), 0);
 
     std::memcpy(
       &filename[0],
-      FILENAME_PREFIX.data(),
-      FILENAME_PREFIX.size()
+      kFileNamePrefix.data(),
+      kFileNamePrefix.size()
     );
 
     irs::string_ref::traits_type::copy(
-      &filename[0] + FILENAME_PREFIX.size(),
+      &filename[0] + kFileNamePrefix.size(),
       key.c_str(),
       key.size()
     );
@@ -93,7 +93,7 @@ struct identity_compressor final : irs::compression::compressor {
   virtual void flush(irs::data_output& /*out*/) override { }
 }; // identity_compressor
 
-identity_compressor IDENTITY_COMPRESSOR;
+identity_compressor kIdentityCompressor;
 
 }
 
@@ -186,7 +186,7 @@ void init() {
 }
 
 void load_all(std::string_view path) {
-  load_libraries(path, FILENAME_PREFIX, "");
+  load_libraries(path, kFileNamePrefix, "");
 }
 
 bool visit(const std::function<bool(string_ref)>& visitor) {
@@ -211,7 +211,7 @@ bool visit(const std::function<bool(string_ref)>& visitor) {
 REGISTER_COMPRESSION(none, &none::compressor, &none::decompressor);
 
 compressor::ptr compressor::identity() noexcept {
-  return memory::to_managed<compressor, false>(&IDENTITY_COMPRESSOR);
+  return memory::to_managed<compressor, false>(&kIdentityCompressor);
 }
 
 } // compression
