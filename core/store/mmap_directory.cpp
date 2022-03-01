@@ -150,7 +150,8 @@ index_input::ptr mmap_directory::open(
     std::string_view name,
     IOAdvice advice) const noexcept {
   try {
-    const auto path = directory() / name;
+    auto path = directory();
+    path /= name;
 
     return mmap_index_input::open(path.c_str(), advice);
   } catch(...) {
