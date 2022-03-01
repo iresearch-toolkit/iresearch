@@ -264,7 +264,7 @@ TEST_F(directory_utils_tests, test_reference) {
 
     auto begin = files.begin();
     auto end = files.end();
-    auto source = [&begin, &end]()-> std::optional<std::string>{
+    auto source = [&begin, &end]()-> std::optional<std::string_view>{
       if (begin == end) {
         return std::nullopt;
       }
