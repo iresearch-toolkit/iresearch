@@ -37,7 +37,7 @@ class mmap_directory : public fs_directory {
     directory_attributes attrs = directory_attributes{});
 
   virtual index_input::ptr open(
-    const std::string& name,
+    std::string_view name,
     IOAdvice advice) const noexcept override final;
 }; // mmap_directory
 

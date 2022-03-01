@@ -32,11 +32,11 @@ using namespace irs;
 class column_existence_query : public irs::filter::prepared {
  public:
   explicit column_existence_query(
-      const std::string& field,
+      std::string_view field,
       bstring&& stats,
       boost_t boost)
     : filter::prepared(boost),
-      field_(field),
+      field_{field},
       stats_(std::move(stats)) {
   }
 
@@ -86,7 +86,7 @@ class column_existence_query : public irs::filter::prepared {
 class column_prefix_existence_query final : public column_existence_query {
  public:
   explicit column_prefix_existence_query(
-      const std::string& prefix,
+      std::string_view prefix,
       bstring&& stats,
       boost_t boost)
     : column_existence_query(prefix, std::move(stats), boost) {

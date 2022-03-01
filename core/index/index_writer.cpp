@@ -2434,8 +2434,8 @@ bool index_writer::start() {
   });
 
   files_to_sync_.clear();
-  auto sync = [this](const std::string& file) {
-    files_to_sync_.emplace_back(&file);
+  auto sync = [this](std::string_view file) {
+    files_to_sync_.emplace_back(file);
     return true;
   };
 
@@ -2443,8 +2443,8 @@ bool index_writer::start() {
     // sync all pending files
     to_commit.to_sync.visit(sync, pending_meta);
 
-    if (!dir.sync(files_to_sync_.data(), files_to_sync_.size())) {
-      throw io_error(string_utils::to_string("failed to sync files"));
+    if (!dir.sync(files_to_sync_)) {
+      throw io_error("Failed to sync files.");
     }
 
     // track all refs

@@ -172,7 +172,7 @@ struct prepare : util::noncopyable {
 
   prepare(const index_reader& index,
           const order::prepared& order,
-          const std::string& field,
+          std::string_view field,
           const boost_t boost) noexcept
     : index(index), order(order),
       field(field), boost(boost) {

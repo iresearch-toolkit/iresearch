@@ -524,7 +524,7 @@ async_directory::async_directory(
 }
 
 index_output::ptr async_directory::create(
-    const std::string& name) noexcept {
+    std::string_view name) noexcept {
   utf8_path path;
 
   try {
@@ -538,18 +538,18 @@ index_output::ptr async_directory::create(
   return nullptr;
 }
 
-bool async_directory::sync(const std::string** name, size_t size) noexcept {
+bool async_directory::sync(std::span<std::string_view> names) noexcept {
   utf8_path path;
 
   try {
-    std::vector<file_utils::handle_t> handles(size);
+    std::vector<file_utils::handle_t> handles(names.size());
     path/=directory();
 
     auto async = async_pool_.emplace(queue_size_, flags_);
 
-    for (auto& handle : handles) {
+    for (auto name = names.begin(); auto& handle : handles) {
       utf8_path full_path(path);
-      full_path/=(**name);
+      full_path /= (*name);
       ++name;
 
       const int fd = ::open(full_path.c_str(), O_WRONLY, S_IRWXU);
@@ -581,7 +581,7 @@ bool async_directory::sync(const std::string** name, size_t size) noexcept {
   return true;
 }
 
-//bool async_directory::sync(const std::string& name) noexcept {
+//bool async_directory::sync(std::string_view name) noexcept {
 //  utf8_path path;
 //
 //  try {

@@ -95,8 +95,8 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
   auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
 
   std::vector<std::string> files;
-  auto list_files = [&files] (std::string& name) {
-    files.emplace_back(std::move(name));
+  auto list_files = [&files] (std::string_view name) {
+    files.emplace_back(name);
     return true;
   };
 
@@ -953,44 +953,44 @@ TEST_P(format_test_case, segment_meta_read_write) {
         return dir_.attributes();
       }
 
-      virtual irs::index_output::ptr create(const std::string& name) noexcept override {
+      virtual irs::index_output::ptr create(std::string_view name) noexcept override {
         // corrupt meta before writing it
         meta_.docs_count = meta_.live_docs_count - 1;
         return dir_.create(name);
       }
 
-      virtual bool exists(bool& result, const std::string& name) const noexcept override {
+      virtual bool exists(bool& result, std::string_view name) const noexcept override {
         return dir_.exists(result, name);
       }
 
-      virtual bool length(uint64_t& result, const std::string& name) const noexcept override {
+      virtual bool length(uint64_t& result, std::string_view name) const noexcept override {
         return dir_.length(result, name);
       }
 
-      virtual irs::index_lock::ptr make_lock(const std::string& name) noexcept override {
+      virtual irs::index_lock::ptr make_lock(std::string_view name) noexcept override {
         return dir_.make_lock(name);
       }
 
       virtual bool mtime(std::time_t& result,
-                         const std::string& name) const noexcept override {
+                         std::string_view name) const noexcept override {
         return dir_.mtime(result, name);
       }
 
-      virtual irs::index_input::ptr open(const std::string& name,
+      virtual irs::index_input::ptr open(std::string_view name,
                                          irs::IOAdvice advice) const noexcept override {
         return dir_.open(name, advice);
       }
 
-      virtual bool remove(const std::string& name) noexcept override {
+      virtual bool remove(std::string_view name) noexcept override {
         return dir_.remove(name);
       }
 
-      virtual bool rename(const std::string& src,
-                          const std::string& dst) noexcept override {
+      virtual bool rename(std::string_view src,
+                          std::string_view dst) noexcept override {
         return dir_.rename(src, dst);
       }
 
-      virtual bool sync(const std::string& name) noexcept override {
+      virtual bool sync(std::string_view name) noexcept override {
         return dir_.sync(name);
       }
 
@@ -1414,7 +1414,7 @@ TEST_P(format_test_case, columns_rw_empty) {
   meta0.codec = codec();
 
   std::vector<std::string> files;
-  auto list_files = [&files] (std::string& name) {
+  auto list_files = [&files] (std::string_view name) {
     files.emplace_back(std::move(name));
     return true;
   };

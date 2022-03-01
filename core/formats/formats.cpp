@@ -34,7 +34,7 @@
 
 namespace {
 
-const std::string FILENAME_PREFIX("libformat-");
+constexpr std::string_view kFileNamePrefix{"libformat-"};
 
 // first - format name
 // second - module name, nullptr => matches format name
@@ -58,12 +58,15 @@ class format_register :
   virtual std::string key_to_filename(const key_type& key) const override {
     auto const& module = key.second.null() ? key.first : key.second;
 
-    std::string filename(FILENAME_PREFIX.size() + module.size(), 0);
+    std::string filename(kFileNamePrefix.size() + module.size(), 0);
 
-    std::memcpy(&filename[0], FILENAME_PREFIX.c_str(), FILENAME_PREFIX.size());
+    std::memcpy(
+      filename.data(),
+      kFileNamePrefix.data(),
+      kFileNamePrefix.size());
 
-    irs::string_ref::traits_type::copy(
-      &filename[0] + FILENAME_PREFIX.size(),
+    std::memcpy(
+      filename.data() + kFileNamePrefix.size(),
       module.c_str(), module.size());
 
     return filename;
@@ -127,8 +130,8 @@ namespace iresearch {
 #endif
 }
 
-/*static*/ void formats::load_all(const std::string& path) {
-  load_libraries(path, FILENAME_PREFIX, "");
+/*static*/ void formats::load_all(std::string_view path) {
+  load_libraries(path, kFileNamePrefix, "");
 }
 
 /*static*/ bool formats::visit(

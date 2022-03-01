@@ -992,7 +992,7 @@ class field_writer final : public irs::field_writer {
   virtual void end() override;
 
   virtual void write(
-    const std::string& name,
+    std::string_view name,
     IndexFeatures index_features,
     const irs::feature_map_t& features,
     term_iterator& terms) override;
@@ -1003,7 +1003,7 @@ class field_writer final : public irs::field_writer {
   void begin_field(IndexFeatures field);
 
   void end_field(
-    const std::string& name,
+    std::string_view name,
     IndexFeatures index_features,
     const irs::feature_map_t& features,
     uint64_t total_doc_freq,
@@ -1359,7 +1359,7 @@ void field_writer::prepare(const irs::flush_state& state) {
 }
 
 void field_writer::write(
-    const std::string& name,
+    std::string_view name,
     IndexFeatures index_features,
     const irs::feature_map_t& features,
     term_iterator& terms) {
@@ -1425,7 +1425,7 @@ void field_writer::begin_field(IndexFeatures features) {
 }
 
 void field_writer::end_field(
-    const std::string& name,
+    std::string_view name,
     IndexFeatures index_features,
     const irs::feature_map_t& features,
     uint64_t total_doc_freq,
@@ -1495,7 +1495,7 @@ void field_writer::end_field(
 
   if (IRS_UNLIKELY(!ok)) {
     throw irs::index_error(irs::string_utils::to_string(
-      "failed to write term index for field '%s'", name.c_str()));
+      "failed to write term index for field '%s'", std::string{name}.c_str()));
   }
 
   stack_.clear();

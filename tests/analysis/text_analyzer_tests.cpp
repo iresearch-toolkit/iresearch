@@ -25,8 +25,6 @@
 #include "tests_config.hpp"
 
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
-#include <rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 
 #include <unicode/coll.h> // for icu::Collator
 #include <unicode/decimfmt.h> // for icu::DecimalFormat
@@ -869,18 +867,17 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::type<irs::text_format::json>::get(), config));
 
     // stopwords order is not guaranteed. Need to deep check json
-    rapidjson::Document json;
-    ASSERT_FALSE(json.Parse(actual.c_str(), actual.size()).HasParseError());
-    ASSERT_TRUE(json.HasMember("stopwords"));
-    auto& stopwords = json["stopwords"]; 
-    ASSERT_TRUE(stopwords.IsArray());
+    auto builder = VPackParser::fromJson(actual);
+    auto json = builder->slice();
+    ASSERT_TRUE(json.isObject());
+    ASSERT_TRUE(json.hasKey("stopwords"));
+    auto stopwords = json.get("stopwords");
+    ASSERT_TRUE(stopwords.isArray());
 
     std::unordered_set<std::string> expected_stopwords = { "z","a","b" };
-    for (auto itr = stopwords.Begin(), end = stopwords.End();
-      itr != end;
-      ++itr) {
-      ASSERT_TRUE(itr->IsString());
-      expected_stopwords.erase(itr->GetString());
+    for (size_t itr = 0, end = stopwords.length(); itr != end; ++itr) {
+      ASSERT_TRUE(stopwords.at(itr).isString());
+      expected_stopwords.erase(stopwords.at(itr).copyString());
     }
     ASSERT_TRUE(expected_stopwords.empty());
   }

@@ -40,13 +40,13 @@ namespace directory_utils {
 // return a reference to a file or empty() if not found
 index_file_refs::ref_t reference(
   const directory& dir,
-  const std::string& name,
+  std::string_view name,
   bool include_missing = false);
 
 // return success, visitor gets passed references to files retrieved from source
 bool reference(
   const directory& dir,
-  const std::function<const std::string*()>& source,
+  const std::function<std::optional<std::string_view>()>& source,
   const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
   bool include_missing = false);
 
@@ -90,13 +90,13 @@ struct tracking_directory final : public directory {
     return impl_.attributes();
   }
 
-  virtual index_output::ptr create(const std::string& name) noexcept override;
+  virtual index_output::ptr create(std::string_view name) noexcept override;
 
   void clear_tracked() noexcept;
 
   virtual bool exists(
       bool& result,
-      const std::string& name) const noexcept override {
+      std::string_view name) const noexcept override {
     return impl_.exists(result, name);
   }
 
@@ -104,34 +104,34 @@ struct tracking_directory final : public directory {
 
   virtual bool length(
       uint64_t& result,
-      const std::string& name) const noexcept override {
+      std::string_view name) const noexcept override {
     return impl_.length(result, name);
   }
 
   virtual index_lock::ptr make_lock(
-      const std::string& name
+      std::string_view name
   ) noexcept override {
     return impl_.make_lock(name);
   }
 
   virtual bool mtime(
       std::time_t& result,
-      const std::string& name) const noexcept override {
+      std::string_view name) const noexcept override {
     return impl_.mtime(result, name);
   }
 
   virtual index_input::ptr open(
-    const std::string& name,
+    std::string_view name,
     IOAdvice advice
   ) const noexcept override;
 
-  virtual bool remove(const std::string& name) noexcept override;
+  virtual bool remove(std::string_view name) noexcept override;
 
   virtual bool rename(
-    const std::string& src,
-    const std::string& dst) noexcept override;
+    std::string_view src,
+    std::string_view dst) noexcept override;
 
-  virtual bool sync(const std::string& name) noexcept override {
+  virtual bool sync(std::string_view name) noexcept override {
     return impl_.sync(name);
   }
 
@@ -167,43 +167,43 @@ struct ref_tracking_directory: public directory {
 
   void clear_refs() const;
 
-  virtual index_output::ptr create(const std::string &name) noexcept override;
+  virtual index_output::ptr create(std::string_view name) noexcept override;
 
   virtual bool exists(
       bool& result,
-      const std::string& name) const noexcept override {
+      std::string_view name) const noexcept override {
     return impl_.exists(result, name);
   }
 
   virtual bool length(
       uint64_t& result,
-      const std::string& name) const noexcept override {
+      std::string_view name) const noexcept override {
     return impl_.length(result, name);
   }
 
-  virtual index_lock::ptr make_lock(const std::string& name) noexcept override {
+  virtual index_lock::ptr make_lock(std::string_view name) noexcept override {
     return impl_.make_lock(name);
   }
 
   virtual bool mtime(
       std::time_t& result,
-      const std::string& name) const noexcept override {
+      std::string_view name) const noexcept override {
     return impl_.mtime(result, name);
   }
 
   virtual index_input::ptr open(
-    const std::string& name,
+    std::string_view name,
     IOAdvice advice) const noexcept override;
 
-  virtual bool remove(const std::string& name) noexcept override;
+  virtual bool remove(std::string_view name) noexcept override;
 
-  virtual bool rename(const std::string& src, const std::string& dst) noexcept override;
+  virtual bool rename(std::string_view src, std::string_view dst) noexcept override;
 
-  virtual bool sync(const std::string** name, size_t count) noexcept override {
-    return impl_.sync(name, count);
+  virtual bool sync(std::span<std::string_view> names) noexcept override {
+    return impl_.sync(names);
   }
 
-  virtual bool sync(const std::string& name) noexcept override {
+  virtual bool sync(std::string_view name) noexcept override {
     return impl_.sync(name);
   }
 

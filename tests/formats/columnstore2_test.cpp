@@ -1985,7 +1985,7 @@ TEST_P(columnstore2_test_case, empty_columns) {
   }
 
   size_t count = 0;
-  ASSERT_TRUE(dir().visit([&count](auto&) {
+  ASSERT_TRUE(dir().visit([&count](auto) {
     ++count;
     return false; }));
 

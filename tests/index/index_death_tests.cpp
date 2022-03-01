@@ -53,7 +53,7 @@ class failing_directory : public tests::directory_mock {
    public:
     explicit failing_index_input(
         index_input::ptr&& impl,
-        const std::string name,
+        std::string_view name,
         const failing_directory& dir)
       : impl_(std::move(impl)),
         dir_(&dir),
@@ -150,42 +150,42 @@ class failing_directory : public tests::directory_mock {
     return failures_.empty();
   }
 
-  virtual irs::index_output::ptr create(const std::string &name) noexcept override {
+  virtual irs::index_output::ptr create(std::string_view name) noexcept override {
     if (should_fail(Failure::CREATE, name)) {
       return nullptr;
     }
 
     return tests::directory_mock::create(name);
   }
-  virtual bool exists(bool& result, const std::string& name) const noexcept override {
+  virtual bool exists(bool& result, std::string_view name) const noexcept override {
     if (should_fail(Failure::EXISTS, name)) {
       return false;
     }
 
     return tests::directory_mock::exists(result, name);
   }
-  virtual bool length(uint64_t& result, const std::string& name) const noexcept override {
+  virtual bool length(uint64_t& result, std::string_view name) const noexcept override {
     if (should_fail(Failure::LENGTH, name)) {
       return false;
     }
 
     return tests::directory_mock::length(result, name);
   }
-  virtual irs::index_lock::ptr make_lock(const std::string& name) noexcept override {
+  virtual irs::index_lock::ptr make_lock(std::string_view name) noexcept override {
     if (should_fail(Failure::MAKE_LOCK, name)) {
       return nullptr;
     }
 
     return tests::directory_mock::make_lock(name);
   }
-  virtual bool mtime(std::time_t& result, const std::string& name) const noexcept override {
+  virtual bool mtime(std::time_t& result, std::string_view name) const noexcept override {
     if (should_fail(Failure::MTIME, name)) {
       return false;
     }
 
     return tests::directory_mock::mtime(result, name);
   }
-  virtual irs::index_input::ptr open(const std::string& name, irs::IOAdvice advice) const noexcept override {
+  virtual irs::index_input::ptr open(std::string_view name, irs::IOAdvice advice) const noexcept override {
     if (should_fail(Failure::OPEN, name)) {
       return nullptr;
     }
@@ -193,21 +193,21 @@ class failing_directory : public tests::directory_mock {
     return irs::memory::make_unique<failing_index_input>(
       tests::directory_mock::open(name, advice), name, *this);
   }
-  virtual bool remove(const std::string& name) noexcept override {
+  virtual bool remove(std::string_view name) noexcept override {
     if (should_fail(Failure::REMOVE, name)) {
       return false;
     }
 
     return tests::directory_mock::remove(name);
   }
-  virtual bool rename(const std::string& src, const std::string& dst) noexcept override {
+  virtual bool rename(std::string_view src, std::string_view dst) noexcept override {
     if (should_fail(Failure::RENAME, src)) {
       return false;
     }
 
     return tests::directory_mock::rename(src, dst);
   }
-  virtual bool sync(const std::string& name) noexcept override {
+  virtual bool sync(std::string_view name) noexcept override {
     if (should_fail(Failure::SYNC, name)) {
       return false;
     }
@@ -216,8 +216,8 @@ class failing_directory : public tests::directory_mock {
   }
 
  private:
-  bool should_fail(Failure type, const std::string& name) const {
-    auto it = failures_.find(std::make_pair(name, type));
+  bool should_fail(Failure type, std::string_view name) const {
+    auto it = failures_.find(std::make_pair(std::string{name}, type));
 
     if (failures_.end() != it) {
       failures_.erase(it);

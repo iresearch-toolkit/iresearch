@@ -21,20 +21,17 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "error/error.hpp"
 #include "directory_attributes.hpp"
+
+#include "error/error.hpp"
 
 namespace {
 
-irs::memory_allocator GLOBAL_ALLOC(128);
+irs::memory_allocator kGlobalAlloc{128};
 
 }
 
 namespace iresearch {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  memory_allocator
-// -----------------------------------------------------------------------------
 
 /*static*/ memory_allocator::buffer::ptr memory_allocator::buffer::make(
     size_t size) {
@@ -42,7 +39,7 @@ namespace iresearch {
 }
 
 /*static*/ memory_allocator& memory_allocator::global() noexcept {
-  return GLOBAL_ALLOC;
+  return kGlobalAlloc;
 }
 
 /*static*/ memory_allocator::ptr memory_allocator::make(size_t pool_size) {
@@ -50,42 +47,23 @@ namespace iresearch {
     return memory::make_managed<memory_allocator>(pool_size);
   }
 
-  return memory::to_managed<memory_allocator, false>(&GLOBAL_ALLOC);
+  return memory::to_managed<memory_allocator, false>(&kGlobalAlloc);
 }
 
-memory_allocator::memory_allocator(size_t pool_size)
-  : allocator_(pool_size) {
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   index_file_refs
-// -----------------------------------------------------------------------------
-
-DEFINE_FACTORY_DEFAULT(index_file_refs) // cppcheck-suppress unknownMacro
-
-index_file_refs::ref_t index_file_refs::add(const std::string& key) {
-  return refs_.add(std::string(key));
-}
-
-index_file_refs::ref_t index_file_refs::add(std::string&& key) {
-  return refs_.add(std::move(key));
-}
+memory_allocator::memory_allocator(size_t pool_size) : allocator_(pool_size) {}
 
 void index_file_refs::clear() {
-  refs_.visit([](const std::string&, size_t){ return true; }, true);
+  refs_.visit([](const auto&, size_t) { return true; }, true);
 
   if (!refs_.empty()) {
     throw illegal_state{"Cannot clear ref_counter due to live refs."};
   }
 }
 
-directory_attributes::directory_attributes(
-    size_t memory_pool_size,
-    std::unique_ptr<irs::encryption> enc)
-  : alloc_{memory_allocator::make(memory_pool_size)},
-    enc_{std::move(enc)},
-    refs_{memory::make_unique<index_file_refs>()} {
-}
+directory_attributes::directory_attributes(size_t memory_pool_size,
+                                           std::unique_ptr<irs::encryption> enc)
+    : alloc_{memory_allocator::make(memory_pool_size)},
+      enc_{std::move(enc)},
+      refs_{memory::make_unique<index_file_refs>()} {}
 
-
-}
+}  // namespace iresearch

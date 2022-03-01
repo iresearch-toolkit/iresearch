@@ -207,7 +207,7 @@ class filter_base : public filter_with_options<Options> {
   using options_type = typename filter_with_options<Options>::options_type;
   using filter_type = typename options_type::filter_type;
 
-  const std::string& field() const noexcept { return field_; }
+  std::string_view field() const noexcept { return field_; }
   std::string* mutable_field() noexcept { return &field_; }
 
   virtual size_t hash() const noexcept override {
