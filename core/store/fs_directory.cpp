@@ -493,7 +493,8 @@ fs_directory::fs_directory(
 
 index_output::ptr fs_directory::create(std::string_view name) noexcept {
   try {
-    const irs::utf8_path path = dir_ / name;
+    irs::utf8_path path{dir_};
+    path /= name;
 
     auto out = fs_index_output::open(path.c_str());
 
