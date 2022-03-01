@@ -34,8 +34,9 @@
 
 namespace iresearch {
 
-template<typename Key, typename Hash = absl::Hash<Key>,
-         typename Equal = std::equal_to<Key>>
+template<typename Key,
+         typename Hash = absl::container_internal::hash_default_hash<Key>,
+         typename Equal = absl::container_internal::hash_default_eq<Key>>
 class ref_counter : public util::noncopyable {
  public:
   using ref_t = std::shared_ptr<const Key>;
