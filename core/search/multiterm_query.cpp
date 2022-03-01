@@ -38,13 +38,13 @@ class lazy_bitset_iterator final : public bitset_doc_iterator {
       const sub_reader& segment,
       const term_reader& field,
       const order::prepared& ord,
-      const std::vector<multiterm_state::unscored_term_state>& states,
+      std::span<const multiterm_state::unscored_term_state> states,
       cost::cost_t estimation) noexcept
     : bitset_doc_iterator(estimation),
       score_(ord),
       field_(&field),
       segment_(&segment),
-      states_(states.data(), states.size()) {
+      states_(states) {
     assert(!states_.empty());
   }
 
@@ -62,7 +62,7 @@ class lazy_bitset_iterator final : public bitset_doc_iterator {
   std::unique_ptr<word_t[]> set_;
   const term_reader* field_;
   const sub_reader* segment_;
-  range<const multiterm_state::unscored_term_state> states_;
+  std::span<const multiterm_state::unscored_term_state> states_;
 }; // lazy_bitset_iterator
 
 bool lazy_bitset_iterator::refill(

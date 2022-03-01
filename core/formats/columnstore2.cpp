@@ -72,7 +72,9 @@ bool is_encrypted(const column_header& hdr) noexcept {
   return ColumnProperty::kEncrypt == (hdr.props & ColumnProperty::kEncrypt);
 }
 
-void write_bitmap_index(index_output& out, const column_index& blocks) {
+void write_bitmap_index(
+    index_output& out,
+    std::span<const sparse_bitmap_writer::block> blocks) {
   const uint32_t count = static_cast<uint32_t>(blocks.size());
 
   if (count > 2) {
@@ -115,7 +117,7 @@ column_index read_bitmap_index(index_input& in) {
 
 void write_blocks_sparse(
     index_output& out,
-    const std::vector<column::column_block>& blocks) {
+    std::span<const column::column_block> blocks) {
   // FIXME optimize
   for (auto& block : blocks) {
     out.write_long(block.addr);
@@ -128,7 +130,7 @@ void write_blocks_sparse(
 
 void write_blocks_dense(
     index_output& out,
-    const std::vector<column::column_block>& blocks) {
+    std::span<const column::column_block> blocks) {
   // FIXME optimize
   for (auto& block : blocks) {
     out.write_long(block.data);
