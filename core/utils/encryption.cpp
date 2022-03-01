@@ -36,7 +36,7 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 
 bool encrypt(
-    const std::string& filename,
+    std::string_view filename,
     index_output& out,
     encryption* enc,
     bstring& header,
@@ -54,7 +54,7 @@ bool encrypt(
   if (!enc->create_header(filename, &header[0])) {
     throw index_error(string_utils::to_string(
       "failed to initialize encryption header, path '%s'",
-      filename.c_str()
+      std::string{filename}.c_str()
     ));
   }
 
@@ -66,14 +66,14 @@ bool encrypt(
   if (!cipher) {
     throw index_error(string_utils::to_string(
       "failed to instantiate encryption stream, path '%s'",
-      filename.c_str()
+      std::string{filename}.c_str()
     ));
   }
 
   if (!cipher->block_size()) {
     throw index_error(string_utils::to_string(
       "failed to instantiate encryption stream with block of size 0, path '%s'",
-      filename.c_str()
+      std::string{filename}.c_str()
     ));
   }
 
@@ -86,7 +86,7 @@ bool encrypt(
 }
 
 bool decrypt(
-    const std::string& filename,
+    std::string_view filename,
     index_input& in,
     encryption* enc,
     encryption::stream::ptr& cipher) {
@@ -100,14 +100,14 @@ bool decrypt(
   if (!enc) {
     throw index_error(string_utils::to_string(
       "failed to open encrypted file without cipher, path '%s'",
-      filename.c_str()
+      std::string{filename}.c_str()
     ));
   }
 
   if (header.size() != enc->header_length()) {
     throw index_error(string_utils::to_string(
       "failed to open encrypted file, expect encryption header of size " IR_SIZE_T_SPECIFIER ", got " IR_SIZE_T_SPECIFIER ", path '%s'",
-      enc->header_length(), header.size(), filename.c_str()
+      enc->header_length(), header.size(), std::string{filename}.c_str()
     ));
   }
 
@@ -116,7 +116,7 @@ bool decrypt(
   if (!cipher) {
     throw index_error(string_utils::to_string(
       "failed to open encrypted file, path '%s'",
-      filename.c_str(), enc->header_length(), header.size()
+      std::string{filename}.c_str(), enc->header_length(), header.size()
     ));
   }
 
@@ -125,7 +125,7 @@ bool decrypt(
   if (!block_size) {
     throw index_error(string_utils::to_string(
       "invalid block size 0 specified for encrypted file, path '%s'",
-      filename.c_str(), enc->header_length(), header.size()
+      std::string{filename}.c_str(), enc->header_length(), header.size()
     ));
   }
 
@@ -136,7 +136,7 @@ bool decrypt(
   if (crc.checksum() != in.read_vlong()) {
     throw index_error(string_utils::to_string(
       "invalid ecryption header, path '%s'",
-      filename.c_str()
+      std::string{filename}.c_str()
     ));
   }
 

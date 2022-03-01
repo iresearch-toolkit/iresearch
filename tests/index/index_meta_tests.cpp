@@ -40,8 +40,8 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
 
   // check that there are no files in a directory
   std::vector<std::string> files;
-  auto list_files = [&files] (std::string& name) {
-    files.emplace_back(std::move(name));
+  auto list_files = [&files] (std::string_view name) {
+    files.emplace_back(name);
     return true;
   };
   ASSERT_TRUE(dir.visit(list_files));
@@ -99,8 +99,8 @@ TEST(index_meta_tests, memory_directory_read_write_11) {
 
   // check that there are no files in a directory
   std::vector<std::string> files;
-  auto list_files = [&files] (std::string& name) {
-    files.emplace_back(std::move(name));
+  auto list_files = [&files] (std::string_view name) {
+    files.emplace_back(name);
     return true;
   };
   ASSERT_TRUE(dir.visit(list_files));

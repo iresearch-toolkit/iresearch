@@ -46,9 +46,9 @@ namespace iresearch {
 class single_instance_lock : public index_lock {
  public:
   single_instance_lock(
-      const std::string& name, 
+      std::string_view name,
       memory_directory* parent)
-    : name(name), parent(parent) {
+    : name{name}, parent(parent) {
     assert(parent);
   }
 
@@ -436,7 +436,7 @@ memory_directory::~memory_directory() noexcept {
 }
 
 bool memory_directory::exists(
-    bool& result, const std::string& name) const noexcept {
+    bool& result, std::string_view name) const noexcept {
   // cppcheck-suppress unreadVariable
   auto lock = make_shared_lock(flock_);
 
@@ -445,7 +445,7 @@ bool memory_directory::exists(
   return true;
 }
 
-index_output::ptr memory_directory::create(const std::string& name) noexcept {
+index_output::ptr memory_directory::create(std::string_view name) noexcept {
   try {
     auto lock = make_lock_guard(flock_);
 
@@ -470,7 +470,7 @@ index_output::ptr memory_directory::create(const std::string& name) noexcept {
 }
 
 bool memory_directory::length(
-    uint64_t& result, const std::string& name) const noexcept {
+    uint64_t& result, std::string_view name) const noexcept {
   // cppcheck-suppress unreadVariable
   auto lock = make_shared_lock(flock_);
 
@@ -486,7 +486,7 @@ bool memory_directory::length(
 }
 
 index_lock::ptr memory_directory::make_lock(
-    const std::string& name) noexcept {
+    std::string_view name) noexcept {
   try {
     return index_lock::make<single_instance_lock>(name, this);
   } catch (...) {
@@ -498,7 +498,7 @@ index_lock::ptr memory_directory::make_lock(
 
 bool memory_directory::mtime(
     std::time_t& result,
-    const std::string& name) const noexcept {
+    std::string_view name) const noexcept {
   // cppcheck-suppress unreadVariable
   auto lock = make_shared_lock(flock_);
 
@@ -514,7 +514,7 @@ bool memory_directory::mtime(
 }
 
 index_input::ptr memory_directory::open(
-    const std::string& name,
+    std::string_view name,
     IOAdvice /*advice*/) const noexcept {
   try {
     auto lock = make_shared_lock(flock_);
@@ -525,17 +525,17 @@ index_input::ptr memory_directory::open(
       return memory::make_unique<memory_index_input>(*it->second);
     }
 
-    IR_FRMT_ERROR("Failed to open input file, error: File not found, path: %s", name.c_str());
+    IR_FRMT_ERROR("Failed to open input file, error: File not found, path: %s", std::string{name}.c_str());
 
     return nullptr;
   } catch(...) {
-    IR_FRMT_ERROR("Failed to open input file, path: %s", name.c_str());
+    IR_FRMT_ERROR("Failed to open input file, path: %s", std::string{name}.c_str());
   }
 
   return nullptr;
 }
 
-bool memory_directory::remove(const std::string& name) noexcept {
+bool memory_directory::remove(std::string_view name) noexcept {
   try {
     auto lock = make_lock_guard(flock_);
 
@@ -547,8 +547,8 @@ bool memory_directory::remove(const std::string& name) noexcept {
 }
 
 bool memory_directory::rename(
-    const std::string& src,
-    const std::string& dst) noexcept {
+    std::string_view src,
+    std::string_view dst) noexcept {
   try {
     auto lock = make_lock_guard(flock_);
 
@@ -572,7 +572,7 @@ bool memory_directory::rename(
   return false;
 }
 
-bool memory_directory::sync(const std::string& /*name*/) noexcept {
+bool memory_directory::sync(std::string_view /*name*/) noexcept {
   return true;
 }
 

@@ -103,22 +103,22 @@ struct hash<::key> {
 
 namespace {
 
-const std::string FILENAME_PREFIX("libanalyzer-");
+constexpr std::string_view kFileNamePrefix{"libanalyzer-"};
 
 class analyzer_register
     : public irs::tagged_generic_register<::key, ::value, irs::string_ref, analyzer_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
     const auto& name = key.type;
-    std::string filename(FILENAME_PREFIX.size() + name.size(), 0);
+    std::string filename(kFileNamePrefix.size() + name.size(), 0);
 
     std::memcpy(
-      &filename[0],
-      FILENAME_PREFIX.c_str(),
-      FILENAME_PREFIX.size());
+      filename.data(),
+      kFileNamePrefix.data(),
+      kFileNamePrefix.size());
 
-    irs::string_ref::traits_type::copy(
-      &filename[0] + FILENAME_PREFIX.size(),
+    std::memcpy(
+      filename.data() + kFileNamePrefix.size(),
       name.c_str(),
       name.size());
 
@@ -221,8 +221,8 @@ namespace analysis {
 #endif
 }
 
-/*static*/ void analyzers::load_all(const std::string& path) {
-  load_libraries(path, FILENAME_PREFIX, "");
+/*static*/ void analyzers::load_all(std::string_view path) {
+  load_libraries(path, kFileNamePrefix, "");
 }
 
 /*static*/ bool analyzers::visit(

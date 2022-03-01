@@ -57,12 +57,12 @@ class ctr_encryption : public encryption {
   }
 
   virtual bool create_header(
-    const std::string& filename,
+    std::string_view filename,
     byte_type* header
   ) override;
 
   virtual stream::ptr create_stream(
-    const std::string& filename,
+    std::string_view filename,
     byte_type* header
   ) override;
 

@@ -24,39 +24,39 @@
 
 #include "common.hpp"
 
+#include <frozen/unordered_map.h>
+#include <frozen/string.h>
+
 #include "shared.hpp"
 #ifdef IRESEARCH_URING
 #include "store/async_directory.hpp"
 #endif
-#include <functional>
-#include <unordered_map>
-
 #include "store/fs_directory.hpp"
 #include "store/mmap_directory.hpp"
 
 namespace {
 
-typedef std::function<irs::directory::ptr(const std::string&)> factory_f;
+using factory_f = irs::directory::ptr(*)(std::string_view);
 
-const std::unordered_map<std::string, factory_f> kFactories{
+constexpr auto kFactories = frozen::make_unordered_map<frozen::string, factory_f>({
 #ifdef IRESEARCH_URING
     {"async",
-     [](const std::string& path) {
+     [](std::string_view path) -> irs::directory::ptr {
        return irs::memory::make_unique<irs::async_directory>(path);
      }},
 #endif
     {"mmap",
-     [](const std::string& path) {
+     [](std::string_view path) -> irs::directory::ptr{
        return irs::memory::make_unique<irs::mmap_directory>(path);
      }},
-    {"fs", [](const std::string& path) {
+    {"fs", [](std::string_view path) -> irs::directory::ptr {
        return irs::memory::make_unique<irs::fs_directory>(path);
-     }}};
+     }}});
 
 }  // namespace
 
-irs::directory::ptr create_directory(const std::string& type,
-                                     const std::string& path) {
+irs::directory::ptr create_directory(std::string_view type,
+                                     std::string_view path) {
   const auto it = kFactories.find(type);
 
   return it == kFactories.end() ? nullptr : it->second(path);

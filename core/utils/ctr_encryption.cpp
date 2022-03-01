@@ -198,7 +198,7 @@ bool ctr_cipher_stream::decrypt_block(
 // -----------------------------------------------------------------------------
 
 bool ctr_encryption::create_header(
-    const std::string& filename,
+    std::string_view filename,
     byte_type* header
 ) {
   assert(header);
@@ -208,7 +208,7 @@ bool ctr_encryption::create_header(
   if (!block_size) {
     IR_FRMT_ERROR(
       "failed to initialize encryption header with block of size 0, path '%s'",
-      filename.c_str()
+      std::string{filename}.c_str()
     );
 
     return false;
@@ -219,7 +219,7 @@ bool ctr_encryption::create_header(
   if (header_length < MIN_HEADER_LENGTH) {
     IR_FRMT_ERROR(
       "failed to initialize encryption header of size " IR_SIZE_T_SPECIFIER ", need at least " IR_SIZE_T_SPECIFIER ", path '%s'",
-      header_length, MIN_HEADER_LENGTH, filename.c_str()
+      header_length, MIN_HEADER_LENGTH, std::string{filename}.c_str()
     );
 
     return false;
@@ -228,7 +228,7 @@ bool ctr_encryption::create_header(
   if (header_length < 2*block_size) {
     IR_FRMT_ERROR(
       "failed to initialize encryption header of size " IR_SIZE_T_SPECIFIER ", need at least " IR_SIZE_T_SPECIFIER ", path '%s'",
-      header_length, 2*block_size, filename.c_str()
+      header_length, 2*block_size, std::string{filename}.c_str()
     );
 
     return false;
@@ -253,7 +253,7 @@ bool ctr_encryption::create_header(
   if (!stream.encrypt(0, header + 2*block_size, header_length - 2*block_size)) {
     IR_FRMT_ERROR(
       "failed to encrypt header, path '%s'",
-      filename.c_str()
+      std::string{filename}.c_str()
     );
 
     return false;
@@ -263,7 +263,7 @@ bool ctr_encryption::create_header(
 }
 
 encryption::stream::ptr ctr_encryption::create_stream(
-    const std::string& filename,
+    std::string_view filename,
     byte_type* header
 ) {
   assert(header);
@@ -273,7 +273,7 @@ encryption::stream::ptr ctr_encryption::create_stream(
   if (!block_size) {
     IR_FRMT_ERROR(
       "failed to instantiate encryption stream with block of size 0, path '%s'",
-      filename.c_str()
+      std::string{filename}.c_str()
     );
 
     return nullptr;
@@ -284,7 +284,7 @@ encryption::stream::ptr ctr_encryption::create_stream(
   if (header_length < MIN_HEADER_LENGTH) {
     IR_FRMT_ERROR(
       "failed to instantiate encryption stream with header of size " IR_SIZE_T_SPECIFIER ", need at least " IR_SIZE_T_SPECIFIER ", path '%s'",
-      header_length, MIN_HEADER_LENGTH, filename.c_str()
+      header_length, MIN_HEADER_LENGTH, std::string{filename}.c_str()
     );
 
     return nullptr;
@@ -293,7 +293,7 @@ encryption::stream::ptr ctr_encryption::create_stream(
   if (header_length < 2*block_size) {
     IR_FRMT_ERROR(
       "failed to instantiate encryption stream with header of size " IR_SIZE_T_SPECIFIER ", need at least " IR_SIZE_T_SPECIFIER ", path '%s'",
-      header_length, 2*block_size, filename.c_str()
+      header_length, 2*block_size, std::string{filename}.c_str()
     );
 
     return nullptr;
@@ -308,7 +308,7 @@ encryption::stream::ptr ctr_encryption::create_stream(
   if (!stream.decrypt(0, header + 2*block_size, header_length - 2*block_size)) {
     IR_FRMT_ERROR(
       "failed to decrypt encryption header for instantiation of encryption stream, path '%s'",
-      filename.c_str()
+      std::string{filename}.c_str()
     );
 
     return nullptr;

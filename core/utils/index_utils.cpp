@@ -349,7 +349,7 @@ index_writer::consolidation_policy_t consolidation_policy(const consolidate_tier
 
     // get segments from index meta
     auto push_segments = [&sorted_segments](
-        const std::string& /*filename*/,
+        std::string_view /*filename*/,
         const irs::segment_meta& segment) {
       if (segment.live_docs_count) {
         // skip empty segments, they'll be

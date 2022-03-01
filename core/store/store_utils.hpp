@@ -197,7 +197,7 @@ inline void write_string(data_output& out, const byte_type* s, size_t len) {
 
 template<typename StringType>
 inline void write_string(data_output& out, const StringType& str) {
-  write_string(out, str.c_str(), str.size());
+  write_string(out, str.data(), str.size());
 }
 
 template<typename ContType>

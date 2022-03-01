@@ -119,17 +119,17 @@ class directory_test_case : public tests::directory_test_case_base<> {
     }
 
     // Check files count
-    std::vector<const std::string*> files_to_sync;
+    std::vector<std::string_view> files_to_sync;
     std::set<std::string> files;
-    auto list_files = [&](std::string& name) {
+    auto list_files = [&](std::string_view name) {
       [[maybe_unused]] auto [it, inserted] = files.emplace(std::move(name));
-      files_to_sync.emplace_back(&*it);
+      files_to_sync.emplace_back(*it);
       return true;
     };
     ASSERT_TRUE(dir.visit(list_files));
     ASSERT_EQ((std::set<std::string>{std::begin(names), std::end(names)}),
               files);
-    ASSERT_TRUE(dir.sync(files_to_sync.data(), files_to_sync.size()));
+    ASSERT_TRUE(dir.sync(files_to_sync));
 
     // Read contents
     it = std::end(names);
@@ -407,8 +407,8 @@ class directory_test_case : public tests::directory_test_case_base<> {
       }
 
       {
-        std::vector to_sync{&name};
-        ASSERT_TRUE(dir.sync(to_sync.data(), to_sync.size()));
+        std::vector<std::string_view> to_sync{name};
+        ASSERT_TRUE(dir.sync(to_sync));
       }
 
       // read from file
@@ -4115,7 +4115,7 @@ TEST_P(directory_test_case, string_read_write) {
 TEST_P(directory_test_case, visit) {
   using namespace iresearch;
 
-  std::set<std::string> names{
+  std::set<std::string_view> names{
       "spM42fEO88eDt2", "jNIvCMksYwpoxN", "Re5eZWCkQexrZn", "jjj003oxVAIycv",
       "N9IJuRjFSlO8Pa", "OPGG6Ic3JYJyVY", "ZDGVji8xtjh9zI", "DvBDXbjKgIfPIk",
       "bZyCbyByXnGvlL", "pvjGDbNcZGDmQ2", "J7by8eYg0ZGbYw", "6UZ856mrVW9DeD",
@@ -4158,7 +4158,7 @@ TEST_P(directory_test_case, visit) {
   // visit empty directory
   {
     size_t calls_count = 0;
-    auto visitor = [&calls_count](const std::string& file) {
+    auto visitor = [&calls_count](std::string_view) {
       ++calls_count;
       return true;
     };
@@ -4173,7 +4173,7 @@ TEST_P(directory_test_case, visit) {
 
   // visit directory
   {
-    auto visitor = [&names](const std::string& file) {
+    auto visitor = [&names](std::string_view file) {
       if (!names.erase(file)) {
         return false;
       }
@@ -4188,14 +4188,14 @@ TEST_P(directory_test_case, list) {
   using namespace iresearch;
 
   std::vector<std::string> files;
-  auto list_files = [&files](std::string& name) {
+  auto list_files = [&files](std::string_view name) {
     files.emplace_back(std::move(name));
     return true;
   };
   ASSERT_TRUE(dir_->visit(list_files));
   ASSERT_TRUE(files.empty());
 
-  std::vector<std::string> names{
+  std::vector<std::string_view> names{
       "spM42fEO88eDt2", "jNIvCMksYwpoxN", "Re5eZWCkQexrZn", "jjj003oxVAIycv",
       "N9IJuRjFSlO8Pa", "OPGG6Ic3JYJyVY", "ZDGVji8xtjh9zI", "DvBDXbjKgIfPIk",
       "bZyCbyByXnGvlL", "pvjGDbNcZGDmQ2", "J7by8eYg0ZGbYw", "6UZ856mrVW9DeD",
@@ -4244,7 +4244,7 @@ TEST_P(directory_test_case, list) {
   EXPECT_EQ(names.size(), files.size());
 
   EXPECT_TRUE(
-      std::all_of(files.begin(), files.end(), [&names](const string_ref& name) {
+      std::all_of(files.begin(), files.end(), [&names](std::string_view name) {
         return std::find(names.begin(), names.end(), name) != names.end();
       }));
 }
@@ -4404,7 +4404,7 @@ TEST_P(directory_test_case, directory_size) {
   {
     size_t accumulated_size = 0;
 
-    auto visitor = [this, &accumulated_size](const std::string& name) {
+    auto visitor = [this, &accumulated_size](std::string_view name) {
       uint64_t size = 0;
 
       if (!dir_->length(size, name)) {
@@ -4463,8 +4463,8 @@ class fs_directory_test : public test_base {
 
     // read files from directory
     std::vector<std::string> files;
-    auto list_files = [&files](std::string& name) {
-      files.emplace_back(std::move(name));
+    auto list_files = [&files](std::string_view name) {
+      files.emplace_back(name);
       return true;
     };
     ASSERT_TRUE(dir.visit(list_files));

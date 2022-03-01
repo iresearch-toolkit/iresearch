@@ -2093,10 +2093,10 @@ void index_meta_writer::rollback() noexcept {
 // --SECTION--                                                index_meta_reader
 // ----------------------------------------------------------------------------
 
-uint64_t parse_generation(const std::string& segments_file) {
-  assert(irs::starts_with(segments_file, index_meta_writer::FORMAT_PREFIX));
+uint64_t parse_generation(std::string_view segments_file) {
+  assert(segments_file.starts_with(index_meta_writer::FORMAT_PREFIX));
 
-  const char* gen_str = segments_file.c_str() + index_meta_writer::FORMAT_PREFIX.size();
+  const char* gen_str = segments_file.data() + index_meta_writer::FORMAT_PREFIX.size();
   char* suffix;
   auto gen = std::strtoull(gen_str, &suffix, 10); // 10 for base-10
 
@@ -2105,8 +2105,8 @@ uint64_t parse_generation(const std::string& segments_file) {
 
 bool index_meta_reader::last_segments_file(const directory& dir, std::string& out) const {
   uint64_t max_gen = 0;
-  directory::visitor_f visitor = [&out, &max_gen] (std::string& name) {
-    if (irs::starts_with(name, index_meta_writer::FORMAT_PREFIX)) {
+  directory::visitor_f visitor = [&out, &max_gen] (std::string_view name) {
+    if (name.starts_with(index_meta_writer::FORMAT_PREFIX)) {
       const uint64_t gen = parse_generation(name);
 
       if (type_limits<type_t::index_gen_t>::valid(gen) && gen > max_gen) {

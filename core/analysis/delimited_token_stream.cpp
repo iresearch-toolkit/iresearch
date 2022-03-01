@@ -156,7 +156,7 @@ irs::analysis::analyzer::ptr make_vpack(irs::string_ref args) {
 /// @param delimiter reference to analyzer options storage
 /// @param definition string for storing json document with config 
 ///////////////////////////////////////////////////////////////////////////////
-bool make_vpack_config(const std::string& delimiter, VPackBuilder* vpack_builder) {
+bool make_vpack_config(std::string_view delimiter, VPackBuilder* vpack_builder) {
   VPackObjectBuilder object(vpack_builder);
   {
     // delimiter

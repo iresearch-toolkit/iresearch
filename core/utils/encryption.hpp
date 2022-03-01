@@ -36,7 +36,7 @@ namespace iresearch {
 ///          appliclabe
 /// @throws index_error in case of error on header or stream creation
 bool encrypt(
-  const std::string& filename,
+  std::string_view filename,
   index_output& out,
   encryption* enc,
   bstring& header,
@@ -48,7 +48,7 @@ bool encrypt(
 ///          appliclabe
 /// @throws index_error in case of error on cipher stream creation
 bool decrypt(
-  const std::string& filename,
+  std::string_view filename,
   index_input& in,
   encryption* enc,
   encryption::stream::ptr& cipher

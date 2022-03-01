@@ -133,7 +133,7 @@ struct field_writer {
   virtual ~field_writer() = default;
   virtual void prepare(const flush_state& state) = 0;
   virtual void write(
-    const std::string& name,
+    std::string_view name,
     IndexFeatures index_features,
     const std::map<type_info::type_id, field_id>& features,
     term_iterator& data) = 0;
@@ -570,7 +570,7 @@ class formats {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief load all formats from plugins directory
   ////////////////////////////////////////////////////////////////////////////////
-  static void load_all(const std::string& path);
+  static void load_all(std::string_view path);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief visit all loaded formats, terminate early if visitor returns false

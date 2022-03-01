@@ -67,26 +67,24 @@ struct hash<entry_key_t> {
 
 namespace {
 
-const std::string FILENAME_PREFIX("libscorer-");
+constexpr std::string_view kFileNamePrefix{"libscorer-"};
 
 class scorer_register:
   public irs::tagged_generic_register<entry_key_t, irs::sort::ptr(*)(irs::string_ref args), irs::string_ref, scorer_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
     auto& name = key.name_;
-    std::string filename(FILENAME_PREFIX.size() + name.size(), 0);
+    std::string filename(kFileNamePrefix.size() + name.size(), 0);
 
     std::memcpy(
-      &filename[0],
-      FILENAME_PREFIX.c_str(),
-      FILENAME_PREFIX.size()
-    );
+      filename.data(),
+      kFileNamePrefix.data(),
+      kFileNamePrefix.size());
 
-    irs::string_ref::traits_type::copy(
-      &filename[0] + FILENAME_PREFIX.size(),
+    std::memcpy(
+      filename.data() + kFileNamePrefix.size(),
       name.c_str(),
-      name.size()
-    );
+      name.size());
 
     return filename;
   }
@@ -129,8 +127,8 @@ namespace iresearch {
   #endif
 }
 
-/*static*/ void scorers::load_all(const std::string& path) {
-  load_libraries(path, FILENAME_PREFIX, "");
+/*static*/ void scorers::load_all(std::string_view path) {
+  load_libraries(path, kFileNamePrefix, "");
 }
 
 /*static*/ bool scorers::visit(

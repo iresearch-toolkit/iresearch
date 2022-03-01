@@ -246,10 +246,10 @@ class format_test_case : public index_test_base {
       const iresearch::format& codec,
       const std::unordered_set<std::string>& expect_additional = {}) {
     std::vector<std::string> dir_files;
-    auto visitor = [&dir_files] (std::string& file) {
+    auto visitor = [&dir_files] (std::string_view file) {
       // ignore lock file present in fs_directory
       if (iresearch::index_writer::WRITE_LOCK_NAME != file) {
-        dir_files.emplace_back(std::move(file));
+        dir_files.emplace_back(file);
       }      
       return true;
     };
