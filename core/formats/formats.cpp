@@ -34,7 +34,7 @@
 
 namespace {
 
-constexpr std::string_view kFileNamePrefix("libformat-");
+constexpr std::string_view kFileNamePrefix{"libformat-"};
 
 // first - format name
 // second - module name, nullptr => matches format name
@@ -60,9 +60,12 @@ class format_register :
 
     std::string filename(kFileNamePrefix.size() + module.size(), 0);
 
-    std::memcpy(filename.data(), kFileNamePrefix.data(), kFileNamePrefix.size());
+    std::memcpy(
+      filename.data(),
+      kFileNamePrefix.data(),
+      kFileNamePrefix.size());
 
-    irs::string_ref::traits_type::copy(
+    std::memcpy(
       filename.data() + kFileNamePrefix.size(),
       module.c_str(), module.size());
 

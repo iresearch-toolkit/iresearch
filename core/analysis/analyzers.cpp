@@ -103,7 +103,7 @@ struct hash<::key> {
 
 namespace {
 
-const std::string kFileNamePrefix("libanalyzer-");
+constexpr std::string_view kFileNamePrefix{"libanalyzer-"};
 
 class analyzer_register
     : public irs::tagged_generic_register<::key, ::value, irs::string_ref, analyzer_register> {
@@ -114,10 +114,10 @@ class analyzer_register
 
     std::memcpy(
       filename.data(),
-      kFileNamePrefix.c_str(),
+      kFileNamePrefix.data(),
       kFileNamePrefix.size());
 
-    irs::string_ref::traits_type::copy(
+    std::memcpy(
       filename.data() + kFileNamePrefix.size(),
       name.c_str(),
       name.size());

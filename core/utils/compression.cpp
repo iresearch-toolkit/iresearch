@@ -69,14 +69,12 @@ class compression_register
     std::memcpy(
       filename.data(),
       kFileNamePrefix.data(),
-      kFileNamePrefix.size()
-    );
+      kFileNamePrefix.size());
 
-    irs::string_ref::traits_type::copy(
+    std::memcpy(
       filename.data() + kFileNamePrefix.size(),
       key.c_str(),
-      key.size()
-    );
+      key.size());
 
     return filename;
   }

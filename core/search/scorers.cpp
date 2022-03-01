@@ -67,7 +67,7 @@ struct hash<entry_key_t> {
 
 namespace {
 
-constexpr std::string_view kFileNamePrefix("libscorer-");
+constexpr std::string_view kFileNamePrefix{"libscorer-"};
 
 class scorer_register:
   public irs::tagged_generic_register<entry_key_t, irs::sort::ptr(*)(irs::string_ref args), irs::string_ref, scorer_register> {
@@ -79,14 +79,12 @@ class scorer_register:
     std::memcpy(
       filename.data(),
       kFileNamePrefix.data(),
-      kFileNamePrefix.size()
-    );
+      kFileNamePrefix.size());
 
-    irs::string_ref::traits_type::copy(
+    std::memcpy(
       filename.data() + kFileNamePrefix.size(),
       name.c_str(),
-      name.size()
-    );
+      name.size());
 
     return filename;
   }
