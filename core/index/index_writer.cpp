@@ -37,17 +37,15 @@
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/index_utils.hpp"
-#include "utils/range.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 
-
 namespace {
 using namespace irs;
 
-typedef range<index_writer::modification_context> modification_contexts_ref;
-typedef range<segment_writer::update_context> update_contexts_ref;
+using modification_contexts_ref = std::span<index_writer::modification_context>;
+using update_contexts_ref = std::span<const segment_writer::update_context>;
 
 constexpr size_t kNonUpdateRecord = std::numeric_limits<size_t>::max();
 
@@ -75,13 +73,13 @@ struct flush_segment_context {
       const index_meta::index_segment_t& segment,
       size_t doc_id_begin,
       size_t doc_id_end,
-      const update_contexts_ref& update_contexts,
-      const modification_contexts_ref& modification_contexts)
+      update_contexts_ref update_contexts,
+      modification_contexts_ref modification_contexts)
     : doc_id_begin_(doc_id_begin),
       doc_id_end_(doc_id_end),
-      modification_contexts_(modification_contexts),
+      modification_contexts_{modification_contexts},
       segment_(segment),
-      update_contexts_(update_contexts) {
+      update_contexts_{update_contexts} {
     assert(doc_id_begin_ <= doc_id_end_);
     assert(doc_id_end_ - doc_limits::min() <= segment_.meta.docs_count);
     assert(update_contexts.size() == segment_.meta.docs_count);
@@ -112,7 +110,7 @@ std::vector<index_file_refs::ref_t> extract_refs(
 /// @return if any new records were added (modification_queries_ modified)
 ////////////////////////////////////////////////////////////////////////////////
 bool add_document_mask_modified_records(
-    modification_contexts_ref& modifications,
+    modification_contexts_ref modifications,
     document_mask& docs_mask,
     readers_cache& readers,
     segment_meta& meta,
@@ -178,7 +176,7 @@ bool add_document_mask_modified_records(
 /// @return if any new records were added (modification_queries_ modified)
 ////////////////////////////////////////////////////////////////////////////////
 bool add_document_mask_modified_records(
-    modification_contexts_ref& modifications,
+    modification_contexts_ref modifications,
     flush_segment_context& ctx,
     readers_cache& readers) {
   if (modifications.empty()) {
@@ -2284,10 +2282,9 @@ index_writer::pending_context_t index_writer::flush_all() {
           continue; // empty segment since head+tail == 'docs_count'
         }
 
-        modification_contexts_ref segment_modification_contexts(
-          pending_segment_context.segment_->modification_queries_.data(),
-          pending_segment_context.segment_->modification_queries_.size()
-        );
+        modification_contexts_ref segment_modification_contexts{
+          pending_segment_context.segment_->modification_queries_ };
+
         update_contexts_ref flush_update_contexts(
           pending_segment_context.segment_->flushed_update_contexts_.data() + flushed_docs_start,
           flushed.meta.docs_count

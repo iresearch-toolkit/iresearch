@@ -14466,7 +14466,7 @@ class index_test_case_14 : public index_test_case {
   class feature_writer final : public irs::feature_writer {
    public:
     static auto make(stats& call_stats, irs::doc_id_t filter_doc,
-                     irs::range<const irs::bytes_ref> headers)
+                     std::span<const irs::bytes_ref> headers)
         -> irs::feature_writer::ptr {
       ++call_stats.num_factory_calls;
 
@@ -14548,13 +14548,13 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
       irs::feature_writer_factory_t handler{};
 
       if (irs::type<feature1>::id() == id) {
-        handler = [](irs::range<const irs::bytes_ref> headers)
+        handler = [](std::span<const irs::bytes_ref> headers)
             -> irs::feature_writer::ptr {
           return feature_writer::make(sNumCalls[irs::type<feature1>::id()], 2,
                                       headers);
         };
       } else if (irs::type<feature3>::id() == id) {
-        handler = [](irs::range<const irs::bytes_ref> headers)
+        handler = [](std::span<const irs::bytes_ref> headers)
             -> irs::feature_writer::ptr {
           return feature_writer::make(sNumCalls[irs::type<feature3>::id()], 1,
                                       headers);
@@ -14799,13 +14799,13 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
     irs::feature_writer_factory_t handler{};
 
     if (irs::type<feature1>::id() == id) {
-      handler = [](irs::range<const irs::bytes_ref> headers)
+      handler = [](std::span<const irs::bytes_ref> headers)
           -> irs::feature_writer::ptr {
         return feature_writer::make(sNumCalls[irs::type<feature1>::id()], 2,
                                     headers);
       };
     } else if (irs::type<feature3>::id() == id) {
-      handler = [](irs::range<const irs::bytes_ref> headers)
+      handler = [](std::span<const irs::bytes_ref> headers)
           -> irs::feature_writer::ptr {
         return feature_writer::make(sNumCalls[irs::type<feature3>::id()], 1,
                                     headers);
