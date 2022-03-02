@@ -41,7 +41,6 @@
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 
-
 namespace {
 using namespace irs;
 
@@ -301,7 +300,7 @@ void append_segments_refs(
   directory_utils::reference(dir, meta, visitor, true);
 }
 
-const std::string& write_document_mask(
+std::string_view write_document_mask(
     directory& dir,
     segment_meta& meta,
     const document_mask& docs_mask,
@@ -324,12 +323,12 @@ const std::string& write_document_mask(
     ++meta.version;
   }
 
-  const auto& file = *meta.files.emplace(mask_writer->filename(meta)).first; // new/expected filename
+  const auto [file, _] = meta.files.emplace(mask_writer->filename(meta)); // new/expected filename
 
   mask_writer->write(dir, meta, docs_mask);
   meta.size = 0; // reset no longer valid size, to be recomputed on index_utils::write_index_segment(...)
 
-  return file;
+  return *file;
 }
 
 // mapping: name -> { new segment, old segment }
@@ -2281,9 +2280,10 @@ index_writer::pending_context_t index_writer::flush_all() {
           continue; // empty segment since head+tail == 'docs_count'
         }
 
-        const modification_contexts_ref segment_modification_contexts{
-          pending_segment_context.segment_->modification_queries_};
-        const update_contexts_ref flush_update_contexts{
+        modification_contexts_ref segment_modification_contexts{
+          pending_segment_context.segment_->modification_queries_ };
+
+        update_contexts_ref flush_update_contexts(
           pending_segment_context.segment_->flushed_update_contexts_.data() + flushed_docs_start,
           flushed.meta.docs_count };
 

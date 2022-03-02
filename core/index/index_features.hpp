@@ -24,10 +24,10 @@
 #define IRESEARCH_INDEX_FEATURES_H
 
 #include <functional>
+#include <span>
 
 #include "index/column_info.hpp"
 #include "utils/bit_utils.hpp"
-#include "utils/range.hpp"
 #include "utils/type_info.hpp"
 
 namespace iresearch {
@@ -96,7 +96,7 @@ struct feature_writer {
   virtual void finish(bstring& out) = 0;
 };
 
-using feature_writer_factory_t = feature_writer::ptr(*)(range<const bytes_ref>);
+using feature_writer_factory_t = feature_writer::ptr(*)(std::span<const bytes_ref>);
 
 using feature_info_provider_t = std::function<
     std::pair<column_info, feature_writer_factory_t>(type_info::type_id)>;

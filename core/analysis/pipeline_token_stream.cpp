@@ -282,7 +282,7 @@ REGISTER_ANALYZER_JSON(irs::analysis::pipeline_token_stream, make_json,
 REGISTER_ANALYZER_VPACK(irs::analysis::pipeline_token_stream, make_vpack,
   normalize_vpack_config);
 
-irs::payload* find_payload(const std::vector<irs::analysis::analyzer::ptr>& pipeline) {
+irs::payload* find_payload(std::span<const irs::analysis::analyzer::ptr> pipeline) {
   for (auto it = pipeline.rbegin(); it != pipeline.rend(); ++it) {
     auto payload = irs::get_mutable<irs::payload>(it->get());
     if (payload) {
@@ -292,7 +292,7 @@ irs::payload* find_payload(const std::vector<irs::analysis::analyzer::ptr>& pipe
   return nullptr;
 }
 
-bool all_have_offset(const std::vector<irs::analysis::analyzer::ptr>& pipeline) {
+bool all_have_offset(std::span<const irs::analysis::analyzer::ptr> pipeline) {
   return std::all_of(
       pipeline.begin(), pipeline.end(),
       [](const irs::analysis::analyzer::ptr& v) {
