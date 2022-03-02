@@ -48,7 +48,7 @@ struct field_stats {
 
 using feature_map_t = std::map<type_info::type_id, field_id>;
 using feature_set_t = std::set<type_info::type_id>;
-using features_t = range<const type_info::type_id>;
+using features_t = std::span<const type_info::type_id>;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct field_meta 
