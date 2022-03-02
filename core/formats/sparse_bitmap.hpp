@@ -35,7 +35,6 @@
 #include "utils/bitset.hpp"
 #include "utils/frozen_attributes.hpp"
 #include "utils/math_utils.hpp"
-#include "utils/range.hpp"
 #include "utils/type_limits.hpp"
 
 namespace iresearch {
@@ -164,7 +163,7 @@ struct value_index : document {
 ////////////////////////////////////////////////////////////////////////////////
 class sparse_bitmap_iterator final : public resettable_doc_iterator {
  public:
-  using block_index_t = range<const sparse_bitmap_writer::block>;
+  using block_index_t = std::span<const sparse_bitmap_writer::block>;
 
   struct options {
     ////////////////////////////////////////////////////////////////////////////

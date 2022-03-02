@@ -25,7 +25,6 @@
 #define IRESEARCH_FIELD_META_H
 
 #include "index/index_features.hpp"
-#include "utils/range.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/attributes.hpp"
 

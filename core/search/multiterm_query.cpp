@@ -26,7 +26,6 @@
 #include "search/bitset_doc_iterator.hpp"
 #include "search/disjunction.hpp"
 #include "utils/bitset.hpp"
-#include "utils/range.hpp"
 
 namespace {
 

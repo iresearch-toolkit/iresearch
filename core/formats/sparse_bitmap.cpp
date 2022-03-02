@@ -32,13 +32,13 @@ using namespace irs;
 /// @brief we use dense container for blocks having
 ///        more than this number of documents
 ////////////////////////////////////////////////////////////////////////////////
-constexpr uint32_t BITSET_THRESHOLD = (1 << 12) - 1;
+constexpr uint32_t kBitSetThreshold = (1 << 12) - 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief we don't use index for blocks located at a distance that is
 ///        closer than this value
 ////////////////////////////////////////////////////////////////////////////////
-constexpr uint32_t BLOCK_SCAN_THRESHOLD = 2;
+constexpr uint32_t kBlockScanThreshold = 2;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @enum BlockType
@@ -75,26 +75,26 @@ enum AccessType : uint32_t {
   AT_DIRECT_ALIGNED
 }; // AccessType
 
-constexpr size_t DENSE_BLOCK_INDEX_BLOCK_SIZE = 512;
-constexpr size_t DENSE_BLOCK_INDEX_NUM_BLOCKS
-  = sparse_bitmap_writer::kBlockSize / DENSE_BLOCK_INDEX_BLOCK_SIZE;
-constexpr size_t DENSE_INDEX_BLOCK_SIZE_IN_BYTES
-  = DENSE_BLOCK_INDEX_NUM_BLOCKS * sizeof(uint16_t);
-constexpr uint32_t DENSE_BLOCK_INDEX_WORDS_PER_BLOCK
-    = DENSE_BLOCK_INDEX_BLOCK_SIZE / bits_required<size_t>();
+constexpr size_t kDenseBlockIndexBlockSize = 512;
+constexpr size_t kDenseBlockIndexNumBlocks
+  = sparse_bitmap_writer::kBlockSize / kDenseBlockIndexBlockSize;
+constexpr size_t kDenseIndexBlockSizeInBytes
+  = kDenseBlockIndexNumBlocks * sizeof(uint16_t);
+constexpr uint32_t kDenseBlockIndexWordsPerBlock
+    = kDenseBlockIndexBlockSize / bits_required<size_t>();
 
 template<size_t N>
 void write_block_index(irs::index_output& out, size_t (&bits)[N]) {
   uint16_t popcnt = 0;
-  uint16_t index[DENSE_BLOCK_INDEX_NUM_BLOCKS];
-  static_assert(DENSE_INDEX_BLOCK_SIZE_IN_BYTES == sizeof index);
+  uint16_t index[kDenseBlockIndexNumBlocks];
+  static_assert(kDenseIndexBlockSizeInBytes == sizeof index);
 
   auto* block = reinterpret_cast<byte_type*>(std::begin(index));
   auto begin = std::begin(bits);
-  for (; begin != std::end(bits); begin += DENSE_BLOCK_INDEX_WORDS_PER_BLOCK) {
+  for (; begin != std::end(bits); begin += kDenseBlockIndexWordsPerBlock) {
     irs::write<uint16_t>(block, popcnt);
 
-    for (uint32_t i = 0; i < DENSE_BLOCK_INDEX_WORDS_PER_BLOCK; ++i) {
+    for (uint32_t i = 0; i < kDenseBlockIndexWordsPerBlock; ++i) {
       popcnt += std::popcount(begin[i]);
     }
   }
@@ -133,7 +133,7 @@ void sparse_bitmap_writer::do_flush(uint32_t popcnt) {
   out_->write_short(static_cast<uint16_t>(block_));
   out_->write_short(static_cast<uint16_t>(popcnt - 1)); // -1 to fit uint16_t
 
-  if (popcnt > BITSET_THRESHOLD) {
+  if (popcnt > kBitSetThreshold) {
     if (popcnt != kBlockSize) {
       write_block_index(*out_, bits_);
 
@@ -210,8 +210,8 @@ struct container_iterator<BT_DENSE> {
     assert(target_word_idx >= ctx.word_idx);
 
     if (ctx.index.u16data &&
-        uint32_t(target_word_idx - ctx.word_idx) >= DENSE_BLOCK_INDEX_WORDS_PER_BLOCK) {
-      const size_t index_block = (target & 0x0000FFFF) / DENSE_BLOCK_INDEX_BLOCK_SIZE;
+        uint32_t(target_word_idx - ctx.word_idx) >= kDenseBlockIndexWordsPerBlock) {
+      const size_t index_block = (target & 0x0000FFFF) / kDenseBlockIndexBlockSize;
 
       uint16_t popcnt;
       std::memcpy(&popcnt, &ctx.index.u16data[index_block], sizeof(uint16_t));
@@ -219,7 +219,7 @@ struct container_iterator<BT_DENSE> {
         popcnt = (popcnt >> 8) | ((popcnt & 0xFF) << 8);
       }
 
-      const auto word_idx = index_block*DENSE_BLOCK_INDEX_WORDS_PER_BLOCK;
+      const auto word_idx = index_block*kDenseBlockIndexWordsPerBlock;
       const auto delta = word_idx - ctx.word_idx;
       assert(delta > 0);
 
@@ -361,7 +361,7 @@ void sparse_bitmap_iterator::read_block_header() {
       std::get<value_index>(self->attrs_).value = target - self->ctx_.all.missing;
       return true;
     };
-  } else if (popcnt <= BITSET_THRESHOLD) {
+  } else if (popcnt <= kBitSetThreshold) {
     constexpr BlockType type = BT_SPARSE;
     const size_t block_size = 2*popcnt;
     cont_begin_ = in_->file_pointer() + block_size;
@@ -381,23 +381,23 @@ void sparse_bitmap_iterator::read_block_header() {
     ctx_.dense.index_base = index_;
     if (use_block_index_) {
       ctx_.dense.index.u8data = in_->read_buffer(
-        DENSE_INDEX_BLOCK_SIZE_IN_BYTES,
+        kDenseIndexBlockSizeInBytes,
         BufferHint::PERSISTENT);
 
       if (!ctx_.dense.index.u8data) {
         if (!block_index_data_) {
           block_index_data_ = memory::make_unique<byte_type[]>(
-            DENSE_INDEX_BLOCK_SIZE_IN_BYTES);
+            kDenseIndexBlockSizeInBytes);
         }
 
         ctx_.dense.index.u8data = block_index_data_.get();
 
         in_->read_bytes(block_index_data_.get(),
-                        DENSE_INDEX_BLOCK_SIZE_IN_BYTES);
+                        kDenseIndexBlockSizeInBytes);
       }
     } else {
       ctx_.dense.index.u8data = nullptr;
-      in_->seek(in_->file_pointer() + DENSE_INDEX_BLOCK_SIZE_IN_BYTES);
+      in_->seek(in_->file_pointer() + kDenseIndexBlockSizeInBytes);
     }
 
     cont_begin_ = in_->file_pointer() + block_size;
@@ -413,18 +413,14 @@ void sparse_bitmap_iterator::read_block_header() {
 void sparse_bitmap_iterator::seek_to_block(doc_id_t target) {
   assert(target / sparse_bitmap_writer::kBlockSize);
 
-  if (block_index_.begin()) {
-    assert(!block_index_.empty() && block_index_.end());
-
+  if (!block_index_.empty()) {
     const doc_id_t target_block = target / sparse_bitmap_writer::kBlockSize;
-    if (target_block >= (block_ / sparse_bitmap_writer::kBlockSize + BLOCK_SCAN_THRESHOLD)) {
-      const auto* block = block_index_.begin() + target_block;
-      if (block >= block_index_.end()) {
-        block = block_index_.end() - 1;
-      }
+    if (target_block >= (block_ / sparse_bitmap_writer::kBlockSize + kBlockScanThreshold)) {
+      const auto offset = std::min(size_t{target_block}, block_index_.size() - 1);
+      const auto& block = block_index_[offset];
 
-      index_max_ = block->index;
-      in_->seek(origin_ + block->offset);
+      index_max_ = block.index;
+      in_->seek(origin_ + block.offset);
       read_block_header();
       return;
     }
