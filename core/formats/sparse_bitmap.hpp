@@ -97,7 +97,7 @@ class sparse_bitmap_writer {
 
   void finish();
 
-  const std::vector<block>& index() const noexcept {
+  std::span<const block> index() const noexcept {
     return block_index_;
   }
 

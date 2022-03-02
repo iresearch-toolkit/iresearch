@@ -1056,7 +1056,7 @@ class index_writer : private util::noncopyable {
       return true;
     }
 
-    std::vector<std::string_view> files; // files to sync
+    std::vector<std::string> files; // files to sync
     std::vector<std::pair<size_t, size_t>> segments; // segments to sync (index within index meta + number of files to sync)
   }; // sync_context
 

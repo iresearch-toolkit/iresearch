@@ -483,7 +483,7 @@ class sorting_doc_iterator final : public irs::doc_iterator {
   void reset_dense(
       detail::doc_iterator& it,
       const frequency& freq,
-      const std::vector<doc_id_t>& docmap) {
+      std::span<const doc_id_t> docmap) {
     assert(!docmap.empty());
     assert(irs::use_dense_sort(it.cost(), docmap.size()-1)); // -1 for first element
 
@@ -508,7 +508,7 @@ class sorting_doc_iterator final : public irs::doc_iterator {
   void reset_sparse(
       detail::doc_iterator& it,
       const frequency& freq,
-      const std::vector<doc_id_t>& docmap) {
+      std::span<const doc_id_t> docmap) {
     assert(!docmap.empty());
     assert(!irs::use_dense_sort(it.cost(), docmap.size()-1)); // -1 for first element
 

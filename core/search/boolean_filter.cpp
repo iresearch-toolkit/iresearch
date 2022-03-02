@@ -177,8 +177,8 @@ class boolean_query : public filter::prepared {
       const order::prepared& ord,
       boost_t boost,
       const attribute_provider* ctx,
-      const std::vector<const filter*>& incl,
-      const std::vector<const filter*>& excl) {
+      std::span<const filter* const> incl,
+      std::span<const filter* const> excl) {
     boolean_query::queries_t queries;
     queries.reserve(incl.size() + excl.size());
 
@@ -654,8 +654,8 @@ filter::prepared::ptr Not::prepare(
 
   if (res.second) {
     all all_docs;
-    const std::vector<const irs::filter*> incl { &all_docs };
-    const std::vector<const irs::filter*> excl { res.first };
+    const std::array<const irs::filter*, 1> incl{ &all_docs };
+    const std::array<const irs::filter*, 1> excl{ res.first };
 
     auto q = memory::make_managed<and_query>();
     q->prepare(rdr, ord, boost, ctx, incl, excl);

@@ -99,7 +99,9 @@ void sparse_bitmap_test_case::test_rw_seek_random_stateless(
     }
 
     writer.finish();
-    bitmap_index = writer.index();
+
+    const auto index = writer.index();
+    bitmap_index.assign(index.begin(), index.end());
   }
 
   {
@@ -228,7 +230,9 @@ void sparse_bitmap_test_case::test_rw_seek_random(
     }
 
     writer.finish();
-    bitmap_index = writer.index();
+
+    const auto index = writer.index();
+    bitmap_index.assign(index.begin(), index.end());
   }
 
   {
@@ -306,7 +310,9 @@ void sparse_bitmap_test_case::test_rw_next(const range_type (&ranges)[N]) {
     }
 
     writer.finish();
-    bitmap_index = writer.index();
+
+    const auto index = writer.index();
+    bitmap_index.assign(index.begin(), index.end());
   }
 
   {
@@ -410,7 +416,9 @@ void sparse_bitmap_test_case::test_rw_seek(const range_type (&ranges)[N]) {
     }
 
     writer.finish();
-    bitmap_index = writer.index();
+
+    const auto index = writer.index();
+    bitmap_index.assign(index.begin(), index.end());
   }
 
   {
@@ -515,7 +523,8 @@ void sparse_bitmap_test_case::test_rw_seek_next(const range_type (&ranges)[N]) {
     }
 
     writer.finish();
-    bitmap_index = writer.index();
+    const auto index = writer.index();
+    bitmap_index.assign(index.begin(), index.end());
   }
 
   {
@@ -672,7 +681,7 @@ TEST_P(sparse_bitmap_test_case, read_write_empty) {
     ASSERT_TRUE(writer.index().empty());
     writer.finish();
 
-    auto& index = writer.index();
+    const auto index = writer.index();
     ASSERT_EQ(1, index.size());
     ASSERT_EQ(0, index.front().index);
     ASSERT_EQ(0, index.front().offset);
@@ -726,7 +735,8 @@ TEST_P(sparse_bitmap_test_case, rw_sparse_blocks) {
     }
 
     writer.finish();
-    bitmap_index = writer.index();
+    const auto index = writer.index();
+    bitmap_index.assign(index.begin(), index.end());
   }
 
   ASSERT_EQ(65536, bitmap_index.size());
