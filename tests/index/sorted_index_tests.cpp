@@ -122,7 +122,7 @@ struct long_comparer : irs::comparer {
 
 struct custom_feature {
   struct header {
-    explicit header(std::span<const irs::bytes_ref> headers) noexcept {
+    explicit header(irs::range<const irs::bytes_ref> headers) noexcept {
       for (const auto header : headers) {
         update(header);
       }
@@ -146,7 +146,7 @@ struct custom_feature {
   };
 
   struct writer : irs::feature_writer {
-    explicit writer(std::span<const irs::bytes_ref> headers) noexcept
+    explicit writer(irs::range<const irs::bytes_ref> headers) noexcept
       : hdr{{}} {
       if (!headers.empty()) {
         init_header.emplace(headers);
@@ -191,7 +191,7 @@ struct custom_feature {
   };
 
   static irs::feature_writer::ptr make_writer(
-      std::span<const irs::bytes_ref> payload) {
+      irs::range<const irs::bytes_ref> payload) {
     return irs::memory::make_managed<writer>(payload);
   }
 };

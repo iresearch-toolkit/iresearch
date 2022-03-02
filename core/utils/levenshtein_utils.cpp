@@ -555,7 +555,7 @@ void write(const parametric_description& description, data_output& out) {
 
   const auto distances = description.distances();
   out.write_vlong(distances.size());
-  out.write_bytes(distances.data(), distances.size());
+  out.write_bytes(distances.begin(), distances.size());
 }
 
 parametric_description read(data_input& in) {

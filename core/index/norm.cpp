@@ -102,7 +102,7 @@ bool Norm2ReaderContext::Reset(
 }
 
 
-/*static*/ feature_writer::ptr Norm::MakeWriter(std::span<const bytes_ref> /*payload*/) {
+/*static*/ feature_writer::ptr Norm::MakeWriter(range<const bytes_ref> /*payload*/) {
   return memory::to_managed<feature_writer, false>(&kNormWriter);
 }
 
@@ -153,7 +153,7 @@ void Norm2Header::Reset(const Norm2Header& hdr) noexcept {
   return hdr;
 }
 
-/*static*/ feature_writer::ptr Norm2::MakeWriter(std::span<const bytes_ref> headers) {
+/*static*/ feature_writer::ptr Norm2::MakeWriter(range<const bytes_ref> headers) {
   size_t max_bytes{sizeof(ValueType)};
 
   if (!headers.empty()) {

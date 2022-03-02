@@ -25,7 +25,6 @@
 
 #include <vector>
 #include <numeric>
-#include <span>
 
 #include "string.hpp"
 #include "range.hpp"
@@ -135,8 +134,8 @@ class parametric_description {
   //////////////////////////////////////////////////////////////////////////////
   /// @return parametric transitions table
   //////////////////////////////////////////////////////////////////////////////
-  std::span<const transition_t> transitions() const noexcept {
-    return {transitions_};
+  range<const transition_t> transitions() const noexcept {
+    return { transitions_.data(), transitions_.size() };
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -154,8 +153,8 @@ class parametric_description {
   //////////////////////////////////////////////////////////////////////////////
   /// @return range of edit distances for all parametric states
   //////////////////////////////////////////////////////////////////////////////
-  std::span<const byte_type> distances() const noexcept {
-    return { distance_ };
+  range<const byte_type> distances() const noexcept {
+    return { distance_.data(), distance_.size() };
   }
 
   //////////////////////////////////////////////////////////////////////////////
