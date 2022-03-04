@@ -322,8 +322,10 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E md5sum iql/parser.cc || ${CMAKE_COMMAND} -E remove iql/parser.yy
   COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy || bison --graph --report=all -Wnone -o iql/parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy
-  COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql/*
-  COMMAND ${CMAKE_COMMAND} -E copy iql/location.hh iql/parser.hh iql/parser.cc iql/parser.yy iql/position.hh ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different iql/location.hh ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql/location.hh
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different iql/parser.hh ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql/parser.hh
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different iql/parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql/parser.cc
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different iql/position.hh ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql/position.hh
 )
 
 # trigger generation of BUILD_IDENTIFIER if needed
