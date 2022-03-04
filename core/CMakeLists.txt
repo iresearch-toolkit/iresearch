@@ -272,7 +272,7 @@ set(IResearch_core_headers
   ./types.hpp
 )
 
-if (USE_URING)
+if (${uring_FOUND})
   list(APPEND IResearch_core_sources ./store/async_directory.cpp)
 endif()
 
@@ -296,7 +296,7 @@ set(IRESEARCH_EXTERNAL_INCLUDES
     ${FROZEN_INCLUDE_DIR})
 
 if (SUPPRESS_EXTERNAL_WARNINGS)
-  include_directories(SYSTEM  ${IRESEARCH_EXTERNAL_INCLUDES})
+  include_directories(SYSTEM ${IRESEARCH_EXTERNAL_INCLUDES})
 else ()
   include_directories(${IRESEARCH_EXTERNAL_INCLUDES})
 endif ()
@@ -392,6 +392,7 @@ add_dependencies(${IResearch_TARGET_NAME}-static
 target_include_directories(${IResearch_TARGET_NAME}-static
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
+  PRIVATE ${URING_INCLUDE_DIR}
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
   PUBLIC ${VPACK_INCLUDE_PATH}
   PUBLIC $<TARGET_PROPERTY:hwy,INTERFACE_INCLUDE_DIRECTORIES>
@@ -439,6 +440,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
+  ${URING_LIBRARIES}
   ${GCOV_LIBRARY}
   ${BFD_STATIC_LIBS}
   ${Lz4_STATIC_LIB}
@@ -466,6 +468,7 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   ${BFD_STATIC_LIBS}
   ${Unwind_STATIC_LIBS}
   ${ICU_STATIC_LIBS}
+  ${URING_LIBRARIES}
   "$<TARGET_FILE:lz4_static>"
   "$<TARGET_FILE:stemmer-static>"
   "$<TARGET_FILE:${ABSL_LIBRARY_STATIC}>"
