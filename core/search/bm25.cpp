@@ -422,7 +422,7 @@ struct MakeScoreFunctionImpl<BM15Context> {
 
           const float_t c1 = state.norm_const;
 
-          sort::score_cast<score_t>(state.score_buf) = c0 - c0 / (1.f + tf / c1);
+          irs::sort::score_cast<score_t>(state.score_buf) = c0 - c0 / (1.f + tf / c1);
 
           return state.score_buf;
         }
@@ -456,7 +456,7 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
             c0 = state.num;
           }
 
-          auto& buf = sort::score_cast<score_t>(state.score_buf);
+          auto& buf = irs::sort::score_cast<score_t>(state.score_buf);
 
           if constexpr (NormType::kNorm2Tiny == Norm::kType) {
             static_assert(std::is_same_v<uint32_t, decltype(state.norm())>);
