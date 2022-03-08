@@ -2283,7 +2283,7 @@ index_writer::pending_context_t index_writer::flush_all() {
         modification_contexts_ref segment_modification_contexts{
           pending_segment_context.segment_->modification_queries_ };
 
-        update_contexts_ref flush_update_contexts(
+        update_contexts_ref flush_update_contexts{
           pending_segment_context.segment_->flushed_update_contexts_.data() + flushed_docs_start,
           flushed.meta.docs_count };
 
