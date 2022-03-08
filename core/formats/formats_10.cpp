@@ -236,7 +236,7 @@ struct doc_buffer : skip_buffer {
 
   void push(doc_id_t doc, uint32_t freq) noexcept {
     *this->doc = doc;
-    ++*this->doc;
+    ++this->doc;
     *this->freq = freq;
     ++this->freq;
     last = doc;
