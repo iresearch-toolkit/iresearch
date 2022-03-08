@@ -986,17 +986,19 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
     irs::doc_iterator& docs) {
   REGISTER_TIMER_DETAILED();
 
-  const frequency* freq;
   auto* doc = irs::get<document>(docs);
+
+  if (!doc) {
+    assert(false);
+    throw illegal_argument{"'document' attribute is missing"};
+  }
+
+  const frequency* freq{};
 
   auto refresh = [this, &freq, no_freq = frequency{}](auto& attrs) noexcept {
     attrs_.reset(attrs);
     freq = attrs_.freq_ ? attrs_.freq_ : &no_freq;
   };
-  if (!doc) {
-    assert(false);
-    throw illegal_argument{"'document' attribute is missing"};
-  }
 
   if (!volatile_attributes_) {
     refresh(docs);
@@ -1022,6 +1024,7 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
   while (docs.next()) {
     const auto did = doc->value;
     assert(doc_limits::valid(did));
+    assert(freq);
     const uint32_t freqv = freq->value;
 
     if (doc_limits::valid(doc_.last) && doc_.empty()) {
