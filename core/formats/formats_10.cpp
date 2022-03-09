@@ -2248,6 +2248,9 @@ class wanderator final : public irs::doc_iterator {
     if (skip_levels_.front().doc < target) {
       // ensured by prepare(...)
       assert(term_state_.docs_count > IteratorTraits::block_size());
+      assert(skip_.num_levels());
+
+      prev_skip_.doc_ptr = 0;
 
       const doc_id_t skipped{skip_.seek(target)};
       if (skipped > (cur_pos_ + relative_pos())) {
