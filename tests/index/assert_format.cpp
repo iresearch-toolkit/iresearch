@@ -378,7 +378,7 @@ void index_segment::insert_indexed(const ifield& f) {
     empty = false;
   }
 
-  if (!empty) { 
+  if (!empty) {
     field.docs.emplace(doc_id);
   }
 
@@ -643,23 +643,35 @@ irs::seek_term_iterator::ptr field::iterator() const {
   return irs::memory::make_managed<term_iterator>(*this);
 }
 
+template<typename IteratorFactory>
 void assert_docs(
     irs::doc_iterator::ptr expected_docs,
-    irs::doc_iterator::ptr actual_docs) {
+    IteratorFactory&& factory) {
   ASSERT_NE(nullptr, expected_docs);
-  ASSERT_NE(nullptr, actual_docs);
+
+  auto seek_docs = factory();
+  ASSERT_NE(nullptr, seek_docs);
+
+  auto seq_docs = factory();
+  ASSERT_NE(nullptr, seq_docs);
 
   ASSERT_TRUE(!irs::doc_limits::valid(expected_docs->value()));
-  ASSERT_TRUE(!irs::doc_limits::valid(actual_docs->value()));
-  // check docs
-  for (; expected_docs->next();) {
-    ASSERT_TRUE(actual_docs->next());
-    ASSERT_EQ(expected_docs->value(), actual_docs->value());
+  ASSERT_TRUE(!irs::doc_limits::valid(seq_docs->value()));
+  ASSERT_TRUE(!irs::doc_limits::valid(seek_docs->value()));
+
+  while(expected_docs->next()) {
+    const auto expected_doc = expected_docs->value();
+
+    ASSERT_TRUE(seq_docs->next());
+    ASSERT_EQ(expected_doc, seq_docs->value());
+
+    ASSERT_EQ(expected_doc, seek_docs->seek(expected_doc));
+    ASSERT_EQ(expected_doc, seek_docs->value());
 
     // check document attributes
     {
       auto* expected_freq = irs::get<irs::frequency>(*expected_docs);
-      auto* actual_freq = irs::get<irs::frequency>(*actual_docs);
+      auto* actual_freq = irs::get<irs::frequency>(*seq_docs);
 
       if (expected_freq) {
         ASSERT_FALSE(!actual_freq);
@@ -667,7 +679,7 @@ void assert_docs(
       }
 
       auto* expected_pos = irs::get_mutable<irs::position>(expected_docs.get());
-      auto* actual_pos = irs::get_mutable<irs::position>(actual_docs.get());
+      auto* actual_pos = irs::get_mutable<irs::position>(seq_docs.get());
 
       if (expected_pos) {
         ASSERT_FALSE(!actual_pos);
@@ -700,9 +712,12 @@ void assert_docs(
       }
     }
   }
-  ASSERT_FALSE(actual_docs->next());
+
   ASSERT_TRUE(irs::doc_limits::eof(expected_docs->value()));
-  ASSERT_TRUE(irs::doc_limits::eof(actual_docs->value()));
+  ASSERT_FALSE(seq_docs->next());
+  ASSERT_TRUE(irs::doc_limits::eof(seq_docs->value()));
+  ASSERT_FALSE(seek_docs->next());
+  ASSERT_TRUE(irs::doc_limits::eof(seek_docs->value()));
 }
 
 void assert_docs(
@@ -712,11 +727,11 @@ void assert_docs(
     irs::IndexFeatures requested_features) {
   assert_docs(
     expected_term.postings(requested_features),
-    actual_terms.postings(*actual_cookie, requested_features));
+    [&]() { return actual_terms.postings(*actual_cookie, requested_features); });
 
   assert_docs(
     expected_term.postings(requested_features),
-    actual_terms.wanderator(*actual_cookie, requested_features));
+    [&]() { return actual_terms.postings(*actual_cookie, requested_features); });
 
   // FIXME(gnusi): check bit_union
 }
@@ -729,7 +744,7 @@ void assert_term(
 
   assert_docs(
     expected_term.postings(requested_features),
-    actual_term.postings(requested_features));
+    [&]() { return actual_term.postings(requested_features); });
 }
 
 void assert_terms_next(
@@ -847,7 +862,7 @@ void assert_terms_seek(
           assert_term(*copy_expected_term, *actual_term, features);
         }
       }
-      
+
       // seek back to initial term
       ASSERT_TRUE(actual_term->seek(expected_term->value()));
       assert_term(*expected_term, *actual_term, features);
@@ -874,7 +889,7 @@ void assert_terms_seek(
           assert_term(*copy_expected_term, *actual_term, features);
         }
       }
-      
+
       // seek back to initial term
       ASSERT_TRUE(actual_term->seek(expected_term->value()));
       assert_term(*expected_term, *actual_term, features);
