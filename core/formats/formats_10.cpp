@@ -1944,7 +1944,7 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::read_skip::operator()(
     }
   }
 
-  if constexpr (FieldTraits::wand()) {
+  if constexpr (FieldTraits::wand() && FieldTraits::frequency()) {
     score_buffer::skip(in);
   }
 
