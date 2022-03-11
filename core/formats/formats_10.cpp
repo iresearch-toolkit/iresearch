@@ -2327,7 +2327,9 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::read_skip::operator()(
     }
   }
 
-  self_->skip_scores_[level].read(in);
+  if constexpr (FieldTraits::frequency()) {
+    self_->skip_scores_[level].read(in);
+  }
 
   return next.doc;
 }
@@ -3289,7 +3291,7 @@ class postings_reader final: public postings_reader_base {
       IndexFeatures required_features,
       const term_meta& meta) override {
     if (meta.docs_count <= FormatTraits::block_size() ||
-        IndexFeatures::NONE == (required_features & IndexFeatures::FREQ)) {
+        IndexFeatures::NONE == (field_features & IndexFeatures::FREQ)) {
       // No need to use wanderator
       //  * for short lists
       //  * if term frequency isn't tracked
