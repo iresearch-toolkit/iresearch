@@ -294,6 +294,13 @@ TEST_P(Format15TestCase, PostingsWandSeek) {
     return docs;
   };
 
+  constexpr auto kNone = irs::IndexFeatures::NONE;
+  constexpr auto kFreq = irs::IndexFeatures::FREQ;
+  constexpr auto kPos = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
+  constexpr auto kOffs = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS;
+  constexpr auto kPay = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::PAY;
+  constexpr auto kAll = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+
   // short list (< postings_writer::BLOCK_SIZE)
   {
     constexpr size_t kCount = 117;
@@ -302,12 +309,12 @@ TEST_P(Format15TestCase, PostingsWandSeek) {
 
     const auto docs = generate_docs(kCount, 1);
 
-    PostingsWandSeek(docs, irs::IndexFeatures::NONE, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::PAY, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY, kThreshold);
+    PostingsWandSeek(docs, kNone, kThreshold);
+    PostingsWandSeek(docs, kFreq, kThreshold);
+    PostingsWandSeek(docs, kPos, kThreshold);
+    PostingsWandSeek(docs, kOffs, kThreshold);
+    PostingsWandSeek(docs, kPay, kThreshold);
+    PostingsWandSeek(docs, kAll, kThreshold);
   }
 
   // equals to postings_writer::BLOCK_SIZE
@@ -315,12 +322,12 @@ TEST_P(Format15TestCase, PostingsWandSeek) {
     constexpr uint32_t kThreshold = 4;
     const auto docs = generate_docs(kVersion10PostingsWriterBlockSize, 1);
 
-    PostingsWandSeek(docs, irs::IndexFeatures::NONE, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::PAY, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY, kThreshold);
+    PostingsWandSeek(docs, kNone, kThreshold);
+    PostingsWandSeek(docs, kFreq, kThreshold);
+    PostingsWandSeek(docs, kPos, kThreshold);
+    PostingsWandSeek(docs, kOffs, kThreshold);
+    PostingsWandSeek(docs, kPay, kThreshold);
+    PostingsWandSeek(docs, kAll, kThreshold);
   }
 
   // long list
@@ -329,12 +336,12 @@ TEST_P(Format15TestCase, PostingsWandSeek) {
     constexpr uint32_t kThreshold = 4;
     const auto docs = generate_docs(kCount, 1);
 
-    PostingsWandSeek(docs, irs::IndexFeatures::NONE, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::PAY, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY, kThreshold);
+    PostingsWandSeek(docs, kNone, kThreshold);
+    PostingsWandSeek(docs, kFreq, kThreshold);
+    PostingsWandSeek(docs, kPos, kThreshold);
+    PostingsWandSeek(docs, kOffs, kThreshold);
+    PostingsWandSeek(docs, kPay, kThreshold);
+    PostingsWandSeek(docs, kAll, kThreshold);
   }
 
   // 2^15
@@ -343,12 +350,12 @@ TEST_P(Format15TestCase, PostingsWandSeek) {
     constexpr uint32_t kThreshold = 4;
     const auto docs = generate_docs(kCount, 2);
 
-    PostingsWandSeek(docs, irs::IndexFeatures::NONE, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::PAY, kThreshold);
-    PostingsWandSeek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY, kThreshold);
+    PostingsWandSeek(docs, kNone, kThreshold);
+    PostingsWandSeek(docs, kFreq, kThreshold);
+    PostingsWandSeek(docs, kPos, kThreshold);
+    PostingsWandSeek(docs, kOffs, kThreshold);
+    PostingsWandSeek(docs, kPay, kThreshold);
+    PostingsWandSeek(docs, kAll, kThreshold);
   }
 }
 

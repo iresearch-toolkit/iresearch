@@ -819,6 +819,13 @@ TEST_P(format_10_test_case, postings_seek) {
     return docs;
   };
 
+  constexpr auto kNone = irs::IndexFeatures::NONE;
+  constexpr auto kFreq = irs::IndexFeatures::FREQ;
+  constexpr auto kPos = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
+  constexpr auto kOffs = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS;
+  constexpr auto kPay = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::PAY;
+  constexpr auto kAll = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+
   // short list (< postings_writer::BLOCK_SIZE)
   {
     constexpr size_t kCount = 117;
@@ -826,24 +833,24 @@ TEST_P(format_10_test_case, postings_seek) {
 
     const auto docs = generate_docs(kCount, 1);
 
-    postings_seek(docs, irs::IndexFeatures::NONE);
-    postings_seek(docs, irs::IndexFeatures::FREQ);
-    postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS);
-    postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS);
-    postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::PAY);
-    postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY);
+    postings_seek(docs, kNone);
+    postings_seek(docs, kFreq);
+    postings_seek(docs, kPos);
+    postings_seek(docs, kOffs);
+    postings_seek(docs, kPay);
+    postings_seek(docs, kAll);
   }
 
   // equals to postings_writer::BLOCK_SIZE
   {
     const auto docs = generate_docs(kVersion10PostingsWriterBlockSize, 1);
 
-    postings_seek(docs, irs::IndexFeatures::NONE);
-    postings_seek(docs, irs::IndexFeatures::FREQ);
-    postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS);
-    postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS);
-    postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::PAY);
-    postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY);
+    postings_seek(docs, kNone);
+    postings_seek(docs, kFreq);
+    postings_seek(docs, kPos);
+    postings_seek(docs, kOffs);
+    postings_seek(docs, kPay);
+    postings_seek(docs, kAll);
   }
 
   // long list
@@ -851,12 +858,12 @@ TEST_P(format_10_test_case, postings_seek) {
     constexpr size_t kCount = 10000;
     const auto docs = generate_docs(kCount, 1);
 
-    postings_seek(docs, irs::IndexFeatures::NONE);
-    postings_seek(docs, irs::IndexFeatures::FREQ);
-    postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS);
-    postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS);
-    postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::PAY);
-    postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY);
+    postings_seek(docs, kNone);
+    postings_seek(docs, kFreq);
+    postings_seek(docs, kPos);
+    postings_seek(docs, kOffs);
+    postings_seek(docs, kPay);
+    postings_seek(docs, kAll);
   }
 
   // 2^15
@@ -864,12 +871,12 @@ TEST_P(format_10_test_case, postings_seek) {
     constexpr size_t kCount = 32768;
     const auto docs = generate_docs(kCount, 2);
 
-    postings_seek(docs, irs::IndexFeatures::NONE);
-    postings_seek(docs, irs::IndexFeatures::FREQ);
-    postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS);
-    postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS);
-    postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::PAY);
-    postings_seek(docs, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY);
+    postings_seek(docs, kNone);
+    postings_seek(docs, kFreq);
+    postings_seek(docs, kPos);
+    postings_seek(docs, kOffs);
+    postings_seek(docs, kPay);
+    postings_seek(docs, kAll);
   }
 }
 
