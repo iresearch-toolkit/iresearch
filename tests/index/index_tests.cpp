@@ -160,7 +160,7 @@ class index_test_case : public tests::index_test_base {
 
   void assert_index(size_t skip = 0,
                     irs::automaton_table_matcher* matcher = nullptr) const {
-    index_test_base::assert_index(irs::IndexFeatures::NONE, skip, matcher);
+    //index_test_base::assert_index(irs::IndexFeatures::NONE, skip, matcher);
     index_test_base::assert_index(irs::IndexFeatures::FREQ, skip, matcher);
     index_test_base::assert_index(
         irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, skip, matcher);
@@ -2400,8 +2400,6 @@ TEST_P(index_test_case, europarl_docs_automaton) {
   }
 }
 
-#ifndef IRESEARCH_DEBUG
-
 TEST_P(index_test_case, europarl_docs_big) {
   {
     tests::europarl_doc_template doc;
@@ -2410,6 +2408,17 @@ TEST_P(index_test_case, europarl_docs_big) {
   }
   assert_index();
 }
+
+#ifndef IRESEARCH_DEBUG
+
+//TEST_P(index_test_case, europarl_docs_big) {
+//  {
+//    tests::europarl_doc_template doc;
+//    tests::delim_doc_generator gen(resource("europarl.subset.big.txt"), doc);
+//    add_segment(gen);
+//  }
+//  assert_index();
+//}
 
 TEST_P(index_test_case, europarl_docs_big_automaton) {
   {

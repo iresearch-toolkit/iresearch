@@ -510,7 +510,7 @@ class doc_iterator : public irs::doc_iterator {
     }
 
    private:
-    std::set<tests::position>::const_iterator next_;
+    std::set<posting::position>::const_iterator next_;
     irs::offset offs_;
     irs::payload pay_;
     irs::offset* poffs_{};
@@ -725,13 +725,13 @@ void assert_docs(
     const irs::term_reader& actual_terms,
     irs::seek_cookie::ptr actual_cookie,
     irs::IndexFeatures requested_features) {
-  assert_docs(
-    expected_term.postings(requested_features),
-    [&]() { return actual_terms.postings(*actual_cookie, requested_features); });
+  //assert_docs(
+  //  expected_term.postings(requested_features),
+  //  [&]() { return actual_terms.postings(*actual_cookie, requested_features); });
 
   assert_docs(
     expected_term.postings(requested_features),
-    [&]() { return actual_terms.postings(*actual_cookie, requested_features); });
+    [&]() { return actual_terms.wanderator(*actual_cookie, requested_features); });
 
   // FIXME(gnusi): check bit_union
 }

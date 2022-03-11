@@ -36,28 +36,6 @@ namespace tests {
 
 class format_test_case : public index_test_base {
  public:
-  irs::column_info lz4_column_info() const noexcept;
-  irs::column_info none_column_info() const noexcept;
-
-  bool supports_encryption() const noexcept {
-    // old formats don't support columnstore headers
-    constexpr irs::string_ref kOldFormats[]{"1_0"};
-
-    const auto it = std::find(std::begin(kOldFormats), std::end(kOldFormats),
-                              codec()->type().name());
-    return std::end(kOldFormats) == it;
-  }
-
-  bool supports_columnstore_headers() const noexcept {
-    // old formats don't support columnstore headers
-    constexpr irs::string_ref kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
-                                            "1_3simd"};
-
-    const auto it = std::find(std::begin(kOldFormats), std::end(kOldFormats),
-                              codec()->type().name());
-    return std::end(kOldFormats) == it;
-  }
-
   class postings;
 
   class position final : public irs::position {
@@ -125,13 +103,11 @@ class format_test_case : public index_test_base {
   class postings : public irs::doc_iterator {
    public:
     // DocId + Freq
-    typedef std::vector<std::pair<irs::doc_id_t, uint32_t>> docs_t;
-    typedef std::vector<irs::cost::cost_t> costs_t;
+    using docs_t = std::span<const std::pair<irs::doc_id_t, uint32_t>> ;
 
-    postings(const docs_t::const_iterator& begin,
-             const docs_t::const_iterator& end,
+    postings(std::span<const std::pair<irs::doc_id_t, uint32_t>> docs,
              irs::IndexFeatures features = irs::IndexFeatures::NONE)
-        : next_(begin), end_(end), pos_(features) {
+        : next_(std::begin(docs)), end_(std::end(docs)), pos_(features) {
       attrs_[irs::type<irs::document>::id()] = &doc_;
       attrs_[irs::type<irs::attribute_provider_change>::id()] = &callback_;
       if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::FREQ)) {
@@ -177,13 +153,35 @@ class format_test_case : public index_test_base {
 
    private:
     std::map<irs::type_info::type_id, irs::attribute*> attrs_;
-    docs_t::const_iterator next_;
-    docs_t::const_iterator end_;
+    docs_t::iterator next_;
+    docs_t::iterator end_;
     irs::frequency freq_;
     irs::attribute_provider_change callback_;
-    tests::format_test_case::position pos_;
+    format_test_case::position pos_;
     irs::document doc_;
-  };  // postings
+  };
+
+  irs::column_info lz4_column_info() const noexcept;
+  irs::column_info none_column_info() const noexcept;
+
+  bool supports_encryption() const noexcept {
+    // old formats don't support columnstore headers
+    constexpr irs::string_ref kOldFormats[]{"1_0"};
+
+    const auto it = std::find(std::begin(kOldFormats), std::end(kOldFormats),
+                              codec()->type().name());
+    return std::end(kOldFormats) == it;
+  }
+
+  bool supports_columnstore_headers() const noexcept {
+    // old formats don't support columnstore headers
+    constexpr irs::string_ref kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
+                                            "1_3simd"};
+
+    const auto it = std::find(std::begin(kOldFormats), std::end(kOldFormats),
+                              codec()->type().name());
+    return std::end(kOldFormats) == it;
+  }
 
   template<typename Iterator>
   class terms : public irs::term_iterator {
@@ -213,8 +211,7 @@ class format_test_case : public index_test_base {
     const irs::bytes_ref& value() const { return val_; }
 
     irs::doc_iterator::ptr postings(irs::IndexFeatures /*features*/) const {
-      return irs::memory::make_managed<format_test_case::postings>(
-          docs_.begin(), docs_.end());
+      return irs::memory::make_managed<format_test_case::postings>(docs_);
     }
 
     void read() {}
@@ -230,44 +227,11 @@ class format_test_case : public index_test_base {
     Iterator end_;
   };  // terms
 
+  void assert_positions(irs::doc_iterator& expected, irs::doc_iterator& actual);
+
   void assert_no_directory_artifacts(
       const iresearch::directory& dir, const iresearch::format& codec,
-      const std::unordered_set<std::string>& expect_additional = {}) {
-    std::vector<std::string> dir_files;
-    auto visitor = [&dir_files] (std::string_view file) {
-      // ignore lock file present in fs_directory
-      if (iresearch::index_writer::WRITE_LOCK_NAME != file) {
-        dir_files.emplace_back(file);
-      }
-      return true;
-    };
-    ASSERT_TRUE(dir.visit(visitor));
-
-    iresearch::index_meta index_meta;
-    std::string segment_file;
-
-    auto reader = codec.get_index_meta_reader();
-    std::unordered_set<std::string> index_files(expect_additional.begin(),
-                                                expect_additional.end());
-    const bool exists = reader->last_segments_file(dir, segment_file);
-
-    if (exists) {
-      reader->read(dir, index_meta, segment_file);
-
-      index_meta.visit_files([&index_files](const std::string& file) {
-        index_files.emplace(file);
-        return true;
-      });
-
-      index_files.insert(segment_file);
-    }
-
-    for (auto& file : dir_files) {
-      ASSERT_TRUE(index_files.erase(file) == 1);
-    }
-
-    ASSERT_TRUE(index_files.empty());
-  }
+      const std::unordered_set<std::string>& expect_additional = {});
 };
 
 class format_test_case_with_encryption : public format_test_case {};
