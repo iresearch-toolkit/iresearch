@@ -325,6 +325,7 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different iql/location.hh ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql/location.hh
   COMMAND ${CMAKE_COMMAND} -E copy_if_different iql/parser.hh ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql/parser.hh
   COMMAND ${CMAKE_COMMAND} -E copy_if_different iql/parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql/parser.cc
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different iql/parser.yy ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql/parser.yy
   COMMAND ${CMAKE_COMMAND} -E copy_if_different iql/position.hh ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql/position.hh
 )
 
