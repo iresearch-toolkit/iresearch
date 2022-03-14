@@ -2279,7 +2279,7 @@ class wanderator final : public irs::doc_iterator {
   std::vector<skip_state> skip_levels_;
   std::vector<score_buffer> skip_scores_;
   skip_reader<read_skip> skip_;
-  skip_context prev_skip_; // pointer to skip context used by skip reader
+  skip_context prev_skip_; // skip context used by skip reader
   uint32_t cur_pos_{};
   const doc_id_t* begin_{buf_.docs};
   doc_id_t* end_{buf_.docs};

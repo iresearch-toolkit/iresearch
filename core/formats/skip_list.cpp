@@ -45,10 +45,6 @@ constexpr size_t max_levels(size_t skip_0, size_t skip_n, size_t count) {
 
 namespace iresearch {
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                       skip_writer implementation
-// ----------------------------------------------------------------------------
-
 void skip_writer::prepare(
     size_t max_levels, 
     size_t count,
@@ -93,10 +89,6 @@ void skip_writer::flush(index_output& out) {
   }
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                       skip_reader implementation
-// ----------------------------------------------------------------------------
-
 skip_reader_base::level::level(
     index_input::ptr&& stream,
     size_t id,
@@ -114,63 +106,65 @@ skip_reader_base::level::level(
     level& lvl,
     uint64_t ptr,
     doc_id_t skipped) {
-  auto &stream = *lvl.stream;
-  const auto absolute_ptr = lvl.begin + ptr;
-  if (absolute_ptr > stream.file_pointer()) {
+  auto& stream = *lvl.stream;
+
+  if (const auto absolute_ptr = lvl.begin + ptr;
+      absolute_ptr > stream.file_pointer()) {
     stream.seek(absolute_ptr);
     lvl.skipped = skipped;
-    if (lvl.child != UNDEFINED) {
+    if (lvl.child != kUndefined) {
       lvl.child = stream.read_vlong();
     }
   }
 }
 
 void skip_reader_base::reset() {
-  for (auto& level : levels_) {
+  for (auto& level_key : keys_) {
+    assert(level_key.data);
+    auto& level = *level_key.data;
     level.stream->seek(level.begin);
-    if (level.child != UNDEFINED) {
+    if (level.child != kUndefined) {
       level.child = 0;
     }
     level.skipped = 0;
-    level.doc = doc_limits::invalid();
+    level_key.doc = doc_limits::invalid();
   }
-}
-
-/*static*/ void skip_reader_base::load_level(
-    std::vector<level>& levels,
-    index_input::ptr&& stream,
-    size_t id,
-    doc_id_t step) {
-  assert(stream);
-
-  // read level length
-  const auto length = stream->read_vlong();
-
-  if (!length) {
-    throw index_error("while loading level, error: zero length");
-  }
-
-  const auto begin = stream->file_pointer();
-  const auto end = begin + length;
-
-  levels.emplace_back(std::move(stream), id, step, begin, end); // load level
 }
 
 void skip_reader_base::prepare(index_input::ptr&& in) {
   assert(in);
 
-  // read number of levels in a skip-list
-  size_t max_levels = in->read_vint();
-
-  if (max_levels) {
-    std::vector<level> levels;
+  if (size_t max_levels = in->read_vint(); max_levels) {
+    decltype(levels_) levels;
     levels.reserve(max_levels);
+    decltype(keys_) keys;
+    keys.reserve(max_levels);
 
-    size_t step = skip_0_ * size_t(pow(skip_n_, --max_levels)); // skip step of the level
+    auto load_level = [&levels, &keys](index_input::ptr stream,
+                                       size_t id,
+                                       doc_id_t step) {
+      assert(stream);
+
+      // read level length
+      const auto length = stream->read_vlong();
+
+      if (!length) {
+        throw index_error("while loading level, error: zero length");
+      }
+
+      const auto begin = stream->file_pointer();
+      const auto end = begin + length;
+
+      levels.emplace_back(std::move(stream), id, step, begin, end); // load level
+      keys.emplace_back(level_key{&levels.back(), doc_limits::invalid()});
+    };
+
+    // skip step of the level
+    size_t step = skip_0_ * static_cast<size_t>(std::pow(skip_n_, --max_levels));
 
     // load levels from n down to 1
     for (; max_levels; --max_levels) {
-      load_level(levels, in->dup(), max_levels, step);
+      load_level(in->dup(), max_levels, step);
 
       // seek to the next level
       in->seek(levels.back().end);
@@ -179,10 +173,11 @@ void skip_reader_base::prepare(index_input::ptr&& in) {
     }
 
     // load 0 level
-    load_level(levels, std::move(in), 0, skip_0_);
-    levels.back().child = UNDEFINED;
+    load_level(std::move(in), 0, skip_0_);
+    levels.back().child = kUndefined;
 
     levels_ = std::move(levels);
+    keys_ = std::move(keys);
   }
 }
 

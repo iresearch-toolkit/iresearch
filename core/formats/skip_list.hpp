@@ -185,7 +185,7 @@ class skip_reader_base : util::noncopyable {
   void reset();
 
  protected:
-  static constexpr size_t UNDEFINED = std::numeric_limits<size_t>::max();
+  static constexpr size_t kUndefined = std::numeric_limits<size_t>::max();
 
   struct level final {
     level(
@@ -204,15 +204,14 @@ class skip_reader_base : util::noncopyable {
     size_t id; // level id
     doc_id_t step; // how many docs we jump over with a single skip
     doc_id_t skipped{}; // number of skipped documents on a level
-    doc_id_t doc{ doc_limits::invalid() }; // current key
+  };
+
+  struct level_key {
+    level* data; // pointer to actual level
+    doc_id_t doc; // current key
   };
 
   static_assert(std::is_nothrow_move_constructible_v<level>);
-
-  static void load_level(
-    std::vector<level>& levels,
-    index_input::ptr&& stream,
-    size_t id, doc_id_t step);
 
   static void seek_to_child(level& lvl, uint64_t ptr, doc_id_t skipped);
 
@@ -224,6 +223,7 @@ class skip_reader_base : util::noncopyable {
   void read_skip(level& level);
 
   std::vector<level> levels_; // input streams for skip-list levels
+  std::vector<level_key> keys_;
   doc_id_t skip_0_; // skip interval for 0 level
   doc_id_t skip_n_; // skip interval for 1..n levels
 }; // skip_reader_base
@@ -257,17 +257,17 @@ class skip_reader final : public skip_reader_base {
   doc_id_t seek(doc_id_t target);
 
  private:
-  void read_skip(level& lvl) {
+  doc_id_t read_skip(level& lvl) {
     assert(size_t(std::distance(&lvl, &levels_.back())) == lvl.id);
     const auto doc = read_(lvl.id, lvl.end, *lvl.stream);
 
     // read pointer to child level if needed
-    if (!doc_limits::eof(doc) && lvl.child != UNDEFINED) {
+    if (!doc_limits::eof(doc) && lvl.child != kUndefined) {
       lvl.child = lvl.stream->read_vlong();
     }
 
-    lvl.doc = doc;
     lvl.skipped += lvl.step;
+    return doc;
   }
 
   Read read_;
@@ -277,42 +277,51 @@ template<typename Read>
 doc_id_t skip_reader<Read>::seek(doc_id_t target) {
   assert(!levels_.empty());
   assert(std::is_sorted(
-    levels_.begin(), levels_.end(),
-    [](level& lhs, level& rhs) { return lhs.doc > rhs.doc; }));
+    std::begin(keys_), std::end(keys_),
+    [](const auto& lhs, const auto& rhs) { return lhs.doc > rhs.doc; }));
 
   // returns highest level with the value not less than target
-  auto level = [](auto begin, auto end, doc_id_t target) noexcept {
+  auto key = [this](doc_id_t target) noexcept {
     // we prefer linear scan over binary search because
     // it's more performant for a small number of elements (< 30)
+    auto begin = std::begin(keys_);
 
-    // FIXME consider storing only doc + pointer to level
-    // data to make linear search more cache friendly
-    for (; begin != end; ++begin) {
+    for (; begin != std::end(keys_); ++begin) {
       if (target >= begin->doc) {
         return begin;
       }
     }
 
-    return std::prev(end);
-  }(std::begin(levels_), std::end(levels_), target);
+    return std::prev(std::end(keys_));
+  }(target);
+
+  assert(key != std::end(keys_));
 
   uint64_t child = 0; // pointer to child skip
   doc_id_t skipped = 0; // number of skipped documents
 
-  for ( ; level != std::end(levels_); ++level) {
-    if (level->doc < target) {
+  do {
+    auto doc = key->doc;
+
+    if (doc < target) {
+      assert(key->data);
+      auto& level = *key->data;
+
       // seek to child
-      seek_to_child(*level, child, skipped);
+      seek_to_child(level, child, skipped);
 
       // seek to skip
       do {
-        child = level->child;
-        read_skip(*level);
-      } while (level->doc < target);
+        child = level.child;
+        doc = read_skip(level);
+      } while (doc < target);
 
-      skipped = level->skipped - level->step;
+      skipped = level.skipped - level.step;
     }
-  }
+
+    key->doc = doc;
+    ++key;
+  } while (key != std::end(keys_));
 
   skipped = levels_.back().skipped;
   return skipped ? skipped - skip_0_ : 0;
