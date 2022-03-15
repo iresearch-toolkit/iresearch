@@ -50,7 +50,7 @@ void skip_writer::prepare(
     size_t count,
     const memory_allocator& alloc /* = memory_allocator::global() */) {
   max_levels_ = std::min(
-    std::max(size_t(1), max_levels),
+    std::max(size_t{1}, max_levels),
     ::max_levels(skip_0_, skip_n_, count));
   levels_.reserve(max_levels_);
 
@@ -66,16 +66,19 @@ void skip_writer::prepare(
 }
 
 void skip_writer::flush(index_output& out) {
-  const auto rend = levels_.rbegin() + max_levels_;
+  const auto rbegin = std::make_reverse_iterator(levels_.begin() + max_levels_);
+  const auto rend = std::rend(levels_);
 
   // find first filled level
   auto level = std::find_if(
-    levels_.rbegin(), rend,
+    rbegin, rend,
     [](const memory_output& level) {
       return level.stream.file_pointer(); });
 
   // write number of levels
-  out.write_vint(uint32_t(std::distance(level, rend)));
+  const auto num_levels = static_cast<uint32_t>(std::distance(level, rend));
+  assert(num_levels);
+  out.write_vint(num_levels);
 
   // write levels from n downto 0
   for (; level != rend; ++level) {

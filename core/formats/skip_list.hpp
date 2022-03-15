@@ -89,7 +89,7 @@ class skip_writer : util::noncopyable {
   void flush(index_output& out);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief resets skip reader internal state
+  /// @brief resets skip writer internal state
   //////////////////////////////////////////////////////////////////////////////
   void reset() noexcept {
     for (auto& level : levels_) {
@@ -106,6 +106,7 @@ class skip_writer : util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   template<typename Writer>
   void skip(doc_id_t count, Writer&& write);
+
  protected:
   std::vector<memory_output> levels_;
   size_t max_levels_;
