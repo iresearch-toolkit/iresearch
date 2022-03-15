@@ -2115,8 +2115,8 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
 
 template<typename IteratorTraits, typename FieldTraits>
 void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
-  // ensured by ctor
-  assert(!skip_levels_.empty());
+  assert(!skip_levels_.empty()); // ensured by ctor
+  assert(1 != term_state_.docs_count); // ensured by prepare(...)
 
   // check whether it make sense to use skip-list
   if (skip_levels_.front().doc < target) {
@@ -2155,8 +2155,7 @@ seek_after_initialization:
     skip_.prepare(std::move(skip_in));
 
     // initialize skip levels
-    const auto num_levels = skip_.num_levels();
-    if (IRS_LIKELY(num_levels)) {
+    if (const auto num_levels = skip_.num_levels(); IRS_LIKELY(num_levels)) {
       assert(!doc_limits::valid(skip_levels_.front().doc));
       skip_levels_.resize(num_levels);
 
@@ -2165,12 +2164,17 @@ seek_after_initialization:
       top.doc_ptr = term_state_.doc_start;
       top.pos_ptr = term_state_.pos_start;
       top.pay_ptr = term_state_.pay_start;
+
+      goto seek_after_initialization;
     } else {
-      // prevent using skip-list, should not happen
-      assert(false);
-      skip_levels_.front().doc = doc_limits::eof();
+      if (IRS_LIKELY(term_state_.docs_count <= IteratorTraits::block_size())) {
+        // prevent using skip-list
+        skip_levels_.front().doc = doc_limits::eof();
+      } else {
+        assert(false);
+        throw index_error("Zero number of skip levels.");
+      }
     }
-    goto seek_after_initialization;
   }
 }
 
@@ -2413,8 +2417,7 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
     skip_.prepare(std::move(skip_in));
 
     // initialize skip levels
-    const auto num_levels = skip_.num_levels();
-    if (num_levels) {
+    if (const auto num_levels = skip_.num_levels(); IRS_LIKELY(num_levels)) {
       skip_levels_.resize(num_levels);
       skip_scores_.resize(num_levels);
 
@@ -2434,6 +2437,9 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
       freq_ = buf_.freqs;
     }
     ++end_;
+  } else if (term_state_.docs_count > IteratorTraits::block_size()) {
+    assert(false);
+    throw index_error("Zero number of skip levels.");
   }
 }
 
