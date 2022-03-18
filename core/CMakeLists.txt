@@ -13,7 +13,6 @@ if (NOT IResearch_version_patch)
 endif()
 
 set(SIMD_LIBRARY_STATIC "simdcomp-static")
-set(ABSL_LIBRARY_STATIC "absl-static")
 set(FASTTEXT_LIBRARY_STATIC "fasttext-static")
 
 # set libatomic library 
@@ -287,7 +286,6 @@ include_directories(
 
 set(IRESEARCH_EXTERNAL_INCLUDES
     ${EXTERNAL_INCLUDE_DIRS}
-    $<TARGET_PROPERTY:${ABSL_LIBRARY_STATIC},INTERFACE_INCLUDE_DIRECTORIES>
     ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
     ${BFD_INCLUDE_DIR}
     ${Lz4_INCLUDE_DIR}
@@ -448,8 +446,9 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_STATIC}
-  ${ABSL_LIBRARY_STATIC}
   ${FASTTEXT_LIBRARY_STATIC}
+  absl::flat_hash_map
+  absl::flat_hash_set
   velocypack
 )
 
@@ -469,7 +468,6 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   ${ICU_STATIC_LIBS}
   "$<TARGET_FILE:lz4_static>"
   "$<TARGET_FILE:stemmer-static>"
-  "$<TARGET_FILE:${ABSL_LIBRARY_STATIC}>"
   "$<TARGET_FILE:${FASTTEXT_LIBRARY_STATIC}>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimiter-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-ngram-static>"
@@ -619,6 +617,11 @@ else()
     ${IResearch_TARGET_NAME}-static-allinone-build
   )
 endif()
+
+target_link_libraries(iresearch-static-allinone INTERFACE
+  absl::flat_hash_map
+  absl::flat_hash_set
+)
 
 ################################################################################
 ### analysis plugin : delimiter

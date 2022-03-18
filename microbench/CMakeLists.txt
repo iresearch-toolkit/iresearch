@@ -51,7 +51,7 @@ set_target_properties(${IResearchBenchmark_TARGET_NAME}
 )
 
 target_link_libraries(${IResearchBenchmark_TARGET_NAME}
-  ${IResearch_TARGET_NAME}-static-allinone
+  iresearch-static
   ${PTHREAD_LIBRARY}
   benchmark::benchmark
 )
@@ -65,7 +65,6 @@ include_directories(${IResearchBenchmark_TARGET_NAME}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
   ${FROZEN_INCLUDE_DIR}
-  $<TARGET_PROPERTY:absl-static,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-cmdline,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-utfcpp,INTERFACE_INCLUDE_DIRECTORIES>

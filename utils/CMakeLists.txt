@@ -55,7 +55,7 @@ set_target_properties(${IResearchUtil_TARGET_NAME}
 )
 
 target_link_libraries(${IResearchUtil_TARGET_NAME}
-  ${IResearch_TARGET_NAME}-static-allinone
+  iresearch-static
   ${PTHREAD_LIBRARY}
   ${ATOMIC_LIBRARY}
 )
@@ -119,12 +119,6 @@ target_link_libraries(${IResearchBencmarks_TARGET_NAME}
   ${REGEX_LIBRARY}
 )
 
-target_compile_features(${IResearchBencmarks_TARGET_NAME}
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
 include_directories(${IResearchBencmarks_TARGET_NAME}
   ${IResearch_INCLUDE_DIR}
   ${ICU_INCLUDE_DIR}
@@ -151,10 +145,6 @@ add_executable(${IResearchPDD_TARGET_NAME}
 add_sanitizers(${IResearchPDD_TARGET_NAME})
 set_ipo(${IResearchPDD_TARGET_NAME})
 
-add_dependencies(${IResearchPDD_TARGET_NAME}
-  ${IResearch_TARGET_NAME}-static-allinone
-)
-
 set_target_properties(${IResearchPDD_TARGET_NAME}
   PROPERTIES
   OUTPUT_NAME iresearch-pdd
@@ -167,7 +157,7 @@ if (NOT MSVC AND GCC_VERSION VERSION_LESS 4.9)
 endif()
 
 target_link_libraries(${IResearchPDD_TARGET_NAME}
-  ${IResearch_TARGET_NAME}-static-allinone
+  iresearch-static
   ${PTHREAD_LIBRARY}
   ${ATOMIC_LIBRARY}
   ${REGEX_LIBRARY}
