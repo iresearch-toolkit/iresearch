@@ -224,11 +224,9 @@ class parametric_states {
       size_t value = parametric_state_hash::seed();
       for (auto& pos: state) {
         // cppcheck-suppress unreadVariable
-        const size_t hash = absl::hash_internal::CityHashState::hash(
-          size_t(pos.offset) << 33  |
-          size_t(pos.distance) << 1 |
-          size_t(pos.transpose));
-
+        const auto hash = absl::Hash<size_t>{}(size_t(pos.offset) << 33U |
+                                               size_t(pos.distance) << 1U |
+                                               size_t(pos.transpose));
         value = irs::hash_combine(value, hash);
       }
       return value;
