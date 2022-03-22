@@ -17,7 +17,7 @@ target_include_directories(${IResearchPython_TARGET_NAME}
 )
 
 target_link_libraries(${IResearchPython_TARGET_NAME}
-  ${IResearch_TARGET_NAME}-static-allinone
+  iresearch-static
 )
 
 add_subdirectory(swig)

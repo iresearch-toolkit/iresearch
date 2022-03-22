@@ -113,9 +113,15 @@ if (ICU_INCLUDE_DIR AND ICU_SRC_DIR_UCONV AND ICU_SRC_DIR_CONFIGURE)
   # directory required to exist before using WORKING_DIRECTORY
   file(MAKE_DIRECTORY "${ICU_WORK_PATH}")
 
+  include(ProcessorCount)
+  ProcessorCount(N)
+  if (N EQUAL 0)
+    set(N 1)
+  endif ()
+  message("${N} -- processor count")
   add_custom_target(icu-build
     COMMAND test -d "${ICU_LIBRARY_PATH}" || "${ICU_SRC_DIR_CONFIGURE}" "--disable-samples" "--disable-tests" "--enable-static" "--srcdir=${ICU_SRC_DIR_PARENT}" "--prefix=${ICU_WORK_PATH}/build" "--exec-prefix=${ICU_WORK_PATH}/ebuild"
-    COMMAND test -d "${ICU_LIBRARY_PATH}" || make -j 8 install
+    COMMAND test -d "${ICU_LIBRARY_PATH}" || make -j ${N} install
     WORKING_DIRECTORY "${ICU_WORK_PATH}"
     VERBATIM
   )

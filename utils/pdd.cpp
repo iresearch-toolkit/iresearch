@@ -155,7 +155,7 @@ int dump(const cmdline::parser& args) {
   const irs::compression::options opts{ irs::compression::options::Hint::COMPRESSION };
   auto compressor = irs::compression::get_compressor(compression, opts);
 
-  return dump(static_cast<irs::byte_type>(distance), with_transpositions, items_per_line, compressor, ns);
+  return dump(static_cast<irs::byte_type>(distance), with_transpositions, items_per_line, std::move(compressor), ns);
 }
 
 int dump(int argc, char* argv[]) {

@@ -161,10 +161,34 @@ set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include)
 set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include PARENT_SCOPE)
 
 ################################################################################
-### absl library
+### abseil-cpp library
 ################################################################################
+if (NOT TARGET absl::base)
+  if ("${ABSL_ROOT}" STREQUAL "")
+    set(ABSL_ROOT "$ENV{ABSL_ROOT}")
+  endif ()
 
-add_subdirectory(absl)
+  if ("${ABSL_ROOT}" STREQUAL "")
+    message("ABSL_ROOT not set. Pulling abseil-cpp submodule.")
+    UpdateModule(${GIT_EXECUTABLE} "external/abseil-cpp" ${CMAKE_SOURCE_DIR} "README.md")
+    set(ABSL_ROOT ${CMAKE_SOURCE_DIR}/external/abseil-cpp)
+  endif ()
+
+  if ("${ABSL_ROOT}" STREQUAL "")
+    message(FATAL_ERROR "ABSL_ROOT not set")
+  else ()
+    set(CMAKE_CXX_STANDARD 17)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON CACHE BOOL "" FORCE)
+    set(ABSL_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+    set(ABSL_PROPAGATE_CXX_STD ON CACHE BOOL "" FORCE)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    expand_path(${ABSL_ROOT} ABSL_ROOT_EXP)
+    add_subdirectory(${ABSL_ROOT_EXP}
+      ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-abseil-cpp.dir
+      EXCLUDE_FROM_ALL)
+    set(CMAKE_CXX_STANDARD 20)
+  endif ()
+endif ()
 
 ################################################################################
 ### velocypack library
@@ -172,23 +196,23 @@ add_subdirectory(absl)
 if (NOT TARGET velocypack)
   if ("${VPACK_ROOT}" STREQUAL "")
     set(VPACK_ROOT "$ENV{VPACK_ROOT}")
-  endif()
+  endif ()
 
   if ("${VPACK_ROOT}" STREQUAL "")
     message("VPACK_ROOT not set. Pulling velocypack submodule.")
     UpdateModule(${GIT_EXECUTABLE} "external/velocypack" ${CMAKE_SOURCE_DIR} "README.md")
     set(VPACK_ROOT ${CMAKE_SOURCE_DIR}/external/velocypack)
-  endif()
+  endif ()
 
-  if (NOT ("${VPACK_ROOT}" STREQUAL ""))
+  if ("${VPACK_ROOT}" STREQUAL "")
+    message(FATAL_ERROR "VPACK_ROOT not set")
+  else ()
     expand_path(${VPACK_ROOT} VPACK_ROOT_EXP)
     add_subdirectory(${VPACK_ROOT_EXP}
-                     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-velocypack.dir
-                     EXCLUDE_FROM_ALL)
-  else()
-   message(FATAL_ERROR "VPACK_ROOT not set")
-  endif()
-endif()
+      ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-velocypack.dir
+      EXCLUDE_FROM_ALL)
+  endif ()
+endif ()
 
 ################################################################################
 ### Boost::Text library

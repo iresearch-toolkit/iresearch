@@ -71,7 +71,7 @@ namespace boost { namespace text {
           grapheme_prop_interval{0xe01f0, 0xe1000, grapheme_property::Control},
         };
 
-        BOOST_TEXT_DECL iresearch_absl::flat_hash_map<uint32_t, grapheme_property>
+        BOOST_TEXT_DECL absl::flat_hash_map<uint32_t, grapheme_property>
         make_grapheme_prop_map();
     }
 

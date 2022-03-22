@@ -139,7 +139,7 @@ struct elsa<irs::string_ref> {
 // --SECTION--                                                   absl extensions
 // -----------------------------------------------------------------------------
 
-namespace iresearch_absl {
+namespace absl {
 namespace hash_internal {
 
 template<typename Char>
