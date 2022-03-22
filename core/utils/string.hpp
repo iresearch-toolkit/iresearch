@@ -29,8 +29,6 @@
 #include <cassert>
 #include <vector>
 
-#include <absl/hash/internal/city.h>
-
 #include "shared.hpp"
 
 // ----------------------------------------------------------------------------
