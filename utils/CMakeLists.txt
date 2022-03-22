@@ -113,7 +113,7 @@ if (NOT MSVC AND GCC_VERSION VERSION_LESS 4.9)
 endif()
 
 target_link_libraries(${IResearchBencmarks_TARGET_NAME}
-  ${IResearch_TARGET_NAME}-static-allinone
+  ${IResearch_TARGET_NAME}-static
   ${PTHREAD_LIBRARY}
   ${ATOMIC_LIBRARY}
   ${REGEX_LIBRARY}

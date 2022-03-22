@@ -201,7 +201,8 @@ set_target_properties(${IResearchTests_TARGET_NAME}-static
 
 target_link_libraries(${IResearchTests_TARGET_NAME}-static
   ${GCOV_LIBRARY}
-  ${IResearch_TARGET_NAME}-static-allinone
+  ${ICU_STATIC_LIBS}
+  ${IResearch_TARGET_NAME}-static
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
 )
