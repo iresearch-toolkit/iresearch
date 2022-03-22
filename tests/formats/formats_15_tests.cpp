@@ -28,8 +28,8 @@ namespace {
 class FreqThresholdDocIterator final : public irs::doc_iterator {
  public:
   FreqThresholdDocIterator(irs::doc_iterator& impl, uint32_t threshold)
-    : impl_{&impl}, threshold_{threshold} {
-    freq_ = irs::get<irs::frequency>(impl);
+      : impl_{&impl}, freq_{irs::get<irs::frequency>(impl)},
+        threshold_{threshold} {
   }
 
   irs::attribute* get_mutable(irs::type_info::type_id id) final {
@@ -42,7 +42,7 @@ class FreqThresholdDocIterator final : public irs::doc_iterator {
 
   bool next() final {
     while (impl_->next()) {
-      if (freq_->value < threshold_) {
+      if (freq_ && freq_->value < threshold_) {
         continue;
       }
 
@@ -58,7 +58,7 @@ class FreqThresholdDocIterator final : public irs::doc_iterator {
       return irs::doc_limits::eof();
     }
 
-    if (freq_->value < threshold_) {
+    if (freq_ && freq_->value < threshold_) {
       next();
     }
 
@@ -304,7 +304,7 @@ TEST_P(Format15TestCase, PostingsWandSeek) {
   // short list (< postings_writer::BLOCK_SIZE)
   {
     constexpr size_t kCount = 117;
-    constexpr uint32_t kThreshold = 4;
+    constexpr uint32_t kThreshold = 0;
     static_assert(kCount < kVersion10PostingsWriterBlockSize);
 
     const auto docs = generate_docs(kCount, 1);
@@ -319,7 +319,7 @@ TEST_P(Format15TestCase, PostingsWandSeek) {
 
   // equals to postings_writer::BLOCK_SIZE
   {
-    constexpr uint32_t kThreshold = 4;
+    constexpr uint32_t kThreshold = 0;
     const auto docs = generate_docs(kVersion10PostingsWriterBlockSize, 1);
 
     PostingsWandSeek(docs, kNone, kThreshold);
@@ -333,7 +333,7 @@ TEST_P(Format15TestCase, PostingsWandSeek) {
   // long list
   {
     constexpr size_t kCount = 10000;
-    constexpr uint32_t kThreshold = 4;
+    constexpr uint32_t kThreshold = 0;
     const auto docs = generate_docs(kCount, 1);
 
     PostingsWandSeek(docs, kNone, kThreshold);
@@ -347,7 +347,7 @@ TEST_P(Format15TestCase, PostingsWandSeek) {
   // 2^15
   {
     constexpr size_t kCount = 32768;
-    constexpr uint32_t kThreshold = 4;
+    constexpr uint32_t kThreshold = 0;
     const auto docs = generate_docs(kCount, 2);
 
     PostingsWandSeek(docs, kNone, kThreshold);
