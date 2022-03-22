@@ -113,6 +113,7 @@ if (NOT MSVC AND GCC_VERSION VERSION_LESS 4.9)
 endif()
 
 target_link_libraries(${IResearchBencmarks_TARGET_NAME}
+  ${ICU_STATIC_LIBS}
   ${IResearch_TARGET_NAME}-static
   ${PTHREAD_LIBRARY}
   ${ATOMIC_LIBRARY}
