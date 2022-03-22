@@ -35,8 +35,8 @@
 namespace iresearch {
 
 template<typename Key,
-         typename Hash = absl::container_internal::hash_default_hash<Key>,
-         typename Equal = absl::container_internal::hash_default_eq<Key>>
+         typename Hash = typename absl::flat_hash_set<Key>::hasher,
+         typename Equal = typename absl::flat_hash_set<Key, Hash>::key_equal>
 class ref_counter : public util::noncopyable {
  public:
   using ref_t = std::shared_ptr<const Key>;
@@ -59,7 +59,8 @@ class ref_counter : public util::noncopyable {
     }
 
     bool operator()(const ref_t& lhs, const ref_t& rhs) const noexcept {
-      assert(lhs && rhs);
+      assert(lhs);
+      assert(rhs);
       return Equal::operator()(*lhs, *rhs);
     }
   };
