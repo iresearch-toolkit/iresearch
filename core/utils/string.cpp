@@ -28,7 +28,7 @@ namespace iresearch {
 namespace hash_utils {
 
 size_t hash(const char* value, size_t size) noexcept {
-  return irs::absl::hash_internal::CityHash64(value, size);
+  return absl::hash_internal::CityHash64(value, size);
 }
 
 size_t hash(const byte_type* value, size_t size) noexcept {

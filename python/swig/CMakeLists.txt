@@ -38,7 +38,7 @@ if(MSVC)
 # on MSVC  we prepare setup file for each build type to make use of generator expressions
 file(GENERATE OUTPUT ${CMAKE_BINARY_DIR}/setup_$<CONFIG>.py INPUT ${SETUP_PY_OUT})
 add_custom_target(pyresearch
-  DEPENDS _pyresearch ${IResearch_TARGET_NAME}-static-allinone
+  DEPENDS _pyresearch iresearch-static
   COMMAND ${Python_EXECUTABLE} ${CMAKE_BINARY_DIR}/setup_$<CONFIG>.py build_ext --inplace
 )
 add_custom_target(pyresearch-install

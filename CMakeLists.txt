@@ -62,8 +62,7 @@ endif()
 
 message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
 
-set(IResearch_TARGET_NAME "iresearch" CACHE INTERNAL "")
-project(${IResearch_TARGET_NAME})
+project(iresearch)
 
 # attach additional cmake modules
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
@@ -304,7 +303,7 @@ endif()
 
 if (USE_PVS_STUDIO)
   set(PVS_STUDIO_TARGET_NAME "iresearch-pvs-check")
-  set(PVS_STUDIO_ANALYZE ${IResearch_TARGET_NAME}-static
+  set(PVS_STUDIO_ANALYZE iresearch-static
                          ${IResearchUtil_TARGET_NAME}
                          ${IResearchBenchmarks_TARGET_NAME}
                          ${IResearchPython_TARGET_NAME})
@@ -314,7 +313,7 @@ if (USE_PVS_STUDIO)
     OUTPUT FORMAT errorfile
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
-    LOG ${IResearch_TARGET_NAME}.err
+    LOG iresearch.err
     CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
   )
 
@@ -329,7 +328,7 @@ if (USE_PVS_STUDIO)
     FORMAT fullhtml
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
-    LOG ${IResearch_TARGET_NAME}-html.err
+    LOG iresearch-html.err
     CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
   )
 
@@ -344,7 +343,7 @@ if (USE_PVS_STUDIO)
     FORMAT xml
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
-    LOG ${IResearch_TARGET_NAME}-xml.err
+    LOG iresearch-xml.err
     CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
   )
 
@@ -370,12 +369,12 @@ if (USE_TESTS)
     SET(LCOV_EXCLUDE "external/*;boost/*;${LCOV_EXCLUDE}")
 
     setup_target_for_coverage(
-      ${IResearch_TARGET_NAME}-coverage 
+      iresearch-coverage
       $<TARGET_FILE:${IResearchTests_TARGET_NAME}-static>
       coverage
       "--ires_output"
     )
-    add_dependencies(${IResearch_TARGET_NAME}-coverage
+    add_dependencies(iresearch-coverage
       ${IResearchTests_TARGET_NAME}-static
     )
 
@@ -384,16 +383,16 @@ if (USE_TESTS)
       SET(GCOVR_EXTRA_ARGS "-e;${PROJECT_SOURCE_DIR}/external/;${GCOVR_EXTRA_ARGS}")
 
       setup_target_for_coverage_cobertura(
-        ${IResearch_TARGET_NAME}-coverage-cobertura
+        iresearch-coverage-cobertura
         $<TARGET_FILE:${IResearchTests_TARGET_NAME}-static>
         coverage
         "--ires_output"
       )
       setup_target_for_collecting_coverage_cobertura(
-        ${IResearch_TARGET_NAME}-coverage-cobertura-collect
+        iresearch-coverage-cobertura-collect
         coverage
       )
-      add_dependencies(${IResearch_TARGET_NAME}-coverage-cobertura-collect
+      add_dependencies(iresearch-coverage-cobertura-collect
         ${IResearchTests_TARGET_NAME}-static
       )
     endif()

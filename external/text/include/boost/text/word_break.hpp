@@ -93,7 +93,7 @@ namespace boost { namespace text {
           word_prop_interval{0xe0100, 0xe01f0, word_property::Extend},
         };
 
-        BOOST_TEXT_DECL iresearch_absl::flat_hash_map<uint32_t, word_property>
+        BOOST_TEXT_DECL absl::flat_hash_map<uint32_t, word_property>
         make_word_prop_map();
     }
 

@@ -1,3 +1,6 @@
 [submodule "external/velocypack"]
 	path = external/velocypack
 	url = https://github.com/arangodb/velocypack.git
+[submodule "external/abseil-cpp"]
+	path = external/abseil-cpp
+	url = https://github.com/abseil/abseil-cpp.git
