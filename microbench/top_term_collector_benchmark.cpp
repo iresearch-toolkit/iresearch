@@ -33,17 +33,17 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     : begin_(begin), end_(begin + count), cookie_ptr_(begin) {
   }
 
-  virtual irs::SeekResult seek_ge(const irs::bytes_ref& value) {
+  virtual irs::SeekResult seek_ge(const irs::bytes_ref&) override {
     return irs::SeekResult::NOT_FOUND;
   }
 
-  virtual bool seek(const irs::bytes_ref& value) {
+  virtual bool seek(const irs::bytes_ref& ) override {
     return false;
   }
 
   virtual bool seek(
-      const irs::bytes_ref& term,
-      const irs::seek_cookie& cookie) {
+      const irs::bytes_ref&,
+      const irs::seek_cookie&) override {
 
     return true;
   }

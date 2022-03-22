@@ -468,7 +468,8 @@ int put(
 
   // stream reader thread
   thread_pool.run([&batch_provider, lines_max, batch_size, &stream]()->void {
-    irs::set_thread_name("reader");
+    irs::set_thread_name(IR_NATIVE_STRING("reader"));
+
 
     SCOPED_TIMER("Stream read total time");
     auto lock = irs::make_unique_lock(batch_provider.mutex_);
@@ -500,7 +501,7 @@ int put(
   // commiter thread
   if (commit_interval_ms) {
     thread_pool.run([&consolidation_cv, &consolidation_mutex, &batch_provider, commit_interval_ms, &writer, consolidation_threads]()->void {
-      irs::set_thread_name("committer");
+      irs::set_thread_name(IR_NATIVE_STRING("committer"));
 
       while (!batch_provider.done_.load()) {
         {
@@ -526,7 +527,7 @@ int put(
 
   for (size_t i = consolidation_threads; i; --i) {
     thread_pool.run([&dir, &policy, &batch_provider, &consolidation_mutex, &consolidation_cv, consolidation_interval_ms, &writer]()->void {
-      irs::set_thread_name("consolidater");
+      irs::set_thread_name(IR_NATIVE_STRING("consolidater"));
 
       while (!batch_provider.done_.load()) {
         {
@@ -554,7 +555,7 @@ int put(
   // indexer threads
   for (size_t i = indexer_threads; i; --i) {
     thread_pool.run([text_features, &analyzer_factory, &batch_provider, &writer](){
-      irs::set_thread_name("indexer");
+      irs::set_thread_name(IR_NATIVE_STRING("indexer"));
 
       std::vector<std::string> buf;
       WikiDoc doc(analyzer_factory, text_features);
