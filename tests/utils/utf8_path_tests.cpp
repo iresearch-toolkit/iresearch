@@ -24,6 +24,7 @@
 #include <fstream>
 #include <thread>
 #include <condition_variable>
+#include <climits>
 
 #include "tests_shared.hpp"
 #include "utils/file_utils.hpp"
