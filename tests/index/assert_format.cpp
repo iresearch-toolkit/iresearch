@@ -725,9 +725,9 @@ void assert_docs(
     const irs::term_reader& actual_terms,
     irs::seek_cookie::ptr actual_cookie,
     irs::IndexFeatures requested_features) {
-  //assert_docs(
-  //  expected_term.postings(requested_features),
-  //  [&]() { return actual_terms.postings(*actual_cookie, requested_features); });
+  assert_docs(
+    expected_term.postings(requested_features),
+    [&]() { return actual_terms.postings(*actual_cookie, requested_features); });
 
   assert_docs(
     expected_term.postings(requested_features),

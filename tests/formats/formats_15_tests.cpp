@@ -166,7 +166,32 @@ void Format15TestCase::PostingsWandSeek(
         ASSERT_EQ(typed_meta.e_skip_start, read_meta.e_skip_start);
       }
 
-      auto assert_docs = [&](size_t seed, size_t inc) {
+      auto assert_docs_seq = [&]() {
+        postings expected_postings{docs, field.index_features};
+        FreqThresholdDocIterator expected{expected_postings, threshold};
+
+        auto actual = reader->wanderator(field.index_features, features, read_meta);
+        ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
+
+        while (expected.next()) {
+          const auto expected_doc_id = expected.value();
+          ASSERT_TRUE(actual->next());
+          ASSERT_EQ(expected_doc_id, actual->value());
+          ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
+          ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id)); // seek to the same doc
+          ASSERT_EQ(expected_doc_id, actual->seek(irs::doc_limits::invalid())); // seek to the smaller doc
+
+          assert_positions(expected, *actual);
+        }
+
+        ASSERT_FALSE(actual->next());
+        ASSERT_TRUE(irs::doc_limits::eof(actual->value()));
+
+        // seek after the existing documents
+        ASSERT_TRUE(irs::doc_limits::eof(actual->seek(docs.back().first + 42)));
+      };
+
+      auto assert_docs_random = [&](size_t seed, size_t inc) {
         postings expected_postings{docs, field.index_features};
         FreqThresholdDocIterator expected{expected_postings, threshold};
 
@@ -192,17 +217,19 @@ void Format15TestCase::PostingsWandSeek(
         }
       };
 
+      assert_docs_seq();
+
       // seek for every document 127th document in a block
-      assert_docs(kVersion10PostingsWriterBlockSize-1, kVersion10PostingsWriterBlockSize);
+      assert_docs_random(kVersion10PostingsWriterBlockSize-1, kVersion10PostingsWriterBlockSize);
 
       // seek for every 128th document in a block
-      assert_docs(kVersion10PostingsWriterBlockSize, kVersion10PostingsWriterBlockSize);
+      assert_docs_random(kVersion10PostingsWriterBlockSize, kVersion10PostingsWriterBlockSize);
 
       // seek for every document
-      assert_docs(0, 1);
+      assert_docs_random(0, 1);
 
       // seek to every 5th document
-      assert_docs(0, 5);
+      assert_docs_random(0, 5);
 
       // FIXME(gnusi): implement
       // seek for backwards && next
@@ -296,7 +323,9 @@ TEST_P(Format15TestCase, PostingsWandSeek) {
   };
 
   auto check_docs = [](const auto& docs) {
-    return std::all_of(std::begin(docs), std::end(docs),
+    return std::is_sorted(std::begin(docs), std::end(docs),
+                          [](auto& lhs, auto& rhs) { return lhs.first < rhs.first; }) &&
+           std::all_of(std::begin(docs), std::end(docs),
                        [](auto& v) { return static_cast<int32_t>(v.second) > 0; });
   };
 
