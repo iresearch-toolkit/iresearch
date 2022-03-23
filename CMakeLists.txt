@@ -302,14 +302,13 @@ if (USE_PYRESEARCH)
 endif()
 
 if (USE_PVS_STUDIO)
-  set(PVS_STUDIO_TARGET_NAME "iresearch-pvs-check")
   set(PVS_STUDIO_ANALYZE iresearch-static
                          ${IResearchUtil_TARGET_NAME}
                          ${IResearchBenchmarks_TARGET_NAME}
                          ${IResearchPython_TARGET_NAME})
 
   pvs_studio_add_target(
-    TARGET ${PVS_STUDIO_TARGET_NAME} ALL
+    TARGET iresearch-pvs-check ALL
     OUTPUT FORMAT errorfile
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
@@ -318,13 +317,13 @@ if (USE_PVS_STUDIO)
   )
 
   set_target_properties(
-    ${PVS_STUDIO_TARGET_NAME}
+    iresearch-pvs-check
     PROPERTIES
     COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
   pvs_studio_add_target(
-    TARGET ${PVS_STUDIO_TARGET_NAME}-html ALL
+    TARGET iresearch-pvs-check-html ALL
     FORMAT fullhtml
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
@@ -333,13 +332,13 @@ if (USE_PVS_STUDIO)
   )
 
   set_target_properties(
-    ${PVS_STUDIO_TARGET_NAME}-html
+    iresearch-pvs-check-html
     PROPERTIES
     COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
   pvs_studio_add_target(
-    TARGET ${PVS_STUDIO_TARGET_NAME}-xml ALL
+    TARGET iresearch-pvs-check-xml ALL
     FORMAT xml
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
@@ -348,7 +347,7 @@ if (USE_PVS_STUDIO)
   )
 
   set_target_properties(
-    ${PVS_STUDIO_TARGET_NAME}-xml
+    iresearch-pvs-check-xml
     PROPERTIES
     COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
@@ -370,12 +369,12 @@ if (USE_TESTS)
 
     setup_target_for_coverage(
       iresearch-coverage
-      $<TARGET_FILE:${IResearchTests_TARGET_NAME}-static>
+      $<TARGET_FILE:iresearch-tests-static>
       coverage
       "--ires_output"
     )
     add_dependencies(iresearch-coverage
-      ${IResearchTests_TARGET_NAME}-static
+      iresearch-tests-static
     )
 
     if (PYTHON_EXECUTABLE AND GCOVR_PATH)   
@@ -384,7 +383,7 @@ if (USE_TESTS)
 
       setup_target_for_coverage_cobertura(
         iresearch-coverage-cobertura
-        $<TARGET_FILE:${IResearchTests_TARGET_NAME}-static>
+        $<TARGET_FILE:iresearch-tests-static>
         coverage
         "--ires_output"
       )
@@ -393,7 +392,7 @@ if (USE_TESTS)
         coverage
       )
       add_dependencies(iresearch-coverage-cobertura-collect
-        ${IResearchTests_TARGET_NAME}-static
+        iresearch-tests-static
       )
     endif()
   endif()
