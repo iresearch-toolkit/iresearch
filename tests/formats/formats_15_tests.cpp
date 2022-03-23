@@ -17,6 +17,8 @@
 /// @author Andrei Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <random>
+
 #include "formats_test_case_base.hpp"
 #include "store/directory_attributes.hpp"
 #include "formats/formats_10.hpp"
@@ -279,19 +281,23 @@ INSTANTIATE_TEST_SUITE_P(
 // 1.5 specific tests
 
 TEST_P(Format15TestCase, PostingsWandSeek) {
-  auto generate_docs = [](size_t count, size_t step) {
+  auto generate_docs = [](size_t count, float_t mean, float_t dev, size_t step) {
     std::vector<std::pair<irs::doc_id_t, uint32_t>> docs;
     docs.reserve(count);
-    irs::doc_id_t i = (irs::doc_limits::min)();
     std::generate_n(std::back_inserter(docs), count,
-                    [&i, step]() {
+                    [i = (irs::doc_limits::min)(), gen = std::mt19937{}, distr = std::normal_distribution<float_t>{mean, dev}, step]() mutable {
                       const irs::doc_id_t doc = i;
-                      const uint32_t freq = std::max(1U, doc % 7);
-                      i+= step;
+                      const auto freq = static_cast<uint32_t>(std::roundf(distr(gen)));
+                      i += step;
 
                       return std::make_pair(doc, freq);
                     });
     return docs;
+  };
+
+  auto check_docs = [](const auto& docs) {
+    return std::all_of(std::begin(docs), std::end(docs),
+                       [](auto& v) { return static_cast<int32_t>(v.second) > 0; });
   };
 
   constexpr auto kNone = irs::IndexFeatures::NONE;
@@ -307,7 +313,8 @@ TEST_P(Format15TestCase, PostingsWandSeek) {
     constexpr uint32_t kThreshold = 0;
     static_assert(kCount < kVersion10PostingsWriterBlockSize);
 
-    const auto docs = generate_docs(kCount, 1);
+    const auto docs = generate_docs(117, 50.f, 14.f, 1);
+    ASSERT_TRUE(check_docs(docs));
 
     PostingsWandSeek(docs, kNone, kThreshold);
     PostingsWandSeek(docs, kFreq, kThreshold);
@@ -320,7 +327,8 @@ TEST_P(Format15TestCase, PostingsWandSeek) {
   // equals to postings_writer::BLOCK_SIZE
   {
     constexpr uint32_t kThreshold = 0;
-    const auto docs = generate_docs(kVersion10PostingsWriterBlockSize, 1);
+    const auto docs = generate_docs(kVersion10PostingsWriterBlockSize, 50.f, 14.f, 1);
+    ASSERT_TRUE(check_docs(docs));
 
     PostingsWandSeek(docs, kNone, kThreshold);
     PostingsWandSeek(docs, kFreq, kThreshold);
@@ -334,7 +342,8 @@ TEST_P(Format15TestCase, PostingsWandSeek) {
   {
     constexpr size_t kCount = 10000;
     constexpr uint32_t kThreshold = 0;
-    const auto docs = generate_docs(kCount, 1);
+    const auto docs = generate_docs(kCount, 50.f, 13.f, 1);
+    ASSERT_TRUE(check_docs(docs));
 
     PostingsWandSeek(docs, kNone, kThreshold);
     PostingsWandSeek(docs, kFreq, kThreshold);
@@ -348,7 +357,8 @@ TEST_P(Format15TestCase, PostingsWandSeek) {
   {
     constexpr size_t kCount = 32768;
     constexpr uint32_t kThreshold = 0;
-    const auto docs = generate_docs(kCount, 2);
+    const auto docs = generate_docs(kCount, 1000.f, 20.f, 2);
+    ASSERT_TRUE(check_docs(docs));
 
     PostingsWandSeek(docs, kNone, kThreshold);
     PostingsWandSeek(docs, kFreq, kThreshold);

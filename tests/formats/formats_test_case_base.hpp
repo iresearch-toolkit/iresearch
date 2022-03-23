@@ -70,6 +70,7 @@ class format_test_case : public index_test_base {
       }
 
       ++value_;
+      EXPECT_TRUE(irs::pos_limits::valid(value_));
 
       const auto written = sprintf(pay_data_, "%d", value_);
       pay_.value = irs::bytes_ref(
@@ -130,7 +131,10 @@ class format_test_case : public index_test_base {
       }
 
       std::tie(doc_.value, freq_.value) = *next_;
+
+      EXPECT_TRUE(irs::doc_limits::valid(doc_.value));
       pos_.value_ = doc_.value;
+      EXPECT_TRUE(irs::pos_limits::valid(pos_.value_));
       pos_.end_ = pos_.value_ + freq_.value;
       pos_.clear();
       ++next_;
