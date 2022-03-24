@@ -2332,7 +2332,14 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::read_skip::operator()(
   }
 
   if constexpr (FieldTraits::frequency()) {
-    self_->skip_scores_[level].read(in);
+    auto& skip_buffer = self_->skip_scores_[level];
+    skip_buffer.read(in);
+
+    auto& threshold = std::get<score_threshold>(self_->attrs_);
+
+    if (skip_buffer.value() < threshold.get()) {
+      return doc_limits::invalid();
+    }
   }
 
   return next.doc;

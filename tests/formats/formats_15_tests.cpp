@@ -171,6 +171,13 @@ void Format15TestCase::PostingsWandSeek(
         FreqThresholdDocIterator expected{expected_postings, threshold};
 
         auto actual = reader->wanderator(field.index_features, features, read_meta);
+        ASSERT_NE(nullptr, actual);
+
+        auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
+        ASSERT_NE(nullptr, threshold_value);
+
+        threshold_value->set(threshold);
+
         ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
 
         while (expected.next()) {
@@ -196,6 +203,13 @@ void Format15TestCase::PostingsWandSeek(
         FreqThresholdDocIterator expected{expected_postings, threshold};
 
         auto actual = reader->wanderator(field.index_features, features, read_meta);
+        ASSERT_NE(nullptr, actual);
+
+        auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
+        ASSERT_NE(nullptr, threshold_value);
+
+        threshold_value->set(threshold);
+
         ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
 
         for (size_t i = seed, size = docs.size(); i < size; i += inc) {
