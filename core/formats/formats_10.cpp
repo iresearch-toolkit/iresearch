@@ -2221,7 +2221,7 @@ class wanderator final : public irs::doc_iterator {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    return seek_to_target(seek_to_threshold(target));
+    return seek_to_target(target);
   }
 
   virtual doc_id_t value() const noexcept final {
@@ -2264,8 +2264,6 @@ class wanderator final : public irs::doc_iterator {
     }
   }
 
-  doc_id_t seek_to_threshold(doc_id_t target);
-
   doc_id_t seek_to_target(doc_id_t target);
 
   // returns current position in the document block 'docs_'
@@ -2302,13 +2300,13 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::read_skip::operator()(
   if (last.level > level) {
     // move to the more granular level
     next = last;
+    last.level = level;
   } else {
     // store previous step on the same level
     static_cast<skip_state&>(last) = next;
   }
 
   // FIXME(gnusi): can we move it under the condition above?
-  last.level = level;
 
   if (in.file_pointer() >= end) {
     // stream exhausted
@@ -2448,16 +2446,9 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
     assert(false);
     throw index_error("Zero number of skip levels.");
   }
-}
 
-template<typename IteratorTraits, typename FieldTraits>
-doc_id_t wanderator<IteratorTraits, FieldTraits>::seek_to_threshold(doc_id_t target) {
-  [[maybe_unused]] auto& threshold = std::get<score_threshold>(attrs_);
-
-
-
-
-  return target;
+  assert(!skip_levels_.empty());
+  prev_skip_.level = skip_levels_.size() - 1;
 }
 
 template<typename IteratorTraits, typename FieldTraits>
