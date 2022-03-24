@@ -2310,8 +2310,6 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::read_skip::operator()(
     static_cast<skip_state&>(last) = next;
   }
 
-  // FIXME(gnusi): can we move it under the condition above?
-
   if (in.file_pointer() >= end) {
     // stream exhausted
     return (next.doc = doc_limits::eof());
