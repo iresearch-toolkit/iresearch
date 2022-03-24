@@ -306,10 +306,8 @@ doc_id_t skip_reader<Read>::seek(doc_id_t target) {
       assert(key->data);
       auto& level = *key->data;
 
-      // seek to child
       seek_to_child(level, child, skipped);
 
-      // seek to skip
       do {
         child = level.child;
         doc = read_skip(level);
