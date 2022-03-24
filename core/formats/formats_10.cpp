@@ -2124,6 +2124,10 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
     assert(term_state_.docs_count > IteratorTraits::block_size());
 
     skip_context last; // where block starts
+
+    assert(!skip_levels_.empty());
+    last.level = skip_levels_.size() - 1;
+
     skip_ctx_ = &last;
 
     // init skip writer in lazy fashion
