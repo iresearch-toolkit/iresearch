@@ -302,9 +302,7 @@ doc_id_t skip_reader<Read>::seek(doc_id_t target) {
   doc_id_t skipped = 0; // number of skipped documents
 
   do {
-    auto doc = key->doc;
-
-    if (doc < target) {
+    if (auto doc = key->doc; doc < target) {
       assert(key->data);
       auto& level = *key->data;
 
@@ -318,9 +316,9 @@ doc_id_t skip_reader<Read>::seek(doc_id_t target) {
       } while (doc < target);
 
       skipped = level.skipped - level.step;
+      key->doc = doc;
     }
 
-    key->doc = doc;
     ++key;
   } while (key != std::end(keys_));
 
