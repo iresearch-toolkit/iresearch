@@ -33,6 +33,17 @@ using namespace std::chrono_literals;
 
 namespace {
 
+template<typename... Visitors>
+struct Visitor : Visitors... {
+  template<typename... T>
+  Visitor(T&&... visitors) : Visitors{std::forward<T>(visitors)}... {}
+
+  using Visitors::operator()...;
+};
+
+template<typename... T>
+Visitor(T...) -> Visitor<std::decay_t<T>...>;
+
 class skip_writer_test : public test_base {
  protected:
   void write_flush(size_t count, size_t max_levels, size_t skip) {
@@ -325,7 +336,7 @@ TEST_F(skip_writer_test, reset) {
       size_t num_levels = in->read_vint();
 
       // check levels from n downto 1
-      for (num_levels; num_levels > 1; --num_levels) {
+      for (; num_levels > 1; --num_levels) {
         // skip level size
         in->read_vlong();
         auto& level = levels[num_levels-1];
@@ -352,6 +363,17 @@ TEST_F(skip_writer_test, reset) {
 }
 
 TEST_F(skip_reader_test, prepare) {
+  struct NoopRead {
+    void operator()(size_t) {
+      ASSERT_FALSE(true);
+    }
+
+    irs::doc_id_t operator()(size_t, size_t, irs::data_input&) {
+      EXPECT_FALSE(true);
+      return irs::doc_limits::eof();
+    }
+  };
+
   // prepare empty
   {
     size_t count = 1000;
@@ -369,9 +391,7 @@ TEST_F(skip_reader_test, prepare) {
       writer.flush(*out);
     }
 
-
-    auto noop_read = [](size_t, irs::data_input&) { return irs::doc_limits::eof(); };
-    irs::skip_reader<decltype(noop_read)> reader(skip, skip, std::move(noop_read));
+    irs::skip_reader<NoopRead> reader(skip, skip, NoopRead{});
     ASSERT_EQ(0, reader.num_levels());
     {
       auto in = dir.open("docs", irs::IOAdvice::NORMAL);
@@ -415,11 +435,7 @@ TEST_F(skip_reader_test, prepare) {
       writer.flush(*out);
     }
 
-    auto noop = [](size_t, irs::data_input&) {
-      return irs::doc_limits::eof();
-    };
-
-    irs::skip_reader<decltype(noop)> reader(skip, skip, std::move(noop));
+    irs::skip_reader<NoopRead> reader(skip, skip, NoopRead{});
     ASSERT_EQ(0, reader.num_levels());
     auto in = dir.open("docs", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in);
@@ -441,8 +457,8 @@ TEST_F(skip_reader_test, seek) {
     irs::memory_directory dir;
     // write data
     {
-      size_t low = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      size_t high = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      size_t low = irs::doc_limits::invalid();
+      size_t high = irs::doc_limits::invalid();
 
       struct write_skip {
         size_t* low;
@@ -483,25 +499,28 @@ TEST_F(skip_reader_test, seek) {
 
     // check written data
     {
-      irs::doc_id_t lower = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      irs::doc_id_t upper = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      irs::doc_id_t lower = irs::doc_limits::invalid();
+      irs::doc_id_t upper = irs::doc_limits::invalid();
       size_t calls_count = 0;
 
-      auto read_skip = [&lower, &upper, &calls_count](size_t level, size_t end, irs::data_input& in) {
-        ++calls_count;
+      auto read_skip = Visitor{
+        [](size_t /*level*/) { },
+        [&lower, &upper, &calls_count](size_t level, size_t end, irs::data_input& in) {
+          ++calls_count;
 
-        if (in.file_pointer() >= end) {
-          lower = upper;
-          upper = irs::doc_limits::eof();
-        } else {
-          if (!level) {
-            lower = in.read_vlong();
+          if (in.file_pointer() >= end) {
+            lower = upper;
+            upper = irs::doc_limits::eof();
+          } else {
+            if (!level) {
+              lower = in.read_vlong();
+            }
+
+            upper = in.read_vlong();
           }
 
-          upper = in.read_vlong();
+          return upper;
         }
-
-        return upper;
       };
 
       irs::skip_reader<decltype(read_skip)> reader(skip_0, skip_n, std::move(read_skip));
@@ -516,7 +535,7 @@ TEST_F(skip_reader_test, seek) {
       // seek to 5
       {
         ASSERT_EQ(0, reader.seek(5));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(lower));
+        ASSERT_FALSE(irs::doc_limits::valid(lower));
         ASSERT_EQ(7, upper);
 
         // seek to same document
@@ -528,7 +547,7 @@ TEST_F(skip_reader_test, seek) {
       // seek to last document in a 1st block 
       {
         ASSERT_EQ(0, reader.seek(7));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(lower));
+        ASSERT_FALSE(irs::doc_limits::valid(lower));
         ASSERT_EQ(7, upper);
 
         // seek to same document
@@ -674,19 +693,19 @@ TEST_F(skip_reader_test, seek) {
       // reset && seek to type_limits<type_t::doc_id_t>::min()
       {
         reader.reset();
-        ASSERT_EQ(0, reader.seek(irs::type_limits<irs::type_t::doc_id_t>::min()));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(lower));
+        ASSERT_EQ(0, reader.seek(irs::doc_limits::min()));
+        ASSERT_FALSE(irs::doc_limits::valid(lower));
         ASSERT_EQ(7, upper);
       }
 
       // reset && seek to irs::INVALID_DOC
       {
         calls_count = 0;
-        lower = upper = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+        lower = upper = irs::doc_limits::invalid();
         reader.reset();
-        ASSERT_EQ(0, reader.seek(irs::type_limits<irs::type_t::doc_id_t>::invalid()));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(lower));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(upper));
+        ASSERT_EQ(0, reader.seek(irs::doc_limits::invalid()));
+        ASSERT_FALSE(irs::doc_limits::valid(lower));
+        ASSERT_FALSE(irs::doc_limits::valid(upper));
         ASSERT_EQ(0, calls_count);
       }
 
@@ -739,8 +758,8 @@ TEST_F(skip_reader_test, seek) {
     const size_t skip_n = 16;
     const std::string file = "docs";
 
-    size_t low = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-    size_t high = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+    size_t low = irs::doc_limits::invalid();
+    size_t high = irs::doc_limits::invalid();
 
     struct write_skip {
       size_t* low;
@@ -782,24 +801,27 @@ TEST_F(skip_reader_test, seek) {
 
     // check written data
     {
-      irs::doc_id_t lower = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      irs::doc_id_t upper = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      irs::doc_id_t lower = irs::doc_limits::invalid();
+      irs::doc_id_t upper = irs::doc_limits::invalid();
       size_t calls_count = 0;
 
-      auto read_skip = [&lower, &upper, &calls_count](size_t level, size_t end, irs::data_input& in) {
-        ++calls_count;
+      auto read_skip = Visitor{
+        [](size_t /*level*/) { },
+        [&lower, &upper, &calls_count](size_t level, size_t end, irs::data_input& in) {
+          ++calls_count;
 
-        if (in.file_pointer() >= end) {
-          lower = upper;
-          upper = irs::doc_limits::eof();
-        } else {
-          if (!level) {
-            lower = in.read_vlong();
+          if (in.file_pointer() >= end) {
+            lower = upper;
+            upper = irs::doc_limits::eof();
+          } else {
+            if (!level) {
+              lower = in.read_vlong();
+            }
+            upper = in.read_vlong();
           }
-          upper = in.read_vlong();
-        }
 
-        return upper;
+          return upper;
+        }
       };
 
       irs::skip_reader<decltype(read_skip)> reader(skip_0, skip_n, std::move(read_skip));
@@ -814,7 +836,7 @@ TEST_F(skip_reader_test, seek) {
       // seek to 5
       {
         ASSERT_EQ(0, reader.seek(5));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(lower));
+        ASSERT_FALSE(irs::doc_limits::valid(lower));
         ASSERT_EQ(7, upper);
 
         // seek to same document
@@ -826,7 +848,7 @@ TEST_F(skip_reader_test, seek) {
       // seek to last document in a 1st block 
       {
         ASSERT_EQ(0, reader.seek(7));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(lower));
+        ASSERT_FALSE(irs::doc_limits::valid(lower));
         ASSERT_EQ(7, upper);
 
         // seek to same document
@@ -948,8 +970,8 @@ TEST_F(skip_reader_test, seek) {
     const size_t skip_n = 8;
     const std::string file = "docs";
 
-    size_t low = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-    size_t high = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+    size_t low = irs::doc_limits::invalid();
+    size_t high = irs::doc_limits::invalid();
 
     struct write_skip {
       size_t* high;
@@ -987,28 +1009,31 @@ TEST_F(skip_reader_test, seek) {
 
     // check written data
     {
-      irs::doc_id_t lower = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      irs::doc_id_t upper = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      irs::doc_id_t lower = irs::doc_limits::invalid();
+      irs::doc_id_t upper = irs::doc_limits::invalid();
       size_t calls_count = 0;
       size_t last_level = max_levels;
 
-      auto read_skip = [&lower, &last_level, &upper, &calls_count](size_t level, size_t end, irs::data_input& in) {
-        ++calls_count;
+      auto read_skip = Visitor{
+        [](size_t /*level*/) { },
+        [&lower, &last_level, &upper, &calls_count](size_t level, size_t end, irs::data_input& in) {
+          ++calls_count;
 
-        if (last_level > level) {
-          upper = lower;
-        } else {
-          lower = upper;
+          if (last_level > level) {
+            upper = lower;
+          } else {
+            lower = upper;
+          }
+          last_level = level;
+
+          if (in.file_pointer() >= end) {
+            upper = irs::doc_limits::eof();
+          } else {
+            upper = in.read_vlong();
+          }
+
+          return upper;
         }
-        last_level = level;
-
-        if (in.file_pointer() >= end) {
-          upper = irs::doc_limits::eof();
-        } else {
-          upper = in.read_vlong();
-        }
-
-        return upper;
       };
 
       irs::skip_reader<decltype(read_skip)> reader(skip_0, skip_n, std::move(read_skip));
@@ -1023,7 +1048,7 @@ TEST_F(skip_reader_test, seek) {
       // seek to 5
       {
         ASSERT_EQ(0, reader.seek(5));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(lower));
+        ASSERT_FALSE(irs::doc_limits::valid(lower));
         ASSERT_EQ(15, upper);
 
         // seek to same document
@@ -1035,7 +1060,7 @@ TEST_F(skip_reader_test, seek) {
       // seek to last document in a 1st block 
       {
         ASSERT_EQ(0, reader.seek(15));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(lower));
+        ASSERT_FALSE(irs::doc_limits::valid(lower));
         ASSERT_EQ(15, upper);
 
         // seek to same document
@@ -1130,7 +1155,7 @@ TEST_F(skip_reader_test, seek) {
     const size_t skip_n = 8;
     const std::string file = "docs";
 
-    size_t high = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+    size_t high = irs::doc_limits::invalid();
 
     struct write_skip {
       size_t* high;
@@ -1149,7 +1174,7 @@ TEST_F(skip_reader_test, seek) {
       writer.prepare(max_levels, count);
       ASSERT_EQ(3 , writer.max_levels());
 
-      irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
+      irs::doc_id_t doc = irs::doc_limits::min();
       for (size_t size = 0; size <= count; doc += 2, ++size) {
         // skip every "skip" document
         if (size && 0 == size % skip_0) {
@@ -1166,28 +1191,31 @@ TEST_F(skip_reader_test, seek) {
 
     // check written data
     {
-      irs::doc_id_t lower = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      irs::doc_id_t upper = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      irs::doc_id_t lower = irs::doc_limits::invalid();
+      irs::doc_id_t upper = irs::doc_limits::invalid();
       size_t calls_count = 0;
       size_t last_level = max_levels;
 
-      auto read_skip = [&lower, &last_level, &upper, &calls_count](size_t level, size_t end, irs::data_input &in) {
-        ++calls_count;
+      auto read_skip = Visitor{
+        [](size_t /*level*/) { },
+        [&lower, &last_level, &upper, &calls_count](size_t level, size_t end, irs::data_input &in) {
+          ++calls_count;
 
-        if (last_level > level) {
-          upper = lower;
-        } else {
-          lower = upper;
+          if (last_level > level) {
+            upper = lower;
+          } else {
+            lower = upper;
+          }
+          last_level = level;
+
+          if (in.file_pointer() >= end) {
+            upper = irs::doc_limits::eof();
+          } else {
+            upper = in.read_vlong();
+          }
+
+          return upper;
         }
-        last_level = level;
-
-        if (in.file_pointer() >= end) {
-          upper = irs::doc_limits::eof();
-        } else {
-          upper = in.read_vlong();
-        }
-
-        return upper;
       };
 
       irs::skip_reader<decltype(read_skip)> reader(skip_0, skip_n, std::move(read_skip));
@@ -1198,7 +1226,7 @@ TEST_F(skip_reader_test, seek) {
 
       // seek for every document
       {
-        irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
+        irs::doc_id_t doc = irs::doc_limits::min();
         for (size_t i = 0; i <= count; ++i, doc += 2) {
           const size_t skipped = (i/skip_0) * skip_0;
           ASSERT_EQ(skipped, reader.seek(doc));
@@ -1208,10 +1236,10 @@ TEST_F(skip_reader_test, seek) {
       }
 
       // seek backwards
-      irs::doc_id_t doc = count*2 + irs::type_limits<irs::type_t::doc_id_t>::min();
+      irs::doc_id_t doc = count*2 + irs::doc_limits::min();
       for (size_t i = count; i <= count; --i, doc -= 2) {
-        lower = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-        upper = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+        lower = irs::doc_limits::invalid();
+        upper = irs::doc_limits::invalid();
         reader.reset();
         size_t skipped = (i/skip_0)*skip_0;
         ASSERT_EQ(skipped, reader.seek(doc));

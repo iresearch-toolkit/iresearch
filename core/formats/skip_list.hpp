@@ -204,7 +204,7 @@ class skip_reader_base : util::noncopyable {
     uint64_t child{}; // pointer to current child level
     size_t id; // level id
     doc_id_t step; // how many docs we jump over with a single skip
-    doc_id_t skipped{}; // number of skipped documents on a level
+    doc_id_t skipped{}; // number of skipped documents at a level
   };
 
   struct level_key {
@@ -281,7 +281,7 @@ doc_id_t skip_reader<Read>::seek(doc_id_t target) {
     std::begin(keys_), std::end(keys_),
     [](const auto& lhs, const auto& rhs) { return lhs.doc > rhs.doc; }));
 
-  // returns highest level with the value not less than target
+  // returns the highest level with the value not less than a target
   auto key = [this](doc_id_t target) noexcept {
     // we prefer linear scan over binary search because
     // it's more performant for a small number of elements (< 30)
@@ -296,31 +296,34 @@ doc_id_t skip_reader<Read>::seek(doc_id_t target) {
     return std::prev(std::end(keys_));
   }(target);
 
-  assert(key != std::end(keys_));
-
   uint64_t child = 0; // pointer to child skip
-  doc_id_t skipped = 0; // number of skipped documents
 
-  do {
-    if (auto doc = key->doc; doc < target) {
+  for (auto back = std::prev(std::end(keys_));;++key) {
+    if (auto doc = key->doc; doc < target) { // FIXME remove condition???
+      assert(key != std::end(keys_));
       assert(key->data);
-      auto& level = *key->data;
-
-      seek_to_child(level, child, skipped);
+      auto* level = key->data;
 
       do {
-        child = level.child;
-        doc = read_skip(level);
+        child = level->child;
+        doc = read_skip(*level);
       } while (doc < target);
 
-      skipped = level.skipped - level.step;
       key->doc = doc;
+
+      if (key == back) {
+        break;
+      }
+
+      const doc_id_t skipped = level->skipped - level->step;
+      ++level;
+
+      seek_to_child(*level, child, skipped);
+      read_(level->id);
     }
+  }
 
-    ++key;
-  } while (key != std::end(keys_));
-
-  skipped = levels_.back().skipped;
+  const doc_id_t skipped = levels_.back().skipped;
   return skipped ? skipped - skip_0_ : 0;
 }
 
