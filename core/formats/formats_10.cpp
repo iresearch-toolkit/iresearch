@@ -1090,10 +1090,6 @@ struct skip_state {
   uint32_t pay_pos{}; // payload size to skip before in new document block
 }; // skip_state
 
-struct skip_context : skip_state {
-  size_t level{}; // skip level
-}; // skip_context
-
 struct doc_state {
   const index_input* pos_in;
   const index_input* pay_in;
@@ -1843,6 +1839,7 @@ class doc_iterator final : public irs::doc_iterator {
       : self_{&self} {
     }
 
+    void operator()(size_t level) const;
     doc_id_t operator()(size_t level, size_t end, index_input& in) const;
 
    private:
@@ -1896,7 +1893,7 @@ class doc_iterator final : public irs::doc_iterator {
   uint32_t enc_buf_[IteratorTraits::block_size()]; // buffer for encoding
   std::vector<skip_state> skip_levels_;
   skip_reader<read_skip> skip_;
-  skip_context* skip_ctx_; // pointer to skip context used by skip reader
+  skip_state* skip_ctx_; // pointer to skip context used by skip reader
   uint32_t cur_pos_{};
   const doc_id_t* begin_{buf_.docs};
   doc_id_t* end_{buf_.docs};
@@ -1907,21 +1904,34 @@ class doc_iterator final : public irs::doc_iterator {
 }; // doc_iterator
 
 template<typename IteratorTraits, typename FieldTraits>
+void doc_iterator<IteratorTraits, FieldTraits>::read_skip::operator()(
+    size_t level) const {
+  // move to the more granular level
+  auto& last = *self_->skip_ctx_;
+  auto& next = self_->skip_levels_[level];
+
+  next = last;
+}
+
+template<typename IteratorTraits, typename FieldTraits>
 doc_id_t doc_iterator<IteratorTraits, FieldTraits>::read_skip::operator()(
     size_t level, size_t end, index_input& in) const {
   auto& last = *self_->skip_ctx_;
   auto& next = self_->skip_levels_[level];
 
-  if (last.level > level) {
-    // move to the more granular level
-    next = last;
-  } else {
-    // store previous step on the same level
-    static_cast<skip_state&>(last) = next;
-  }
+ // if (last.level > level) {
+ //   // move to the more granular level
+ //   next = last;
+ // } else {
+ //   // store previous step on the same level
+ //   static_cast<skip_state&>(last) = next;
+ // }
 
-  // FIXME(gnusi): can we move it under the condition above?
-  last.level = level;
+ // // FIXME(gnusi): can we move it under the condition above?
+ // last.level = level;
+
+  // store previous step on the same level
+  last = next;
 
   if (in.file_pointer() >= end) {
     // stream exhausted
@@ -2123,11 +2133,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
     // ensured by prepare(...)
     assert(term_state_.docs_count > IteratorTraits::block_size());
 
-    skip_context last; // where block starts
-
-    assert(!skip_levels_.empty());
-    last.level = skip_levels_.size() - 1;
-
+    skip_state last; // where block starts
     skip_ctx_ = &last;
 
     // init skip writer in lazy fashion
@@ -2243,6 +2249,7 @@ class wanderator final : public irs::doc_iterator {
       : self_{&self} {
     }
 
+    void operator()(size_t level) const;
     doc_id_t operator()(size_t level, size_t end, index_input& in) const;
 
    private:
@@ -2285,7 +2292,7 @@ class wanderator final : public irs::doc_iterator {
   std::vector<skip_state> skip_levels_;
   std::vector<score_buffer> skip_scores_;
   skip_reader<read_skip> skip_;
-  skip_context prev_skip_; // skip context used by skip reader
+  skip_state prev_skip_; // skip context used by skip reader
   uint32_t cur_pos_{};
   const doc_id_t* begin_{buf_.docs};
   doc_id_t* end_{buf_.docs};
@@ -2296,19 +2303,46 @@ class wanderator final : public irs::doc_iterator {
 }; // wanderator
 
 template<typename IteratorTraits, typename FieldTraits>
+void wanderator<IteratorTraits, FieldTraits>::read_skip::operator()(
+    size_t level) const {
+  auto& last = self_->prev_skip_;
+  auto& next = self_->skip_levels_[level];
+
+  next = last;
+}
+
+template<typename IteratorTraits, typename FieldTraits>
 doc_id_t wanderator<IteratorTraits, FieldTraits>::read_skip::operator()(
     size_t level, size_t end, index_input& in) const {
   auto& last = self_->prev_skip_;
   auto& next = self_->skip_levels_[level];
 
-  if (last.level > level) {
-    // move to the more granular level
-    next = last;
-    last.level = level;
-  } else {
-    // store previous step on the same level
-    static_cast<skip_state&>(last) = next;
-  }
+  //if (last.level > level) {
+  //  if (0 == next.doc) {
+  //    int i = 5;
+  //  }
+
+  //  // move to the more granular level
+  //  assert(!doc_limits::valid(next.doc) || next.doc == last.doc);
+  //  assert(!doc_limits::valid(next.doc) || next.doc_ptr == last.doc_ptr);
+  //  next = last;
+  //} else {
+  //  // store previous step on the same level
+  //  static_cast<skip_state&>(last) = next;
+  //}
+
+  //last.level = level;
+  //static_cast<skip_state&>(last) = next;
+
+  //last.doc_ptr = next.doc_ptr;
+  //if constexpr (FieldTraits::position()) {
+  //  last.pos_ptr = next.pos_ptr;
+  //  if constexpr (FieldTraits::payload() || FieldTraits::offset()) {
+  //    last.pay_ptr = next.pay_ptr;
+  //  }
+  //}
+
+  last = next;
 
   if (in.file_pointer() >= end) {
     // stream exhausted
@@ -2432,10 +2466,12 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
       skip_levels_.front().doc = doc_limits::invalid();
 
       // since we store pointer deltas, add postings offset
-      auto& top = skip_levels_.back();
-      top.doc_ptr = term_state_.doc_start;
-      top.pos_ptr = term_state_.pos_start;
-      top.pay_ptr = term_state_.pay_start;
+      for (auto& top : skip_levels_) {
+        //auto& top = skip_levels_.back();
+        top.doc_ptr = term_state_.doc_start;
+        top.pos_ptr = term_state_.pos_start;
+        top.pay_ptr = term_state_.pay_start;
+      }
     }
   } else if (1 == term_state_.docs_count) {
     *buf_.docs = (doc_limits::min)() + term_state_.e_single_doc;
@@ -2449,8 +2485,8 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
     throw index_error("Zero number of skip levels.");
   }
 
-  assert(!skip_levels_.empty());
-  prev_skip_.level = skip_levels_.size() - 1;
+  //assert(!skip_levels_.empty());
+  //prev_skip_.level = skip_levels_.size() - 1;
 }
 
 template<typename IteratorTraits, typename FieldTraits>

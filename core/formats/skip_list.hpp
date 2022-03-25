@@ -221,8 +221,6 @@ class skip_reader_base : util::noncopyable {
       skip_n_{skip_n} {
   }
 
-  void read_skip(level& level);
-
   std::vector<level> levels_; // input streams for skip-list levels
   std::vector<level_key> keys_;
   doc_id_t skip_0_; // skip interval for 0 level
@@ -258,19 +256,6 @@ class skip_reader final : public skip_reader_base {
   doc_id_t seek(doc_id_t target);
 
  private:
-  doc_id_t read_skip(level& lvl) {
-    assert(size_t(std::distance(&lvl, &levels_.back())) == lvl.id);
-    const auto doc = read_(lvl.id, lvl.end, *lvl.stream);
-
-    // read pointer to child level if needed
-    if (!doc_limits::eof(doc) && lvl.child != kUndefined) {
-      lvl.child = lvl.stream->read_vlong();
-    }
-
-    lvl.skipped += lvl.step;
-    return doc;
-  }
-
   Read read_;
 }; // skip_reader
 
@@ -296,26 +281,37 @@ doc_id_t skip_reader<Read>::seek(doc_id_t target) {
     return std::prev(std::end(keys_));
   }(target);
 
-  uint64_t child = 0; // pointer to child skip
+  uint64_t child{0}; // pointer to child skip
 
   for (auto back = std::prev(std::end(keys_));;++key) {
     if (auto doc = key->doc; doc < target) { // FIXME remove condition???
       assert(key != std::end(keys_));
       assert(key->data);
       auto* level = key->data;
+      assert(size_t{std::distance(level, &levels_.back())} == level->id);
+
+      doc_id_t steps{0};
 
       do {
         child = level->child;
-        doc = read_skip(*level);
+        doc = read_(level->id, level->end, *level->stream);
+
+        // read pointer to child level if needed
+        if (!doc_limits::eof(doc) && level->child != kUndefined) {
+          level->child = level->stream->read_vlong();
+        }
+
+        ++steps;
       } while (doc < target);
 
       key->doc = doc;
+      level->skipped += level->step*steps;
 
       if (key == back) {
         break;
       }
 
-      const doc_id_t skipped = level->skipped - level->step;
+      const doc_id_t skipped{level->skipped - level->step};
       ++level;
 
       seek_to_child(*level, child, skipped);
