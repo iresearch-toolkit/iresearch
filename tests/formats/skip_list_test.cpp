@@ -504,8 +504,8 @@ TEST_F(skip_reader_test, seek) {
       size_t calls_count = 0;
 
       auto read_skip = Visitor{
-        [](size_t /*level*/) { },
-        [&lower, &upper, &calls_count](size_t level, size_t end, irs::data_input& in) {
+        [](size_t /*level*/) -> void { },
+        [&lower, &upper, &calls_count](size_t level, size_t end, irs::data_input& in) -> irs::doc_id_t {
           ++calls_count;
 
           if (in.file_pointer() >= end) {
@@ -806,8 +806,8 @@ TEST_F(skip_reader_test, seek) {
       size_t calls_count = 0;
 
       auto read_skip = Visitor{
-        [](size_t /*level*/) { },
-        [&lower, &upper, &calls_count](size_t level, size_t end, irs::data_input& in) {
+        [](size_t /*level*/) -> void { },
+        [&lower, &upper, &calls_count](size_t level, size_t end, irs::data_input& in) -> irs::doc_id_t {
           ++calls_count;
 
           if (in.file_pointer() >= end) {
@@ -1015,8 +1015,8 @@ TEST_F(skip_reader_test, seek) {
       size_t last_level = max_levels;
 
       auto read_skip = Visitor{
-        [](size_t /*level*/) { },
-        [&lower, &last_level, &upper, &calls_count](size_t level, size_t end, irs::data_input& in) {
+        [](size_t /*level*/) -> void { },
+        [&lower, &last_level, &upper, &calls_count](size_t level, size_t end, irs::data_input& in) -> irs::doc_id_t {
           ++calls_count;
 
           if (last_level > level) {
@@ -1197,8 +1197,8 @@ TEST_F(skip_reader_test, seek) {
       size_t last_level = max_levels;
 
       auto read_skip = Visitor{
-        [](size_t /*level*/) { },
-        [&lower, &last_level, &upper, &calls_count](size_t level, size_t end, irs::data_input &in) {
+        [](size_t /*level*/) -> void { },
+        [&lower, &last_level, &upper, &calls_count](size_t level, size_t end, irs::data_input &in) -> irs::doc_id_t {
           ++calls_count;
 
           if (last_level > level) {
