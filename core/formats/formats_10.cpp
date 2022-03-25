@@ -1100,6 +1100,17 @@ struct doc_state {
   size_t tail_length;
 }; // doc_state
 
+template<typename FieldTraits>
+FORCE_INLINE void CopyState(skip_state& to, const version10::term_meta& from) noexcept {
+  to.doc_ptr = from.doc_start;
+  if constexpr (FieldTraits::position()) {
+    to.pos_ptr = from.pos_start;
+    if constexpr (FieldTraits::payload() || FieldTraits::offset()) {
+      to.pay_ptr = from.pay_start;
+    }
+  }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pos_iterator_base
 ///////////////////////////////////////////////////////////////////////////////
@@ -1906,10 +1917,10 @@ class doc_iterator final : public irs::doc_iterator {
 template<typename IteratorTraits, typename FieldTraits>
 void doc_iterator<IteratorTraits, FieldTraits>::read_skip::operator()(
     size_t level) const {
-  // move to the more granular level
   auto& last = *self_->skip_ctx_;
   auto& next = self_->skip_levels_[level];
 
+  // move to the more granular level
   next = last;
 }
 
@@ -1919,18 +1930,8 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::read_skip::operator()(
   auto& last = *self_->skip_ctx_;
   auto& next = self_->skip_levels_[level];
 
- // if (last.level > level) {
- //   // move to the more granular level
- //   next = last;
- // } else {
- //   // store previous step on the same level
- //   static_cast<skip_state&>(last) = next;
- // }
-
- // // FIXME(gnusi): can we move it under the condition above?
- // last.level = level;
-
   // store previous step on the same level
+  // FIXME(gnusi): consider copying only relevant information
   last = next;
 
   if (in.file_pointer() >= end) {
@@ -2171,9 +2172,7 @@ seek_after_initialization:
 
       // since we store pointer deltas, add postings offset
       auto& top = skip_levels_.back();
-      top.doc_ptr = term_state_.doc_start;
-      top.pos_ptr = term_state_.pos_start;
-      top.pay_ptr = term_state_.pay_start;
+      CopyState<FieldTraits>(top, term_state_);
 
       goto seek_after_initialization;
     } else {
@@ -2308,6 +2307,7 @@ void wanderator<IteratorTraits, FieldTraits>::read_skip::operator()(
   auto& last = self_->prev_skip_;
   auto& next = self_->skip_levels_[level];
 
+  // move to the more granular level
   next = last;
 }
 
@@ -2317,31 +2317,8 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::read_skip::operator()(
   auto& last = self_->prev_skip_;
   auto& next = self_->skip_levels_[level];
 
-  //if (last.level > level) {
-  //  if (0 == next.doc) {
-  //    int i = 5;
-  //  }
-
-  //  // move to the more granular level
-  //  assert(!doc_limits::valid(next.doc) || next.doc == last.doc);
-  //  assert(!doc_limits::valid(next.doc) || next.doc_ptr == last.doc_ptr);
-  //  next = last;
-  //} else {
-  //  // store previous step on the same level
-  //  static_cast<skip_state&>(last) = next;
-  //}
-
-  //last.level = level;
-  //static_cast<skip_state&>(last) = next;
-
-  //last.doc_ptr = next.doc_ptr;
-  //if constexpr (FieldTraits::position()) {
-  //  last.pos_ptr = next.pos_ptr;
-  //  if constexpr (FieldTraits::payload() || FieldTraits::offset()) {
-  //    last.pay_ptr = next.pay_ptr;
-  //  }
-  //}
-
+  // store previous step on the same level
+  // FIXME(gnusi): consider copying only relevant information
   last = next;
 
   if (in.file_pointer() >= end) {
@@ -2466,12 +2443,8 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
       skip_levels_.front().doc = doc_limits::invalid();
 
       // since we store pointer deltas, add postings offset
-      for (auto& top : skip_levels_) {
-        //auto& top = skip_levels_.back();
-        top.doc_ptr = term_state_.doc_start;
-        top.pos_ptr = term_state_.pos_start;
-        top.pay_ptr = term_state_.pay_start;
-      }
+      auto& top = skip_levels_.back();
+      CopyState<FieldTraits>(top, term_state_);
     }
   } else if (1 == term_state_.docs_count) {
     *buf_.docs = (doc_limits::min)() + term_state_.e_single_doc;
@@ -2484,9 +2457,6 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
     assert(false);
     throw index_error("Zero number of skip levels.");
   }
-
-  //assert(!skip_levels_.empty());
-  //prev_skip_.level = skip_levels_.size() - 1;
 }
 
 template<typename IteratorTraits, typename FieldTraits>

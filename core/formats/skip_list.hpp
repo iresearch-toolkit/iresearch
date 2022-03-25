@@ -288,7 +288,7 @@ doc_id_t skip_reader<Read>::seek(doc_id_t target) {
       assert(key != std::end(keys_));
       assert(key->data);
       auto* level = key->data;
-      assert(size_t{std::distance(level, &levels_.back())} == level->id);
+      assert(size_t(std::distance(level, &levels_.back())) == level->id);
 
       doc_id_t steps{0};
 
