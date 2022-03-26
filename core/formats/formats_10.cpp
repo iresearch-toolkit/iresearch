@@ -542,7 +542,7 @@ class postings_writer_base : public irs::postings_writer {
 
   memory::memory_pool<> meta_pool_;
   memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)> alloc_{ meta_pool_ };
-  skip_writer skip_;
+  SkipWriter skip_;
   version10::term_meta last_state_;               // last final term state
   version10::documents docs_;                     // bit set of all processed documents
   index_output::ptr doc_out_;                     // postings (doc + freq)
@@ -619,7 +619,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
     }
   }
 
-  skip_.prepare(
+  skip_.Prepare(
     MAX_SKIP_LEVELS,
     state.doc_count,
     state.dir->attributes().allocator());
@@ -627,7 +627,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
   format_utils::write_header(
     out, TERMS_FORMAT_NAME,
     static_cast<int32_t>(terms_format_version_));
-  out.write_vint(skip_.skip_0()); // write postings block size
+  out.write_vint(skip_.Skip0()); // write postings block size
 
   // prepare documents bitset
   docs_.value.reset(doc_limits::min() + state.doc_count);
@@ -655,7 +655,7 @@ void postings_writer_base::encode(
     }
   }
 
-  if (1U == meta.docs_count || meta.docs_count > skip_.skip_0()) {
+  if (1U == meta.docs_count || meta.docs_count > skip_.Skip0()) {
     out.write_vlong(meta.e_skip_start);
   }
 
@@ -693,7 +693,7 @@ void postings_writer_base::begin_term() {
 
   doc_.last = doc_limits::invalid();
   doc_.block_last = doc_limits::min();
-  skip_.reset();
+  skip_.Reset();
 }
 
 void postings_writer_base::end_doc() {
@@ -763,7 +763,7 @@ void postings_writer_base::end_term(version10::term_meta& meta) {
   if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
     assert(pos_out_);
 
-    if (meta.freq > skip_.skip_0()) {
+    if (meta.freq > skip_.Skip0()) {
       meta.pos_end = pos_out_->file_pointer() - pos_.start;
     }
 
@@ -823,9 +823,9 @@ void postings_writer_base::end_term(version10::term_meta& meta) {
   // if we have flushed at least
   // one block there was buffered
   // skip data, so we need to flush it
-  if (meta.docs_count > skip_.skip_0()) {
+  if (meta.docs_count > skip_.Skip0()) {
     meta.e_skip_start = doc_out_->file_pointer() - doc_.start;
-    skip_.flush(*doc_out_);
+    skip_.Flush(*doc_out_);
   }
 
   doc_.doc = doc_.docs.begin();
@@ -1030,7 +1030,7 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
     if (doc_limits::valid(doc_.last) && doc_.empty()) {
       score_levels_[0].add(score_buf_);
 
-      skip_.skip(
+      skip_.Skip(
         docs_count,
         [this](size_t level, memory_index_output& out) {
           write_skip(level, out);

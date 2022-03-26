@@ -43,14 +43,14 @@ namespace iresearch {
 /// x - skip data
 /// c - skip data with child pointer
 ////////////////////////////////////////////////////////////////////////////////
-class skip_writer : util::noncopyable {
+class SkipWriter : util::noncopyable {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
   /// @param skip_0 skip interval for level 0
   /// @param skip_n skip interval for levels 1..n
   //////////////////////////////////////////////////////////////////////////////
-  skip_writer(doc_id_t skip_0, doc_id_t skip_n) noexcept
+  SkipWriter(doc_id_t skip_0, doc_id_t skip_n) noexcept
     : max_levels_{0}, skip_0_{skip_0}, skip_n_{skip_n} {
     assert(skip_0_);
   }
@@ -58,17 +58,17 @@ class skip_writer : util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements to skip at the 0 level
   //////////////////////////////////////////////////////////////////////////////
-  doc_id_t skip_0() const noexcept { return skip_0_; }
+  doc_id_t Skip0() const noexcept { return skip_0_; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements to skip at the levels from 1 to max_levels()
   //////////////////////////////////////////////////////////////////////////////
-  doc_id_t skip_n() const noexcept { return skip_n_; }
+  doc_id_t SkipN() const noexcept { return skip_n_; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements in a skip-list
   //////////////////////////////////////////////////////////////////////////////
-  size_t max_levels() const noexcept { return max_levels_; }
+  size_t MaxLevels() const noexcept { return max_levels_; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prepares skip_writer
@@ -77,7 +77,7 @@ class skip_writer : util::noncopyable {
   /// @param write write function
   /// @param alloc memory file allocator
   //////////////////////////////////////////////////////////////////////////////
-  void prepare(
+  void Prepare(
     size_t max_levels,
     size_t count,
     const memory_allocator& alloc = memory_allocator::global());
@@ -86,12 +86,12 @@ class skip_writer : util::noncopyable {
   /// @brief flushes all internal data into the specified output stream
   /// @param out output stream
   //////////////////////////////////////////////////////////////////////////////
-  void flush(index_output& out);
+  void Flush(index_output& out);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief resets skip writer internal state
   //////////////////////////////////////////////////////////////////////////////
-  void reset() noexcept {
+  void Reset() noexcept {
     for (auto& level : levels_) {
       level.stream.reset();
     }
@@ -105,17 +105,17 @@ class skip_writer : util::noncopyable {
   ///         stream
   //////////////////////////////////////////////////////////////////////////////
   template<typename Writer>
-  void skip(doc_id_t count, Writer&& write);
+  void Skip(doc_id_t count, Writer&& write);
 
  protected:
   std::vector<memory_output> levels_;
   size_t max_levels_;
   doc_id_t skip_0_; // skip interval for 0 level
   doc_id_t skip_n_; // skip interval for 1..n levels
-}; // skip_writer
+};
 
 template<typename Writer>
-void skip_writer::skip(doc_id_t count, Writer&& write) {
+void SkipWriter::Skip(doc_id_t count, Writer&& write) {
   if (0 == (count % skip_0_)) {
     assert(!levels_.empty());
 
@@ -274,7 +274,7 @@ class SkipReader final : public SkipReaderBase {
 
  private:
   ReaderType reader_;
-}; // skip_reader
+};
 
 template<typename Read>
 doc_id_t SkipReader<Read>::Seek(doc_id_t target) {

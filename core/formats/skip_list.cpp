@@ -45,7 +45,7 @@ constexpr size_t max_levels(size_t skip_0, size_t skip_n, size_t count) {
 
 namespace iresearch {
 
-void skip_writer::prepare(
+void SkipWriter::Prepare(
     size_t max_levels, 
     size_t count,
     const memory_allocator& alloc /* = memory_allocator::global() */) {
@@ -65,7 +65,7 @@ void skip_writer::prepare(
   }
 }
 
-void skip_writer::flush(index_output& out) {
+void SkipWriter::Flush(index_output& out) {
   const auto rbegin = std::make_reverse_iterator(levels_.begin() + max_levels_);
   const auto rend = std::rend(levels_);
 
