@@ -166,6 +166,19 @@ void skip_reader_base::prepare(index_input::ptr&& in) {
     levels_ = std::move(levels);
     keys_ = std::move(keys);
   }
+
+  assert(std::all_of(
+      std::begin(levels_), std::end(levels_),
+      [this](auto& level) {
+        return level.stream &&
+               size_t(std::distance(&level, &levels_.back())) == level.id;
+      }));
+  assert(std::all_of(
+      std::begin(keys_), std::end(keys_),
+      [this](auto& key) {
+        return key.data &&
+               size_t(std::distance(key.data, &levels_.back())) == key.data->id;
+      }));
 }
 
 }
