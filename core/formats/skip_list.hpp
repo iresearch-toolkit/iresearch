@@ -280,55 +280,62 @@ doc_id_t skip_reader<Read>::seek(doc_id_t target) {
 
   // returns the highest level with the value not less than a target
   auto key = [this](doc_id_t target) noexcept {
-    // we prefer linear scan over binary search because
-    // it's more performant for a small number of elements (< 30)
-    auto begin = std::begin(keys_);
+      // we prefer linear scan over binary search because
+      // it's more performant for a small number of elements (< 30)
+      auto begin = std::begin(keys_);
 
-    for (; begin != std::end(keys_); ++begin) {
-      if (target >= begin->doc) {
-        return begin;
+      for (; begin != std::end(keys_); ++begin) {
+        if (target >= begin->doc) {
+          return begin;
+        }
       }
-    }
 
-    return std::prev(std::end(keys_));
-  }(target);
+      return std::prev(std::end(keys_));
+    }(target);
 
-  uint64_t child{0}; // pointer to child skip
+  assert(key != std::end(keys_));
+  auto back = std::prev(std::end(keys_));
 
-  for (auto back = std::prev(std::end(keys_));;++key) {
-    assert(key != std::end(keys_));
-    assert(key->data);
-    if (auto& doc = key->doc; doc < target) { // FIXME remove condition???
+  for (uint64_t child_ptr{0}; key != back; ++key) {
+    if (auto& doc = key->doc; doc < target) {
       auto* level = key->data;
-      assert(size_t(std::distance(level, &levels_.back())) == level->id);
-
       const doc_id_t step{level->step};
+      const auto id{level->id};
+      const auto end{level->end};
+      auto& stream{*level->stream};
 
       do {
-        child = level->child;
-        doc = read_(level->id, level->end, *level->stream);
+        child_ptr = level->child;
+        doc = read_(id, end, stream);
 
         // read pointer to child level if needed
-        if (!doc_limits::eof(doc) && level->child != kUndefined) {
-          level->child = level->stream->read_vlong();
+        if (!doc_limits::eof(doc)) {
+          level->child = stream.read_vlong();
         }
 
         level->skipped += step;
       } while (doc < target);
 
-      if (key == back) {
-        break;
-      }
-
       auto next_level = level + 1;
-
-      seek_to_child(*next_level, child, *level);
+      seek_to_child(*next_level, child_ptr, *level);
       read_(next_level->id);
     }
   }
 
+  assert(key == back) ;
+  auto* level = key->data;
+  const doc_id_t step{level->step};
+  const auto id{level->id};
+  const auto end{level->end};
+  auto& stream{*level->stream};
+
+  for (auto& doc = key->doc; doc < target; ) {
+    doc = read_(id, end, stream);
+    level->skipped += step;
+  }
+
   const doc_id_t skipped = levels_.back().skipped;
-  return skipped ? skipped - skip_0_ : 0;
+  return skipped ? skipped - step : 0;
 }
 
 } // iresearch
