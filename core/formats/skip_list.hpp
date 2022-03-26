@@ -298,43 +298,43 @@ doc_id_t skip_reader<Read>::seek(doc_id_t target) {
 
   for (uint64_t child_ptr{0}; key != back; ++key) {
     if (auto& doc = key->doc; doc < target) {
-      auto* level = key->data;
-      const doc_id_t step{level->step};
-      const auto id{level->id};
-      const auto end{level->end};
-      auto& stream{*level->stream};
+      auto& level = *key->data;
+      const doc_id_t step{level.step};
+      const auto id{level.id};
+      const auto end{level.end};
+      auto& stream{*level.stream};
 
       do {
-        child_ptr = level->child;
+        child_ptr = level.child;
         doc = read_(id, end, stream);
 
         // read pointer to child level if needed
         if (!doc_limits::eof(doc)) {
-          level->child = stream.read_vlong();
+          level.child = stream.read_vlong();
         }
 
-        level->skipped += step;
+        level.skipped += step;
       } while (doc < target);
 
-      auto next_level = level + 1;
-      seek_to_child(*next_level, child_ptr, *level);
+      auto* next_level = &level + 1;
+      seek_to_child(*next_level, child_ptr, level);
       read_(next_level->id);
     }
   }
 
   assert(key == back) ;
-  auto* level = key->data;
-  const doc_id_t step{level->step};
-  const auto id{level->id};
-  const auto end{level->end};
-  auto& stream{*level->stream};
+  auto& level = *key->data;
+  const doc_id_t step{level.step};
+  const auto id{level.id};
+  const auto end{level.end};
+  auto& stream{*level.stream};
 
   for (auto& doc = key->doc; doc < target; ) {
     doc = read_(id, end, stream);
-    level->skipped += step;
+    level.skipped += step;
   }
 
-  const doc_id_t skipped = levels_.back().skipped;
+  const doc_id_t skipped = level.skipped;
   return skipped ? skipped - step : 0;
 }
 
