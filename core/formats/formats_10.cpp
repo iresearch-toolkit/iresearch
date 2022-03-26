@@ -1946,7 +1946,6 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Read(
   auto& next = self_->skip_levels_[level];
 
   // store previous step on the same level
-  // FIXME(gnusi): consider copying only relevant information
   CopyState<FieldTraits>(last, next);
 
   if (in.file_pointer() >= end) {
@@ -2333,7 +2332,6 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(
   auto& next = self_->skip_levels_[level];
 
   // store previous step on the same level
-  // FIXME(gnusi): consider copying only relevant information
   CopyState<FieldTraits>(last, next);
 
   if (in.file_pointer() >= end) {
