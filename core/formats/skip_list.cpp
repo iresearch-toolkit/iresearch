@@ -94,13 +94,11 @@ void SkipWriter::Flush(index_output& out) {
 
 SkipReaderBase::Level::Level(
     index_input::ptr&& stream,
-    size_t id,
+    uint32_t id,
     doc_id_t step,
-    uint64_t begin,
-    uint64_t end) noexcept
+    uint64_t begin) noexcept
   : stream{std::move(stream)}, // thread-safe input
     begin{begin},
-    end{end},
     id{id},
     step{step} {
 }
@@ -121,14 +119,14 @@ void SkipReaderBase::Reset() {
 void SkipReaderBase::Prepare(index_input::ptr&& in) {
   assert(in);
 
-  if (size_t max_levels = in->read_vint(); max_levels) {
+  if (uint32_t max_levels = in->read_vint(); max_levels) {
     decltype(levels_) levels;
     levels.reserve(max_levels);
     decltype(keys_) keys;
     keys.reserve(max_levels);
 
     auto load_level = [&levels, &keys](index_input::ptr stream,
-                                       size_t id,
+                                       uint32_t id,
                                        doc_id_t step) {
       assert(stream);
 
@@ -140,10 +138,11 @@ void SkipReaderBase::Prepare(index_input::ptr&& in) {
       }
 
       const auto begin = stream->file_pointer();
-      const auto end = begin + length;
 
-      levels.emplace_back(std::move(stream), id, step, begin, end); // load level
+      levels.emplace_back(std::move(stream), id, step, begin);
       keys.emplace_back(LevelKey{&levels.back(), doc_limits::invalid()});
+
+      return begin + length;
     };
 
     // skip step of the level
@@ -151,10 +150,10 @@ void SkipReaderBase::Prepare(index_input::ptr&& in) {
 
     // load levels from n down to 1
     for (; max_levels; --max_levels) {
-      load_level(in->dup(), max_levels, step);
+      const auto offset = load_level(in->dup(), max_levels, step);
 
       // seek to the next level
-      in->seek(levels.back().end);
+      in->seek(offset);
 
       step /= skip_n_;
     }

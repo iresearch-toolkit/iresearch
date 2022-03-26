@@ -2263,7 +2263,7 @@ class wanderator final : public irs::doc_iterator {
     }
 
     void MoveDown(size_t level) const;
-    doc_id_t Read(size_t level, size_t end, index_input& in) const;
+    doc_id_t Read(size_t level, doc_id_t skipped, index_input& in) const;
 
    private:
     wanderator* self_;
@@ -2327,14 +2327,14 @@ void wanderator<IteratorTraits, FieldTraits>::ReadSkip::MoveDown(
 
 template<typename IteratorTraits, typename FieldTraits>
 doc_id_t wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(
-    size_t level, size_t end, index_input& in) const {
+    size_t level, doc_id_t skipped, index_input& in) const {
   auto& last = self_->prev_skip_;
   auto& next = self_->skip_levels_[level];
 
   // store previous step on the same level
   CopyState<FieldTraits>(last, next);
 
-  if (in.file_pointer() >= end) {
+  if (skipped >= self_->term_state_.docs_count) {
     // stream exhausted
     return (next.doc = doc_limits::eof());
   }

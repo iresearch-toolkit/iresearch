@@ -191,20 +191,18 @@ class SkipReaderBase : util::noncopyable {
   struct Level final {
     Level(
       index_input::ptr&& stream,
-      size_t id,
+      uint32_t id,
       doc_id_t step,
-      uint64_t begin,
-      uint64_t end) noexcept;
+      uint64_t begin) noexcept;
     Level(Level&&) = default;
     Level& operator=(Level&&) = delete;
 
     index_input::ptr stream; // level data stream
     uint64_t begin; // where current level starts
-    const uint64_t end; // where current level ends
     uint64_t child{}; // pointer to current child level
-    const size_t id; // level id
+    const uint32_t id; // level id
     const doc_id_t step; // how many docs we jump over with a single skip
-    doc_id_t skipped{}; // number of skipped documents at a level
+    doc_id_t skipped{}; // number of skipped documents at the level
   };
 
   struct LevelKey {
@@ -299,26 +297,21 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
     }(target);
 
   assert(key != std::end(keys_));
-  auto back = std::prev(std::end(keys_));
+  const auto back = std::prev(std::end(keys_));
 
   for (uint64_t child_ptr{0}; key != back; ++key) {
     if (auto& doc = key->doc; doc < target) {
       auto& level = *key->data;
       const doc_id_t step{level.step};
-      const auto id{level.id};
-      const auto end{level.end};
+      const size_t id{level.id};
       auto& stream{*level.stream};
 
       do {
         child_ptr = level.child;
-        doc = reader_.Read(id, end, stream);
-
-        // read pointer to child level if needed
+        doc = reader_.Read(id, level.skipped += step, stream);
         if (!doc_limits::eof(doc)) {
           level.child = stream.read_vlong();
         }
-
-        level.skipped += step;
       } while (doc < target);
 
       auto* next_level = &level + 1;
@@ -330,13 +323,11 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
   assert(key == back) ;
   auto& level = *key->data;
   const doc_id_t step{level.step};
-  const auto id{level.id};
-  const auto end{level.end};
+  const size_t id{level.id};
   auto& stream{*level.stream};
 
   for (auto& doc = key->doc; doc < target; ) {
-    doc = reader_.Read(id, end, stream);
-    level.skipped += step;
+    doc = reader_.Read(id, level.skipped += step, stream);
   }
 
   const doc_id_t skipped = level.skipped;
