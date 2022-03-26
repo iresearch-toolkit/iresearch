@@ -147,22 +147,22 @@ void skip_writer::skip(doc_id_t count, Writer&& write) {
 /// @class skip_reader_base
 /// @brief base object for searching in skip-lists
 ////////////////////////////////////////////////////////////////////////////////
-class skip_reader_base : util::noncopyable {
+class SkipReaderBase : util::noncopyable {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements to skip at the 0 level
   //////////////////////////////////////////////////////////////////////////////
-  doc_id_t skip_0() const noexcept { return skip_0_; }
+  doc_id_t Skip0() const noexcept { return skip_0_; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements to skip at the levels from 1 to num_levels()
   //////////////////////////////////////////////////////////////////////////////
-  doc_id_t skip_n() const noexcept { return skip_n_; }
+  doc_id_t SkipN() const noexcept { return skip_n_; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements in a skip-list
   //////////////////////////////////////////////////////////////////////////////
-  size_t num_levels() const noexcept { return levels_.size(); }
+  size_t NumLevels() const noexcept { return levels_.size(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prepares skip_reader
@@ -171,32 +171,32 @@ class skip_reader_base : util::noncopyable {
   /// @param count total number of elements to store in a skip-list
   /// @param read read function
   //////////////////////////////////////////////////////////////////////////////
-  void prepare(index_input::ptr&& in);
+  void Prepare(index_input::ptr&& in);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief seeks to the specified target
   /// @param target target to find
   /// @returns number of elements skipped
   //////////////////////////////////////////////////////////////////////////////
-  size_t seek(doc_id_t target);
+  size_t Seek(doc_id_t target);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief resets skip reader internal state
   //////////////////////////////////////////////////////////////////////////////
-  void reset();
+  void Reset();
 
  protected:
   static constexpr size_t kUndefined = std::numeric_limits<size_t>::max();
 
-  struct level final {
-    level(
+  struct Level final {
+    Level(
       index_input::ptr&& stream,
       size_t id,
       doc_id_t step,
       uint64_t begin,
       uint64_t end) noexcept;
-    level(level&&) = default;
-    level& operator=(level&&) = delete;
+    Level(Level&&) = default;
+    Level& operator=(Level&&) = delete;
 
     index_input::ptr stream; // level data stream
     uint64_t begin; // where current level starts
@@ -207,14 +207,14 @@ class skip_reader_base : util::noncopyable {
     doc_id_t skipped{}; // number of skipped documents at a level
   };
 
-  struct level_key {
-    level* const data; // pointer to actual level
+  struct LevelKey {
+    Level* const data; // pointer to actual level
     doc_id_t doc; // current key
   };
 
-  static_assert(std::is_nothrow_move_constructible_v<level>);
+  static_assert(std::is_nothrow_move_constructible_v<Level>);
 
-  static void seek_to_child(level& lvl, uint64_t ptr, const level& prev) {
+  static void SeekToChild(Level& lvl, uint64_t ptr, const Level& prev) {
     assert(lvl.stream);
     auto& stream = *lvl.stream;
 
@@ -228,16 +228,16 @@ class skip_reader_base : util::noncopyable {
     }
   }
 
-  skip_reader_base(doc_id_t skip_0, doc_id_t skip_n) noexcept
+  SkipReaderBase(doc_id_t skip_0, doc_id_t skip_n) noexcept
     : skip_0_{skip_0},
       skip_n_{skip_n} {
   }
 
-  std::vector<level> levels_; // input streams for skip-list levels
-  std::vector<level_key> keys_;
+  std::vector<Level> levels_; // input streams for skip-list levels
+  std::vector<LevelKey> keys_;
   const doc_id_t skip_0_; // skip interval for 0 level
   const doc_id_t skip_n_; // skip interval for 1..n levels
-}; // skip_reader_base
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class skip_reader_impl
@@ -247,17 +247,18 @@ class skip_reader_base : util::noncopyable {
 ///   stream ends, stream where level data resides and  readed key if stream is
 ///   not exhausted, doc_limits::eof() otherwise
 ////////////////////////////////////////////////////////////////////////////////
-template<typename Read>
-class skip_reader final : public skip_reader_base {
+template<typename ReaderType>
+class SkipReader final : public SkipReaderBase {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
   /// @param skip_0 skip interval for level 0
   /// @param skip_n skip interval for levels 1..n
   //////////////////////////////////////////////////////////////////////////////
-  skip_reader(doc_id_t skip_0, doc_id_t skip_n, Read&& read)
-    : skip_reader_base{skip_0, skip_n},
-      read_{std::forward<Read>(read)} {
+  template<typename T>
+  SkipReader(doc_id_t skip_0, doc_id_t skip_n, T&& reader)
+    : SkipReaderBase{skip_0, skip_n},
+      reader_{std::forward<T>(reader)} {
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -265,14 +266,18 @@ class skip_reader final : public skip_reader_base {
   /// @param target target to find
   /// @returns number of elements skipped
   //////////////////////////////////////////////////////////////////////////////
-  doc_id_t seek(doc_id_t target);
+  doc_id_t Seek(doc_id_t target);
+
+  ReaderType& Reader() noexcept {
+    return reader_;
+  }
 
  private:
-  Read read_;
+  ReaderType reader_;
 }; // skip_reader
 
 template<typename Read>
-doc_id_t skip_reader<Read>::seek(doc_id_t target) {
+doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
   assert(!levels_.empty());
   assert(std::is_sorted(
     std::begin(keys_), std::end(keys_),
@@ -306,7 +311,7 @@ doc_id_t skip_reader<Read>::seek(doc_id_t target) {
 
       do {
         child_ptr = level.child;
-        doc = read_(id, end, stream);
+        doc = reader_.Read(id, end, stream);
 
         // read pointer to child level if needed
         if (!doc_limits::eof(doc)) {
@@ -317,8 +322,8 @@ doc_id_t skip_reader<Read>::seek(doc_id_t target) {
       } while (doc < target);
 
       auto* next_level = &level + 1;
-      seek_to_child(*next_level, child_ptr, level);
-      read_(next_level->id);
+      SeekToChild(*next_level, child_ptr, level);
+      reader_.MoveDown(next_level->id);
     }
   }
 
@@ -330,7 +335,7 @@ doc_id_t skip_reader<Read>::seek(doc_id_t target) {
   auto& stream{*level.stream};
 
   for (auto& doc = key->doc; doc < target; ) {
-    doc = read_(id, end, stream);
+    doc = reader_.Read(id, end, stream);
     level.skipped += step;
   }
 

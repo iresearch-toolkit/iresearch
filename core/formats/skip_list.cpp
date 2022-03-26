@@ -92,7 +92,7 @@ void skip_writer::flush(index_output& out) {
   }
 }
 
-skip_reader_base::level::level(
+SkipReaderBase::Level::Level(
     index_input::ptr&& stream,
     size_t id,
     doc_id_t step,
@@ -105,7 +105,7 @@ skip_reader_base::level::level(
     step{step} {
 }
 
-void skip_reader_base::reset() {
+void SkipReaderBase::Reset() {
   for (auto& level_key : keys_) {
     assert(level_key.data);
     auto& level = *level_key.data;
@@ -118,7 +118,7 @@ void skip_reader_base::reset() {
   }
 }
 
-void skip_reader_base::prepare(index_input::ptr&& in) {
+void SkipReaderBase::Prepare(index_input::ptr&& in) {
   assert(in);
 
   if (size_t max_levels = in->read_vint(); max_levels) {
@@ -143,7 +143,7 @@ void skip_reader_base::prepare(index_input::ptr&& in) {
       const auto end = begin + length;
 
       levels.emplace_back(std::move(stream), id, step, begin, end); // load level
-      keys.emplace_back(level_key{&levels.back(), doc_limits::invalid()});
+      keys.emplace_back(LevelKey{&levels.back(), doc_limits::invalid()});
     };
 
     // skip step of the level

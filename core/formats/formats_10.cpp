@@ -1082,13 +1082,28 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
 #endif
 
 struct skip_state {
-  uint64_t doc_ptr{}; // pointer to the beginning of document block
-  uint64_t pos_ptr{}; // pointer to the positions of the first document in a document block
   uint64_t pay_ptr{}; // pointer to the payloads of the first document in a document block
+  uint64_t pos_ptr{}; // pointer to the positions of the first document in a document block
   size_t pend_pos{}; // positions to skip before new document block
+  uint64_t doc_ptr{}; // pointer to the beginning of document block
   doc_id_t doc{ doc_limits::invalid() }; // last document in a previous block
   uint32_t pay_pos{}; // payload size to skip before in new document block
 }; // skip_state
+
+template<typename FieldTraits>
+void CopyState(skip_state& to, const skip_state& from) {
+  if constexpr (FieldTraits::position() &&
+                (FieldTraits::payload() || FieldTraits::offset())) {
+    to = from;
+  } else {
+    if constexpr (FieldTraits::position()) {
+      to.pos_ptr = from.pos_ptr;
+      to.pend_pos = from.pend_pos;
+    }
+    to.doc_ptr = from.doc_ptr;
+    to.doc = from.doc;
+  }
+}
 
 struct doc_state {
   const index_input* pos_in;
@@ -1776,7 +1791,7 @@ class doc_iterator final : public irs::doc_iterator {
 
   doc_iterator() noexcept
     : skip_levels_(1),
-      skip_{IteratorTraits::block_size(), postings_writer_base::SKIP_N, read_skip{*this}} {
+      skip_{IteratorTraits::block_size(), postings_writer_base::SKIP_N, ReadSkip{*this}} {
     assert(
       std::all_of(std::begin(buf_.docs), std::end(buf_.docs),
                   [](doc_id_t doc) { return !doc_limits::valid(doc); }));
@@ -1844,14 +1859,14 @@ class doc_iterator final : public irs::doc_iterator {
 #endif
 
  private:
-  class read_skip {
+  class ReadSkip {
    public:
-    explicit read_skip(doc_iterator& self) noexcept
+    explicit ReadSkip(doc_iterator& self) noexcept
       : self_{&self} {
     }
 
-    void operator()(size_t level) const;
-    doc_id_t operator()(size_t level, size_t end, index_input& in) const;
+    void MoveDown(size_t level) const;
+    doc_id_t Read(size_t level, size_t end, index_input& in) const;
 
    private:
     doc_iterator* self_;
@@ -1903,7 +1918,7 @@ class doc_iterator final : public irs::doc_iterator {
   buffer_type<IteratorTraits> buf_;
   uint32_t enc_buf_[IteratorTraits::block_size()]; // buffer for encoding
   std::vector<skip_state> skip_levels_;
-  skip_reader<read_skip> skip_;
+  SkipReader<ReadSkip> skip_;
   skip_state* skip_ctx_; // pointer to skip context used by skip reader
   uint32_t cur_pos_{};
   const doc_id_t* begin_{buf_.docs};
@@ -1915,24 +1930,24 @@ class doc_iterator final : public irs::doc_iterator {
 }; // doc_iterator
 
 template<typename IteratorTraits, typename FieldTraits>
-void doc_iterator<IteratorTraits, FieldTraits>::read_skip::operator()(
+void doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::MoveDown(
     size_t level) const {
   auto& last = *self_->skip_ctx_;
   auto& next = self_->skip_levels_[level];
 
   // move to the more granular level
-  next = last;
+  CopyState<FieldTraits>(next, last);
 }
 
 template<typename IteratorTraits, typename FieldTraits>
-doc_id_t doc_iterator<IteratorTraits, FieldTraits>::read_skip::operator()(
+doc_id_t doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Read(
     size_t level, size_t end, index_input& in) const {
   auto& last = *self_->skip_ctx_;
   auto& next = self_->skip_levels_[level];
 
   // store previous step on the same level
   // FIXME(gnusi): consider copying only relevant information
-  last = next;
+  CopyState<FieldTraits>(last, next);
 
   if (in.file_pointer() >= end) {
     // stream exhausted
@@ -2138,9 +2153,9 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
     skip_ctx_ = &last;
 
     // init skip writer in lazy fashion
-    if (skip_.num_levels() != 0) {
+    if (skip_.NumLevels() != 0) {
 seek_after_initialization:
-      const doc_id_t skipped{skip_.seek(target)};
+      const doc_id_t skipped{skip_.Seek(target)};
       if (skipped > (cur_pos_ + relative_pos())) {
         doc_in_->seek(last.doc_ptr);
         std::get<document>(attrs_).value = last.doc;
@@ -2163,10 +2178,10 @@ seek_after_initialization:
     }
 
     skip_in->seek(term_state_.doc_start + term_state_.e_skip_start);
-    skip_.prepare(std::move(skip_in));
+    skip_.Prepare(std::move(skip_in));
 
     // initialize skip levels
-    if (const auto num_levels = skip_.num_levels(); IRS_LIKELY(num_levels)) {
+    if (const auto num_levels = skip_.NumLevels(); IRS_LIKELY(num_levels)) {
       assert(!doc_limits::valid(skip_levels_.front().doc));
       skip_levels_.resize(num_levels);
 
@@ -2213,7 +2228,7 @@ class wanderator final : public irs::doc_iterator {
   wanderator() noexcept
     : skip_levels_(1),
       skip_scores_(1),
-      skip_{IteratorTraits::block_size(), postings_writer_base::SKIP_N, read_skip{*this}} {
+      skip_{IteratorTraits::block_size(), postings_writer_base::SKIP_N, ReadSkip{*this}} {
     assert(
       std::all_of(std::begin(buf_.docs), std::end(buf_.docs),
                   [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
@@ -2242,14 +2257,14 @@ class wanderator final : public irs::doc_iterator {
   }
 
  private:
-  class read_skip {
+  class ReadSkip {
    public:
-    explicit read_skip(wanderator& self) noexcept
+    explicit ReadSkip(wanderator& self) noexcept
       : self_{&self} {
     }
 
-    void operator()(size_t level) const;
-    doc_id_t operator()(size_t level, size_t end, index_input& in) const;
+    void MoveDown(size_t level) const;
+    doc_id_t Read(size_t level, size_t end, index_input& in) const;
 
    private:
     wanderator* self_;
@@ -2262,10 +2277,10 @@ class wanderator final : public irs::doc_iterator {
     if (skip_levels_.front().doc < target) {
       // ensured by prepare(...)
       assert(term_state_.docs_count > IteratorTraits::block_size());
-      assert(skip_.num_levels());
+      assert(skip_.NumLevels());
       assert(0 == prev_skip_.doc_ptr);
 
-      const doc_id_t skipped{skip_.seek(target)};
+      const doc_id_t skipped{skip_.Seek(target)};
       if (skipped > (cur_pos_ + relative_pos())) {
         std::get<document>(attrs_).value = prev_skip_.doc;
         cur_pos_ = skipped;
@@ -2290,7 +2305,7 @@ class wanderator final : public irs::doc_iterator {
   uint32_t enc_buf_[IteratorTraits::block_size()]; // buffer for encoding
   std::vector<skip_state> skip_levels_;
   std::vector<score_buffer> skip_scores_;
-  skip_reader<read_skip> skip_;
+  SkipReader<ReadSkip> skip_;
   skip_state prev_skip_; // skip context used by skip reader
   uint32_t cur_pos_{};
   const doc_id_t* begin_{buf_.docs};
@@ -2302,24 +2317,24 @@ class wanderator final : public irs::doc_iterator {
 }; // wanderator
 
 template<typename IteratorTraits, typename FieldTraits>
-void wanderator<IteratorTraits, FieldTraits>::read_skip::operator()(
+void wanderator<IteratorTraits, FieldTraits>::ReadSkip::MoveDown(
     size_t level) const {
   auto& last = self_->prev_skip_;
   auto& next = self_->skip_levels_[level];
 
   // move to the more granular level
-  next = last;
+  CopyState<FieldTraits>(next, last);
 }
 
 template<typename IteratorTraits, typename FieldTraits>
-doc_id_t wanderator<IteratorTraits, FieldTraits>::read_skip::operator()(
+doc_id_t wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(
     size_t level, size_t end, index_input& in) const {
   auto& last = self_->prev_skip_;
   auto& next = self_->skip_levels_[level];
 
   // store previous step on the same level
   // FIXME(gnusi): consider copying only relevant information
-  last = next;
+  CopyState<FieldTraits>(last, next);
 
   if (in.file_pointer() >= end) {
     // stream exhausted
@@ -2432,10 +2447,10 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
 
     skip_in->seek(term_state_.doc_start + term_state_.e_skip_start);
 
-    skip_.prepare(std::move(skip_in));
+    skip_.Prepare(std::move(skip_in));
 
     // initialize skip levels
-    if (const auto num_levels = skip_.num_levels(); IRS_LIKELY(num_levels)) {
+    if (const auto num_levels = skip_.NumLevels(); IRS_LIKELY(num_levels)) {
       skip_levels_.resize(num_levels);
       skip_scores_.resize(num_levels);
 
