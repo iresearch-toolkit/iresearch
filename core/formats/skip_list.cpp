@@ -105,22 +105,6 @@ skip_reader_base::level::level(
     step{step} {
 }
 
-/* static */ void skip_reader_base::seek_to_child(
-    level& lvl,
-    uint64_t ptr,
-    doc_id_t skipped) {
-  auto& stream = *lvl.stream;
-
-  if (const auto absolute_ptr = lvl.begin + ptr;
-      absolute_ptr > stream.file_pointer()) {
-    stream.seek(absolute_ptr);
-    lvl.skipped = skipped;
-    if (lvl.child != kUndefined) {
-      lvl.child = stream.read_vlong();
-    }
-  }
-}
-
 void skip_reader_base::reset() {
   for (auto& level_key : keys_) {
     assert(level_key.data);

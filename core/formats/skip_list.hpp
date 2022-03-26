@@ -200,21 +200,33 @@ class skip_reader_base : util::noncopyable {
 
     index_input::ptr stream; // level data stream
     uint64_t begin; // where current level starts
-    uint64_t end; // where current level ends
+    const uint64_t end; // where current level ends
     uint64_t child{}; // pointer to current child level
-    size_t id; // level id
-    doc_id_t step; // how many docs we jump over with a single skip
+    const size_t id; // level id
+    const doc_id_t step; // how many docs we jump over with a single skip
     doc_id_t skipped{}; // number of skipped documents at a level
   };
 
   struct level_key {
-    level* data; // pointer to actual level
+    level* const data; // pointer to actual level
     doc_id_t doc; // current key
   };
 
   static_assert(std::is_nothrow_move_constructible_v<level>);
 
-  static void seek_to_child(level& lvl, uint64_t ptr, doc_id_t skipped);
+  static void seek_to_child(level& lvl, uint64_t ptr, const level& prev) {
+    assert(lvl.stream);
+    auto& stream = *lvl.stream;
+
+    if (const auto absolute_ptr = lvl.begin + ptr;
+        absolute_ptr > stream.file_pointer()) {
+      stream.seek(absolute_ptr);
+      lvl.skipped = prev.skipped - prev.step;
+      if (lvl.child != kUndefined) {
+        lvl.child = stream.read_vlong();
+      }
+    }
+  }
 
   skip_reader_base(doc_id_t skip_0, doc_id_t skip_n) noexcept
     : skip_0_{skip_0},
@@ -223,8 +235,8 @@ class skip_reader_base : util::noncopyable {
 
   std::vector<level> levels_; // input streams for skip-list levels
   std::vector<level_key> keys_;
-  doc_id_t skip_0_; // skip interval for 0 level
-  doc_id_t skip_n_; // skip interval for 1..n levels
+  const doc_id_t skip_0_; // skip interval for 0 level
+  const doc_id_t skip_n_; // skip interval for 1..n levels
 }; // skip_reader_base
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -284,13 +296,13 @@ doc_id_t skip_reader<Read>::seek(doc_id_t target) {
   uint64_t child{0}; // pointer to child skip
 
   for (auto back = std::prev(std::end(keys_));;++key) {
-    if (auto doc = key->doc; doc < target) { // FIXME remove condition???
-      assert(key != std::end(keys_));
-      assert(key->data);
+    assert(key != std::end(keys_));
+    assert(key->data);
+    if (auto& doc = key->doc; doc < target) { // FIXME remove condition???
       auto* level = key->data;
       assert(size_t(std::distance(level, &levels_.back())) == level->id);
 
-      doc_id_t steps{0};
+      const doc_id_t step{level->step};
 
       do {
         child = level->child;
@@ -301,21 +313,17 @@ doc_id_t skip_reader<Read>::seek(doc_id_t target) {
           level->child = level->stream->read_vlong();
         }
 
-        ++steps;
+        level->skipped += step;
       } while (doc < target);
-
-      key->doc = doc;
-      level->skipped += level->step*steps;
 
       if (key == back) {
         break;
       }
 
-      const doc_id_t skipped{level->skipped - level->step};
-      ++level;
+      auto next_level = level + 1;
 
-      seek_to_child(*level, child, skipped);
-      read_(level->id);
+      seek_to_child(*next_level, child, *level);
+      read_(next_level->id);
     }
   }
 
