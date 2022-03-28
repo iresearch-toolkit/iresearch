@@ -1088,10 +1088,10 @@ struct skip_state {
   uint64_t doc_ptr{}; // pointer to the beginning of document block
   doc_id_t doc{ doc_limits::invalid() }; // last document in a previous block
   uint32_t pay_pos{}; // payload size to skip before in new document block
-}; // skip_state
+};
 
 template<typename FieldTraits>
-void CopyState(skip_state& to, const skip_state& from) {
+FORCE_INLINE void CopyState(skip_state& to, const skip_state& from) noexcept {
   if constexpr (FieldTraits::position() &&
                 (FieldTraits::payload() || FieldTraits::offset())) {
     to = from;
@@ -1113,7 +1113,7 @@ struct doc_state {
   uint32_t* enc_buf;
   uint64_t tail_start;
   size_t tail_length;
-}; // doc_state
+};
 
 template<typename FieldTraits>
 FORCE_INLINE void CopyState(skip_state& to, const version10::term_meta& from) noexcept {
