@@ -1105,6 +1105,25 @@ FORCE_INLINE void CopyState(skip_state& to, const skip_state& from) noexcept {
   }
 }
 
+template<typename FieldTraits>
+FORCE_INLINE void ReadState(skip_state& state, index_input& in) {
+  state.doc = in.read_vint();
+  state.doc_ptr += in.read_vlong();
+
+  if constexpr (FieldTraits::position()) {
+    state.pend_pos = in.read_vint();
+    state.pos_ptr += in.read_vlong();
+
+    if constexpr (FieldTraits::payload() || FieldTraits::offset()) {
+      if constexpr (FieldTraits::payload()) {
+        state.pay_pos = in.read_vint();
+      }
+
+      state.pay_ptr += in.read_vlong();
+    }
+  }
+}
+
 struct doc_state {
   const index_input* pos_in;
   const index_input* pay_in;
@@ -1953,21 +1972,7 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Read(
     return (next.doc = doc_limits::eof());
   }
 
-  next.doc = in.read_vint();
-  next.doc_ptr += in.read_vlong();
-
-  if constexpr (FieldTraits::position()) {
-    next.pend_pos = in.read_vint();
-    next.pos_ptr += in.read_vlong();
-
-    if constexpr (FieldTraits::payload() || FieldTraits::offset()) {
-      if constexpr (FieldTraits::payload()) {
-        next.pay_pos = in.read_vint();
-      }
-
-      next.pay_ptr += in.read_vlong();
-    }
-  }
+  ReadState<FieldTraits>(next, in);
 
   if constexpr (FieldTraits::wand() && FieldTraits::frequency()) {
     score_buffer::skip(in);
@@ -2339,21 +2344,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(
     return (next.doc = doc_limits::eof());
   }
 
-  next.doc = in.read_vint();
-  next.doc_ptr += in.read_vlong();
-
-  if constexpr (FieldTraits::position()) {
-    next.pend_pos = in.read_vint();
-    next.pos_ptr += in.read_vlong();
-
-    if constexpr (FieldTraits::payload() || FieldTraits::offset()) {
-      if constexpr (FieldTraits::payload()) {
-        next.pay_pos = in.read_vint();
-      }
-
-      next.pay_ptr += in.read_vlong();
-    }
-  }
+  ReadState<FieldTraits>(next, in);
 
   if constexpr (FieldTraits::frequency()) {
     auto& skip_buffer = self_->skip_scores_[level];
