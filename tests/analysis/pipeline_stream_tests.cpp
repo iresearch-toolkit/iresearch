@@ -682,7 +682,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
   iresearch::byte_type p2[] = { 0x11, 0x22, 0x33 };
 
   {
-    auto payload_offset = std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref{p1, IRESEARCH_COUNTOF(p1)});
+    auto payload_offset = std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref{p1, std::size(p1)});
     auto only_offset = std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref::NIL);
 
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
@@ -702,7 +702,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_EQ(p1, pay->value.c_str());
   }
   {
-    auto payload_offset = std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref{p1, IRESEARCH_COUNTOF(p1)});
+    auto payload_offset = std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref{p1, std::size(p1)});
     auto only_offset = std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref::NIL);
 
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
@@ -722,8 +722,8 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_EQ(p1, pay->value.c_str());
   }
   {
-    auto payload_offset = std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref{p1, IRESEARCH_COUNTOF(p1)});
-    auto only_payload = std::make_unique<pipeline_test_analyzer>(false, irs::bytes_ref{p2, IRESEARCH_COUNTOF(p2)});
+    auto payload_offset = std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref{p1, std::size(p1)});
+    auto only_payload = std::make_unique<pipeline_test_analyzer>(false, irs::bytes_ref{p2, std::size(p2)});
 
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.emplace_back(std::move(payload_offset));
@@ -742,8 +742,8 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_EQ(p2, pay->value.c_str());
   }
   {
-    auto payload_offset = std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref{p1, IRESEARCH_COUNTOF(p1)});
-    auto only_payload = std::make_unique<pipeline_test_analyzer>(false, irs::bytes_ref{p2, IRESEARCH_COUNTOF(p2)});
+    auto payload_offset = std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref{p1, std::size(p1)});
+    auto only_payload = std::make_unique<pipeline_test_analyzer>(false, irs::bytes_ref{p2, std::size(p2)});
 
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.emplace_back(std::move(only_payload));
@@ -762,7 +762,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_EQ(p1, pay->value.c_str());
   }
   {
-    auto only_payload = std::make_unique<pipeline_test_analyzer>(false, irs::bytes_ref{p2, IRESEARCH_COUNTOF(p2)});
+    auto only_payload = std::make_unique<pipeline_test_analyzer>(false, irs::bytes_ref{p2, std::size(p2)});
     auto no_payload_no_offset = std::make_unique<pipeline_test_analyzer>(false, irs::bytes_ref::NIL);
 
     irs::analysis::pipeline_token_stream::options_t pipeline_options;

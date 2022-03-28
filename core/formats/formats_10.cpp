@@ -1899,7 +1899,7 @@ class doc_iterator final : public irs::doc_iterator {
     return static_cast<doc_id_t>(begin_ - buf_.docs);
   }
 
-  void read_end_block(size_t size);
+  void read_tail_block(size_t size);
 
   void refill() {
     // should never call refill for singleton documents
@@ -1916,10 +1916,10 @@ class doc_iterator final : public irs::doc_iterator {
         IteratorTraits::skip_block(*doc_in_);
       }
 
-      static_assert(IRESEARCH_COUNTOF(decltype(buf_.docs){}) == IteratorTraits::block_size());
+      static_assert(std::size(decltype(buf_.docs){}) == IteratorTraits::block_size());
       end_ = std::end(buf_.docs);
     } else {
-      read_end_block(left);
+      read_tail_block(left);
     }
 
     // if this is the initial doc_id then set it to min() for proper delta value
@@ -2055,7 +2055,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
 }
 
 template<typename IteratorTraits, typename FieldTraits>
-void doc_iterator<IteratorTraits, FieldTraits>::read_end_block(size_t size) {
+void doc_iterator<IteratorTraits, FieldTraits>::read_tail_block(size_t size) {
   end_ = buf_.docs + size;
   auto* doc = std::begin(buf_.docs);
 
@@ -2301,7 +2301,7 @@ class wanderator final : public irs::doc_iterator {
     return static_cast<doc_id_t>(begin_ - buf_.docs);
   }
 
-  void read_end_block(size_t size);
+  void read_tail_block(size_t size);
 
   void refill();
 
@@ -2533,7 +2533,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek_to_target(doc_id_t target
 
 
 template<typename IteratorTraits, typename FieldTraits>
-void wanderator<IteratorTraits, FieldTraits>::read_end_block(size_t size) {
+void wanderator<IteratorTraits, FieldTraits>::read_tail_block(size_t size) {
   end_ = buf_.docs + size;
   auto* doc = std::begin(buf_.docs);
 
@@ -2577,10 +2577,10 @@ void wanderator<IteratorTraits, FieldTraits>::refill() {
       IteratorTraits::skip_block(*doc_in_);
     }
 
-    static_assert(IRESEARCH_COUNTOF(decltype(buf_.docs){}) == IteratorTraits::block_size());
+    static_assert(std::size(decltype(buf_.docs){}) == IteratorTraits::block_size());
     end_ = std::end(buf_.docs);
   } else {
-    read_end_block(left);
+    read_tail_block(left);
   }
 
   // if this is the initial doc_id then set it to min() for proper delta value

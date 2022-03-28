@@ -2515,7 +2515,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     const auto props = read_enum<ColumnProperty>(*stream);
     const auto factory_id = (props & (~CP_COLUMN_ENCRYPT));
 
-    if (factory_id >= IRESEARCH_COUNTOF(COLUMN_FACTORIES)) {
+    if (factory_id >= std::size(COLUMN_FACTORIES)) {
       throw index_error(string_utils::to_string(
         "Failed to load column id=" IR_SIZE_T_SPECIFIER ", got invalid properties=%d",
         i, static_cast<uint32_t>(props)));

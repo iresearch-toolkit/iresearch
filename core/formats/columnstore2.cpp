@@ -1527,7 +1527,7 @@ void reader::prepare_index(
       : column_index{};
 
     if (const size_t idx = static_cast<size_t>(hdr.type);
-        IRS_LIKELY(idx < IRESEARCH_COUNTOF(kFactories))) {
+        IRS_LIKELY(idx < std::size(kFactories))) {
       auto column = kFactories[idx](std::move(name), std::move(payload),
                                    std::move(hdr), std::move(index),
                                    *index_in, *data_in_,

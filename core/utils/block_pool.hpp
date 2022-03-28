@@ -417,7 +417,7 @@ constexpr const level LEVELS[] = {
   { 9, 120 }, { 9, 200 }
 };
 
-constexpr const size_t LEVEL_MAX = IRESEARCH_COUNTOF(LEVELS);
+constexpr const size_t LEVEL_MAX = std::size(LEVELS);
 constexpr const size_t LEVEL_SIZE_MAX = 200; // FIXME compile time
 
 } // detail

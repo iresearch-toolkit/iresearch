@@ -166,7 +166,7 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
       sorted.emplace(score_value, seq);
     }
 
-    ASSERT_EQ(IRESEARCH_COUNTOF(expected), sorted.size());
+    ASSERT_EQ(std::size(expected), sorted.size());
     size_t i = 0;
 
     for (auto& entry: sorted) {
@@ -206,7 +206,7 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
       sorted.emplace(score_value, seq);
     }
 
-    ASSERT_EQ(IRESEARCH_COUNTOF(expected), sorted.size());
+    ASSERT_EQ(std::size(expected), sorted.size());
     size_t i = 0;
 
     for (auto& entry: sorted) {

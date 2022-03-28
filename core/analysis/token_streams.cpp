@@ -73,28 +73,28 @@ bytes_ref numeric_token_stream::numeric_term::value(
     case NT_LONG: {
       using traits_t = numeric_utils::numeric_traits<int64_t> ;
       static_assert(traits_t::size() <=
-        IRESEARCH_COUNTOF(decltype(numeric_token_stream::numeric_term::data_){}));
+        std::size(decltype(numeric_token_stream::numeric_term::data_){}));
 
       return {buf, traits_t::encode(val.i64, buf, shift)};
     }
     case NT_DBL: {
       using traits_t = numeric_utils::numeric_traits<double_t>;
       static_assert(traits_t::size() <=
-        IRESEARCH_COUNTOF(decltype(numeric_token_stream::numeric_term::data_){}));
+        std::size(decltype(numeric_token_stream::numeric_term::data_){}));
 
       return {buf, traits_t::encode(val.i64, buf, shift)};
     }
     case NT_INT: {
       using traits_t = numeric_utils::numeric_traits<int32_t>;
       static_assert(traits_t::size() <=
-        IRESEARCH_COUNTOF(decltype(numeric_token_stream::numeric_term::data_){}));
+        std::size(decltype(numeric_token_stream::numeric_term::data_){}));
 
       return {buf, traits_t::encode(val.i32, buf, shift)};
     }
     case NT_FLOAT: {
       using traits_t = numeric_utils::numeric_traits<float_t>;
       static_assert(traits_t::size() <=
-        IRESEARCH_COUNTOF(decltype(numeric_token_stream::numeric_term::data_){}));
+        std::size(decltype(numeric_token_stream::numeric_term::data_){}));
 
       return {buf, traits_t::encode(val.i32, buf, shift)};
     }
