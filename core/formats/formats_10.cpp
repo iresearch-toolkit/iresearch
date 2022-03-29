@@ -1090,13 +1090,13 @@ struct skip_state {
   uint32_t pay_pos{}; // payload size to skip before in new document block
 };
 
-template<typename FieldTraits>
+template<typename IteratorTraits>
 FORCE_INLINE void CopyState(skip_state& to, const skip_state& from) noexcept {
-  if constexpr (FieldTraits::position() &&
-                (FieldTraits::payload() || FieldTraits::offset())) {
+  if constexpr (IteratorTraits::position() &&
+                (IteratorTraits::payload() || IteratorTraits::offset())) {
     to = from;
   } else {
-    if constexpr (FieldTraits::position()) {
+    if constexpr (IteratorTraits::position()) {
       to.pos_ptr = from.pos_ptr;
       to.pend_pos = from.pend_pos;
     }
@@ -1134,12 +1134,12 @@ struct doc_state {
   size_t tail_length;
 };
 
-template<typename FieldTraits>
+template<typename IteratorTraits>
 FORCE_INLINE void CopyState(skip_state& to, const version10::term_meta& from) noexcept {
   to.doc_ptr = from.doc_start;
-  if constexpr (FieldTraits::position()) {
+  if constexpr (IteratorTraits::position()) {
     to.pos_ptr = from.pos_start;
-    if constexpr (FieldTraits::payload() || FieldTraits::offset()) {
+    if constexpr (IteratorTraits::payload() || IteratorTraits::offset()) {
       to.pay_ptr = from.pay_start;
     }
   }
@@ -1955,7 +1955,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::MoveDown(
   auto& next = self_->skip_levels_[level];
 
   // move to the more granular level
-  CopyState<FieldTraits>(next, last);
+  CopyState<IteratorTraits>(next, last);
 }
 
 template<typename IteratorTraits, typename FieldTraits>
@@ -1965,7 +1965,7 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Read(
   auto& next = self_->skip_levels_[level];
 
   // store previous step on the same level
-  CopyState<FieldTraits>(last, next);
+  CopyState<IteratorTraits>(last, next);
 
   if (skipped >= self_->term_state_.docs_count) {
     // stream exhausted
@@ -2191,7 +2191,7 @@ seek_after_initialization:
 
       // since we store pointer deltas, add postings offset
       auto& top = skip_levels_.back();
-      CopyState<FieldTraits>(top, term_state_);
+      CopyState<IteratorTraits>(top, term_state_);
 
       goto seek_after_initialization;
     } else {
@@ -2327,7 +2327,7 @@ void wanderator<IteratorTraits, FieldTraits>::ReadSkip::MoveDown(
   auto& next = self_->skip_levels_[level];
 
   // move to the more granular level
-  CopyState<FieldTraits>(next, last);
+  CopyState<IteratorTraits>(next, last);
 }
 
 template<typename IteratorTraits, typename FieldTraits>
@@ -2337,7 +2337,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(
   auto& next = self_->skip_levels_[level];
 
   // store previous step on the same level
-  CopyState<FieldTraits>(last, next);
+  CopyState<IteratorTraits>(last, next);
 
   if (skipped >= self_->term_state_.docs_count) {
     // stream exhausted
@@ -2448,7 +2448,7 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
 
       // since we store pointer deltas, add postings offset
       auto& top = skip_levels_.back();
-      CopyState<FieldTraits>(top, term_state_);
+      CopyState<IteratorTraits>(top, term_state_);
     }
   } else if (1 == term_state_.docs_count) {
     *buf_.docs = (doc_limits::min)() + term_state_.e_single_doc;
