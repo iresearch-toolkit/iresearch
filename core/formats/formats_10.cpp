@@ -137,18 +137,10 @@ struct format_traits {
   FORCE_INLINE static void skip_block(index_input& in) {
     bitpack::skip_block32(in, block_size());
   }
-}; // format_traits
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                             forward declarations
-// ----------------------------------------------------------------------------
+};
 
 template<typename T, typename M>
 std::string file_name(const M& meta);
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                 helper functions
-// ----------------------------------------------------------------------------
 
 void prepare_output(
     std::string& str,
@@ -192,14 +184,7 @@ void prepare_input(
   format_utils::check_header(*in, format, min_ver, max_ver);
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                   helper buffers
-// ----------------------------------------------------------------------------
-
-//////////////////////////////////////////////////////////////////////////////
-/// @struct skip_buffer
-/// @brief buffer for storing skip data
-//////////////////////////////////////////////////////////////////////////////
+// Buffer for storing skip data
 struct skip_buffer {
   explicit skip_buffer(uint64_t* skip_ptr) noexcept
     : skip_ptr{skip_ptr} {
@@ -259,10 +244,7 @@ struct doc_buffer : skip_buffer {
   doc_id_t block_last{ doc_limits::min() }; // last document id in a block
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @struct pos_buffer
-/// @brief buffer for storing positions
-//////////////////////////////////////////////////////////////////////////////
+// Buffer for storing positions
 struct pos_buffer : skip_buffer {
   explicit pos_buffer(
       std::span<uint32_t> buf,
@@ -297,10 +279,7 @@ struct pos_buffer : skip_buffer {
   uint32_t size{};       // number of buffered elements
 }; // pos_buffer
 
-//////////////////////////////////////////////////////////////////////////////
-/// @struct pay_buffer
-/// @brief buffer for storing payload data
-//////////////////////////////////////////////////////////////////////////////
+// Buffer for storing payload data
 struct pay_buffer : skip_buffer {
   pay_buffer(uint32_t* pay_sizes,
              uint32_t* offs_start_buf,
@@ -342,10 +321,7 @@ struct pay_buffer : skip_buffer {
   uint32_t last{};           // last start offset
 }; // pay_buffer
 
-//////////////////////////////////////////////////////////////////////////////
-/// @struct score_buffer
-/// @brief buffer carrying competitive block scores
-//////////////////////////////////////////////////////////////////////////////
+// Buffer carrying competitive block scores
 class score_buffer {
  public:
   using value_type = score_threshold::value_type;
@@ -382,17 +358,11 @@ class score_buffer {
   value_type freq_{};
 }; // score_buffer
 
-//////////////////////////////////////////////////////////////////////////////
-/// @enum TermsFormat
-//////////////////////////////////////////////////////////////////////////////
 enum class TermsFormat : int32_t {
   MIN = 0,
   MAX = MIN
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @enum PostingsFormat
-//////////////////////////////////////////////////////////////////////////////
 enum class PostingsFormat : int32_t {
   MIN = 0,
 
@@ -424,21 +394,12 @@ enum class PostingsFormat : int32_t {
   MAX = WAND_SSE
 };
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                  postings_writer
-// ----------------------------------------------------------------------------
-//
 // Assume that doc_count = 28, skip_n = skip_0 = 12
 //
 //  |       block#0       | |      block#1        | |vInts|
 //  d d d d d d d d d d d d d d d d d d d d d d d d d d d d (posting list)
 //                          ^                       ^       (level 0 skip point)
-//
-// ----------------------------------------------------------------------------
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class postings_writer_base
-//////////////////////////////////////////////////////////////////////////////
 class postings_writer_base : public irs::postings_writer {
  public:
   static constexpr uint32_t MAX_SKIP_LEVELS = 10;
@@ -845,9 +806,6 @@ void postings_writer_base::end_term(version10::term_meta& meta) {
   }
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class postings_writer
-//////////////////////////////////////////////////////////////////////////////
 template<typename FormatTraits>
 class postings_writer final: public postings_writer_base {
  public:
@@ -1145,18 +1103,13 @@ FORCE_INLINE void CopyState(skip_state& to, const version10::term_meta& from) no
   }
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class pos_iterator_base
-///////////////////////////////////////////////////////////////////////////////
 template<typename IteratorTraits,
          typename FieldTraits,
          bool Offset = IteratorTraits::offset(),
          bool Payload = IteratorTraits::payload()>
 struct position_impl;
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class pos_iterator_base (position + payload + offset)
-///////////////////////////////////////////////////////////////////////////////
+// Implementation of iterator over positions, payloads and offsets
 template<typename IteratorTraits, typename FieldTraits>
 struct position_impl<IteratorTraits, FieldTraits, true, true>
     : public position_impl<IteratorTraits, FieldTraits, false, false> {
@@ -1294,11 +1247,9 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
   payload pay_;
   size_t pay_data_pos_{}; // current position in a payload buffer
   bstring pay_data_; // buffer to store payload data
-}; // position_impl
+};
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class pos_iterator_base (position + payload)
-///////////////////////////////////////////////////////////////////////////////
+// Implementation of iterator over positions and payloads
 template<typename IteratorTraits, typename FieldTraits>
 struct position_impl<IteratorTraits, FieldTraits, false, true>
     : public position_impl<IteratorTraits, FieldTraits, false, false> {
@@ -1428,11 +1379,9 @@ struct position_impl<IteratorTraits, FieldTraits, false, true>
   payload pay_;
   size_t pay_data_pos_{}; // current position in a payload buffer
   bstring pay_data_; // buffer to store payload data
-}; // position_impl
+};
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class pos_iterator_base (position + offset)
-///////////////////////////////////////////////////////////////////////////////
+// Implementation of iterator over positions and offsets
 template<typename IteratorTraits, typename FieldTraits>
 struct position_impl<IteratorTraits, FieldTraits, true, false>
     : public position_impl<IteratorTraits, FieldTraits, false, false> {
@@ -1521,11 +1470,9 @@ struct position_impl<IteratorTraits, FieldTraits, true, false>
   uint32_t offs_lengts_[IteratorTraits::block_size()]{}; // buffer to store offset lengths
   index_input::ptr pay_in_;
   offset offs_;
-}; // position_impl
+};
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class pos_iterator_base (position)
-///////////////////////////////////////////////////////////////////////////////
+// Implementation of iterator over positions
 template<typename IteratorTraits, typename FieldTraits>
 struct position_impl<IteratorTraits, FieldTraits, false, false> {
   static void skip_payload(index_input& in) {
@@ -1634,7 +1581,7 @@ struct position_impl<IteratorTraits, FieldTraits, false, false> {
   uint32_t buf_pos_{ IteratorTraits::block_size() }; // current position in pos_deltas_ buffer
   cookie cookie_;
   index_input::ptr pos_in_;
-}; // position_impl
+};
 
 template<typename IteratorTraits, typename FieldTraits, bool Position = IteratorTraits::position()>
 class position final : public irs::position,
@@ -1752,9 +1699,7 @@ class position final : public irs::position,
   }
 }; // position
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class pos_iterator (empty)
-///////////////////////////////////////////////////////////////////////////////
+// Empty iterator over positions
 template<typename IteratorTraits, typename FieldTraits>
 struct position<IteratorTraits, FieldTraits, false> : attribute {
   static constexpr string_ref type_name() noexcept {
@@ -1786,11 +1731,9 @@ using buffer_type = std::conditional_t<
   freq_buffer<IteratorTraits>,
   data_buffer<IteratorTraits>>;
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class doc_iterator
-/// @tparam IteratorTraits requested features
-/// @tparam FieldTraits actual field features
-///////////////////////////////////////////////////////////////////////////////
+// Iterator over posting list.
+// IteratorTraits defines requested features.
+// FieldTraits defines requested features.
 template<typename IteratorTraits, typename FieldTraits>
 class doc_iterator final : public irs::doc_iterator {
  private:
@@ -2206,11 +2149,9 @@ seek_after_initialization:
   }
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class wanderator
-/// @tparam IteratorTraits requested features
-/// @tparam FieldTraits actual field features
-///////////////////////////////////////////////////////////////////////////////
+// WAND iterator over posting list.
+// IteratorTraits defines requested features.
+// FieldTraits defines requested features.
 template<typename IteratorTraits, typename FieldTraits>
 class wanderator final : public irs::doc_iterator {
  private:
@@ -2595,10 +2536,6 @@ void wanderator<IteratorTraits, FieldTraits>::refill() {
   }
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                index_meta_writer
-// ----------------------------------------------------------------------------
-
 struct index_meta_writer final: public irs::index_meta_writer {
   static constexpr string_ref FORMAT_NAME = "iresearch_10_index_meta";
   static constexpr string_ref FORMAT_PREFIX = "segments_";
@@ -2759,10 +2696,6 @@ void index_meta_writer::rollback() noexcept {
   meta_ = nullptr;
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                index_meta_reader
-// ----------------------------------------------------------------------------
-
 uint64_t parse_generation(std::string_view segments_file) {
   assert(segments_file.starts_with(index_meta_writer::FORMAT_PREFIX));
 
@@ -2853,10 +2786,6 @@ void index_meta_reader::read(
     has_payload ? &payload : nullptr);
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                              segment_meta_writer
-// ----------------------------------------------------------------------------
-
 struct segment_meta_writer final : public irs::segment_meta_writer{
   static constexpr string_ref FORMAT_EXT = "sm";
   static constexpr string_ref FORMAT_NAME = "iresearch_10_segment_meta";
@@ -2926,10 +2855,6 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file, const se
   write_strings(*out, meta.files);
   format_utils::write_footer(*out);
 }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                              segment_meta_reader
-// ----------------------------------------------------------------------------
 
 struct segment_meta_reader final : public irs::segment_meta_reader {
   virtual void read(
@@ -3019,10 +2944,6 @@ void segment_meta_reader::read(
   meta.files = std::move(files);
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                             document_mask_writer
-// ----------------------------------------------------------------------------
-
 class document_mask_writer final: public irs::document_mask_writer {
  public:
   static constexpr string_ref FORMAT_NAME = "iresearch_10_doc_mask";
@@ -3075,10 +2996,6 @@ void document_mask_writer::write(
 
   format_utils::write_footer(*out);
 }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                             document_mask_reader
-// ----------------------------------------------------------------------------
 
 class document_mask_reader final: public irs::document_mask_reader {
  public:
@@ -3142,10 +3059,6 @@ bool document_mask_reader::read(
 
   return true;
 }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                  postings_reader
-// ----------------------------------------------------------------------------
 
 class postings_reader_base : public irs::postings_reader {
  public:
@@ -3529,10 +3442,6 @@ size_t postings_reader<FormatTraits>::bit_union(
   return count;
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                         format10
-// ----------------------------------------------------------------------------
-
 class format10 : public irs::version10::format {
  public:
   using format_traits = ::format_traits<false, pos_limits::min()>;
@@ -3646,10 +3555,6 @@ irs::postings_reader::ptr format10::get_postings_reader() const {
 
 REGISTER_FORMAT_MODULE(::format10, MODULE_NAME);
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                         format11
-// ----------------------------------------------------------------------------
-
 class format11 : public format10 {
  public:
   static constexpr string_ref type_name() noexcept {
@@ -3706,10 +3611,6 @@ columnstore_writer::ptr format11::get_columnstore_writer(bool /*consolidation*/)
 
 REGISTER_FORMAT_MODULE(::format11, MODULE_NAME);
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                         format12
-// ----------------------------------------------------------------------------
-
 class format12 : public format11 {
  public:
   static constexpr string_ref type_name() noexcept {
@@ -3742,10 +3643,6 @@ columnstore_writer::ptr format12::get_columnstore_writer(
 }
 
 REGISTER_FORMAT_MODULE(::format12, MODULE_NAME);
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                         format13
-// ----------------------------------------------------------------------------
 
 class format13 : public format12 {
  public:
@@ -3786,10 +3683,6 @@ irs::postings_reader::ptr format13::get_postings_reader() const {
 }
 
 REGISTER_FORMAT_MODULE(::format13, MODULE_NAME);
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                         format14
-// ----------------------------------------------------------------------------
 
 class format14 : public format13 {
  public:
@@ -3836,10 +3729,6 @@ columnstore_reader::ptr format14::get_columnstore_reader() const {
 
 REGISTER_FORMAT_MODULE(::format14, MODULE_NAME);
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                         format15
-// ----------------------------------------------------------------------------
-
 class format15 : public format14 {
  public:
   using format_traits = ::format_traits<true, pos_limits::invalid()>;
@@ -3877,10 +3766,6 @@ irs::postings_reader::ptr format15::get_postings_reader() const {
 }
 
 REGISTER_FORMAT_MODULE(::format15, MODULE_NAME);
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                     format12simd
-// ----------------------------------------------------------------------------
 
 #ifdef IRESEARCH_SSE2
 
@@ -3952,11 +3837,6 @@ irs::postings_reader::ptr format12simd::get_postings_reader() const {
 
 REGISTER_FORMAT_MODULE(::format12simd, MODULE_NAME);
 
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                     format13simd
-// ----------------------------------------------------------------------------
-
 class format13simd : public format13 {
  public:
   using format_traits = format_traits_sse4<false, pos_limits::invalid()>;
@@ -3994,10 +3874,6 @@ irs::postings_reader::ptr format13simd::get_postings_reader() const {
 }
 
 REGISTER_FORMAT_MODULE(::format13simd, MODULE_NAME);
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                     format14simd
-// ----------------------------------------------------------------------------
 
 class format14simd : public format13simd {
  public:
@@ -4045,10 +3921,6 @@ columnstore_reader::ptr format14simd::get_columnstore_reader() const {
 }
 
 REGISTER_FORMAT_MODULE(::format14simd, MODULE_NAME);
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                     format15simd
-// ----------------------------------------------------------------------------
 
 class format15simd : public format14simd {
  public:
@@ -4112,10 +3984,6 @@ void init() {
 #endif // IRESEARCH_DLL
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                           format
-// ----------------------------------------------------------------------------
-
 format::format(const irs::type_info& type) noexcept
   : irs::format(type) {
 }
@@ -4126,4 +3994,4 @@ format::format(const irs::type_info& type) noexcept
 template<typename IteratorTraits, typename FieldTraits, bool Position>
 struct type<::position<IteratorTraits, FieldTraits, Position>> : type<irs::position> { };
 
-} // root
+}
