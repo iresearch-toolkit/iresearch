@@ -30,9 +30,9 @@
 
 namespace iresearch {
 
-/// Bitset expecting doc iterator to be able only to move forward.
-/// So in case of "seek" to the still unfilled word
-/// internally it does bunch of "next" calls.
+// Bitset expecting doc iterator to be able only to move forward.
+// So in case of "seek" to the still unfilled word
+// internally it does bunch of "next" calls.
 class lazy_filter_bitset : private util::noncopyable {
  public:
   using word_t = size_t;
@@ -40,9 +40,10 @@ class lazy_filter_bitset : private util::noncopyable {
   explicit lazy_filter_bitset(const sub_reader& segment,
                               const filter::prepared& filter,
                               const order::prepared& order,
+                              ExecutionMode mode,
                               const attribute_provider* ctx) noexcept {
     const size_t bits = segment.docs_count() + doc_limits::min();
-    real_doc_itr_ = segment.mask(filter.execute(segment, order, ctx));
+    real_doc_itr_ = segment.mask(filter.execute(segment, order, mode, ctx));
     words_ = bitset::bits_to_words(bits);
     cost_ = cost::extract(*real_doc_itr_);
     set_ = memory::make_unique<word_t[]>(words_);
@@ -176,14 +177,16 @@ class proxy_query final : public filter::prepared {
     assert(cache_->prepared_real_filter_);
   }
 
-  doc_iterator::ptr execute(const sub_reader& rdr, const order::prepared& order,
+  doc_iterator::ptr execute(const sub_reader& rdr,
+                            const order::prepared& order,
+                            ExecutionMode mode,
                             const attribute_provider* ctx) const override {
     // first try to find segment in cache.
     auto& [unused, cached] = *cache_->readers_.emplace(&rdr, nullptr).first;
 
     if (!cached) {
       cached = std::make_unique<lazy_filter_bitset>(
-          rdr, *cache_->prepared_real_filter_, order, ctx);
+          rdr, *cache_->prepared_real_filter_, order, mode, ctx);
     }
 
     assert(cached);

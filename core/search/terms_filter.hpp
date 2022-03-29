@@ -33,10 +33,7 @@ namespace iresearch {
 class by_terms;
 struct filter_visitor;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct by_terms_options
-/// @brief options for terms filter
-////////////////////////////////////////////////////////////////////////////////
+/// Options for terms filter
 struct by_terms_options {
   struct search_term {
     bstring term;
@@ -81,12 +78,9 @@ struct by_terms_options {
     }
     return hash;
   }
-}; // by_terms_options
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class by_terms
-/// @brief user-side filter by a set of terms
-////////////////////////////////////////////////////////////////////////////////
+// Filter by a set of terms
 class by_terms final
     : public filter_base<by_terms_options> {
  public:
@@ -105,7 +99,7 @@ class by_terms final
     const order::prepared& order,
     boost_t boost,
     const attribute_provider* /*ctx*/) const override;
-}; // by_terms
+};
 
 }
 

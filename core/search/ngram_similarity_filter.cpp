@@ -52,10 +52,7 @@ using approximation = min_match_disjunction<doc_iterator::ptr>;
 
 namespace iresearch {
 
-//////////////////////////////////////////////////////////////////////////////
-///@class ngram_similarity_doc_iterator
-///@brief adapter for min_match_disjunction with honor of terms orderings
-//////////////////////////////////////////////////////////////////////////////
+// Adapter for min_match_disjunction with honor of terms orderings
 class ngram_similarity_doc_iterator final
     : public doc_iterator, private score_ctx {
  public:
@@ -363,10 +360,7 @@ bool ngram_similarity_doc_iterator::check_serial_positions() {
   return longest_sequence_len >= min_match_count_;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class ngram_similarity_query
-/// @brief prepared ngram similarity query implementation
-//////////////////////////////////////////////////////////////////////////////
+// Prepared ngram similarity query implementation
 class ngram_similarity_query : public filter::prepared {
  public:
   ngram_similarity_query(
@@ -381,7 +375,8 @@ class ngram_similarity_query : public filter::prepared {
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      const attribute_provider*) const override {
+      ExecutionMode /*mode*/,
+      const attribute_provider* /*ctx*/) const override {
     auto query_state = states_.find(rdr);
     if (!query_state || !query_state->field) {
       // invalid state
@@ -462,10 +457,6 @@ class ngram_similarity_query : public filter::prepared {
   states_t states_;
   bstring stats_;
 };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                by_ngram_similarity implementation
-// -----------------------------------------------------------------------------
 
 DEFINE_FACTORY_DEFAULT(by_ngram_similarity) // cppcheck-suppress unknownMacro
 

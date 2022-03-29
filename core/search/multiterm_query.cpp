@@ -110,6 +110,7 @@ namespace iresearch {
 doc_iterator::ptr multiterm_query::execute(
     const sub_reader& segment,
     const order::prepared& ord,
+    ExecutionMode /*mode*/,
     const attribute_provider* /*ctx*/) const {
   using scored_disjunction_t = scored_disjunction_iterator<doc_iterator::ptr>;
   using disjunction_t = disjunction_iterator<doc_iterator::ptr>;

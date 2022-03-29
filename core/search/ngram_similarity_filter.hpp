@@ -30,10 +30,7 @@ namespace iresearch {
 
 class by_ngram_similarity;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct by_ngram_similarity_options
-/// @brief options for ngram similarity filter
-////////////////////////////////////////////////////////////////////////////////
+// Options for ngram similarity filter
 struct by_ngram_similarity_options {
   using filter_type = by_ngram_similarity;
 
@@ -51,11 +48,8 @@ struct by_ngram_similarity_options {
     }
     return hash;
   }
-}; // by_ngram_similarity_options
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class by_ngram_similarity
-//////////////////////////////////////////////////////////////////////////////
 class by_ngram_similarity
     : public filter_base<by_ngram_similarity_options> {
  public:
@@ -73,8 +67,8 @@ class by_ngram_similarity
     const order::prepared& ord,
     boost_t boost,
     const attribute_provider* ctx) const override;
-}; // by_ngram_similarity
+};
 
-} // ROOT
+}
 
 #endif // IRESEARCH_NGRAM_SIMILARITY_FILTER_H

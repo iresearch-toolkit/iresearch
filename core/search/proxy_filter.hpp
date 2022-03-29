@@ -33,13 +33,11 @@ namespace iresearch {
 
 struct proxy_query_cache;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief proxy filter designed to cache results of underlying real filter and
-/// provide fast replaying same filter on consequent calls.
-/// It is up to caller to control validity of the supplied cache. If the index
-/// was changed caller must discard cache and request a new one via make_cache.
-/// Scoring cache is not supported yet.
-//////////////////////////////////////////////////////////////////////////////
+// Proxy filter designed to cache results of underlying real filter and
+// provide fast replaying same filter on consequent calls.
+// It is up to caller to control validity of the supplied cache. If the index
+// was changed caller must discard cache and request a new one via make_cache.
+// Scoring cache is not supported yet.
 class proxy_filter final : public filter {
  public:
   static ptr make();

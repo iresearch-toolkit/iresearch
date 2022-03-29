@@ -103,7 +103,7 @@ class same_position_iterator final : public conjunction_t {
   }
 
   positions_t pos_;
-}; // same_position_iterator
+};
 
 class same_position_query final : public filter::prepared {
  public:
@@ -125,6 +125,7 @@ class same_position_query final : public filter::prepared {
   virtual doc_iterator::ptr execute(
       const sub_reader& segment,
       const order::prepared& ord,
+      ExecutionMode /*mode*/,
       const attribute_provider* /*ctx*/) const override {
     // get query state for the specified reader
     auto query_state = states_.find(segment);
@@ -189,7 +190,7 @@ class same_position_query final : public filter::prepared {
  private:
   states_t states_;
   stats_t stats_;
-}; // same_position_query
+};
 
 }
 
@@ -296,4 +297,4 @@ filter::prepared::ptr by_same_position::prepare(
     this->boost() * boost);
 }
 
-} // ROOT
+}

@@ -37,11 +37,8 @@ namespace iresearch {
 struct index_reader;
 
 enum class ExecutionMode : uint32_t {
-  // access all documents
-  kReturnAll,
-
-  // access only top matched documents
-  kTop
+  kAll, // Access all documents
+  kTop // Access only top matched documents
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,19 +63,16 @@ class filter {
     virtual ~prepared() = default;
 
     doc_iterator::ptr execute(
-        const sub_reader& rdr) const {
-      return execute(rdr, order::prepared::unordered());
-    }
-
-    doc_iterator::ptr execute(
         const sub_reader& rdr,
-        const order::prepared& ord) const {
-      return execute(rdr, ord, nullptr);
+        const order::prepared& ord = order::prepared::unordered(),
+        ExecutionMode mode = ExecutionMode::kAll) const {
+      return execute(rdr, ord, mode, nullptr);
     }
 
     virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
+      ExecutionMode mode,
       const attribute_provider* ctx) const = 0;
 
     boost_t boost() const noexcept { return boost_; }

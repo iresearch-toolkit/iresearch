@@ -25,14 +25,7 @@
 
 namespace iresearch {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                               all
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class all_query
-/// @brief compiled all_filter that returns all documents
-////////////////////////////////////////////////////////////////////////////////
+// Compiled all_filter that returns all documents
 class all_query final : public filter::prepared {
  public:
   explicit all_query(bstring&& stats, boost_t boost)
@@ -43,6 +36,7 @@ class all_query final : public filter::prepared {
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& order,
+      ExecutionMode /*mode*/,
       const attribute_provider* /*ctx*/) const override {
     return memory::make_managed<all_iterator>(
       rdr, stats_.c_str(), order,
@@ -75,4 +69,4 @@ filter::prepared::ptr all::prepare(
   return memory::make_managed<all_query>(std::move(stats), this->boost()*filter_boost);
 }
 
-} // ROOT
+}

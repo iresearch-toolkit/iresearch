@@ -27,10 +27,7 @@
 
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class all
-/// @brief filter that returns all documents
-////////////////////////////////////////////////////////////////////////////////
+// Filter returning all documents
 class all: public filter {
  public:
   static ptr make();
@@ -44,8 +41,8 @@ class all: public filter {
     const order::prepared& order,
     boost_t filter_boost,
     const attribute_provider* ctx) const override;
-}; // all
+};
 
-} // ROOT
+}
 
 #endif

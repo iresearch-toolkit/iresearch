@@ -27,10 +27,6 @@
 
 namespace iresearch {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         term_query implementation
-// -----------------------------------------------------------------------------
-
 term_query::term_query(
     term_query::states_t&& states,
     bstring&& stats,
@@ -43,6 +39,7 @@ term_query::term_query(
 doc_iterator::ptr term_query::execute(
     const sub_reader& rdr,
     const order::prepared& ord,
+    ExecutionMode /*mode*/,
     const attribute_provider* /*ctx*/) const {
   // get term state for the specified reader
   auto state = states_.find(rdr);
@@ -74,4 +71,4 @@ doc_iterator::ptr term_query::execute(
   return docs;
 }
 
-} // ROOT
+}

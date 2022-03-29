@@ -293,6 +293,7 @@ struct boosted: public irs::filter {
     virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
       const irs::order::prepared& ord,
+      irs::ExecutionMode /*mode*/,
       const irs::attribute_provider* /*ctx*/) const override {
       boosted::execute_count++;
       return irs::memory::make_managed<basic_doc_iterator>(
@@ -1237,6 +1238,7 @@ struct unestimated: public irs::filter {
     virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader&,
       const irs::order::prepared&,
+      irs::ExecutionMode /*mode*/,
       const irs::attribute_provider*) const override {
       return irs::memory::make_managed<unestimated::doc_iterator>();
     }
@@ -1295,6 +1297,7 @@ struct estimated: public irs::filter {
     virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader&,
       const irs::order::prepared&,
+      irs::ExecutionMode /*mode*/,
       const irs::attribute_provider*) const override {
       return irs::memory::make_managed<estimated::doc_iterator>(
         est, evaluated
