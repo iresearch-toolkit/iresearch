@@ -253,34 +253,46 @@ void Format15TestCase::PostingsWandSeek(
       // seek to every 5th document
       assert_docs_random(0, 5);
 
-      // FIXME(gnusi): implement
-      // seek for backwards && next
-      //{
-      //  for (auto doc = docs.rbegin(), end = docs.rend(); doc != end; ++doc) {
-      //    if (doc->second < threshold) {
-      //      continue;
-      //    }
+      // seek backwards && next
+      {
+        for (auto doc = docs.rbegin(), end = docs.rend(); doc != end; ++doc) {
+          if (doc->second < threshold) {
+            continue;
+          }
 
-      //    postings expected(docs.begin(), docs.end(), field.index_features);
-      //    auto it = reader->iterator(field.index_features, features, read_meta);
-      //    ASSERT_FALSE(irs::doc_limits::valid(it->value()));
-      //    ASSERT_EQ(doc->first, it->seek(doc->first));
+          postings expected_postings{docs, field.index_features};
+          FreqThresholdDocIterator expected{expected_postings, threshold};
 
-      //    ASSERT_EQ(doc->first, expected.seek(doc->first));
-      //    assert_positions(expected, *it);
-      //    if (doc != docs.rbegin()) {
-      //      ASSERT_TRUE(expected.next());
-      //      ASSERT_EQ((doc - 1)->first, expected.value());
+          auto actual = reader->wanderator(field.index_features, features, read_meta);
+          ASSERT_NE(nullptr, actual);
+
+          auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
+          if (docs.size() <= kVersion10PostingsWriterBlockSize ||
+              irs::IndexFeatures::NONE == (features & irs::IndexFeatures::FREQ)) {
+            ASSERT_EQ(nullptr, threshold_value);
+          } else {
+            ASSERT_NE(nullptr, threshold_value);
+            threshold_value->set(threshold);
+          }
+
+          ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
+          ASSERT_EQ(doc->first, actual->seek(doc->first));
+
+          ASSERT_EQ(doc->first, expected.seek(doc->first));
+          assert_positions(expected, *actual);
+          if (doc != docs.rbegin()) {
+            ASSERT_TRUE(expected.next());
+            ASSERT_EQ((doc - 1)->first, expected.value());
 
 
 
-      //      ASSERT_TRUE(it->next());
-      //      ASSERT_EQ((doc-1)->first, it->value());
+            ASSERT_TRUE(actual->next());
+            ASSERT_EQ((doc-1)->first, actual->value());
 
-      //      assert_positions(expected, *it);
-      //    }
-      //  }
-      //}
+            assert_positions(expected, *actual);
+          }
+        }
+      }
 
       // seek to irs::doc_limits::invalid()
       {
