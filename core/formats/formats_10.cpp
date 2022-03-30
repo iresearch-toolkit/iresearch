@@ -402,16 +402,16 @@ enum class PostingsFormat : int32_t {
 
 class postings_writer_base : public irs::postings_writer {
  public:
-  static constexpr uint32_t MAX_SKIP_LEVELS = 10;
-  static constexpr uint32_t SKIP_N = 8;
+  static constexpr uint32_t kMaxSkipLevels = 10;
+  static constexpr uint32_t kSkipN = 8;
 
-  static constexpr string_ref DOC_FORMAT_NAME = "iresearch_10_postings_documents";
-  static constexpr string_ref DOC_EXT = "doc";
-  static constexpr string_ref POS_FORMAT_NAME = "iresearch_10_postings_positions";
-  static constexpr string_ref POS_EXT = "pos";
-  static constexpr string_ref PAY_FORMAT_NAME = "iresearch_10_postings_payloads";
-  static constexpr string_ref PAY_EXT = "pay";
-  static constexpr string_ref TERMS_FORMAT_NAME = "iresearch_10_postings_terms";
+  static constexpr string_ref kDocFormatName = "iresearch_10_postings_documents";
+  static constexpr string_ref kDocExt = "doc";
+  static constexpr string_ref kPosFormatName = "iresearch_10_postings_positions";
+  static constexpr string_ref kPosExt = "pos";
+  static constexpr string_ref kPayFormatName = "iresearch_10_postings_payloads";
+  static constexpr string_ref kPayExt = "pay";
+  static constexpr string_ref kTermsFormatName = "iresearch_10_postings_terms";
 
  protected:
   postings_writer_base(
@@ -429,7 +429,7 @@ class postings_writer_base : public irs::postings_writer {
       uint32_t* enc_buf,
       PostingsFormat postings_format_version,
       TermsFormat terms_format_version)
-    : skip_{block_size, SKIP_N},
+    : skip_{block_size, kSkipN},
       doc_{docs, freqs, skip_doc, doc_skip_ptr},
       pos_{prox_buf, prox_skip_ptr},
       pay_{pay_sizes, offs_start_buf, offs_len_buf, pay_skip_ptr},
@@ -561,32 +561,32 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
 
   // prepare document stream
   prepare_output(name, doc_out_, state,
-                 DOC_EXT, DOC_FORMAT_NAME,
+                 kDocExt, kDocFormatName,
                  static_cast<int32_t>(postings_format_version_));
 
   if (IndexFeatures::NONE != (state.index_features & IndexFeatures::POS)) {
     // prepare proximity stream
     pos_.reset();
     prepare_output(name, pos_out_, state,
-                   POS_EXT, POS_FORMAT_NAME,
+                   kPosExt, kPosFormatName,
                    static_cast<int32_t>(postings_format_version_));
 
     if (IndexFeatures::NONE != (state.index_features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
       // prepare payload stream
       pay_.reset();
       prepare_output(name, pay_out_, state,
-                     PAY_EXT, PAY_FORMAT_NAME,
+                     kPayExt, kPayFormatName,
                      static_cast<int32_t>(postings_format_version_));
     }
   }
 
   skip_.Prepare(
-    MAX_SKIP_LEVELS,
+    kMaxSkipLevels,
     state.doc_count,
     state.dir->attributes().allocator());
 
   format_utils::write_header(
-    out, TERMS_FORMAT_NAME,
+    out, kTermsFormatName,
     static_cast<int32_t>(terms_format_version_));
   out.write_vint(skip_.Skip0()); // write postings block size
 
@@ -640,15 +640,15 @@ void postings_writer_base::end() {
 
 void postings_writer_base::begin_term() {
   doc_.start = doc_out_->file_pointer();
-  std::fill_n(doc_.skip_ptr, MAX_SKIP_LEVELS, doc_.start);
+  std::fill_n(doc_.skip_ptr, kMaxSkipLevels, doc_.start);
   if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
     assert(pos_out_);
     pos_.start = pos_out_->file_pointer();
-    std::fill_n(pos_.skip_ptr, MAX_SKIP_LEVELS, pos_.start);
+    std::fill_n(pos_.skip_ptr, kMaxSkipLevels, pos_.start);
     if (IndexFeatures::NONE != (features_ & (IndexFeatures::OFFS | IndexFeatures::PAY))) {
       assert(pay_out_);
       pay_.start = pay_out_->file_pointer();
-      std::fill_n(pay_.skip_ptr, MAX_SKIP_LEVELS, pay_.start);
+      std::fill_n(pay_.skip_ptr, kMaxSkipLevels, pay_.start);
     }
   }
 
@@ -841,24 +841,24 @@ class postings_writer final: public postings_writer_base {
   struct {
     doc_id_t docs[FormatTraits::block_size()]{};           // buffer to store document deltas
     uint32_t freqs[FormatTraits::block_size()]{};          // buffer to store frequencies
-    doc_id_t skip_doc[MAX_SKIP_LEVELS]{};                  // buffer to store skip documents
-    uint64_t skip_ptr[MAX_SKIP_LEVELS]{};                  // buffer to store skip pointers
+    doc_id_t skip_doc[kMaxSkipLevels]{};                  // buffer to store skip documents
+    uint64_t skip_ptr[kMaxSkipLevels]{};                  // buffer to store skip pointers
   } doc_buf_;
   struct {
     uint32_t buf[FormatTraits::block_size()]{};             // buffer to store position deltas
-    uint64_t skip_ptr[MAX_SKIP_LEVELS]{};                   // buffer to store skip pointers
+    uint64_t skip_ptr[kMaxSkipLevels]{};                   // buffer to store skip pointers
   } prox_buf_;
   struct {
     uint32_t pay_sizes[FormatTraits::block_size()]{};       // buffer to store payloads sizes
     uint32_t offs_start_buf[FormatTraits::block_size()]{};  // buffer to store start offsets
     uint32_t offs_len_buf[FormatTraits::block_size()]{};    // buffer to store offset lengths
-    uint64_t skip_ptr[MAX_SKIP_LEVELS]{};                   // buffer to store skip pointers
+    uint64_t skip_ptr[kMaxSkipLevels]{};                   // buffer to store skip pointers
   } pay_buf_;
   struct {
     uint32_t buf[FormatTraits::block_size()];               // buffer for encoding (worst case)
   } encbuf_;
   score_buffer score_buf_;
-  score_buffer score_levels_[MAX_SKIP_LEVELS];
+  score_buffer score_levels_[kMaxSkipLevels];
   bool volatile_attributes_;
 }; // postings_writer
 
@@ -996,8 +996,10 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
           if constexpr (FormatTraits::wand()) {
             if (IndexFeatures::NONE != (features_ & IndexFeatures::FREQ)) {
               auto& score = score_levels_[level];
-              if (level) {
-                score.add(score_levels_[level - 1]);
+
+              if (level < std::size(score_levels_) - 1) {
+                // accumulate score on less granular level
+                score_levels_[level + 1].add(score);
               }
               score.write(out);
             }
@@ -1753,7 +1755,7 @@ class doc_iterator final : public irs::doc_iterator {
 
   doc_iterator() noexcept
     : skip_levels_(1),
-      skip_{IteratorTraits::block_size(), postings_writer_base::SKIP_N, ReadSkip{*this}} {
+      skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN, ReadSkip{*this}} {
     assert(
       std::all_of(std::begin(buf_.docs), std::end(buf_.docs),
                   [](doc_id_t doc) { return !doc_limits::valid(doc); }));
@@ -2173,7 +2175,7 @@ class wanderator final : public irs::doc_iterator {
   wanderator() noexcept
     : skip_levels_(1),
       skip_scores_(1),
-      skip_{IteratorTraits::block_size(), postings_writer_base::SKIP_N, ReadSkip{*this}} {
+      skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN, ReadSkip{*this}} {
     assert(
       std::all_of(std::begin(buf_.docs), std::end(buf_.docs),
                   [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
@@ -3092,8 +3094,8 @@ void postings_reader_base::prepare(
   // prepare document input
   prepare_input(
     buf, doc_in_, irs::IOAdvice::RANDOM, state,
-    postings_writer_base::DOC_EXT,
-    postings_writer_base::DOC_FORMAT_NAME,
+    postings_writer_base::kDocExt,
+    postings_writer_base::kDocFormatName,
     static_cast<int32_t>(PostingsFormat::MIN),
     static_cast<int32_t>(PostingsFormat::MAX));
 
@@ -3108,8 +3110,8 @@ void postings_reader_base::prepare(
     /* prepare positions input */
     prepare_input(
       buf, pos_in_, irs::IOAdvice::RANDOM, state,
-      postings_writer_base::POS_EXT,
-      postings_writer_base::POS_FORMAT_NAME,
+      postings_writer_base::kPosExt,
+      postings_writer_base::kPosFormatName,
       static_cast<int32_t>(PostingsFormat::MIN),
       static_cast<int32_t>(PostingsFormat::MAX));
 
@@ -3124,8 +3126,8 @@ void postings_reader_base::prepare(
       // prepare positions input
       prepare_input(
         buf, pay_in_, irs::IOAdvice::RANDOM, state,
-        postings_writer_base::PAY_EXT,
-        postings_writer_base::PAY_FORMAT_NAME,
+        postings_writer_base::kPayExt,
+        postings_writer_base::kPayFormatName,
         static_cast<int32_t>(PostingsFormat::MIN),
         static_cast<int32_t>(PostingsFormat::MAX));
 
@@ -3140,7 +3142,7 @@ void postings_reader_base::prepare(
 
   // check postings format
   format_utils::check_header(in,
-    postings_writer_base::TERMS_FORMAT_NAME,
+    postings_writer_base::kTermsFormatName,
     static_cast<int32_t>(TermsFormat::MIN),
     static_cast<int32_t>(TermsFormat::MAX));
 
