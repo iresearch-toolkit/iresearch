@@ -616,11 +616,17 @@ int search(
           irs::timer_utils::scoped_timer timer(*(execution_timers.stat[size_t(task->category)]));
 
           for (auto& segment: reader) {
-            auto docs = filter->execute(segment, order); // query segment
-            const irs::score* score = irs::get<irs::score>(*docs);
-            assert(score);
+            auto docs = filter->execute(segment, order, irs::ExecutionMode::kAll);
+            assert(docs);
+
             const irs::document* doc = irs::get<irs::document>(*docs);
-            assert(doc);
+            const irs::score* score = irs::get<irs::score>(*docs);
+
+            irs::score_threshold tmp;
+            auto* threshold = irs::get_mutable<irs::score_threshold>(docs.get());
+            if (!threshold) {
+              threshold = &tmp;
+            }
 
             while (docs->next()) {
               ++doc_count;
@@ -633,26 +639,28 @@ int search(
                   sorted.begin(), sorted.end(),
                   [](const std::pair<float_t, irs::doc_id_t>& lhs,
                      const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
-                    return lhs.first < rhs.first;
+                    return lhs.first > rhs.first;
                 });
               } else if (sorted.front().first < score_value) {
                 std::pop_heap(
                   sorted.begin(), sorted.end(),
                   [](const std::pair<float_t, irs::doc_id_t>& lhs,
                      const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
-                    return lhs.first < rhs.first;
+                    return lhs.first > rhs.first;
                 });
 
-                auto& back = sorted.back();
-                back.first = score_value;
-                back.second = doc->value;
+                auto& [score, doc_id] = sorted.back();
+                score = score_value;
+                doc_id = doc->value;
 
                 std::push_heap(
                   sorted.begin(), sorted.end(),
                   [](const std::pair<float_t, irs::doc_id_t>& lhs,
                      const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
-                    return lhs.first < rhs.first;
+                    return lhs.first > rhs.first;
                 });
+
+                threshold->set(sorted.front().first);
               }
             }
           }
@@ -663,7 +671,7 @@ int search(
               begin, end,
               [](const std::pair<float_t, irs::doc_id_t>& lhs,
                  const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
-                return lhs.first < rhs.first;
+                return lhs.first > rhs.first;
             });
           }
         }
