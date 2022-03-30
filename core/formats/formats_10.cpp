@@ -2298,8 +2298,8 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(
 
     auto& threshold = std::get<score_threshold>(self_->attrs_);
 
-    // FIXME(gnusi): parameterize <= vs <
-    if (skip_buffer.value() <= threshold.get()) {
+    // FIXME(gnusi): parameterize > vs >=
+    if (threshold.get() > skip_buffer.value()) {
       return doc_limits::invalid();
     }
   }
