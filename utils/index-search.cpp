@@ -762,7 +762,7 @@ int search(const cmdline::parser& args) {
             << "Scorer used for ranking query results="      << scorer             << '\n'
             << "Configuration argument format for query scorer=" << scorer_arg_format << '\n'
             << "Configuration argument for query scorer="    << scorer_arg         << '\n'
-            << "Search mode"                                 << mode               << '\n'
+            << "Search mode="                                << mode               << '\n'
             << "Output CSV="                                 << csv                << std::endl;
 
   std::fstream in(args.get<std::string>(INPUT), std::fstream::in);
