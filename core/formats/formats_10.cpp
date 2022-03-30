@@ -334,7 +334,7 @@ class score_buffer {
     freq_ = std::max(value, freq_);
   }
 
-  void add(const score_buffer& rhs) noexcept {
+  void add(score_buffer rhs) noexcept {
     add(rhs.freq_);
   }
 
@@ -974,6 +974,9 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
   begin_term();
   if constexpr (FormatTraits::wand()) {
     score_buf_.reset();
+    for (auto& level : score_levels_) {
+      level.reset();
+    }
   }
 
   uint32_t docs_count = 0;
