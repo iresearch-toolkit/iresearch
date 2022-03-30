@@ -2293,13 +2293,13 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(
   ReadState<FieldTraits>(next, in);
 
   if constexpr (FieldTraits::frequency()) {
-    auto& skip_buffer = self_->skip_scores_[level];
-    skip_buffer.read(in);
+    auto& max_block_score = self_->skip_scores_[level];
+    max_block_score.read(in);
 
-    auto& threshold = std::get<score_threshold>(self_->attrs_);
+    auto& min_competitive_score = std::get<score_threshold>(self_->attrs_);
 
     // FIXME(gnusi): parameterize > vs >=
-    if (threshold.get() > skip_buffer.value()) {
+    if (min_competitive_score.get() > max_block_score.value()) {
       return doc_limits::invalid();
     }
   }
