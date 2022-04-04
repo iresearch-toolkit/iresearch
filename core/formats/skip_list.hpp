@@ -313,12 +313,12 @@ doc_id_t SkipReader<Read>::SeekIf(Pred pred) {
     }
   }
 
-  assert(id == back) ;
+  assert(id == back);
   auto& level = levels_.back();
   const doc_id_t step{level.step};
   auto& stream{*level.stream};
 
-  for (; pred(id); ) {
+  while (pred(id)) {
     reader_.Read(id, level.skipped += step, stream);
   }
 
