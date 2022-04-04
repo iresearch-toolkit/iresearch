@@ -2107,7 +2107,11 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
     // init skip writer in lazy fashion
     if (skip_.NumLevels() != 0) {
 seek_after_initialization:
-      const doc_id_t skipped{skip_.Seek(target)};
+      const doc_id_t skipped{skip_.SeekIf(
+          [target, this](size_t id) noexcept {
+            return skip_levels_[id].doc < target;
+          })};
+
       if (skipped > (cur_pos_ + relative_pos())) {
         doc_in_->seek(last.doc_ptr);
         std::get<document>(attrs_).value = last.doc;
@@ -2230,7 +2234,11 @@ class wanderator final : public irs::doc_iterator {
       assert(skip_.NumLevels());
       assert(0 == prev_skip_.doc_ptr);
 
-      const doc_id_t skipped{skip_.Seek(target)};
+      const doc_id_t skipped{skip_.SeekIf(
+          [target, this](size_t id) noexcept {
+            return skip_levels_[id].doc < target;
+          })};
+
       if (skipped > (cur_pos_ + relative_pos())) {
         std::get<document>(attrs_).value = prev_skip_.doc;
         cur_pos_ = skipped;

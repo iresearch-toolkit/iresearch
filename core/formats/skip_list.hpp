@@ -266,6 +266,9 @@ class SkipReader final : public SkipReaderBase {
   //////////////////////////////////////////////////////////////////////////////
   doc_id_t Seek(doc_id_t target);
 
+  template<typename Pred>
+  doc_id_t SeekIf(Pred pred);
+
   ReaderType& Reader() noexcept {
     return reader_;
   }
@@ -273,6 +276,74 @@ class SkipReader final : public SkipReaderBase {
  private:
   ReaderType reader_;
 };
+
+template<typename Read>
+template<typename Pred>
+doc_id_t SkipReader<Read>::SeekIf(Pred pred) {
+  assert(!levels_.empty());
+  assert(std::is_sorted(
+    std::begin(keys_), std::end(keys_),
+    [](const auto& lhs, const auto& rhs) { return lhs.doc > rhs.doc; }));
+  const size_t back = keys_.size() - 1;
+
+  // returns the highest level with the value not less than a target
+  auto i = [back, &pred]() noexcept {
+      size_t i = 0;
+
+      for (; i <= back; ++i) {
+        if (pred(back - i)) {
+          return i;
+        }
+      }
+
+      return back;
+    }();
+
+  assert(i != std::size(keys_));
+
+  // FIXME
+  //   * use the same order of levels in formats/skip-list -> remove level.id
+  //   * remove level keys
+  //   * try to use predicates for docs as well (check performance)
+  //   * it seems we can use predicates for skipping on both score and doc id
+
+  for (uint64_t child_ptr{0}; i != back; ++i) {
+    if (pred(back - i)) {
+      auto& level = levels_[i];
+      const doc_id_t step{level.step};
+      assert(back - i == level.id);
+      const size_t id{level.id};
+      auto& stream{*level.stream};
+
+      do {
+        child_ptr = level.child;
+        const auto doc = reader_.Read(id, level.skipped += step, stream);
+
+        if (!doc_limits::eof(doc)) {
+          level.child = stream.read_vlong();
+        }
+      } while (pred(id));
+
+      auto* next_level = &level + 1;
+      SeekToChild(*next_level, child_ptr, level);
+      reader_.MoveDown(next_level->id);
+    }
+  }
+
+  assert(i == back) ;
+  auto& level = levels_.back();
+  const doc_id_t step{level.step};
+  assert(back - i == level.id);
+  const size_t id{level.id};
+  auto& stream{*level.stream};
+
+  for (; pred(id); ) {
+    reader_.Read(id, level.skipped += step, stream);
+  }
+
+  const doc_id_t skipped = level.skipped;
+  return skipped ? skipped - step : 0;
+}
 
 template<typename Read>
 doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
@@ -288,7 +359,7 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
       auto begin = std::begin(keys_);
 
       for (; begin != std::end(keys_); ++begin) {
-        if (target >= begin->doc) {
+        if (begin->doc < target) {
           return begin;
         }
       }
