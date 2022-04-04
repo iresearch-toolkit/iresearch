@@ -1762,7 +1762,7 @@ class doc_iterator final : public irs::doc_iterator {
     assert(
       std::all_of(std::begin(buf_.docs), std::end(buf_.docs),
                   [](doc_id_t doc) { return !doc_limits::valid(doc); }));
-    skip_levels_.front().doc = doc_limits::eof(); // prevent using skip-list by default
+    skip_levels_.back().doc = doc_limits::eof(); // prevent using skip-list by default
   }
 
   void prepare(
@@ -1998,7 +1998,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
     ++end_;
   } else if (term_state_.docs_count > IteratorTraits::block_size()) {
     // allow using skip-list for long enough postings
-    skip_levels_.front().doc = doc_limits::invalid();
+    skip_levels_.back().doc = doc_limits::invalid();
   }
 }
 
@@ -2097,7 +2097,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
   assert(1 != term_state_.docs_count); // ensured by prepare(...)
 
   // check whether it make sense to use skip-list
-  if (skip_levels_.front().doc < target) {
+  if (skip_levels_.back().doc < target) {
     // ensured by prepare(...)
     assert(term_state_.docs_count > IteratorTraits::block_size());
 
@@ -2107,6 +2107,11 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
     // init skip writer in lazy fashion
     if (skip_.NumLevels() != 0) {
 seek_after_initialization:
+      assert(std::is_sorted(
+          std::begin(skip_levels_), std::end(skip_levels_),
+          [](const auto& lhs, const auto& rhs) {
+              return lhs.doc > rhs.doc; }));
+
       const doc_id_t skipped{skip_.SeekIf(
           [target, this](size_t id) noexcept {
             return skip_levels_[id].doc < target;
@@ -2138,18 +2143,18 @@ seek_after_initialization:
 
     // initialize skip levels
     if (const auto num_levels = skip_.NumLevels(); IRS_LIKELY(num_levels)) {
-      assert(!doc_limits::valid(skip_levels_.front().doc));
+      assert(!doc_limits::valid(skip_levels_.back().doc));
       skip_levels_.resize(num_levels);
 
       // since we store pointer deltas, add postings offset
-      auto& top = skip_levels_.back();
+      auto& top = skip_levels_.front();
       CopyState<IteratorTraits>(top, term_state_);
 
       goto seek_after_initialization;
     } else {
       if (IRS_LIKELY(term_state_.docs_count <= IteratorTraits::block_size())) {
         // prevent using skip-list
-        skip_levels_.front().doc = doc_limits::eof();
+        skip_levels_.back().doc = doc_limits::eof();
       } else {
         assert(false);
         throw index_error("Zero number of skip levels.");
@@ -2186,7 +2191,7 @@ class wanderator final : public irs::doc_iterator {
     assert(
       std::all_of(std::begin(buf_.docs), std::end(buf_.docs),
                   [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
-    skip_levels_.front().doc = doc_limits::eof(); // prevent using skip-list by default
+    skip_levels_.back().doc = doc_limits::eof(); // prevent using skip-list by default
   }
 
   void prepare(const term_meta& meta,
@@ -2228,7 +2233,12 @@ class wanderator final : public irs::doc_iterator {
     // FIXME(gnusi) don't use wanderator for short posting lists?
 
     // check whether it make sense to use skip-list
-    if (skip_levels_.front().doc < target) {
+    if (skip_levels_.back().doc < target) {
+      assert(std::is_sorted(
+          std::begin(skip_levels_), std::end(skip_levels_),
+          [](const auto& lhs, const auto& rhs) {
+              return lhs.doc > rhs.doc; }));
+
       // ensured by prepare(...)
       assert(term_state_.docs_count > IteratorTraits::block_size());
       assert(skip_.NumLevels());
@@ -2326,7 +2336,7 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
   assert(!IteratorTraits::offset() || IteratorTraits::offset() == FieldTraits::offset());
   assert(!IteratorTraits::payload() || IteratorTraits::payload() == FieldTraits::payload());
   assert(!skip_levels_.empty()); // ensured by ctor
-  assert(doc_limits::eof(skip_levels_.front().doc)); // ensured by ctor
+  assert(doc_limits::eof(skip_levels_.back().doc)); // ensured by ctor
 
   // don't use wanderator for short posting lists
   assert(meta.docs_count > IteratorTraits::block_size());
@@ -2398,11 +2408,10 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
       skip_levels_.resize(num_levels);
       skip_scores_.resize(num_levels);
 
-      // allow using skip-list for long enough postings
-      skip_levels_.front().doc = doc_limits::invalid();
-
       // since we store pointer deltas, add postings offset
-      auto& top = skip_levels_.back();
+      auto& top = skip_levels_.front();
+      // allow using skip-list for long enough postings
+      top.doc = doc_limits::invalid();
       CopyState<IteratorTraits>(top, term_state_);
     }
   } else if (1 == term_state_.docs_count) {

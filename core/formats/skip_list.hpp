@@ -162,7 +162,7 @@ class SkipReaderBase : util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements in a skip-list
   //////////////////////////////////////////////////////////////////////////////
-  size_t NumLevels() const noexcept { return levels_.size(); }
+  size_t NumLevels() const noexcept { return std::size(levels_); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prepares skip_reader
@@ -191,7 +191,6 @@ class SkipReaderBase : util::noncopyable {
   struct Level final {
     Level(
       index_input::ptr&& stream,
-      uint32_t id,
       doc_id_t step,
       uint64_t begin) noexcept;
     Level(Level&&) = default;
@@ -200,14 +199,8 @@ class SkipReaderBase : util::noncopyable {
     index_input::ptr stream; // level data stream
     uint64_t begin; // where current level starts
     uint64_t child{}; // pointer to current child level
-    const uint32_t id; // level id
     const doc_id_t step; // how many docs we jump over with a single skip
     doc_id_t skipped{}; // number of skipped documents at the level
-  };
-
-  struct LevelKey {
-    Level* const data; // pointer to actual level
-    doc_id_t doc; // current key
   };
 
   static_assert(std::is_nothrow_move_constructible_v<Level>);
@@ -232,7 +225,6 @@ class SkipReaderBase : util::noncopyable {
   }
 
   std::vector<Level> levels_; // input streams for skip-list levels
-  std::vector<LevelKey> keys_;
   const doc_id_t skip_0_; // skip interval for 0 level
   const doc_id_t skip_n_; // skip interval for 1..n levels
 };
@@ -281,25 +273,20 @@ template<typename Read>
 template<typename Pred>
 doc_id_t SkipReader<Read>::SeekIf(Pred pred) {
   assert(!levels_.empty());
-  assert(std::is_sorted(
-    std::begin(keys_), std::end(keys_),
-    [](const auto& lhs, const auto& rhs) { return lhs.doc > rhs.doc; }));
-  const size_t back = keys_.size() - 1;
+  const size_t back = std::size(levels_) - 1;
 
   // returns the highest level with the value not less than a target
-  auto i = [back, &pred]() noexcept {
-      size_t i = 0;
-
-      for (; i <= back; ++i) {
-        if (pred(back - i)) {
-          return i;
+  auto id = [back, &pred]() noexcept {
+      for (size_t id = 0; id <= back; ++id) {
+        if (pred(id)) {
+          return id;
         }
       }
 
       return back;
     }();
 
-  assert(i != std::size(keys_));
+  assert(id != std::size(levels_));
 
   // FIXME
   //   * use the same order of levels in formats/skip-list -> remove level.id
@@ -307,12 +294,10 @@ doc_id_t SkipReader<Read>::SeekIf(Pred pred) {
   //   * try to use predicates for docs as well (check performance)
   //   * it seems we can use predicates for skipping on both score and doc id
 
-  for (uint64_t child_ptr{0}; i != back; ++i) {
-    if (pred(back - i)) {
-      auto& level = levels_[i];
+  for (uint64_t child_ptr{0}; id != back; ++id) {
+    if (pred(id)) {
+      auto& level = levels_[id];
       const doc_id_t step{level.step};
-      assert(back - i == level.id);
-      const size_t id{level.id};
       auto& stream{*level.stream};
 
       do {
@@ -324,17 +309,15 @@ doc_id_t SkipReader<Read>::SeekIf(Pred pred) {
         }
       } while (pred(id));
 
-      auto* next_level = &level + 1;
-      SeekToChild(*next_level, child_ptr, level);
-      reader_.MoveDown(next_level->id);
+      const auto next_id = id + 1;
+      SeekToChild(levels_[next_id], child_ptr, level);
+      reader_.MoveDown(next_id);
     }
   }
 
-  assert(i == back) ;
+  assert(id == back) ;
   auto& level = levels_.back();
   const doc_id_t step{level.step};
-  assert(back - i == level.id);
-  const size_t id{level.id};
   auto& stream{*level.stream};
 
   for (; pred(id); ) {
@@ -348,61 +331,59 @@ doc_id_t SkipReader<Read>::SeekIf(Pred pred) {
 template<typename Read>
 doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
   assert(!levels_.empty());
-  assert(std::is_sorted(
-    std::begin(keys_), std::end(keys_),
-    [](const auto& lhs, const auto& rhs) { return lhs.doc > rhs.doc; }));
 
-  // returns the highest level with the value not less than a target
-  auto key = [this](doc_id_t target) noexcept {
-      // we prefer linear scan over binary search because
-      // it's more performant for a small number of elements (< 30)
-      auto begin = std::begin(keys_);
-
-      for (; begin != std::end(keys_); ++begin) {
-        if (begin->doc < target) {
-          return begin;
-        }
-      }
-
-      return std::prev(std::end(keys_));
-    }(target);
-
-  assert(key != std::end(keys_));
-  const auto back = std::prev(std::end(keys_));
-
-  for (uint64_t child_ptr{0}; key != back; ++key) {
-    if (auto& doc = key->doc; doc < target) {
-      auto& level = *key->data;
-      const doc_id_t step{level.step};
-      const size_t id{level.id};
-      auto& stream{*level.stream};
-
-      do {
-        child_ptr = level.child;
-        doc = reader_.Read(id, level.skipped += step, stream);
-        if (!doc_limits::eof(doc)) {
-          level.child = stream.read_vlong();
-        }
-      } while (doc < target);
-
-      auto* next_level = &level + 1;
-      SeekToChild(*next_level, child_ptr, level);
-      reader_.MoveDown(next_level->id);
-    }
-  }
-
-  assert(key == back) ;
-  auto& level = *key->data;
-  const doc_id_t step{level.step};
-  const size_t id{level.id};
-  auto& stream{*level.stream};
-
-  for (auto& doc = key->doc; doc < target; ) {
-    doc = reader_.Read(id, level.skipped += step, stream);
-  }
-
-  const doc_id_t skipped = level.skipped;
-  return skipped ? skipped - step : 0;
+//  // returns the highest level with the value not less than a target
+//  auto key = [this](doc_id_t target) noexcept {
+//      // we prefer linear scan over binary search because
+//      // it's more performant for a small number of elements (< 30)
+//      auto begin = std::begin(keys_);
+//
+//      for (; begin != std::end(keys_); ++begin) {
+//        if (begin->doc < target) {
+//          return begin;
+//        }
+//      }
+//
+//      return std::prev(std::end(keys_));
+//    }(target);
+//
+//  assert(key != std::end(keys_));
+//  const auto back = std::prev(std::end(keys_));
+//
+//  for (uint64_t child_ptr{0}; key != back; ++key) {
+//    if (auto& doc = key->doc; doc < target) {
+//      auto& level = *key->data;
+//      const doc_id_t step{level.step};
+//      const size_t id{/*level.id*/ 0};
+//      auto& stream{*level.stream};
+//
+//      do {
+//        child_ptr = level.child;
+//        doc = reader_.Read(id, level.skipped += step, stream);
+//        if (!doc_limits::eof(doc)) {
+//          level.child = stream.read_vlong();
+//        }
+//      } while (doc < target);
+//
+//      auto* next_level = &level + 1;
+//      SeekToChild(*next_level, child_ptr, level);
+//      reader_.MoveDown(/*next_level->id*/0);
+//    }
+//  }
+//
+//  assert(key == back) ;
+//  auto& level = *key->data;
+//  const doc_id_t step{level.step};
+//  const size_t id{/*level.id*/0};
+//  auto& stream{*level.stream};
+//
+//  for (auto& doc = key->doc; doc < target; ) {
+//    doc = reader_.Read(id, level.skipped += step, stream);
+//  }
+//
+//  const doc_id_t skipped = level.skipped;
+//  return skipped ? skipped - step : 0;
+return 0;
 }
 
 } // iresearch

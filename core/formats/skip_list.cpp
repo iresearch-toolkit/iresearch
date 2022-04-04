@@ -35,7 +35,8 @@ namespace {
 // returns maximum number of skip levels needed to store specified
 // count of objects for skip list with
 // step skip_0 for 0 level, step skip_n for other levels
-constexpr size_t max_levels(size_t skip_0, size_t skip_n, size_t count) {
+constexpr size_t max_levels(size_t skip_0, size_t skip_n,
+                            size_t count) noexcept {
   return skip_0 < count
     ? 1 + irs::math::log(count/skip_0, skip_n)
     : 0;
@@ -60,13 +61,13 @@ void SkipWriter::Prepare(
   }
 
   // add new skip levels if needed
-  for (auto size = levels_.size(); size < max_levels_; ++size) {
+  for (auto size = std::size(levels_); size < max_levels_; ++size) {
     levels_.emplace_back(alloc);
   }
 }
 
 void SkipWriter::Flush(index_output& out) {
-  const auto rbegin = std::make_reverse_iterator(levels_.begin() + max_levels_);
+  const auto rbegin = std::make_reverse_iterator(std::begin(levels_) + max_levels_);
   const auto rend = std::rend(levels_);
 
   // find first filled level
@@ -94,25 +95,20 @@ void SkipWriter::Flush(index_output& out) {
 
 SkipReaderBase::Level::Level(
     index_input::ptr&& stream,
-    uint32_t id,
     doc_id_t step,
     uint64_t begin) noexcept
   : stream{std::move(stream)}, // thread-safe input
     begin{begin},
-    id{id},
     step{step} {
 }
 
 void SkipReaderBase::Reset() {
-  for (auto& level_key : keys_) {
-    assert(level_key.data);
-    auto& level = *level_key.data;
+  for (auto& level : levels_) {
     level.stream->seek(level.begin);
     if (level.child != kUndefined) {
       level.child = 0;
     }
     level.skipped = 0;
-    level_key.doc = doc_limits::invalid();
   }
 }
 
@@ -122,12 +118,9 @@ void SkipReaderBase::Prepare(index_input::ptr&& in) {
   if (uint32_t max_levels = in->read_vint(); max_levels) {
     decltype(levels_) levels;
     levels.reserve(max_levels);
-    decltype(keys_) keys;
-    keys.reserve(max_levels);
 
-    auto load_level = [&levels, &keys](index_input::ptr stream,
-                                       uint32_t id,
-                                       doc_id_t step) {
+    auto load_level = [&levels](index_input::ptr stream,
+                                doc_id_t step) {
       assert(stream);
 
       // read level length
@@ -139,8 +132,7 @@ void SkipReaderBase::Prepare(index_input::ptr&& in) {
 
       const auto begin = stream->file_pointer();
 
-      levels.emplace_back(std::move(stream), id, step, begin);
-      keys.emplace_back(LevelKey{&levels.back(), doc_limits::invalid()});
+      levels.emplace_back(std::move(stream), step, begin);
 
       return begin + length;
     };
@@ -150,7 +142,7 @@ void SkipReaderBase::Prepare(index_input::ptr&& in) {
 
     // load levels from n down to 1
     for (; max_levels; --max_levels) {
-      const auto offset = load_level(in->dup(), max_levels, step);
+      const auto offset = load_level(in->dup(), step);
 
       // seek to the next level
       in->seek(offset);
@@ -159,25 +151,11 @@ void SkipReaderBase::Prepare(index_input::ptr&& in) {
     }
 
     // load 0 level
-    load_level(std::move(in), 0, skip_0_);
+    load_level(std::move(in), skip_0_);
     levels.back().child = kUndefined;
 
     levels_ = std::move(levels);
-    keys_ = std::move(keys);
   }
-
-  assert(std::all_of(
-      std::begin(levels_), std::end(levels_),
-      [this](auto& level) {
-        return level.stream &&
-               size_t(std::distance(&level, &levels_.back())) == level.id;
-      }));
-  assert(std::all_of(
-      std::begin(keys_), std::end(keys_),
-      [this](auto& key) {
-        return key.data &&
-               size_t(std::distance(key.data, &levels_.back())) == key.data->id;
-      }));
 }
 
 }
