@@ -302,9 +302,7 @@ doc_id_t SkipReader<Read>::SeekIf(Pred pred) {
 
       do {
         child_ptr = level.child;
-        const auto doc = reader_.Read(id, level.skipped += step, stream);
-
-        if (!doc_limits::eof(doc)) {
+        if (reader_.Read(id, level.skipped += step, stream)) {
           level.child = stream.read_vlong();
         }
       } while (pred(id));
