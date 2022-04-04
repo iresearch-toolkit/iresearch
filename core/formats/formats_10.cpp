@@ -2246,8 +2246,17 @@ class wanderator final : public irs::doc_iterator {
       assert(0 == prev_skip_.doc_ptr);
 
       const doc_id_t skipped{skip_.SeekIf(
-          [target, this](size_t id) noexcept {
-            return skip_levels_[id].doc < target;
+          [target, this](size_t level) noexcept {
+            if constexpr (FieldTraits::frequency()) {
+              auto& min_competitive_score = std::get<score_threshold>(attrs_);
+              auto& max_block_score = skip_scores_[level];
+
+              // FIXME(gnusi): parameterize > vs >=
+              return skip_levels_[level].doc < target
+                || max_block_score.value() < min_competitive_score.get();
+             } else {
+               return skip_levels_[level].doc < target;
+             }
           })};
 
       if (skipped > (cur_pos_ + relative_pos())) {
@@ -2315,13 +2324,6 @@ bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(
   if constexpr (FieldTraits::frequency()) {
     auto& max_block_score = self_->skip_scores_[level];
     max_block_score.read(in);
-
-    auto& min_competitive_score = std::get<score_threshold>(self_->attrs_);
-
-    // FIXME(gnusi): parameterize > vs >=
-    if (min_competitive_score.get() > max_block_score.value()) {
-      return true;
-    }
   }
 
   return true;
