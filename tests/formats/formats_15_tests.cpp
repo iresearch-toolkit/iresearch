@@ -184,6 +184,8 @@ void Format15TestCase::PostingsWandSeek(
 
         ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
 
+        // FIXME(gnusi): check written freq threshold value
+
         while (expected.next()) {
           const auto expected_doc_id = expected.value();
           ASSERT_TRUE(actual->next());

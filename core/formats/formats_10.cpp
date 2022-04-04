@@ -1005,6 +1005,8 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
                 score_levels_[level + 1].add(score);
               }
               score.write(out);
+
+              // FIXME(gnusi): reset score at a level?
             }
           }
       });
