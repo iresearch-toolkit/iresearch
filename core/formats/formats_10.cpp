@@ -1005,8 +1005,7 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
                 score_levels_[level + 1].add(score);
               }
               score.write(out);
-
-              // FIXME(gnusi): reset score at a level?
+              score.reset();
             }
           }
       });
@@ -2234,9 +2233,11 @@ class wanderator final : public irs::doc_iterator {
 
   void seek_to_block(doc_id_t target) {
     // FIXME(gnusi) don't use wanderator for short posting lists?
+    auto& min_competitive_score = std::get<score_threshold>(attrs_);
 
     // check whether it make sense to use skip-list
-    if (skip_levels_.back().doc < target) {
+    if (skip_levels_.back().doc < target
+          || skip_scores_.back().value() <= min_competitive_score.get()) {
       assert(std::is_sorted(
           std::begin(skip_levels_), std::end(skip_levels_),
           [](const auto& lhs, const auto& rhs) {
@@ -2255,7 +2256,7 @@ class wanderator final : public irs::doc_iterator {
 
               // FIXME(gnusi): parameterize > vs >=
               return skip_levels_[level].doc < target
-                || max_block_score.value() < min_competitive_score.get();
+                || max_block_score.value() <= min_competitive_score.get();
              } else {
                return skip_levels_[level].doc < target;
              }
@@ -2318,6 +2319,10 @@ bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(
   if (skipped >= self_->term_state_.docs_count) {
     // stream exhausted
     next.doc = doc_limits::eof();
+    if constexpr (FieldTraits::frequency()) {
+      auto& max_block_score = self_->skip_scores_[level];
+      max_block_score.add(std::numeric_limits<uint32_t>::max());
+    }
     return false;
   }
 
