@@ -1833,6 +1833,7 @@ class doc_iterator final : public irs::doc_iterator {
       : self_{&self} {
     }
 
+    bool IsLess(size_t level, doc_id_t target) const noexcept;
     void MoveDown(size_t level) const;
     bool Read(size_t level, size_t end, index_input& in) const;
 
@@ -1896,6 +1897,13 @@ class doc_iterator final : public irs::doc_iterator {
   version10::term_meta term_state_;
   attributes attrs_;
 }; // doc_iterator
+
+
+template<typename IteratorTraits, typename FieldTraits>
+bool doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::IsLess(
+    size_t level, doc_id_t target) const noexcept {
+  return self_->skip_levels_[level].doc < target;
+}
 
 template<typename IteratorTraits, typename FieldTraits>
 void doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::MoveDown(
@@ -2114,12 +2122,8 @@ seek_after_initialization:
           [](const auto& lhs, const auto& rhs) {
               return lhs.doc > rhs.doc; }));
 
-      const doc_id_t skipped{skip_.SeekIf(
-          [target, this](size_t id) noexcept {
-            return skip_levels_[id].doc < target;
-          })};
-
-      if (skipped > (cur_pos_ + relative_pos())) {
+      if (const doc_id_t skipped{skip_.Seek(target)};
+          skipped > (cur_pos_ + relative_pos())) {
         doc_in_->seek(last.doc_ptr);
         std::get<document>(attrs_).value = last.doc;
         cur_pos_ = skipped;
@@ -2224,6 +2228,7 @@ class wanderator final : public irs::doc_iterator {
       : self_{&self} {
     }
 
+    bool IsLess(size_t level, doc_id_t target) const noexcept;
     void MoveDown(size_t level) const;
     bool Read(size_t level, doc_id_t skipped, index_input& in) const;
 
@@ -2248,21 +2253,8 @@ class wanderator final : public irs::doc_iterator {
       assert(skip_.NumLevels());
       assert(0 == prev_skip_.doc_ptr);
 
-      const doc_id_t skipped{skip_.SeekIf(
-          [target, this](size_t level) noexcept {
-            if constexpr (FieldTraits::frequency()) {
-              auto& min_competitive_score = std::get<score_threshold>(attrs_);
-              auto& max_block_score = skip_scores_[level];
-
-              // FIXME(gnusi): parameterize > vs >=
-              return skip_levels_[level].doc < target
-                || max_block_score.value() <= min_competitive_score.get();
-             } else {
-               return skip_levels_[level].doc < target;
-             }
-          })};
-
-      if (skipped > (cur_pos_ + relative_pos())) {
+      if (const doc_id_t skipped{skip_.Seek(target)};
+          skipped > (cur_pos_ + relative_pos())) {
         std::get<document>(attrs_).value = prev_skip_.doc;
         cur_pos_ = skipped;
         begin_ = end_ = buf_.docs; // will trigger refill in "next"
@@ -2296,6 +2288,21 @@ class wanderator final : public irs::doc_iterator {
   version10::term_meta term_state_;
   attributes attrs_;
 }; // wanderator
+
+template<typename IteratorTraits, typename FieldTraits>
+bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::IsLess(
+    size_t level, doc_id_t target) const noexcept {
+  if constexpr (FieldTraits::frequency()) {
+    auto& min_competitive_score = std::get<score_threshold>(self_->attrs_);
+    auto& max_block_score = self_->skip_scores_[level];
+
+        // FIXME(gnusi): parameterize > vs >=
+    return self_->skip_levels_[level].doc < target
+           || max_block_score.value() <= min_competitive_score.get();
+  } else {
+    return self_->skip_levels_[level].doc < target;
+  }
+}
 
 template<typename IteratorTraits, typename FieldTraits>
 void wanderator<IteratorTraits, FieldTraits>::ReadSkip::MoveDown(
