@@ -273,44 +273,45 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
   size_t id = 0;
 
   // returns the highest level with the value not less than a target
-  for (; id < size; ++id) {
+  for (; id != size; ++id) {
     if (reader_.IsLess(id, target)) {
       break;
     }
   }
 
-  if (id == size) {
-    return 0;
-  }
+  if (id != size) {
+    --size;
+    for (uint64_t child_ptr{0}; id != size; ++id) {
+      auto& level = levels_[id];
+      const doc_id_t step{level.step};
+      auto& stream{*level.stream};
 
-  --size;
-  for (uint64_t child_ptr{0}; id != size; ++id) {
-    auto& level = levels_[id];
+      do {
+        child_ptr = level.child;
+        if (reader_.Read(id, level.skipped += step, stream)) {
+          level.child = stream.read_vlong();
+        }
+      } while (reader_.IsLess(id, target));
+
+      const auto next_id = id + 1;
+      SeekToChild(levels_[next_id], child_ptr, level);
+      reader_.MoveDown(next_id);
+    }
+
+    auto& level = levels_.back();
+    assert(&level == &levels_[id]);
     const doc_id_t step{level.step};
     auto& stream{*level.stream};
 
     do {
-      child_ptr = level.child;
-      if (reader_.Read(id, level.skipped += step, stream)) {
-        level.child = stream.read_vlong();
-      }
+      reader_.Read(id, level.skipped += step, stream);
     } while (reader_.IsLess(id, target));
 
-    const auto next_id = id + 1;
-    SeekToChild(levels_[next_id], child_ptr, level);
-    reader_.MoveDown(next_id);
+    return level.skipped - step;
   }
 
-  auto& level = levels_.back();
-  assert(&level == &levels_[id]);
-  const doc_id_t step{level.step};
-  auto& stream{*level.stream};
-
-  do {
-    reader_.Read(id, level.skipped += step, stream);
-  } while (reader_.IsLess(id, target));
-
-  return level.skipped - step;
+  const auto skipped = levels_.back().skipped;
+  return skipped ? skipped - skip_0_ : 0;
 }
 
 } // iresearch

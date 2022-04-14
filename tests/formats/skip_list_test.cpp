@@ -571,142 +571,142 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(0, reader.Seek(5));
       ASSERT_FALSE(irs::doc_limits::valid(lower));
       ASSERT_EQ((std::vector{511U,63U,7U}), upper_bounds);
-      ctx.AssertCallsCount(7, 2, 3);
+      ctx.AssertCallsCount(4, 2, 3);
 
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(0, reader.Seek(5));
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to last document in a 1st block 
       ctx.ResetCallsCount();
       ASSERT_EQ(0, reader.Seek(7));
       ASSERT_FALSE(irs::doc_limits::valid(lower));
       ASSERT_EQ((std::vector{511U,63U,7U}), upper_bounds);
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(0, reader.Seek(7));
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to the first document in a 2nd block
       ctx.ResetCallsCount();
       ASSERT_EQ(8, reader.Seek(8));
       ASSERT_EQ(7, lower);
       ASSERT_EQ((std::vector{511U,63U,15U}), upper_bounds);
-      ctx.AssertCallsCount(5, 0, 1);
+      ctx.AssertCallsCount(4, 0, 1);
 
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(8, reader.Seek(8));
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to 63
       ctx.ResetCallsCount();
       ASSERT_EQ(56, reader.Seek(63));
       ASSERT_EQ(55, lower);
       ASSERT_EQ((std::vector{511U,63U,63U}), upper_bounds);
-      ctx.AssertCallsCount(10, 0, 6);
+      ctx.AssertCallsCount(9, 0, 6);
 
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(56, reader.Seek(63));
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to 64
       ctx.ResetCallsCount();
       ASSERT_EQ(64, reader.Seek(64));
       ASSERT_EQ(63, lower);
       ASSERT_EQ((std::vector{511U,127U,71U}), upper_bounds);
-      ctx.AssertCallsCount(6, 1, 2);
+      ctx.AssertCallsCount(4, 1, 2);
 
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(64, reader.Seek(64));
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to the 767
       ctx.ResetCallsCount();
       ASSERT_EQ(760, reader.Seek(767));
       ASSERT_EQ(759, lower);
       ASSERT_EQ((std::vector{1023U,767U,767U}), upper_bounds);
-      ctx.AssertCallsCount(17, 2, 13);
+      ctx.AssertCallsCount(14, 2, 13);
 
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(760, reader.Seek(767));
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to the 1023
       ctx.ResetCallsCount();
       ASSERT_EQ(1016, reader.Seek(1023));
       ASSERT_EQ(1015, lower);
       ASSERT_EQ((std::vector{1023U,1023U,1023U}), upper_bounds);
-      ctx.AssertCallsCount(16, 1, 12);
+      ctx.AssertCallsCount(14, 1, 12);
 
       // seek to the 1024
       ctx.ResetCallsCount();
       ASSERT_EQ(1024, reader.Seek(1024));
       ASSERT_EQ(1023, lower);
       ASSERT_EQ((std::vector{1535U,1087U,1031U}), upper_bounds);
-      ctx.AssertCallsCount(7, 2, 3);
+      ctx.AssertCallsCount(4, 2, 3);
 
       // seek to the 1512
       ctx.ResetCallsCount();
       ASSERT_EQ(1512, reader.Seek(1512));
       ASSERT_EQ(1511, lower);
       ASSERT_EQ((std::vector{1535U,1535U,1519U}), upper_bounds);
-      ctx.AssertCallsCount(17, 1, 13);
+      ctx.AssertCallsCount(15, 1, 13);
 
       // seek to the 1701 
       ctx.ResetCallsCount();
       ASSERT_EQ(1696, reader.Seek(1701));
       ASSERT_EQ(1695, lower);
       ASSERT_EQ((std::vector{irs::doc_limits::eof(),1727U,1703U}), upper_bounds);
-      ctx.AssertCallsCount(13, 2, 9);
+      ctx.AssertCallsCount(10, 2, 9);
 
       // seek to 1920
       ctx.ResetCallsCount();
       ASSERT_EQ(1920, reader.Seek(1920));
       ASSERT_EQ(1919, lower);
       ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),1927U}), upper_bounds);
-      ctx.AssertCallsCount(9, 1, 5);
+      ctx.AssertCallsCount(7, 1, 5);
 
       // seek to last doc in a skip-list
       ctx.ResetCallsCount();
       ASSERT_EQ(1928, reader.Seek(1928));
       ASSERT_EQ(1927, lower);
       ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
-      ctx.AssertCallsCount(5, 0, 1);
+      ctx.AssertCallsCount(4, 0, 1);
 
       // seek after the last doc in a skip-list
       ctx.ResetCallsCount();
       ASSERT_EQ(1928, reader.Seek(1930));
       ASSERT_EQ(1927, lower);
       ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek after the last doc in a skip-list
       ctx.ResetCallsCount();
       ASSERT_EQ(1928, reader.Seek(1935));
       ASSERT_EQ(1927, lower);
       ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to eof
       ctx.ResetCallsCount();
       ASSERT_EQ(1928, reader.Seek(irs::doc_limits::eof()));
       ASSERT_EQ(1927, lower);
       ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to lower document
       ctx.ResetCallsCount();
       ASSERT_EQ(1928, reader.Seek(767));
       ASSERT_EQ(1927, lower);
       ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // reset && seek to document
       reader.Reset();
@@ -715,7 +715,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(760, reader.Seek(767));
       ASSERT_EQ(759, lower);
       ASSERT_EQ((std::vector{1023U,767U,767U}), upper_bounds);
-      ctx.AssertCallsCount(18, 2, 14);
+      ctx.AssertCallsCount(15, 2, 14);
 
       // reset && seek to doc_limits::min()
       reader.Reset();
@@ -724,7 +724,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(0, reader.Seek(irs::doc_limits::min()));
       ASSERT_FALSE(irs::doc_limits::valid(lower));
       ASSERT_EQ((std::vector{511U,63U,7U}), upper_bounds);
-      ctx.AssertCallsCount(7, 2, 3);
+      ctx.AssertCallsCount(4, 2, 3);
 
       // reset && seek to doc_limits::invalid()
       reader.Reset();
@@ -733,7 +733,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(0, reader.Seek(irs::doc_limits::invalid()));
       ASSERT_FALSE(irs::doc_limits::valid(lower));
       ASSERT_EQ((std::vector{0U,0U,0U}), upper_bounds);
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // reset && seek to eof
       reader.Reset();
@@ -742,7 +742,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(1928, reader.Seek(irs::doc_limits::eof()));
       ASSERT_EQ(1927, lower);
       ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
-      ctx.AssertCallsCount(17, 2, 13);
+      ctx.AssertCallsCount(14, 2, 13);
 
       // reset && seek to 1928 
       reader.Reset();
@@ -751,7 +751,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(1928, reader.Seek(1928));
       ASSERT_EQ(1927, lower);
       ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
-      ctx.AssertCallsCount(17, 2, 13);
+      ctx.AssertCallsCount(14, 2, 13);
 
       // reset && seek to 1927 
       reader.Reset();
@@ -760,7 +760,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(1920, reader.Seek(1927));
       ASSERT_EQ(1919, lower);
       ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),1927U}), upper_bounds);
-      ctx.AssertCallsCount(16, 2, 12);
+      ctx.AssertCallsCount(13, 2, 12);
 
       // reset && seek to 1511 
       reader.Reset();
@@ -769,7 +769,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(1504, reader.Seek(1511));
       ASSERT_EQ(1503, lower);
       ASSERT_EQ((std::vector{1535U,1535U,1511U}), upper_bounds);
-      ctx.AssertCallsCount(20, 2, 16);
+      ctx.AssertCallsCount(17, 2, 16);
 
       // reset && seek to 1512 
       reader.Reset();
@@ -778,7 +778,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(1512, reader.Seek(1512));
       ASSERT_EQ(1511, lower);
       ASSERT_EQ((std::vector{1535U,1535U,1519U}), upper_bounds);
-      ctx.AssertCallsCount(21, 2, 17);
+      ctx.AssertCallsCount(18, 2, 17);
     }
   } 
 
@@ -838,12 +838,12 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(0, reader.Seek(5));
       ASSERT_FALSE(irs::doc_limits::valid(lower));
       ASSERT_EQ((std::vector{2047U,127U,7U}), upper_bounds);
-      ctx.AssertCallsCount(7, 2, 3);
+      ctx.AssertCallsCount(4, 2, 3);
 
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(0, reader.Seek(5));
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to last document in a 1st block 
       ASSERT_EQ(0, reader.Seek(7));
@@ -853,7 +853,7 @@ TEST_F(SkipReaderTest, Seek) {
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(0, reader.Seek(7));
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to the first document in a 2nd block
       ASSERT_EQ(8, reader.Seek(8));
@@ -863,7 +863,7 @@ TEST_F(SkipReaderTest, Seek) {
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(8, reader.Seek(8));
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to 63
       ASSERT_EQ(56, reader.Seek(63));
@@ -873,7 +873,7 @@ TEST_F(SkipReaderTest, Seek) {
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(56, reader.Seek(63));
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to 64
       ASSERT_EQ(64, reader.Seek(64));
@@ -883,7 +883,7 @@ TEST_F(SkipReaderTest, Seek) {
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(64, reader.Seek(64));
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to the 767 
       ASSERT_EQ(760, reader.Seek(767));
@@ -893,7 +893,7 @@ TEST_F(SkipReaderTest, Seek) {
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(760, reader.Seek(767));
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to the 1023 
       ASSERT_EQ(1016, reader.Seek(1023));
@@ -923,21 +923,21 @@ TEST_F(SkipReaderTest, Seek) {
       // seek to one doc before the last in a skip-list
       ctx.ResetCallsCount();
       ASSERT_EQ(7184, reader.Seek(7191));
-      ctx.AssertCallsCount(19, 2, 15);
+      ctx.AssertCallsCount(16, 2, 15);
       ASSERT_EQ(7183, lower);
       ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
 
       // seek to last doc in a skip-list
       ctx.ResetCallsCount();
       ASSERT_EQ(7184, reader.Seek(7192));
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
       ASSERT_EQ(7183, lower);
       ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
 
       // seek to after the last doc in a skip-list
       ctx.ResetCallsCount();
       ASSERT_EQ(7184, reader.Seek(7193));
-      ctx.AssertCallsCount(4, 0, 0);
+      ctx.AssertCallsCount(3, 0, 0);
       ASSERT_EQ(7183, lower);
       ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
     }
@@ -1003,7 +1003,7 @@ TEST_F(SkipReaderTest, Seek) {
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(0, reader.Seek(5));
-      ctx.AssertCallsCount(5, 0, 0);
+      ctx.AssertCallsCount(4, 0, 0);
 
       // seek to last document in the 1st block
       ASSERT_EQ(0, reader.Seek(15));
@@ -1013,7 +1013,7 @@ TEST_F(SkipReaderTest, Seek) {
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(0, reader.Seek(7));
-      ctx.AssertCallsCount(5, 0, 0);
+      ctx.AssertCallsCount(4, 0, 0);
 
       // seek to the first document in a 2nd block
       ASSERT_EQ(16, reader.Seek(16));
@@ -1023,7 +1023,7 @@ TEST_F(SkipReaderTest, Seek) {
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(16, reader.Seek(16));
-      ctx.AssertCallsCount(5, 0, 0);
+      ctx.AssertCallsCount(4, 0, 0);
 
       // seek to 127 
       ASSERT_EQ(112, reader.Seek(127));
@@ -1033,7 +1033,7 @@ TEST_F(SkipReaderTest, Seek) {
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(112, reader.Seek(127));
-      ctx.AssertCallsCount(5, 0, 0);
+      ctx.AssertCallsCount(4, 0, 0);
 
       // seek to 128 
       ASSERT_EQ(128, reader.Seek(128));
@@ -1043,7 +1043,7 @@ TEST_F(SkipReaderTest, Seek) {
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(128, reader.Seek(128));
-      ctx.AssertCallsCount(5, 0, 0);
+      ctx.AssertCallsCount(4, 0, 0);
 
       // seek to the 1767 
       ASSERT_EQ(1760, reader.Seek(1767));
@@ -1053,7 +1053,7 @@ TEST_F(SkipReaderTest, Seek) {
       // seek to same document
       ctx.ResetCallsCount();
       ASSERT_EQ(1760, reader.Seek(767));
-      ctx.AssertCallsCount(5, 0, 0);
+      ctx.AssertCallsCount(4, 0, 0);
 
       // seek to the 3999 
       ASSERT_EQ(3984, reader.Seek(3999));
@@ -1142,7 +1142,7 @@ TEST_F(SkipReaderTest, Seek) {
           ctx.ResetCallsCount();
           const auto skipped = (kCount-1) / kSkip0 * kSkip0;
           ASSERT_EQ(skipped, reader.Seek(doc));
-          ctx.AssertCallsCount(4, 0, 0);
+          ctx.AssertCallsCount(kSkipLevels, 0, 0);
           ASSERT_TRUE(lower < doc);
           ASSERT_TRUE(doc <= upper);
         }
@@ -1156,7 +1156,7 @@ TEST_F(SkipReaderTest, Seek) {
           ctx.ResetCallsCount();
           const auto skipped = (kCount-1) / kSkip0 * kSkip0;
           ASSERT_EQ(skipped, reader.Seek(doc));
-          ctx.AssertCallsCount(4, 0, 0);
+          ctx.AssertCallsCount(kSkipLevels, 0, 0);
           ASSERT_TRUE(lower < doc);
           ASSERT_TRUE(doc <= upper);
           reader.Reset();
