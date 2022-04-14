@@ -269,59 +269,48 @@ class SkipReader final : public SkipReaderBase {
 template<typename Read>
 doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
   assert(!levels_.empty());
-  const size_t back = std::size(levels_) - 1;
-
-  // FIXME: remove extra IsLess calls
+  size_t size = std::size(levels_);
+  size_t id = 0;
 
   // returns the highest level with the value not less than a target
-  auto id = [back, target, this]() noexcept {
-      for (size_t id = 0; id <= back; ++id) {
-        if (reader_.IsLess(id, target)) {
-          return id;
-        }
-      }
-
-      return back;
-    }();
-
-  assert(id != std::size(levels_));
-
-  // FIXME
-  //   * use the same order of levels in formats/skip-list -> remove level.id
-  //   * remove level keys
-  //   * try to use predicates for docs as well (check performance)
-  //   * it seems we can use predicates for skipping on both score and doc id
-
-  for (uint64_t child_ptr{0}; id != back; ++id) {
+  for (; id < size; ++id) {
     if (reader_.IsLess(id, target)) {
-      auto& level = levels_[id];
-      const doc_id_t step{level.step};
-      auto& stream{*level.stream};
-
-      do {
-        child_ptr = level.child;
-        if (reader_.Read(id, level.skipped += step, stream)) {
-          level.child = stream.read_vlong();
-        }
-      } while (reader_.IsLess(id, target));
-
-      const auto next_id = id + 1;
-      SeekToChild(levels_[next_id], child_ptr, level);
-      reader_.MoveDown(next_id);
+      break;
     }
   }
 
-  assert(id == back);
+  if (id == size) {
+    return 0;
+  }
+
+  --size;
+  for (uint64_t child_ptr{0}; id != size; ++id) {
+    auto& level = levels_[id];
+    const doc_id_t step{level.step};
+    auto& stream{*level.stream};
+
+    do {
+      child_ptr = level.child;
+      if (reader_.Read(id, level.skipped += step, stream)) {
+        level.child = stream.read_vlong();
+      }
+    } while (reader_.IsLess(id, target));
+
+    const auto next_id = id + 1;
+    SeekToChild(levels_[next_id], child_ptr, level);
+    reader_.MoveDown(next_id);
+  }
+
   auto& level = levels_.back();
+  assert(&level == &levels_[id]);
   const doc_id_t step{level.step};
   auto& stream{*level.stream};
 
-  while (reader_.IsLess(id, target)) {
+  do {
     reader_.Read(id, level.skipped += step, stream);
-  }
+  } while (reader_.IsLess(id, target));
 
-  const doc_id_t skipped = level.skipped;
-  return skipped ? skipped - step : 0;
+  return level.skipped - step;
 }
 
 } // iresearch
