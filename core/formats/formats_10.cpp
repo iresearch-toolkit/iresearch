@@ -2242,7 +2242,7 @@ class wanderator final : public irs::doc_iterator {
 
     // check whether it make sense to use skip-list
     if (skip_levels_.back().doc < target
-          || skip_scores_.back().value() <= min_competitive_score.get()) {
+        || skip_scores_.back().value() <= min_competitive_score.get()) {
       assert(std::is_sorted(
           std::begin(skip_levels_), std::end(skip_levels_),
           [](const auto& lhs, const auto& rhs) {
@@ -2294,11 +2294,10 @@ bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::IsLess(
     size_t level, doc_id_t target) const noexcept {
   if constexpr (FieldTraits::frequency()) {
     auto& min_competitive_score = std::get<score_threshold>(self_->attrs_);
-    auto& max_block_score = self_->skip_scores_[level];
 
-        // FIXME(gnusi): parameterize > vs >=
+    // FIXME(gnusi): parameterize > vs >=
     return self_->skip_levels_[level].doc < target
-           || max_block_score.value() <= min_competitive_score.get();
+           || self_->skip_scores_[level].value() <= min_competitive_score.get();
   } else {
     return self_->skip_levels_[level].doc < target;
   }
