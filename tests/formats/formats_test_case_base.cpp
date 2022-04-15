@@ -81,7 +81,16 @@ irs::column_info format_test_case::none_column_info() const noexcept {
       bool(dir().attributes().encryption()) };
 }
 
-void format_test_case::assert_positions(irs::doc_iterator& expected, irs::doc_iterator& actual) {
+void format_test_case::assert_frequency_and_positions(
+    irs::doc_iterator& expected, irs::doc_iterator& actual) {
+  auto* expected_freq = irs::get<irs::frequency>(expected);
+  auto* actual_freq = irs::get<irs::frequency>(actual);
+  ASSERT_EQ(!expected_freq, !actual_freq);
+
+  if (!expected_freq) {
+    return;
+  }
+
   auto* expected_pos = irs::get_mutable<irs::position>(&expected);
   auto* actual_pos = irs::get_mutable<irs::position>(&actual);
   ASSERT_EQ(!expected_pos, !actual_pos);

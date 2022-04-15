@@ -1,3 +1,4 @@
+////////////////////////////////////////////////////////////////////////////////
 /// Copyright 2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +15,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Abramov
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "formats_test_case_base.hpp"

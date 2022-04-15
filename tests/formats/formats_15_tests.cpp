@@ -1,4 +1,5 @@
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -14,7 +15,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Abramov
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <random>
@@ -194,7 +195,7 @@ void Format15TestCase::PostingsWandSeek(
           ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id)); // seek to the same doc
           ASSERT_EQ(expected_doc_id, actual->seek(irs::doc_limits::invalid())); // seek to the smaller doc
 
-          assert_positions(expected, *actual);
+          assert_frequency_and_positions(expected, *actual);
         }
 
         ASSERT_FALSE(actual->next());
@@ -229,7 +230,7 @@ void Format15TestCase::PostingsWandSeek(
           ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id)); // seek to the same doc
           ASSERT_EQ(expected_doc_id, actual->seek(irs::doc_limits::invalid())); // seek to the smaller doc
 
-          assert_positions(expected, *actual);
+          assert_frequency_and_positions(expected, *actual);
         }
 
         if (inc == 1) {
@@ -281,17 +282,15 @@ void Format15TestCase::PostingsWandSeek(
           ASSERT_EQ(doc->first, actual->seek(doc->first));
 
           ASSERT_EQ(doc->first, expected.seek(doc->first));
-          assert_positions(expected, *actual);
+          assert_frequency_and_positions(expected, *actual);
           if (doc != docs.rbegin()) {
             ASSERT_TRUE(expected.next());
             ASSERT_EQ((doc - 1)->first, expected.value());
 
-
-
             ASSERT_TRUE(actual->next());
             ASSERT_EQ((doc-1)->first, actual->value());
 
-            assert_positions(expected, *actual);
+            assert_frequency_and_positions(expected, *actual);
           }
         }
       }

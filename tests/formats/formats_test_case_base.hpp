@@ -231,7 +231,8 @@ class format_test_case : public index_test_base {
     Iterator end_;
   };  // terms
 
-  void assert_positions(irs::doc_iterator& expected, irs::doc_iterator& actual);
+  void assert_frequency_and_positions(
+      irs::doc_iterator& expected, irs::doc_iterator& actual);
 
   void assert_no_directory_artifacts(
       const iresearch::directory& dir, const iresearch::format& codec,
