@@ -26,7 +26,7 @@
   #pragma warning(disable: 4267)
 #endif
 
-  #include <cmdline.h>
+#include <cmdline.h>
 
 #if defined(_MSC_VER)
   #pragma warning(default: 4267)
@@ -66,6 +66,7 @@
 #include "store/fs_directory.hpp"
 #include "utils/memory_pool.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
+#include "utils/timer_utils.hpp"
 
 #include "index-search.hpp"
 
@@ -634,6 +635,7 @@ int search(
         // execute task
         {
           irs::timer_utils::scoped_timer timer(*(execution_timers.stat[size_t(task->category)]));
+            float_t sss{};
 
           for (auto& segment: reader) {
             auto docs = filter->execute(segment, order, mode);
@@ -648,9 +650,13 @@ int search(
               threshold = &tmp;
             }
 
+            const irs::frequency* freq = irs::get<irs::frequency>(*docs);
+
             while (docs->next()) {
               ++doc_count;
-              const float_t score_value = *reinterpret_cast<const float_t*>(score->evaluate());
+              sss = *reinterpret_cast<const float_t*>(score->evaluate());
+
+              const float_t score_value = freq->value;
 
               if (sorted.size() < limit) {
                 sorted.emplace_back(score_value, doc->value);
@@ -694,6 +700,8 @@ int search(
                 return lhs.first > rhs.first;
             });
           }
+
+          std::cerr << sss << "\n";
         }
 
         const auto tdiff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
