@@ -35,6 +35,7 @@
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/noncopyable.hpp"
+#include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 
 namespace iresearch {

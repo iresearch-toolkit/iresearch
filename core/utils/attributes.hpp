@@ -24,14 +24,8 @@
 #ifndef IRESEARCH_ATTRIBUTES_H
 #define IRESEARCH_ATTRIBUTES_H
 
-#include <set>
-
-#include "memory.hpp"
-#include "timer_utils.hpp"
-#include "bit_utils.hpp"
+#include "shared.hpp"
 #include "type_id.hpp"
-#include "noncopyable.hpp"
-#include "string.hpp"
 
 namespace iresearch {
 
@@ -47,16 +41,8 @@ struct attributes {
   attributes() = delete;
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class attribute
-/// @brief base class for all attributes that can be used with attribute_map
-///        an empty struct tag type with no virtual methods
-//////////////////////////////////////////////////////////////////////////////
+// Base struct for all attribute types that can be used with attribute_provider
 struct attribute { };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            Attribute registration
-// -----------------------------------------------------------------------------
 
 class attribute_registrar {
  public:
