@@ -857,7 +857,6 @@ class postings_writer final: public postings_writer_base {
   struct {
     uint32_t buf[FormatTraits::block_size()];               // buffer for encoding (worst case)
   } encbuf_;
-  score_buffer score_buf_;
   score_buffer score_levels_[kMaxSkipLevels];
   bool volatile_attributes_;
 }; // postings_writer
@@ -973,7 +972,6 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
 
   begin_term();
   if constexpr (FormatTraits::wand()) {
-    score_buf_.reset();
     for (auto& level : score_levels_) {
       level.reset();
     }
@@ -989,8 +987,6 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
     const uint32_t freqv = freq->value;
 
     if (doc_limits::valid(doc_.last) && doc_.empty()) {
-      score_levels_[0].add(score_buf_);
-
       skip_.Skip(
         docs_count,
         [this](size_t level, memory_index_output& out) {
@@ -1011,13 +1007,13 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
       });
 
       if constexpr (FormatTraits::wand()) {
-        score_buf_.reset();
+        score_levels_[0].reset();
       }
     }
 
     begin_doc(did, freqv);
     if constexpr (FormatTraits::wand()) {
-      score_buf_.add(freqv);
+      score_levels_[0].add(freqv);
     }
 
     assert(attrs_.pos_);
@@ -2247,6 +2243,10 @@ class wanderator final : public irs::doc_iterator {
           std::begin(skip_levels_), std::end(skip_levels_),
           [](const auto& lhs, const auto& rhs) {
               return lhs.doc > rhs.doc; }));
+      assert(std::is_sorted(
+          std::begin(skip_scores_), std::end(skip_scores_),
+          [](const auto& lhs, const auto& rhs) {
+              return lhs.value() > rhs.value(); }));
 
       // ensured by prepare(...)
       assert(term_state_.docs_count > IteratorTraits::block_size());
