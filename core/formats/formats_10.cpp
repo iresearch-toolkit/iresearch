@@ -330,6 +330,10 @@ class score_buffer {
     in.read_vint();
   }
 
+  static value_type read(index_input& in) {
+    return in.read_vint();
+  }
+
   void add(value_type value) noexcept {
     freq_ = std::max(value, freq_);
   }
@@ -344,14 +348,6 @@ class score_buffer {
 
   void write(memory_index_output& out) const {
     out.write_vint(freq_);
-  }
-
-  void read(index_input& in) {
-    freq_ = in.read_vint();
-  }
-
-  value_type value() const noexcept {
-    return freq_;
   }
 
  private:
@@ -2238,7 +2234,7 @@ class wanderator final : public irs::doc_iterator {
 
     // check whether it make sense to use skip-list
     if (skip_levels_.back().doc < target
-        || skip_scores_.back().value() <= min_competitive_score.get()) {
+        || skip_scores_.back() <= min_competitive_score.value) {
       assert(std::is_sorted(
           std::begin(skip_levels_), std::end(skip_levels_),
           [](const auto& lhs, const auto& rhs) {
@@ -2246,7 +2242,7 @@ class wanderator final : public irs::doc_iterator {
       assert(std::is_sorted(
           std::begin(skip_scores_), std::end(skip_scores_),
           [](const auto& lhs, const auto& rhs) {
-              return lhs.value() > rhs.value(); }));
+              return lhs > rhs; }));
 
       // ensured by prepare(...)
       assert(term_state_.docs_count > IteratorTraits::block_size());
@@ -2277,7 +2273,7 @@ class wanderator final : public irs::doc_iterator {
   buffer_type<IteratorTraits> buf_;
   uint32_t enc_buf_[IteratorTraits::block_size()]; // buffer for encoding
   std::vector<skip_state> skip_levels_;
-  std::vector<score_buffer> skip_scores_;
+  std::vector<score_buffer::value_type> skip_scores_;
   SkipReader<ReadSkip> skip_;
   skip_state prev_skip_; // skip context used by skip reader
   uint32_t cur_pos_{};
@@ -2297,7 +2293,7 @@ bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::IsLess(
 
     // FIXME(gnusi): parameterize > vs >=
     return self_->skip_levels_[level].doc < target
-           || self_->skip_scores_[level].value() <= min_competitive_score.get();
+           || self_->skip_scores_[level] <= min_competitive_score.value;
   } else {
     return self_->skip_levels_[level].doc < target;
   }
@@ -2327,7 +2323,7 @@ bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(
     next.doc = doc_limits::eof();
     if constexpr (FieldTraits::frequency()) {
       auto& max_block_score = self_->skip_scores_[level];
-      max_block_score.add(std::numeric_limits<uint32_t>::max());
+      max_block_score = std::numeric_limits<score_buffer::value_type>::max();
     }
     return false;
   }
@@ -2336,7 +2332,7 @@ bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(
 
   if constexpr (FieldTraits::frequency()) {
     auto& max_block_score = self_->skip_scores_[level];
-    max_block_score.read(in);
+    max_block_score = score_buffer::read(in);
   }
 
   return true;
@@ -2424,6 +2420,7 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
     if (const auto num_levels = skip_.NumLevels(); IRS_LIKELY(num_levels)) {
       skip_levels_.resize(num_levels);
       skip_scores_.resize(num_levels);
+      std::get<score_threshold>(attrs_).skip_scores = skip_scores_;
 
       // since we store pointer deltas, add postings offset
       auto& top = skip_levels_.front();

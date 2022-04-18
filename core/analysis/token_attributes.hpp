@@ -168,8 +168,7 @@ class attribute_provider_change final : public attribute {
 };
 
 // Score threshold can be set by document consumers
-class score_threshold final : public attribute {
- public:
+struct score_threshold final : public attribute {
   using value_type = uint32_t;
 
   // DO NOT CHANGE NAME
@@ -177,11 +176,8 @@ class score_threshold final : public attribute {
     return "iresearch::score_threshold";
   }
 
-  void set(value_type value) noexcept { value_ = value; }
-  value_type get() const noexcept { return value_; }
-
- private:
-  uint32_t value_{};
+  value_type value;
+  std::span<const value_type> skip_scores;
 };
 
 } // ROOT

@@ -74,6 +74,89 @@ class FreqThresholdDocIterator final : public irs::doc_iterator {
   uint32_t threshold_;
 };
 
+class SkipList {
+ public:
+  SkipList() = default;
+  explicit SkipList(std::vector<std::vector<std::pair<irs::doc_id_t, uint32_t>>>&& skip_list)
+    : skip_list_{std::move(skip_list)} {}
+
+  bool empty() const noexcept { return skip_list_.empty(); }
+  size_t size() const noexcept { return skip_list_.size(); }
+  uint32_t at(size_t level, irs::doc_id_t doc) const noexcept {
+    EXPECT_LT(level, skip_list_.size());
+
+    auto& data = skip_list_[level];
+    auto it = std::lower_bound(
+        std::begin(data), std::end(data), std::pair{ doc, 0 },
+        [](const auto& lhs, const auto& rhs) {
+      return lhs.first < rhs.first;
+    });
+
+    if (it == std::end(data)) {
+      return std::prev(it)->second;
+    }
+
+    return it->second;
+  }
+
+
+ private:
+  std::vector<std::vector<std::pair<irs::doc_id_t, uint32_t>>> skip_list_;
+};
+
+auto MakeSkipList(irs::doc_iterator& it, irs::doc_id_t skip_0,
+                  irs::doc_id_t skip_n, irs::doc_id_t count) {
+  const size_t num_levels = skip_0 < count
+    ? 1 + irs::math::log(count/skip_0, skip_n)
+    : 0;
+
+  std::vector<std::vector<std::pair<irs::doc_id_t, uint32_t>>> skip_list;
+  skip_list.resize(num_levels);
+  for (auto& level: skip_list) {
+    level.emplace_back(0, 0);
+  }
+
+  auto add = [&](irs::doc_id_t count, irs::doc_id_t doc, uint32_t freq) {
+    for (auto& score : skip_list) {
+      score.back() = { doc, std::max(score.back().second, freq) };
+    }
+
+    if (0 != (count % skip_0)) {
+      return;
+    }
+
+    auto begin = std::rbegin(skip_list);
+    begin->emplace_back(0, 0);
+    count /= skip_0;
+
+    ++begin;
+    while (count && 0 == (count % skip_n) && begin < std::rend(skip_list)) {
+      begin->emplace_back(0, 0);
+      ++begin;
+      count /= skip_n;
+    }
+  };
+
+  auto* freq = irs::get<irs::frequency>(it);
+
+  if (freq) {
+    for (irs::doc_id_t i = 1; it.next(); ++i) {
+      add(i, it.value(), freq->value);
+    }
+  }
+
+  return SkipList{std::move(skip_list)};
+}
+
+void AssertSkipList(const SkipList& expected_freqs, irs::doc_id_t doc,
+                    std::span<const uint32_t> actual_freqs) {
+  ASSERT_EQ(expected_freqs.size(), actual_freqs.size());
+  for (size_t i = 0, size = expected_freqs.size(); i < size; ++i) {
+    const auto expected_freq = expected_freqs.at(i, doc);
+    ASSERT_EQ(expected_freq, actual_freqs[i]);
+  }
+}
+
 class Format15TestCase : public tests::format_test_case {
  protected:
   static constexpr size_t kVersion10PostingsWriterBlockSize = 128;
@@ -170,6 +253,7 @@ void Format15TestCase::PostingsWandSeek(
       auto assert_docs_seq = [&]() {
         postings expected_postings{docs, field.index_features};
         FreqThresholdDocIterator expected{expected_postings, threshold};
+        SkipList skip_list;
 
         auto actual = reader->wanderator(field.index_features, features, read_meta);
         ASSERT_NE(nullptr, actual);
@@ -180,7 +264,11 @@ void Format15TestCase::PostingsWandSeek(
           ASSERT_EQ(nullptr, threshold_value);
         } else {
           ASSERT_NE(nullptr, threshold_value);
-          threshold_value->set(threshold);
+          threshold_value->value = threshold;
+
+          postings tmp{docs, field.index_features};
+          skip_list = MakeSkipList(tmp, kVersion10PostingsWriterBlockSize,
+                                   8, irs::doc_id_t(docs.size()));
         }
 
         ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
@@ -190,11 +278,15 @@ void Format15TestCase::PostingsWandSeek(
         while (expected.next()) {
           const auto expected_doc_id = expected.value();
           ASSERT_TRUE(actual->next());
+
           ASSERT_EQ(expected_doc_id, actual->value());
           ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
           ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id)); // seek to the same doc
           ASSERT_EQ(expected_doc_id, actual->seek(irs::doc_limits::invalid())); // seek to the smaller doc
 
+          if (!skip_list.empty()) {
+            AssertSkipList(skip_list, expected_doc_id, threshold_value->skip_scores);
+          }
           assert_frequency_and_positions(expected, *actual);
         }
 
@@ -218,7 +310,7 @@ void Format15TestCase::PostingsWandSeek(
           ASSERT_EQ(nullptr, threshold_value);
         } else {
           ASSERT_NE(nullptr, threshold_value);
-          threshold_value->set(threshold);
+          threshold_value->value = threshold;
         }
 
         ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
@@ -275,7 +367,7 @@ void Format15TestCase::PostingsWandSeek(
             ASSERT_EQ(nullptr, threshold_value);
           } else {
             ASSERT_NE(nullptr, threshold_value);
-            threshold_value->set(threshold);
+            threshold_value->value = threshold;
           }
 
           ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
