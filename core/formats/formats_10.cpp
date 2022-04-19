@@ -2203,9 +2203,7 @@ class wanderator final : public irs::doc_iterator {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t seek(doc_id_t target) override {
-    return seek_to_target(target);
-  }
+  virtual doc_id_t seek(doc_id_t target) override;
 
   virtual doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
@@ -2259,8 +2257,6 @@ class wanderator final : public irs::doc_iterator {
       }
     }
   }
-
-  doc_id_t seek_to_target(doc_id_t target);
 
   // returns current position in the document block 'docs_'
   doc_id_t relative_pos() noexcept {
@@ -2444,7 +2440,7 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
 }
 
 template<typename IteratorTraits, typename FieldTraits>
-doc_id_t wanderator<IteratorTraits, FieldTraits>::seek_to_target(doc_id_t target) {
+doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
   auto& doc = std::get<document>(attrs_);
 
   if (target <= doc.value) {
@@ -2472,6 +2468,8 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek_to_target(doc_id_t target
 
     refill();
   }
+
+  // FIXME(gnusi): use WAND condition in the loop below
 
   [[maybe_unused]] uint32_t notify{0};
   while (begin_ < end_) {
