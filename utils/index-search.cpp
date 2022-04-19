@@ -633,9 +633,9 @@ int search(
         }
 
         // execute task
+            float_t sss{};
         {
           irs::timer_utils::scoped_timer timer(*(execution_timers.stat[size_t(task->category)]));
-            float_t sss{};
 
           for (auto& segment: reader) {
             auto docs = filter->execute(segment, order, mode);
@@ -654,7 +654,7 @@ int search(
 
             while (docs->next()) {
               ++doc_count;
-              sss = *reinterpret_cast<const float_t*>(score->evaluate());
+              sss = std::max(*reinterpret_cast<const float_t*>(score->evaluate()), sss);
 
               const float_t score_value = freq->value;
 
@@ -686,24 +686,20 @@ int search(
                     return lhs.first > rhs.first;
                 });
 
-                threshold->set(sorted.front().first);
+                threshold->value = sorted.front().first;
               }
             }
           }
 
-          auto end = sorted.end();
-          for (auto begin = sorted.begin(); begin != end; --end) {
-            std::pop_heap(
-              begin, end,
-              [](const std::pair<float_t, irs::doc_id_t>& lhs,
-                 const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
-                return lhs.first > rhs.first;
-            });
-          }
+          std::sort(std::begin(sorted), std::end(sorted),
+                    [](const std::pair<float_t, irs::doc_id_t>& lhs,
+                       const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
+                      return lhs.first > rhs.first;
+                    });
 
-          std::cerr << sss << "\n";
         }
 
+          std::cerr << sss << "\n";
         const auto tdiff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
 
         // output task results
