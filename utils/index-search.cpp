@@ -637,6 +637,7 @@ int search(
         {
           irs::timer_utils::scoped_timer timer(*(execution_timers.stat[size_t(task->category)]));
 
+          irs::score_threshold tmp;
           for (auto left = limit; auto& segment: reader) {
             auto docs = filter->execute(segment, order, mode);
             assert(docs);
@@ -644,10 +645,18 @@ int search(
             const irs::document* doc = irs::get<irs::document>(*docs);
             const irs::score* score = irs::get<irs::score>(*docs);
 
-            irs::score_threshold tmp;
             auto* threshold = irs::get_mutable<irs::score_threshold>(docs.get());
             if (!threshold) {
               threshold = &tmp;
+            }
+
+            if (!left) {
+              assert(!sorted.empty());
+              assert(std::is_heap(std::begin(sorted), std::end(sorted),
+                     [](const std::pair<float_t, irs::doc_id_t>& lhs,
+                        const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
+                       return lhs.first > rhs.first; }));
+              threshold->value = sorted.front().first;
             }
 
             const irs::frequency* freq = irs::get<irs::frequency>(*docs);
