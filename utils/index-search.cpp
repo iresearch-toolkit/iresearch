@@ -637,7 +637,7 @@ int search(
         {
           irs::timer_utils::scoped_timer timer(*(execution_timers.stat[size_t(task->category)]));
 
-          for (auto& segment: reader) {
+          for (auto left = limit; auto& segment: reader) {
             auto docs = filter->execute(segment, order, mode);
             assert(docs);
 
@@ -654,22 +654,26 @@ int search(
 
             while (docs->next()) {
               ++doc_count;
-              sss = std::max(*reinterpret_cast<const float_t*>(score->evaluate()), sss);
+              sss += *reinterpret_cast<const float_t*>(score->evaluate());
 
               const float_t score_value = freq->value;
 
-              if (sorted.size() < limit) {
+              if (left) {
                 sorted.emplace_back(score_value, doc->value);
 
-                std::push_heap(
-                  sorted.begin(), sorted.end(),
-                  [](const std::pair<float_t, irs::doc_id_t>& lhs,
-                     const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
-                    return lhs.first > rhs.first;
-                });
+                if (0 == --left) {
+                  std::make_heap(
+                    std::begin(sorted), std::end(sorted),
+                    [](const std::pair<float_t, irs::doc_id_t>& lhs,
+                       const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
+                      return lhs.first > rhs.first;
+                  });
+
+                  threshold->value = sorted.front().first;
+                }
               } else if (sorted.front().first < score_value) {
                 std::pop_heap(
-                  sorted.begin(), sorted.end(),
+                  std::begin(sorted), std::end(sorted),
                   [](const std::pair<float_t, irs::doc_id_t>& lhs,
                      const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
                     return lhs.first > rhs.first;
@@ -680,7 +684,7 @@ int search(
                 doc_id = doc->value;
 
                 std::push_heap(
-                  sorted.begin(), sorted.end(),
+                  std::begin(sorted), std::end(sorted),
                   [](const std::pair<float_t, irs::doc_id_t>& lhs,
                      const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
                     return lhs.first > rhs.first;
