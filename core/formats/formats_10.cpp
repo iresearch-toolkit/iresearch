@@ -1024,6 +1024,8 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
     end_doc();
   }
 
+  // FIXME(gnusi): do we need to write terminal skip if present?
+
   meta->docs_count = docs_count;
   meta->freq = total_freq;
   end_term(*meta);

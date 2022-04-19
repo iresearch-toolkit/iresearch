@@ -81,7 +81,6 @@ class SkipList {
 
   struct Level {
     const irs::doc_id_t step;
-    const irs::doc_id_t skip;
     std::vector<Step> steps;
   };
 
@@ -95,22 +94,19 @@ class SkipList {
   uint32_t At(size_t level, irs::doc_id_t doc) const noexcept {
     EXPECT_LT(level, skip_list_.size());
 
-    auto& [_, __, data] = skip_list_[level];
+    auto& [_, data] = skip_list_[level];
     auto it = std::lower_bound(
         std::begin(data), std::end(data), Step{doc, 0},
         [](const auto& lhs, const auto& rhs) { return lhs.key < rhs.key; });
 
-    if (it == std::end(data)) {
-      return std::prev(it)->freq;
-    }
-
+    EXPECT_NE(it, std::end(data));
     return it->freq;
   }
 
  private:
   explicit SkipList(std::vector<Level>&& skip_list)
       : skip_list_{std::move(skip_list)} {
-    for (auto& [_, __, level] : skip_list) {
+    for (auto& [_, level] : skip_list) {
       EXPECT_TRUE(std::is_sorted(
           std::begin(level), std::end(level),
           [](const auto& lhs, const auto& rhs) { return lhs.key < rhs.key; }));
@@ -133,22 +129,19 @@ SkipList SkipList::Make(irs::doc_iterator& it, irs::doc_id_t skip_0,
       skip_0 * static_cast<size_t>(std::pow(skip_n, num_levels - 1)));
 
   for (; num_levels; --num_levels) {
-    skip_list.emplace_back(Level{step, (1 == num_levels ? skip_0 : skip_n),
-                                 std::vector{Step{0U, 0U}}});
+    skip_list.emplace_back(Level{step, std::vector{Step{0U, 0U}}});
     step /= skip_n;
   }
 
-  auto add = [&](irs::doc_id_t count, irs::doc_id_t doc, uint32_t freq) {
-    for (auto& [_, __, level] : skip_list) {
-      level.back() = {doc, std::max(level.back().freq, freq)};
-    }
-
-    auto begin = std::rbegin(skip_list);
-    while (begin < std::rend(skip_list) && count &&
-           0 == (count % begin->skip)) {
-      begin->steps.emplace_back(0, 0);
-      count /= begin->skip;
-      ++begin;
+  auto add = [&](irs::doc_id_t i, irs::doc_id_t doc, uint32_t freq) {
+    for (auto& [step, level] : skip_list) {
+      if (level.size() * step < count) {
+        ASSERT_FALSE(level.empty());
+        level.back() = {doc, std::max(level.back().freq, freq)};
+        if (0 == (i % step)) {
+          level.emplace_back(Step{0, 0});
+        }
+      }
     }
   };
 
@@ -159,12 +152,9 @@ SkipList SkipList::Make(irs::doc_iterator& it, irs::doc_id_t skip_0,
       add(i, it.value(), freq->value);
     }
 
-    for (auto& [step, _, level] : skip_list) {
-      if (!irs::doc_limits::valid(level.back().key) ||
-          0 != (level.back().key % step)) {
-        level.back() = {irs::doc_limits::eof(),
-                        std::numeric_limits<uint32_t>::max()};
-      }
+    for (auto& [step, level] : skip_list) {
+      level.back() = {irs::doc_limits::eof(),
+                      std::numeric_limits<uint32_t>::max()};
     }
   }
 
@@ -283,8 +273,6 @@ void Format15TestCase::PostingsWandSeek(
         }
 
         ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
-
-        // FIXME(gnusi): check written freq threshold value
 
         while (expected.next()) {
           const auto expected_doc_id = expected.value();
