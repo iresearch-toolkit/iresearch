@@ -27,6 +27,7 @@ extern "C" {
 #include <simdbitpacking.h>
 }
 
+#include <array>
 #include <unordered_set>
 
 #include "store/store_utils.hpp"
