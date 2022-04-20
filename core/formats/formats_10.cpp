@@ -2473,9 +2473,11 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
         if constexpr (IteratorTraits::frequency()) {
           this->freq_ = this->buf_.freqs + this->relative_pos();
           assert((this->freq_ - 1) >= this->buf_.freqs && (this->freq_ - 1) < std::end(this->buf_.freqs));
-          std::get<frequency>(attrs_).value = this->freq_[-1];
 
-          if (std::get<frequency>(attrs_).value <= min_competitive_score.value) {
+          auto& freq = std::get<frequency>(attrs_);
+          freq.value = this->freq_[-1];
+
+          if (freq.value <= min_competitive_score.value) {
             continue;
           }
 

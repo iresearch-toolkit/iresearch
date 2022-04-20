@@ -38,7 +38,7 @@ TEST(bitset_iterator_test, next) {
     auto* cost = irs::get<irs::cost>(it);
     ASSERT_TRUE(bool(cost));
     ASSERT_EQ(0, cost->estimate());
-    ASSERT_EQ(&irs::score::no_score(), &irs::score::get(it));
+    ASSERT_EQ(&irs::score::kNoScore, &irs::score::get(it));
     ASSERT_EQ(nullptr, irs::get_mutable<irs::score>(&it));
 
     ASSERT_FALSE(it.next());
