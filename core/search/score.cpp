@@ -27,8 +27,6 @@ namespace {
 
 using namespace irs;
 
-const score EMPTY_SCORE;
-
 const byte_type* default_score(score_ctx* ctx) noexcept {
   return reinterpret_cast<byte_type*>(ctx);
 }
@@ -37,13 +35,8 @@ const byte_type* default_score(score_ctx* ctx) noexcept {
 
 namespace iresearch {
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                            score
-// ----------------------------------------------------------------------------
-
-/*static*/ const irs::score& score::no_score() noexcept {
-  return EMPTY_SCORE;
-}
+/*static*/ const score score::kNoScore;
+/*static*/ const score_f score::kDefaultScoreFunc{&::default_score};
 
 score::score() noexcept
   : func_(reinterpret_cast<score_ctx*>(data()), &::default_score) {
@@ -52,11 +45,6 @@ score::score() noexcept
 score::score(const order::prepared& ord)
   : buf_(ord.score_size(), 0),
     func_(reinterpret_cast<score_ctx*>(data()), &::default_score) {
-}
-
-bool score::is_default() const noexcept {
-  return reinterpret_cast<score_ctx*>(data()) == func_.ctx()
-    && func_.func() == &::default_score;
 }
 
 void score::reset() noexcept {
