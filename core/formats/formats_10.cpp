@@ -2052,7 +2052,10 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
     return doc.value;
   }
 
-  seek_to_block(target);
+  // check whether it make sense to use skip-list
+  if (skip_levels_.back().doc < target) {
+    seek_to_block(target);
+  }
 
   if (this->begin_ == this->end_) {
     this->cur_pos_ += this->relative_pos();
@@ -2106,68 +2109,69 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
 
 template<typename IteratorTraits, typename FieldTraits>
 void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
-  assert(!skip_levels_.empty()); // ensured by ctor
-  assert(1 != this->term_state_.docs_count); // ensured by prepare(...)
+  // ensured by ctor
+  assert(!skip_levels_.empty());
+  // ensured by caller
+  assert(skip_levels_.back().doc < target);
+  // ensured by prepare(...)
+  assert(1 != this->term_state_.docs_count);
+  assert(this->term_state_.docs_count > IteratorTraits::block_size());
 
-  // check whether it make sense to use skip-list
-  if (skip_levels_.back().doc < target) {
-    // ensured by prepare(...)
-    assert(this->term_state_.docs_count > IteratorTraits::block_size());
+  skip_state last; // where block starts
+  skip_ctx_ = &last;
 
-    skip_state last; // where block starts
-    skip_ctx_ = &last;
-
-    // init skip writer in lazy fashion
-    if (skip_.NumLevels() != 0) {
+  // init skip writer in lazy fashion
+  if (skip_.NumLevels() != 0) {
 seek_after_initialization:
-      assert(std::is_sorted(
-          std::begin(skip_levels_), std::end(skip_levels_),
-          [](const auto& lhs, const auto& rhs) {
-              return lhs.doc > rhs.doc; }));
+    assert(std::is_sorted(
+        std::begin(skip_levels_), std::end(skip_levels_),
+        [](const auto& lhs, const auto& rhs) {
+            return lhs.doc > rhs.doc; }));
 
-      if (const doc_id_t skipped{skip_.Seek(target)};
-          skipped > (this->cur_pos_ + this->relative_pos())) {
-        this->doc_in_->seek(last.doc_ptr);
-        std::get<document>(attrs_).value = last.doc;
-        this->cur_pos_ = skipped;
-        this->begin_ = this->end_ = this->buf_.docs; // will trigger refill in "next"
-        if constexpr (IteratorTraits::position()) {
-          std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(last); // notify positions
-        }
+    const auto pos = this->cur_pos_;
+    this->cur_pos_ = skip_.Seek(target);
+
+    if (pos != this->cur_pos_) {
+      this->doc_in_->seek(last.doc_ptr);
+      std::get<document>(attrs_).value = last.doc;
+      this->begin_ = this->end_ = this->buf_.docs; // will trigger refill in "next"
+      if constexpr (IteratorTraits::position()) {
+        auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
+        pos.prepare(last); // notify positions
       }
-
-      return;
     }
 
-    auto skip_in = this->doc_in_->dup();
+    return;
+  }
 
-    if (!skip_in) {
-      IR_FRMT_ERROR("Failed to duplicate input in: %s", __FUNCTION__);
+  auto skip_in = this->doc_in_->dup();
 
-      throw io_error("Failed to duplicate document input");
-    }
+  if (!skip_in) {
+    IR_FRMT_ERROR("Failed to duplicate input in: %s", __FUNCTION__);
 
-    skip_in->seek(this->term_state_.doc_start + this->term_state_.e_skip_start);
-    skip_.Prepare(std::move(skip_in));
+    throw io_error("Failed to duplicate document input");
+  }
 
-    // initialize skip levels
-    if (const auto num_levels = skip_.NumLevels(); IRS_LIKELY(num_levels)) {
-      assert(!doc_limits::valid(skip_levels_.back().doc));
-      skip_levels_.resize(num_levels);
+  skip_in->seek(this->term_state_.doc_start + this->term_state_.e_skip_start);
+  skip_.Prepare(std::move(skip_in));
 
-      // since we store pointer deltas, add postings offset
-      auto& top = skip_levels_.front();
-      CopyState<IteratorTraits>(top, this->term_state_);
+  // initialize skip levels
+  if (const auto num_levels = skip_.NumLevels(); IRS_LIKELY(num_levels)) {
+    assert(!doc_limits::valid(skip_levels_.back().doc));
+    skip_levels_.resize(num_levels);
 
-      goto seek_after_initialization;
+    // since we store pointer deltas, add postings offset
+    auto& top = skip_levels_.front();
+    CopyState<IteratorTraits>(top, this->term_state_);
+
+    goto seek_after_initialization;
+  } else {
+    if (IRS_LIKELY(this->term_state_.docs_count <= IteratorTraits::block_size())) {
+      // prevent using skip-list
+      skip_levels_.back().doc = doc_limits::eof();
     } else {
-      if (IRS_LIKELY(this->term_state_.docs_count <= IteratorTraits::block_size())) {
-        // prevent using skip-list
-        skip_levels_.back().doc = doc_limits::eof();
-      } else {
-        assert(false);
-        throw index_error("Zero number of skip levels.");
-      }
+      assert(false);
+      throw index_error("Zero number of skip levels.");
     }
   }
 }
@@ -2258,10 +2262,11 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
       assert(skip_.NumLevels());
       assert(0 == prev_skip_.doc_ptr);
 
-      if (const doc_id_t skipped{skip_.Seek(target)};
-          skipped > (this->cur_pos_ + this->relative_pos())) {
+      const auto pos = this->cur_pos_;
+      this->cur_pos_ = skip_.Seek(target);
+
+      if (pos != this->cur_pos_) {
         std::get<document>(attrs_).value = prev_skip_.doc;
-        this->cur_pos_ = skipped;
         this->begin_ = this->end_ = this->buf_.docs; // will trigger refill in "next"
       }
     }
@@ -2452,7 +2457,8 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
     if (prev_skip_.doc_ptr) {
       this->doc_in_->seek(prev_skip_.doc_ptr);
       if constexpr (IteratorTraits::position()) {
-        std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(prev_skip_); // notify positions
+        auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
+        pos.prepare(prev_skip_); // notify positions
       }
       prev_skip_.doc_ptr = 0;
     }
