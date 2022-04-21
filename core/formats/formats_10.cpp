@@ -2478,7 +2478,8 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
       if (doc.value >= target) {
         if constexpr (IteratorTraits::frequency()) {
           this->freq_ = this->buf_.freqs + this->relative_pos();
-          assert((this->freq_ - 1) >= this->buf_.freqs && (this->freq_ - 1) < std::end(this->buf_.freqs));
+          assert((this->freq_ - 1) >= this->buf_.freqs);
+          assert((this->freq_ - 1) < std::end(this->buf_.freqs));
 
           auto& freq = std::get<frequency>(attrs_);
           freq.value = this->freq_[-1];
