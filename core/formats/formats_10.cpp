@@ -1039,7 +1039,7 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
   #pragma GCC diagnostic pop
 #endif
 
-struct skip_state {
+struct SkipState {
   uint64_t pay_ptr{}; // pointer to the payloads of the first document in a document block
   uint64_t pos_ptr{}; // pointer to the positions of the first document in a document block
   size_t pend_pos{}; // positions to skip before new document block
@@ -1049,7 +1049,7 @@ struct skip_state {
 };
 
 template<typename IteratorTraits>
-FORCE_INLINE void CopyState(skip_state& to, const skip_state& from) noexcept {
+FORCE_INLINE void CopyState(SkipState& to, const SkipState& from) noexcept {
   if constexpr (IteratorTraits::position() &&
                 (IteratorTraits::payload() || IteratorTraits::offset())) {
     to = from;
@@ -1064,7 +1064,7 @@ FORCE_INLINE void CopyState(skip_state& to, const skip_state& from) noexcept {
 }
 
 template<typename FieldTraits>
-FORCE_INLINE void ReadState(skip_state& state, index_input& in) {
+FORCE_INLINE void ReadState(SkipState& state, index_input& in) {
   state.doc = in.read_vint();
   state.doc_ptr += in.read_vlong();
 
@@ -1082,7 +1082,7 @@ FORCE_INLINE void ReadState(skip_state& state, index_input& in) {
   }
 }
 
-struct doc_state {
+struct DocState {
   const index_input* pos_in;
   const index_input* pay_in;
   const version10::term_meta* term_state;
@@ -1093,7 +1093,7 @@ struct doc_state {
 };
 
 template<typename IteratorTraits>
-FORCE_INLINE void CopyState(skip_state& to, const version10::term_meta& from) noexcept {
+FORCE_INLINE void CopyState(SkipState& to, const version10::term_meta& from) noexcept {
   to.doc_ptr = from.doc_start;
   if constexpr (IteratorTraits::position()) {
     to.pos_ptr = from.pos_start;
@@ -1123,7 +1123,7 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
     return irs::type<offset>::id() == type ? &offs_ : nullptr;
   }
 
-  void prepare(const doc_state& state) {
+  void prepare(const DocState& state) {
     base::prepare(state);
 
     pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
@@ -1138,7 +1138,7 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
     pay_in_->seek(state.term_state->pay_start);
   }
 
-  void prepare(const skip_state& state)  {
+  void prepare(const SkipState& state)  {
     base::prepare(state);
 
     pay_in_->seek(state.pay_ptr);
@@ -1259,7 +1259,7 @@ struct position_impl<IteratorTraits, FieldTraits, false, true>
     return irs::type<payload>::id() == type ? &pay_ : nullptr;
   }
 
-  void prepare(const doc_state& state) {
+  void prepare(const DocState& state) {
     base::prepare(state);
 
     pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
@@ -1274,7 +1274,7 @@ struct position_impl<IteratorTraits, FieldTraits, false, true>
     pay_in_->seek(state.term_state->pay_start);
   }
 
-  void prepare(const skip_state& state)  {
+  void prepare(const SkipState& state)  {
     base::prepare(state);
 
     pay_in_->seek(state.pay_ptr);
@@ -1391,7 +1391,7 @@ struct position_impl<IteratorTraits, FieldTraits, true, false>
     return irs::type<offset>::id() == type ? &offs_ : nullptr;
   }
 
-  void prepare(const doc_state& state) {
+  void prepare(const DocState& state) {
     base::prepare(state);
 
     pay_in_ = state.pay_in->reopen(); // reopen thread-safe stream
@@ -1406,7 +1406,7 @@ struct position_impl<IteratorTraits, FieldTraits, true, false>
     pay_in_->seek(state.term_state->pay_start);
   }
 
-  void prepare(const skip_state& state) {
+  void prepare(const SkipState& state) {
     base::prepare(state);
 
     pay_in_->seek(state.pay_ptr);
@@ -1493,7 +1493,7 @@ struct position_impl<IteratorTraits, FieldTraits, false, false> {
     return nullptr;
   }
 
-  void prepare(const doc_state& state) {
+  void prepare(const DocState& state) {
     pos_in_ = state.pos_in->reopen(); // reopen thread-safe stream
 
     if (!pos_in_) {
@@ -1511,7 +1511,7 @@ struct position_impl<IteratorTraits, FieldTraits, false, false> {
     tail_length_ = state.tail_length;
   }
 
-  void prepare(const skip_state& state) {
+  void prepare(const SkipState& state) {
     pos_in_->seek(state.pos_ptr);
     pend_pos_ = state.pend_pos;
     buf_pos_ = IteratorTraits::block_size();
@@ -1706,8 +1706,8 @@ struct position<IteratorTraits, FieldTraits, false> : attribute {
     return irs::position::type_name();
   }
 
-  void prepare(doc_state&) { }
-  void prepare(skip_state&) { }
+  void prepare(DocState&) { }
+  void prepare(SkipState&) { }
   void notify(uint32_t) { }
   void clear() { }
 }; // position
@@ -1924,9 +1924,9 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
   void seek_to_block(doc_id_t target);
 
   version10::term_meta term_state_;
-  std::vector<skip_state> skip_levels_;
+  std::vector<SkipState> skip_levels_;
   SkipReader<ReadSkip> skip_;
-  skip_state* skip_ctx_; // pointer to skip context used by skip reader
+  SkipState* skip_ctx_; // pointer to skip context used by skip reader
   attributes attrs_;
 }; // doc_iterator
 
@@ -2008,7 +2008,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
     assert(meta.freq);
 
     if constexpr (IteratorTraits::position()) {
-      doc_state state;
+      DocState state;
       state.pos_in = pos_in;
       state.pay_in = pay_in;
       state.term_state = &term_state_;
@@ -2119,7 +2119,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
   assert(1 != term_state_.docs_count);
   assert(term_state_.docs_count > IteratorTraits::block_size());
 
-  skip_state last; // where block starts
+  SkipState last; // where block starts
   skip_ctx_ = &last;
 
   // init skip writer in lazy fashion
@@ -2275,10 +2275,10 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
   }
 
   doc_id_t docs_count_{};
-  std::vector<skip_state> skip_levels_;
+  std::vector<SkipState> skip_levels_;
   std::vector<score_buffer::value_type> skip_scores_;
   SkipReader<ReadSkip> skip_;
-  skip_state prev_skip_; // skip context used by skip reader
+  SkipState prev_skip_; // skip context used by skip reader
   attributes attrs_;
 }; // wanderator
 
@@ -2379,7 +2379,7 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
     assert(meta.freq);
 
     if constexpr (IteratorTraits::position()) {
-      doc_state state;
+      DocState state;
       state.pos_in = pos_in;
       state.pay_in = pay_in;
       state.term_state = &term_state;
