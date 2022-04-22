@@ -417,12 +417,7 @@ void boolean_filter::group_filters(
       continue;
     }
     if (irs::type<Not>::id() == begin->type()) {
-#ifdef IRESEARCH_DEBUG
-      const auto& not_node = dynamic_cast<const Not&>(*begin);
-#else
-      const auto& not_node = static_cast<const Not&>(*begin);
-#endif
-      const auto res = optimize_not(not_node);
+      const auto res = optimize_not(down_cast<Not>(*begin));
 
       if (!res.first) {
         continue;

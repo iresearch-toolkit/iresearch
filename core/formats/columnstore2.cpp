@@ -1395,13 +1395,7 @@ const column_header* reader::header(field_id field) const {
     : columns_[field];
 
   if (column) {
-#ifdef IRESEARCH_DEBUG
-    auto& impl = dynamic_cast<const column_base&>(*column);
-#else
-    auto& impl = static_cast<const column_base&>(*column);
-#endif
-
-    return &impl.header();
+    return &down_cast<column_base>(*column).header();
   }
 
   return nullptr;

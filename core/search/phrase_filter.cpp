@@ -431,12 +431,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
       }
 
       auto disj = make_disjunction<disjunction_t>(std::move(disj_itrs));
-      #ifdef IRESEARCH_DEBUG
-        pos.first = dynamic_cast<compound_doc_iterator_t*>(disj.get());
-        assert(pos.first);
-      #else
-        pos.first = static_cast<compound_doc_iterator_t*>(disj.get());
-      #endif
+      pos.first = down_cast<compound_doc_iterator_t>(disj.get());
       conj_itrs.emplace_back(std::move(disj));
       ++position;
     }

@@ -216,13 +216,7 @@ directory_reader& directory_reader::operator=(
 const directory_meta& directory_reader::meta() const {
   auto impl = atomic_utils::atomic_load(&impl_);  // make a copy
 
-#ifdef IRESEARCH_DEBUG
-  auto& reader_impl = dynamic_cast<const directory_reader_impl&>(*impl);
-#else
-  auto& reader_impl = static_cast<const directory_reader_impl&>(*impl);
-#endif
-
-  return reader_impl.meta();
+  return down_cast<directory_reader_impl>(*impl).meta();
 }
 
 /*static*/ directory_reader directory_reader::open(
@@ -235,13 +229,8 @@ directory_reader directory_reader::reopen(
   // make a copy
   impl_ptr impl = atomic_utils::atomic_load(&impl_);
 
-#ifdef IRESEARCH_DEBUG
-  auto& reader_impl = dynamic_cast<const directory_reader_impl&>(*impl);
-#else
-  auto& reader_impl = static_cast<const directory_reader_impl&>(*impl);
-#endif
-
-  return directory_reader_impl::open(reader_impl.dir(), codec.get(), impl);
+  return directory_reader_impl::open(
+      down_cast<directory_reader_impl>(*impl).dir(), codec.get(), impl);
 }
 
 // -------------------------------------------------------------------
@@ -267,12 +256,7 @@ directory_reader_impl::directory_reader_impl(
     throw index_not_found{};
   }
 
-#ifdef IRESEARCH_DEBUG
-  auto* cached_impl = dynamic_cast<const directory_reader_impl*>(cached.get());
-  assert(!cached || cached_impl);
-#else
-  auto* cached_impl = static_cast<const directory_reader_impl*>(cached.get());
-#endif
+  auto* cached_impl = down_cast<directory_reader_impl>(cached.get());
 
   if (cached_impl && cached_impl->meta_.meta == meta) {
     return cached;  // no changes to refresh

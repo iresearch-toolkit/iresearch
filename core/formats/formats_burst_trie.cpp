@@ -3291,13 +3291,7 @@ class field_reader final : public irs::field_reader {
         size_t* set) const override {
       auto term_provider = [&provider]() mutable -> const term_meta* {
         if (auto* cookie = provider()) {
-#ifdef IRESEARCH_DEBUG
-          const auto& state = dynamic_cast<const ::cookie&>(*cookie);
-#else
-          const auto& state = static_cast<const ::cookie&>(*cookie);
-#endif // IRESEARCH_DEBUG
-
-          return &state.meta;
+          return &down_cast<::cookie>(*cookie).meta;
         }
 
         return nullptr;
@@ -3341,27 +3335,15 @@ class field_reader final : public irs::field_reader {
     virtual doc_iterator::ptr postings(
         const seek_cookie& cookie,
         IndexFeatures features) const override {
-#ifdef IRESEARCH_DEBUG
-      auto* impl = dynamic_cast<const ::cookie*>(&cookie);
-      assert(impl);
-#else
-      auto* impl = static_cast<const ::cookie*>(&cookie);
-#endif
-      return owner_->pr_->iterator(
-        meta().index_features, features, impl->meta);
+      return owner_->pr_->iterator(meta().index_features, features,
+                                   down_cast<::cookie>(cookie).meta);
     }
 
     virtual doc_iterator::ptr wanderator(
         const seek_cookie& cookie,
         IndexFeatures features) const override {
-#ifdef IRESEARCH_DEBUG
-      auto* impl = dynamic_cast<const ::cookie*>(&cookie);
-      assert(impl);
-#else
-      auto* impl = static_cast<const ::cookie*>(&cookie);
-#endif
-      return owner_->pr_->wanderator(
-        meta().index_features, features, impl->meta);
+      return owner_->pr_->wanderator(meta().index_features, features,
+                                     down_cast<::cookie>(cookie).meta);
     }
 
    private:

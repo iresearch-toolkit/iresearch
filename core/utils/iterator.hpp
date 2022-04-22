@@ -169,15 +169,11 @@ class ptr_iterator
   //////////////////////////////////////////////////////////////////////////////
   template<typename T>
   typename adjust_const<T>::reference as() const {
-    typedef typename std::enable_if<
-      std::is_base_of< base_element_type, T >::value, T
-    >::type type;
+    typedef typename std::enable_if_t<
+      std::is_base_of_v<base_element_type, T>, T
+    > type;
 
-#ifdef IRESEARCH_DEBUG
-    return dynamic_cast<typename adjust_const<type>::reference>(dereference());
-#else
-    return static_cast<typename adjust_const<type>::reference>(dereference());
-#endif // IRESEARCH_DEBUG
+    return down_cast<type>(dereference());
   }
 
   //////////////////////////////////////////////////////////////////////////////

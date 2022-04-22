@@ -772,22 +772,14 @@ class order final {
 
     template<typename T>
     const T& sort_cast() const noexcept {
-      using type = typename std::enable_if<
-        std::is_base_of<irs::sort, T>::value, T
-      >::type ;
+      using type = typename std::enable_if_t<std::is_base_of_v<irs::sort, T>, T>;
 
-#ifdef IRESEARCH_DEBUG
-      return dynamic_cast<const type&>(sort());
-#else
-      return static_cast<const type&>(sort());
-#endif // IRESEARCH_DEBUG
+      return down_cast<type>(sort());
     }
 
     template<typename T>
     const T* sort_safe_cast() const noexcept {
-      using type = typename std::enable_if<
-        std::is_base_of<irs::sort, T>::value, T
-      >::type;
+      using type = typename std::enable_if_t<std::is_base_of_v<irs::sort, T>, T>;
 
       return type::type() == sort().type()
         ? static_cast<const type*>(&sort())

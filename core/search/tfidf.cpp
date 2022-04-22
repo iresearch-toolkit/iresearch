@@ -58,13 +58,7 @@ constexpr std::string_view WITH_NORMS_PARAM_NAME("withNorms");
 irs::sort::ptr make_from_object(const VPackSlice slice) {
   assert(slice.isObject());
 
-  auto ptr = irs::memory::make_unique<irs::tfidf_sort>();
-
-  #ifdef IRESEARCH_DEBUG
-    auto& scorer = dynamic_cast<irs::tfidf_sort&>(*ptr);
-  #else
-    auto& scorer = static_cast<irs::tfidf_sort&>(*ptr);
-  #endif
+  auto scorer = irs::memory::make_unique<irs::tfidf_sort>();
 
   {
     // optional bool
@@ -76,11 +70,11 @@ irs::sort::ptr make_from_object(const VPackSlice slice) {
         return nullptr;
       }
 
-      scorer.normalize(slice.get(WITH_NORMS_PARAM_NAME).getBool());
+      scorer->normalize(slice.get(WITH_NORMS_PARAM_NAME).getBool());
     }
   }
 
-  return ptr;
+  return scorer;
 }
 
 irs::sort::ptr make_from_array(const VPackSlice slice) {
@@ -394,15 +388,8 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
       const irs::sort::term_collector* term) const override {
     auto& idf = stats_cast(stats_buf);
 
-#ifdef IRESEARCH_DEBUG
-    auto* field_ptr = dynamic_cast<const field_collector*>(field);
-    assert(!field || field_ptr);
-    auto* term_ptr = dynamic_cast<const term_collector*>(term);
-    assert(!term || term_ptr);
-#else
-    auto* field_ptr = static_cast<const field_collector*>(field);
-    auto* term_ptr = static_cast<const term_collector*>(term);
-#endif
+    auto* field_ptr = down_cast<field_collector>(field);
+    auto* term_ptr = down_cast<term_collector>(term);
 
     const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0; // nullptr possible if e.g. 'all' filter
     const auto docs_with_term = term_ptr ? term_ptr->docs_with_term : 0; // nullptr possible if e.g.'by_column_existence' filter

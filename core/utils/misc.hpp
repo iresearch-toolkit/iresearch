@@ -131,19 +131,8 @@ constexpr auto* down_cast(From* from) noexcept {
 }
 
 template<typename To, typename From>
-constexpr auto& down_cast(From&& from) noexcept {
+constexpr auto& down_cast(From& from) noexcept {
   return *down_cast<To>(std::addressof(from));
-}
-
-template<typename To, typename From>
-auto down_cast(std::shared_ptr<From> from) noexcept {
-  static_assert(!std::is_pointer_v<To>);
-  static_assert(!std::is_reference_v<To>);
-  using CastTo =
-      std::conditional_t<std::is_const_v<From>, std::add_const_t<To>, To>;
-  assert(from == nullptr ||
-         std::dynamic_pointer_cast<CastTo>(from) != nullptr);
-  return std::static_pointer_cast<CastTo>(std::move(from));
 }
 
 }
