@@ -1835,12 +1835,10 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
   using ptr = memory::managed_ptr<doc_iterator>;
 
   doc_iterator() noexcept
-    : skip_levels_(1),
-      skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN, ReadSkip{*this}} {
+    : skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN, ReadSkip{}} {
     assert(
       std::all_of(std::begin(this->buf_.docs), std::end(this->buf_.docs),
                   [](doc_id_t doc) { return !doc_limits::valid(doc); }));
-    skip_levels_.back().doc = doc_limits::eof(); // prevent using skip-list by default
   }
 
   void prepare(
@@ -1872,7 +1870,7 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
     if (this->begin_ == this->end_) {
       this->cur_pos_ += this->relative_pos();
 
-      const auto left = term_state_.docs_count - this->cur_pos_;
+      const auto left = docs_count_ - this->cur_pos_;
 
       if (!left) {
         doc.value = doc_limits::eof();
@@ -1880,7 +1878,7 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
         return false;
       }
 
-      assert(1 != term_state_.docs_count);
+      assert(1 != docs_count_);
       this->refill(left);
     }
 
@@ -1909,53 +1907,81 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
  private:
   class ReadSkip {
    public:
-    explicit ReadSkip(doc_iterator& self) noexcept
-      : self_{&self} {
+    explicit ReadSkip() noexcept
+      : skip_levels_(1) {
+      Disable(); // prevent using skip-list by default
     }
 
-    bool IsLess(size_t level, doc_id_t target) const noexcept;
-    void MoveDown(size_t level) const;
-    bool Read(size_t level, size_t end, index_input& in) const;
+    void Disable() noexcept {
+      assert(!skip_levels_.empty());
+      assert(!doc_limits::valid(skip_levels_.back().doc));
+      skip_levels_.back().doc = doc_limits::eof();
+    }
+
+    void Enable(const version10::term_meta& state) noexcept {
+      // since we store pointer deltas, add postings offset
+      auto& top = skip_levels_.front();
+      CopyState<IteratorTraits>(top, state);
+      docs_count_ = state.docs_count;
+      Enable();
+    }
+    void Init(size_t num_levels) {
+      assert(num_levels);
+      skip_levels_.resize(num_levels);
+    }
+    bool IsLess(size_t level, doc_id_t target) const noexcept {
+      return skip_levels_[level].doc < target;
+    }
+    void MoveDown(size_t level) noexcept {
+     auto& next = skip_levels_[level];
+     // move to the more granular level
+     CopyState<IteratorTraits>(next, *prev_);
+    }
+    bool Read(size_t level, size_t end, index_input& in);
+
+    void Reset(SkipState& state) noexcept {
+      assert(std::is_sorted(
+          std::begin(skip_levels_), std::end(skip_levels_),
+          [](const auto& lhs, const auto& rhs) {
+              return lhs.doc > rhs.doc; }));
+
+      prev_ = &state;
+    }
+
+    doc_id_t UpperBound() const noexcept {
+      assert(!skip_levels_.empty());
+      return skip_levels_.back().doc;
+    }
 
    private:
-    doc_iterator* self_;
+    void Enable() noexcept {
+      assert(!skip_levels_.empty());
+      assert(doc_limits::eof(skip_levels_.back().doc));
+      skip_levels_.back().doc = doc_limits::invalid();
+    }
+
+    std::vector<SkipState> skip_levels_;
+    SkipState* prev_; // pointer to skip context used by skip reader
+    doc_id_t docs_count_{};
   };
 
   void seek_to_block(doc_id_t target);
 
-  version10::term_meta term_state_;
-  std::vector<SkipState> skip_levels_;
+  uint64_t skip_offs_{};
+  doc_id_t docs_count_{};
   SkipReader<ReadSkip> skip_;
-  SkipState* skip_ctx_; // pointer to skip context used by skip reader
   attributes attrs_;
 }; // doc_iterator
 
 template<typename IteratorTraits, typename FieldTraits>
-bool doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::IsLess(
-    size_t level, doc_id_t target) const noexcept {
-  return self_->skip_levels_[level].doc < target;
-}
-
-template<typename IteratorTraits, typename FieldTraits>
-void doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::MoveDown(
-    size_t level) const {
-  auto& last = *self_->skip_ctx_;
-  auto& next = self_->skip_levels_[level];
-
-  // move to the more granular level
-  CopyState<IteratorTraits>(next, last);
-}
-
-template<typename IteratorTraits, typename FieldTraits>
 bool doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Read(
-    size_t level, size_t skipped, index_input& in) const {
-  auto& last = *self_->skip_ctx_;
-  auto& next = self_->skip_levels_[level];
+    size_t level, size_t skipped, index_input& in) {
+  auto& next = skip_levels_[level];
 
   // store previous step on the same level
-  CopyState<IteratorTraits>(last, next);
+  CopyState<IteratorTraits>(*prev_, next);
 
-  if (skipped >= self_->term_state_.docs_count) {
+  if (skipped >= docs_count_) {
     // stream exhausted
     next.doc = doc_limits::eof();
     return false;
@@ -1983,10 +2009,11 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
 
   this->begin_ = this->end_ = this->buf_.docs;
 
-  term_state_ = static_cast<const version10::term_meta&>(meta);
+  auto& term_state = static_cast<const version10::term_meta&>(meta);
+  docs_count_ = term_state.docs_count;
 
   // init document stream
-  if (term_state_.docs_count > 1) {
+  if (term_state.docs_count > 1) {
     if (!this->doc_in_) {
       this->doc_in_ = doc_in->reopen(); // reopen thread-safe stream
 
@@ -1998,11 +2025,11 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
       }
     }
 
-    this->doc_in_->seek(term_state_.doc_start);
+    this->doc_in_->seek(term_state.doc_start);
     assert(!this->doc_in_->eof());
   }
 
-  std::get<cost>(attrs_).reset(term_state_.docs_count); // estimate iterator
+  std::get<cost>(attrs_).reset(term_state.docs_count); // estimate iterator
 
   if constexpr (IteratorTraits::frequency()) {
     assert(meta.freq);
@@ -2011,18 +2038,18 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
       DocState state;
       state.pos_in = pos_in;
       state.pay_in = pay_in;
-      state.term_state = &term_state_;
+      state.term_state = &term_state;
       state.freq = &std::get<frequency>(attrs_).value;
       state.enc_buf = this->enc_buf_;
 
       const auto term_freq = meta.freq;
 
       if (term_freq < IteratorTraits::block_size()) {
-        state.tail_start = term_state_.pos_start;
+        state.tail_start = term_state.pos_start;
       } else if (term_freq == IteratorTraits::block_size()) {
         state.tail_start = type_limits<type_t::address_t>::invalid();
       } else {
-        state.tail_start = term_state_.pos_start + term_state_.pos_end;
+        state.tail_start = term_state.pos_start + term_state.pos_end;
       }
 
       state.tail_length = term_freq % IteratorTraits::block_size();
@@ -2030,16 +2057,17 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
     }
   }
 
-  if (1 == term_state_.docs_count) {
-    *this->buf_.docs = (doc_limits::min)() + term_state_.e_single_doc;
+  if (1 == term_state.docs_count) {
+    *this->buf_.docs = (doc_limits::min)() + term_state.e_single_doc;
     if constexpr (IteratorTraits::frequency()) {
       *this->buf_.freqs = meta.freq;
       this->freq_ = this->buf_.freqs;
     }
     ++this->end_;
-  } else if (term_state_.docs_count > IteratorTraits::block_size()) {
+  } else if (term_state.docs_count > IteratorTraits::block_size()) {
     // allow using skip-list for long enough postings
-    skip_levels_.back().doc = doc_limits::invalid();
+    skip_.Reader().Enable(term_state);
+    skip_offs_ = term_state.doc_start + term_state.e_skip_start;
   }
 }
 
@@ -2052,14 +2080,14 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
   }
 
   // check whether it make sense to use skip-list
-  if (skip_levels_.back().doc < target) {
+  if (skip_.Reader().UpperBound() < target) {
     seek_to_block(target);
   }
 
   if (this->begin_ == this->end_) {
     this->cur_pos_ += this->relative_pos();
 
-    const auto left = term_state_.docs_count - this->cur_pos_;
+    const auto left = docs_count_ - this->cur_pos_;
 
     if (!left) {
       doc.value = doc_limits::eof();
@@ -2067,7 +2095,7 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
       return doc_limits::eof();
     }
 
-    assert(1 != term_state_.docs_count);
+    assert(1 != docs_count_);
     this->refill(left);
   }
 
@@ -2111,25 +2139,18 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
 
 template<typename IteratorTraits, typename FieldTraits>
 void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
-  // ensured by ctor
-  assert(!skip_levels_.empty());
   // ensured by caller
-  assert(skip_levels_.back().doc < target);
+  assert(skip_.Reader().UpperBound() < target);
   // ensured by prepare(...)
-  assert(1 != term_state_.docs_count);
-  assert(term_state_.docs_count > IteratorTraits::block_size());
+  assert(1 != docs_count_);
+  assert(docs_count_ > IteratorTraits::block_size());
 
   SkipState last; // where block starts
-  skip_ctx_ = &last;
+  skip_.Reader().Reset(last);
 
   // init skip writer in lazy fashion
   if (skip_.NumLevels() != 0) {
 seek_after_initialization:
-    assert(std::is_sorted(
-        std::begin(skip_levels_), std::end(skip_levels_),
-        [](const auto& lhs, const auto& rhs) {
-            return lhs.doc > rhs.doc; }));
-
     const auto pos = this->cur_pos_;
     this->cur_pos_ = skip_.Seek(target);
 
@@ -2154,23 +2175,18 @@ seek_after_initialization:
     throw io_error("Failed to duplicate document input");
   }
 
-  skip_in->seek(term_state_.doc_start + term_state_.e_skip_start);
+  skip_in->seek(skip_offs_);
   skip_.Prepare(std::move(skip_in));
 
   // initialize skip levels
   if (const auto num_levels = skip_.NumLevels(); IRS_LIKELY(num_levels)) {
-    assert(!doc_limits::valid(skip_levels_.back().doc));
-    skip_levels_.resize(num_levels);
-
-    // since we store pointer deltas, add postings offset
-    auto& top = skip_levels_.front();
-    CopyState<IteratorTraits>(top, term_state_);
+    assert(!doc_limits::valid(skip_.Reader().UpperBound()));
+    skip_.Reader().Init(num_levels);
 
     goto seek_after_initialization;
   } else {
-    if (IRS_LIKELY(term_state_.docs_count <= IteratorTraits::block_size())) {
-      // prevent using skip-list
-      skip_levels_.back().doc = doc_limits::eof();
+    if (IRS_LIKELY(docs_count_ <= IteratorTraits::block_size())) {
+      skip_.Reader().Disable(); // prevent using skip-list
     } else {
       assert(false);
       throw index_error("Zero number of skip levels.");
@@ -2236,7 +2252,7 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
     }
 
     bool IsLess(size_t level, doc_id_t target) const noexcept;
-    void MoveDown(size_t level) const;
+    void MoveDown(size_t level) const noexcept;
     bool Read(size_t level, doc_id_t skipped, index_input& in) const;
 
    private:
@@ -2274,6 +2290,17 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
     }
   }
 
+  struct SkipScoreContext final : attribute_provider {
+    frequency freq;
+
+    attribute* get_mutable(irs::type_info::type_id id) noexcept final {
+      if (id == irs::type<frequency>::id()) {
+        return &freq;
+      }
+      return nullptr;
+    }
+  };
+
   doc_id_t docs_count_{};
   std::vector<SkipState> skip_levels_;
   std::vector<score_buffer::value_type> skip_scores_;
@@ -2298,7 +2325,7 @@ bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::IsLess(
 
 template<typename IteratorTraits, typename FieldTraits>
 void wanderator<IteratorTraits, FieldTraits>::ReadSkip::MoveDown(
-    size_t level) const {
+    size_t level) const noexcept {
   auto& last = self_->prev_skip_;
   auto& next = self_->skip_levels_[level];
 
