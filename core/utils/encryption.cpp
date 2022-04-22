@@ -321,7 +321,7 @@ int64_t encrypted_input::checksum(size_t offset) const {
   const auto begin = file_pointer();
   const auto end = (std::min)(begin + offset, this->length());
 
-  auto restore_position = make_finally([begin, this](){
+  auto restore_position = make_finally([begin, this]()noexcept{
     // FIXME make me noexcept as I'm begin called from within ~finally()
     const_cast<encrypted_input*>(this)->seek_internal(begin);
   });

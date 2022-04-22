@@ -282,7 +282,7 @@ class index_writer : private util::noncopyable {
         ++segment->active_count_;
       }
 
-      auto clear_busy = make_finally([ctx, segment](){
+      auto clear_busy = make_finally([ctx, segment]()noexcept{
         // FIXME make me noexcept as I'm begin called from within ~finally()
         if (!--segment->active_count_) {
           auto lock = make_lock_guard(ctx->mutex_); // lock due to context modification and notification

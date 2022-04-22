@@ -1477,7 +1477,7 @@ index_writer::consolidation_result index_writer::consolidate(
   }
 
   // unregisterer for all registered candidates
-  auto unregister_segments = make_finally([&candidates, this]() {
+  auto unregister_segments = make_finally([&candidates, this]() noexcept {
     // FIXME make me noexcept as I'm begin called from within ~finally()
     if (candidates.empty()) {
       return;
@@ -1562,7 +1562,7 @@ index_writer::consolidation_result index_writer::consolidate(
     const auto current_committed_meta = committed_state_->first;
     assert(current_committed_meta);
 
-    auto cleanup_cached_readers = [&current_committed_meta, &candidates, this](){
+    auto cleanup_cached_readers = [&current_committed_meta, &candidates, this]()noexcept{
       // FIXME make me noexcept as I'm begin called from within ~finally()
       if (!candidates.empty()) {
         decltype(flush_context::segment_mask_) cached_mask;
@@ -1976,7 +1976,7 @@ index_writer::pending_context_t index_writer::flush_all() {
 
   // register consolidating segments cleanup.
   // we need raw ptr as ctx may be moved
-  auto unregister_segments = make_finally([ctx_raw = ctx.get(), this](){
+  auto unregister_segments = make_finally([ctx_raw = ctx.get(), this]()noexcept{
     // FIXME make me noexcept as I'm begin called from within ~finally()
     assert(ctx_raw);
     if (ctx_raw->pending_segments_.empty()) {
