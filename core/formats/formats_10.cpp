@@ -2491,7 +2491,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
 
     const auto left = this->docs_count_ - this->cur_pos_;
 
-    if (left) {
+    if (!left) {
       doc.value = doc_limits::eof();
       this->begin_ = this->end_ = this->buf_.docs; // seal the iterator
       return doc_limits::eof();
