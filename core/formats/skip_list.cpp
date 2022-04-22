@@ -155,7 +155,6 @@ void SkipReaderBase::Prepare(index_input::ptr&& in) {
     levels.back().child = kUndefined;
 
     levels_ = std::move(levels);
-    num_levels_ = levels_.size();
   }
 }
 

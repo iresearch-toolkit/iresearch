@@ -2149,8 +2149,9 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
   skip_.Reader().Reset(last);
 
   // init skip writer in lazy fashion
-  if (skip_.NumLevels() != 0) {
+  if (IRS_LIKELY(!skip_offs_)) {
 seek_after_initialization:
+    assert(skip_.NumLevels());
     const auto pos = this->cur_pos_;
     this->cur_pos_ = skip_.Seek(target);
 
@@ -2175,22 +2176,24 @@ seek_after_initialization:
     throw io_error("Failed to duplicate document input");
   }
 
+  assert(!skip_.NumLevels());
   skip_in->seek(skip_offs_);
   skip_.Prepare(std::move(skip_in));
+  skip_offs_ = 0;
 
   // initialize skip levels
-  if (const auto num_levels = skip_.NumLevels(); IRS_LIKELY(num_levels)) {
+  if (const auto num_levels = skip_.NumLevels();
+      IRS_LIKELY(num_levels > 0 && num_levels <= postings_writer_base::kMaxSkipLevels)) {
     assert(!doc_limits::valid(skip_.Reader().UpperBound()));
     skip_.Reader().Init(num_levels);
 
     goto seek_after_initialization;
   } else {
-    if (IRS_LIKELY(docs_count_ <= IteratorTraits::block_size())) {
-      skip_.Reader().Disable(); // prevent using skip-list
-    } else {
-      assert(false);
-      throw index_error("Zero number of skip levels.");
-    }
+    assert(false);
+    throw index_error{
+      string_utils::to_string(
+          "Invalid number of skip levels %u, must be in range of [1, %u].",
+          num_levels, postings_writer_base::kMaxSkipLevels)};
   }
 }
 
@@ -2443,6 +2446,13 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
 
     // initialize skip levels
     if (const auto num_levels = skip_.NumLevels(); IRS_LIKELY(num_levels)) {
+      if (IRS_UNLIKELY(num_levels > postings_writer_base::kMaxSkipLevels)) {
+        throw index_error{
+          string_utils::to_string(
+              "Invalid number of skip levels %u, must be in range of [1, %u].",
+              num_levels, postings_writer_base::kMaxSkipLevels)};
+      }
+
       skip_levels_.resize(num_levels);
       skip_scores_.resize(num_levels);
       std::get<score_threshold>(attrs_).skip_scores = skip_scores_;

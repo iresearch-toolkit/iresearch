@@ -162,7 +162,7 @@ class SkipReaderBase : util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   /// @returns number of elements in a skip-list
   //////////////////////////////////////////////////////////////////////////////
-  size_t NumLevels() const noexcept { return num_levels_; }
+  size_t NumLevels() const noexcept { return std::size(levels_); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prepares skip_reader
@@ -225,7 +225,6 @@ class SkipReaderBase : util::noncopyable {
   }
 
   std::vector<Level> levels_; // input streams for skip-list levels
-  size_t num_levels_{};
   const doc_id_t skip_0_; // skip interval for 0 level
   const doc_id_t skip_n_; // skip interval for 1..n levels
 };
