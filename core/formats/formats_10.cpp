@@ -1925,6 +1925,7 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
       docs_count_ = state.docs_count;
       Enable();
     }
+
     void Init(size_t num_levels) {
       assert(num_levels);
       skip_levels_.resize(num_levels);
@@ -1968,7 +1969,7 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
   void seek_to_block(doc_id_t target);
 
   uint64_t skip_offs_{};
-  doc_id_t docs_count_{};
+  doc_id_t docs_count_{}; // FIXME: try to track docs left
   SkipReader<ReadSkip> skip_;
   attributes attrs_;
 }; // doc_iterator
@@ -2219,13 +2220,10 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
   using ptr = memory::managed_ptr<wanderator>;
 
   wanderator() noexcept
-    : skip_levels_(1),
-      skip_scores_(1),
-      skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN, ReadSkip{*this}} {
+    : skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN, ReadSkip{}} {
     assert(
       std::all_of(std::begin(this->buf_.docs), std::end(this->buf_.docs),
                   [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
-    skip_levels_.back().doc = doc_limits::eof(); // prevent using skip-list by default
   }
 
   void prepare(const term_meta& meta,
@@ -2250,44 +2248,48 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
  private:
   class ReadSkip {
    public:
-    explicit ReadSkip(wanderator& self) noexcept
-      : self_{&self} {
+    explicit ReadSkip() noexcept
+      : skip_levels_(1), skip_scores_(1) {
     }
 
+    void EnsureSorted() const noexcept;
+
+    void Init(const version10::term_meta& state, size_t num_levels,
+              score_threshold& threshold);
     bool IsLess(size_t level, doc_id_t target) const noexcept;
-    void MoveDown(size_t level) const noexcept;
-    bool Read(size_t level, doc_id_t skipped, index_input& in) const;
+    bool IsLessThanUpperBound(doc_id_t target) const noexcept;
+    void MoveDown(size_t level) noexcept {
+      auto& next = skip_levels_[level];
+
+      // move to the more granular level
+      CopyState<IteratorTraits>(next, prev_skip_);
+    }
+    bool Read(size_t level, doc_id_t skipped, index_input& in);
+    SkipState& State() noexcept { return prev_skip_; }
 
    private:
-    wanderator* self_;
+    std::vector<SkipState> skip_levels_;
+    std::vector<score_buffer::value_type> skip_scores_;
+    SkipState prev_skip_; // skip context used by skip reader
+    const score_threshold* threshold_{};
+    doc_id_t docs_count_{};
   };
 
   void seek_to_block(doc_id_t target) {
-    // FIXME(gnusi) don't use wanderator for short posting lists?
-    auto& min_competitive_score = std::get<score_threshold>(attrs_);
-
     // check whether it make sense to use skip-list
-    if (skip_levels_.back().doc < target
-        || skip_scores_.back() <= min_competitive_score.value) {
-      assert(std::is_sorted(
-          std::begin(skip_levels_), std::end(skip_levels_),
-          [](const auto& lhs, const auto& rhs) {
-              return lhs.doc > rhs.doc; }));
-      assert(std::is_sorted(
-          std::begin(skip_scores_), std::end(skip_scores_),
-          [](const auto& lhs, const auto& rhs) {
-              return lhs > rhs; }));
-
+    if (skip_.Reader().IsLessThanUpperBound(target)) {
       // ensured by prepare(...)
       assert(docs_count_ > IteratorTraits::block_size());
       assert(skip_.NumLevels());
-      assert(0 == prev_skip_.doc_ptr);
+      assert(0 == skip_.Reader().State().doc_ptr);
+
+      skip_.Reader().EnsureSorted();
 
       const auto pos = this->cur_pos_;
       this->cur_pos_ = skip_.Seek(target);
 
       if (pos != this->cur_pos_) {
-        std::get<document>(attrs_).value = prev_skip_.doc;
+        std::get<document>(attrs_).value = skip_.Reader().State().doc;
         this->begin_ = this->end_ = this->buf_.docs; // will trigger refill in "next"
       }
     }
@@ -2304,52 +2306,80 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
     }
   };
 
-  doc_id_t docs_count_{};
-  std::vector<SkipState> skip_levels_;
-  std::vector<score_buffer::value_type> skip_scores_;
+  doc_id_t docs_count_{}; // FIXME: try to track docs left
   SkipReader<ReadSkip> skip_;
-  SkipState prev_skip_; // skip context used by skip reader
   attributes attrs_;
 }; // wanderator
+
+template<typename IteratorTraits, typename FieldTraits>
+void wanderator<IteratorTraits, FieldTraits>::ReadSkip::EnsureSorted() const noexcept {
+  assert(std::is_sorted(
+      std::begin(skip_levels_), std::end(skip_levels_),
+      [](const auto& lhs, const auto& rhs) {
+          return lhs.doc > rhs.doc; }));
+  assert(std::is_sorted(
+      std::begin(skip_scores_), std::end(skip_scores_),
+      [](const auto& lhs, const auto& rhs) {
+          return lhs > rhs; }));
+}
+
+template<typename IteratorTraits, typename FieldTraits>
+void wanderator<IteratorTraits, FieldTraits>::ReadSkip::Init(
+    const version10::term_meta& term_state, size_t num_levels,
+    score_threshold& threshold) {
+  // don't use wanderator for short posting lists,
+  // must be ensured by the caller
+  assert(term_state.docs_count > IteratorTraits::block_size());
+
+  skip_levels_.resize(num_levels);
+  skip_scores_.resize(num_levels);
+  docs_count_ = term_state.docs_count;
+  threshold_ = &threshold;
+  threshold.skip_scores = std::span{skip_scores_};
+
+  // since we store pointer deltas, add postings offset
+  auto& top = skip_levels_.front();
+  CopyState<IteratorTraits>(top, term_state);
+}
+
+template<typename IteratorTraits, typename FieldTraits>
+bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::IsLessThanUpperBound(
+    doc_id_t target) const noexcept {
+  if constexpr (FieldTraits::frequency()) {
+    // FIXME(gnusi): parameterize > vs >=
+    return skip_levels_.back().doc < target
+           || skip_scores_.back() <= threshold_->value;
+  } else {
+    return skip_levels_.back().doc < target;
+  }
+}
 
 template<typename IteratorTraits, typename FieldTraits>
 bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::IsLess(
     size_t level, doc_id_t target) const noexcept {
   if constexpr (FieldTraits::frequency()) {
-    auto& min_competitive_score = std::get<score_threshold>(self_->attrs_);
-
     // FIXME(gnusi): parameterize > vs >=
-    return self_->skip_levels_[level].doc < target
-           || self_->skip_scores_[level] <= min_competitive_score.value;
+    return skip_levels_[level].doc < target
+           || skip_scores_[level] <= threshold_->value;
   } else {
-    return self_->skip_levels_[level].doc < target;
+    return skip_levels_[level].doc < target;
   }
 }
 
 template<typename IteratorTraits, typename FieldTraits>
-void wanderator<IteratorTraits, FieldTraits>::ReadSkip::MoveDown(
-    size_t level) const noexcept {
-  auto& last = self_->prev_skip_;
-  auto& next = self_->skip_levels_[level];
-
-  // move to the more granular level
-  CopyState<IteratorTraits>(next, last);
-}
-
-template<typename IteratorTraits, typename FieldTraits>
 bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(
-    size_t level, doc_id_t skipped, index_input& in) const {
-  auto& last = self_->prev_skip_;
-  auto& next = self_->skip_levels_[level];
+    size_t level, doc_id_t skipped, index_input& in) {
+  auto& last = prev_skip_;
+  auto& next = skip_levels_[level];
 
   // store previous step on the same level
   CopyState<IteratorTraits>(last, next);
 
-  if (skipped >= self_->docs_count_) {
+  if (skipped >= docs_count_) {
     // stream exhausted
     next.doc = doc_limits::eof();
     if constexpr (FieldTraits::frequency()) {
-      auto& max_block_score = self_->skip_scores_[level];
+      auto& max_block_score = skip_scores_[level];
       max_block_score = std::numeric_limits<score_buffer::value_type>::max();
     }
     return false;
@@ -2358,7 +2388,7 @@ bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(
   ReadState<FieldTraits>(next, in);
 
   if constexpr (FieldTraits::frequency()) {
-    auto& max_block_score = self_->skip_scores_[level];
+    auto& max_block_score = skip_scores_[level];
     max_block_score = score_buffer::read(in);
   }
 
@@ -2375,10 +2405,9 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
   assert(!IteratorTraits::position() || IteratorTraits::position() == FieldTraits::position());
   assert(!IteratorTraits::offset() || IteratorTraits::offset() == FieldTraits::offset());
   assert(!IteratorTraits::payload() || IteratorTraits::payload() == FieldTraits::payload());
-  assert(!skip_levels_.empty()); // ensured by ctor
-  assert(doc_limits::eof(skip_levels_.back().doc)); // ensured by ctor
 
-  // don't use wanderator for short posting lists
+  // don't use wanderator for short posting lists,
+  // must be ensured by the caller
   assert(meta.docs_count > IteratorTraits::block_size());
 
   this->begin_ = this->end_ = this->buf_.docs;
@@ -2387,21 +2416,19 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
   docs_count_ = term_state.docs_count;
 
   // init document stream
-  if (term_state.docs_count > 1) {
+  if (!this->doc_in_) {
+    this->doc_in_ = doc_in->reopen(); // reopen thread-safe stream
+
     if (!this->doc_in_) {
-      this->doc_in_ = doc_in->reopen(); // reopen thread-safe stream
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
 
-      if (!this->doc_in_) {
-        // implementation returned wrong pointer
-        IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
-
-        throw io_error("failed to reopen document input");
-      }
+      throw io_error("failed to reopen document input");
     }
-
-    this->doc_in_->seek(term_state.doc_start);
-    assert(!this->doc_in_->eof());
   }
+
+  this->doc_in_->seek(term_state.doc_start);
+  assert(!this->doc_in_->eof());
 
   std::get<cost>(attrs_).reset(term_state.docs_count); // estimate iterator
 
@@ -2431,48 +2458,28 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
     }
   }
 
-  if (term_state.docs_count > IteratorTraits::block_size()) {
-    auto skip_in = this->doc_in_->dup();
+  auto skip_in = this->doc_in_->dup();
 
-    if (!skip_in) {
-      IR_FRMT_ERROR("Failed to duplicate input in: %s", __FUNCTION__);
+  if (!skip_in) {
+    IR_FRMT_ERROR("Failed to duplicate input in: %s", __FUNCTION__);
 
-      throw io_error("Failed to duplicate document input");
-    }
+    throw io_error("Failed to duplicate document input");
+  }
 
-    skip_in->seek(term_state.doc_start + term_state.e_skip_start);
+  skip_in->seek(term_state.doc_start + term_state.e_skip_start);
 
-    skip_.Prepare(std::move(skip_in));
+  skip_.Prepare(std::move(skip_in));
 
-    // initialize skip levels
-    if (const auto num_levels = skip_.NumLevels(); IRS_LIKELY(num_levels)) {
-      if (IRS_UNLIKELY(num_levels > postings_writer_base::kMaxSkipLevels)) {
-        throw index_error{
-          string_utils::to_string(
-              "Invalid number of skip levels %u, must be in range of [1, %u].",
-              num_levels, postings_writer_base::kMaxSkipLevels)};
-      }
-
-      skip_levels_.resize(num_levels);
-      skip_scores_.resize(num_levels);
-      std::get<score_threshold>(attrs_).skip_scores = skip_scores_;
-
-      // since we store pointer deltas, add postings offset
-      auto& top = skip_levels_.front();
-      // allow using skip-list for long enough postings
-      top.doc = doc_limits::invalid();
-      CopyState<IteratorTraits>(top, term_state);
-    }
-  } else if (1 == term_state.docs_count) {
-    *this->buf_.docs = (doc_limits::min)() + term_state.e_single_doc;
-    if constexpr (IteratorTraits::frequency()) {
-      *this->buf_.freqs = meta.freq;
-      this->freq_ = this->buf_.freqs;
-    }
-    ++this->end_;
-  } else if (term_state.docs_count > IteratorTraits::block_size()) {
+  // initialize skip levels
+  if (const auto num_levels = skip_.NumLevels();
+      IRS_LIKELY(num_levels > 0 && num_levels <= postings_writer_base::kMaxSkipLevels)) {
+    skip_.Reader().Init(term_state, num_levels, std::get<score_threshold>(attrs_));
+  } else {
     assert(false);
-    throw index_error("Zero number of skip levels.");
+    throw index_error{
+        string_utils::to_string(
+            "Invalid number of skip levels %u, must be in range of [1, %u].",
+            num_levels, postings_writer_base::kMaxSkipLevels)};
   }
 }
 
@@ -2497,13 +2504,13 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
       return doc_limits::eof();
     }
 
-    if (prev_skip_.doc_ptr) {
-      this->doc_in_->seek(prev_skip_.doc_ptr);
+    if (auto& state = skip_.Reader().State(); state.doc_ptr) {
+      this->doc_in_->seek(state.doc_ptr);
       if constexpr (IteratorTraits::position()) {
         auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
-        pos.prepare(prev_skip_); // notify positions
+        pos.prepare(state); // notify positions
       }
-      prev_skip_.doc_ptr = 0;
+      state.doc_ptr = 0;
     }
 
     assert(1 != docs_count_);
