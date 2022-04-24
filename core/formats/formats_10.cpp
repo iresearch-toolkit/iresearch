@@ -1745,7 +1745,7 @@ class doc_iterator_base : public irs::doc_iterator {
     return static_cast<doc_id_t>(begin_ - buf_.docs);
   }
 
-  void refill(doc_id_t left);
+  void refill();
 
   buffer_type<IteratorTraits> buf_;
   uint32_t enc_buf_[IteratorTraits::block_size()]; // buffer for encoding
@@ -1753,12 +1753,12 @@ class doc_iterator_base : public irs::doc_iterator {
   doc_id_t* end_{buf_.docs};
   uint32_t* freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
   index_input::ptr doc_in_;
-  uint32_t cur_pos_{};
+  doc_id_t left_{}; // FIXME: try to track docs left
 };
 
 template<typename IteratorTraits, typename FieldTraits>
-void doc_iterator_base<IteratorTraits, FieldTraits>::refill(doc_id_t left) {
-  if (left >= IteratorTraits::block_size()) {
+void doc_iterator_base<IteratorTraits, FieldTraits>::refill() {
+  if (left_ >= IteratorTraits::block_size()) {
     // read doc deltas
     IteratorTraits::read_block(*doc_in_, enc_buf_, buf_.docs);
 
@@ -1770,13 +1770,10 @@ void doc_iterator_base<IteratorTraits, FieldTraits>::refill(doc_id_t left) {
 
     static_assert(std::size(decltype(buf_.docs){}) == IteratorTraits::block_size());
     end_ = std::end(buf_.docs);
+    left_ -= IteratorTraits::block_size();
   } else {
-    read_tail_block(left);
-  }
-
-  // if this is the initial doc_id then set it to min() for proper delta value
-  if (!cur_pos_) {
-    buf_.docs[0] += (doc_limits::min)();
+    read_tail_block(left_);
+    left_ = 0;
   }
 
   begin_ = buf_.docs;
@@ -1868,18 +1865,17 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
     auto& doc = std::get<document>(attrs_);
 
     if (this->begin_ == this->end_) {
-      this->cur_pos_ += this->relative_pos();
-
-      const auto left = docs_count_ - this->cur_pos_;
-
-      if (!left) {
+      if (!this->left_) {
         doc.value = doc_limits::eof();
         this->begin_ = this->end_ = this->buf_.docs; // seal the iterator
         return false;
       }
 
-      assert(1 != docs_count_);
-      this->refill(left);
+      this->refill();
+
+      // if this is the initial doc_id then
+      // set it to min() for proper delta value
+      doc.value += doc_id_t{!doc_limits::valid(doc.value)};
     }
 
     doc.value += *this->begin_++; // update document attribute
@@ -1924,20 +1920,25 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
       CopyState<IteratorTraits>(top, state);
       docs_count_ = state.docs_count;
       Enable();
+
+      assert(docs_count_ > IteratorTraits::block_size());
     }
 
     void Init(size_t num_levels) {
       assert(num_levels);
       skip_levels_.resize(num_levels);
     }
+
     bool IsLess(size_t level, doc_id_t target) const noexcept {
       return skip_levels_[level].doc < target;
     }
+
     void MoveDown(size_t level) noexcept {
      auto& next = skip_levels_[level];
      // move to the more granular level
      CopyState<IteratorTraits>(next, *prev_);
     }
+
     bool Read(size_t level, size_t end, index_input& in);
 
     void Reset(SkipState& state) noexcept {
@@ -1969,7 +1970,6 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
   void seek_to_block(doc_id_t target);
 
   uint64_t skip_offs_{};
-  doc_id_t docs_count_{}; // FIXME: try to track docs left
   SkipReader<ReadSkip> skip_;
   attributes attrs_;
 }; // doc_iterator
@@ -2011,7 +2011,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
   this->begin_ = this->end_ = this->buf_.docs;
 
   auto& term_state = static_cast<const version10::term_meta&>(meta);
-  docs_count_ = term_state.docs_count;
+  this->left_ = term_state.docs_count;
 
   // init document stream
   if (term_state.docs_count > 1) {
@@ -2059,12 +2059,15 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
   }
 
   if (1 == term_state.docs_count) {
+    // FIXME(gnusi): consider adding lightweight
+    // implementation for singleton case
     *this->buf_.docs = (doc_limits::min)() + term_state.e_single_doc;
     if constexpr (IteratorTraits::frequency()) {
       *this->buf_.freqs = meta.freq;
       this->freq_ = this->buf_.freqs;
     }
     ++this->end_;
+    this->left_ = 0;
   } else if (term_state.docs_count > IteratorTraits::block_size()) {
     // allow using skip-list for long enough postings
     skip_.Reader().Enable(term_state);
@@ -2086,18 +2089,17 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
   }
 
   if (this->begin_ == this->end_) {
-    this->cur_pos_ += this->relative_pos();
-
-    const auto left = docs_count_ - this->cur_pos_;
-
-    if (!left) {
+    if (!this->left_) {
       doc.value = doc_limits::eof();
       this->begin_ = this->end_ = this->buf_.docs; // seal the iterator
       return doc_limits::eof();
     }
 
-    assert(1 != docs_count_);
-    this->refill(left);
+    this->refill();
+
+    // if this is the initial doc_id then
+    // set it to min() for proper delta value
+    doc.value += doc_id_t{!doc_limits::valid(doc.value)};
   }
 
   [[maybe_unused]] uint32_t notify{0};
@@ -2108,7 +2110,8 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
       if (doc.value >= target) {
         if constexpr (IteratorTraits::frequency()) {
           this->freq_ = this->buf_.freqs + this->relative_pos();
-          assert((this->freq_ - 1) >= this->buf_.freqs && (this->freq_ - 1) < std::end(this->buf_.freqs));
+          assert((this->freq_ - 1) >= this->buf_.freqs);
+          assert((this->freq_ - 1) < std::end(this->buf_.freqs));
           std::get<frequency>(attrs_).value = this->freq_[-1];
         }
         return doc.value;
@@ -2142,9 +2145,6 @@ template<typename IteratorTraits, typename FieldTraits>
 void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
   // ensured by caller
   assert(skip_.Reader().UpperBound() < target);
-  // ensured by prepare(...)
-  assert(1 != docs_count_);
-  assert(docs_count_ > IteratorTraits::block_size());
 
   SkipState last; // where block starts
   skip_.Reader().Reset(last);
@@ -2153,10 +2153,9 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
   if (IRS_LIKELY(!skip_offs_)) {
 seek_after_initialization:
     assert(skip_.NumLevels());
-    const auto pos = this->cur_pos_;
-    this->cur_pos_ = skip_.Seek(target);
 
-    if (pos != this->cur_pos_) {
+    if (const auto skipped = skip_.Seek(target); skipped) {
+      this->left_ -= skipped;
       this->doc_in_->seek(last.doc_ptr);
       std::get<document>(attrs_).value = last.doc;
       this->begin_ = this->end_ = this->buf_.docs; // will trigger refill in "next"
@@ -2279,16 +2278,13 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
     // check whether it make sense to use skip-list
     if (skip_.Reader().IsLessThanUpperBound(target)) {
       // ensured by prepare(...)
-      assert(docs_count_ > IteratorTraits::block_size());
       assert(skip_.NumLevels());
       assert(0 == skip_.Reader().State().doc_ptr);
 
       skip_.Reader().EnsureSorted();
 
-      const auto pos = this->cur_pos_;
-      this->cur_pos_ = skip_.Seek(target);
-
-      if (pos != this->cur_pos_) {
+      if (auto skipped = skip_.Seek(target); skipped) {
+        this->left_ -= skipped;
         std::get<document>(attrs_).value = skip_.Reader().State().doc;
         this->begin_ = this->end_ = this->buf_.docs; // will trigger refill in "next"
       }
@@ -2306,7 +2302,6 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
     }
   };
 
-  doc_id_t docs_count_{}; // FIXME: try to track docs left
   SkipReader<ReadSkip> skip_;
   attributes attrs_;
 }; // wanderator
@@ -2413,7 +2408,7 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
   this->begin_ = this->end_ = this->buf_.docs;
 
   auto& term_state = static_cast<const version10::term_meta&>(meta);
-  docs_count_ = term_state.docs_count;
+  this->left_ = term_state.docs_count;
 
   // init document stream
   if (!this->doc_in_) {
@@ -2494,11 +2489,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
   seek_to_block(target);
 
   if (this->begin_ == this->end_) {
-    this->cur_pos_ += this->relative_pos();
-
-    const auto left = this->docs_count_ - this->cur_pos_;
-
-    if (!left) {
+    if (!this->left_) {
       doc.value = doc_limits::eof();
       this->begin_ = this->end_ = this->buf_.docs; // seal the iterator
       return doc_limits::eof();
@@ -2513,8 +2504,11 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
       state.doc_ptr = 0;
     }
 
-    assert(1 != docs_count_);
-    this->refill(left);
+    this->refill();
+
+    // if this is the initial doc_id then
+    // set it to min() for proper delta value
+    doc.value += doc_id_t{!doc_limits::valid(doc.value)};
   }
 
   // FIXME(gnusi): use WAND condition in the loop below

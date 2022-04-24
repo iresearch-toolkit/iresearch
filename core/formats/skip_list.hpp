@@ -281,6 +281,7 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
 
   if (id != size) {
     --size;
+    size_t skipped = levels_.back().skipped;
     for (uint64_t child_ptr{0}; id != size; ++id) {
       auto& level = levels_[id];
       const doc_id_t step{level.step};
@@ -307,11 +308,10 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
       reader_.Read(id, level.skipped += step, stream);
     } while (reader_.IsLess(id, target));
 
-    return level.skipped - step;
+    return level.skipped - skipped - step;
   }
 
-  const auto skipped = levels_.back().skipped;
-  return skipped ? skipped - skip_0_ : 0;
+  return 0;
 }
 
 } // iresearch
