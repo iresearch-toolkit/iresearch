@@ -1967,9 +1967,8 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
     auto& doc = std::get<document>(attrs_);
 
     if (this->begin_ == this->end_) {
-      if (!this->left_) {
+      if (IRS_UNLIKELY(!this->left_)) {
         doc.value = doc_limits::eof();
-        this->begin_ = this->end_ = this->buf_.docs; // seal the iterator
         return false;
       }
 
@@ -2173,7 +2172,7 @@ template<typename IteratorTraits, typename FieldTraits>
 doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
   auto& doc = std::get<document>(attrs_);
 
-  if (target <= doc.value) {
+  if (IRS_UNLIKELY(target <= doc.value)) {
     return doc.value;
   }
 
@@ -2183,9 +2182,8 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
   }
 
   if (this->begin_ == this->end_) {
-    if (!this->left_) {
+    if (IRS_UNLIKELY(!this->left_)) {
       doc.value = doc_limits::eof();
-      this->begin_ = this->end_ = this->buf_.docs; // seal the iterator
       return doc_limits::eof();
     }
 
@@ -2197,7 +2195,7 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
   }
 
   [[maybe_unused]] uint32_t notify{0};
-  while (this->begin_ < this->end_) {
+  while (this->begin_ != this->end_) {
     doc.value += *this->begin_++;
 
     if constexpr (!IteratorTraits::position()) {
@@ -2576,16 +2574,15 @@ template<typename IteratorTraits, typename FieldTraits>
 doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
   auto& doc = std::get<document>(attrs_);
 
-  if (target <= doc.value) {
+  if (IRS_UNLIKELY(target <= doc.value)) {
     return doc.value;
   }
 
   seek_to_block(target);
 
   if (this->begin_ == this->end_) {
-    if (!this->left_) {
+    if (IRS_UNLIKELY(!this->left_)) {
       doc.value = doc_limits::eof();
-      this->begin_ = this->end_ = this->buf_.docs; // seal the iterator
       return doc_limits::eof();
     }
 
@@ -2610,7 +2607,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
   auto& min_competitive_score = std::get<score_threshold>(attrs_);
 
   [[maybe_unused]] uint32_t notify{0};
-  while (this->begin_ < this->end_) {
+  while (this->begin_ != this->end_) {
     doc.value += *this->begin_++;
 
     if constexpr (!IteratorTraits::position()) {
