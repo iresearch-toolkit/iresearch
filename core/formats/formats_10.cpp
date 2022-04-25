@@ -857,7 +857,6 @@ class postings_writer final: public postings_writer_base {
   bool volatile_attributes_;
 }; // postings_writer
 
-
 template<typename FormatTraits>
 void postings_writer<FormatTraits>::begin_doc(doc_id_t id, uint32_t freq) {
   if (IRS_LIKELY(doc_.last < id)) {
@@ -1712,6 +1711,7 @@ struct position<IteratorTraits, FieldTraits, false> : attribute {
   void clear() { }
 }; // position
 
+struct empty { };
 
 // Buffer type containing only document buffer
 template<typename IteratorTraits>
@@ -1753,7 +1753,7 @@ class doc_iterator_base : public irs::doc_iterator {
   doc_id_t* end_{buf_.docs};
   uint32_t* freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
   index_input::ptr doc_in_;
-  doc_id_t left_{}; // FIXME: try to track docs left
+  doc_id_t left_{};
 };
 
 template<typename IteratorTraits, typename FieldTraits>
@@ -1807,6 +1807,108 @@ void doc_iterator_base<IteratorTraits, FieldTraits>::read_tail_block(size_t size
       }
     } else {
       *doc++ = doc_in_->read_vint();
+    }
+  }
+}
+
+template<typename IteratorTraits, typename FieldTraits>
+class single_doc_iterator final
+    : public irs::doc_iterator,
+      private std::conditional_t<IteratorTraits::frequency() && IteratorTraits::position(),
+                                 data_buffer<IteratorTraits>, empty> {
+ private:
+  using attributes = std::conditional_t<
+    IteratorTraits::frequency() && IteratorTraits::position(),
+      std::tuple<document, frequency, cost, score, position<IteratorTraits, FieldTraits>>,
+      std::conditional_t<IteratorTraits::frequency(),
+        std::tuple<document, frequency, cost, score>,
+        std::tuple<document, cost, score>
+      >>;
+
+ public:
+  single_doc_iterator() = default;
+
+  void prepare(const term_meta& meta,
+               [[maybe_unused]] const index_input* pos_in,
+               [[maybe_unused]] const index_input* pay_in);
+
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return irs::get_mutable(attrs_, type);
+  }
+
+  virtual doc_id_t seek(doc_id_t target) override {
+    auto& doc = std::get<document>(attrs_);
+
+    while (doc.value < target) {
+      next();
+    }
+
+    return doc.value;
+  }
+
+  virtual doc_id_t value() const noexcept final {
+    return std::get<document>(attrs_).value;
+  }
+
+  virtual bool next() override {
+    auto& doc = std::get<document>(attrs_);
+
+    doc.value = next_;
+    next_ = doc_limits::eof();
+
+    if constexpr (IteratorTraits::position()) {
+      if (!doc_limits::eof(doc.value)) {
+        auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
+        pos.notify(std::get<frequency>(attrs_).value);
+        pos.clear();
+      }
+    }
+
+    return !doc_limits::eof(doc.value);
+  }
+
+ private:
+  attributes attrs_;
+  doc_id_t next_{doc_limits::eof()};
+};
+
+template<typename IteratorTraits, typename FieldTraits>
+void single_doc_iterator<IteratorTraits, FieldTraits>::prepare(
+    const term_meta& meta,
+    [[maybe_unused]] const index_input* pos_in,
+    [[maybe_unused]] const index_input* pay_in) {
+  // use single_doc_iterator for singleton docs only,
+  // must be ensured by the caller
+  assert(meta.docs_count == 1);
+
+  auto& term_state = static_cast<const version10::term_meta&>(meta);
+  next_ = doc_limits::min() + term_state.e_single_doc;
+  std::get<cost>(attrs_).reset(1); // estimate iterator
+
+  if constexpr (IteratorTraits::frequency()) {
+    const auto term_freq = meta.freq;
+
+    assert(term_freq);
+    std::get<frequency>(attrs_).value = term_freq;
+
+    if constexpr (IteratorTraits::position()) {
+      DocState state;
+      state.pos_in = pos_in;
+      state.pay_in = pay_in;
+      state.term_state = &term_state;
+      state.freq = &std::get<frequency>(attrs_).value;
+      state.enc_buf = this->docs;
+
+      if (term_freq < IteratorTraits::block_size()) {
+        state.tail_start = term_state.pos_start;
+      } else if (term_freq == IteratorTraits::block_size()) {
+        state.tail_start = type_limits<type_t::address_t>::invalid();
+      } else {
+        state.tail_start = term_state.pos_start + term_state.pos_end;
+      }
+
+      state.tail_length = term_freq % IteratorTraits::block_size();
+      std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(state);
     }
   }
 }
@@ -2008,27 +2110,29 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
   assert(!IteratorTraits::offset() || IteratorTraits::offset() == FieldTraits::offset());
   assert(!IteratorTraits::payload() || IteratorTraits::payload() == FieldTraits::payload());
 
+  // don't use doc_iterator for singleton docs
+  // must be ensured by the caller
+  assert(meta.docs_count > 1);
+
   this->begin_ = this->end_ = this->buf_.docs;
 
   auto& term_state = static_cast<const version10::term_meta&>(meta);
   this->left_ = term_state.docs_count;
 
   // init document stream
-  if (term_state.docs_count > 1) {
+  if (!this->doc_in_) {
+    this->doc_in_ = doc_in->reopen(); // reopen thread-safe stream
+
     if (!this->doc_in_) {
-      this->doc_in_ = doc_in->reopen(); // reopen thread-safe stream
+      // implementation returned wrong pointer
+      IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
 
-      if (!this->doc_in_) {
-        // implementation returned wrong pointer
-        IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
-
-        throw io_error("failed to reopen document input");
-      }
+      throw io_error("failed to reopen document input");
     }
-
-    this->doc_in_->seek(term_state.doc_start);
-    assert(!this->doc_in_->eof());
   }
+
+  this->doc_in_->seek(term_state.doc_start);
+  assert(!this->doc_in_->eof());
 
   std::get<cost>(attrs_).reset(term_state.docs_count); // estimate iterator
 
@@ -2058,17 +2162,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
     }
   }
 
-  if (1 == term_state.docs_count) {
-    // FIXME(gnusi): consider adding lightweight
-    // implementation for singleton case
-    *this->buf_.docs = (doc_limits::min)() + term_state.e_single_doc;
-    if constexpr (IteratorTraits::frequency()) {
-      *this->buf_.freqs = meta.freq;
-      this->freq_ = this->buf_.freqs;
-    }
-    ++this->end_;
-    this->left_ = 0;
-  } else if (term_state.docs_count > IteratorTraits::block_size()) {
+  if (term_state.docs_count > IteratorTraits::block_size()) {
     // allow using skip-list for long enough postings
     skip_.Reader().Enable(term_state);
     skip_offs_ = term_state.doc_start + term_state.e_skip_start;
@@ -3241,22 +3335,57 @@ class postings_reader final: public postings_reader_base {
       IndexFeatures field_features,
       IndexFeatures required_features,
       const term_meta& meta) override {
-    return iterator_impl<false>(field_features, required_features, meta);
+    if (meta.docs_count > 1) {
+      return iterator_impl(
+          field_features, required_features,
+          [&meta, this]<typename IteratorTraits, typename FieldTraits>() {
+            auto it = memory::make_managed<doc_iterator<
+                IteratorTraits, FieldTraits>>();
+
+            it->prepare(meta, doc_in_.get(), pos_in_.get(), pay_in_.get());
+
+            return it;
+          });
+    } else {
+      return iterator_impl(
+          field_features, required_features,
+          [&meta, this]<typename IteratorTraits, typename FieldTraits>() {
+            auto it = memory::make_managed<single_doc_iterator<
+                IteratorTraits, FieldTraits>>();
+
+            it->prepare(meta, pos_in_.get(), pay_in_.get());
+
+            return it;
+          });
+    }
   }
 
   virtual irs::doc_iterator::ptr wanderator(
       IndexFeatures field_features,
       IndexFeatures required_features,
       const term_meta& meta) override {
-    if (meta.docs_count <= FormatTraits::block_size() ||
-        IndexFeatures::NONE == (field_features & IndexFeatures::FREQ)) {
-      // No need to use wanderator
-      //  * for short lists
-      //  * if term frequency isn't tracked
+    if constexpr (FormatTraits::wand()) {
+      if (meta.docs_count <= FormatTraits::block_size() ||
+          IndexFeatures::NONE == (field_features & IndexFeatures::FREQ)) {
+        // No need to use wanderator
+        //  * for short lists
+        //  * if term frequency isn't tracked
+        return iterator(field_features, required_features, meta);
+      }
+
+      return iterator_impl(
+          field_features, required_features,
+          [&meta, this]<typename IteratorTraits, typename FieldTraits>() {
+            auto it = memory::make_managed<::wanderator<
+                IteratorTraits, FieldTraits>>();
+
+            it->prepare(meta, doc_in_.get(), pos_in_.get(), pay_in_.get());
+
+            return it;
+          });
+    } else {
       return iterator(field_features, required_features, meta);
     }
-
-    return iterator_impl<FormatTraits::wand()>(field_features, required_features, meta);
   }
 
   virtual size_t bit_union(
@@ -3265,36 +3394,15 @@ class postings_reader final: public postings_reader_base {
     size_t* set) override;
 
  private:
-  template<typename IteratorTraits, typename FieldTraits, bool Wand>
-  using doc_iterator_t = std::conditional_t<
-    Wand, ::wanderator<IteratorTraits, FieldTraits>,
-          doc_iterator<IteratorTraits, FieldTraits>>;
-
-  template<typename IteratorTraits, typename FieldTraits, bool Wand>
-  static irs::doc_iterator::ptr iterator_impl(
-      const postings_reader& ctx,
-      const term_meta& meta) {
-    auto it = memory::make_managed<
-      doc_iterator_t<IteratorTraits, FieldTraits, Wand>>();
-
-    it->prepare(
-      meta,
-      ctx.doc_in_.get(),
-      ctx.pos_in_.get(),
-      ctx.pay_in_.get());
-
-    return it;
-  }
-
-  template<typename FieldTraits, bool Wand, typename... Args>
+  template<typename FieldTraits, typename Factory>
   irs::doc_iterator::ptr iterator_impl(
-    IndexFeatures enabled, Args&&... args);
+    IndexFeatures enabled, Factory&& factory);
 
-  template<bool Wand>
+  template<typename Factory>
   irs::doc_iterator::ptr iterator_impl(
     IndexFeatures field_features,
     IndexFeatures required_features,
-    const term_meta& meta);
+    Factory&& factory);
 }; // postings_reader
 
 #if defined(_MSC_VER)
@@ -3304,49 +3412,49 @@ class postings_reader final: public postings_reader_base {
 #endif
 
 template<typename FormatTraits>
-template<typename FieldTraits, bool Wand, typename... Args>
+template<typename FieldTraits, typename Factory>
 irs::doc_iterator::ptr postings_reader<FormatTraits>::iterator_impl(
-    IndexFeatures enabled, Args&&... args) {
+    IndexFeatures enabled, Factory&& factory) {
   switch (enabled) {
     case IndexFeatures::ALL: {
       using iterator_traits_t = iterator_traits<true, true, true, true>;
-      return iterator_impl<iterator_traits_t, FieldTraits, Wand>(
-        *this, std::forward<Args>(args)...);
+      return std::forward<Factory>(factory)
+          .template operator()<iterator_traits_t, FieldTraits>();
     }
     case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::OFFS: {
       using iterator_traits_t = iterator_traits<true, true, true, false>;
-      return iterator_impl<iterator_traits_t, FieldTraits, Wand>(
-        *this, std::forward<Args>(args)...);
+      return std::forward<Factory>(factory)
+          .template operator()<iterator_traits_t, FieldTraits>();
     }
     case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::PAY: {
       using iterator_traits_t = iterator_traits<true, true, false, true>;
-      return iterator_impl<iterator_traits_t, FieldTraits, Wand>(
-        *this, std::forward<Args>(args)...);
+      return std::forward<Factory>(factory)
+          .template operator()<iterator_traits_t, FieldTraits>();
     }
     case IndexFeatures::FREQ | IndexFeatures::POS: {
       using iterator_traits_t = iterator_traits<true, true, false, false>;
-      return iterator_impl<iterator_traits_t, FieldTraits, Wand>(
-        *this, std::forward<Args>(args)...);
+      return std::forward<Factory>(factory)
+          .template operator()<iterator_traits_t, FieldTraits>();
     }
     case IndexFeatures::FREQ: {
       using iterator_traits_t = iterator_traits<true, false, false, false>;
-      return iterator_impl<iterator_traits_t, FieldTraits, Wand>(
-        *this, std::forward<Args>(args)...);
+      return std::forward<Factory>(factory)
+          .template operator()<iterator_traits_t, FieldTraits>();
     }
     default: {
       using iterator_traits_t = iterator_traits<false, false, false, false>;
-      return iterator_impl<iterator_traits_t, FieldTraits, Wand>(
-        *this, std::forward<Args>(args)...);
+      return std::forward<Factory>(factory)
+          .template operator()<iterator_traits_t, FieldTraits>();
     }
   }
 }
 
 template<typename FormatTraits>
-template<bool Wand>
+template<typename Factory>
 irs::doc_iterator::ptr postings_reader<FormatTraits>::iterator_impl(
     IndexFeatures field_features,
     IndexFeatures required_features,
-    const term_meta& meta) {
+    Factory&& factory) {
   // get enabled features as the intersection
   // between requested and available features
   const auto enabled = field_features & required_features;
@@ -3354,27 +3462,27 @@ irs::doc_iterator::ptr postings_reader<FormatTraits>::iterator_impl(
   switch (field_features) {
     case IndexFeatures::ALL : {
       using field_traits_t = iterator_traits<true, true, true, true>;
-      return iterator_impl<field_traits_t, Wand>(enabled, meta);
+      return iterator_impl<field_traits_t>(enabled, std::forward<Factory>(factory));
     }
     case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::OFFS: {
       using field_traits_t = iterator_traits<true, true, true, false>;
-      return iterator_impl<field_traits_t, Wand>(enabled, meta);
+      return iterator_impl<field_traits_t>(enabled, std::forward<Factory>(factory));
     }
     case IndexFeatures::FREQ | IndexFeatures::POS | IndexFeatures::PAY: {
       using field_traits_t = iterator_traits<true, true, false, true>;
-      return iterator_impl<field_traits_t, Wand>(enabled, meta);
+      return iterator_impl<field_traits_t>(enabled, std::forward<Factory>(factory));
     }
     case IndexFeatures::FREQ | IndexFeatures::POS: {
       using field_traits_t = iterator_traits<true, true, false, false>;
-      return iterator_impl<field_traits_t, Wand>(enabled, meta);
+      return iterator_impl<field_traits_t>(enabled, std::forward<Factory>(factory));
     }
     case IndexFeatures::FREQ: {
       using field_traits_t = iterator_traits<true, false, false, false>;
-      return iterator_impl<field_traits_t, Wand>(enabled, meta);
+      return iterator_impl<field_traits_t>(enabled, std::forward<Factory>(factory));
     }
     default: {
       using field_traits_t = iterator_traits<false, false, false, false>;
-      return iterator_impl<field_traits_t, Wand>(enabled, meta);
+      return iterator_impl<field_traits_t>(enabled, std::forward<Factory>(factory));
     }
   }
 }

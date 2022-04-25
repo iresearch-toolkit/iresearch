@@ -482,6 +482,23 @@ TEST_P(Format15TestCase, PostingsWandSeek) {
   constexpr auto kAll = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
                         irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
+  // singleton doc
+  {
+    constexpr size_t kCount = 1;
+    constexpr uint32_t kThreshold = 0;
+    static_assert(kCount < kVersion10PostingsWriterBlockSize);
+
+    const auto docs = generate_docs(kCount, 50.f, 14.f, 1);
+    ASSERT_TRUE(check_docs(docs));
+
+    PostingsWandSeek(docs, kNone, kThreshold);
+    PostingsWandSeek(docs, kFreq, kThreshold);
+    PostingsWandSeek(docs, kPos, kThreshold);
+    PostingsWandSeek(docs, kOffs, kThreshold);
+    PostingsWandSeek(docs, kPay, kThreshold);
+    PostingsWandSeek(docs, kAll, kThreshold);
+  }
+
   // short list (< postings_writer::BLOCK_SIZE)
   {
     constexpr size_t kCount = 117;

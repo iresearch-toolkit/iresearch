@@ -834,6 +834,21 @@ TEST_P(format_10_test_case, postings_seek) {
   constexpr auto kPay = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::PAY;
   constexpr auto kAll = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
+  // singleton doc
+  {
+    constexpr size_t kCount = 1;
+    static_assert(kCount < kVersion10PostingsWriterBlockSize);
+
+    const auto docs = generate_docs(kCount, 1);
+
+    postings_seek(docs, kNone);
+    postings_seek(docs, kFreq);
+    postings_seek(docs, kPos);
+    postings_seek(docs, kOffs);
+    postings_seek(docs, kPay);
+    postings_seek(docs, kAll);
+  }
+
   // short list (< postings_writer::BLOCK_SIZE)
   {
     constexpr size_t kCount = 117;
