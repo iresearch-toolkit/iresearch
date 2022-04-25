@@ -156,7 +156,7 @@ void format_test_case::assert_no_directory_artifacts(
   }
 
   for (auto& file : dir_files) {
-    ASSERT_TRUE(index_files.erase(file) == 1);
+    ASSERT_EQ(1, index_files.erase(file));
   }
 
   ASSERT_TRUE(index_files.empty());

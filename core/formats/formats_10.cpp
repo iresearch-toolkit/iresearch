@@ -2364,7 +2364,7 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
   };
 
   void seek_to_block(doc_id_t target) {
-    // check whether it make sense to use skip-list
+    // check whether it makes sense to use skip-list
     if (skip_.Reader().IsLessThanUpperBound(target)) {
       // ensured by prepare(...)
       assert(skip_.NumLevels());
