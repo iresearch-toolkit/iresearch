@@ -1736,7 +1736,7 @@ class doc_iterator_base : public irs::doc_iterator {
  private:
   static_assert(IteratorTraits::block_size() <= std::numeric_limits<doc_id_t>::max());
 
-  void read_tail_block(size_t size);
+  void read_tail_block();
 
  protected:
   // returns current position in the document block 'docs_'
@@ -1749,8 +1749,7 @@ class doc_iterator_base : public irs::doc_iterator {
 
   buffer_type<IteratorTraits> buf_;
   uint32_t enc_buf_[IteratorTraits::block_size()]; // buffer for encoding
-  const doc_id_t* begin_{buf_.docs};
-  doc_id_t* end_{buf_.docs};
+  const doc_id_t* begin_{std::end(buf_.docs)};
   uint32_t* freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
   index_input::ptr doc_in_;
   doc_id_t left_{};
@@ -1769,30 +1768,29 @@ void doc_iterator_base<IteratorTraits, FieldTraits>::refill() {
     }
 
     static_assert(std::size(decltype(buf_.docs){}) == IteratorTraits::block_size());
-    end_ = std::end(buf_.docs);
+    begin_ = std::begin(buf_.docs);
     left_ -= IteratorTraits::block_size();
   } else {
-    read_tail_block(left_);
+    read_tail_block();
     left_ = 0;
   }
 
-  begin_ = buf_.docs;
   if constexpr (IteratorTraits::frequency()) {
     freq_ = buf_.freqs;
   }
 }
 
 template<typename IteratorTraits, typename FieldTraits>
-void doc_iterator_base<IteratorTraits, FieldTraits>::read_tail_block(size_t size) {
-  end_ = buf_.docs + size;
-  auto* doc = std::begin(buf_.docs);
+void doc_iterator_base<IteratorTraits, FieldTraits>::read_tail_block() {
+  auto* doc = std::end(buf_.docs) - left_;
+  begin_ = doc;
 
   [[maybe_unused]] uint32_t* doc_freq;
   if constexpr (IteratorTraits::frequency()) {
     doc_freq = std::begin(buf_.freqs);
   }
 
-  while (doc < end_) {
+  while (doc < std::end(buf_.docs)) {
     if constexpr (FieldTraits::frequency()) {
       if constexpr (IteratorTraits::frequency()) {
         if (shift_unpack_32(doc_in_->read_vint(), *doc++)) {
@@ -1966,7 +1964,7 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
   virtual bool next() override {
     auto& doc = std::get<document>(attrs_);
 
-    if (this->begin_ == this->end_) {
+    if (this->begin_ == std::end(this->buf_.docs)) {
       if (IRS_UNLIKELY(!this->left_)) {
         doc.value = doc_limits::eof();
         return false;
@@ -2112,8 +2110,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
   // don't use doc_iterator for singleton docs
   // must be ensured by the caller
   assert(meta.docs_count > 1);
-
-  this->begin_ = this->end_ = this->buf_.docs;
+  assert(this->begin_ == std::end(this->buf_.docs));
 
   auto& term_state = static_cast<const version10::term_meta&>(meta);
   this->left_ = term_state.docs_count;
@@ -2181,7 +2178,7 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
     seek_to_block(target);
   }
 
-  if (this->begin_ == this->end_) {
+  if (this->begin_ == std::end(this->buf_.docs)) {
     if (IRS_UNLIKELY(!this->left_)) {
       doc.value = doc_limits::eof();
       return doc_limits::eof();
@@ -2195,7 +2192,7 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
   }
 
   [[maybe_unused]] uint32_t notify{0};
-  while (this->begin_ != this->end_) {
+  while (this->begin_ != std::end(this->buf_.docs)) {
     doc.value += *this->begin_++;
 
     if constexpr (!IteratorTraits::position()) {
@@ -2250,7 +2247,7 @@ seek_after_initialization:
       this->left_ -= skipped;
       this->doc_in_->seek(last.doc_ptr);
       std::get<document>(attrs_).value = last.doc;
-      this->begin_ = this->end_ = this->buf_.docs; // will trigger refill in "next"
+      this->begin_ = std::end(this->buf_.docs); // will trigger refill in "next"
       if constexpr (IteratorTraits::position()) {
         auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
         pos.prepare(last); // notify positions
@@ -2378,7 +2375,7 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
       if (auto skipped = skip_.Seek(target); skipped) {
         this->left_ -= skipped;
         std::get<document>(attrs_).value = skip_.Reader().State().doc;
-        this->begin_ = this->end_ = this->buf_.docs; // will trigger refill in "next"
+        this->begin_ = std::end(this->buf_.docs); // will trigger refill in "next"
       }
     }
   }
@@ -2496,8 +2493,7 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
   // don't use wanderator for short posting lists,
   // must be ensured by the caller
   assert(meta.docs_count > IteratorTraits::block_size());
-
-  this->begin_ = this->end_ = this->buf_.docs;
+  assert(this->begin_ == std::end(this->buf_.docs));
 
   auto& term_state = static_cast<const version10::term_meta&>(meta);
   this->left_ = term_state.docs_count;
@@ -2580,7 +2576,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
 
   seek_to_block(target);
 
-  if (this->begin_ == this->end_) {
+  if (this->begin_ == std::end(this->buf_.docs)) {
     if (IRS_UNLIKELY(!this->left_)) {
       doc.value = doc_limits::eof();
       return doc_limits::eof();
@@ -2607,7 +2603,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
   auto& min_competitive_score = std::get<score_threshold>(attrs_);
 
   [[maybe_unused]] uint32_t notify{0};
-  while (this->begin_ != this->end_) {
+  while (this->begin_ != std::end(this->buf_.docs)) {
     doc.value += *this->begin_++;
 
     if constexpr (!IteratorTraits::position()) {
