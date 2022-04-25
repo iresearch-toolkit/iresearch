@@ -2243,15 +2243,15 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
 seek_after_initialization:
     assert(skip_.NumLevels());
 
-    if (const auto skipped = skip_.Seek(target); skipped) {
-      this->left_ -= skipped;
-      this->doc_in_->seek(last.doc_ptr);
-      std::get<document>(attrs_).value = last.doc;
-      this->begin_ = std::end(this->buf_.docs); // will trigger refill in "next"
-      if constexpr (IteratorTraits::position()) {
-        auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
-        pos.prepare(last); // notify positions
-      }
+    const auto skipped = skip_.Seek(target);
+    assert(this->left_ >= skipped);
+    this->left_ -= skipped;
+    this->doc_in_->seek(last.doc_ptr);
+    std::get<document>(attrs_).value = last.doc;
+    this->begin_ = std::end(this->buf_.docs); // will trigger refill in "next"
+    if constexpr (IteratorTraits::position()) {
+      auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
+      pos.prepare(last); // notify positions
     }
 
     return;
@@ -2369,14 +2369,13 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
       // ensured by prepare(...)
       assert(skip_.NumLevels());
       assert(0 == skip_.Reader().State().doc_ptr);
-
       skip_.Reader().EnsureSorted();
 
-      if (auto skipped = skip_.Seek(target); skipped) {
-        this->left_ -= skipped;
-        std::get<document>(attrs_).value = skip_.Reader().State().doc;
-        this->begin_ = std::end(this->buf_.docs); // will trigger refill in "next"
-      }
+      const auto skipped = skip_.Seek(target);
+      assert(this->left_ >= skipped);
+      this->left_ -= skipped;
+      std::get<document>(attrs_).value = skip_.Reader().State().doc;
+      this->begin_ = std::end(this->buf_.docs); // will trigger refill in "next"
     }
   }
 
@@ -2432,7 +2431,7 @@ bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::IsLessThanUpperBound(
   if constexpr (FieldTraits::frequency()) {
     // FIXME(gnusi): parameterize > vs >=
     return skip_levels_.back().doc < target
-           || skip_scores_.back() <= threshold_->value;
+           || skip_scores_.back() < threshold_->value;
   } else {
     return skip_levels_.back().doc < target;
   }
@@ -2444,7 +2443,7 @@ bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::IsLess(
   if constexpr (FieldTraits::frequency()) {
     // FIXME(gnusi): parameterize > vs >=
     return skip_levels_[level].doc < target
-           || skip_scores_[level] <= threshold_->value;
+           || skip_scores_[level] < threshold_->value;
   } else {
     return skip_levels_[level].doc < target;
   }
