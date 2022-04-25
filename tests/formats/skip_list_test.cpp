@@ -592,62 +592,62 @@ TEST_F(SkipReaderTest, Seek) {
 
       // seek to the first document in 2nd block
       ctx.ResetCallsCount();
-      ASSERT_EQ(8, reader.Seek(8));
+      ASSERT_EQ(0, reader.Seek(8));
       ASSERT_EQ(7, lower);
       ASSERT_EQ((std::vector{511U,63U,15U}), upper_bounds);
       ctx.AssertCallsCount(4, 0, 1);
 
       // seek to same document
       ctx.ResetCallsCount();
-      ASSERT_EQ(8, reader.Seek(8));
+      ASSERT_EQ(0, reader.Seek(8));
       ctx.AssertCallsCount(3, 0, 0);
 
       // seek to 63
       ctx.ResetCallsCount();
-      ASSERT_EQ(56, reader.Seek(63));
+      ASSERT_EQ(40, reader.Seek(63));
       ASSERT_EQ(55, lower);
       ASSERT_EQ((std::vector{511U,63U,63U}), upper_bounds);
       ctx.AssertCallsCount(9, 0, 6);
 
       // seek to same document
       ctx.ResetCallsCount();
-      ASSERT_EQ(56, reader.Seek(63));
+      ASSERT_EQ(0, reader.Seek(63));
       ctx.AssertCallsCount(3, 0, 0);
 
       // seek to 64
       ctx.ResetCallsCount();
-      ASSERT_EQ(64, reader.Seek(64));
+      ASSERT_EQ(0, reader.Seek(64));
       ASSERT_EQ(63, lower);
       ASSERT_EQ((std::vector{511U,127U,71U}), upper_bounds);
       ctx.AssertCallsCount(4, 1, 2);
 
       // seek to same document
       ctx.ResetCallsCount();
-      ASSERT_EQ(64, reader.Seek(64));
+      ASSERT_EQ(0, reader.Seek(64));
       ctx.AssertCallsCount(3, 0, 0);
 
       // seek to the 767
       ctx.ResetCallsCount();
-      ASSERT_EQ(760, reader.Seek(767));
+      ASSERT_EQ(688, reader.Seek(767));
       ASSERT_EQ(759, lower);
       ASSERT_EQ((std::vector{1023U,767U,767U}), upper_bounds);
       ctx.AssertCallsCount(14, 2, 13);
 
       // seek to same document
       ctx.ResetCallsCount();
-      ASSERT_EQ(760, reader.Seek(767));
+      ASSERT_EQ(0, reader.Seek(767));
       ctx.AssertCallsCount(3, 0, 0);
 
       // seek to the 1023
       ctx.ResetCallsCount();
-      ASSERT_EQ(1016, reader.Seek(1023));
+      ASSERT_EQ(248, reader.Seek(1023));
       ASSERT_EQ(1015, lower);
       ASSERT_EQ((std::vector{1023U,1023U,1023U}), upper_bounds);
       ctx.AssertCallsCount(14, 1, 12);
 
       // seek to the 1024
       ctx.ResetCallsCount();
-      ASSERT_EQ(1024, reader.Seek(1024));
+      ASSERT_EQ(0, reader.Seek(1024));
       ASSERT_EQ(1023, lower);
       ASSERT_EQ((std::vector{1535U,1087U,1031U}), upper_bounds);
       ctx.AssertCallsCount(4, 2, 3);
