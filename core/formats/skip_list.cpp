@@ -78,7 +78,6 @@ void SkipWriter::Flush(index_output& out) {
 
   // write number of levels
   const auto num_levels = static_cast<uint32_t>(std::distance(level, rend));
-  assert(num_levels);
   out.write_vint(num_levels);
 
   // write levels from n downto 0
