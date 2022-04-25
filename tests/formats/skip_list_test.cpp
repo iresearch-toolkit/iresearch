@@ -578,7 +578,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(0, reader.Seek(5));
       ctx.AssertCallsCount(3, 0, 0);
 
-      // seek to last document in a 1st block 
+      // seek to last document in 1st block
       ctx.ResetCallsCount();
       ASSERT_EQ(0, reader.Seek(7));
       ASSERT_FALSE(irs::doc_limits::valid(lower));
@@ -590,7 +590,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(0, reader.Seek(7));
       ctx.AssertCallsCount(3, 0, 0);
 
-      // seek to the first document in a 2nd block
+      // seek to the first document in 2nd block
       ctx.ResetCallsCount();
       ASSERT_EQ(8, reader.Seek(8));
       ASSERT_EQ(7, lower);
