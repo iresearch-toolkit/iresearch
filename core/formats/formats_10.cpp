@@ -1931,7 +1931,7 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
   // hide 'ptr' defined in irs::doc_iterator
   using ptr = memory::managed_ptr<doc_iterator>;
 
-  doc_iterator() noexcept
+  doc_iterator()
     : skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN, ReadSkip{}} {
     assert(
       std::all_of(std::begin(this->buf_.docs), std::end(this->buf_.docs),
@@ -2002,7 +2002,7 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
  private:
   class ReadSkip {
    public:
-    explicit ReadSkip() noexcept
+    explicit ReadSkip()
       : skip_levels_(1) {
       Disable(); // prevent using skip-list by default
     }
@@ -2307,7 +2307,7 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
   // hide 'ptr' defined in irs::doc_iterator
   using ptr = memory::managed_ptr<wanderator>;
 
-  wanderator() noexcept
+  wanderator()
     : skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN, ReadSkip{}} {
     assert(
       std::all_of(std::begin(this->buf_.docs), std::end(this->buf_.docs),
@@ -2336,7 +2336,7 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
  private:
   class ReadSkip {
    public:
-    explicit ReadSkip() noexcept
+    explicit ReadSkip()
       : skip_levels_(1), skip_scores_(1) {
     }
 
