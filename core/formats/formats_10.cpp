@@ -1866,8 +1866,8 @@ class single_doc_iterator final
   }
 
  private:
-  attributes attrs_;
   doc_id_t next_{doc_limits::eof()};
+  attributes attrs_;
 };
 
 template<typename IteratorTraits, typename FieldTraits>
