@@ -494,8 +494,8 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
       const irs::sort::term_collector* term) const override {
     auto& stats = stats_cast(stats_buf);
 
-    auto* field_ptr = down_cast<field_collector>(field);
-    auto* term_ptr = down_cast<term_collector>(term);
+    const auto* field_ptr = down_cast<field_collector>(field);
+    const auto* term_ptr = down_cast<term_collector>(term);
 
     const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0; // nullptr possible if e.g. 'all' filter
     const auto docs_with_term = term_ptr ? term_ptr->docs_with_term : 0; // nullptr possible if e.g.'by_column_existence' filter

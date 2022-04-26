@@ -1829,11 +1829,11 @@ class single_doc_iterator final
                [[maybe_unused]] const index_input* pos_in,
                [[maybe_unused]] const index_input* pay_in);
 
-  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t seek(doc_id_t target) override {
+  virtual doc_id_t seek(doc_id_t target) final {
     auto& doc = std::get<document>(attrs_);
 
     while (doc.value < target) {
@@ -1847,7 +1847,7 @@ class single_doc_iterator final
     return std::get<document>(attrs_).value;
   }
 
-  virtual bool next() override {
+  virtual bool next() final {
     auto& doc = std::get<document>(attrs_);
 
     doc.value = next_;
@@ -3606,7 +3606,7 @@ class format10 : public irs::version10::format {
   }
 }; // format10
 
-const ::format10 FORMAT10_INSTANCE;
+static const ::format10 FORMAT10_INSTANCE;
 
 index_meta_writer::ptr format10::get_index_meta_writer() const {
   return memory::make_unique<::index_meta_writer>(
@@ -3707,7 +3707,7 @@ class format11 : public format10 {
   }
 }; // format11
 
-const ::format11 FORMAT11_INSTANCE;
+static const ::format11 FORMAT11_INSTANCE;
 
 index_meta_writer::ptr format11::get_index_meta_writer() const {
   return memory::make_unique<::index_meta_writer>(
@@ -3758,7 +3758,7 @@ class format12 : public format11 {
   }
 }; // format12
 
-const ::format12 FORMAT12_INSTANCE;
+static const ::format12 FORMAT12_INSTANCE;
 
 columnstore_writer::ptr format12::get_columnstore_writer(
     bool /*consolidation*/) const {
@@ -3793,7 +3793,7 @@ class format13 : public format12 {
   }
 };
 
-const ::format13 FORMAT13_INSTANCE;
+static const ::format13 FORMAT13_INSTANCE;
 
 irs::postings_writer::ptr format13::get_postings_writer(bool consolidation) const {
   return memory::make_unique<::postings_writer<format_traits>>(
@@ -3833,7 +3833,7 @@ class format14 : public format13 {
   }
 };
 
-const ::format14 FORMAT14_INSTANCE;
+static const ::format14 FORMAT14_INSTANCE;
 
 irs::field_writer::ptr format14::get_field_writer(bool consolidation) const {
   return burst_trie::make_writer(
@@ -3878,7 +3878,7 @@ class format15 : public format14 {
   }
 };
 
-const ::format15 FORMAT15_INSTANCE;
+static const ::format15 FORMAT15_INSTANCE;
 
 irs::postings_writer::ptr format15::get_postings_writer(bool consolidation) const {
   return memory::make_unique<::postings_writer<format_traits>>(
@@ -3948,7 +3948,7 @@ class format12simd final : public format12 {
   virtual irs::postings_reader::ptr get_postings_reader() const override;
 }; // format12simd
 
-const ::format12simd FORMAT12SIMD_INSTANCE;
+static const ::format12simd FORMAT12SIMD_INSTANCE;
 
 irs::postings_writer::ptr format12simd::get_postings_writer(bool consolidation) const {
   return memory::make_unique<::postings_writer<format_traits>>(
@@ -3986,7 +3986,7 @@ class format13simd : public format13 {
   }
 }; // format13simd
 
-const ::format13simd FORMAT13SIMD_INSTANCE;
+static const ::format13simd FORMAT13SIMD_INSTANCE;
 
 irs::postings_writer::ptr format13simd::get_postings_writer(bool consolidation) const {
   return memory::make_unique<::postings_writer<format_traits>>(
@@ -4026,7 +4026,7 @@ class format14simd : public format13simd {
   }
 };
 
-const ::format14simd FORMAT14SIMD_INSTANCE;
+static const ::format14simd FORMAT14SIMD_INSTANCE;
 
 irs::field_writer::ptr format14simd::get_field_writer(bool consolidation) const {
   return burst_trie::make_writer(
@@ -4071,7 +4071,7 @@ class format15simd : public format14simd {
   }
 };
 
-const ::format15simd FORMAT15SIMD_INSTANCE;
+static const ::format15simd FORMAT15SIMD_INSTANCE;
 
 irs::postings_writer::ptr format15simd::get_postings_writer(bool consolidation) const {
   return memory::make_unique<::postings_writer<format_traits>>(

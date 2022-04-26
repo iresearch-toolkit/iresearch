@@ -1976,7 +1976,7 @@ index_writer::pending_context_t index_writer::flush_all() {
 
   // register consolidating segments cleanup.
   // we need raw ptr as ctx may be moved
-  auto unregister_segments = make_finally([ctx_raw = ctx.get(), this]()noexcept{
+  auto unregister_segments = make_finally([ctx_raw = ctx.get(), this]() noexcept {
     // FIXME make me noexcept as I'm begin called from within ~finally()
     assert(ctx_raw);
     if (ctx_raw->pending_segments_.empty()) {
