@@ -331,7 +331,7 @@ size_t predict_num_states(byte_type max_distance, bool with_transpositions) noex
   };
 
   const size_t idx = size_t(2)*max_distance + size_t(with_transpositions);
-  return idx < IRESEARCH_COUNTOF(NUM_STATES) ? NUM_STATES[idx] : 0;
+  return idx < std::size(NUM_STATES) ? NUM_STATES[idx] : 0;
 }
 
 uint32_t normalize(parametric_state& state) noexcept {

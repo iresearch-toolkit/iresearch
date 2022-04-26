@@ -28,38 +28,37 @@
 
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class score
-/// @brief represents a score related for the particular document
-////////////////////////////////////////////////////////////////////////////////
+// Represents a score related for the particular document
 class score : public attribute {
  public:
+  static const score kNoScore;
+  static const score_f kDefaultScoreFunc;
+
   static constexpr string_ref type_name() noexcept {
     return "iresearch::score";
   }
 
-  static const score& no_score() noexcept;
-
   template<typename Provider>
   static const score& get(const Provider& attrs) {
     const auto* score = irs::get<irs::score>(attrs);
-    return score ? *score : no_score();
+    return score ? *score : kNoScore;
   }
 
   // cppcheck-suppress shadowFunction
   score() noexcept;
   explicit score(const order::prepared& ord);
 
-  bool is_default() const noexcept;
+  bool is_default() const noexcept {
+    return reinterpret_cast<score_ctx*>(data()) == func_.ctx()
+           && func_.func() == kDefaultScoreFunc;
+  }
 
   [[nodiscard]] FORCE_INLINE const byte_type* evaluate() const {
     assert(func_);
     return func_();
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief reset score to default value
-  //////////////////////////////////////////////////////////////////////////////
+  // Reset score to default value
   void reset() noexcept;
 
   void reset(const score& score) noexcept {
@@ -104,9 +103,7 @@ class score : public attribute {
  private:
   bstring buf_;
   score_function func_;
-//  memory::managed_ptr<score_ctx> ctx_; // arbitrary scoring context
-//  score_f func_; // scoring function
-}; // score
+};
 
 void reset(irs::score& score, order::prepared::scorers&& scorers);
 

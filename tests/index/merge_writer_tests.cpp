@@ -4319,3 +4319,13 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values("1_4")),
   &merge_writer_test_case::to_string
 );
+
+INSTANTIATE_TEST_SUITE_P(
+  merge_writer_test_1_5,
+  merge_writer_test_case_1_4,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::directory<&tests::memory_directory>),
+    ::testing::Values("1_5", "1_5simd")),
+  &merge_writer_test_case::to_string
+);

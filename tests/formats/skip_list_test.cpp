@@ -31,46 +31,37 @@ using namespace std::chrono_literals;
 
 namespace {
 
-class skip_writer_test : public test_base {
-  virtual void SetUp() {
-    test_base::SetUp();
-  }
-
-  virtual void TearDown() {
-    test_base::TearDown();
-  }
-
+class SkipWriterTest : public test_base {
  protected:
   void write_flush(size_t count, size_t max_levels, size_t skip) {
     std::vector<std::vector<int>> levels(max_levels);
+    size_t cur_doc = std::numeric_limits<size_t>::max();
 
-    irs::skip_writer writer(skip, skip);
-    ASSERT_FALSE(writer);
+    auto write_skip = [&levels, &cur_doc](size_t level, irs::index_output& out) {
+      levels[level].push_back(irs::doc_id_t(cur_doc));
+      out.write_vlong(irs::doc_id_t(cur_doc));
+    };
+
+    irs::SkipWriter writer(skip, skip);
+    ASSERT_EQ(0, writer.MaxLevels());
     irs::memory_directory dir;
 
     // write data
     {
-      size_t cur_doc = std::numeric_limits<size_t>::max();
-
-      writer.prepare(
-        max_levels, count,
-        [&levels, &cur_doc](size_t level, irs::index_output& out) {
-          levels[level].push_back(irs::doc_id_t(cur_doc));
-          out.write_vlong(irs::doc_id_t(cur_doc));
-      });
-      ASSERT_TRUE(static_cast<bool>(writer));
+      writer.Prepare(max_levels, count);
+      ASSERT_NE(0, writer.MaxLevels());
 
       for (size_t doc = 0; doc < count; ++doc) {
         cur_doc = doc;
         // skip every "skip" document
         if (doc && 0 == doc % skip) {
-          writer.skip(doc);
+          writer.Skip(doc, write_skip);
         }
       }
 
       auto out = dir.create("docs");
       ASSERT_FALSE(!out);
-      writer.flush(*out);
+      writer.Flush(*out);
     }
 
     // check levels data
@@ -93,14 +84,13 @@ class skip_writer_test : public test_base {
       auto in = dir.open("docs", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
 
-      // skip number of levels
-      in->read_vint();
+      size_t num_levels = in->read_vint();
 
       // check levels from n downto 1
-      for (size_t i = writer.num_levels(); i > 1; --i) {
+      for (;num_levels > 1; --num_levels) {
         // skip level size
         in->read_vlong();
-        auto& level = levels[i-1];
+        auto& level = levels[num_levels-1];
         for (auto expected_doc : level) {
           auto doc = in->read_vint();
           ASSERT_EQ(expected_doc, doc);
@@ -110,7 +100,7 @@ class skip_writer_test : public test_base {
       }
 
       // check level 0
-      {
+      if (num_levels) {
         // skip level size
         in->read_vlong();
         auto& level = levels[0];
@@ -123,47 +113,38 @@ class skip_writer_test : public test_base {
   }
 };
 
-class skip_reader_test : public test_base {
-  virtual void SetUp() {
-    test_base::SetUp();
-  }
-
-  virtual void TearDown() {
-    test_base::TearDown();
-  }
-};
+class SkipReaderTest : public test_base { };
 
 }
 
-TEST_F(skip_writer_test, prepare) {
+TEST_F(SkipWriterTest, Prepare) {
   // empty doc count
   {
     const size_t max_levels = 10;
     const size_t doc_count = 0;
     const size_t skip_n = 8;
     const size_t skip_0 = 16;
-    irs::skip_writer writer(skip_0, skip_n);
-    ASSERT_FALSE(writer);
-    writer.prepare(max_levels, doc_count);
-    ASSERT_TRUE(static_cast<bool>(writer));
-    ASSERT_EQ(skip_0, writer.skip_0());
-    ASSERT_EQ(skip_n, writer.skip_n());
-    ASSERT_EQ(0, writer.num_levels());
+
+    irs::SkipWriter writer(skip_0, skip_n);
+    ASSERT_EQ(0, writer.MaxLevels());
+    writer.Prepare(max_levels, doc_count);
+    ASSERT_EQ(skip_0, writer.Skip0());
+    ASSERT_EQ(skip_n, writer.SkipN());
+    ASSERT_EQ(0, writer.MaxLevels());
   }
 
   // at least 1 level must exists
   {
     const size_t max_levels = 0;
-    const size_t doc_count = 0;
+    const size_t doc_count = 17;
     const size_t skip_n = 8;
     const size_t skip_0 = 16;
-    irs::skip_writer writer(skip_0, skip_n);
-    ASSERT_FALSE(writer);
-    writer.prepare(max_levels, doc_count);
-    ASSERT_TRUE(static_cast<bool>(writer));
-    ASSERT_EQ(skip_0, writer.skip_0());
-    ASSERT_EQ(skip_n, writer.skip_n());
-    ASSERT_EQ(0, writer.num_levels());
+    irs::SkipWriter writer(skip_0, skip_n);
+    ASSERT_EQ(0, writer.MaxLevels());
+    writer.Prepare(max_levels, doc_count);
+    ASSERT_EQ(skip_0, writer.Skip0());
+    ASSERT_EQ(skip_n, writer.SkipN());
+    ASSERT_EQ(1, writer.MaxLevels());
   }
 
   // less than max levels
@@ -171,13 +152,12 @@ TEST_F(skip_writer_test, prepare) {
     const size_t doc_count = 1923;
     const size_t skip = 8;
     const size_t max_levels = 10;
-    irs::skip_writer writer(skip, skip);
-    ASSERT_FALSE(writer);
-    writer.prepare(max_levels, doc_count);
-    ASSERT_TRUE(static_cast<bool>(writer));
-    ASSERT_EQ(skip, writer.skip_0());
-    ASSERT_EQ(skip, writer.skip_n());
-    ASSERT_EQ(3, writer.num_levels());
+    irs::SkipWriter writer(skip, skip);
+    ASSERT_EQ(0, writer.MaxLevels());
+    writer.Prepare(max_levels, doc_count);
+    ASSERT_EQ(skip, writer.Skip0());
+    ASSERT_EQ(skip, writer.SkipN());
+    ASSERT_EQ(3, writer.MaxLevels());
   }
 
   // more than max levels 
@@ -185,21 +165,30 @@ TEST_F(skip_writer_test, prepare) {
     const size_t doc_count = 1923000;
     const size_t skip = 8;
     const size_t max_levels = 5;
-    irs::skip_writer writer(skip, skip);
-    ASSERT_FALSE(writer);
-    writer.prepare(max_levels, doc_count);
-    ASSERT_TRUE(static_cast<bool>(writer));
-    ASSERT_EQ(skip, writer.skip_0());
-    ASSERT_EQ(skip, writer.skip_n());
-    ASSERT_EQ(5, writer.num_levels());
+    irs::SkipWriter writer(skip, skip);
+    ASSERT_EQ(0, writer.MaxLevels());
+    writer.Prepare(max_levels, doc_count);
+    ASSERT_EQ(skip, writer.Skip0());
+    ASSERT_EQ(skip, writer.SkipN());
+    ASSERT_EQ(5, writer.MaxLevels());
+
+    writer.Prepare(max_levels, 7);
+    ASSERT_EQ(skip, writer.Skip0());
+    ASSERT_EQ(skip, writer.SkipN());
+    ASSERT_EQ(0, writer.MaxLevels());
+
+    writer.Prepare(max_levels, 0);
+    ASSERT_EQ(skip, writer.Skip0());
+    ASSERT_EQ(skip, writer.SkipN());
+    ASSERT_EQ(0, writer.MaxLevels());
   }
 }
 
-TEST_F(skip_writer_test, write_flush) {
-  skip_writer_test::write_flush(1923, 5, 8);
+TEST_F(SkipWriterTest, WriteFlush) {
+  SkipWriterTest::write_flush(1923, 5, 8);
 }
 
-TEST_F(skip_writer_test, reset) {
+TEST_F(SkipWriterTest, Reset) {
   const size_t skip = 13;
   const size_t max_levels = 10;
   const size_t count = 2873;
@@ -207,18 +196,18 @@ TEST_F(skip_writer_test, reset) {
   std::vector<int> levels[max_levels];
   size_t cur_doc = std::numeric_limits<size_t>::max();
 
-  // prepare writer
-  irs::skip_writer writer(skip, skip);
-  ASSERT_FALSE(writer);
-  writer.prepare(
-    max_levels, count,
-    [&cur_doc, &levels](size_t level, irs::index_output& out) {
-      levels[level].push_back(cur_doc);
-      out.write_vlong(cur_doc);
-  });
-  ASSERT_TRUE(static_cast<bool>(writer));
+  auto write_skip = [&cur_doc, &levels](size_t level, irs::index_output& out) {
+    levels[level].push_back(cur_doc);
+    out.write_vlong(cur_doc);
+  };
 
-  // prepare directory
+  //.Prepare writer
+  irs::SkipWriter writer(skip, skip);
+  ASSERT_EQ(0, writer.MaxLevels());
+  writer.Prepare(max_levels, count);
+  ASSERT_NE(max_levels, writer.MaxLevels());
+
+  //.Prepare directory
   irs::memory_directory dir;
 
   // write initial data
@@ -230,13 +219,13 @@ TEST_F(skip_writer_test, reset) {
       for (size_t i = 0; i < count; ++i) {
         cur_doc = i;
         if (i && 0 == i % skip) {
-          writer.skip(i);
+          writer.Skip(i, write_skip);
         }
       }
 
       auto out = dir.create(file);
       ASSERT_FALSE(!out);
-      writer.flush(*out);
+      writer.Flush(*out);
     }
   
     // check levels data
@@ -259,14 +248,13 @@ TEST_F(skip_writer_test, reset) {
       auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
 
-      // skip number of levels
-      in->read_vint();
+      size_t num_levels = in->read_vint();
 
       // check levels from n downto 1
-      for (size_t i = writer.num_levels(); i > 1; --i) {
+      for (;num_levels > 1; --num_levels) {
         // skip level size
         in->read_vlong();
-        auto& level = levels[i-1];
+        auto& level = levels[num_levels-1];
         for (auto expected_doc : level) {
           auto doc = in->read_vint();
           ASSERT_EQ(expected_doc, doc);
@@ -276,7 +264,7 @@ TEST_F(skip_writer_test, reset) {
       }
 
       // check level 0
-      {
+      if (num_levels) {
         // skip level size
         in->read_vlong();
         auto& level = levels[0];
@@ -290,7 +278,7 @@ TEST_F(skip_writer_test, reset) {
 
   // reset writer and write another docs into another stream
   {
-    writer.reset();
+    writer.Reset();
     for (auto& level : levels) {
       level.clear();
     }
@@ -303,13 +291,13 @@ TEST_F(skip_writer_test, reset) {
         cur_doc = 2*i;
         // skip every "skip" document
         if (i && 0 == i % skip) {
-          writer.skip(i);
+          writer.Skip(i, write_skip);
         }
       }
 
       auto out = dir.create(file);
       ASSERT_FALSE(!out);
-      writer.flush(*out);
+      writer.Flush(*out);
     }
     
     // check levels data
@@ -332,14 +320,13 @@ TEST_F(skip_writer_test, reset) {
       auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
 
-      // skip number of levels
-      in->read_vint();
+      size_t num_levels = in->read_vint();
 
       // check levels from n downto 1
-      for (size_t i = writer.num_levels(); i > 1; --i) {
+      for (;num_levels > 1; --num_levels) {
         // skip level size
         in->read_vlong();
-        auto& level = levels[i-1];
+        auto& level = levels[num_levels-1];
         for (auto expected_doc : level) {
           auto doc = in->read_vint();
           ASSERT_EQ(expected_doc, doc);
@@ -349,7 +336,7 @@ TEST_F(skip_writer_test, reset) {
       }
 
       // check level 0
-      {
+      if (num_levels) {
         // skip level size
         in->read_vlong();
         auto& level = levels[0];
@@ -362,113 +349,197 @@ TEST_F(skip_writer_test, reset) {
   }
 }
 
-TEST_F(skip_reader_test, prepare) {
-  // prepare empty
+TEST_F(SkipReaderTest,Prepare) {
+  struct NoopRead {
+    bool IsLess(size_t, irs::doc_id_t) const {
+      EXPECT_FALSE(true);
+      return false;
+    }
+
+    void MoveDown(size_t) {
+      ASSERT_FALSE(true);
+    }
+
+    irs::doc_id_t Read(size_t, size_t, irs::data_input&) const {
+      EXPECT_FALSE(true);
+      return irs::doc_limits::eof();
+    }
+  };
+
+  //.Prepare empty
   {
     size_t count = 1000;
     size_t max_levels = 5;
     size_t skip = 8;
 
-    irs::skip_writer writer(skip, skip);
-    ASSERT_FALSE(writer);
-    writer.prepare(max_levels, count);
-    ASSERT_TRUE(static_cast<bool>(writer));
+    irs::SkipWriter writer(skip, skip);
+    ASSERT_EQ(0, writer.MaxLevels());
+    writer.Prepare(max_levels, count);
+    ASSERT_EQ(3, writer.MaxLevels());
     irs::memory_directory dir;
     {
       auto out = dir.create("docs");
       ASSERT_FALSE(!out);
-      writer.flush(*out);
+      writer.Flush(*out);
     }
 
-    irs::skip_reader reader(skip, skip);
-    ASSERT_FALSE(reader);
+    irs::SkipReader<NoopRead> reader(skip, skip, NoopRead{});
+    ASSERT_EQ(0, reader.NumLevels());
     {
       auto in = dir.open("docs", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
-      reader.prepare(std::move(in));
+      reader.Prepare(std::move(in));
     }
-    ASSERT_TRUE(static_cast<bool>(reader));
-    ASSERT_EQ(0, reader.num_levels());
-    ASSERT_EQ(skip, reader.skip_0());
-    ASSERT_EQ(skip, reader.skip_n());
+    ASSERT_EQ(0, reader.NumLevels());
+    ASSERT_EQ(skip, reader.Skip0());
+    ASSERT_EQ(skip, reader.SkipN());
   }
  
-  // prepare not empty
+  //.Prepare not empty
   {
     size_t count = 1932;
     size_t max_levels = 5;
     size_t skip = 8;
 
-    irs::skip_writer writer(skip, skip);
-    ASSERT_FALSE(writer);
+    struct write_skip {
+      void operator()(size_t, irs::index_output& out) {
+        out.write_vint(0);
+      }
+    };
+
+    irs::SkipWriter writer(skip, skip);
+    ASSERT_EQ(0, writer.MaxLevels());
     irs::memory_directory dir;
 
     // write data
     {
-      writer.prepare(
-        max_levels, count,
-        [](size_t, irs::index_output& out) {
-          out.write_vint(0);
-      });
-      ASSERT_TRUE(static_cast<bool>(writer));
+      writer.Prepare(max_levels, count);
+      ASSERT_EQ(3, writer.MaxLevels());
 
       for (size_t i = 0; i <= count; ++i) {
         if (i && 0 == i % skip) {
-          writer.skip(i);
+          writer.Skip(i, write_skip{});
         }
       }
 
       auto out = dir.create("docs");
       ASSERT_FALSE(!out);
-      writer.flush(*out);
+      writer.Flush(*out);
     }
 
-    irs::skip_reader reader(skip, skip);
-    ASSERT_FALSE(reader);
+    irs::SkipReader<NoopRead> reader(skip, skip, NoopRead{});
+    ASSERT_EQ(0, reader.NumLevels());
     auto in = dir.open("docs", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in);
-    reader.prepare(std::move(in));
-    ASSERT_TRUE(static_cast<bool>(reader));
-    ASSERT_EQ(writer.num_levels(), reader.num_levels());
-    ASSERT_EQ(skip, reader.skip_0());
-    ASSERT_EQ(skip, reader.skip_n());
+    reader.Prepare(std::move(in));
+    ASSERT_EQ(writer.MaxLevels(), reader.NumLevels());
+    ASSERT_EQ(skip, reader.Skip0());
+    ASSERT_EQ(skip, reader.SkipN());
   }
 }
 
-TEST_F(skip_reader_test, seek) {
+TEST_F(SkipReaderTest, Seek) {
+   struct WriteSkip {
+     size_t* low;
+     size_t* high;
+
+     void operator()(size_t level, irs::index_output& out) {
+       if (low && !level) {
+         out.write_vlong(*low);
+       }
+       out.write_vlong(*high); // upper
+     }
+   };
+
+
+   struct ReadSkip {
+     size_t read_calls_count = 0;
+     size_t move_down_calls_count = 0;
+     mutable size_t is_less_calls_count = 0;
+     size_t count;
+     irs::doc_id_t lower = irs::doc_limits::invalid();
+     std::vector<irs::doc_id_t> upper_bounds{};
+
+     explicit ReadSkip(size_t count, size_t skip_levels) noexcept
+       : count{count}, upper_bounds(skip_levels) {}
+
+     bool IsLess(size_t level, irs::doc_id_t target) const {
+       EXPECT_LT(level, upper_bounds.size());
+       ++is_less_calls_count;
+       return upper_bounds[level] < target;
+     }
+
+     void MoveDown(size_t level) {
+       ASSERT_LT(level, upper_bounds.size());
+       ++move_down_calls_count;
+       upper_bounds[level] = lower;
+     }
+
+     bool Read(size_t level, size_t skipped, irs::data_input& in) {
+       EXPECT_LT(level, upper_bounds.size());
+       ++read_calls_count;
+
+       if (skipped >= count) {
+         lower = upper_bounds[level];
+         upper_bounds[level] = irs::doc_limits::eof();
+         return false;
+       } else {
+         if (level == (upper_bounds.size() - 1)) {
+           lower = in.read_vlong();
+         }
+
+         upper_bounds[level] = in.read_vlong();
+         return true;
+       }
+     }
+
+     void ResetCallsCount() noexcept {
+       is_less_calls_count = 0;
+       read_calls_count = 0;
+       move_down_calls_count = 0;
+     }
+
+     void Reset() noexcept {
+       lower = irs::doc_limits::invalid();
+       std::fill_n(std::begin(upper_bounds), upper_bounds.size(),
+                   irs::doc_limits::invalid());
+     }
+
+     void AssertCallsCount(size_t is_less, size_t move, size_t read) {
+       ASSERT_EQ(is_less, is_less_calls_count);
+       ASSERT_EQ(move, move_down_calls_count);
+       ASSERT_EQ(read, read_calls_count);
+     }
+   };
+
   {
-    const size_t count = 1932;
-    const size_t max_levels = 5;
-    const size_t skip_0 = 8;
-    const size_t skip_n = 8;
-    const std::string file = "docs";
+    static constexpr size_t kCount = 1932;
+    static constexpr size_t kMaxLevels = 5;
+    static constexpr size_t kSkipLevels = 3;
+    static constexpr size_t kSkip0 = 8;
+    static constexpr size_t kSkipN = 8;
+    static constexpr std::string_view kFile = "docs";
 
     irs::memory_directory dir;
+
     // write data
     {
-      irs::skip_writer writer(skip_0, skip_n);
-      ASSERT_FALSE(writer);
+      size_t low = irs::doc_limits::invalid();
+      size_t high = irs::doc_limits::invalid();
+
+      irs::SkipWriter writer(kSkip0, kSkipN);
+      ASSERT_EQ(0, writer.MaxLevels());
 
       // write data
 
-      size_t low = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      size_t high = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-
-      writer.prepare(
-        max_levels, count,
-        [&low, &high, skip_0](size_t level, irs::index_output& out) {
-          if (!level) {
-            out.write_vlong(low);
-          }
-          out.write_vlong(high); // upper
-      });
-      ASSERT_TRUE(static_cast<bool>(writer));
+      writer.Prepare(kMaxLevels, kCount);
+      ASSERT_EQ(kSkipLevels, writer.MaxLevels());
 
       size_t size = 0;
-      for (size_t doc = 0; doc <= count; ++doc, ++size) {
+      for (size_t doc = 0; doc <= kCount; ++doc, ++size) {
         // skip every "skip" document
-        if (size == skip_0) {
-          writer.skip(doc);
+        if (size == kSkip0) {
+          writer.Skip(doc, WriteSkip{&low, &high});
           size = 0;
           low = high;
         }
@@ -476,295 +547,266 @@ TEST_F(skip_reader_test, seek) {
         high = doc;
       }
 
-      auto out = dir.create(file);
+      auto out = dir.create(kFile);
       ASSERT_FALSE(!out);
-      writer.flush(*out);
+      writer.Flush(*out);
     }
 
     // check written data
     {
-      irs::doc_id_t lower = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      irs::doc_id_t upper = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      size_t calls_count = 0;
+      irs::SkipReader<ReadSkip> reader(kSkip0, kSkipN, ReadSkip{kCount, kSkipLevels});
+      auto& ctx = reader.Reader();
+      auto& lower = ctx.lower;
+      auto& upper_bounds = ctx.upper_bounds;
 
-      irs::skip_reader reader(skip_0, skip_n);
-      ASSERT_FALSE(reader);
-      auto in = dir.open(file, irs::IOAdvice::NORMAL);
+      ASSERT_EQ(0, reader.NumLevels());
+      auto in = dir.open(kFile, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
-      reader.prepare(
-        std::move(in), [&lower, &upper, &calls_count](size_t level, irs::data_input& in) {
-          ++calls_count;
-
-          if (in.eof()) {
-            lower = upper;
-            upper = irs::doc_limits::eof();
-          } else {
-            if (!level) {
-              lower = in.read_vlong();
-            }
-
-            upper = in.read_vlong();
-          }
-
-          return upper;
-      });
-      ASSERT_TRUE(static_cast<bool>(reader));
-      ASSERT_EQ(skip_0, reader.skip_0());
-      ASSERT_EQ(skip_n, reader.skip_n());
+      reader.Prepare(std::move(in));
+      ASSERT_EQ(3, reader.NumLevels());
+      ASSERT_EQ(kSkip0, reader.Skip0());
+      ASSERT_EQ(kSkipN, reader.SkipN());
 
       // seek to 5
-      {
-        ASSERT_EQ(0, reader.seek(5));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(lower));
-        ASSERT_EQ(7, upper);
+      ASSERT_EQ(0, reader.Seek(5));
+      ASSERT_FALSE(irs::doc_limits::valid(lower));
+      ASSERT_EQ((std::vector{511U,63U,7U}), upper_bounds);
+      ctx.AssertCallsCount(4, 2, 3);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(0, reader.seek(5)); 
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(5));
+      ctx.AssertCallsCount(3, 0, 0);
 
-      // seek to last document in a 1st block 
-      {
-        ASSERT_EQ(0, reader.seek(7));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(lower));
-        ASSERT_EQ(7, upper);
+      // seek to last document in 1st block
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(7));
+      ASSERT_FALSE(irs::doc_limits::valid(lower));
+      ASSERT_EQ((std::vector{511U,63U,7U}), upper_bounds);
+      ctx.AssertCallsCount(3, 0, 0);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(0, reader.seek(7)); 
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(7));
+      ctx.AssertCallsCount(3, 0, 0);
 
-      // seek to the first document in a 2nd block
-      {
-        ASSERT_EQ(8, reader.seek(8));
-        ASSERT_EQ(7, lower);
-        ASSERT_EQ(15, upper);
+      // seek to the first document in 2nd block
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(8));
+      ASSERT_EQ(7, lower);
+      ASSERT_EQ((std::vector{511U,63U,15U}), upper_bounds);
+      ctx.AssertCallsCount(4, 0, 1);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(8, reader.seek(8));
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(8));
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to 63
-      {
-        ASSERT_EQ(56, reader.seek(63));
-        ASSERT_EQ(55, lower);
-        ASSERT_EQ(63, upper);
+      ctx.ResetCallsCount();
+      ASSERT_EQ(40, reader.Seek(63));
+      ASSERT_EQ(55, lower);
+      ASSERT_EQ((std::vector{511U,63U,63U}), upper_bounds);
+      ctx.AssertCallsCount(9, 0, 6);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(56, reader.seek(63));
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(63));
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to 64
-      {
-        ASSERT_EQ(64, reader.seek(64));
-        ASSERT_EQ(63, lower);
-        ASSERT_EQ(71, upper);
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(64));
+      ASSERT_EQ(63, lower);
+      ASSERT_EQ((std::vector{511U,127U,71U}), upper_bounds);
+      ctx.AssertCallsCount(4, 1, 2);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(64, reader.seek(64));
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(64));
+      ctx.AssertCallsCount(3, 0, 0);
 
-      // seek to the 767 
-      {
-        ASSERT_EQ(760, reader.seek(767));
-        ASSERT_EQ(759, lower);
-        ASSERT_EQ(767, upper);
+      // seek to the 767
+      ctx.ResetCallsCount();
+      ASSERT_EQ(688, reader.Seek(767));
+      ASSERT_EQ(759, lower);
+      ASSERT_EQ((std::vector{1023U,767U,767U}), upper_bounds);
+      ctx.AssertCallsCount(14, 2, 13);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(760, reader.seek(767));
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(767));
+      ctx.AssertCallsCount(3, 0, 0);
 
-      // seek to the 1023 
-      {
-        ASSERT_EQ(1016, reader.seek(1023));
-        ASSERT_EQ(1015, lower);
-        ASSERT_EQ(1023, upper);
-      }
+      // seek to the 1023
+      ctx.ResetCallsCount();
+      ASSERT_EQ(248, reader.Seek(1023));
+      ASSERT_EQ(1015, lower);
+      ASSERT_EQ((std::vector{1023U,1023U,1023U}), upper_bounds);
+      ctx.AssertCallsCount(14, 1, 12);
 
-      // seek to the 1024 
-      {
-        ASSERT_EQ(1024, reader.seek(1024));
-        ASSERT_EQ(1023, lower);
-        ASSERT_EQ(1031, upper);
-      }
+      // seek to the 1024
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(1024));
+      ASSERT_EQ(1023, lower);
+      ASSERT_EQ((std::vector{1535U,1087U,1031U}), upper_bounds);
+      ctx.AssertCallsCount(4, 2, 3);
 
       // seek to the 1512
-      {
-        ASSERT_EQ(1512, reader.seek(1512));
-        ASSERT_EQ(1511, lower);
-        ASSERT_EQ(1519, upper);
-      }
+      ctx.ResetCallsCount();
+      ASSERT_EQ(480, reader.Seek(1512));
+      ASSERT_EQ(1511, lower);
+      ASSERT_EQ((std::vector{1535U,1535U,1519U}), upper_bounds);
+      ctx.AssertCallsCount(15, 1, 13);
 
       // seek to the 1701 
-      {
-        ASSERT_EQ(1696, reader.seek(1701));
-        ASSERT_EQ(1695, lower);
-        ASSERT_EQ(1703, upper);
-      }
+      ctx.ResetCallsCount();
+      ASSERT_EQ(176, reader.Seek(1701));
+      ASSERT_EQ(1695, lower);
+      ASSERT_EQ((std::vector{irs::doc_limits::eof(),1727U,1703U}), upper_bounds);
+      ctx.AssertCallsCount(10, 2, 9);
 
       // seek to 1920
-      {
-        ASSERT_EQ(1920, reader.seek(1920));
-        ASSERT_EQ(1919, lower);
-        ASSERT_EQ(1927, upper);
-      }
+      ctx.ResetCallsCount();
+      ASSERT_EQ(216, reader.Seek(1920));
+      ASSERT_EQ(1919, lower);
+      ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),1927U}), upper_bounds);
+      ctx.AssertCallsCount(7, 1, 5);
 
       // seek to last doc in a skip-list
-      {
-        ASSERT_EQ(1928, reader.seek(1928));
-        ASSERT_EQ(1927, lower);
-        ASSERT_TRUE(irs::doc_limits::eof(upper));
-      }
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(1928));
+      ASSERT_EQ(1927, lower);
+      ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
+      ctx.AssertCallsCount(4, 0, 1);
 
       // seek after the last doc in a skip-list
-      {
-        calls_count = 0;
-        ASSERT_EQ(1928, reader.seek(1930));
-        ASSERT_EQ(1927, lower);
-        ASSERT_TRUE(irs::doc_limits::eof(upper));
-        ASSERT_EQ(0, calls_count);
-      }
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(1930));
+      ASSERT_EQ(1927, lower);
+      ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek after the last doc in a skip-list
-      {
-        calls_count = 0;
-        ASSERT_EQ(1928, reader.seek(1935));
-        ASSERT_EQ(1927, lower);
-        ASSERT_TRUE(irs::doc_limits::eof(upper));
-        ASSERT_EQ(0, calls_count);
-      }
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(1935));
+      ASSERT_EQ(1927, lower);
+      ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
+      ctx.AssertCallsCount(3, 0, 0);
 
-      // seek to NO_MORE_DOCS
-      {
-        calls_count = 0;
-        ASSERT_EQ(1928, reader.seek(irs::doc_limits::eof()));
-        ASSERT_EQ(1927, lower);
-        ASSERT_TRUE(irs::doc_limits::eof(upper));
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to eof
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(irs::doc_limits::eof()));
+      ASSERT_EQ(1927, lower);
+      ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to lower document
-      {
-        calls_count = 0;
-        ASSERT_EQ(1928, reader.seek(767));
-        ASSERT_EQ(1927, lower);
-        ASSERT_TRUE(irs::doc_limits::eof(upper));
-        ASSERT_EQ(0, calls_count);
-      }
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(767));
+      ASSERT_EQ(1927, lower);
+      ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
+      ctx.AssertCallsCount(3, 0, 0);
 
       // reset && seek to document
-      {
-        reader.reset();
-        ASSERT_EQ(760, reader.seek(767));
-        ASSERT_EQ(759, lower);
-        ASSERT_EQ(767, upper);
-      }
+      reader.Reset();
+      ctx.Reset();
+      ctx.ResetCallsCount();
+      ASSERT_EQ(760, reader.Seek(767));
+      ASSERT_EQ(759, lower);
+      ASSERT_EQ((std::vector{1023U,767U,767U}), upper_bounds);
+      ctx.AssertCallsCount(15, 2, 14);
 
-      // reset && seek to type_limits<type_t::doc_id_t>::min()
-      {
-        reader.reset();
-        ASSERT_EQ(0, reader.seek(irs::type_limits<irs::type_t::doc_id_t>::min()));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(lower));
-        ASSERT_EQ(7, upper);
-      }
+      // reset && seek to doc_limits::min()
+      reader.Reset();
+      ctx.Reset();
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(irs::doc_limits::min()));
+      ASSERT_FALSE(irs::doc_limits::valid(lower));
+      ASSERT_EQ((std::vector{511U,63U,7U}), upper_bounds);
+      ctx.AssertCallsCount(4, 2, 3);
 
-      // reset && seek to irs::INVALID_DOC
-      {
-        calls_count = 0;
-        lower = upper = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-        reader.reset();
-        ASSERT_EQ(0, reader.seek(irs::type_limits<irs::type_t::doc_id_t>::invalid()));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(lower));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(upper));
-        ASSERT_EQ(0, calls_count);
-      }
+      // reset && seek to doc_limits::invalid()
+      reader.Reset();
+      ctx.Reset();
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(irs::doc_limits::invalid()));
+      ASSERT_FALSE(irs::doc_limits::valid(lower));
+      ASSERT_EQ((std::vector{0U,0U,0U}), upper_bounds);
+      ctx.AssertCallsCount(3, 0, 0);
 
-      // reset && seek to irs::NO_MORE_DOCS
-      {
-        reader.reset();
-        ASSERT_EQ(1928, reader.seek(irs::doc_limits::eof()));
-        ASSERT_EQ(1927, lower);
-        ASSERT_TRUE(irs::doc_limits::eof(upper));
-      }
+      // reset && seek to eof
+      reader.Reset();
+      ctx.Reset();
+      ctx.ResetCallsCount();
+      ASSERT_EQ(1928, reader.Seek(irs::doc_limits::eof()));
+      ASSERT_EQ(1927, lower);
+      ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
+      ctx.AssertCallsCount(14, 2, 13);
 
       // reset && seek to 1928 
-      {
-        reader.reset();
-        ASSERT_EQ(1928, reader.seek(1928));
-        ASSERT_EQ(1927, lower);
-        ASSERT_TRUE(irs::doc_limits::eof(upper));
-      }
+      reader.Reset();
+      ctx.Reset();
+      ctx.ResetCallsCount();
+      ASSERT_EQ(1928, reader.Seek(1928));
+      ASSERT_EQ(1927, lower);
+      ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
+      ctx.AssertCallsCount(14, 2, 13);
 
       // reset && seek to 1927 
-      {
-        reader.reset();
-        ASSERT_EQ(1920, reader.seek(1927));
-        ASSERT_EQ(1919, lower);
-        ASSERT_EQ(1927, upper);
-      }
+      reader.Reset();
+      ctx.Reset();
+      ctx.ResetCallsCount();
+      ASSERT_EQ(1920, reader.Seek(1927));
+      ASSERT_EQ(1919, lower);
+      ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),1927U}), upper_bounds);
+      ctx.AssertCallsCount(13, 2, 12);
 
       // reset && seek to 1511 
-      {
-        reader.reset();
-        ASSERT_EQ(1504, reader.seek(1511));
-        ASSERT_EQ(1503, lower);
-        ASSERT_EQ(1511, upper);
-      }
+      reader.Reset();
+      ctx.Reset();
+      ctx.ResetCallsCount();
+      ASSERT_EQ(1504, reader.Seek(1511));
+      ASSERT_EQ(1503, lower);
+      ASSERT_EQ((std::vector{1535U,1535U,1511U}), upper_bounds);
+      ctx.AssertCallsCount(17, 2, 16);
 
       // reset && seek to 1512 
-      {
-        reader.reset();
-        ASSERT_EQ(1512, reader.seek(1512));
-        ASSERT_EQ(1511, lower);
-        ASSERT_EQ(1519, upper);
-      }
+      reader.Reset();
+      ctx.Reset();
+      ctx.ResetCallsCount();
+      ASSERT_EQ(1512, reader.Seek(1512));
+      ASSERT_EQ(1511, lower);
+      ASSERT_EQ((std::vector{1535U,1535U,1519U}), upper_bounds);
+      ctx.AssertCallsCount(18, 2, 17);
     }
   } 
 
   {
-    const size_t count = 7192;
-    const size_t max_levels = 5;
-    const size_t skip_0 = 8;
-    const size_t skip_n = 16;
-    const std::string file = "docs";
+    static constexpr size_t kCount = 7192;
+    static constexpr size_t kMaxLevels = 5;
+    static constexpr size_t kSkipLevels = 3;
+    static constexpr size_t kSkip0 = 8;
+    static constexpr size_t kSkipN = 16;
+    static constexpr std::string_view kFile = "docs";
+
+    size_t low = irs::doc_limits::invalid();
+    size_t high = irs::doc_limits::invalid();
 
     irs::memory_directory dir;
-    irs::skip_writer writer(skip_0, skip_n);
+    irs::SkipWriter writer(kSkip0, kSkipN);
+    ASSERT_EQ(0, writer.MaxLevels());
 
     // write data
     {
-      ASSERT_FALSE(writer);
-
-      // write data
-
-      size_t low = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      size_t high = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-
-      writer.prepare(
-        max_levels, count,
-        [&low, &high, skip_0](size_t level, irs::index_output& out) {
-          if (!level) {
-            out.write_vlong(low);
-          }
-          out.write_vlong(high); // upper
-      });
-      ASSERT_TRUE(static_cast<bool>(writer));
+      writer.Prepare(kMaxLevels, kCount);
+      ASSERT_EQ(kSkipLevels, writer.MaxLevels());
 
       size_t size = 0;
-      for (size_t doc = 0; doc <= count; ++doc, ++size) {
+      for (size_t doc = 0; doc <= kCount; ++doc, ++size) {
         // skip every "skip" document
-        if (size == skip_0) {
-          writer.skip(doc);
+        if (size == kSkip0) {
+          writer.Skip(doc, WriteSkip{&low, &high});
           size = 0;
           low = high;
         }
@@ -772,203 +814,160 @@ TEST_F(skip_reader_test, seek) {
         high = doc;
       }
 
-      auto out = dir.create(file);
+      auto out = dir.create(kFile);
       ASSERT_FALSE(!out);
-      writer.flush(*out);
+      writer.Flush(*out);
     }
 
     // check written data
     {
-      irs::doc_id_t lower = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      irs::doc_id_t upper = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      size_t calls_count = 0;
+      irs::SkipReader<ReadSkip> reader(kSkip0, kSkipN, ReadSkip{kCount, kSkipLevels});
+      auto& ctx = reader.Reader();
+      auto& lower = ctx.lower;
+      auto& upper_bounds = ctx.upper_bounds;
 
-      irs::skip_reader reader(skip_0, skip_n);
-      ASSERT_FALSE(reader);
-      auto in = dir.open(file, irs::IOAdvice::RANDOM);
+      ASSERT_EQ(0, reader.NumLevels());
+      auto in = dir.open(kFile, irs::IOAdvice::RANDOM);
       ASSERT_FALSE(!in);
-      reader.prepare(
-        std::move(in), [&lower, &upper, &calls_count](size_t level, irs::data_input& in) {
-          ++calls_count;
-
-          if (in.eof()) {
-            lower = upper;
-            upper = irs::doc_limits::eof();
-          } else {
-            if (!level) {
-              lower = in.read_vlong();
-            }
-            upper = in.read_vlong();
-          }
-
-          return upper;
-      });
-      ASSERT_TRUE(static_cast<bool>(reader));
-      ASSERT_EQ(writer.num_levels(), reader.num_levels());
-      ASSERT_EQ(skip_0, reader.skip_0());
-      ASSERT_EQ(skip_n, reader.skip_n());
+      reader.Prepare(std::move(in));
+      ASSERT_EQ(writer.MaxLevels(), reader.NumLevels());
+      ASSERT_EQ(kSkip0, reader.Skip0());
+      ASSERT_EQ(kSkipN, reader.SkipN());
 
       // seek to 5
-      {
-        ASSERT_EQ(0, reader.seek(5));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(lower));
-        ASSERT_EQ(7, upper);
+      ASSERT_EQ(0, reader.Seek(5));
+      ASSERT_FALSE(irs::doc_limits::valid(lower));
+      ASSERT_EQ((std::vector{2047U,127U,7U}), upper_bounds);
+      ctx.AssertCallsCount(4, 2, 3);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(0, reader.seek(5)); 
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(5));
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to last document in a 1st block 
-      {
-        ASSERT_EQ(0, reader.seek(7));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(lower));
-        ASSERT_EQ(7, upper);
+      ASSERT_EQ(0, reader.Seek(7));
+      ASSERT_FALSE(irs::doc_limits::valid(lower));
+      ASSERT_EQ((std::vector{2047U,127U,7U}), upper_bounds);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(0, reader.seek(7)); 
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(7));
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to the first document in a 2nd block
-      {
-        ASSERT_EQ(8, reader.seek(8));
-        ASSERT_EQ(7, lower);
-        ASSERT_EQ(15, upper);
+      ASSERT_EQ(0, reader.Seek(8));
+      ASSERT_EQ(7, lower);
+      ASSERT_EQ((std::vector{2047U,127U,15U}), upper_bounds);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(8, reader.seek(8));
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(8));
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to 63
-      {
-        ASSERT_EQ(56, reader.seek(63));
-        ASSERT_EQ(55, lower);
-        ASSERT_EQ(63, upper);
+      ASSERT_EQ(40, reader.Seek(63));
+      ASSERT_EQ(55, lower);
+      ASSERT_EQ((std::vector{2047U,127U,63U}), upper_bounds);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(56, reader.seek(63));
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(63));
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to 64
-      {
-        ASSERT_EQ(64, reader.seek(64));
-        ASSERT_EQ(63, lower);
-        ASSERT_EQ(71, upper);
+      ASSERT_EQ(0, reader.Seek(64));
+      ASSERT_EQ(63, lower);
+      ASSERT_EQ((std::vector{2047U,127U,71U}), upper_bounds);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(64, reader.seek(64));
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(64));
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to the 767 
-      {
-        ASSERT_EQ(760, reader.seek(767));
-        ASSERT_EQ(759, lower);
-        ASSERT_EQ(767, upper);
+      ASSERT_EQ(688, reader.Seek(767));
+      ASSERT_EQ(759, lower);
+      ASSERT_EQ((std::vector{2047U,767U,767U}), upper_bounds);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(760, reader.seek(767));
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(767));
+      ctx.AssertCallsCount(3, 0, 0);
 
       // seek to the 1023 
-      {
-        ASSERT_EQ(1016, reader.seek(1023));
-        ASSERT_EQ(1015, lower);
-        ASSERT_EQ(1023, upper);
-      }
+      ASSERT_EQ(248, reader.Seek(1023));
+      ASSERT_EQ(1015, lower);
+      ASSERT_EQ((std::vector{2047U,1023U,1023U}), upper_bounds);
 
       // seek to the 1024 
-      {
-        ASSERT_EQ(1024, reader.seek(1024));
-        ASSERT_EQ(1023, lower);
-        ASSERT_EQ(1031, upper);
-      }
+      ASSERT_EQ(0, reader.Seek(1024));
+      ASSERT_EQ(1023, lower);
+      ASSERT_EQ((std::vector{2047U,1151U,1031U}), upper_bounds);
 
       // seek to the 1512
-      {
-        ASSERT_EQ(1512, reader.seek(1512));
-        ASSERT_EQ(1511, lower);
-        ASSERT_EQ(1519, upper);
-      }
+      ASSERT_EQ(480, reader.Seek(1512));
+      ASSERT_EQ(1511, lower);
+      ASSERT_EQ((std::vector{2047U,1535U,1519U}), upper_bounds);
 
       // seek to the 1701 
-      {
-        ASSERT_EQ(1696, reader.seek(1701));
-        ASSERT_EQ(1695, lower);
-        ASSERT_EQ(1703, upper);
-      }
+      ASSERT_EQ(176, reader.Seek(1701));
+      ASSERT_EQ(1695, lower);
+      ASSERT_EQ((std::vector{2047U,1791U,1703U}), upper_bounds);
 
       // seek to 1920
-      {
-        ASSERT_EQ(1920, reader.seek(1920));
-        ASSERT_EQ(1919, lower);
-        ASSERT_EQ(1927, upper);
-      }
+      ASSERT_EQ(216, reader.Seek(1920));
+      ASSERT_EQ(1919, lower);
+      ASSERT_EQ((std::vector{2047U,2047U,1927U}), upper_bounds);
 
       // seek to one doc before the last in a skip-list
-      {
-        ASSERT_EQ(7184, reader.seek(7191));
-        ASSERT_EQ(7183, lower);
-        ASSERT_EQ(7191, upper);
-      }
+      ctx.ResetCallsCount();
+      ASSERT_EQ(5256, reader.Seek(7191));
+      ctx.AssertCallsCount(16, 2, 15);
+      ASSERT_EQ(7183, lower);
+      ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
 
       // seek to last doc in a skip-list
-      {
-        ASSERT_EQ(7192, reader.seek(7192));
-        ASSERT_EQ(7191, lower);
-        ASSERT_TRUE(irs::doc_limits::eof(upper));
-      }
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(7192));
+      ctx.AssertCallsCount(3, 0, 0);
+      ASSERT_EQ(7183, lower);
+      ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
 
       // seek to after the last doc in a skip-list
-      {
-        ASSERT_EQ(7192, reader.seek(7193));
-        ASSERT_EQ(7191, lower);
-        ASSERT_TRUE(irs::doc_limits::eof(upper));
-      }
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(7193));
+      ctx.AssertCallsCount(3, 0, 0);
+      ASSERT_EQ(7183, lower);
+      ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
     }
   }
 
   {
-    const size_t count = 14721;
-    const size_t max_levels = 5;
-    const size_t skip_0 = 16;
-    const size_t skip_n = 8;
-    const std::string file = "docs";
+    static constexpr size_t kCount = 14721;
+    static constexpr size_t kMaxLevels = 5;
+    static constexpr size_t kSkipLevels = 4;
+    static constexpr size_t kSkip0 = 16;
+    static constexpr size_t kSkipN = 8;
+    static constexpr std::string_view kFile= "docs";
+
+    size_t low = irs::doc_limits::invalid();
+    size_t high = irs::doc_limits::invalid();
 
     irs::memory_directory dir;
-    irs::skip_writer writer(skip_0, skip_n);
+    irs::SkipWriter writer(kSkip0, kSkipN);
+    ASSERT_EQ(0, writer.MaxLevels());
 
     // write data
     {
-      ASSERT_FALSE(writer);
-
-      // write data
-
-      size_t low = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      size_t high = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-
-      writer.prepare(
-        max_levels, count,
-        [&low, &high, skip_0](size_t level, irs::index_output& out) {
-          out.write_vlong(high); // upper
-      });
-      ASSERT_TRUE(static_cast<bool>(writer));
+      writer.Prepare(kMaxLevels, kCount);
+      ASSERT_EQ(kSkipLevels, writer.MaxLevels());
 
       size_t size = 0;
-      for (size_t doc = 0; doc <= count; ++doc, ++size) {
+      for (size_t doc = 0; doc <= kCount; ++doc, ++size) {
         // skip every "skip" document
-        if (size == skip_0) {
-          writer.skip(doc);
+        if (size == kSkip0) {
+          writer.Skip(doc, WriteSkip{&low, &high});
           size = 0;
           low = high;
         }
@@ -976,240 +975,206 @@ TEST_F(skip_reader_test, seek) {
         high = doc;
       }
 
-      auto out = dir.create(file);
+      auto out = dir.create(kFile);
       ASSERT_FALSE(!out);
-      writer.flush(*out);
+      writer.Flush(*out);
     }
 
     // check written data
     {
-      irs::doc_id_t lower = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      irs::doc_id_t upper = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      size_t calls_count = 0;
-      size_t last_level = max_levels;
+      irs::SkipReader<ReadSkip> reader(kSkip0, kSkipN, ReadSkip{kCount, kSkipLevels});
+      auto& ctx = reader.Reader();
+      auto& lower = ctx.lower;
+      auto& upper_bounds = ctx.upper_bounds;
 
-      irs::skip_reader reader(skip_0, skip_n);
-      ASSERT_FALSE(reader);
-      auto in = dir.open(file, irs::IOAdvice::RANDOM);
+      ASSERT_EQ(0, reader.NumLevels());
+      auto in = dir.open(kFile, irs::IOAdvice::RANDOM);
       ASSERT_FALSE(!in);
-      reader.prepare(
-        std::move(in), [&lower, &last_level, &upper, &calls_count](size_t level, irs::data_input& in) {
-          ++calls_count;
-
-          if (last_level > level) {
-            upper = lower;
-          } else {
-            lower = upper;
-          }
-          last_level = level;
-
-          if (in.eof()) {
-            upper = irs::doc_limits::eof();
-          } else {
-            upper = in.read_vlong();
-          }
-
-          return upper;
-      });
-      ASSERT_TRUE(static_cast<bool>(reader));
-      ASSERT_EQ(writer.num_levels(), reader.num_levels());
-      ASSERT_EQ(skip_0, reader.skip_0());
-      ASSERT_EQ(skip_n, reader.skip_n());
+      reader.Prepare(std::move(in));
+      ASSERT_EQ(writer.MaxLevels(), reader.NumLevels());
+      ASSERT_EQ(kSkip0, reader.Skip0());
+      ASSERT_EQ(kSkipN, reader.SkipN());
 
       // seek to 5
-      {
-        ASSERT_EQ(0, reader.seek(5));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(lower));
-        ASSERT_EQ(15, upper);
+      ASSERT_EQ(0, reader.Seek(5));
+      ASSERT_FALSE(irs::doc_limits::valid(lower));
+      ASSERT_EQ((std::vector{8191U,1023U,127U,15U}), upper_bounds);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(0, reader.seek(5)); 
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(5));
+      ctx.AssertCallsCount(4, 0, 0);
 
-      // seek to last document in a 1st block 
-      {
-        ASSERT_EQ(0, reader.seek(15));
-        ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(lower));
-        ASSERT_EQ(15, upper);
+      // seek to last document in the 1st block
+      ASSERT_EQ(0, reader.Seek(15));
+      ASSERT_FALSE(irs::doc_limits::valid(lower));
+      ASSERT_EQ((std::vector{8191U,1023U,127U,15U}), upper_bounds);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(0, reader.seek(7)); 
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(7));
+      ctx.AssertCallsCount(4, 0, 0);
 
       // seek to the first document in a 2nd block
-      {
-        ASSERT_EQ(16, reader.seek(16));
-        ASSERT_EQ(15, lower);
-        ASSERT_EQ(31, upper);
+      ASSERT_EQ(0, reader.Seek(16));
+      ASSERT_EQ(15, lower);
+      ASSERT_EQ((std::vector{8191U,1023U,127U,31U}), upper_bounds);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(16, reader.seek(16));
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(16));
+      ctx.AssertCallsCount(4, 0, 0);
 
       // seek to 127 
-      {
-        ASSERT_EQ(112, reader.seek(127));
-        ASSERT_EQ(111, lower);
-        ASSERT_EQ(127, upper);
+      ASSERT_EQ(80, reader.Seek(127));
+      ASSERT_EQ(111, lower);
+      ASSERT_EQ((std::vector{8191U,1023U,127U,127U}), upper_bounds);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(112, reader.seek(127));
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(127));
+      ctx.AssertCallsCount(4, 0, 0);
 
       // seek to 128 
-      {
-        ASSERT_EQ(128, reader.seek(128));
-        ASSERT_EQ(127, lower);
-        ASSERT_EQ(143, upper);
+      ASSERT_EQ(0, reader.Seek(128));
+      ASSERT_EQ(127, lower);
+      ASSERT_EQ((std::vector{8191U,1023U,255U,143U}), upper_bounds);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(128, reader.seek(128));
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(128));
+      ctx.AssertCallsCount(4, 0, 0);
 
       // seek to the 1767 
-      {
-        ASSERT_EQ(1760, reader.seek(1767));
-        ASSERT_EQ(1759, lower);
-        ASSERT_EQ(1775, upper);
+      ASSERT_EQ(1616, reader.Seek(1767));
+      ASSERT_EQ(1759, lower);
+      ASSERT_EQ((std::vector{8191U,2047U,1791U,1775U}), upper_bounds);
 
-        // seek to same document
-        calls_count = 0;
-        ASSERT_EQ(1760, reader.seek(767));
-        ASSERT_EQ(0, calls_count);
-      }
+      // seek to same document
+      ctx.ResetCallsCount();
+      ASSERT_EQ(0, reader.Seek(767));
+      ctx.AssertCallsCount(4, 0, 0);
 
       // seek to the 3999 
-      {
-        ASSERT_EQ(3984, reader.seek(3999));
-        ASSERT_EQ(3983, lower);
-        ASSERT_EQ(3999, upper);
-      }
+      ASSERT_EQ(2208, reader.Seek(3999));
+      ASSERT_EQ(3983, lower);
+      ASSERT_EQ((std::vector{8191U,4095U,4095U,3999U}), upper_bounds);
 
       // seek to the 4000 
-      {
-        ASSERT_EQ(4000, reader.seek(4000));
-        ASSERT_EQ(3999, lower);
-        ASSERT_EQ(4015, upper);
-      }
+      ASSERT_EQ(0, reader.Seek(4000));
+      ASSERT_EQ(3999, lower);
+      ASSERT_EQ((std::vector{8191U,4095U,4095U,4015U}), upper_bounds);
 
       // seek to 7193 
-      {
-        ASSERT_EQ(7184, reader.seek(7193));
-        ASSERT_EQ(7183, lower);
-        ASSERT_EQ(7199, upper);
-      }
+      ASSERT_EQ(3168, reader.Seek(7193));
+      ASSERT_EQ(7183, lower);
+      ASSERT_EQ((std::vector{8191U,8191U,7295U,7199U}), upper_bounds);
 
       // seek to last doc in a skip-list
-      {
-        ASSERT_EQ(14720, reader.seek(14721));
-        ASSERT_EQ(14719, lower);
-        ASSERT_TRUE(irs::doc_limits::eof(upper));
-      }
+      ASSERT_EQ(7520, reader.Seek(14721));
+      ASSERT_EQ(14719, lower);
+      ASSERT_EQ((std::vector{irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof(),irs::doc_limits::eof()}), upper_bounds);
     }
   }
 
   // case with empty 4th skip-level
   {
-    const size_t count = 32768;
-    const size_t max_levels = 8;
-    const size_t skip_0 = 128;
-    const size_t skip_n = 8;
-    const std::string file = "docs";
+    static constexpr size_t kCount = 32768;
+    static constexpr size_t kMaxLevels = 8;
+    static constexpr size_t kSkipLevels = 3;
+    static constexpr size_t kSkip0 = 128;
+    static constexpr size_t kSkipN = 8;
+    static constexpr std::string_view kFile = "docs";
+
+    size_t low = irs::doc_limits::invalid();
+    size_t high = irs::doc_limits::invalid();
 
     irs::memory_directory dir;
-    irs::skip_writer writer(skip_0, skip_n);
+    irs::SkipWriter writer(kSkip0, kSkipN);
+    ASSERT_EQ(0, writer.MaxLevels());
 
     // write data
     {
-      ASSERT_FALSE(writer);
+      writer.Prepare(kMaxLevels, kCount);
+      ASSERT_EQ(kSkipLevels, writer.MaxLevels());
 
-      // write data
-      size_t high = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-
-      writer.prepare(
-        max_levels, count,
-        [&high, skip_0](size_t level, irs::index_output& out) {
-          out.write_vlong(high); // upper
-      });
-      ASSERT_TRUE(static_cast<bool>(writer));
-
-      irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
-      for (size_t size = 0; size <= count; doc += 2, ++size) {
+      irs::doc_id_t doc = irs::doc_limits::min();
+      for (size_t size = 0; size <= kCount; doc += 2, ++size) {
         // skip every "skip" document
-        if (size && 0 == size % skip_0) {
-          writer.skip(size);
+        if (size && 0 == size % kSkip0) {
+          writer.Skip(size, WriteSkip{&low, &high});
+          low = high;
         }
 
         high = doc;
       }
 
-      auto out = dir.create(file);
+      auto out = dir.create(kFile);
       ASSERT_FALSE(!out);
-      writer.flush(*out);
+      writer.Flush(*out);
     }
 
     // check written data
     {
-      irs::doc_id_t lower = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      irs::doc_id_t upper = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      size_t calls_count = 0;
-      size_t last_level = max_levels;
+      irs::SkipReader<ReadSkip> reader(kSkip0, kSkipN, ReadSkip{kCount, kSkipLevels});
+      auto& ctx = reader.Reader();
+      auto& lower = ctx.lower;
+      auto& upper_bounds = ctx.upper_bounds;
+      auto& upper = *(std::end(upper_bounds)-1);
 
-      irs::skip_reader reader(skip_0, skip_n);
-      ASSERT_FALSE(reader);
-      auto in = dir.open(file, irs::IOAdvice::NORMAL);
+      ASSERT_EQ(0, reader.NumLevels());
+      auto in = dir.open(kFile, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
-      reader.prepare(
-        std::move(in), [&lower, &last_level, &upper, &calls_count](size_t level, irs::data_input &in) {
-          ++calls_count;
+      reader.Prepare(std::move(in));
 
-          if (last_level > level) {
-            upper = lower;
-          } else {
-            lower = upper;
-          }
-          last_level = level;
-
-          if (in.eof()) {
-            upper = irs::doc_limits::eof();
-          } else {
-            upper = in.read_vlong();
-          }
-
-          return upper;
-      });
-
-      // seek for every document
+      // seek forward
       {
-        irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
-        for (size_t i = 0; i <= count; ++i, doc += 2) {
-          const size_t skipped = (i/skip_0) * skip_0;
-          ASSERT_EQ(skipped, reader.seek(doc));
+
+        size_t expected = 0;
+        irs::doc_id_t doc = irs::doc_limits::min();
+        for (size_t i = 0; i < kCount; ++i, doc += 2) {
+          auto prev = upper;
+          const auto actual = reader.Seek(doc);
+          if (prev != upper) {
+            expected = lower - prev;
+          }
+          ASSERT_EQ(expected, actual);
+          ASSERT_TRUE(lower < doc);
+          ASSERT_TRUE(doc <= upper);
+        }
+
+        {
+          ctx.ResetCallsCount();
+          ASSERT_EQ(0, reader.Seek(doc));
+          ctx.AssertCallsCount(kSkipLevels, 0, 0);
           ASSERT_TRUE(lower < doc);
           ASSERT_TRUE(doc <= upper);
         }
       }
 
       // seek backwards
-      irs::doc_id_t doc = count*2 + irs::type_limits<irs::type_t::doc_id_t>::min();
-      for (size_t i = count; i <= count; --i, doc -= 2) {
-        lower = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-        upper = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-        reader.reset();
-        size_t skipped = (i/skip_0)*skip_0;
-        ASSERT_EQ(skipped, reader.seek(doc));
-        ASSERT_TRUE(lower < doc);
-        ASSERT_TRUE(doc <= upper);
+      {
+        irs::doc_id_t doc = kCount*2 + irs::doc_limits::min();
+
+        {
+          ctx.ResetCallsCount();
+          ASSERT_EQ(0, reader.Seek(doc));
+          ctx.AssertCallsCount(kSkipLevels, 0, 0);
+          ASSERT_TRUE(lower < doc);
+          ASSERT_TRUE(doc <= upper);
+          reader.Reset();
+          doc -= 2;
+        }
+
+        for (size_t i = kCount - 1; i <= kCount; --i, doc -= 2) {
+          lower = irs::doc_limits::invalid();
+          upper = irs::doc_limits::invalid();
+          reader.Reset();
+          size_t skipped = (i/kSkip0)*kSkip0;
+          ASSERT_EQ(skipped, reader.Seek(doc));
+          ASSERT_TRUE(lower < doc);
+          ASSERT_TRUE(doc <= upper);
+        }
       }
     }
   }

@@ -61,7 +61,7 @@ struct empty_doc_iterator final : irs::doc_iterator {
   irs::document doc{irs::doc_limits::eof()};
 }; // empty_doc_iterator
 
-empty_doc_iterator EMPTY_DOC_ITERATOR;
+empty_doc_iterator kEmptyDocIterator;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class empty_term_iterator
@@ -81,7 +81,7 @@ struct empty_term_iterator : irs::term_iterator {
   }
 }; // empty_term_iterator
 
-empty_term_iterator EMPTY_TERM_ITERATOR;
+empty_term_iterator kEmptyTermIterator;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class empty_seek_term_iterator
@@ -105,20 +105,17 @@ struct empty_seek_term_iterator final : irs::seek_term_iterator {
   virtual bool seek(const irs::bytes_ref&) noexcept override {
     return false;
   }
-  virtual bool seek(const irs::bytes_ref&, const irs::seek_cookie&) noexcept override {
-    return false;
-  }
   virtual irs::seek_cookie::ptr cookie() const noexcept override {
     return nullptr;
   }
 }; // empty_seek_term_iterator
 
-empty_seek_term_iterator EMPTY_SEEK_TERM_ITERATOR;
+empty_seek_term_iterator kEmptySeekIterator;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief represents a reader with no terms
 //////////////////////////////////////////////////////////////////////////////
-const irs::empty_term_reader EMPTY_TERM_READER{0};
+const irs::empty_term_reader kEmptyTermReader{0};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class empty_field_iterator
@@ -126,7 +123,7 @@ const irs::empty_term_reader EMPTY_TERM_READER{0};
 //////////////////////////////////////////////////////////////////////////////
 struct empty_field_iterator final : irs::field_iterator {
   virtual const irs::term_reader& value() const override {
-    return EMPTY_TERM_READER;
+    return kEmptyTermReader;
   }
 
   virtual bool seek(irs::string_ref) override {
@@ -138,7 +135,7 @@ struct empty_field_iterator final : irs::field_iterator {
   }
 }; // empty_field_iterator
 
-empty_field_iterator EMPTY_FIELD_ITERATOR;
+empty_field_iterator kEmptyFieldIterator;
 
 struct empty_column_reader final : irs::column_reader {
   virtual irs::field_id id() const override { return irs::field_limits::invalid(); }
@@ -179,7 +176,7 @@ struct empty_column_iterator final : irs::column_iterator {
   }
 }; // empty_column_iterator
 
-empty_column_iterator EMPTY_COLUMN_ITERATOR;
+empty_column_iterator kEmptyColumnIterator;
 
 } // LOCAL
 
@@ -190,7 +187,7 @@ namespace iresearch {
 // ----------------------------------------------------------------------------
 
 term_iterator::ptr term_iterator::empty() {
-  return memory::to_managed<irs::term_iterator, false>(&EMPTY_TERM_ITERATOR);
+  return memory::to_managed<irs::term_iterator, false>(&kEmptyTermIterator);
 }
 
 // ----------------------------------------------------------------------------
@@ -198,7 +195,7 @@ term_iterator::ptr term_iterator::empty() {
 // ----------------------------------------------------------------------------
 
 seek_term_iterator::ptr seek_term_iterator::empty() {
-  return memory::to_managed<irs::seek_term_iterator, false>(&EMPTY_SEEK_TERM_ITERATOR);
+  return memory::to_managed<irs::seek_term_iterator, false>(&kEmptySeekIterator);
 }
 
 // ----------------------------------------------------------------------------
@@ -206,7 +203,7 @@ seek_term_iterator::ptr seek_term_iterator::empty() {
 // ----------------------------------------------------------------------------
 
 doc_iterator::ptr doc_iterator::empty() {
-  return memory::to_managed<doc_iterator, false>(&EMPTY_DOC_ITERATOR);
+  return memory::to_managed<doc_iterator, false>(&kEmptyDocIterator);
 }
 
 // ----------------------------------------------------------------------------
@@ -214,7 +211,7 @@ doc_iterator::ptr doc_iterator::empty() {
 // ----------------------------------------------------------------------------
 
 field_iterator::ptr field_iterator::empty() {
-  return memory::to_managed<irs::field_iterator, false>(&EMPTY_FIELD_ITERATOR);
+  return memory::to_managed<irs::field_iterator, false>(&kEmptyFieldIterator);
 }
 
 // ----------------------------------------------------------------------------
@@ -222,7 +219,7 @@ field_iterator::ptr field_iterator::empty() {
 // ----------------------------------------------------------------------------
 
 column_iterator::ptr column_iterator::empty() {
-  return memory::to_managed<irs::column_iterator, false>(&EMPTY_COLUMN_ITERATOR);
+  return memory::to_managed<irs::column_iterator, false>(&kEmptyColumnIterator);
 }
 
 } // ROOT 

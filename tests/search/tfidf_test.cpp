@@ -166,7 +166,7 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
       sorted.emplace(score_value, seq);
     }
 
-    ASSERT_EQ(IRESEARCH_COUNTOF(expected), sorted.size());
+    ASSERT_EQ(std::size(expected), sorted.size());
     size_t i = 0;
 
     for (auto& entry: sorted) {
@@ -206,7 +206,7 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
       sorted.emplace(score_value, seq);
     }
 
-    ASSERT_EQ(IRESEARCH_COUNTOF(expected), sorted.size());
+    ASSERT_EQ(std::size(expected), sorted.size());
     size_t i = 0;
 
     for (auto& entry: sorted) {
@@ -1519,7 +1519,7 @@ INSTANTIATE_TEST_SUITE_P(
       &tests::directory<&tests::memory_directory>,
       &tests::directory<&tests::fs_directory>,
       &tests::directory<&tests::mmap_directory>),
-    ::testing::Values("1_4")),
+    ::testing::Values("1_4", "1_5")),
   tfidf_test_case_14::to_string
 );
 

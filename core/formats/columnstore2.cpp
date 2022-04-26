@@ -1008,7 +1008,9 @@ namespace columnstore2 {
 // -----------------------------------------------------------------------------
 
 void column::prepare(doc_id_t key) {
+#ifdef IRESEARCH_DEBUG
   assert(!sealed_);
+#endif
 
   if (IRS_LIKELY(key > pend_)) {
     if (addr_table_.full()) {
@@ -1393,13 +1395,7 @@ const column_header* reader::header(field_id field) const {
     : columns_[field];
 
   if (column) {
-#ifdef IRESEARCH_DEBUG
-    auto& impl = dynamic_cast<const column_base&>(*column);
-#else
-    auto& impl = static_cast<const column_base&>(*column);
-#endif
-
-    return &impl.header();
+    return &down_cast<column_base>(*column).header();
   }
 
   return nullptr;
@@ -1527,7 +1523,7 @@ void reader::prepare_index(
       : column_index{};
 
     if (const size_t idx = static_cast<size_t>(hdr.type);
-        IRS_LIKELY(idx < IRESEARCH_COUNTOF(kFactories))) {
+        IRS_LIKELY(idx < std::size(kFactories))) {
       auto column = kFactories[idx](std::move(name), std::move(payload),
                                    std::move(hdr), std::move(index),
                                    *index_in, *data_in_,

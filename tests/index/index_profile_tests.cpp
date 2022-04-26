@@ -614,5 +614,5 @@ const auto kValues = ::testing::Values(
 INSTANTIATE_TEST_SUITE_P(
     index_profile_test, index_profile_test_case,
     ::testing::Combine(kValues,
-                       ::testing::Values("1_0", "1_2", "1_3", "1_4")),
+                       ::testing::Values("1_0", "1_2", "1_3", "1_4", "1_5")),
     index_profile_test_case::to_string);

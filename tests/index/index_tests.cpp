@@ -160,7 +160,7 @@ class index_test_case : public tests::index_test_base {
 
   void assert_index(size_t skip = 0,
                     irs::automaton_table_matcher* matcher = nullptr) const {
-    index_test_base::assert_index(irs::IndexFeatures::NONE, skip, matcher);
+    //index_test_base::assert_index(irs::IndexFeatures::NONE, skip, matcher);
     index_test_base::assert_index(irs::IndexFeatures::FREQ, skip, matcher);
     index_test_base::assert_index(
         irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, skip, matcher);
@@ -2371,11 +2371,6 @@ TEST_P(index_test_case, europarl_docs) {
   assert_index();
 }
 
-TEST_P(index_test_case, docs_bit_union) {
-  docs_bit_union(irs::IndexFeatures::NONE);
-  docs_bit_union(irs::IndexFeatures::FREQ);
-}
-
 TEST_P(index_test_case, europarl_docs_automaton) {
   {
     tests::europarl_doc_template doc;
@@ -2403,6 +2398,62 @@ TEST_P(index_test_case, europarl_docs_automaton) {
     irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
+}
+
+TEST_P(index_test_case, europarl_docs_big) {
+  {
+    tests::europarl_doc_template doc;
+    tests::delim_doc_generator gen(resource("europarl.subset.big.txt"), doc);
+    add_segment(gen);
+  }
+  assert_index();
+}
+
+#ifndef IRESEARCH_DEBUG
+
+//TEST_P(index_test_case, europarl_docs_big) {
+//  {
+//    tests::europarl_doc_template doc;
+//    tests::delim_doc_generator gen(resource("europarl.subset.big.txt"), doc);
+//    add_segment(gen);
+//  }
+//  assert_index();
+//}
+
+TEST_P(index_test_case, europarl_docs_big_automaton) {
+  {
+    tests::europarl_doc_template doc;
+    tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
+    add_segment(gen);
+  }
+
+  // prefix
+  {
+    auto acceptor = irs::from_wildcard("forb%");
+    irs::automaton_table_matcher matcher(acceptor, true);
+    assert_index(0, &matcher);
+  }
+
+  // part
+  {
+    auto acceptor = irs::from_wildcard("%ende%");
+    irs::automaton_table_matcher matcher(acceptor, true);
+    assert_index(0, &matcher);
+  }
+
+  // suffix
+  {
+    auto acceptor = irs::from_wildcard("%ione");
+    irs::automaton_table_matcher matcher(acceptor, true);
+    assert_index(0, &matcher);
+  }
+}
+
+#endif
+
+TEST_P(index_test_case, docs_bit_union) {
+  docs_bit_union(irs::IndexFeatures::NONE);
+  docs_bit_union(irs::IndexFeatures::FREQ);
 }
 
 TEST_P(index_test_case, monarch_eco_onthology) {
@@ -14379,10 +14430,10 @@ INSTANTIATE_TEST_SUITE_P(
 // expansion
 namespace {
 #if defined(IRESEARCH_SSE2)
-const auto index_test_case_12_values = ::testing::Values(
+const auto kIndexTestCase12Formats = ::testing::Values(
     tests::format_info{"1_2", "1_0"}, tests::format_info{"1_2simd", "1_0"});
 #else
-const auto index_test_case_12_values =
+const auto kIndexTestCase12Formats =
     ::testing::Values(tests::format_info{"1_2", "1_0"});
 #endif
 }  // namespace
@@ -14393,17 +14444,17 @@ INSTANTIATE_TEST_SUITE_P(
         ::testing::Values(&tests::rot13_directory<&tests::memory_directory, 16>,
                           &tests::rot13_directory<&tests::fs_directory, 16>,
                           &tests::rot13_directory<&tests::mmap_directory, 16>),
-        index_test_case_12_values),
+        kIndexTestCase12Formats),
     index_test_case::to_string);
 
 // Separate definition as MSVC parser fails to do conditional defines in macro
 // expansion
 namespace {
 #if defined(IRESEARCH_SSE2)
-const auto index_test_case_13_values = ::testing::Values(
+const auto kIndexTestCase13Formats = ::testing::Values(
     tests::format_info{"1_3", "1_0"}, tests::format_info{"1_3simd", "1_0"});
 #else
-const auto index_test_case_13_values =
+const auto kIndexTestCase13Formats =
     ::testing::Values(tests::format_info{"1_3", "1_0"});
 #endif
 }  // namespace
@@ -14414,17 +14465,17 @@ INSTANTIATE_TEST_SUITE_P(
         ::testing::Values(&tests::rot13_directory<&tests::memory_directory, 16>,
                           &tests::rot13_directory<&tests::fs_directory, 16>,
                           &tests::rot13_directory<&tests::mmap_directory, 16>),
-        index_test_case_13_values),
+        kIndexTestCase13Formats),
     index_test_case::to_string);
 
 // Separate definition as MSVC parser fails to do conditional defines in macro
 // expansion
 namespace {
 #if defined(IRESEARCH_SSE2)
-const auto index_test_case_14_values = ::testing::Values(
+const auto kIndexTestCase14Formats = ::testing::Values(
     tests::format_info{"1_4", "1_0"}, tests::format_info{"1_4simd", "1_0"});
 #else
-const auto index_test_case_14_values =
+const auto kIndexTestCase14Formats =
     ::testing::Values(tests::format_info{"1_4", "1_0"});
 #endif
 }  // namespace
@@ -15318,18 +15369,43 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
   }
 }
 
-const auto kValues = ::testing::Values(
+const auto kDirectories = ::testing::Values(
 #ifdef IRESEARCH_URING
-    &tests::directory<&tests::async_directory>,
+      &tests::directory<&tests::async_directory>,
 #endif
-    &tests::directory<tests::memory_directory>,
-    &tests::rot13_directory<&tests::memory_directory, 16>,
-    &tests::rot13_directory<&tests::mmap_directory, 16>);
+      &tests::directory<tests::mmap_directory>,
+      &tests::directory<tests::fs_directory>,
+      &tests::directory<tests::memory_directory>,
+      &tests::rot13_directory<&tests::memory_directory, 16>,
+      &tests::rot13_directory<&tests::mmap_directory, 16>);
 
 INSTANTIATE_TEST_SUITE_P(
-    index_test_14, index_test_case_14,
-    ::testing::Combine(kValues, index_test_case_14_values),
-    index_test_case_14::to_string);
+  index_test_14,
+  index_test_case,
+  ::testing::Combine(kDirectories, kIndexTestCase14Formats),
+  index_test_case::to_string);
+
+INSTANTIATE_TEST_SUITE_P(
+  index_test_14,
+  index_test_case_14,
+  ::testing::Combine(kDirectories, kIndexTestCase14Formats),
+  index_test_case_14::to_string);
+
+// Separate definition as MSVC parser fails to do conditional defines in macro expansion
+namespace {
+#if defined(IRESEARCH_SSE2)
+const auto kIndexTestCase15Formats = ::testing::Values(tests::format_info{"1_5", "1_0"},
+                                                       tests::format_info{"1_5simd", "1_0"});
+#else
+const auto kIndexTestCase15Formats = ::testing::Values(tests::format_info{"1_5", "1_0"});
+#endif
+}
+
+INSTANTIATE_TEST_SUITE_P(
+  index_test_15,
+  index_test_case,
+  ::testing::Combine(kDirectories, kIndexTestCase15Formats),
+  index_test_case::to_string);
 
 class index_test_case_10 : public tests::index_test_base {};
 
@@ -16129,20 +16205,17 @@ TEST_P(index_test_case_11, commit_payload) {
 // expansion
 namespace {
 #ifdef IRESEARCH_SSE2
-const auto index_test_case_11_values = ::testing::Values(
+const auto kIndexTestCase11Formats = ::testing::Values(
     tests::format_info{"1_1", "1_0"}, tests::format_info{"1_2", "1_0"},
     tests::format_info{"1_2simd", "1_0"});
 #else
-const auto index_test_case_11_values = ::testing::Values(
+const auto kIndexTestCase11Formats = ::testing::Values(
     tests::format_info{"1_1", "1_0"}, tests::format_info{"1_2", "1_0"});
 #endif
 }  // namespace
 
 INSTANTIATE_TEST_SUITE_P(
-    index_test_11, index_test_case_11,
-    ::testing::Combine(
-        ::testing::Values(&tests::directory<&tests::memory_directory>,
-                          &tests::directory<&tests::fs_directory>,
-                          &tests::directory<&tests::mmap_directory>),
-        index_test_case_11_values),
+    index_test_11,
+    index_test_case_11,
+    ::testing::Combine(kDirectories, kIndexTestCase11Formats),
     index_test_case_11::to_string);

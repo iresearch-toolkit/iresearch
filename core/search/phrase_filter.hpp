@@ -38,10 +38,7 @@ namespace iresearch {
 
 class by_phrase;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class by_phrase_options
-/// @brief options for phrase filter
-////////////////////////////////////////////////////////////////////////////////
+// Options for phrase filter
 class by_phrase_options {
  private:
   using phrase_part = std::variant<
@@ -57,10 +54,8 @@ class by_phrase_options {
  public:
   using filter_type = by_phrase;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief insert phrase part into the phrase at a specified position
-  /// @returns reference to the inserted phrase part
-  //////////////////////////////////////////////////////////////////////////////
+  // Insert phrase part into the phrase at a specified position.
+  // Returns reference to the inserted phrase part.
   template<typename PhrasePart>
   PhrasePart& insert(size_t pos) {
     is_simple_term_only_ &= std::is_same<PhrasePart, by_term_options>::value; // constexpr
@@ -68,10 +63,8 @@ class by_phrase_options {
     return std::get<PhrasePart>(phrase_[pos]);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief insert phrase part into the phrase at a specified position
-  /// @returns reference to the inserted phrase part
-  //////////////////////////////////////////////////////////////////////////////
+  // Insert phrase part into the phrase at a specified position
+  // Returns reference to the inserted phrase part
   template<typename PhrasePart>
   PhrasePart& insert(PhrasePart&& t, size_t pos) {
     is_simple_term_only_ &= std::is_same<PhrasePart, by_term_options>::value; // constexpr
@@ -80,31 +73,24 @@ class by_phrase_options {
     return std::get<std::decay_t<PhrasePart>>(part);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief appends phrase part of type "PhrasePart" at a specified offset
-  ///        "offs" from the end of the phrase
-  /// @returns reference to the inserted phrase part
-  //////////////////////////////////////////////////////////////////////////////
+  // Appends phrase part of type "PhrasePart" at a specified offset
+  // "offs" from the end of the phrase.
+  // Returns reference to the inserted phrase part.
   template<typename PhrasePart>
   PhrasePart& push_back(size_t offs = 0) {
     return insert(PhrasePart{}, next_pos() + offs);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief appends phrase part of type "PhrasePart" at a specified offset
-  ///        "offs" from the end of the phrase
-  /// @returns reference to the inserted phrase part
-  //////////////////////////////////////////////////////////////////////////////
+  // Appends phrase part of type "PhrasePart" at a specified offset
+  // "offs" from the end of the phrase. Returns a reference to the
+  // inserted phrase part
   template<typename PhrasePart>
   PhrasePart& push_back(PhrasePart&& t, size_t offs = 0) {
     return insert(std::forward<PhrasePart>(t), next_pos() + offs);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns pointer to the phrase part of type "PhrasePart" located at a
-  ///          specified position, nullptr if actual type mismatches a requested
-  ///          one
-  //////////////////////////////////////////////////////////////////////////////
+  // Returns pointer to the phrase part of type "PhrasePart" located at a
+  // specified position, nullptr if actual type mismatches a requested one
   template<typename PhrasePart>
   const PhrasePart* get(size_t pos) const noexcept {
     const auto it = phrase_.find(pos);
@@ -116,16 +102,12 @@ class by_phrase_options {
     return std::get_if<PhrasePart>(&it->second);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns true is options are equal, false - otherwise
-  //////////////////////////////////////////////////////////////////////////////
+  // Returns true is options are equal, false - otherwise
   bool operator==(const by_phrase_options& rhs) const noexcept {
     return phrase_ == rhs.phrase_;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns hash value
-  //////////////////////////////////////////////////////////////////////////////
+  // Returns hash value
   size_t hash() const noexcept {
     size_t hash = 0;
     for (auto& part : phrase_) {
@@ -135,37 +117,25 @@ class by_phrase_options {
     return hash;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief clear phrase contents
-  //////////////////////////////////////////////////////////////////////////////
+  // Clear phrase contents
   void clear() noexcept {
     phrase_.clear();
     is_simple_term_only_ = true;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns true if phrase composed of simple terms only, false - otherwise
-  //////////////////////////////////////////////////////////////////////////////
+  // Returns true if phrase composed of simple terms only, false - otherwise
   bool simple() const noexcept { return is_simple_term_only_; }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns true if phrase is empty, false - otherwise
-  //////////////////////////////////////////////////////////////////////////////
+  // Returns true if phrase is empty, false - otherwise
   bool empty() const noexcept { return phrase_.empty(); }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns size of the phrase
-  //////////////////////////////////////////////////////////////////////////////
+  // Returns size of the phrase
   size_t size() const noexcept { return phrase_.size(); }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns iterator referring to the first part of the phrase
-  //////////////////////////////////////////////////////////////////////////////
+  // Returns iterator referring to the first part of the phrase
   phrase_type::const_iterator begin() const noexcept { return phrase_.begin(); }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns iterator referring to past-the-end element of the phrase
-  //////////////////////////////////////////////////////////////////////////////
+  // Returns iterator referring to past-the-end element of the phrase
   phrase_type::const_iterator end() const noexcept { return phrase_.end(); }
 
  private:
@@ -175,17 +145,12 @@ class by_phrase_options {
 
   phrase_type phrase_;
   bool is_simple_term_only_{true};
-}; // by_phrase_options
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class by_phrase
-/// @brief user-side phrase filter
-////////////////////////////////////////////////////////////////////////////////
+// Phrase filter
 class by_phrase : public filter_base<by_phrase_options> {
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns features required for filter
-  //////////////////////////////////////////////////////////////////////////////
+  // Returns features required for phrase filter
   static constexpr IndexFeatures required() noexcept {
     return IndexFeatures::FREQ | IndexFeatures::POS;
   }
@@ -210,8 +175,8 @@ class by_phrase : public filter_base<by_phrase_options> {
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost) const;
-}; // by_phrase
+};
 
-} // ROOT
+}
 
 #endif

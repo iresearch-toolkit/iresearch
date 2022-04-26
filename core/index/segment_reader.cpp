@@ -294,11 +294,7 @@ segment_reader segment_reader::reopen(const segment_meta& meta) const {
   // make a copy
   impl_ptr impl = atomic_utils::atomic_load(&impl_);
 
-#ifdef IRESEARCH_DEBUG
-  auto& reader_impl = dynamic_cast<const segment_reader_impl&>(*impl);
-#else
-  auto& reader_impl = static_cast<const segment_reader_impl&>(*impl);
-#endif
+  auto& reader_impl = down_cast<segment_reader_impl>(*impl);
 
   // reuse self if no changes to meta
   return reader_impl.meta_version() == meta.version

@@ -227,12 +227,12 @@ TEST(sort_tests, static_const) {
 
 TEST(sort_tests, score_traits) {
   const size_t values[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
-  const size_t* ptrs[IRESEARCH_COUNTOF(values)];
+  const size_t* ptrs[std::size(values)];
   std::iota(std::begin(ptrs), std::end(ptrs), values);
 
   irs::order_bucket bucket(aligned_scorer<size_t, size_t>().prepare(), 0, 0, true);
 
-  for (size_t i = 0; i < IRESEARCH_COUNTOF(values); ++i) {
+  for (size_t i = 0; i < std::size(values); ++i) {
     size_t max_dst = 0;
     size_t aggregated_dst = 0;
 

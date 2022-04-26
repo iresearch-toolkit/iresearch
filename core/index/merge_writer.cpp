@@ -21,11 +21,15 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "merge_writer.hpp"
+
+#include <array>
 #include <deque>
 
 #include <absl/container/flat_hash_map.h>
 
-#include "merge_writer.hpp"
+#include <boost/iterator/filter_iterator.hpp>
+
 #include "analysis/token_attributes.hpp"
 #include "index/comparer.hpp"
 #include "index/field_meta.hpp"
@@ -40,10 +44,7 @@
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 #include "store/store_utils.hpp"
-
-#include <array>
-
-#include <boost/iterator/filter_iterator.hpp>
+#include "utils/timer_utils.hpp"
 
 namespace {
 
@@ -834,7 +835,7 @@ class compound_field_iterator final : public basic_term_reader {
   };
 
   string_ref current_field_;
-  const field_meta* current_meta_{ &field_meta::EMPTY };
+  const field_meta* current_meta_{ &field_meta::kEmpty };
   const bytes_ref* min_{ &bytes_ref::NIL };
   const bytes_ref* max_{ &bytes_ref::NIL };
   std::vector<term_iterator_t> field_iterator_mask_; // valid iterators for current field

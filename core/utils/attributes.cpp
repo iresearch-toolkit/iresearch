@@ -21,11 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
-#include "utils/register.hpp"
 #include "attributes.hpp"
 
-#include <cassert>
+#include "utils/register.hpp"
 
 namespace {
 
@@ -34,14 +32,9 @@ class attribute_register
                                           irs::string_ref, attribute_register> {
 };
 
-
 }
 
 namespace iresearch {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        attributes
-// -----------------------------------------------------------------------------
 
 /*static*/ bool attributes::exists(
     string_ref name,
@@ -60,10 +53,6 @@ namespace iresearch {
 
   return {}; // invalid type id
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            attribute registration
-// -----------------------------------------------------------------------------
 
 attribute_registrar::attribute_registrar(
     const type_info& type,

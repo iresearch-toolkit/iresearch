@@ -65,9 +65,9 @@ struct flush_segment_context {
   const size_t doc_id_begin_; // starting doc_id to consider in 'segment.meta' (inclusive)
   const size_t doc_id_end_; // ending doc_id to consider in 'segment.meta' (exclusive)
   document_mask docs_mask_; // doc_ids masked in segment_meta
-  const modification_contexts_ref modification_contexts_; // modification contexts referenced by 'update_contexts_'
+  modification_contexts_ref modification_contexts_; // modification contexts referenced by 'update_contexts_'
   index_meta::index_segment_t segment_; // copy so that it can be moved into 'index_writer::pending_state_'
-  const update_contexts_ref update_contexts_; // update contexts for documents in segment_meta
+  update_contexts_ref update_contexts_; // update contexts for documents in segment_meta
 
   flush_segment_context(
       const index_meta::index_segment_t& segment,
@@ -1477,7 +1477,7 @@ index_writer::consolidation_result index_writer::consolidate(
   }
 
   // unregisterer for all registered candidates
-  auto unregister_segments = make_finally([&candidates, this]() {
+  auto unregister_segments = make_finally([&candidates, this]() noexcept {
     // FIXME make me noexcept as I'm begin called from within ~finally()
     if (candidates.empty()) {
       return;
@@ -1562,7 +1562,7 @@ index_writer::consolidation_result index_writer::consolidate(
     const auto current_committed_meta = committed_state_->first;
     assert(current_committed_meta);
 
-    auto cleanup_cached_readers = [&current_committed_meta, &candidates, this](){
+    auto cleanup_cached_readers = [&current_committed_meta, &candidates, this]()noexcept{
       // FIXME make me noexcept as I'm begin called from within ~finally()
       if (!candidates.empty()) {
         decltype(flush_context::segment_mask_) cached_mask;
@@ -1976,7 +1976,7 @@ index_writer::pending_context_t index_writer::flush_all() {
 
   // register consolidating segments cleanup.
   // we need raw ptr as ctx may be moved
-  auto unregister_segments = make_finally([ctx_raw = ctx.get(), this](){
+  auto unregister_segments = make_finally([ctx_raw = ctx.get(), this]() noexcept {
     // FIXME make me noexcept as I'm begin called from within ~finally()
     assert(ctx_raw);
     if (ctx_raw->pending_segments_.empty()) {
@@ -2030,10 +2030,9 @@ index_writer::pending_context_t index_writer::flush_all() {
 
       assert(modifications_begin <= modifications_end);
       assert(modifications_end <= modifications.segment_->modification_queries_.size());
-      modification_contexts_ref modification_queries(
+      const modification_contexts_ref modification_queries{
         modifications.segment_->modification_queries_.data() + modifications_begin,
-        modifications_end - modifications_begin
-      );
+        modifications_end - modifications_begin };
 
       mask_modified |= add_document_mask_modified_records(
         modification_queries,
@@ -2146,10 +2145,9 @@ index_writer::pending_context_t index_writer::flush_all() {
 
         assert(modifications_begin <= modifications_end);
         assert(modifications_end <= modifications.segment_->modification_queries_.size());
-        modification_contexts_ref modification_queries(
+        const modification_contexts_ref modification_queries{
           modifications.segment_->modification_queries_.data() + modifications_begin,
-          modifications_end - modifications_begin
-        );
+          modifications_end - modifications_begin };
 
         docs_mask_modified |= add_document_mask_modified_records(
           modification_queries,
@@ -2285,18 +2283,16 @@ index_writer::pending_context_t index_writer::flush_all() {
         modification_contexts_ref segment_modification_contexts{
           pending_segment_context.segment_->modification_queries_ };
 
-        update_contexts_ref flush_update_contexts(
+        update_contexts_ref flush_update_contexts{
           pending_segment_context.segment_->flushed_update_contexts_.data() + flushed_docs_start,
-          flushed.meta.docs_count
-        );
+          flushed.meta.docs_count };
 
         segment_ctxs.emplace_back(
           flushed,
           valid_doc_id_begin,
           valid_doc_id_end,
           flush_update_contexts,
-          segment_modification_contexts
-        );
+          segment_modification_contexts);
         ++flushed.meta.version; // increment version for next run due to documents masked from this run, similar to write_document_mask(...)
 
         auto& flush_segment_ctx = segment_ctxs.back();

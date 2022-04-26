@@ -649,7 +649,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
       actual_docs.emplace_back(*value, docs->value());
     }
     ASSERT_FALSE(docs->next());
-    ASSERT_EQ(IRESEARCH_COUNTOF(expected_docs), actual_docs.size());
+    ASSERT_EQ(std::size(expected_docs), actual_docs.size());
 
     std::sort(
       std::begin(actual_docs), std::end(actual_docs),
@@ -707,7 +707,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
     }
 
     ASSERT_FALSE(docs->next());
-    ASSERT_EQ(IRESEARCH_COUNTOF(expected_docs), actual_docs.size());
+    ASSERT_EQ(std::size(expected_docs), actual_docs.size());
 
     std::sort(
       std::begin(actual_docs), std::end(actual_docs),
@@ -767,7 +767,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
     }
 
     ASSERT_FALSE(docs->next());
-    ASSERT_EQ(IRESEARCH_COUNTOF(expected_docs), actual_docs.size());
+    ASSERT_EQ(std::size(expected_docs), actual_docs.size());
 
     std::sort(
       std::begin(actual_docs), std::end(actual_docs),

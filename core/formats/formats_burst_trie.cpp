@@ -2212,21 +2212,6 @@ class term_iterator_base : public seek_term_iterator {
 
   virtual const bytes_ref& value() const noexcept final { return term_; }
 
-  virtual bool seek(
-      const bytes_ref& term,
-      const seek_cookie& cookie) override {
-#ifdef IRESEARCH_DEBUG
-    const auto& state = dynamic_cast<const ::cookie&>(cookie);
-#else
-    const auto& state = static_cast<const ::cookie&>(cookie);
-#endif // IRESEARCH_DEBUG
-
-    std::get<version10::term_meta>(attrs_) = state.meta;
-    term_.assign(term.c_str(), term.size());
-
-    return true;
-  }
-
   index_input& terms_input() const;
 
   irs::encryption::stream* terms_cipher() const noexcept {
@@ -2299,18 +2284,6 @@ class term_iterator final : public term_iterator_base {
   virtual SeekResult seek_ge(const bytes_ref& term) override;
   virtual bool seek(const bytes_ref& term) override {
     return SeekResult::FOUND == seek_equal(term);
-  }
-  virtual bool seek(
-      const bytes_ref& term,
-      const seek_cookie& cookie) override {
-    term_iterator_base::seek(term, cookie);
-
-    // reset seek state
-    sstate_.clear();
-
-    // mark block as invalid
-    cur_block_ = nullptr;
-    return true;
   }
 
   virtual void read() override {
@@ -2428,6 +2401,9 @@ bool term_iterator<FST>::next() {
       cur_block_ = push_block(fst_->Final(fst_->Start()), 0);
       cur_block_->load(terms_input(), terms_cipher());
     } else {
+      assert(false);
+      // FIXME(gnusi): consider removing this, as that seems to be impossible anymore
+
       // seek to the term with the specified state was called from
       // term_iterator::seek(const bytes_ref&, const attribute&),
       // need create temporary "bytes_ref" here, since "seek" calls
@@ -2736,20 +2712,6 @@ class single_term_iterator final : public seek_term_iterator {
 
   virtual bool seek(const bytes_ref& term) override;
 
-  virtual bool seek(
-      const bytes_ref& value,
-      const seek_cookie& cookie) noexcept override {
-#ifdef IRESEARCH_DEBUG
-    const auto& state = dynamic_cast<const ::cookie&>(cookie);
-#else
-    const auto& state = static_cast<const ::cookie&>(cookie);
-#endif // IRESEARCH_DEBUG
-
-    value_ = value;
-    meta_ = state.meta;
-    return true;
-  }
-
   virtual seek_cookie::ptr cookie() const override {
     return memory::make_unique<::cookie>(meta_);
   }
@@ -2945,16 +2907,6 @@ class automaton_term_iterator final : public term_iterator_base {
     return SeekResult::FOUND == seek_ge(term);
   }
 
-  virtual bool seek(
-      const bytes_ref& term,
-      const seek_cookie& cookie) override {
-    term_iterator_base::seek(term, cookie);
-
-    // mark block as invalid
-    cur_block_ = nullptr;
-    return true;
-  }
-
   virtual void read() override {
     assert(cur_block_);
     read_impl(*cur_block_);
@@ -3050,6 +3002,9 @@ bool automaton_term_iterator<FST>::next() {
       cur_block_ = push_block(fst.Final(fst_start), *fst_, 0, 0, acceptor_->Start(), fst_start);
       cur_block_->load(terms_input(), terms_cipher());
     } else {
+      assert(false);
+      // FIXME(gnusi): consider removing this, as that seems to be impossible anymore
+
       // seek to the term with the specified state was called from
       // term_iterator::seek(const bytes_ref&, const attribute&),
       // need create temporary "bytes_ref" here, since "seek" calls
@@ -3338,13 +3293,7 @@ class field_reader final : public irs::field_reader {
         size_t* set) const override {
       auto term_provider = [&provider]() mutable -> const term_meta* {
         if (auto* cookie = provider()) {
-#ifdef IRESEARCH_DEBUG
-          const auto& state = dynamic_cast<const ::cookie&>(*cookie);
-#else
-          const auto& state = static_cast<const ::cookie&>(*cookie);
-#endif // IRESEARCH_DEBUG
-
-          return &state.meta;
+          return &down_cast<::cookie>(*cookie).meta;
         }
 
         return nullptr;
@@ -3388,14 +3337,15 @@ class field_reader final : public irs::field_reader {
     virtual doc_iterator::ptr postings(
         const seek_cookie& cookie,
         IndexFeatures features) const override {
-#ifdef IRESEARCH_DEBUG
-      auto* impl = dynamic_cast<const ::cookie*>(&cookie);
-      assert(impl);
-#else
-      auto* impl = static_cast<const ::cookie*>(&cookie);
-#endif
-      return owner_->pr_->iterator(
-        meta().index_features, features, impl->meta);
+      return owner_->pr_->iterator(meta().index_features, features,
+                                   down_cast<::cookie>(cookie).meta);
+    }
+
+    virtual doc_iterator::ptr wanderator(
+        const seek_cookie& cookie,
+        IndexFeatures features) const override {
+      return owner_->pr_->wanderator(meta().index_features, features,
+                                     down_cast<::cookie>(cookie).meta);
     }
 
    private:

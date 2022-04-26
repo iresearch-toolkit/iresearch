@@ -35,10 +35,7 @@ using namespace irs;
 template<typename StateType>
 using phrase_state = std::vector<StateType>;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class fixed_phrase_state
-/// @brief cached per reader phrase state
-//////////////////////////////////////////////////////////////////////////////
+// Cached per reader fixed phrase state
 struct fixed_phrase_state : util::noncopyable {
   // mimic std::pair interface
   struct term_state {
@@ -52,15 +49,12 @@ struct fixed_phrase_state : util::noncopyable {
 
   phrase_state<term_state> terms;
   const term_reader* reader{};
-}; // fixed_phrase_state
+};
 
 static_assert(std::is_nothrow_move_constructible_v<fixed_phrase_state>);
 static_assert(std::is_nothrow_move_assignable_v<fixed_phrase_state>);
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class variadic_phrase_state
-/// @brief cached per reader phrase state
-//////////////////////////////////////////////////////////////////////////////
+// Cached per reader variadic phrase state
 struct variadic_phrase_state : fixed_phrase_state {
   using term_state = std::pair<seek_term_iterator::cookie_ptr, boost_t>;
 
@@ -68,7 +62,7 @@ struct variadic_phrase_state : fixed_phrase_state {
   phrase_state<term_state> terms;
   const term_reader* reader{};
   bool volatile_boost{};
-}; // variadic_phrase_state
+};
 
 static_assert(std::is_nothrow_move_constructible_v<variadic_phrase_state>);
 static_assert(std::is_nothrow_move_assignable_v<variadic_phrase_state>);
@@ -125,7 +119,7 @@ struct get_visitor {
     assert(false);
     return [](const sub_reader&, const term_reader&, filter_visitor&) { };
   }
-}; // get_visitor
+};
 
 struct prepare : util::noncopyable {
   using result_type = filter::prepared::ptr;
@@ -182,16 +176,13 @@ struct prepare : util::noncopyable {
   const irs::order::prepared& order;
   const string_ref field;
   const boost_t boost;
-}; // prepare
+};
 
 }
 
 namespace iresearch {
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class phrase_term_visitor
-/// @brief filter visitor for phrase queries
-//////////////////////////////////////////////////////////////////////////////
+// Filter visitor for phrase queries
 template<typename PhraseStates>
 class phrase_term_visitor final : public filter_visitor,
                                   private util::noncopyable {
@@ -259,10 +250,7 @@ class phrase_term_visitor final : public filter_visitor,
 
 namespace iresearch {
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class phrase_query
-/// @brief prepared phrase query implementation
-//////////////////////////////////////////////////////////////////////////////
+// Prepared phrase query implementation
 template<typename State>
 class phrase_query : public filter::prepared {
  public:
@@ -284,7 +272,7 @@ class phrase_query : public filter::prepared {
   states_t states_;
   positions_t positions_;
   bstring stats_;
-}; // phrase_query
+};
 
 class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
  public:
@@ -301,6 +289,7 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
   doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
+      ExecutionMode /*mode*/,
       const attribute_provider* /*ctx*/) const override {
     using conjunction_t = conjunction<doc_iterator::ptr>;
     using phrase_iterator_t = phrase_iterator<
@@ -384,6 +373,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
   doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
+      ExecutionMode /*mode*/,
       const attribute_provider* /*ctx*/) const override {
     using adapter_t = variadic_phrase_adapter;
     using disjunction_t = disjunction<doc_iterator::ptr, adapter_t, true>;
@@ -441,12 +431,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
       }
 
       auto disj = make_disjunction<disjunction_t>(std::move(disj_itrs));
-      #ifdef IRESEARCH_DEBUG
-        pos.first = dynamic_cast<compound_doc_iterator_t*>(disj.get());
-        assert(pos.first);
-      #else
-        pos.first = static_cast<compound_doc_iterator_t*>(disj.get());
-      #endif
+      pos.first = down_cast<compound_doc_iterator_t>(disj.get());
       conj_itrs.emplace_back(std::move(disj));
       ++position;
     }
@@ -472,11 +457,8 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
       ord,
       boost());
   }
-}; // variadic_phrase_query
+};
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          by_phrase implementation
-// -----------------------------------------------------------------------------
 // cppcheck-suppress unknownMacro
 DEFINE_FACTORY_DEFAULT(by_phrase) 
 
@@ -715,4 +697,4 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     this->boost() * boost);
 }
 
-} // ROOT
+}

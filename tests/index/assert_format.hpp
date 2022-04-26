@@ -30,25 +30,25 @@
 
 namespace tests {
 
-struct position {
-  position(uint32_t pos, uint32_t start,
-           uint32_t end, const irs::bytes_ref& pay)
-    : pos{pos}, start{start},
-      end{end}, payload{pay} {
-  }
-
-  bool operator<(const position& rhs) const {
-    return pos < rhs.pos;
-  }
-
-  uint32_t pos;
-  uint32_t start;
-  uint32_t end;
-  irs::bstring payload;
-};
-
 class posting {
  public:
+  struct position {
+    position(uint32_t pos, uint32_t start,
+             uint32_t end, const irs::bytes_ref& pay)
+      : pos{pos}, start{start},
+        end{end}, payload{pay} {
+    }
+
+    bool operator<(const position& rhs) const {
+      return pos < rhs.pos;
+    }
+
+    uint32_t pos;
+    uint32_t start;
+    uint32_t end;
+    irs::bstring payload;
+  };
+
   explicit posting(irs::doc_id_t id)
     : id_{id} {
   }
@@ -64,7 +64,7 @@ class posting {
     return id_ < rhs.id_;
   }
 
-  const std::set<position>& positions() const { return positions_; }
+  const auto& positions() const { return positions_; }
   irs::doc_id_t id() const { return id_; }
   size_t size() const { return positions_.size(); }
 
@@ -86,7 +86,7 @@ struct term {
 
   void sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs);
 
-  std::set<posting> postings;
+  std::set<tests::posting> postings;
   irs::bstring value;
 };
 

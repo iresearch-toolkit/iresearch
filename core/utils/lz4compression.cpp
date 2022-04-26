@@ -38,7 +38,7 @@ irs::compression::lz4::lz4decompressor LZ4_BASIC_DECOMPRESSOR;
 
 inline int acceleration(const irs::compression::options::Hint hint) noexcept {
   static const int FACTORS[] { 0, 2, 0 };
-  assert(static_cast<size_t>(hint) < IRESEARCH_COUNTOF(FACTORS));
+  assert(static_cast<size_t>(hint) < std::size(FACTORS));
 
   return FACTORS[static_cast<size_t>(hint)];
 }

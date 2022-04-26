@@ -293,6 +293,7 @@ struct boosted: public irs::filter {
     virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
       const irs::order::prepared& ord,
+      irs::ExecutionMode /*mode*/,
       const irs::attribute_provider* /*ctx*/) const override {
       boosted::execute_count++;
       return irs::memory::make_managed<basic_doc_iterator>(
@@ -1237,6 +1238,7 @@ struct unestimated: public irs::filter {
     virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader&,
       const irs::order::prepared&,
+      irs::ExecutionMode /*mode*/,
       const irs::attribute_provider*) const override {
       return irs::memory::make_managed<unestimated::doc_iterator>();
     }
@@ -1295,6 +1297,7 @@ struct estimated: public irs::filter {
     virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader&,
       const irs::order::prepared&,
+      irs::ExecutionMode /*mode*/,
       const irs::attribute_provider*) const override {
       return irs::memory::make_managed<estimated::doc_iterator>(
         est, evaluated
@@ -1988,7 +1991,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // score
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
-    ASSERT_NE(&irs::score::no_score(), &score);
+    ASSERT_NE(&irs::score::kNoScore, &score);
     ASSERT_FALSE(score.is_default());
 
     // estimation
@@ -2045,7 +2048,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // score
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
-    ASSERT_NE(&irs::score::no_score(), &score);
+    ASSERT_NE(&irs::score::kNoScore, &score);
     ASSERT_FALSE(score.is_default());
 
     // estimation
@@ -2094,7 +2097,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // score
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
-    ASSERT_NE(&irs::score::no_score(), &score);
+    ASSERT_NE(&irs::score::kNoScore, &score);
     ASSERT_TRUE(score.is_default());
 
     // estimation
@@ -2143,7 +2146,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // score
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
-    ASSERT_NE(&irs::score::no_score(), &score);
+    ASSERT_NE(&irs::score::kNoScore, &score);
     ASSERT_TRUE(score.is_default());
 
     // estimation
@@ -2196,7 +2199,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // score
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
-    ASSERT_NE(&irs::score::no_score(), &score);
+    ASSERT_NE(&irs::score::kNoScore, &score);
     ASSERT_FALSE(score.is_default());
 
     // estimation
@@ -2249,7 +2252,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // score
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
-    ASSERT_NE(&irs::score::no_score(), &score);
+    ASSERT_NE(&irs::score::kNoScore, &score);
     ASSERT_FALSE(score.is_default());
 
     // estimation
@@ -2301,7 +2304,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // score
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
-    ASSERT_NE(&irs::score::no_score(), &score);
+    ASSERT_NE(&irs::score::kNoScore, &score);
     ASSERT_FALSE(score.is_default());
 
     // estimation
@@ -2353,7 +2356,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     // score
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
-    ASSERT_NE(&irs::score::no_score(), &score);
+    ASSERT_NE(&irs::score::kNoScore, &score);
     ASSERT_FALSE(score.is_default());
 
     // estimation
@@ -13483,7 +13486,7 @@ TEST(exclusion_test, next) {
       auto& score = irs::score::get(it);
       ASSERT_TRUE(score.is_default());
       ASSERT_FALSE(irs::get_mutable<irs::score>(&it));
-      ASSERT_EQ(&score, &irs::score::no_score());
+      ASSERT_EQ(&score, &irs::score::kNoScore);
 
       // cost
       ASSERT_EQ(included.size(), irs::cost::extract(it));

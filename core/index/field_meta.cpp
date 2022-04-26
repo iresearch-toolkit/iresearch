@@ -28,11 +28,7 @@
 
 namespace iresearch {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         field_meta implementation
-// -----------------------------------------------------------------------------
-
-/*static*/ const field_meta field_meta::EMPTY;
+/*static*/ const field_meta field_meta::kEmpty;
 
 field_meta::field_meta(field_meta&& rhs) noexcept
   : features(std::move(rhs.features)),

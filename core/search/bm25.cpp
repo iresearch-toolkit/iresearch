@@ -42,13 +42,7 @@ const auto kSQRT = irs::cache_func<uint32_t, 2048>(
 irs::sort::ptr make_from_object(const VPackSlice slice) {
   assert(slice.isObject());
 
-  auto ptr = irs::memory::make_unique<irs::bm25_sort>();
-
-  #ifdef IRESEARCH_DEBUG
-    auto& scorer = dynamic_cast<irs::bm25_sort&>(*ptr);
-  #else
-    auto& scorer = static_cast<irs::bm25_sort&>(*ptr);
-  #endif
+  auto scorer = irs::memory::make_unique<irs::bm25_sort>();
 
   {
     // optional float
@@ -61,7 +55,7 @@ irs::sort::ptr make_from_object(const VPackSlice slice) {
         return nullptr;
       }
 
-      scorer.b(slice.get(key).getNumber<float>());
+      scorer->b(slice.get(key).getNumber<float>());
     }
   }
 
@@ -76,11 +70,11 @@ irs::sort::ptr make_from_object(const VPackSlice slice) {
         return nullptr;
       }
 
-      scorer.k(slice.get(key).getNumber<float>());
+      scorer->k(slice.get(key).getNumber<float>());
     }
   }
 
-  return ptr;
+  return scorer;
 }
 
 irs::sort::ptr make_from_array(const VPackSlice slice) {
@@ -500,15 +494,8 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
       const irs::sort::term_collector* term) const override {
     auto& stats = stats_cast(stats_buf);
 
-#ifdef IRESEARCH_DEBUG
-    auto* field_ptr = dynamic_cast<const field_collector*>(field);
-    assert(!field || field_ptr);
-    auto* term_ptr = dynamic_cast<const term_collector*>(term);
-    assert(!term || term_ptr);
-#else
-    auto* field_ptr = static_cast<const field_collector*>(field);
-    auto* term_ptr = static_cast<const term_collector*>(term);
-#endif
+    const auto* field_ptr = down_cast<field_collector>(field);
+    const auto* term_ptr = down_cast<term_collector>(term);
 
     const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0; // nullptr possible if e.g. 'all' filter
     const auto docs_with_term = term_ptr ? term_ptr->docs_with_term : 0; // nullptr possible if e.g.'by_column_existence' filter

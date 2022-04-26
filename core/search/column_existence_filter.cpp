@@ -43,6 +43,7 @@ class column_existence_query : public irs::filter::prepared {
   virtual doc_iterator::ptr execute(
       const sub_reader& segment,
       const order::prepared& ord,
+      ExecutionMode /*mode*/,
       const attribute_provider* /*ctx*/) const override {
     const auto* column = segment.column(field_);
 
@@ -95,6 +96,7 @@ class column_prefix_existence_query final : public column_existence_query {
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& segment,
       const irs::order::prepared& ord,
+      ExecutionMode /*mode*/,
       const irs::attribute_provider* /*ctx*/) const override {
     using scored_disjunction_t = irs::scored_disjunction_iterator<irs::doc_iterator::ptr>;
     using disjunction_t = irs::disjunction_iterator<irs::doc_iterator::ptr>;

@@ -25,45 +25,20 @@
 
 #include <array>
 #include <cassert>
+#include <memory>
 
 #include "shared.hpp"
 
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Cross-platform 'COUNTOF' implementation
-////////////////////////////////////////////////////////////////////////////////
-#if __cplusplus >= 201103L || _MSC_VER >= 1900 || IRESEARCH_COMPILER_HAS_FEATURE(cxx_constexpr) // C++ 11 implementation
-  namespace detail {
-  template <typename T, std::size_t N>
-  constexpr std::size_t countof(T const (&)[N]) noexcept { return N; }
-  } // detail
-  #define IRESEARCH_COUNTOF(x) ::iresearch::detail::countof(x)
-#elif _MSC_VER // Visual C++ fallback
-  #define IRESEARCH_COUNTOF(x) _countof(x)
-#elif __cplusplus >= 199711L && \
-      (defined(__clang__) \
-       || (defined(__GNUC__) && ((__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 4))) \
-      ) // C++ 98 trick
-  template <typename T, std::size_t N>
-  char(&COUNTOF_ARRAY_ARGUMENT(T(&)[N]))[N];
-  #define IRESEARCH_COUNTOF(x) sizeof(COUNTOF_ARRAY_ARGUMENT(x))
-#else
-  #define IRESEARCH_COUNTOF(x) sizeof(x) / sizeof(x[0])
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convenient helper for simulating 'try/catch/finally' semantic
-////////////////////////////////////////////////////////////////////////////////
+// Convenient helper for simulating 'try/catch/finally' semantic
 template<typename Func>
 class finally {
  public:
-  // FIXME uncomment when no comments left:
-  // "FIXME make me noexcept as I'm begin called from within ~finally()"
-  //static_assert(std::is_nothrow_invocable_v<Func>);
+  static_assert(std::is_nothrow_invocable_v<Func>);
 
   explicit finally(Func&& func)
-    : func_(std::forward<Func>(func)) {
+    : func_{std::forward<Func>(func)} {
   }
   ~finally() {
     func_();
@@ -71,17 +46,15 @@ class finally {
 
  private:
   Func func_;
-}; // finally
+};
 
 template<typename Func>
 finally<Func> make_finally(Func&& func) {
-  return finally<Func>(std::forward<Func>(func));
+  return finally<Func>{std::forward<Func>(func)};
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convenient helper for simulating copy semantic for move-only types
-///        e.g. lambda capture statement before c++14
-////////////////////////////////////////////////////////////////////////////////
+// Convenient helper for simulating copy semantic for move-only types
+// e.g. lambda capture statement before c++14
 template<typename T>
 class move_on_copy {
  public:
@@ -96,7 +69,7 @@ class move_on_copy {
   move_on_copy& operator=(const move_on_copy&) = delete;
 
   mutable T value_;
-}; // move_on_copy
+};
 
 template<typename T>
 move_on_copy<T> make_move_on_copy(T&& value) noexcept {
@@ -104,9 +77,7 @@ move_on_copy<T> make_move_on_copy(T&& value) noexcept {
   return move_on_copy<T>(std::forward<T>(value));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convenient helper for caching function results
-////////////////////////////////////////////////////////////////////////////////
+// Convenient helper for caching function results
 template<
     typename Input,
     Input Size,
@@ -142,11 +113,26 @@ class cached_func {
  private:
   Func func_;
   std::array<output_type, Size> cache_{};
-}; // cached_func
+};
 
 template<typename Input, size_t Size, typename Func>
 constexpr cached_func<Input, Size, Func> cache_func(Input offset, Func&& func) {
   return cached_func<Input, Size, Func>{ offset, std::forward<Func>(func) };
+}
+
+template<typename To, typename From>
+constexpr auto* down_cast(From* from) noexcept {
+  static_assert(!std::is_pointer_v<To>);
+  static_assert(!std::is_reference_v<To>);
+  using CastTo =
+      std::conditional_t<std::is_const_v<From>, std::add_const_t<To>, To>;
+  assert(from == nullptr || dynamic_cast<CastTo*>(from) != nullptr);
+  return static_cast<CastTo*>(from);
+}
+
+template<typename To, typename From>
+constexpr auto& down_cast(From& from) noexcept {
+  return *down_cast<To>(std::addressof(from));
 }
 
 }

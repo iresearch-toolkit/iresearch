@@ -81,6 +81,87 @@ irs::column_info format_test_case::none_column_info() const noexcept {
       bool(dir().attributes().encryption()) };
 }
 
+void format_test_case::assert_frequency_and_positions(
+    irs::doc_iterator& expected, irs::doc_iterator& actual) {
+  auto* expected_freq = irs::get<irs::frequency>(expected);
+  auto* actual_freq = irs::get<irs::frequency>(actual);
+  ASSERT_EQ(!expected_freq, !actual_freq);
+
+  if (!expected_freq) {
+    return;
+  }
+
+  auto* expected_pos = irs::get_mutable<irs::position>(&expected);
+  auto* actual_pos = irs::get_mutable<irs::position>(&actual);
+  ASSERT_EQ(!expected_pos, !actual_pos);
+
+  if (!expected_pos) {
+    return;
+  }
+
+  auto* expected_offset = irs::get<irs::offset>(*expected_pos);
+  auto* actual_offset = irs::get<irs::offset>(*actual_pos);
+  ASSERT_EQ(!expected_offset, !actual_offset);
+
+  auto* expected_payload = irs::get<irs::payload>(*expected_pos);
+  auto* actual_payload = irs::get<irs::payload>(*actual_pos);
+  ASSERT_EQ(!expected_payload, !actual_payload);
+
+  for (; expected_pos->next();) {
+    ASSERT_TRUE(actual_pos->next());
+    ASSERT_EQ(expected_pos->value(), actual_pos->value());
+
+    if (expected_offset) {
+      ASSERT_EQ(expected_offset->start, actual_offset->start);
+      ASSERT_EQ(expected_offset->end, actual_offset->end);
+    }
+
+    if (expected_payload) {
+      ASSERT_EQ(expected_payload->value, actual_payload->value);
+    }
+  }
+  ASSERT_FALSE(actual_pos->next());
+}
+
+void format_test_case::assert_no_directory_artifacts(
+    const iresearch::directory& dir, const iresearch::format& codec,
+    const std::unordered_set<std::string>& expect_additional /* ={} */) {
+  std::vector<std::string> dir_files;
+  auto visitor = [&dir_files] (std::string_view file) {
+    // ignore lock file present in fs_directory
+    if (iresearch::index_writer::WRITE_LOCK_NAME != file) {
+      dir_files.emplace_back(file);
+    }
+    return true;
+  };
+  ASSERT_TRUE(dir.visit(visitor));
+
+  iresearch::index_meta index_meta;
+  std::string segment_file;
+
+  auto reader = codec.get_index_meta_reader();
+  std::unordered_set<std::string> index_files(expect_additional.begin(),
+                                              expect_additional.end());
+  const bool exists = reader->last_segments_file(dir, segment_file);
+
+  if (exists) {
+    reader->read(dir, index_meta, segment_file);
+
+    index_meta.visit_files([&index_files](const std::string& file) {
+      index_files.emplace(file);
+      return true;
+    });
+
+    index_files.insert(segment_file);
+  }
+
+  for (auto& file : dir_files) {
+    ASSERT_EQ(1, index_files.erase(file));
+  }
+
+  ASSERT_TRUE(index_files.empty());
+}
+
 TEST_P(format_test_case, directory_artifact_cleaner) {
   tests::json_doc_generator gen{
     resource("simple_sequential.json"),
@@ -719,16 +800,6 @@ TEST_P(format_test_case, fields_read_write) {
            ASSERT_EQ(meta->docs_count, meta_from_cookie->docs_count);
            ASSERT_EQ(meta->freq, meta_from_cookie->freq);
          }
-
-         auto cookie_term = term_reader->iterator(irs::SeekMode::RANDOM_ONLY);
-         ASSERT_TRUE(cookie_term->seek(term->value(), *cookie));
-         ASSERT_EQ(term->value(), cookie_term->value());
-         {
-           auto* meta_from_cookie = irs::get<irs::term_meta>(*cookie_term);
-           ASSERT_NE(nullptr, meta_from_cookie);
-           ASSERT_EQ(meta->docs_count, meta_from_cookie->docs_count);
-           ASSERT_EQ(meta->freq, meta_from_cookie->freq);
-         }
        }
      }
 
@@ -740,63 +811,6 @@ TEST_P(format_test_case, fields_read_write) {
          ASSERT_TRUE(term->seek(*expected_sorted_term));
          ASSERT_EQ(*expected_sorted_term, term->value());
        }
-     }
-
-     // check sorted terms using "seek to cookie"
-     {
-       auto expected_sorted_term = sorted_terms.begin();
-       auto term = term_reader->iterator(irs::SeekMode::NORMAL);
-       for (; term->next(); ++expected_sorted_term) {
-         ASSERT_EQ(*expected_sorted_term, term->value());
-
-         // get cookie
-         auto cookie = term->cookie();
-         ASSERT_NE(nullptr, cookie);
-         {
-           auto sought_term = term_reader->iterator(irs::SeekMode::NORMAL);
-           ASSERT_TRUE(sought_term->seek(*expected_sorted_term, *cookie));
-           ASSERT_EQ(*expected_sorted_term, sought_term->value());
-
-           // iterate to the end with sought_term
-           auto copy_expected_sorted_term = expected_sorted_term;
-           for (++copy_expected_sorted_term; sought_term->next(); ++copy_expected_sorted_term) {
-             ASSERT_EQ(*copy_expected_sorted_term, sought_term->value());
-           }
-           ASSERT_EQ(sorted_terms.end(), copy_expected_sorted_term);
-           ASSERT_FALSE(sought_term->next());
-         }
-       }
-       ASSERT_EQ(sorted_terms.end(), expected_sorted_term);
-       ASSERT_FALSE(term->next());
-     }
-
-     // check unsorted terms using "seek to cookie"
-     {
-       auto expected_term = unsorted_terms.begin();
-       auto term = term_reader->iterator(irs::SeekMode::NORMAL);
-       for (; term->next(); ++expected_term) {
-         auto sorted_term = sorted_terms.find(*expected_term);
-         ASSERT_NE(sorted_terms.end(), sorted_term);
-
-         // get cookie
-         auto cookie = term->cookie();
-         ASSERT_NE(nullptr, cookie);
-         {
-           auto sought_term = term_reader->iterator(irs::SeekMode::NORMAL);
-           ASSERT_TRUE(sought_term->seek(*sorted_term, *cookie));
-           ASSERT_EQ(*sorted_term, sought_term->value());
-
-           // iterate to the end with sought_term
-           auto copy_sorted_term = sorted_term;
-           for (++copy_sorted_term; sought_term->next(); ++copy_sorted_term) {
-             ASSERT_EQ(*copy_sorted_term, sought_term->value());
-           }
-           ASSERT_EQ(sorted_terms.end(), copy_sorted_term);
-           ASSERT_FALSE(sought_term->next());
-         }
-       }
-       ASSERT_EQ(unsorted_terms.end(), expected_term);
-       ASSERT_FALSE(term->next());
      }
 
      // check sorted terms using multiple "seek"s on single iterator

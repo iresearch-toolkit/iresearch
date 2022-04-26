@@ -115,6 +115,7 @@ if (MSVC)
 
   add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+  add_definitions(/bigobj)
 
   # min/max macros interferes with our codebase
   add_definitions(-DNOMINMAX)

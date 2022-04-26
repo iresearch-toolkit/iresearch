@@ -39,20 +39,10 @@ empty_position NO_POSITION;
 
 namespace iresearch {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          position
-// -----------------------------------------------------------------------------
-
 /*static*/ irs::position* position::empty() noexcept { return &NO_POSITION; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            attribute registration
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// !!! DO NOT MODIFY value in DEFINE_ATTRIBUTE_TYPE(...) as it may break
-/// already created indexes !!!
-////////////////////////////////////////////////////////////////////////////////
+// !!! DO NOT MODIFY value in DEFINE_ATTRIBUTE_TYPE(...) as it may break
+// already created indexes !!!
 
 REGISTER_ATTRIBUTE(frequency);
 REGISTER_ATTRIBUTE(position);

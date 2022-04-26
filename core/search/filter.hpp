@@ -36,6 +36,11 @@ namespace iresearch {
 
 struct index_reader;
 
+enum class ExecutionMode : uint32_t {
+  kAll, // Access all documents
+  kTop // Access only top matched documents
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class filter
 /// @brief base class for all user-side filters
@@ -58,19 +63,16 @@ class filter {
     virtual ~prepared() = default;
 
     doc_iterator::ptr execute(
-        const sub_reader& rdr) const {
-      return execute(rdr, order::prepared::unordered());
-    }
-
-    doc_iterator::ptr execute(
         const sub_reader& rdr,
-        const order::prepared& ord) const {
-      return execute(rdr, ord, nullptr);
+        const order::prepared& ord = order::prepared::unordered(),
+        ExecutionMode mode = ExecutionMode::kAll) const {
+      return execute(rdr, ord, mode, nullptr);
     }
 
     virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
+      ExecutionMode mode,
       const attribute_provider* ctx) const = 0;
 
     boost_t boost() const noexcept { return boost_; }
@@ -176,13 +178,7 @@ class filter_with_options : public filter {
  protected:
   virtual bool equals(const filter& rhs) const noexcept override {
     return filter::equals(rhs) &&
-      options_ ==
-#ifdef IRESEARCH_DEBUG
-        dynamic_cast<const filter_type&>(rhs).options_
-#else
-        static_cast<const filter_type&>(rhs).options_
-#endif
-      ;
+           options_ == down_cast<filter_type>(rhs).options_;
   }
 
  private:
@@ -210,13 +206,7 @@ class filter_base : public filter_with_options<Options> {
  protected:
   virtual bool equals(const filter& rhs) const noexcept override {
     return filter_with_options<options_type>::equals(rhs) &&
-      field_ ==
-#ifdef IRESEARCH_DEBUG
-        dynamic_cast<const filter_type&>(rhs).field_
-#else
-        static_cast<const filter_type&>(rhs).field_
-#endif
-      ;
+           field_ == down_cast<filter_type>(rhs).field_;
   }
 
  private:
