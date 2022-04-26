@@ -2401,6 +2401,7 @@ bool term_iterator<FST>::next() {
       cur_block_ = push_block(fst_->Final(fst_->Start()), 0);
       cur_block_->load(terms_input(), terms_cipher());
     } else {
+      assert(false);
       // FIXME(gnusi): consider removing this, as that seems to be impossible anymore
 
       // seek to the term with the specified state was called from
@@ -3001,6 +3002,7 @@ bool automaton_term_iterator<FST>::next() {
       cur_block_ = push_block(fst.Final(fst_start), *fst_, 0, 0, acceptor_->Start(), fst_start);
       cur_block_->load(terms_input(), terms_cipher());
     } else {
+      assert(false);
       // FIXME(gnusi): consider removing this, as that seems to be impossible anymore
 
       // seek to the term with the specified state was called from
