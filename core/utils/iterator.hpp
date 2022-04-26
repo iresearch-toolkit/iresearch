@@ -23,9 +23,10 @@
 #ifndef IRESEARCH_ITERATOR_H
 #define IRESEARCH_ITERATOR_H
 
-#include "noncopyable.hpp"
 #include "ebo.hpp"
+#include "noncopyable.hpp"
 #include "std.hpp"
+#include "misc.hpp"
 
 #include <memory>
 #include <cassert>
