@@ -71,9 +71,25 @@ find_path(Lz4_SRC_DIR_LZ4
 if (Lz4_SRC_DIR_LZ4)
   get_filename_component(Lz4_SRC_DIR_PARENT ${Lz4_SRC_DIR_LZ4} DIRECTORY)
 
+  set(LZ4_CMAKE_PATH "")
+
+  if(IS_DIRECTORY "${Lz4_SRC_DIR_PARENT}/build/cmake")
+    if(EXISTS "${Lz4_SRC_DIR_PARENT}/build/cmake/CMakeLists.txt") # Location of CMakeLists.txt is changed since 1.9.3 
+        set (LZ4_CMAKE_PATH ${Lz4_SRC_DIR_PARENT}/build/cmake)
+    endif()
+  elseif(IS_DIRECTORY "${Lz4_SRC_DIR_PARENT}/contrib/cmake_unofficial")
+    if(EXISTS "${Lz4_SRC_DIR_PARENT}/contrib/cmake_unofficial/CMakeLists.txt") # Location of CMakeLists.txt before 1.9.3
+      set (LZ4_CMAKE_PATH ${Lz4_SRC_DIR_PARENT}/contrib/cmake_unofficial)
+    endif()
+  endif()
+
+  if ("${LZ4_CMAKE_PATH}" STREQUAL "")
+    message(FATAL_ERROR "Can't find CMakeLists.txt for LZ4")
+  endif()
+
   find_path(Lz4_SRC_DIR_CMAKE
     CMakeLists.txt
-    PATHS ${Lz4_SRC_DIR_LZ4} ${Lz4_SRC_DIR_PARENT}/contrib/cmake_unofficial
+    PATHS ${Lz4_SRC_DIR_LZ4} ${LZ4_CMAKE_PATH}
     NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
   )
 endif()
