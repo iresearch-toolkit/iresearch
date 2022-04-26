@@ -1757,7 +1757,7 @@ class doc_iterator_base : public irs::doc_iterator {
 
 template<typename IteratorTraits, typename FieldTraits>
 void doc_iterator_base<IteratorTraits, FieldTraits>::refill() {
-  if (left_ >= IteratorTraits::block_size()) {
+  if (IRS_LIKELY(left_ >= IteratorTraits::block_size())) {
     // read doc deltas
     IteratorTraits::read_block(*doc_in_, enc_buf_, buf_.docs);
 
@@ -1769,14 +1769,12 @@ void doc_iterator_base<IteratorTraits, FieldTraits>::refill() {
 
     static_assert(std::size(decltype(buf_.docs){}) == IteratorTraits::block_size());
     begin_ = std::begin(buf_.docs);
+    if constexpr (IteratorTraits::frequency()) {
+      freq_ = buf_.freqs;
+    }
     left_ -= IteratorTraits::block_size();
   } else {
     read_tail_block();
-    left_ = 0;
-  }
-
-  if constexpr (IteratorTraits::frequency()) {
-    freq_ = buf_.freqs;
   }
 }
 
@@ -1785,18 +1783,18 @@ void doc_iterator_base<IteratorTraits, FieldTraits>::read_tail_block() {
   auto* doc = std::end(buf_.docs) - left_;
   begin_ = doc;
 
-  [[maybe_unused]] uint32_t* doc_freq;
+  [[maybe_unused]] uint32_t* freq;
   if constexpr (IteratorTraits::frequency()) {
-    doc_freq = std::begin(buf_.freqs);
+    freq_ = freq = std::end(buf_.freqs) - left_;
   }
 
   while (doc < std::end(buf_.docs)) {
     if constexpr (FieldTraits::frequency()) {
       if constexpr (IteratorTraits::frequency()) {
         if (shift_unpack_32(doc_in_->read_vint(), *doc++)) {
-          *doc_freq++ = 1;
+          *freq++ = 1;
         } else {
-          *doc_freq++ = doc_in_->read_vint();
+          *freq++ = doc_in_->read_vint();
         }
       } else {
         if (!shift_unpack_32(doc_in_->read_vint(), *doc++)) {
@@ -1807,6 +1805,7 @@ void doc_iterator_base<IteratorTraits, FieldTraits>::read_tail_block() {
       *doc++ = doc_in_->read_vint();
     }
   }
+  left_ = 0;
 }
 
 template<typename IteratorTraits, typename FieldTraits>
