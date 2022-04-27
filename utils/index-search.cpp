@@ -633,7 +633,6 @@ int search(
         }
 
         // execute task
-            float_t sss{};
         {
           irs::timer_utils::scoped_timer timer(*(execution_timers.stat[size_t(task->category)]));
 
@@ -659,13 +658,10 @@ int search(
               threshold->value = sorted.front().first;
             }
 
-            const irs::frequency* freq = irs::get<irs::frequency>(*docs);
-
             while (docs->next()) {
               ++doc_count;
-              sss += *reinterpret_cast<const float_t*>(score->evaluate());
 
-              const float_t score_value = freq->value;
+              const auto score_value = *reinterpret_cast<const float_t*>(score->evaluate());
 
               if (left) {
                 sorted.emplace_back(score_value, doc->value);
@@ -712,7 +708,6 @@ int search(
 
         }
 
-          std::cerr << sss << "\n";
         const auto tdiff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
 
         // output task results
