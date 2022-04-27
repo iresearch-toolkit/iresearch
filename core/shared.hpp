@@ -27,9 +27,7 @@
 #include <cfloat>
 #include <cstdlib>
 #include <iostream>
-#include <cstddef>
-#include <stdint.h>
-#include <math.h>
+#include <cmath>
 #include <string>
 #include <bit>
 
