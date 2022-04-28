@@ -386,6 +386,9 @@ auto ResoveMergeType(sort::MergeType type, Visitor&& visitor) {
       return std::forward<Visitor>(visitor).template operator()<SumAggregator>();
     case sort::MergeType::MAX:
       return std::forward<Visitor>(visitor).template operator()<MaxAggregator>();
+    default:
+      assert(false);
+      return std::forward<Visitor>(visitor).template operator()<NoopAggregator>();
   }
 }
 

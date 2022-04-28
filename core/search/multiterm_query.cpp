@@ -135,7 +135,7 @@ doc_iterator::ptr multiterm_query::execute(
 
   const bool has_unscored_terms = !state->unscored_terms.empty();
 
-  Disjunction<NoopAggegator>::doc_iterators_t itrs(
+  Disjunction<NoopAggregator>::doc_iterators_t itrs(
     state->scored_states.size() + size_t(has_unscored_terms));
   auto it = itrs.begin();
 
