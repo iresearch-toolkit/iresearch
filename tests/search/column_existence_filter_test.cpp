@@ -81,7 +81,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -112,7 +112,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -146,7 +146,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -176,7 +176,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -209,7 +209,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -238,7 +238,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -267,7 +267,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -302,7 +302,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -333,7 +333,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -367,7 +367,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -397,7 +397,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -430,7 +430,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -459,7 +459,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -488,7 +488,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -523,7 +523,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_prefix, true);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -592,7 +592,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_prefix, true);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -637,7 +637,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_prefix, true);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -682,7 +682,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_prefix, true);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -724,7 +724,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::by_column_existence filter = make_filter(column_prefix, true);
 
       auto prepared = filter.prepare(
-        *rdr, irs::order::prepared::unordered()
+        *rdr, irs::Order::kUnordered
       );
 
       ASSERT_EQ(1, rdr->size());
@@ -1034,7 +1034,7 @@ TEST(by_column_existence, ctor) {
   ASSERT_EQ(irs::type<irs::by_column_existence>::id(), filter.type());
   ASSERT_EQ(irs::by_column_existence_options{}, filter.options());
   ASSERT_TRUE(filter.field().empty());
-  ASSERT_EQ(irs::no_boost(), filter.boost());
+  ASSERT_EQ(irs::kNoBoost, filter.boost());
 }
 
 TEST(by_column_existence, boost) {

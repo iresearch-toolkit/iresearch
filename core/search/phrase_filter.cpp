@@ -165,7 +165,7 @@ struct prepare : util::noncopyable {
   }
 
   prepare(const index_reader& index,
-          const order::prepared& order,
+          const Order& order,
           std::string_view field,
           const boost_t boost) noexcept
     : index(index), order(order),
@@ -173,7 +173,7 @@ struct prepare : util::noncopyable {
   }
 
   const index_reader& index;
-  const irs::order::prepared& order;
+  const irs::Order& order;
   const string_ref field;
   const boost_t boost;
 };
@@ -211,7 +211,7 @@ class phrase_term_visitor final : public filter_visitor,
       collectors_->push_back();
       assert(stats_size_ == term_offset_);
       ++stats_size_;
-      volatile_boost_ |= (boost != no_boost());
+      volatile_boost_ |= (boost != kNoBoost);
     }
 
     collectors_->collect(*segment_, *reader_, term_offset_++, *terms_);
@@ -288,10 +288,10 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
 
   doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& ord,
+      const Order& ord,
       ExecutionMode /*mode*/,
       const attribute_provider* /*ctx*/) const override {
-    using conjunction_t = conjunction<doc_iterator::ptr>;
+    using conjunction_t = conjunction<doc_iterator::ptr, SumAggregator>;
     using phrase_iterator_t = phrase_iterator<
       conjunction_t,
       fixed_phrase_frequency>;
@@ -305,7 +305,7 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
     }
 
     // get index features required for query & order
-    const IndexFeatures features = ord.features() | by_phrase::required();
+    const IndexFeatures features = ord.features | by_phrase::kRequiredFeatures;
 
     conjunction_t::doc_iterators_t itrs;
     itrs.reserve(phrase_state->terms.size());
@@ -353,7 +353,7 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
 
 class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
  public:
-  using conjunction_t = conjunction<doc_iterator::ptr>;
+  using conjunction_t = conjunction<doc_iterator::ptr, SumAggregator>;
 
   // FIXME add proper handling of overlapped case
   template<bool VolatileBoost>
@@ -372,11 +372,11 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
 
   doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& ord,
+      const Order& ord,
       ExecutionMode /*mode*/,
       const attribute_provider* /*ctx*/) const override {
     using adapter_t = variadic_phrase_adapter;
-    using disjunction_t = disjunction<doc_iterator::ptr, adapter_t, true>;
+    using disjunction_t = disjunction<doc_iterator::ptr, SumAggregator, adapter_t, true>;
     using compound_doc_iterator_t = irs::compound_doc_iterator<adapter_t>;
 
     // get phrase state for the specified reader
@@ -388,7 +388,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
     }
 
     // get features required for query & order
-    const IndexFeatures features = ord.features() | by_phrase::required();
+    const IndexFeatures features = ord.features | by_phrase::kRequiredFeatures;
 
     conjunction_t::doc_iterators_t conj_itrs;
     conj_itrs.reserve(phrase_state->terms.size());
@@ -464,7 +464,7 @@ DEFINE_FACTORY_DEFAULT(by_phrase)
 
 filter::prepared::ptr by_phrase::prepare(
     const index_reader& index,
-    const order::prepared& ord,
+    const Order& ord,
     boost_t boost,
     const attribute_provider* /*ctx*/) const {
   if (field().empty() || options().empty()) {
@@ -492,10 +492,10 @@ filter::prepared::ptr by_phrase::prepare(
 
 filter::prepared::ptr by_phrase::fixed_prepare_collect(
     const index_reader& index,
-    const order::prepared& ord,
+    const Order& ord,
     boost_t boost) const {
   const auto phrase_size = options().size();
-  const auto is_ord_empty = ord.empty();
+  const auto is_ord_empty = ord.buckets.empty();
 
   // stats collectors
   field_collectors field_stats(ord);
@@ -522,7 +522,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     }
 
     // check required features
-    if (required() != (reader->meta().index_features & required())) {
+    if (kRequiredFeatures != (reader->meta().index_features & kRequiredFeatures)) {
       continue;
     }
 
@@ -559,7 +559,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   const size_t base_offset = options().begin()->first;
 
   // finish stats
-  bstring stats(ord.stats_size(), 0); // aggregated phrase stats
+  bstring stats(ord.stats_size, 0); // aggregated phrase stats
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
   fixed_phrase_query::positions_t positions(phrase_size);
@@ -582,7 +582,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
 
 filter::prepared::ptr by_phrase::variadic_prepare_collect(
     const index_reader& index,
-    const order::prepared& ord,
+    const Order& ord,
     boost_t boost) const {
   const auto phrase_size = options().size();
 
@@ -608,7 +608,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
   // iterate over the segments
   const string_ref field = this->field();
-  const auto is_ord_empty = ord.empty();
+  const auto is_ord_empty = ord.buckets.empty();
 
   phrase_term_visitor<decltype(phrase_terms)> ptv(phrase_terms);
 
@@ -621,7 +621,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     }
 
     // check required features
-    if (required() != (reader->meta().index_features & required())) {
+    if (kRequiredFeatures != (reader->meta().index_features & kRequiredFeatures)) {
       continue;
     }
 
@@ -674,7 +674,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
   // finish stats
   assert(phrase_size == phrase_part_stats.size());
-  bstring stats(ord.stats_size(), 0); // aggregated phrase stats
+  bstring stats(ord.stats_size, 0); // aggregated phrase stats
   auto* stats_buf = const_cast<byte_type*>(stats.data());
   auto collector = phrase_part_stats.begin();
 

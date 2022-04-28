@@ -38,7 +38,7 @@ term_query::term_query(
 
 doc_iterator::ptr term_query::execute(
     const sub_reader& rdr,
-    const order::prepared& ord,
+    const Order& ord,
     ExecutionMode mode,
     const attribute_provider* /*ctx*/) const {
   // get term state for the specified reader
@@ -53,17 +53,19 @@ doc_iterator::ptr term_query::execute(
   assert(reader);
 
   auto docs = (mode == ExecutionMode::kTop)
-    ? reader->wanderator(*state->cookie, ord.features())
-    : reader->postings(*state->cookie, ord.features());
+    ? reader->wanderator(*state->cookie, ord.features)
+    : reader->postings(*state->cookie, ord.features);
   assert(docs);
 
-  if (!ord.empty()) {
+  if (!ord.buckets.empty()) {
     auto* score = irs::get_mutable<irs::score>(docs.get());
 
     if (score) {
-      order::prepared::scorers scorers(
+      score->resize(ord);
+
+      Order::Scorers scorers(
         ord, rdr, *state->reader,
-        stats_.c_str(), score->realloc(ord),
+        stats_.c_str(), score->data(),
         *docs, boost());
 
       irs::reset(*score, std::move(scorers));

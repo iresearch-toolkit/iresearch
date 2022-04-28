@@ -53,7 +53,7 @@ namespace iresearch {
       }
       virtual irs::filter::prepared::ptr prepare(
           const index_reader& rdr,
-          const order::prepared& ord,
+          const Order& ord,
           boost_t boost,
           const attribute_provider* ctx) const override {
         return filter_->prepare(rdr, ord, boost, ctx);
@@ -89,7 +89,7 @@ namespace iresearch {
     ////////////////////////////////////////////////////////////////////////////////
     struct query {
       irs::filter::ptr filter;
-      irs::order* order = nullptr;
+      irs::Order* order = nullptr;
       size_t* limit = nullptr;
       std::string* error = nullptr;
       query(): order(nullptr), limit(nullptr), error(nullptr) {}

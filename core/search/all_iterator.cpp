@@ -28,18 +28,18 @@ namespace iresearch {
 all_iterator::all_iterator(
     const sub_reader& reader,
     const byte_type* query_stats,
-    const order::prepared& order,
+    const Order& order,
     uint64_t docs_count,
     boost_t boost)
-  : max_doc_(doc_id_t(doc_limits::min() + docs_count - 1)) {
+  : max_doc_{doc_id_t(doc_limits::min() + docs_count - 1)} {
   std::get<cost>(attrs_).reset(max_doc_);
 
-  if (!order.empty()) {
+  if (!order.buckets.empty()) {
     auto& score = std::get<irs::score>(attrs_);
 
-    score.realloc(order);
+    score.resize(order);
 
-    order::prepared::scorers scorers(
+    Order::Scorers scorers(
       order, reader, irs::empty_term_reader(docs_count),
       query_stats, score.data(),
       *this, boost);

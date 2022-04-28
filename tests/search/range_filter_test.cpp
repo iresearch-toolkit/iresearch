@@ -1134,7 +1134,7 @@ TEST(by_range_test, ctor) {
   irs::by_range q;
   ASSERT_EQ(irs::type<irs::by_range>::id(), q.type());
   ASSERT_EQ(irs::by_range_options{}, q.options());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 }
 
 TEST(by_range_test, equal) {
@@ -1212,7 +1212,7 @@ TEST(by_range_test, boost) {
     q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::no_boost(), prepared->boost());
+    ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
   // with boost
@@ -1274,8 +1274,8 @@ TEST_P(range_filter_test_case, visit) {
   ASSERT_EQ(2, visitor.visit_calls_counter());
   ASSERT_EQ(
     (std::vector<std::pair<irs::string_ref, irs::boost_t>>{
-      {"abc", irs::no_boost()},
-      {"abcd", irs::no_boost()}
+      {"abc", irs::kNoBoost},
+      {"abcd", irs::kNoBoost}
     }),
     visitor.term_refs<char>());
 

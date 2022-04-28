@@ -38,7 +38,7 @@ class all_iterator final : public doc_iterator {
   all_iterator(
     const irs::sub_reader& reader,
     const byte_type* query_stats,
-    const irs::order::prepared& order,
+    const irs::Order& order,
     uint64_t docs_count,
     boost_t boost);
 

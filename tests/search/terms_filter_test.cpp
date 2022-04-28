@@ -53,7 +53,7 @@ TEST(by_terms_test, ctor) {
   ASSERT_EQ(irs::type<irs::by_terms>::id(), q.type());
   ASSERT_EQ(irs::by_terms_options{}, q.options());
   ASSERT_TRUE(q.field().empty());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 }
 
 TEST(by_terms_test, equal) {
@@ -78,7 +78,7 @@ TEST(by_terms_test, boost) {
     irs::by_terms q = make_filter("field", { { "bar", 0.5f }, {"baz", 0.25f} });
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::no_boost(), prepared->boost());
+    ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
   // with boost

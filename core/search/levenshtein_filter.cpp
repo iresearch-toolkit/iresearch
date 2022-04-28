@@ -110,7 +110,7 @@ struct aggregated_stats_visitor : util::noncopyable {
   mutable typename StatesType::state_type* state{};
   mutable const sub_reader* segment{};
   mutable const term_reader* field{};
-  boost_t boost{ irs::no_boost() };
+  boost_t boost{ irs::kNoBoost };
 };
 
 class top_terms_collector : public irs::top_terms_collector<top_term_state<boost_t>> {
@@ -210,7 +210,7 @@ bool collect_terms(
 
 filter::prepared::ptr prepare_levenshtein_filter(
     const index_reader& index,
-    const order::prepared& order,
+    const Order& order,
     boost_t boost,
     string_ref field,
     bytes_ref prefix,
@@ -243,7 +243,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
   }
 
   std::vector<bstring> stats(1);
-  stats.back().resize(order.stats_size(), 0);
+  stats.back().resize(order.stats_size, 0);
   auto* stats_buf = const_cast<byte_type*>(stats[0].data());
   term_stats.finish(stats_buf, 0, field_stats, index);
 
@@ -315,7 +315,7 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance) // cppcheck-suppress unknownMacro
 
 /*static*/ filter::prepared::ptr by_edit_distance::prepare(
     const index_reader& index,
-    const order::prepared& order,
+    const Order& order,
     boost_t boost,
     string_ref field,
     bytes_ref term,

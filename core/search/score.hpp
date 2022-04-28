@@ -46,14 +46,14 @@ class score : public attribute {
 
   // cppcheck-suppress shadowFunction
   score() noexcept;
-  explicit score(const order::prepared& ord);
+  explicit score(const Order& ord);
 
   bool is_default() const noexcept {
     return reinterpret_cast<score_ctx*>(data()) == func_.ctx()
            && func_.func() == kDefaultScoreFunc;
   }
 
-  [[nodiscard]] FORCE_INLINE const byte_type* evaluate() const {
+  [[nodiscard]] FORCE_INLINE const float_t* evaluate() const {
     assert(func_);
     return func_();
   }
@@ -82,13 +82,12 @@ class score : public attribute {
     func_ = std::move(func);
   }
 
-  byte_type* realloc(const order::prepared& order) {
-    buf_.resize(order.score_size());
-    return const_cast<byte_type*>(buf_.data());
+  void resize(const Order& order) {
+    buf_.resize(order.score_size);
   }
 
-  byte_type* data() const noexcept {
-    return const_cast<byte_type*>(buf_.c_str());
+  score_t* data() const noexcept {
+    return reinterpret_cast<score_t*>(buf_.data());
   }
 
   size_t size() const noexcept {
@@ -101,11 +100,11 @@ class score : public attribute {
   }
 
  private:
-  bstring buf_;
+  mutable bstring buf_;
   score_function func_;
 };
 
-void reset(irs::score& score, order::prepared::scorers&& scorers);
+void reset(irs::score& score, Order::Scorers&& scorers);
 
 } // ROOT
 

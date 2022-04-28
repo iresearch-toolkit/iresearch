@@ -86,7 +86,7 @@ void collect_terms(
       break; // terminate traversal
     }
 
-    visitor.visit(irs::no_boost());
+    visitor.visit(irs::kNoBoost);
   } while (terms.next());
 }
 
@@ -546,7 +546,7 @@ DEFINE_FACTORY_DEFAULT(by_granular_range) // cppcheck-suppress unknownMacro
 
 /*static*/ filter::prepared::ptr by_granular_range::prepare(
     const index_reader& index,
-    const order::prepared& ord,
+    const Order& ord,
     boost_t boost,
     string_ref field,
     const options_type::range_type& rng,
@@ -566,7 +566,7 @@ DEFINE_FACTORY_DEFAULT(by_granular_range) // cppcheck-suppress unknownMacro
     }
   }
 
-  limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
+  limited_sample_collector<term_frequency> collector(ord.buckets.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   granular_states states(index.size());
   multiterm_visitor<granular_states> mtv(collector, states);
 
@@ -631,7 +631,7 @@ DEFINE_FACTORY_DEFAULT(by_granular_range) // cppcheck-suppress unknownMacro
     }
 
     virtual filter::prepared::ptr prepare(
-        const index_reader&, const order::prepared&,
+        const index_reader&, const Order&,
         boost_t, const attribute_provider*) const override {
       return std::move(query_);
     }
@@ -644,7 +644,7 @@ DEFINE_FACTORY_DEFAULT(by_granular_range) // cppcheck-suppress unknownMacro
   for (auto& range_state: range_states) {
     multirange_filter.add<multiterm_filter_proxy>().query_
         = memory::make_managed<multiterm_query>(std::move(range_state), shared_stats,
-                                               no_boost(), sort::MergeType::AGGREGATE);
+                                               kNoBoost, sort::MergeType::AGGREGATE);
   }
 
   return multirange_filter.boost(boost).prepare(index, ord, 1);

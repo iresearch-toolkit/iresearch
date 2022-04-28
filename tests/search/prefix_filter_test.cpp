@@ -260,7 +260,7 @@ TEST(by_prefix_test, ctor) {
   ASSERT_EQ(irs::type<irs::by_prefix>::id(), q.type());
   ASSERT_EQ(irs::by_prefix_options{}, q.options());
   ASSERT_EQ("", q.field());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 }
 
 TEST(by_prefix_test, equal) {
@@ -289,7 +289,7 @@ TEST(by_prefix_test, boost) {
     irs::by_prefix q = make_filter("field", "term");
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::no_boost(), prepared->boost());
+    ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
   // with boost
@@ -334,12 +334,12 @@ TEST_P(prefix_filter_test_case, visit) {
   ASSERT_EQ(6, visitor.visit_calls_counter());
   ASSERT_EQ(
     (std::vector<std::pair<irs::string_ref, irs::boost_t>>{
-      {"abc", irs::no_boost()},
-      {"abcd", irs::no_boost()},
-      {"abcde", irs::no_boost()},
-      {"abcdrer", irs::no_boost()},
-      {"abcy", irs::no_boost()},
-      {"abde", irs::no_boost()}
+      {"abc", irs::kNoBoost},
+      {"abcd", irs::kNoBoost},
+      {"abcde", irs::kNoBoost},
+      {"abcdrer", irs::kNoBoost},
+      {"abcy", irs::kNoBoost},
+      {"abde", irs::kNoBoost}
     }),
     visitor.term_refs<char>());
 

@@ -104,7 +104,7 @@ class by_granular_range
 
   static filter::prepared::ptr prepare(
     const index_reader& index,
-    const order::prepared& ord,
+    const Order& ord,
     boost_t boost,
     string_ref field,
     const options_type::range_type& rng,
@@ -120,7 +120,7 @@ class by_granular_range
 
   virtual filter::prepared::ptr prepare(
       const index_reader& index,
-      const order::prepared& ord,
+      const Order& ord,
       boost_t boost,
       const attribute_provider* /*ctx*/) const override {
     return prepare(index, ord, this->boost()*boost,

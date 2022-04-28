@@ -56,15 +56,14 @@ class by_ngram_similarity
   static ptr make();
 
   // returns set of features required for filter
-  static constexpr IndexFeatures required() noexcept {
-    return IndexFeatures::FREQ | IndexFeatures::POS;
-  }
+  static constexpr IndexFeatures kRequiredFeatures = IndexFeatures::FREQ |
+                                                     IndexFeatures::POS;
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
     const index_reader& rdr,
-    const order::prepared& ord,
+    const Order& ord,
     boost_t boost,
     const attribute_provider* ctx) const override;
 };

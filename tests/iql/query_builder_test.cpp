@@ -236,7 +236,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -288,7 +288,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -318,7 +318,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -383,7 +383,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -427,7 +427,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -471,7 +471,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -515,7 +515,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -549,7 +549,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_NE(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -573,7 +573,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_EQ(nullptr, pQuery.get());
 
     ASSERT_EQ(0, query.error->find("@([8 - 11], 11): syntax error"));
@@ -586,7 +586,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_EQ(nullptr, pQuery.get());
 
     ASSERT_EQ(std::string("@(7): parse error"), *(query.error));
@@ -608,7 +608,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_EQ(nullptr, pQuery.get());
 
     ASSERT_EQ(std::string("filter conversion error, node: @5\n('name'@2 == ('A'@3, 'bcd'@4)@5)@6"), *(query.error));

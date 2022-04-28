@@ -142,7 +142,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
     // with boost
@@ -1574,7 +1574,7 @@ TEST(by_granular_range_test, ctor) {
   irs::by_granular_range q;
   ASSERT_EQ(irs::type<irs::by_granular_range>::id(), q.type());
   ASSERT_EQ(irs::by_granular_range_options{}, q.options());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 }
 
 TEST(by_granular_range_test, equal) {
@@ -1665,7 +1665,7 @@ TEST(by_granular_range_test, boost) {
     q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::no_boost(), prepared->boost());
+    ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
   // with boost, empty query
@@ -1680,7 +1680,7 @@ TEST(by_granular_range_test, boost) {
     q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::no_boost(), prepared->boost());
+    ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 }
 
@@ -2214,8 +2214,8 @@ TEST_P(granular_range_filter_test_case, visit) {
   ASSERT_EQ(2, visitor.visit_calls_counter());
   ASSERT_EQ(
     (std::vector<std::pair<irs::string_ref, irs::boost_t>>{
-      {"abc", irs::no_boost()},
-      {"abcd", irs::no_boost()}
+      {"abc", irs::kNoBoost},
+      {"abcd", irs::kNoBoost}
     }),
     visitor.term_refs<char>());
 

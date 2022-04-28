@@ -32,7 +32,7 @@
 #include "utils/string.hpp"
 
 namespace iresearch {
-  class order;
+  class Order;
 
   namespace iql {
     class function_arg;
@@ -135,7 +135,7 @@ namespace iresearch {
     typedef function<bool, iresearch::iql::proxy_filter, string_ref, void*> boolean_function;
 
     // deterministic(std::string&, vector<string_ref>) v.s. contextual(order&, string_ref, void* cookie, bool, vector<bytes_ref>)
-    typedef function<std::string, iresearch::order, string_ref, void*, bool> order_function;
+    typedef function<std::string, iresearch::Order, string_ref, void*, bool> order_function;
 
     // deterministic(std::string&, vector<string_ref>) v.s. contextual(bstring&, string_ref, void* cookie, vector<bytes_ref>)
     typedef function<std::string, iresearch::bstring, string_ref, void*> sequence_function;

@@ -64,7 +64,7 @@ class by_column_existence final
 
   virtual filter::prepared::ptr prepare(
     const index_reader& rdr,
-    const order::prepared& ord,
+    const Order& ord,
     boost_t boost,
     const attribute_provider* ctx) const override;
 }; // by_column_existence

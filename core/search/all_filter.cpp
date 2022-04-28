@@ -35,7 +35,7 @@ class all_query final : public filter::prepared {
 
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& order,
+      const Order& order,
       ExecutionMode /*mode*/,
       const attribute_provider* /*ctx*/) const override {
     return memory::make_managed<all_iterator>(
@@ -55,16 +55,16 @@ all::all() noexcept
 
 filter::prepared::ptr all::prepare(
     const index_reader& reader,
-    const order::prepared& order,
+    const Order& order,
     boost_t filter_boost,
     const attribute_provider* /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
-  bstring stats(order.stats_size(), 0);
+  bstring stats(order.stats_size, 0);
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
-  order.prepare_collectors(stats_buf, reader);
+  PrepareCollectors(order.buckets, stats_buf, reader);
 
   return memory::make_managed<all_query>(std::move(stats), this->boost()*filter_boost);
 }

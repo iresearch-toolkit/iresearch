@@ -74,7 +74,7 @@ TEST(by_edit_distance_test, ctor) {
   ASSERT_EQ(irs::type<irs::by_edit_distance>::id(), q.type());
   ASSERT_EQ(irs::by_edit_distance_options{}, q.options());
   ASSERT_TRUE(q.field().empty());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 }
 
 TEST(by_edit_distance_test, equal) {
@@ -102,7 +102,7 @@ TEST(by_edit_distance_test, boost) {
     q.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar*"));
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::no_boost(), prepared->boost());
+    ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
   // with boost
@@ -824,7 +824,7 @@ TEST_P(by_edit_distance_test_case, visit) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"abc", irs::no_boost()}}),
+      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"abc", irs::kNoBoost}}),
       visitor.term_refs<char>());
     visitor.reset();
   }
@@ -845,7 +845,7 @@ TEST_P(by_edit_distance_test_case, visit) {
 
     const auto actual_terms = visitor.term_refs<char>();
     std::vector<std::pair<irs::string_ref, irs::boost_t>> expected_terms{
-      {"abc",  irs::no_boost()},
+      {"abc",  irs::kNoBoost},
       {"abcd", 2.f/3},
       {"abcy", 2.f/3},
     };
@@ -879,7 +879,7 @@ TEST_P(by_edit_distance_test_case, visit) {
 
     const auto actual_terms = visitor.term_refs<char>();
     std::vector<std::pair<irs::string_ref, irs::boost_t>> expected_terms{
-      {"abc",  irs::no_boost()},
+      {"abc",  irs::kNoBoost},
       {"abcd", 2.f/3},
       {"abcde", 1.f/3},
       {"abcy", 2.f/3},

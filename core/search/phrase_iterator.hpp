@@ -35,8 +35,8 @@ class fixed_phrase_frequency {
 
   fixed_phrase_frequency(
       std::vector<term_position_t>&& pos,
-      const order::prepared& ord)
-    : pos_(std::move(pos)), order_empty_(ord.empty()) {
+      const Order& ord)
+    : pos_(std::move(pos)), order_empty_(ord.buckets.empty()) {
     assert(!pos_.empty()); // must not be empty
     assert(0 == pos_.front().second); // lead offset is always 0
   }
@@ -114,7 +114,7 @@ struct variadic_phrase_adapter final : score_iterator_adapter<doc_iterator::ptr>
   }
 
   irs::position* position{};
-  boost_t boost{no_boost()};
+  boost_t boost{kNoBoost};
 }; // variadic_phrase_adapter
 
 static_assert(std::is_nothrow_move_constructible_v<variadic_phrase_adapter>);
@@ -137,10 +137,10 @@ class variadic_phrase_frequency {
 
   variadic_phrase_frequency(
       std::vector<term_position_t>&& pos,
-      const order::prepared& ord)
+      const Order& ord)
     : pos_(std::move(pos)),
       phrase_size_(pos_.size()),
-      order_empty_(ord.empty()) {
+      order_empty_(ord.buckets.empty()) {
     assert(!pos_.empty() && phrase_size_); // must not be empty
     assert(0 == pos_.front().second); // lead offset is always 0
   }
@@ -272,10 +272,10 @@ class variadic_phrase_frequency_overlapped {
 
   variadic_phrase_frequency_overlapped(
       std::vector<term_position_t>&& pos,
-      const order::prepared& ord)
+      const Order& ord)
     : pos_(std::move(pos)),
       phrase_size_(pos_.size()),
-      order_empty_(ord.empty()) {
+      order_empty_(ord.buckets.empty()) {
     assert(!pos_.empty() && phrase_size_); // must not be empty
     assert(0 == pos_.front().second); // lead offset is always 0
   }
@@ -440,7 +440,7 @@ class phrase_iterator final : public doc_iterator {
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats,
-      const order::prepared& ord,
+      const Order& ord,
       boost_t boost)
     : approx_(std::move(itrs)),
       freq_(std::move(pos), ord) {
@@ -452,12 +452,12 @@ class phrase_iterator final : public doc_iterator {
     std::get<irs::cost>(attrs_).reset(
       [this](){ return cost::extract(approx_); });
 
-    if (!ord.empty()) {
+    if (!ord.buckets.empty()) {
       auto& score = std::get<irs::score>(attrs_);
 
-      score.realloc(ord);
+      score.resize(ord);
 
-      order::prepared::scorers scorers(
+      Order::Scorers scorers(
         ord, segment, field, stats,
         score.data(), *this, boost);
 

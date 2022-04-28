@@ -517,7 +517,7 @@ TEST(by_same_position_test, ctor) {
   irs::by_same_position q;
   ASSERT_EQ(irs::type<irs::by_same_position>::id(), q.type());
   ASSERT_EQ(irs::by_same_position_options{}, q.options());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 
   static_assert(
     (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) ==
@@ -532,7 +532,7 @@ TEST(by_same_position_test, boost) {
       irs::by_same_position q;
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
     // single term
@@ -541,7 +541,7 @@ TEST(by_same_position_test, boost) {
       q.mutable_options()->terms.emplace_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
     // multiple terms
@@ -551,7 +551,7 @@ TEST(by_same_position_test, boost) {
       q.mutable_options()->terms.emplace_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
   }
 
@@ -565,7 +565,7 @@ TEST(by_same_position_test, boost) {
       q.boost(boost);
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
     // single term

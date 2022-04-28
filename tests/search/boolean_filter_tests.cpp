@@ -138,8 +138,8 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
       const docids_t::const_iterator& first,
       const docids_t::const_iterator& last,
       const irs::byte_type* stats = nullptr,
-      const irs::order::prepared& ord = irs::order::prepared::unordered(),
-      irs::boost_t boost = irs::no_boost())
+      const irs::Order& ord = irs::Order::kUnordered,
+      irs::boost_t boost = irs::kNoBoost)
     : first_(first),
       last_(last),
       stats_(stats),
@@ -151,12 +151,13 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
     if (!ord.empty()) {
       assert(stats_);
 
-      scorers_ = irs::order::prepared::scorers(
+      score_.resize(ord);
+      scorers_ = irs::Order::Scorers(
         ord,
         irs::sub_reader::empty(),
         irs::empty_term_reader{0},
         stats_,
-        score_.realloc(ord),
+        score_.data(),
         *this,
         boost);
 
@@ -208,7 +209,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
  private:
   std::map<irs::type_info::type_id, irs::attribute*> attrs_;
   irs::cost est_;
-  irs::order::prepared::scorers scorers_;
+  irs::Order::Scorers scorers_;
   docids_t::const_iterator first_;
   docids_t::const_iterator last_;
   const irs::byte_type* stats_;
@@ -243,11 +244,11 @@ std::vector<DocIterator> execute_all(
 }
 
 template<typename DocIterator>
-std::pair<std::vector<DocIterator>, std::vector<irs::order::prepared>> execute_all(
+std::pair<std::vector<DocIterator>, std::vector<irs::Order>> execute_all(
     const std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>>& docs
 ) {
   const irs::byte_type* stats = irs::bytes_ref::EMPTY.c_str();
-  std::vector<irs::order::prepared> order;
+  std::vector<irs::Order> order;
   order.reserve(docs.size());
   std::vector<DocIterator> itrs;
   itrs.reserve(docs.size());
@@ -262,7 +263,7 @@ std::pair<std::vector<DocIterator>, std::vector<irs::order::prepared>> execute_a
         doc.begin(), doc.end()));
     } else {
       itrs.emplace_back(irs::memory::make_managed<detail::basic_doc_iterator>(
-        doc.begin(), doc.end(), stats, order.back(), irs::no_boost()));
+        doc.begin(), doc.end(), stats, order.back(), irs::kNoBoost));
     }
   }
 
@@ -292,7 +293,7 @@ struct boosted: public irs::filter {
 
     virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
-      const irs::order::prepared& ord,
+      const irs::Order& ord,
       irs::ExecutionMode /*mode*/,
       const irs::attribute_provider* /*ctx*/) const override {
       boosted::execute_count++;
@@ -309,7 +310,7 @@ struct boosted: public irs::filter {
 
   virtual irs::filter::prepared::ptr prepare(
       const irs::index_reader&,
-      const irs::order::prepared&,
+      const irs::Order&,
       irs::boost_t boost,
       const irs::attribute_provider* /*ctx*/) const override {
     return irs::memory::make_managed<boosted::prepared>(docs, this->boost()*boost);
@@ -610,10 +611,10 @@ TEST(boolean_query_boost, and_filter) {
 
     auto prep = root.prepare(
       irs::sub_reader::empty(),
-      irs::order::prepared::unordered()
+      irs::Order::kUnordered
     );
 
-    ASSERT_EQ(irs::no_boost(), prep->boost());
+    ASSERT_EQ(irs::kNoBoost, prep->boost());
   }
 
   // boosted empty boolean query
@@ -625,10 +626,10 @@ TEST(boolean_query_boost, and_filter) {
 
     auto prep = root.prepare(
       irs::sub_reader::empty(),
-      irs::order::prepared::unordered()
+      irs::Order::kUnordered
     );
 
-    ASSERT_EQ(irs::no_boost(), prep->boost());
+    ASSERT_EQ(irs::kNoBoost, prep->boost());
   }
 
   // single boosted subquery
@@ -893,10 +894,10 @@ TEST(boolean_query_boost, or_filter) {
 
     auto prep = root.prepare(
       irs::sub_reader::empty(),
-      irs::order::prepared::unordered()
+      irs::Order::kUnordered
     );
 
-    ASSERT_EQ(irs::no_boost(), prep->boost());
+    ASSERT_EQ(irs::kNoBoost, prep->boost());
   }
 
   // empty single boosted query
@@ -908,10 +909,10 @@ TEST(boolean_query_boost, or_filter) {
 
     auto prep = root.prepare(
       irs::sub_reader::empty(),
-      irs::order::prepared::unordered()
+      irs::Order::kUnordered
     );
 
-    ASSERT_EQ(irs::no_boost(), prep->boost());
+    ASSERT_EQ(irs::kNoBoost, prep->boost());
   }
 
   // boosted empty single query
@@ -1237,7 +1238,7 @@ struct unestimated: public irs::filter {
   struct prepared: public irs::filter::prepared {
     virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader&,
-      const irs::order::prepared&,
+      const irs::Order&,
       irs::ExecutionMode /*mode*/,
       const irs::attribute_provider*) const override {
       return irs::memory::make_managed<unestimated::doc_iterator>();
@@ -1246,7 +1247,7 @@ struct unestimated: public irs::filter {
 
   virtual filter::prepared::ptr prepare(
       const irs::index_reader&,
-      const irs::order::prepared&,
+      const irs::Order&,
       irs::boost_t,
       const irs::attribute_provider*) const override {
     return irs::memory::make_managed<unestimated::prepared>();
@@ -1296,7 +1297,7 @@ struct estimated: public irs::filter {
 
     virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader&,
-      const irs::order::prepared&,
+      const irs::Order&,
       irs::ExecutionMode /*mode*/,
       const irs::attribute_provider*) const override {
       return irs::memory::make_managed<estimated::doc_iterator>(
@@ -1310,7 +1311,7 @@ struct estimated: public irs::filter {
 
   virtual filter::prepared::ptr prepare(
       const irs::index_reader&,
-      const irs::order::prepared&,
+      const irs::Order&,
       irs::boost_t,
       const irs::attribute_provider*) const override {
     return irs::memory::make_managed<estimated::prepared>(est,&evaluated);
@@ -1342,7 +1343,7 @@ TEST( boolean_query_estimation, or_filter) {
 
     auto prep = root.prepare(
       irs::sub_reader::empty(),
-      irs::order::prepared::unordered()
+      irs::Order::kUnordered
     );
 
     auto docs = prep->execute(irs::sub_reader::empty());
@@ -1370,7 +1371,7 @@ TEST( boolean_query_estimation, or_filter) {
 
     auto prep = root.prepare(
       irs::sub_reader::empty(),
-      irs::order::prepared::unordered()
+      irs::Order::kUnordered
     );
 
     auto docs = prep->execute(irs::sub_reader::empty());
@@ -1391,7 +1392,7 @@ TEST( boolean_query_estimation, or_filter) {
 
     auto prep = root.prepare(
       irs::sub_reader::empty(),
-      irs::order::prepared::unordered()
+      irs::Order::kUnordered
     );
 
     auto docs = prep->execute(irs::sub_reader::empty());
@@ -1467,7 +1468,7 @@ TEST( boolean_query_estimation, or_filter) {
 
     auto prep = root.prepare(
       irs::sub_reader::empty(),
-      irs::order::prepared::unordered()
+      irs::Order::kUnordered
     );
 
     auto docs = prep->execute(irs::sub_reader::empty());
@@ -1487,7 +1488,7 @@ TEST( boolean_query_estimation, and_filter) {
 
     auto prep = root.prepare(
       irs::sub_reader::empty(),
-      irs::order::prepared::unordered()
+      irs::Order::kUnordered
     );
 
     auto docs = prep->execute(irs::sub_reader::empty());
@@ -1513,7 +1514,7 @@ TEST( boolean_query_estimation, and_filter) {
 
     auto prep = root.prepare(
       irs::sub_reader::empty(),
-      irs::order::prepared::unordered()
+      irs::Order::kUnordered
     );
 
     auto docs = prep->execute(irs::sub_reader::empty());
@@ -1546,7 +1547,7 @@ TEST( boolean_query_estimation, and_filter) {
 
     auto prep = root.prepare(
       irs::sub_reader::empty(),
-      irs::order::prepared::unordered()
+      irs::Order::kUnordered
     );
 
     auto docs = prep->execute(irs::sub_reader::empty());
@@ -1579,7 +1580,7 @@ TEST( boolean_query_estimation, and_filter) {
 
     auto prep = root.prepare(
       irs::sub_reader::empty(),
-      irs::order::prepared::unordered()
+      irs::Order::kUnordered
     );
 
     auto docs = prep->execute(irs::sub_reader::empty());
@@ -1600,7 +1601,7 @@ TEST( boolean_query_estimation, and_filter) {
     irs::And root;
     auto prep = root.prepare(
       irs::sub_reader::empty(),
-      irs::order::prepared::unordered()
+      irs::Order::kUnordered
     );
 
     auto docs = prep->execute(irs::sub_reader::empty());
@@ -2990,7 +2991,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     }
 
     auto res = detail::execute_all<disjunction::adapter>(docs);
-    disjunction it(std::move(res.first), irs::order::prepared::unordered(), irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    disjunction it(std::move(res.first), irs::Order::kUnordered, irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -3931,7 +3932,7 @@ TEST(block_disjunction_test, next_scored) {
       auto res = detail::execute_all<disjunction::adapter>(docs);
 
       // custom cost
-      disjunction it(std::move(res.first), irs::order::prepared::unordered(),
+      disjunction it(std::move(res.first), irs::Order::kUnordered,
                      irs::sort::MergeType::AGGREGATE, 1);
 
       // score, no order set
@@ -4049,7 +4050,7 @@ TEST(block_disjunction_test, next_scored) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto res = detail::execute_all<disjunction::adapter>(docs);
-      disjunction it(std::move(res.first), irs::order::prepared::unordered(),
+      disjunction it(std::move(res.first), irs::Order::kUnordered,
                      irs::sort::MergeType::AGGREGATE, 2); // custom cost
 
       // score, no order set
@@ -4550,7 +4551,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       auto res = detail::execute_all<disjunction::adapter>(docs);
 
       // custom cost
-      disjunction it(std::move(res.first), irs::order::prepared::unordered(),
+      disjunction it(std::move(res.first), irs::Order::kUnordered,
                      irs::sort::MergeType::AGGREGATE, 1);
 
       // score, no order set
@@ -4668,7 +4669,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto res = detail::execute_all<disjunction::adapter>(docs);
-      disjunction it(std::move(res.first), irs::order::prepared::unordered(),
+      disjunction it(std::move(res.first), irs::Order::kUnordered,
                      irs::sort::MergeType::AGGREGATE, 2); // custom cost
 
       // score, no order set
@@ -6886,7 +6887,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
     auto res = detail::execute_all<disjunction::adapter>(docs);
 
-    disjunction it(std::move(res.first), irs::order::prepared::unordered(),
+    disjunction it(std::move(res.first), irs::Order::kUnordered,
                    irs::sort::MergeType::AGGREGATE, 2); // custom cost
 
     // no order set
@@ -7396,7 +7397,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
 
     auto res = detail::execute_all<disjunction::adapter>(docs);
 
-    disjunction it(std::move(res.first), irs::order::prepared::unordered(),
+    disjunction it(std::move(res.first), irs::Order::kUnordered,
                    irs::sort::MergeType::AGGREGATE, 2); // custom cost
 
     // no order set
@@ -9487,7 +9488,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
     }
 
     auto res = detail::execute_all<disjunction::adapter>(docs);
-    disjunction it(std::move(res.first), irs::order::prepared::unordered(), irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    disjunction it(std::move(res.first), irs::Order::kUnordered, irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -10471,7 +10472,7 @@ TEST(disjunction_test, scored_seek_next) {
     }
 
     auto res = detail::execute_all<disjunction::adapter>(docs);
-    disjunction it(std::move(res.first), irs::order::prepared::unordered(), irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    disjunction it(std::move(res.first), irs::Order::kUnordered, irs::sort::MergeType::AGGREGATE, 1); // custom cost
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -12059,7 +12060,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     }
 
     auto res = detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs);
-    disjunction it(std::move(res.first), 2, irs::order::prepared::unordered());
+    disjunction it(std::move(res.first), 2, irs::Order::kUnordered);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -12886,7 +12887,7 @@ TEST(conjunction_test, scored_seek_next) {
     }
 
     auto res = detail::execute_all<conjunction::doc_iterator_t>(docs);
-    conjunction it(std::move(res.first), irs::order::prepared::unordered());
+    conjunction it(std::move(res.first), irs::Order::kUnordered);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -14733,7 +14734,7 @@ TEST(Not_test, ctor) {
   irs::Not q;
   ASSERT_EQ(irs::type<irs::Not>::id(), q.type());
   ASSERT_EQ(nullptr, q.filter());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 }
 
 TEST(Not_test, equal) {
@@ -14772,7 +14773,7 @@ TEST(And_test, ctor) {
   ASSERT_EQ(irs::type<irs::And>::id(), q.type());
   ASSERT_TRUE(q.empty());
   ASSERT_EQ(0, q.size());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 }
 
 TEST(And_test, add_clear) {
@@ -14956,7 +14957,7 @@ TEST(Or_test, ctor) {
   ASSERT_TRUE(q.empty());
   ASSERT_EQ(0, q.size());
   ASSERT_EQ(1, q.min_match_count());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 }
 
 TEST(Or_test, add_clear) {
@@ -15060,7 +15061,7 @@ TEST(Or_test, optimize_all_unscored ) {
   root.add<irs::empty>();
 
   auto prep = root.prepare(irs::sub_reader::empty(),
-                           irs::order::prepared::unordered());
+                           irs::Order::kUnordered);
 
   prep->execute(irs::sub_reader::empty());
   ASSERT_EQ(0, detail::boosted::execute_count); // specific filters should be opt out

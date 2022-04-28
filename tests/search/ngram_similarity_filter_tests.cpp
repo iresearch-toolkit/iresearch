@@ -63,7 +63,7 @@ TEST(ngram_similarity_base_test, ctor) {
   irs::by_ngram_similarity q;
   ASSERT_EQ(irs::type<irs::by_ngram_similarity>::id(), q.type());
   ASSERT_EQ(irs::by_ngram_similarity_options{}, q.options());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
   ASSERT_EQ("", q.field());
 
   static_assert(
@@ -79,7 +79,7 @@ TEST(ngram_similarity_base_test, boost) {
       irs::by_ngram_similarity q;
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
 
@@ -88,7 +88,7 @@ TEST(ngram_similarity_base_test, boost) {
       irs::by_ngram_similarity q = make_filter("field", {"1", "2"}, 0.5f);
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
     // multiple terms
@@ -96,7 +96,7 @@ TEST(ngram_similarity_base_test, boost) {
       irs::by_ngram_similarity q = make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
   }
 
@@ -110,7 +110,7 @@ TEST(ngram_similarity_base_test, boost) {
       q.boost(boost);
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
     // simple disjunction
@@ -599,7 +599,7 @@ TEST_P(ngram_similarity_filter_test_case, no_match_case) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"ee", "we", "qq", "rr", "ff", "never_match"}, 0.1f);
 
-  auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
+  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
 
@@ -623,7 +623,7 @@ TEST_P(ngram_similarity_filter_test_case, no_serial_match_case) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"ee", "ss", "pa", "rr" }, 0.5f);
 
-  auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
+  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
     auto* doc = irs::get<irs::document>(*docs);
@@ -648,7 +648,7 @@ TEST_P(ngram_similarity_filter_test_case, one_match_case) {
 
   docs_t expected{ 1, 3, 5, 6, 7, 8, 9, 10, 12};
   const size_t expected_size = expected.size();
-  auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
+  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
   size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
@@ -679,7 +679,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_test) {
 
   docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
-  auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
+  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
   size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
@@ -710,7 +710,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_test) {
 
   docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
-  auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
+  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
   size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
@@ -741,7 +741,7 @@ TEST_P(ngram_similarity_filter_test_case, not_miss_match_for_tail) {
 
   docs_t expected{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
-  auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
+  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
   size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
@@ -774,7 +774,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle_test) {
   docs_t expected{ 1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
 
-  auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
+  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
   size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
@@ -806,7 +806,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle2_test) {
   docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
 
-  auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
+  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
   size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
@@ -838,7 +838,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
   docs_t expected{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
 
-  auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
+  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
   size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);

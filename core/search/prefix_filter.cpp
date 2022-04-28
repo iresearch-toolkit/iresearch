@@ -53,7 +53,7 @@ void visit(
     visitor.prepare(segment, reader, *terms);
 
     do {
-      visitor.visit(no_boost());
+      visitor.visit(kNoBoost);
 
       if (!terms->next()) {
         break;
@@ -71,12 +71,12 @@ DEFINE_FACTORY_DEFAULT(by_prefix) // cppcheck-suppress unknownMacro
 
 /*static*/ filter::prepared::ptr by_prefix::prepare(
     const index_reader& index,
-    const order::prepared& ord,
+    const Order& ord,
     boost_t boost,
     string_ref field,
     bytes_ref prefix,
     size_t scored_terms_limit) {
-  limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
+  limited_sample_collector<term_frequency> collector(ord.buckets.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   multiterm_query::states_t states(index);
   multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 

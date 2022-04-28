@@ -42,7 +42,7 @@ class column_existence_query : public irs::filter::prepared {
 
   virtual doc_iterator::ptr execute(
       const sub_reader& segment,
-      const order::prepared& ord,
+      const Order& ord,
       ExecutionMode /*mode*/,
       const attribute_provider* /*ctx*/) const override {
     const auto* column = segment.column(field_);
@@ -58,20 +58,22 @@ class column_existence_query : public irs::filter::prepared {
   doc_iterator::ptr iterator(
       const sub_reader& segment,
       const column_reader& column,
-      const order::prepared& ord) const {
+      const Order& ord) const {
     auto it = column.iterator(false);
 
     if (IRS_UNLIKELY(!it)) {
       return doc_iterator::empty();
     }
 
-    if (!ord.empty()) {
+    if (!ord.buckets.empty()) {
       auto* score = irs::get_mutable<irs::score>(it.get());
 
       if (score) {
-        order::prepared::scorers scorers(
+        score->resize(ord);
+
+        Order::Scorers scorers(
           ord, segment, empty_term_reader(column.size()),
-          stats_.c_str(), score->realloc(ord), *it, boost());
+          stats_.c_str(), score->data(), *it, boost());
 
         irs::reset(*score, std::move(scorers));
       }
@@ -95,11 +97,11 @@ class column_prefix_existence_query final : public column_existence_query {
 
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& segment,
-      const irs::order::prepared& ord,
+      const irs::Order& ord,
       ExecutionMode /*mode*/,
       const irs::attribute_provider* /*ctx*/) const override {
-    using scored_disjunction_t = irs::scored_disjunction_iterator<irs::doc_iterator::ptr>;
-    using disjunction_t = irs::disjunction_iterator<irs::doc_iterator::ptr>;
+    using scored_disjunction_t = irs::scored_disjunction_iterator<irs::doc_iterator::ptr, SumAggregator>;
+    using disjunction_t = irs::disjunction_iterator<irs::doc_iterator::ptr, SumAggregator>;
 
     const string_ref prefix = field_;
 
@@ -126,7 +128,7 @@ class column_prefix_existence_query final : public column_existence_query {
       }
     }
 
-    if (ord.empty()) {
+    if (ord.buckets.empty()) {
       return irs::make_disjunction<disjunction_t>(std::move(itrs));
     }
 
@@ -146,16 +148,16 @@ DEFINE_FACTORY_DEFAULT(by_column_existence) // cppcheck-suppress unknownMacro
 
 filter::prepared::ptr by_column_existence::prepare(
     const index_reader& reader,
-    const order::prepared& order,
+    const Order& order,
     boost_t filter_boost,
     const attribute_provider* /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
-  bstring stats(order.stats_size(), 0);
+  bstring stats(order.stats_size, 0);
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
-  order.prepare_collectors(stats_buf, reader);
+  PrepareCollectors(order.buckets, stats_buf, reader);
 
   filter_boost *= boost();
 

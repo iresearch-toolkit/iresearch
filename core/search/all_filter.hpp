@@ -38,7 +38,7 @@ class all: public filter {
 
   virtual filter::prepared::ptr prepare(
     const index_reader& reader,
-    const order::prepared& order,
+    const Order& order,
     boost_t filter_boost,
     const attribute_provider* ctx) const override;
 };

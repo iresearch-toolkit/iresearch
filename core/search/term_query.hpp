@@ -43,7 +43,7 @@ class term_query final : public filter::prepared {
 
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& ord,
+      const Order& ord,
       ExecutionMode mode,
       const attribute_provider* /*ctx*/) const override;
 

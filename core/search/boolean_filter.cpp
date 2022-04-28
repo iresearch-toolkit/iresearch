@@ -50,14 +50,14 @@ const irs::all kAllDocsZeroBoost = []() {irs::all a; a.boost(0); return a;}();
 template<typename QueryIterator, typename... Args>
 irs::doc_iterator::ptr make_disjunction(
     const irs::sub_reader& rdr,
-    const irs::order::prepared& ord,
+    const irs::Order& ord,
     irs::ExecutionMode mode,
     const irs::attribute_provider* ctx,
     QueryIterator begin,
     QueryIterator end,
     Args&&... args) {
-  using scored_disjunction_t = irs::scored_disjunction_iterator<irs::doc_iterator::ptr>;
-  using disjunction_t = irs::disjunction_iterator<irs::doc_iterator::ptr>;
+  using scored_disjunction_t = irs::scored_disjunction_iterator<irs::doc_iterator::ptr, irs::SumAggregator>;
+  using disjunction_t = irs::disjunction_iterator<irs::doc_iterator::ptr, irs::SumAggregator>;
 
   assert(std::distance(begin, end) >= 0);
   const size_t size = size_t(std::distance(begin, end));
@@ -81,7 +81,7 @@ irs::doc_iterator::ptr make_disjunction(
     }
   }
 
-  if (ord.empty()) {
+  if (ord.buckets.empty()) {
     // FIXME(gnusi): handle mode
     return irs::make_disjunction<disjunction_t>(
       std::move(itrs), ord, std::forward<Args>(args)...);
@@ -96,13 +96,13 @@ irs::doc_iterator::ptr make_disjunction(
 template<typename QueryIterator, typename... Args>
 irs::doc_iterator::ptr make_conjunction(
     const irs::sub_reader& rdr,
-    const irs::order::prepared& ord,
+    const irs::Order& ord,
     irs::ExecutionMode mode,
     const irs::attribute_provider* ctx,
     QueryIterator begin,
     QueryIterator end,
     Args&&... args) {
-  typedef irs::conjunction<irs::doc_iterator::ptr> conjunction_t;
+  typedef irs::conjunction<irs::doc_iterator::ptr, irs::SumAggregator> conjunction_t;
 
   assert(std::distance(begin, end) >= 0);
   const size_t size = std::distance(begin, end);
@@ -149,7 +149,7 @@ class boolean_query : public filter::prepared {
 
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& ord,
+      const Order& ord,
       ExecutionMode mode,
       const attribute_provider* ctx) const override {
     if (empty()) {
@@ -160,7 +160,7 @@ class boolean_query : public filter::prepared {
     auto incl = execute(rdr, ord, mode, ctx, begin(), begin() + excl_);
 
     // exclusion part does not affect scoring at all
-    auto excl = ::make_disjunction(rdr, order::prepared::unordered(),
+    auto excl = ::make_disjunction(rdr, Order::kUnordered,
                                    ExecutionMode::kAll, ctx,
                                    begin() + excl_, end());
 
@@ -175,7 +175,7 @@ class boolean_query : public filter::prepared {
 
   virtual void prepare(
       const index_reader& rdr,
-      const order::prepared& ord,
+      const Order& ord,
       boost_t boost,
       const attribute_provider* ctx,
       std::span<const filter* const> incl,
@@ -195,7 +195,7 @@ class boolean_query : public filter::prepared {
     for (const auto* filter : excl) {
       // exclusion part does not affect scoring at all
       queries.emplace_back(filter->prepare(
-        rdr, order::prepared::unordered(), irs::no_boost(), ctx));
+        rdr, Order::kUnordered, irs::kNoBoost, ctx));
     }
 
     // nothrow block
@@ -213,7 +213,7 @@ class boolean_query : public filter::prepared {
  protected:
   virtual doc_iterator::ptr execute(
     const sub_reader& rdr,
-    const order::prepared& ord,
+    const Order& ord,
     ExecutionMode mode,
     const attribute_provider* ctx,
     iterator begin,
@@ -235,7 +235,7 @@ class and_query final : public boolean_query {
  public:
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& ord,
+      const Order& ord,
       ExecutionMode mode,
       const attribute_provider* ctx,
       iterator begin,
@@ -252,7 +252,7 @@ class or_query final : public boolean_query {
  public:
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& ord,
+      const Order& ord,
       ExecutionMode mode,
       const attribute_provider* ctx,
       iterator begin,
@@ -268,8 +268,8 @@ class or_query final : public boolean_query {
 //////////////////////////////////////////////////////////////////////////////
 class min_match_query final : public boolean_query {
  private:
-  using scored_disjunction_t = scored_min_match_iterator<doc_iterator::ptr>;
-  using disjunction_t = min_match_iterator<doc_iterator::ptr>; // FIXME use FAST version
+  using scored_disjunction_t = scored_min_match_iterator<doc_iterator::ptr, irs::SumAggregator>;
+  using disjunction_t = min_match_iterator<doc_iterator::ptr, irs::SumAggregator>; // FIXME use FAST version
 
  public:
   explicit min_match_query(size_t min_match_count)
@@ -279,7 +279,7 @@ class min_match_query final : public boolean_query {
 
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& ord,
+      const Order& ord,
       ExecutionMode mode,
       const attribute_provider* ctx,
       iterator begin,
@@ -323,7 +323,7 @@ class min_match_query final : public boolean_query {
  private:
   static doc_iterator::ptr make_min_match_disjunction(
       disjunction_t::doc_iterators_t&& itrs,
-      const order::prepared& ord,
+      const Order& ord,
       size_t min_match_count) {
     const auto size = min_match_count > itrs.size() ? 0 : itrs.size();
 
@@ -337,7 +337,7 @@ class min_match_query final : public boolean_query {
     }
 
     if (min_match_count == size) {
-      typedef conjunction<doc_iterator::ptr> conjunction_t;
+      using conjunction_t = conjunction<doc_iterator::ptr, typename disjunction_t::merger_type>;
 
       // pure conjunction
       return memory::make_managed<conjunction_t>(
@@ -349,7 +349,7 @@ class min_match_query final : public boolean_query {
     // min match disjunction
     assert(min_match_count < size);
 
-    if (ord.empty()) {
+    if (ord.buckets.empty()) {
       return memory::make_managed<disjunction_t>(std::move(itrs), min_match_count);
     }
 
@@ -385,7 +385,7 @@ bool boolean_filter::equals(const filter& rhs) const noexcept {
 
 filter::prepared::ptr boolean_filter::prepare(
     const index_reader& rdr,
-    const order::prepared& ord,
+    const Order& ord,
     boost_t boost,
     const attribute_provider* ctx) const {
   // determine incl/excl parts
@@ -457,7 +457,7 @@ filter::prepared::ptr And::prepare(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl,
     const index_reader& rdr,
-    const order::prepared& ord,
+    const Order& ord,
     boost_t boost,
     const attribute_provider* ctx) const {
 
@@ -497,7 +497,7 @@ filter::prepared::ptr And::prepare(
       // new_boost * OR_BOOST * LEFT_BOOST. If we substitute new_boost back we will get
       // ( boost * OR_BOOST * ALL_BOOST + boost * OR_BOOST * LEFT_BOOST) - original non-optimized boost value
       auto left_boost = (*incl.begin())->boost();
-      if (this->boost() != 0 && left_boost != 0 && !ord.empty()) {
+      if (this->boost() != 0 && left_boost != 0 && !ord.buckets.empty()) {
         boost = (boost * this->boost() * all_boost + boost * this->boost() * left_boost)
           / (left_boost * this->boost());
       } else {
@@ -531,7 +531,7 @@ filter::prepared::ptr Or::prepare(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl,
     const index_reader& rdr,
-    const order::prepared& ord,
+    const Order& ord,
     boost_t boost,
     const attribute_provider* ctx) const {
   // preparing
@@ -565,7 +565,7 @@ filter::prepared::ptr Or::prepare(
     }
   }
   if (all_count != 0) {
-    if (ord.empty() && incl.size() > 1 && min_match_count_ <= all_count) {
+    if (ord.buckets.empty() && incl.size() > 1 && min_match_count_ <= all_count) {
       // if we have at least one all in include group - all other filters are not necessary
       // in case there is no scoring and 'all' count satisfies  min_match
       assert(incl_all != nullptr);
@@ -626,7 +626,7 @@ Not::Not() noexcept
 
 filter::prepared::ptr Not::prepare(
     const index_reader& rdr,
-    const order::prepared& ord,
+    const Order& ord,
     boost_t boost,
     const attribute_provider* ctx) const {
   const auto res = optimize_not(*this);

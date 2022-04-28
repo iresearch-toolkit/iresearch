@@ -46,7 +46,7 @@ struct ngram_segment_state_t {
 };
 
 using states_t = states_cache<ngram_segment_state_t>;
-using approximation = min_match_disjunction<doc_iterator::ptr>;
+using approximation = min_match_disjunction<doc_iterator::ptr, NoopAggegator>;
 
 }
 
@@ -64,12 +64,12 @@ class ngram_similarity_doc_iterator final
       const byte_type* stats,
       size_t total_terms_count,
       size_t min_match_count = 1,
-      const order::prepared& ord = order::prepared::unordered())
+      const Order& ord = Order::kUnordered)
     : pos_(itrs.begin(), itrs.end()),
       approx_(std::move(itrs), min_match_count), // we are not interested in disjunction`s scoring
       min_match_count_(min_match_count),
       total_terms_count_(static_cast<boost_t>(total_terms_count)), // avoid runtime conversion
-      empty_order_(ord.empty()) {
+      empty_order_(ord.buckets.empty()) {
     std::get<attribute_ptr<document>>(attrs_) = irs::get_mutable<document>(&approx_);
 
     // FIXME find a better estimation
@@ -79,9 +79,9 @@ class ngram_similarity_doc_iterator final
     if (!empty_order_) {
       auto& score = std::get<irs::score>(attrs_);
 
-      score.realloc(ord);
+      score.resize(ord);
 
-      order::prepared::scorers scorers(
+      Order::Scorers scorers(
         ord, segment, field, stats,
         score.data(), *this, boost);
 
@@ -365,7 +365,7 @@ class ngram_similarity_query : public filter::prepared {
  public:
   ngram_similarity_query(
      size_t min_match_count, states_t&& states,
-     bstring&& stats, boost_t boost = no_boost())
+     bstring&& stats, boost_t boost = kNoBoost)
    : prepared(boost), min_match_count_(min_match_count),
      states_(std::move(states)), stats_(std::move(stats)) {
   }
@@ -374,7 +374,7 @@ class ngram_similarity_query : public filter::prepared {
 
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& ord,
+      const Order& ord,
       ExecutionMode /*mode*/,
       const attribute_provider* /*ctx*/) const override {
     auto query_state = states_.find(rdr);
@@ -383,7 +383,7 @@ class ngram_similarity_query : public filter::prepared {
       return doc_iterator::empty();
     }
 
-    if (1 == min_match_count_ && ord.empty()) {
+    if (1 == min_match_count_ && ord.buckets.empty()) {
       return execute_simple_disjunction(*query_state);
     } else {
       return execute_ngram_similarity(rdr, *query_state, ord);
@@ -393,7 +393,7 @@ class ngram_similarity_query : public filter::prepared {
  private:
   doc_iterator::ptr execute_simple_disjunction(
       const ngram_segment_state_t& query_state) const {
-    using disjunction_t = irs::disjunction_iterator<doc_iterator::ptr>;
+    using disjunction_t = irs::disjunction_iterator<doc_iterator::ptr, SumAggregator>;
 
     disjunction_t::doc_iterators_t itrs;
     itrs.reserve(query_state.terms.size());
@@ -423,10 +423,10 @@ class ngram_similarity_query : public filter::prepared {
   doc_iterator::ptr execute_ngram_similarity(
       const sub_reader& rdr,
       const ngram_segment_state_t& query_state,
-      const order::prepared& ord) const {
+      const Order& ord) const {
     approximation::doc_iterators_t itrs;
     itrs.reserve(query_state.terms.size());
-    const IndexFeatures features = ord.features() | by_ngram_similarity::required();
+    const IndexFeatures features = ord.features | by_ngram_similarity::kRequiredFeatures;
     for (auto& term_state : query_state.terms) {
       if (term_state == nullptr) {
         continue;
@@ -462,7 +462,7 @@ DEFINE_FACTORY_DEFAULT(by_ngram_similarity) // cppcheck-suppress unknownMacro
 
 filter::prepared::ptr by_ngram_similarity::prepare(
     const index_reader& rdr,
-    const order::prepared& ord,
+    const Order& ord,
     boost_t boost,
     const attribute_provider* /*ctx*/) const {
   const auto threshold = std::max(0.f, std::min(1.f, options().threshold));
@@ -498,7 +498,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     }
 
     // check required features
-    if (required() != (field->meta().index_features & required())) {
+    if (kRequiredFeatures != (field->meta().index_features & kRequiredFeatures)) {
       continue;
     }
 
@@ -532,7 +532,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     term_states.reserve(terms_count);
   }
 
-  bstring stats(ord.stats_size(), 0);
+  bstring stats(ord.stats_size, 0);
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
   for (size_t term_idx = 0; term_idx < terms_count; ++term_idx) {

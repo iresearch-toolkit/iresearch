@@ -631,7 +631,7 @@ TEST_P(term_filter_test_case, visit) {
   irs::by_term::visit(segment, *reader, term, visitor);
   ASSERT_EQ(1, visitor.prepare_calls_counter());
   ASSERT_EQ(1, visitor.visit_calls_counter());
-  ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"abc", irs::no_boost()}}),
+  ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"abc", irs::kNoBoost}}),
             visitor.term_refs<char>());
   visitor.reset();
 }
@@ -646,7 +646,7 @@ TEST(by_term_test, ctor) {
   ASSERT_EQ(irs::type<irs::by_term>::id(), q.type());
   ASSERT_EQ(irs::by_term_options{}, q.options());
   ASSERT_EQ("", q.field());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 }
 
 TEST(by_term_test, equal) { 
@@ -661,7 +661,7 @@ TEST(by_term_test, boost) {
     irs::by_term q = make_filter("field", "term");
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::no_boost(), prepared->boost());
+    ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
   // with boost

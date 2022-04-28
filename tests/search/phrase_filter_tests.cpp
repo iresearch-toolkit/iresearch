@@ -6136,7 +6136,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(1, freq->value);
     ASSERT_EQ(docs->value(), doc->value);
-    ASSERT_EQ(irs::no_boost(), boost->value);
+    ASSERT_EQ(irs::kNoBoost, boost->value);
     ASSERT_EQ(docs->value(), values->seek(docs->value()));
     ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
     ASSERT_EQ(docs->value(), docs_seek->seek(docs->value()));
@@ -7423,7 +7423,7 @@ TEST(by_phrase_test, ctor) {
   ASSERT_EQ(irs::type<irs::by_phrase>::id(), q.type());
   ASSERT_EQ("", q.field());
   ASSERT_EQ(irs::by_phrase_options{}, q.options());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 
   static_assert(
     (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) ==
@@ -7439,7 +7439,7 @@ TEST(by_phrase_test, boost) {
       *q.mutable_field() = "field";
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
     // single term
@@ -7449,7 +7449,7 @@ TEST(by_phrase_test, boost) {
       q.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
     // multiple terms
@@ -7460,7 +7460,7 @@ TEST(by_phrase_test, boost) {
       q.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
   }
 
@@ -7475,7 +7475,7 @@ TEST(by_phrase_test, boost) {
       q.boost(boost);
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
     // single term

@@ -86,7 +86,7 @@ struct score_iterator_adapter {
 ///   V  [n] <-- end
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
-template<typename DocIterator>
+template<typename DocIterator, typename Merger>
 class conjunction : public doc_iterator, private score_ctx {
  public:
   using doc_iterator_t = score_iterator_adapter<DocIterator>;
@@ -121,12 +121,10 @@ class conjunction : public doc_iterator, private score_ctx {
 
   conjunction(
       doc_iterators&& itrs,
-      const order::prepared& ord = order::prepared::unordered(),
-      sort::MergeType merge_type = sort::MergeType::AGGREGATE)
+      const Order& ord = Order::kUnordered)
     : itrs_(std::move(itrs.itrs)),
       front_(itrs.front),
-      front_doc_(itrs.front_doc),
-      merger_(ord.prepare_merger(merge_type)) {
+      front_doc_(itrs.front_doc) {
     assert(!itrs_.empty());
     assert(front_);
     assert(front_doc_);
@@ -172,14 +170,14 @@ class conjunction : public doc_iterator, private score_ctx {
     attribute_ptr<cost>,
     score>;
 
-  void prepare_score(const order::prepared& ord) {
-    if (ord.empty()) {
+  void prepare_score(const Order& ord) {
+    if (ord.buckets.empty()) {
       return;
     }
 
     auto& score = std::get<irs::score>(attrs_);
 
-    score.realloc(ord);
+    score.resize(ord);
 
     // copy scores into separate container
     // to avoid extra checks
@@ -202,37 +200,37 @@ class conjunction : public doc_iterator, private score_ctx {
         score.reset(*scores_.front());
         break;
       case 2:
-        score.reset(this, [](score_ctx* ctx) -> const byte_type* {
+        score.reset(this, [](score_ctx* ctx) -> const score_t* {
           auto& self = *static_cast<conjunction*>(ctx);
           auto* score_buf = std::get<irs::score>(self.attrs_).data();
           self.score_vals_.front() = self.scores_.front()->evaluate();
           self.score_vals_.back() = self.scores_.back()->evaluate();
-          self.merger_(score_buf, self.score_vals_.data(), 2);
+          Merger::Merge(score_buf, self.score_vals_.data(), 2);
 
           return score_buf;
         });
         break;
       case 3:
-        score.reset(this, [](score_ctx* ctx) -> const byte_type* {
+        score.reset(this, [](score_ctx* ctx) -> const score_t* {
           auto& self = *static_cast<conjunction*>(ctx);
           auto* score_buf = std::get<irs::score>(self.attrs_).data();
           self.score_vals_.front() = self.scores_.front()->evaluate();
           self.score_vals_[1] = self.scores_[1]->evaluate();
           self.score_vals_.back() = self.scores_.back()->evaluate();
-          self.merger_(score_buf, self.score_vals_.data(), 3);
+          Merger::Merge(score_buf, self.score_vals_.data(), 3);
 
           return score_buf;
         });
         break;
       default:
-        score.reset(this, [](score_ctx* ctx) -> const byte_type* {
+        score.reset(this, [](score_ctx* ctx) -> const score_t* {
           auto& self = *static_cast<conjunction*>(ctx);
           auto* score_buf = std::get<irs::score>(self.attrs_).data();
           auto* score_val = self.score_vals_.data();
           for (auto* it_score : self.scores_) {
             *score_val++ = it_score->evaluate();
           }
-          self.merger_(score_buf, self.score_vals_.data(), self.score_vals_.size());
+          Merger::Merge(score_buf, self.score_vals_.data(), self.score_vals_.size());
 
           return score_buf;
         });
@@ -273,11 +271,10 @@ class conjunction : public doc_iterator, private score_ctx {
 
   attributes attrs_;
   doc_iterators_t itrs_;
-  std::vector<const irs::score*> scores_; // valid sub-scores
-  mutable std::vector<const irs::byte_type*> score_vals_;
+  std::vector<const score*> scores_; // valid sub-scores
+  mutable std::vector<const score_t*> score_vals_;
   irs::doc_iterator* front_;
   const irs::document* front_doc_{};
-  order::prepared::merger merger_;
 }; // conjunction
 
 //////////////////////////////////////////////////////////////////////////////

@@ -36,7 +36,7 @@ namespace {
 
 using namespace irs;
 
-using conjunction_t = conjunction<irs::doc_iterator::ptr> ;
+using conjunction_t = conjunction<irs::doc_iterator::ptr, SumAggregator> ;
 
 class same_position_iterator final : public conjunction_t {
  public:
@@ -44,7 +44,7 @@ class same_position_iterator final : public conjunction_t {
 
   same_position_iterator(
       conjunction_t::doc_iterators_t&& itrs,
-      const order::prepared& ord,
+      const Order& ord,
       positions_t&& pos)
     : conjunction_t(std::move(itrs), ord),
       pos_(std::move(pos)) {
@@ -124,7 +124,7 @@ class same_position_query final : public filter::prepared {
 
   virtual doc_iterator::ptr execute(
       const sub_reader& segment,
-      const order::prepared& ord,
+      const Order& ord,
       ExecutionMode /*mode*/,
       const attribute_provider* /*ctx*/) const override {
     // get query state for the specified reader
@@ -135,7 +135,7 @@ class same_position_query final : public filter::prepared {
     }
 
     // get features required for query & order
-    const IndexFeatures features = ord.features() | by_same_position::required();
+    const IndexFeatures features = ord.features | by_same_position::kRequiredFeatures;
 
     same_position_iterator::doc_iterators_t itrs;
     itrs.reserve(query_state->size());
@@ -143,7 +143,7 @@ class same_position_query final : public filter::prepared {
     same_position_iterator::positions_t positions;
     positions.reserve(itrs.size());
 
-    const bool no_score = ord.empty();
+    const bool no_score = ord.buckets.empty();
     auto term_stats = stats_.begin();
     for (auto& term_state : *query_state) {
       auto* reader = term_state.reader;
@@ -167,9 +167,11 @@ class same_position_query final : public filter::prepared {
         auto* score = irs::get_mutable<irs::score>(docs.get());
 
         if (score) {
-          order::prepared::scorers scorers(
+          score->resize(ord);
+
+          Order::Scorers scorers(
             ord, segment, *term_state.reader,
-            term_stats->c_str(), score->realloc(ord),
+            term_stats->c_str(), score->data(),
             *docs, boost());
 
           irs::reset(*score, std::move(scorers));
@@ -200,7 +202,7 @@ DEFINE_FACTORY_DEFAULT(by_same_position) // cppcheck-suppress unknownMacro
 
 filter::prepared::ptr by_same_position::prepare(
     const index_reader& index,
-    const order::prepared& ord,
+    const Order& ord,
     boost_t boost,
     const attribute_provider* /*ctx*/) const {
   auto& terms = options().terms;
@@ -241,7 +243,7 @@ filter::prepared::ptr by_same_position::prepare(
       }
 
       // check required features
-      if (required() != (field->meta().index_features & required())) {
+      if (kRequiredFeatures != (field->meta().index_features & kRequiredFeatures)) {
         continue;
       }
 
@@ -251,7 +253,7 @@ filter::prepared::ptr by_same_position::prepare(
       seek_term_iterator::ptr term = field->iterator(SeekMode::NORMAL);
 
       if (!term->seek(branch.second)) {
-        if (ord.empty()) {
+        if (ord.buckets.empty()) {
           break;
         } else {
           // continue here because we should collect 
@@ -286,7 +288,7 @@ filter::prepared::ptr by_same_position::prepare(
   size_t term_idx = 0;
   same_position_query::stats_t stats(size);
   for (auto& stat : stats) {
-    stat.resize(ord.stats_size());
+    stat.resize(ord.stats_size);
     auto* stats_buf = const_cast<byte_type*>(stat.data());
     term_stats.finish(stats_buf, term_idx++, field_stats, index);
   }

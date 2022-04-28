@@ -92,7 +92,7 @@ void visit(
   // read term attributes
   terms->read();
 
-  visitor.visit(no_boost());
+  visitor.visit(kNoBoost);
 }
 
 }
@@ -114,7 +114,7 @@ DEFINE_FACTORY_DEFAULT(by_term)
 
 /*static*/ filter::prepared::ptr by_term::prepare(
     const index_reader& index,
-    const order::prepared& ord,
+    const Order& ord,
     boost_t boost,
     string_ref field,
     bytes_ref term) {
@@ -138,7 +138,7 @@ DEFINE_FACTORY_DEFAULT(by_term)
     ::visit(segment, *reader, term, visitor);
   }
 
-  bstring stats(ord.stats_size(), 0);
+  bstring stats(ord.stats_size, 0);
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
   term_stats.finish(stats_buf, 0, field_stats, index);

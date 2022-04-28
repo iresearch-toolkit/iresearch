@@ -305,11 +305,9 @@ struct stats final {
   float_t norm_cache[256];
 }; // stats
 
-using score_t = bm25_sort::score_t;
-
 struct BM15Context : public irs::score_ctx {
   BM15Context(
-      byte_type* score_buf,
+      score_t* score_buf,
       float_t k,
       irs::boost_t boost,
       const bm25::stats& stats,
@@ -324,7 +322,7 @@ struct BM15Context : public irs::score_ctx {
     assert(this->score_buf);
   }
 
-  byte_type* score_buf;
+  score_t* score_buf;
   const frequency* freq; // document frequency
   const irs::filter_boost* filter_boost;
   float_t num; // partially precomputed numerator : boost * (k + 1) * idf
@@ -334,7 +332,7 @@ struct BM15Context : public irs::score_ctx {
 template<typename Norm>
 struct BM25Context final : public BM15Context {
   BM25Context(
-      byte_type* score_buf,
+      score_t* score_buf,
       float_t k,
       irs::boost_t boost,
       const bm25::stats& stats,
@@ -401,7 +399,7 @@ struct MakeScoreFunctionImpl<BM15Context> {
   static score_function Make(Args&&... args) {
     return {
         memory::make_unique<Ctx>(std::forward<Args>(args)...),
-        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+        [](irs::score_ctx* ctx) noexcept -> const score_t* {
           auto& state = *static_cast<Ctx*>(ctx);
 
           const float_t tf = static_cast<float_t>(state.freq->value);
@@ -416,7 +414,7 @@ struct MakeScoreFunctionImpl<BM15Context> {
 
           const float_t c1 = state.norm_const;
 
-          sort::score_cast<score_t>(state.score_buf) = c0 - c0 / (1.f + tf / c1);
+          *state.score_buf = c0 - c0 / (1.f + tf / c1);
 
           return state.score_buf;
         }
@@ -432,7 +430,7 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
   static score_function Make(Args&&... args) {
     return {
         memory::make_unique<Ctx>(std::forward<Args>(args)...),
-        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+        [](irs::score_ctx* ctx) noexcept -> const score_t* {
           auto& state = *static_cast<Ctx*>(ctx);
 
           float_t tf;
@@ -450,7 +448,7 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
             c0 = state.num;
           }
 
-          auto& buf = sort::score_cast<score_t>(state.score_buf);
+          auto& buf = *state.score_buf;
 
           if constexpr (NormType::kNorm2Tiny == Norm::kType) {
             static_assert(std::is_same_v<uint32_t, decltype(state.norm())>);
@@ -481,7 +479,7 @@ score_function MakeScoreFunction(const filter_boost* filter_boost,
       std::forward<Args>(args)...);
 }
 
-class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
+class sort final : public irs::PreparedSortBase<bm25::stats> {
  public:
   sort(float_t k, float_t b, bool boost_as_score) noexcept
     : k_{k}, b_{b}, boost_as_score_{boost_as_score} {
@@ -541,7 +539,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* query_stats,
-      byte_type* score_buf,
+      score_t* score,
       const attribute_provider& doc_attrs,
       boost_t boost) const override {
     auto* freq = irs::get<frequency>(doc_attrs);
@@ -552,12 +550,12 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
       }
 
       // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
-      irs::sort::score_cast<score_t>(score_buf) = boost;
+      *score = boost;
 
       return {
-        reinterpret_cast<BM15Context*>(score_buf),
-        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
-          return reinterpret_cast<byte_type*>(ctx);
+        reinterpret_cast<BM15Context*>(score),
+        [](irs::score_ctx* ctx) noexcept -> const score_t* {
+          return reinterpret_cast<score_t*>(ctx);
         }
       };
     }
@@ -575,7 +573,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
 
       auto prepare_norm_scorer = [&]<typename Norm>(Norm&& norm) -> score_function {
         return MakeScoreFunction<BM25Context<Norm>>(
-            filter_boost, score_buf, k_, boost, stats, freq, std::move(norm));
+            filter_boost, score, k_, boost, stats, freq, std::move(norm));
       };
 
       const auto& features = field.meta().features;
@@ -604,7 +602,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
 
     // BM15
     return MakeScoreFunction<BM15Context>(
-        filter_boost, score_buf, k_, boost, stats, freq);
+        filter_boost, score, k_, boost, stats, freq);
   }
 
   virtual irs::sort::term_collector::ptr prepare_term_collector() const override {

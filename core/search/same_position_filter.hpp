@@ -70,15 +70,14 @@ class by_same_position
   //////////////////////////////////////////////////////////////////////////////
   /// @returns features required for filter
   //////////////////////////////////////////////////////////////////////////////
-  static constexpr IndexFeatures required() noexcept {
-    return IndexFeatures::FREQ | IndexFeatures::POS;
-  }
+  static constexpr IndexFeatures kRequiredFeatures = IndexFeatures::FREQ |
+                                                     IndexFeatures::POS;
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
     const index_reader& rdr,
-    const order::prepared& ord,
+    const Order& ord,
     boost_t boost,
     const attribute_provider* ctx) const override;
 }; // by_same_position

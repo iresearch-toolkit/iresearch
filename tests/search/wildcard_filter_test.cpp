@@ -56,7 +56,7 @@ TEST(by_wildcard_test, ctor) {
   ASSERT_EQ(irs::type<irs::by_wildcard>::id(), q.type());
   ASSERT_EQ(irs::by_wildcard_options{}, q.options());
   ASSERT_TRUE(q.field().empty());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 }
 
 TEST(by_wildcard_test, equal) {
@@ -77,7 +77,7 @@ TEST(by_wildcard_test, boost) {
     irs::by_wildcard q = make_filter("field", "bar*");
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::no_boost(), prepared->boost());
+    ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
   // with boost
@@ -456,7 +456,7 @@ TEST_P(wildcard_filter_test_case, visit) {
     ASSERT_EQ(1, visitor.visit_calls_counter());
     ASSERT_EQ(
       (std::vector<std::pair<irs::string_ref, irs::boost_t>>{
-        {"abc", irs::no_boost()},
+        {"abc", irs::kNoBoost},
       }),
       visitor.term_refs<char>());
 
@@ -473,12 +473,12 @@ TEST_P(wildcard_filter_test_case, visit) {
     ASSERT_EQ(6, visitor.visit_calls_counter());
     ASSERT_EQ(
       (std::vector<std::pair<irs::string_ref, irs::boost_t>>{
-        {"abc", irs::no_boost()},
-        {"abcd", irs::no_boost()},
-        {"abcde", irs::no_boost()},
-        {"abcdrer", irs::no_boost()},
-        {"abcy", irs::no_boost()},
-        {"abde", irs::no_boost()}
+        {"abc", irs::kNoBoost},
+        {"abcd", irs::kNoBoost},
+        {"abcde", irs::kNoBoost},
+        {"abcdrer", irs::kNoBoost},
+        {"abcy", irs::kNoBoost},
+        {"abde", irs::kNoBoost}
       }),
       visitor.term_refs<char>());
 
@@ -495,11 +495,11 @@ TEST_P(wildcard_filter_test_case, visit) {
     ASSERT_EQ(5, visitor.visit_calls_counter());
     ASSERT_EQ(
       (std::vector<std::pair<irs::string_ref, irs::boost_t>>{
-        {"abc", irs::no_boost()},
-        {"abcd", irs::no_boost()},
-        {"abcde", irs::no_boost()},
-        {"abcdrer", irs::no_boost()},
-        {"abcy", irs::no_boost()},
+        {"abc", irs::kNoBoost},
+        {"abcd", irs::kNoBoost},
+        {"abcde", irs::kNoBoost},
+        {"abcdrer", irs::kNoBoost},
+        {"abcy", irs::kNoBoost},
       }),
       visitor.term_refs<char>());
 

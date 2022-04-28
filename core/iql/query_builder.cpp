@@ -239,7 +239,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     ErrorNode(): filter(irs::type<ErrorNode>::get()) {}
     irs::filter::prepared::ptr prepare(
         const irs::index_reader&,
-        const irs::order::prepared&,
+        const irs::Order&,
         irs::boost_t,
         const irs::attribute_provider*) const override {
       irs::filter::prepared::ptr result; // null-ptr result
@@ -276,7 +276,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
    private:
     friend class parse_context;
-    irs::order order;
+    irs::Order order;
     size_t nLimit { 0 };
   };
   DEFINE_FACTORY_DEFAULT(RootNode)
@@ -337,7 +337,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
       const irs::iql::parser::semantic_type& value_id
     ) const;
     irs::iql::parser::semantic_type order(
-      irs::order& node, const std::vector<std::pair<size_t, bool>>& order
+      irs::Order& node, const std::vector<std::pair<size_t, bool>>& order
     ) const; // @return SUCCESS or ID of failed node
   };
 
@@ -767,7 +767,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
   }
 
   irs::iql::parser::semantic_type parse_context::order(
-    irs::order& node, const std::vector<std::pair<size_t, bool>>& order
+    irs::Order& node, const std::vector<std::pair<size_t, bool>>& order
   ) const {
     for (auto orderTerm: order) {
       auto& ascending = orderTerm.second;

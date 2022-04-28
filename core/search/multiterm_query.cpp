@@ -36,7 +36,7 @@ class lazy_bitset_iterator final : public bitset_doc_iterator {
   lazy_bitset_iterator(
       const sub_reader& segment,
       const term_reader& field,
-      const order::prepared& ord,
+      const Order& ord,
       std::span<const multiterm_state::unscored_term_state> states,
       cost::cost_t estimation) noexcept
     : bitset_doc_iterator(estimation),
@@ -103,18 +103,21 @@ bool lazy_bitset_iterator::refill(
   return false;
 }
 
+template<typename Aggregator>
+using ScoredDisjunction = scored_disjunction_iterator<doc_iterator::ptr, Aggregator>;
+
+template<typename Aggregator>
+using Disjunction = disjunction_iterator<doc_iterator::ptr, Aggregator>;
+
 }
 
 namespace iresearch {
 
 doc_iterator::ptr multiterm_query::execute(
     const sub_reader& segment,
-    const order::prepared& ord,
+    const Order& ord,
     ExecutionMode /*mode*/,
     const attribute_provider* /*ctx*/) const {
-  using scored_disjunction_t = scored_disjunction_iterator<doc_iterator::ptr>;
-  using disjunction_t = disjunction_iterator<doc_iterator::ptr>;
-
   // get term state for the specified reader
   auto state = states_.find(segment);
 
@@ -127,17 +130,17 @@ doc_iterator::ptr multiterm_query::execute(
   assert(reader);
 
   // get required features for order
-  const IndexFeatures features = ord.features();
+  const IndexFeatures features = ord.features;
   auto& stats = this->stats();
 
   const bool has_unscored_terms = !state->unscored_terms.empty();
 
-  disjunction_t::doc_iterators_t itrs(
+  Disjunction<NoopAggegator>::doc_iterators_t itrs(
     state->scored_states.size() + size_t(has_unscored_terms));
   auto it = itrs.begin();
 
   // add an iterator for each of the scored states
-  const bool no_score = ord.empty();
+  const bool no_score = ord.buckets.empty();
   for (auto& entry : state->scored_states) {
     assert(entry.cookie);
     auto docs = reader->postings(*entry.cookie, features);
@@ -153,9 +156,11 @@ doc_iterator::ptr multiterm_query::execute(
         assert(entry.stat_offset < stats.size());
         auto* stat = stats[entry.stat_offset].c_str();
 
-        order::prepared::scorers scorers(
+        score->resize(ord);
+
+        Order::Scorers scorers(
           ord, segment, *state->reader, stat,
-          score->realloc(ord), *docs, entry.boost*boost());
+          score->data(), *docs, entry.boost*boost());
 
         irs::reset(*score, std::move(scorers));
       }
@@ -179,15 +184,16 @@ doc_iterator::ptr multiterm_query::execute(
     itrs.erase(it, itrs.end());
   }
 
-  if (ord.empty()) {
-    return make_disjunction<disjunction_t>(
-      std::move(itrs), ord, merge_type_,
-      state->estimation());
-  }
+  return ResoveMergeType(merge_type_,
+                         [&]<typename Aggregator>() -> irs::doc_iterator::ptr {
+                           if (ord.buckets.empty()) {
+                             return make_disjunction<Disjunction<Aggregator>>(
+                                 std::move(itrs), ord, state->estimation());
+                           }
 
-  return make_disjunction<scored_disjunction_t>(
-    std::move(itrs), ord, merge_type_,
-    state->estimation());
+                           return make_disjunction<ScoredDisjunction<Aggregator>>(
+                               std::move(itrs), ord, state->estimation());
+                         });
 }
 
 } // ROOT

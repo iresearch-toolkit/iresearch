@@ -137,7 +137,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
   /// @brief finish collecting and evaluate stats
   //////////////////////////////////////////////////////////////////////////////
   void score(const index_reader& index,
-             const order::prepared& order,
+             const Order& order,
              std::vector<bstring>& stats) {
     if (!scored_terms_limit_) {
       return; // nothing to score (optimization)
@@ -176,7 +176,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
     stats.resize(stats_offset);
     for (auto& entry : term_stats) {
       auto& stats_entry = stats[entry.second.stats_offset];
-      stats_entry.resize(order.stats_size());
+      stats_entry.resize(order.stats_size);
       auto* stats_buf = const_cast<byte_type*>(stats_entry.data());
 
       entry.second.term_stats.finish(stats_buf, 0, entry.second.field_stats, index);
@@ -188,7 +188,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
     explicit stats_state(
         const irs::index_reader& index,
         const irs::term_reader& field,
-        const irs::order::prepared& order,
+        const irs::Order& order,
         uint32_t& state_offset)
       : field_stats(order),
         term_stats(order, 1) { // 1 term per bstring because a range is treated as a disjunction

@@ -543,7 +543,7 @@ class filter_test_case_base : public index_test_base {
     std::vector<irs::doc_id_t> result;
     std::vector<irs::cost::cost_t> result_costs;
     get_query_result(
-      filter.prepare(rdr, irs::order::prepared::unordered()),
+      filter.prepare(rdr, irs::Order::kUnordered),
       rdr, result, result_costs);
     ASSERT_EQ(expected, result);
     ASSERT_EQ(expected_costs, result_costs);
@@ -556,7 +556,7 @@ class filter_test_case_base : public index_test_base {
     std::vector<irs::doc_id_t> result;
     std::vector<irs::cost::cost_t> result_costs;
     get_query_result(
-      filter.prepare(rdr, irs::order::prepared::unordered()),
+      filter.prepare(rdr, irs::Order::kUnordered),
       rdr, result, result_costs);
     ASSERT_EQ(expected, result);
   }
@@ -736,7 +736,7 @@ class empty_filter_visitor : public irs::filter_visitor {
   }
 
   virtual void assert_boost(irs::boost_t boost) {
-    ASSERT_EQ(irs::no_boost(), boost);
+    ASSERT_EQ(irs::kNoBoost, boost);
   }
 
  private:

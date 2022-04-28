@@ -63,7 +63,7 @@ class boolean_filter : public filter, private util::noncopyable {
   size_t size() const { return filters_.size(); }
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& rdr, const order::prepared& ord, boost_t boost,
+      const index_reader& rdr, const Order& ord, boost_t boost,
       const attribute_provider* ctx) const override final;
 
  protected:
@@ -72,7 +72,7 @@ class boolean_filter : public filter, private util::noncopyable {
 
   virtual filter::prepared::ptr prepare(
       std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-      const index_reader& rdr, const order::prepared& ord, boost_t boost,
+      const index_reader& rdr, const Order& ord, boost_t boost,
       const attribute_provider* ctx) const = 0;
 
  private:
@@ -96,7 +96,7 @@ class And : public boolean_filter {
  protected:
   virtual filter::prepared::ptr prepare(
       std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-      const index_reader& rdr, const order::prepared& ord, boost_t boost,
+      const index_reader& rdr, const Order& ord, boost_t boost,
       const attribute_provider* ctx) const override;
 };  // And
 
@@ -127,7 +127,7 @@ class Or : public boolean_filter {
  protected:
   virtual filter::prepared::ptr prepare(
       std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-      const index_reader& rdr, const order::prepared& ord, boost_t boost,
+      const index_reader& rdr, const Order& ord, boost_t boost,
       const attribute_provider* ctx) const override;
 
  private:
@@ -166,7 +166,7 @@ class Not : public filter {
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& rdr, const order::prepared& ord, boost_t boost,
+      const index_reader& rdr, const Order& ord, boost_t boost,
       const attribute_provider* ctx) const override;
 
   virtual size_t hash() const noexcept override;

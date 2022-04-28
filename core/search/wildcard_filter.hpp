@@ -80,7 +80,7 @@ class by_wildcard final
 
   static prepared::ptr prepare(
     const index_reader& index,
-    const order::prepared& order,
+    const Order& order,
     boost_t boost,
     string_ref field,
     bytes_ref term,
@@ -92,7 +92,7 @@ class by_wildcard final
 
   virtual filter::prepared::ptr prepare(
       const index_reader& index,
-      const order::prepared& order,
+      const Order& order,
       boost_t boost,
       const attribute_provider* /*ctx*/) const override {
     return prepare(index, order, this->boost()*boost,

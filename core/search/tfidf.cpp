@@ -251,23 +251,21 @@ namespace iresearch {
 namespace tfidf {
 
 // empty frequency
-const frequency EMPTY_FREQ;
+const frequency kEmptyFreq;
 
 struct idf final {
   float_t value;
 };
 
-using score_t = tfidf_sort::score_t;
-
 struct ScoreContext : public irs::score_ctx {
   ScoreContext(
-      byte_type* score_buf,
+      score_t* score_buf,
       irs::boost_t boost,
       const tfidf::idf& idf,
       const frequency* freq,
       const irs::filter_boost* filter_boost = nullptr) noexcept
     : score_buf{score_buf},
-      freq{freq ? *freq : EMPTY_FREQ},
+      freq{freq ? *freq : kEmptyFreq},
       filter_boost{filter_boost},
       idf{boost * idf.value} {
     assert(freq);
@@ -276,7 +274,7 @@ struct ScoreContext : public irs::score_ctx {
   ScoreContext(const ScoreContext&) = delete;
   ScoreContext& operator=(const ScoreContext&) = delete;
 
-  byte_type* score_buf;
+  score_t* score_buf;
   const frequency& freq;
   const irs::filter_boost* filter_boost;
   float_t idf; // precomputed : boost * idf
@@ -318,7 +316,7 @@ auto MakeNormAdapter(Reader&& reader) {
 template<typename Norm>
 struct NormScoreContext final : public ScoreContext {
   NormScoreContext(
-      byte_type* score_buf,
+      score_t* score_buf,
       Norm&& norm,
       boost_t boost,
       const tfidf::idf& idf,
@@ -337,7 +335,7 @@ struct MakeScoreFunctionImpl {
   static score_function Make(Args&&... args) {
     return {
         memory::make_unique<Ctx>(std::forward<Args>(args)...),
-        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+        [](irs::score_ctx* ctx) noexcept -> const score_t* {
           auto& state = *static_cast<Ctx*>(ctx);
 
           float_t idf;
@@ -348,12 +346,10 @@ struct MakeScoreFunctionImpl {
             idf = state.idf;
           }
 
-          auto& buf = sort::score_cast<score_t>(state.score_buf);
-
           if constexpr (std::is_same_v<Ctx, ScoreContext>) {
-            buf = ::tfidf(state.freq.value, idf);
+            *state.score_buf = ::tfidf(state.freq.value, idf);
           } else {
-            buf = ::tfidf(state.freq.value, idf) * state.norm();
+            *state.score_buf = ::tfidf(state.freq.value, idf) * state.norm();
           }
 
           return state.score_buf;
@@ -374,7 +370,7 @@ score_function MakeScoreFunction(const filter_boost* filter_boost,
       std::forward<Args>(args)...);
 }
 
-class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
+class sort final: public irs::PreparedSortBase<tfidf::idf> {
  public:
   explicit sort(bool normalize, bool boost_as_score) noexcept
     : normalize_{normalize},
@@ -411,7 +407,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats_buf,
-      byte_type* score_buf,
+      score_t* score,
       const attribute_provider& doc_attrs,
       boost_t boost) const override {
     auto* freq = irs::get<frequency>(doc_attrs);
@@ -422,12 +418,12 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
       }
 
       // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
-      irs::sort::score_cast<tfidf::score_t>(score_buf) = boost;
+      *score = boost;
 
       return {
-        reinterpret_cast<ScoreContext*>(score_buf),
-        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
-          return reinterpret_cast<byte_type*>(ctx);
+        reinterpret_cast<ScoreContext*>(score),
+        [](irs::score_ctx* ctx) noexcept -> const score_t* {
+          return reinterpret_cast<score_t*>(ctx);
         }
       };
     }
@@ -446,7 +442,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
 
       auto prepare_norm_scorer = [&]<typename Norm>(Norm&& norm) -> score_function {
         return MakeScoreFunction<NormScoreContext<Norm>>(
-            filter_boost, score_buf, std::move(norm), boost, stats, freq);
+            filter_boost, score, std::move(norm), boost, stats, freq);
       };
 
       const auto& features = field.meta().features;
@@ -472,7 +468,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
     }
 
     return MakeScoreFunction<ScoreContext>(
-        filter_boost, score_buf, boost, stats, freq);
+        filter_boost, score, boost, stats, freq);
   }
 
   virtual irs::sort::term_collector::ptr prepare_term_collector() const override {

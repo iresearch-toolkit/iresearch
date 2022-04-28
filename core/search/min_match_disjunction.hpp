@@ -41,7 +41,7 @@ namespace iresearch {
 /// t |  [n] <-- end
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
-template<typename DocIterator>
+template<typename DocIterator, typename Merger>
 class min_match_disjunction
     : public doc_iterator,
       private score_ctx {
@@ -67,13 +67,11 @@ class min_match_disjunction
   min_match_disjunction(
       doc_iterators_t&& itrs,
       size_t min_match_count = 1,
-      const order::prepared& ord = order::prepared::unordered(),
-      sort::MergeType merge_type = sort::MergeType::AGGREGATE)
+      const Order& ord = Order::kUnordered)
     : itrs_(std::move(itrs)),
       min_match_count_(
         std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
-      lead_(itrs_.size()),
-      merger_(ord.prepare_merger(merge_type)) {
+      lead_(itrs_.size()) {
     assert(!itrs_.empty());
     assert(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
 
@@ -247,14 +245,14 @@ class min_match_disjunction
  private:
   using attributes = std::tuple<document, cost, score>;
 
-  void prepare_score(const order::prepared& ord) {
-    if (ord.empty()) {
+  void prepare_score(const Order& ord) {
+    if (ord.buckets.empty()) {
       return;
     }
 
     auto& score = std::get<irs::score>(attrs_);
 
-    score.realloc(ord);
+    score.resize(ord);
 
     scores_vals_.resize(itrs_.size());
     score.reset(this, [](score_ctx* ctx) -> const byte_type* {
@@ -273,8 +271,8 @@ class min_match_disjunction
           detail::evaluate_score_iter(pVal, self.itrs_[it]);
       });
 
-      self.merger_(score_buf, self.scores_vals_.data(),
-                   std::distance(self.scores_vals_.data(), pVal));
+      Merger::merge(score_buf, self.scores_vals_.data(),
+                    std::distance(self.scores_vals_.data(), pVal));
 
       return score_buf;
     });
@@ -453,8 +451,7 @@ class min_match_disjunction
   size_t min_match_count_; // minimum number of hits
   size_t lead_; // number of iterators in lead group
   attributes attrs_;
-  order::prepared::merger merger_;
-}; // min_match_disjunction
+};
 
 } // ROOT
 

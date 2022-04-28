@@ -49,7 +49,7 @@ void collect_terms(
     visitor.prepare(segment, field, terms);
 
     do {
-      visitor.visit(no_boost());
+      visitor.visit(kNoBoost);
 
       if (!terms.next()) {
         break;
@@ -125,7 +125,7 @@ DEFINE_FACTORY_DEFAULT(by_range) // cppcheck-suppress unknownMacro
 
 /*static*/ filter::prepared::ptr by_range::prepare(
     const index_reader& index,
-    const order::prepared& ord,
+    const Order& ord,
     boost_t boost,
     string_ref field,
     const options_type::range_type& rng,
@@ -149,7 +149,7 @@ DEFINE_FACTORY_DEFAULT(by_range) // cppcheck-suppress unknownMacro
     return prepared::empty();
   }
 
-  limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
+  limited_sample_collector<term_frequency> collector(ord.buckets.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   multiterm_query::states_t states(index);
   multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 
