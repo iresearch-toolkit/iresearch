@@ -286,40 +286,65 @@ struct OrderBucket : util::noncopyable {
   size_t stats_offset; // offset in stats buffer
 };
 
+// Set of compiled sort entries
+struct Order final : private util::noncopyable {
+  static const Order kUnordered;
+
+  static Order Prepare(std::span<const sort::ptr> order);
+
+  Order() = default;
+  Order(Order&&) = default;
+  Order& operator=(Order&&) = default;
+
+  std::vector<OrderBucket> buckets;
+  size_t score_size{ };
+  size_t stats_size{ };
+  IndexFeatures features{ IndexFeatures::NONE };
+};
+
 static_assert(std::is_nothrow_move_constructible_v<OrderBucket>);
 static_assert(std::is_nothrow_move_assignable_v<OrderBucket>);
 
-//template<typename Aggregator>
-//class Merger {
-// public:
-//  explicit Merger(std::span<const OrderBucket> buckets) noexcept
-//    : buckets_{buckets} {}
-//
-//  void Merge()
-//
-// private:
-//  std::span<const OrderBucket> buckets_;
-//};
-
-struct NoopAggregator {
-  static void Merge(const OrderBucket*,
-                    score_t*,
-                    const score_t*) noexcept { }
-  static void Merge(const OrderBucket*, score_t*,
-                    const score_t**, size_t) noexcept { }
+struct NoopAggregator{
+  void operator()(std::span<const OrderBucket>, score_t*,
+                  const score_t**, size_t) noexcept { }
 };
 
-struct SumAggregator {
-  static void Merge(const OrderBucket* ctx,
-                    score_t* RESTRICT dst,
-                    const score_t* RESTRICT src) noexcept {
-    const auto idx = ctx->score_index;
+template<typename Merger, size_t Size>
+struct Aggregator{
+  explicit Aggregator(std::span<const OrderBucket> buckets) noexcept
+    : buckets{buckets} {}
+
+  void operator()(score_t* dst, const score_t** src, size_t size) noexcept {
+    switch (buckets.size()) {
+      case 0:
+        break;
+      case 1:
+        MergeImpl(buckets.front().score_index, dst, src, size);
+        break;
+      case 2:
+        MergeImpl(buckets.front().score_index, dst, src, size);
+        MergeImpl(buckets.back().score_index, dst, src, size);
+      default:
+        for (auto& bucket : buckets) {
+          MergeImpl(bucket.score_index, dst, src, size);
+        }
+        break;
+    }
+  }
+
+  std::span<const OrderBucket, Size> buckets;
+};
+
+struct SumMerger {
+  static void MergeImpl(size_t idx,
+                        score_t* RESTRICT dst,
+                        const score_t* RESTRICT src) noexcept {
     dst[idx] += src[idx];
   }
 
-  static void Merge(const OrderBucket* ctx, score_t* dst,
-                    const score_t** src_begin, size_t size) noexcept {
-    const auto idx = ctx->score_index;
+  static void MergeImpl(size_t idx, score_t* dst,
+                        const score_t** src_begin, size_t size) noexcept {
     auto& casted_dst = dst[idx];
     casted_dst = {};
 
@@ -349,12 +374,31 @@ struct SumAggregator {
         break;
     }
   }
+
+  // FIXME(gnusi) determine in compile time, avoid duplication
+  static void Merge(std::span<const OrderBucket> buckets, score_t* dst,
+                    const score_t** src_begin, size_t size) noexcept {
+    switch (buckets.size()) {
+      case 0:
+        break;
+      case 1:
+        MergeImpl(buckets.front().score_index, dst, src_begin, size);
+        break;
+      case 2:
+        MergeImpl(buckets.front().score_index, dst, src_begin, size);
+        MergeImpl(buckets.back().score_index, dst, src_begin, size);
+      default:
+        for (auto& bucket : buckets) {
+          MergeImpl(bucket.score_index, dst, src_begin, size);
+        }
+        break;
+    }
+  }
 };
 
-struct MaxAggregator {
-  static void Merge(const OrderBucket* ctx, score_t* dst,
-                    const score_t** src_begin, size_t size) noexcept {
-    const auto idx = ctx->score_index;
+struct MaxMerger {
+  static void MergeImpl(size_t idx, score_t* dst,
+                        const score_t** src_begin, size_t size) noexcept {
     auto& casted_dst = dst[idx];
 
     switch (size) {
@@ -378,10 +422,9 @@ struct MaxAggregator {
     }
   }
 
-  static void Merge(const OrderBucket* ctx,
-                    byte_type* RESTRICT dst,
-                    const byte_type* RESTRICT src) noexcept {
-    const auto idx = ctx->score_index;
+  static void MergeImpl(size_t idx,
+                        byte_type* RESTRICT dst,
+                        const byte_type* RESTRICT src) noexcept {
     auto& casted_dst = dst[idx];
     auto& casted_src = src[idx];
 
@@ -389,15 +432,60 @@ struct MaxAggregator {
       casted_dst = casted_src;
     }
   }
+
+  // FIXME(gnusi) determine in compile time, avoid duplication
+  static void Merge(std::span<const OrderBucket> buckets, score_t* dst,
+                    const score_t** src_begin, size_t size) noexcept {
+    switch (buckets.size()) {
+      case 0:
+        break;
+      case 1:
+        MergeImpl(buckets.front().score_index, dst, src_begin, size);
+        break;
+      case 2:
+        MergeImpl(buckets.front().score_index, dst, src_begin, size);
+        MergeImpl(buckets.back().score_index, dst, src_begin, size);
+      default:
+        for (auto& bucket : buckets) {
+          MergeImpl(bucket.score_index, dst, src_begin, size);
+        }
+        break;
+    }
+  }
 };
 
 template<typename Visitor>
-auto ResoveMergeType(sort::MergeType type, Visitor&& visitor) {
+auto ResoveMergeType(sort::MergeType type,
+                     std::span<const OrderBucket> buckets,
+                     Visitor&& visitor) {
+  auto impl = [&]<typename Merger>(){
+    switch (buckets.size()) {
+      case 0:
+        return std::forward<Visitor>(visitor)
+            .template operator()<NoopAggregator>();
+      case 1:
+        return std::forward<Visitor>(visitor)
+            .template operator()<Aggregator<Merger, 1>>(buckets);
+      case 2:
+        return std::forward<Visitor>(visitor)
+            .template operator()<Aggregator<Merger, 2>>(buckets);
+      case 3:
+        return std::forward<Visitor>(visitor)
+            .template operator()<Aggregator<Merger, 3>>(buckets);
+      case 4:
+        return std::forward<Visitor>(visitor)
+            .template operator()<Aggregator<Merger, 4>>(buckets);
+      default:
+        return std::forward<Visitor>(visitor)
+            .template operator()<Aggregator<Merger, std::span<int>::extent>>(buckets);
+    }
+  };
+
   switch (type) {
     case sort::MergeType::AGGREGATE:
-      return std::forward<Visitor>(visitor).template operator()<SumAggregator>();
+      return impl.template operator()<SumMerger>();
     case sort::MergeType::MAX:
-      return std::forward<Visitor>(visitor).template operator()<MaxAggregator>();
+      return impl.template operator()<MaxMerger>();
     default:
       assert(false);
       return std::forward<Visitor>(visitor).template operator()<NoopAggregator>();
@@ -456,22 +544,6 @@ class PreparedSortBase<void> : public sort::prepared {
   virtual inline std::pair<size_t, size_t> stats_size() const noexcept override final {
     return std::make_pair(size_t(0), size_t(0));
   }
-};
-
-// Base class for all compiled sort entries
-struct Order final : private util::noncopyable {
-  static const Order kUnordered;
-
-  static Order Prepare(std::span<const sort::ptr> order);
-
-  Order() = default;
-  Order(Order&&) = default;
-  Order& operator=(Order&&) = default;
-
-  std::vector<OrderBucket> buckets;
-  size_t score_size{ };
-  size_t stats_size{ };
-  IndexFeatures features{ IndexFeatures::NONE };
 };
 
 struct Scorer {

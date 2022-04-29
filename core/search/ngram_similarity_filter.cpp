@@ -46,7 +46,7 @@ struct ngram_segment_state_t {
 };
 
 using states_t = states_cache<ngram_segment_state_t>;
-using approximation = min_match_disjunction<doc_iterator::ptr, NoopAggregator>;
+using approximation = min_match_disjunction<doc_iterator::ptr, NoopMerger>;
 
 }
 
