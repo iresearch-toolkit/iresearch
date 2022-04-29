@@ -201,6 +201,7 @@ class format_10_test_case : public tests::format_test_case {
           }
         };
 
+        // next + seek to eof
         {
           auto it = reader->iterator(field.index_features, irs::IndexFeatures::NONE, read_meta);
           ASSERT_FALSE(irs::doc_limits::valid(it->value()));

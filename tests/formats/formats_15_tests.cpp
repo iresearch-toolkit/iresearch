@@ -341,6 +341,15 @@ void Format15TestCase::PostingsWandSeek(
         }
       };
 
+      // next + seek to eof
+      {
+        auto it = reader->wanderator(field.index_features, irs::IndexFeatures::NONE, read_meta);
+        ASSERT_FALSE(irs::doc_limits::valid(it->value()));
+        ASSERT_TRUE(it->next());
+        ASSERT_EQ(docs.front().first, it->value());
+        ASSERT_TRUE(irs::doc_limits::eof(it->seek(docs.back().first + 42)));
+      }
+
       assert_docs_seq();
 
       // seek for every document 127th document in a block

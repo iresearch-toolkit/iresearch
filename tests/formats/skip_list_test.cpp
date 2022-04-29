@@ -201,13 +201,13 @@ TEST_F(SkipWriterTest, Reset) {
     out.write_vlong(cur_doc);
   };
 
-  //.Prepare writer
+  // Prepare writer
   irs::SkipWriter writer(skip, skip);
   ASSERT_EQ(0, writer.MaxLevels());
   writer.Prepare(max_levels, count);
   ASSERT_NE(max_levels, writer.MaxLevels());
 
-  //.Prepare directory
+  // Prepare directory
   irs::memory_directory dir;
 
   // write initial data
@@ -388,7 +388,7 @@ TEST_F(SkipReaderTest,Prepare) {
     {
       auto in = dir.open("docs", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
-      reader.Prepare(std::move(in));
+      reader.Prepare(std::move(in), count);
     }
     ASSERT_EQ(0, reader.NumLevels());
     ASSERT_EQ(skip, reader.Skip0());
@@ -431,7 +431,7 @@ TEST_F(SkipReaderTest,Prepare) {
     ASSERT_EQ(0, reader.NumLevels());
     auto in = dir.open("docs", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in);
-    reader.Prepare(std::move(in));
+    reader.Prepare(std::move(in), count);
     ASSERT_EQ(writer.MaxLevels(), reader.NumLevels());
     ASSERT_EQ(skip, reader.Skip0());
     ASSERT_EQ(skip, reader.SkipN());
@@ -562,7 +562,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(0, reader.NumLevels());
       auto in = dir.open(kFile, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
-      reader.Prepare(std::move(in));
+      reader.Prepare(std::move(in), kCount);
       ASSERT_EQ(3, reader.NumLevels());
       ASSERT_EQ(kSkip0, reader.Skip0());
       ASSERT_EQ(kSkipN, reader.SkipN());
@@ -829,7 +829,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(0, reader.NumLevels());
       auto in = dir.open(kFile, irs::IOAdvice::RANDOM);
       ASSERT_FALSE(!in);
-      reader.Prepare(std::move(in));
+      reader.Prepare(std::move(in), kCount);
       ASSERT_EQ(writer.MaxLevels(), reader.NumLevels());
       ASSERT_EQ(kSkip0, reader.Skip0());
       ASSERT_EQ(kSkipN, reader.SkipN());
@@ -990,7 +990,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(0, reader.NumLevels());
       auto in = dir.open(kFile, irs::IOAdvice::RANDOM);
       ASSERT_FALSE(!in);
-      reader.Prepare(std::move(in));
+      reader.Prepare(std::move(in), kCount);
       ASSERT_EQ(writer.MaxLevels(), reader.NumLevels());
       ASSERT_EQ(kSkip0, reader.Skip0());
       ASSERT_EQ(kSkipN, reader.SkipN());
@@ -1125,7 +1125,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(0, reader.NumLevels());
       auto in = dir.open(kFile, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
-      reader.Prepare(std::move(in));
+      reader.Prepare(std::move(in), kCount);
 
       // seek forward
       {

@@ -130,7 +130,7 @@ class SkipReaderBase : util::noncopyable {
   size_t NumLevels() const noexcept { return std::size(levels_); }
 
   // Prepare skip_reader using a specified data stream
-  void Prepare(index_input::ptr&& in);
+  void Prepare(index_input::ptr&& in, doc_id_t left);
 
   // Reset skip reader internal state
   void Reset();
@@ -142,15 +142,16 @@ class SkipReaderBase : util::noncopyable {
     Level(
       index_input::ptr&& stream,
       doc_id_t step,
+      doc_id_t left,
       uint64_t begin) noexcept;
     Level(Level&&) = default;
     Level& operator=(Level&&) = delete;
 
     index_input::ptr stream; // level data stream
-    uint64_t begin; // where current level starts
-    uint64_t child{}; // pointer to current child level
+    uint64_t begin; // where level starts
+    uint64_t child{}; // pointer to child level
+    ptrdiff_t left; // number of documents left at a level
     const doc_id_t step; // how many docs we jump over with a single skip
-    doc_id_t skipped{}; // number of skipped documents at the level
   };
 
   static_assert(std::is_nothrow_move_constructible_v<Level>);
@@ -162,7 +163,7 @@ class SkipReaderBase : util::noncopyable {
     if (const auto absolute_ptr = lvl.begin + ptr;
         absolute_ptr > stream.file_pointer()) {
       stream.seek(absolute_ptr);
-      lvl.skipped = prev.skipped - prev.step;
+      lvl.left = prev.left + prev.step;
       if (lvl.child != kUndefined) {
         lvl.child = stream.read_vlong();
       }
@@ -177,6 +178,7 @@ class SkipReaderBase : util::noncopyable {
   std::vector<Level> levels_; // input streams for skip-list levels
   const doc_id_t skip_0_; // skip interval for 0 level
   const doc_id_t skip_n_; // skip interval for 1..n levels
+  doc_id_t docs_count_{};
 };
 
 // The reader for searching in skip-lists written by `SkipWriter`.
@@ -223,7 +225,6 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
 
   if (id != size) {
     --size;
-    size_t skipped = levels_.back().skipped;
     for (uint64_t child_ptr{0}; id != size; ++id) {
       auto& level = levels_[id];
       const doc_id_t step{level.step};
@@ -231,7 +232,8 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
 
       do {
         child_ptr = level.child;
-        if (reader_.Read(id, level.skipped += step, stream)) {
+        reader_.Read(id, level.left -= step, stream);
+        if (level.left > 0) {
           level.child = stream.read_vlong();
         }
       } while (reader_.IsLess(id, target));
@@ -247,10 +249,10 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
     auto& stream{*level.stream};
 
     do {
-      reader_.Read(id, level.skipped += step, stream);
+      reader_.Read(id, level.left -= step, stream);
     } while (reader_.IsLess(id, target));
 
-    return level.skipped - skipped - step;
+    return level.left + step;
   }
 
   return 0;
