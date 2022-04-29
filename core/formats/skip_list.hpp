@@ -147,11 +147,17 @@ class SkipReaderBase : util::noncopyable {
     Level(Level&&) = default;
     Level& operator=(Level&&) = delete;
 
-    index_input::ptr stream; // level data stream
-    uint64_t begin; // where level starts
-    uint64_t child{}; // pointer to child level
-    ptrdiff_t left; // number of documents left at a level
-    const doc_id_t step; // how many docs we jump over with a single skip
+    // Level data stream.
+    index_input::ptr stream;
+    // Where level starts.
+    uint64_t begin;
+    // Pointer to child level.
+    uint64_t child{};
+    // Number of documents left at a level.
+    // ptrdiff_t to be able to go below 0.
+    ptrdiff_t left;
+    // How many docs we jump over with a single skip
+    const doc_id_t step;
   };
 
   static_assert(std::is_nothrow_move_constructible_v<Level>);
