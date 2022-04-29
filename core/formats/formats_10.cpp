@@ -2013,13 +2013,12 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
     }
 
     void Enable(const version10::term_meta& state) noexcept {
+      assert(state.docs_count> IteratorTraits::block_size());
+
       // since we store pointer deltas, add postings offset
       auto& top = skip_levels_.front();
       CopyState<IteratorTraits>(top, state);
-      docs_count_ = state.docs_count;
       Enable();
-
-      assert(docs_count_ > IteratorTraits::block_size());
     }
 
     void Init(size_t num_levels) {
@@ -2037,7 +2036,7 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
      CopyState<IteratorTraits>(next, *prev_);
     }
 
-    bool Read(size_t level, size_t end, index_input& in);
+    void Read(size_t level, ptrdiff_t left, index_input& in);
 
     void Reset(SkipState& state) noexcept {
       assert(std::is_sorted(
@@ -2062,37 +2061,34 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
 
     std::vector<SkipState> skip_levels_;
     SkipState* prev_; // pointer to skip context used by skip reader
-    doc_id_t docs_count_{};
   };
 
   void seek_to_block(doc_id_t target);
 
+  doc_id_t docs_count_{};
   uint64_t skip_offs_{};
   SkipReader<ReadSkip> skip_;
   attributes attrs_;
 }; // doc_iterator
 
 template<typename IteratorTraits, typename FieldTraits>
-bool doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Read(
-    size_t level, size_t skipped, index_input& in) {
+void doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Read(
+    size_t level, ptrdiff_t left, index_input& in) {
   auto& next = skip_levels_[level];
 
   // store previous step on the same level
   CopyState<IteratorTraits>(*prev_, next);
 
-  if (skipped >= docs_count_) {
+  if (IRS_LIKELY(left > 0)) {
+    ReadState<FieldTraits>(next, in);
+
+    if constexpr (FieldTraits::wand() && FieldTraits::frequency()) {
+      score_buffer::skip(in);
+    }
+  } else {
     // stream exhausted
     next.doc = doc_limits::eof();
-    return false;
   }
-
-  ReadState<FieldTraits>(next, in);
-
-  if constexpr (FieldTraits::wand() && FieldTraits::frequency()) {
-    score_buffer::skip(in);
-  }
-
-  return true;
 }
 
 template<typename IteratorTraits, typename FieldTraits>
@@ -2161,6 +2157,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
     // allow using skip-list for long enough postings
     skip_.Reader().Enable(term_state);
     skip_offs_ = term_state.doc_start + term_state.e_skip_start;
+    docs_count_ = term_state.docs_count;
   }
 }
 
@@ -2238,13 +2235,11 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
   skip_.Reader().Reset(last);
 
   // init skip writer in lazy fashion
-  if (IRS_LIKELY(!skip_offs_)) {
+  if (IRS_LIKELY(!docs_count_)) {
 seek_after_initialization:
     assert(skip_.NumLevels());
 
-    const auto skipped = skip_.Seek(target);
-    assert(this->left_ >= skipped);
-    this->left_ -= skipped;
+    this->left_ = skip_.Seek(target);
     this->doc_in_->seek(last.doc_ptr);
     std::get<document>(attrs_).value = last.doc;
     this->begin_ = std::end(this->buf_.docs); // will trigger refill in "next"
@@ -2266,8 +2261,8 @@ seek_after_initialization:
 
   assert(!skip_.NumLevels());
   skip_in->seek(skip_offs_);
-  skip_.Prepare(std::move(skip_in));
-  skip_offs_ = 0;
+  skip_.Prepare(std::move(skip_in), docs_count_);
+  docs_count_ = 0;
 
   // initialize skip levels
   if (const auto num_levels = skip_.NumLevels();
@@ -2351,7 +2346,7 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
       // move to the more granular level
       CopyState<IteratorTraits>(next, prev_skip_);
     }
-    bool Read(size_t level, doc_id_t skipped, index_input& in);
+    void Read(size_t level, ptrdiff_t left, index_input& in);
     SkipState& State() noexcept { return prev_skip_; }
 
    private:
@@ -2359,7 +2354,6 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
     std::vector<score_buffer::value_type> skip_scores_;
     SkipState prev_skip_; // skip context used by skip reader
     const score_threshold* threshold_{};
-    doc_id_t docs_count_{};
   };
 
   void seek_to_block(doc_id_t target) {
@@ -2370,9 +2364,7 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
       assert(0 == skip_.Reader().State().doc_ptr);
       skip_.Reader().EnsureSorted();
 
-      const auto skipped = skip_.Seek(target);
-      assert(this->left_ >= skipped);
-      this->left_ -= skipped;
+      this->left_ = skip_.Seek(target);
       std::get<document>(attrs_).value = skip_.Reader().State().doc;
       this->begin_ = std::end(this->buf_.docs); // will trigger refill in "next"
     }
@@ -2415,7 +2407,6 @@ void wanderator<IteratorTraits, FieldTraits>::ReadSkip::Init(
 
   skip_levels_.resize(num_levels);
   skip_scores_.resize(num_levels);
-  docs_count_ = term_state.docs_count;
   threshold_ = &threshold;
   threshold.skip_scores = std::span{skip_scores_};
 
@@ -2449,32 +2440,29 @@ bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::IsLess(
 }
 
 template<typename IteratorTraits, typename FieldTraits>
-bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(
-    size_t level, doc_id_t skipped, index_input& in) {
+void wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(
+    size_t level, ptrdiff_t left, index_input& in) {
   auto& last = prev_skip_;
   auto& next = skip_levels_[level];
 
   // store previous step on the same level
   CopyState<IteratorTraits>(last, next);
 
-  if (skipped >= docs_count_) {
-    // stream exhausted
-    next.doc = doc_limits::eof();
+  if (IRS_LIKELY(left > 0)) {
+    ReadState<FieldTraits>(next, in);
+
     if constexpr (FieldTraits::frequency()) {
       auto& max_block_score = skip_scores_[level];
-      max_block_score = std::numeric_limits<score_buffer::value_type>::max();
+      max_block_score = score_buffer::read(in);
     }
-    return false;
+  } else {
+     // stream exhausted
+     next.doc = doc_limits::eof();
+     if constexpr (FieldTraits::frequency()) {
+       auto& max_block_score = skip_scores_[level];
+       max_block_score = std::numeric_limits<score_buffer::value_type>::max();
+     }
   }
-
-  ReadState<FieldTraits>(next, in);
-
-  if constexpr (FieldTraits::frequency()) {
-    auto& max_block_score = skip_scores_[level];
-    max_block_score = score_buffer::read(in);
-  }
-
-  return true;
 }
 
 template<typename IteratorTraits, typename FieldTraits>
@@ -2549,7 +2537,7 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
 
   skip_in->seek(term_state.doc_start + term_state.e_skip_start);
 
-  skip_.Prepare(std::move(skip_in));
+  skip_.Prepare(std::move(skip_in), term_state.docs_count);
 
   // initialize skip levels
   if (const auto num_levels = skip_.NumLevels();

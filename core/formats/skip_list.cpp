@@ -95,9 +95,11 @@ void SkipWriter::Flush(index_output& out) {
 SkipReaderBase::Level::Level(
     index_input::ptr&& stream,
     doc_id_t step,
+    doc_id_t left,
     uint64_t begin) noexcept
   : stream{std::move(stream)}, // thread-safe input
     begin{begin},
+    left{left},
     step{step} {
 }
 
@@ -107,19 +109,19 @@ void SkipReaderBase::Reset() {
     if (level.child != kUndefined) {
       level.child = 0;
     }
-    level.skipped = 0;
+    level.left = docs_count_;
   }
 }
 
-void SkipReaderBase::Prepare(index_input::ptr&& in) {
+void SkipReaderBase::Prepare(index_input::ptr&& in, doc_id_t left) {
   assert(in);
 
   if (uint32_t max_levels = in->read_vint(); max_levels) {
     decltype(levels_) levels;
     levels.reserve(max_levels);
 
-    auto load_level = [&levels](index_input::ptr stream,
-                                doc_id_t step) {
+    auto load_level = [&levels, left](index_input::ptr stream,
+                                      doc_id_t step) {
       assert(stream);
 
       // read level length
@@ -131,7 +133,7 @@ void SkipReaderBase::Prepare(index_input::ptr&& in) {
 
       const auto begin = stream->file_pointer();
 
-      levels.emplace_back(std::move(stream), step, begin);
+      levels.emplace_back(std::move(stream), step, left, begin);
 
       return begin + length;
     };
@@ -154,6 +156,7 @@ void SkipReaderBase::Prepare(index_input::ptr&& in) {
     levels.back().child = kUndefined;
 
     levels_ = std::move(levels);
+    docs_count_ = left;
   }
 }
 
