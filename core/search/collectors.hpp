@@ -150,7 +150,7 @@ class collectors_base {
 
  protected:
   std::vector<Collector> collectors_;
-  std::span<const order_bucket> buckets_;
+  std::span<const OrderBucket> buckets_;
 }; // collectors_base
 
 ////////////////////////////////////////////////////////////////////////////

@@ -169,7 +169,7 @@ class same_position_query final : public filter::prepared {
         if (score) {
           score->resize(ord);
 
-          Order::Scorers scorers(
+          Scorers scorers(
             ord, segment, *term_state.reader,
             term_stats->c_str(), score->data(),
             *docs, boost());

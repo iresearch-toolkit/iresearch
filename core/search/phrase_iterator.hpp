@@ -457,7 +457,7 @@ class phrase_iterator final : public doc_iterator {
 
       score.resize(ord);
 
-      Order::Scorers scorers(
+      Scorers scorers(
         ord, segment, field, stats,
         score.data(), *this, boost);
 

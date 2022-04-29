@@ -81,7 +81,7 @@ class ngram_similarity_doc_iterator final
 
       score.resize(ord);
 
-      Order::Scorers scorers(
+      Scorers scorers(
         ord, segment, field, stats,
         score.data(), *this, boost);
 

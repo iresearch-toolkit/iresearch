@@ -36,7 +36,7 @@ namespace iresearch {
 
 struct collector;
 struct data_output;
-struct order_bucket;
+struct OrderBucket;
 struct index_reader;
 struct sub_reader;
 struct term_reader;
@@ -268,8 +268,8 @@ class sort {
   type_info::type_id type_;
 };
 
-struct order_bucket : util::noncopyable {
-  explicit order_bucket(
+struct OrderBucket : util::noncopyable {
+  explicit OrderBucket(
       sort::prepared::ptr&& bucket,
       size_t score_index,
       size_t stats_offset) noexcept
@@ -278,34 +278,46 @@ struct order_bucket : util::noncopyable {
       stats_offset{stats_offset} {
   }
 
-  order_bucket(order_bucket&&) = default;
-  order_bucket& operator=(order_bucket&&) = default;
+  OrderBucket(OrderBucket&&) = default;
+  OrderBucket& operator=(OrderBucket&&) = default;
 
   sort::prepared::ptr bucket; // prepared score
   size_t score_index; // scorer index
   size_t stats_offset; // offset in stats buffer
 };
 
-static_assert(std::is_nothrow_move_constructible_v<order_bucket>);
-static_assert(std::is_nothrow_move_assignable_v<order_bucket>);
+static_assert(std::is_nothrow_move_constructible_v<OrderBucket>);
+static_assert(std::is_nothrow_move_assignable_v<OrderBucket>);
 
-struct NoopAggegator {
-  static void Merge(const order_bucket*,
+//template<typename Aggregator>
+//class Merger {
+// public:
+//  explicit Merger(std::span<const OrderBucket> buckets) noexcept
+//    : buckets_{buckets} {}
+//
+//  void Merge()
+//
+// private:
+//  std::span<const OrderBucket> buckets_;
+//};
+
+struct NoopAggregator {
+  static void Merge(const OrderBucket*,
                     score_t*,
                     const score_t*) noexcept { }
-  static void Merge(const order_bucket*, score_t*,
+  static void Merge(const OrderBucket*, score_t*,
                     const score_t**, size_t) noexcept { }
 };
 
 struct SumAggregator {
-  static void Merge(const order_bucket* ctx,
+  static void Merge(const OrderBucket* ctx,
                     score_t* RESTRICT dst,
                     const score_t* RESTRICT src) noexcept {
     const auto idx = ctx->score_index;
     dst[idx] += src[idx];
   }
 
-  static void Merge(const order_bucket* ctx, score_t* dst,
+  static void Merge(const OrderBucket* ctx, score_t* dst,
                     const score_t** src_begin, size_t size) noexcept {
     const auto idx = ctx->score_index;
     auto& casted_dst = dst[idx];
@@ -340,7 +352,7 @@ struct SumAggregator {
 };
 
 struct MaxAggregator {
-  static void Merge(const order_bucket* ctx, score_t* dst,
+  static void Merge(const OrderBucket* ctx, score_t* dst,
                     const score_t** src_begin, size_t size) noexcept {
     const auto idx = ctx->score_index;
     auto& casted_dst = dst[idx];
@@ -366,7 +378,7 @@ struct MaxAggregator {
     }
   }
 
-  static void Merge(const order_bucket* ctx,
+  static void Merge(const OrderBucket* ctx,
                     byte_type* RESTRICT dst,
                     const byte_type* RESTRICT src) noexcept {
     const auto idx = ctx->score_index;
@@ -448,40 +460,6 @@ class PreparedSortBase<void> : public sort::prepared {
 
 // Base class for all compiled sort entries
 struct Order final : private util::noncopyable {
-  struct Scorer {
-    Scorer(score_function&& func, const order_bucket* bucket) noexcept
-        : func(std::move(func)),
-          bucket(bucket) {
-      assert(this->func);
-      assert(this->bucket);
-    }
-
-    score_function func;
-    const order_bucket* bucket;
-  };
-
-  // A convenient class for doc_iterators to invoke scorer functions
-  // on scorers in each order bucket
-  class Scorers : private util::noncopyable { // noncopyable required by MSVC
-   public:
-    Scorers() = default;
-    Scorers(const Order& buckets,
-            const sub_reader& segment,
-            const term_reader& field,
-            const byte_type* stats,
-            score_t* score,
-            const attribute_provider& doc,
-            boost_t boost);
-    Scorers(Scorers&&) = default;
-    Scorers& operator=(Scorers&&) = default;
-
-    std::vector<Scorer> scorers; // scorer + offset
-    const score_t* score_buf;
-  };
-
-  static_assert(std::is_nothrow_move_constructible_v<Scorers>);
-  static_assert(std::is_nothrow_move_assignable_v<Scorers>);
-
   static const Order kUnordered;
 
   static Order Prepare(std::span<const sort::ptr> order);
@@ -490,16 +468,50 @@ struct Order final : private util::noncopyable {
   Order(Order&&) = default;
   Order& operator=(Order&&) = default;
 
-  std::vector<order_bucket> buckets;
+  std::vector<OrderBucket> buckets;
   size_t score_size{ };
   size_t stats_size{ };
   IndexFeatures features{ IndexFeatures::NONE };
 };
 
+struct Scorer {
+  Scorer(score_function&& func, const OrderBucket* bucket) noexcept
+      : func(std::move(func)),
+        bucket(bucket) {
+    assert(this->func);
+    assert(this->bucket);
+  }
+
+  score_function func;
+  const OrderBucket* bucket;
+};
+
+// A convenient class for doc_iterators to invoke scorer functions
+// on scorers in each order bucket
+class Scorers : private util::noncopyable { // noncopyable required by MSVC
+ public:
+  Scorers() = default;
+  Scorers(const Order& buckets,
+          const sub_reader& segment,
+          const term_reader& field,
+          const byte_type* stats,
+          score_t* score,
+          const attribute_provider& doc,
+          boost_t boost);
+  Scorers(Scorers&&) = default;
+  Scorers& operator=(Scorers&&) = default;
+
+  std::vector<Scorer> scorers; // scorer + offset
+  const score_t* score_buf;
+};
+
+static_assert(std::is_nothrow_move_constructible_v<Scorers>);
+static_assert(std::is_nothrow_move_assignable_v<Scorers>);
+
 // Prepare empty collectors, i.e. call collect(...) on each of the
 // buckets without explicitly collecting field or term statistics,
 // e.g. for 'all' filter
-void PrepareCollectors(std::span<const order_bucket> order,
+void PrepareCollectors(std::span<const OrderBucket> order,
                        byte_type* stats,
                        const index_reader& index);
 

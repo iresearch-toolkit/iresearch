@@ -105,7 +105,7 @@ Order Order::Prepare(std::span<const sort::ptr> order) {
 
 const Order Order::kUnordered;
 
-Order::Scorers::Scorers(
+Scorers::Scorers(
     const Order& order,
     const sub_reader& segment,
     const term_reader& field,
@@ -137,7 +137,7 @@ Order::Scorers::Scorers(
 }
 
 void PrepareCollectors(
-    std::span<const order_bucket> order,
+    std::span<const OrderBucket> order,
     byte_type* stats_buf,
     const index_reader& index) {
   for (auto& entry: order) {

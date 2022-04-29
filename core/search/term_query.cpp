@@ -63,7 +63,7 @@ doc_iterator::ptr term_query::execute(
     if (score) {
       score->resize(ord);
 
-      Order::Scorers scorers(
+      Scorers scorers(
         ord, rdr, *state->reader,
         stats_.c_str(), score->data(),
         *docs, boost());

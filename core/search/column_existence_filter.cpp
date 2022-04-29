@@ -71,7 +71,7 @@ class column_existence_query : public irs::filter::prepared {
       if (score) {
         score->resize(ord);
 
-        Order::Scorers scorers(
+        Scorers scorers(
           ord, segment, empty_term_reader(column.size()),
           stats_.c_str(), score->data(), *it, boost());
 

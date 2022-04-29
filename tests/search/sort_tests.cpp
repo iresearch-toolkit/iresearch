@@ -230,7 +230,7 @@ TEST(sort_tests, score_traits) {
   const size_t* ptrs[std::size(values)];
   std::iota(std::begin(ptrs), std::end(ptrs), values);
 
-  irs::order_bucket bucket(aligned_scorer<size_t, size_t>().prepare(), 0, 0, true);
+  irs::OrderBukcket bucket(aligned_scorer<size_t, size_t>().prepare(), 0, 0, true);
 
   for (size_t i = 0; i < std::size(values); ++i) {
     size_t max_dst = 0;

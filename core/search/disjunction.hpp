@@ -1500,14 +1500,15 @@ doc_iterator::ptr make_disjunction(
     }
   }
 
-  if (Disjunction::small_disjunction_upper_bound() &&
-        size <= Disjunction::small_disjunction_upper_bound()) {
-    using small_disjunction_t = typename Disjunction::small_disjunction_t;
+  if constexpr (Disjunction::small_disjunction_upper_bound() > 0) {
+    if (size <= Disjunction::small_disjunction_upper_bound()) {
+      using small_disjunction_t = typename Disjunction::small_disjunction_t;
 
-    // small disjunction
-    return memory::make_managed<small_disjunction_t>(
-      std::move(itrs),
-      std::forward<Args>(args)...);
+      // small disjunction
+      return memory::make_managed<small_disjunction_t>(
+          std::move(itrs),
+          std::forward<Args>(args)...);
+    }
   }
 
   // disjunction

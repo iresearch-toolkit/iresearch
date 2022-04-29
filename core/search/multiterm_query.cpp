@@ -158,7 +158,7 @@ doc_iterator::ptr multiterm_query::execute(
 
         score->resize(ord);
 
-        Order::Scorers scorers(
+        Scorers scorers(
           ord, segment, *state->reader, stat,
           score->data(), *docs, entry.boost*boost());
 

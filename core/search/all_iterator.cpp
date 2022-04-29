@@ -39,7 +39,7 @@ all_iterator::all_iterator(
 
     score.resize(order);
 
-    Order::Scorers scorers(
+    Scorers scorers(
       order, reader, irs::empty_term_reader(docs_count),
       query_stats, score.data(),
       *this, boost);

@@ -183,7 +183,7 @@ struct custom_sort: public irs::sort {
 
     prepared(const custom_sort& sort)
       : sort_(sort) {
-      bulk_aggregate_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst,
+      bulk_aggregate_func_ = [](const irs::OrderBukcket* ctx, irs::byte_type* dst,
                                 const irs::byte_type** src_start, const size_t size) {
         const auto& impl = static_cast<const prepared*>(ctx->bucket.get());
         const auto offset = ctx->score_offset;
@@ -195,7 +195,7 @@ struct custom_sort: public irs::sort {
         }
       };
 
-      aggregate_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst, const irs::byte_type* src) {
+      aggregate_func_ = [](const irs::OrderBukcket* ctx, irs::byte_type* dst, const irs::byte_type* src) {
         const auto& impl = static_cast<const prepared*>(ctx->bucket.get());
         const auto offset = ctx->score_offset;
         if (impl->sort_.scorer_add) {
@@ -203,7 +203,7 @@ struct custom_sort: public irs::sort {
         }
       };
 
-      bulk_max_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst,
+      bulk_max_func_ = [](const irs::OrderBukcket* ctx, irs::byte_type* dst,
                           const irs::byte_type** src_start, const size_t size) {
         const auto& impl = static_cast<const prepared*>(ctx->bucket.get());
         const auto offset = ctx->score_offset;
@@ -215,7 +215,7 @@ struct custom_sort: public irs::sort {
         }
       };
 
-      max_func_ = [](const irs::order_bucket* ctx, irs::byte_type* dst, const irs::byte_type* src) {
+      max_func_ = [](const irs::OrderBukcket* ctx, irs::byte_type* dst, const irs::byte_type* src) {
         const auto& impl = static_cast<const prepared*>(ctx->bucket.get());
         const auto offset = ctx->score_offset;
         if (impl->sort_.scorer_max) {
@@ -342,7 +342,7 @@ struct frequency_sort: public irs::sort {
       return const_cast<score_type&>(score_cast(const_cast<const irs::byte_type*>(buf)));
     }
 
-    static void bulk_aggregate(const irs::order_bucket* ctx, irs::byte_type* dst_buf,
+    static void bulk_aggregate(const irs::OrderBukcket* ctx, irs::byte_type* dst_buf,
                           const irs::byte_type** src_start, const size_t size) {
       const auto offset = ctx->score_offset;
       auto& dst = score_cast(dst_buf + offset);
@@ -358,7 +358,7 @@ struct frequency_sort: public irs::sort {
       }
     }
 
-    static void aggregate(const irs::order_bucket* ctx, irs::byte_type* dst_buf,
+    static void aggregate(const irs::OrderBukcket* ctx, irs::byte_type* dst_buf,
                           const irs::byte_type* src_start) {
       const auto offset = ctx->score_offset;
       auto& dst = score_cast(dst_buf + offset);
@@ -371,7 +371,7 @@ struct frequency_sort: public irs::sort {
       dst.value += src.value;
     }
 
-    static void bulk_max(const irs::order_bucket* ctx, irs::byte_type* dst_buf,
+    static void bulk_max(const irs::OrderBukcket* ctx, irs::byte_type* dst_buf,
                          const irs::byte_type** src_start, const size_t size) {
       const auto offset = ctx->score_offset;
       auto& dst = score_cast(dst_buf + offset);
@@ -389,7 +389,7 @@ struct frequency_sort: public irs::sort {
       }
     }
 
-    static void max(const irs::order_bucket* ctx, irs::byte_type* dst_buf,
+    static void max(const irs::OrderBukcket* ctx, irs::byte_type* dst_buf,
                     const irs::byte_type* src_start) {
       const auto offset = ctx->score_offset;
       auto& dst = score_cast(dst_buf + offset);

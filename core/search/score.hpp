@@ -104,7 +104,7 @@ class score : public attribute {
   score_function func_;
 };
 
-void reset(irs::score& score, Order::Scorers&& scorers);
+void reset(irs::score& score, Scorers&& scorers);
 
 } // ROOT
 

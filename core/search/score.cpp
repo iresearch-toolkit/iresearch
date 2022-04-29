@@ -52,7 +52,7 @@ void score::reset() noexcept {
               &::default_score);
 }
 
-void reset(irs::score& score, Order::Scorers&& scorers) {
+void reset(irs::score& score, Scorers&& scorers) {
   switch (scorers.scorers.size()) {
     case 0: {
       score.reset();
@@ -63,13 +63,13 @@ void reset(irs::score& score, Order::Scorers&& scorers) {
         score.reset(std::move(scorer.func));
       } else {
         struct ctx : score_ctx {
-          explicit ctx(Order::Scorer&& scorer,
+          explicit ctx(Scorer&& scorer,
                        const score_t* score_buf) noexcept
             : scorer{std::move(scorer)},
               score_buf{score_buf} {
           }
 
-          Order::Scorer scorer;
+          Scorer scorer;
           const score_t* score_buf;
         };
 
@@ -84,11 +84,11 @@ void reset(irs::score& score, Order::Scorers&& scorers) {
     } break;
     case 2: {
       struct ctx : score_ctx {
-        explicit ctx(Order::Scorers&& scorers) noexcept
+        explicit ctx(Scorers&& scorers) noexcept
           : scorers(std::move(scorers)) {
         }
 
-        Order::Scorers scorers;
+        Scorers scorers;
       };
 
       score.reset(
@@ -102,11 +102,11 @@ void reset(irs::score& score, Order::Scorers&& scorers) {
     } break;
     default: {
       struct ctx : score_ctx {
-        explicit ctx(Order::Scorers&& scorers) noexcept
+        explicit ctx(Scorers&& scorers) noexcept
           : scorers(std::move(scorers)) {
         }
 
-        Order::Scorers scorers;
+        Scorers scorers;
       };
 
       score.reset(
