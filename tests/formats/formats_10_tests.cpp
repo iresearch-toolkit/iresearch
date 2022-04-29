@@ -201,6 +201,14 @@ class format_10_test_case : public tests::format_test_case {
           }
         };
 
+        {
+          auto it = reader->iterator(field.index_features, irs::IndexFeatures::NONE, read_meta);
+          ASSERT_FALSE(irs::doc_limits::valid(it->value()));
+          ASSERT_TRUE(it->next());
+          ASSERT_EQ(docs.front().first, it->value());
+          ASSERT_TRUE(irs::doc_limits::eof(it->seek(docs.back().first + 42)));
+        }
+
         // seek to every document 127th document in a block
         assert_docs(kVersion10PostingsWriterBlockSize-1, kVersion10PostingsWriterBlockSize);
 
