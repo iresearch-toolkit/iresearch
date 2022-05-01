@@ -36,17 +36,17 @@ namespace {
 
 using namespace irs;
 
-using conjunction_t = conjunction<irs::doc_iterator::ptr, SumAggregator> ;
-
-class same_position_iterator final : public conjunction_t {
+template<typename Conjunction>
+class same_position_iterator final : public Conjunction {
  public:
   typedef std::vector<position::ref> positions_t;
 
   same_position_iterator(
-      conjunction_t::doc_iterators_t&& itrs,
+      typename Conjunction::doc_iterators_t&& itrs,
+      typename Conjunction::merger_type&& merger,
       const Order& ord,
       positions_t&& pos)
-    : conjunction_t(std::move(itrs), ord),
+    : Conjunction(std::move(itrs), std::move(merger), ord),
       pos_(std::move(pos)) {
     assert(!pos_.empty());
   }
@@ -60,7 +60,7 @@ class same_position_iterator final : public conjunction_t {
 
   virtual bool next() override {
     bool next = false;
-    while (true == (next = conjunction_t::next()) && !find_same_position()) {}
+    while (true == (next = Conjunction::next()) && !find_same_position()) {}
     return next;
   }
 
@@ -71,7 +71,7 @@ class same_position_iterator final : public conjunction_t {
 #endif
 
   virtual doc_id_t seek(doc_id_t target) override {
-    const auto doc = conjunction_t::seek(target);
+    const auto doc = Conjunction::seek(target);
 
     if (doc_limits::eof(doc) || find_same_position()) {
       return doc;
@@ -137,10 +137,10 @@ class same_position_query final : public filter::prepared {
     // get features required for query & order
     const IndexFeatures features = ord.features | by_same_position::kRequiredFeatures;
 
-    same_position_iterator::doc_iterators_t itrs;
+    std::vector<score_iterator_adapter<irs::doc_iterator::ptr>> itrs;
     itrs.reserve(query_state->size());
 
-    same_position_iterator::positions_t positions;
+    std::vector<position::ref> positions;
     positions.reserve(itrs.size());
 
     const bool no_score = ord.buckets.empty();
@@ -184,9 +184,16 @@ class same_position_query final : public filter::prepared {
       ++term_stats;
     }
 
-    return make_conjunction<same_position_iterator>(
-      std::move(itrs), ord, std::move(positions)
-    );
+    return irs::ResoveMergeType(
+        irs::sort::MergeType::AGGREGATE, ord.buckets.size(),
+        [&]<typename Aggregator>(Aggregator&& aggregator) -> irs::doc_iterator::ptr {
+      using conjunction_t = conjunction<doc_iterator::ptr, Aggregator>;
+
+      return make_conjunction<same_position_iterator<conjunction_t>>(
+        std::move(itrs), std::move(aggregator), ord, std::move(positions)
+      );
+    });
+
   }
 
  private:

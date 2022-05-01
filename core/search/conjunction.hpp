@@ -87,11 +87,11 @@ struct score_iterator_adapter {
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
 template<typename DocIterator, typename Merger>
-class conjunction : public doc_iterator, private score_ctx {
+class conjunction : public doc_iterator, private Merger, private score_ctx {
  public:
+  using merger_type = Merger;
   using doc_iterator_t = score_iterator_adapter<DocIterator>;
   using doc_iterators_t = std::vector<doc_iterator_t>;
-  using iterator = typename doc_iterators_t::const_iterator;
 
   static_assert(std::is_nothrow_move_constructible<doc_iterator_t>::value,
                 "default move constructor expected");
@@ -104,7 +104,7 @@ class conjunction : public doc_iterator, private score_ctx {
 
       // sort subnodes in ascending order by their cost
       std::sort(this->itrs.begin(), this->itrs.end(),
-        [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
+        [](const auto& lhs, const auto& rhs) {
           return cost::extract(lhs, cost::MAX) < cost::extract(rhs, cost::MAX);
       });
 
@@ -121,8 +121,10 @@ class conjunction : public doc_iterator, private score_ctx {
 
   conjunction(
       doc_iterators&& itrs,
+      Merger&& merger,
       const Order& ord = Order::kUnordered)
-    : itrs_(std::move(itrs.itrs)),
+    : Merger{std::move(merger)},
+      itrs_(std::move(itrs.itrs)),
       front_(itrs.front),
       front_doc_(itrs.front_doc) {
     assert(!itrs_.empty());
@@ -134,8 +136,8 @@ class conjunction : public doc_iterator, private score_ctx {
     prepare_score(ord);
   }
 
-  iterator begin() const noexcept { return itrs_.begin(); }
-  iterator end() const noexcept { return itrs_.end(); }
+  auto begin() const noexcept { return itrs_.begin(); }
+  auto end() const noexcept { return itrs_.end(); }
 
   // size of conjunction
   size_t size() const noexcept { return itrs_.size(); }
@@ -170,6 +172,7 @@ class conjunction : public doc_iterator, private score_ctx {
     attribute_ptr<cost>,
     score>;
 
+  // FIXME(gnusi): move to compilation time
   void prepare_score(const Order& ord) {
     if (ord.buckets.empty()) {
       return;
@@ -205,7 +208,7 @@ class conjunction : public doc_iterator, private score_ctx {
           auto* score_buf = std::get<irs::score>(self.attrs_).data();
           self.score_vals_.front() = self.scores_.front()->evaluate();
           self.score_vals_.back() = self.scores_.back()->evaluate();
-          Merger::Merge(score_buf, self.score_vals_.data(), 2);
+          static_cast<Merger&>(self)(score_buf, self.score_vals_.data(), 2);
 
           return score_buf;
         });
@@ -217,7 +220,7 @@ class conjunction : public doc_iterator, private score_ctx {
           self.score_vals_.front() = self.scores_.front()->evaluate();
           self.score_vals_[1] = self.scores_[1]->evaluate();
           self.score_vals_.back() = self.scores_.back()->evaluate();
-          Merger::Merge(score_buf, self.score_vals_.data(), 3);
+          static_cast<Merger&>(self)(score_buf, self.score_vals_.data(), 3);
 
           return score_buf;
         });
@@ -230,7 +233,7 @@ class conjunction : public doc_iterator, private score_ctx {
           for (auto* it_score : self.scores_) {
             *score_val++ = it_score->evaluate();
           }
-          Merger::Merge(score_buf, self.score_vals_.data(), self.score_vals_.size());
+          static_cast<Merger&>(self)(score_buf, self.score_vals_.data(), self.score_vals_.size());
 
           return score_buf;
         });

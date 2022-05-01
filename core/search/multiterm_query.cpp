@@ -184,16 +184,16 @@ doc_iterator::ptr multiterm_query::execute(
     itrs.erase(it, itrs.end());
   }
 
-  return ResoveMergeType(merge_type_, ord.buckets,
-                         [&]<typename Aggregator>() -> irs::doc_iterator::ptr {
+  return ResoveMergeType(merge_type_, ord.buckets.size(),
+                         [&]<typename Aggregator>(Aggregator&& aggregator) -> irs::doc_iterator::ptr {
                            // FIXME: make it constexpr
                            if (ord.buckets.empty()) {
                              return make_disjunction<Disjunction<Aggregator>>(
-                                 std::move(itrs), ord, state->estimation());
+                                 std::move(itrs), std::move(aggregator), ord, state->estimation());
                            }
 
                            return make_disjunction<ScoredDisjunction<Aggregator>>(
-                               std::move(itrs), ord, state->estimation());
+                               std::move(itrs), std::move(aggregator), ord, state->estimation());
                          });
 }
 

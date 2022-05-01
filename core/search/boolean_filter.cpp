@@ -56,9 +56,6 @@ irs::doc_iterator::ptr make_disjunction(
     QueryIterator begin,
     QueryIterator end,
     Args&&... args) {
-  using scored_disjunction_t = irs::scored_disjunction_iterator<irs::doc_iterator::ptr, irs::SumAggregator>;
-  using disjunction_t = irs::disjunction_iterator<irs::doc_iterator::ptr, irs::SumAggregator>;
-
   assert(std::distance(begin, end) >= 0);
   const size_t size = size_t(std::distance(begin, end));
 
@@ -68,7 +65,7 @@ irs::doc_iterator::ptr make_disjunction(
     return irs::doc_iterator::empty();
   }
 
-  scored_disjunction_t::doc_iterators_t itrs;
+  std::vector<iresearch::score_iterator_adapter<irs::doc_iterator::ptr>> itrs;
   itrs.reserve(size);
 
   for (;begin != end; ++begin) {
@@ -81,15 +78,23 @@ irs::doc_iterator::ptr make_disjunction(
     }
   }
 
-  if (ord.buckets.empty()) {
-    // FIXME(gnusi): handle mode
-    return irs::make_disjunction<disjunction_t>(
-      std::move(itrs), ord, std::forward<Args>(args)...);
-  }
+  return irs::ResoveMergeType(
+    irs::sort::MergeType::AGGREGATE,  // FIXME(gnusi): handle mode
+    ord.buckets.size(),
+    [&]<typename Aggregator>(Aggregator&& aggregator) -> irs::doc_iterator::ptr {
+      // FIXME(gnusi): compile time
+      if (ord.buckets.empty()) {
+          using disjunction_t = irs::disjunction_iterator<irs::doc_iterator::ptr, Aggregator>;
+        return irs::make_disjunction<disjunction_t>(
+          std::move(itrs), std::move(aggregator), ord, std::forward<Args>(args)...);
+      }
 
-  // FIXME(gnusi): handle mode
-  return irs::make_disjunction<scored_disjunction_t>(
-    std::move(itrs), ord, std::forward<Args>(args)...);
+      using scored_disjunction_t = irs::scored_disjunction_iterator<irs::doc_iterator::ptr, Aggregator>;
+      return irs::make_disjunction<scored_disjunction_t>(
+        std::move(itrs), std::move(aggregator), ord, std::forward<Args>(args)...);
+
+    });
+
 }
 
 // Returns conjunction iterator created from the specified queries

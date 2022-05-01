@@ -46,7 +46,7 @@ struct ngram_segment_state_t {
 };
 
 using states_t = states_cache<ngram_segment_state_t>;
-using approximation = min_match_disjunction<doc_iterator::ptr, NoopMerger>;
+using approximation = min_match_disjunction<doc_iterator::ptr, NoopAggregator>;
 
 }
 
@@ -66,7 +66,7 @@ class ngram_similarity_doc_iterator final
       size_t min_match_count = 1,
       const Order& ord = Order::kUnordered)
     : pos_(itrs.begin(), itrs.end()),
-      approx_(std::move(itrs), min_match_count), // we are not interested in disjunction`s scoring
+      approx_(std::move(itrs), min_match_count, NoopAggregator{}), // we are not interested in disjunction`s scoring
       min_match_count_(min_match_count),
       total_terms_count_(static_cast<boost_t>(total_terms_count)), // avoid runtime conversion
       empty_order_(ord.buckets.empty()) {
@@ -393,7 +393,7 @@ class ngram_similarity_query : public filter::prepared {
  private:
   doc_iterator::ptr execute_simple_disjunction(
       const ngram_segment_state_t& query_state) const {
-    using disjunction_t = irs::disjunction_iterator<doc_iterator::ptr, SumAggregator>;
+    using disjunction_t = irs::disjunction_iterator<doc_iterator::ptr, NoopAggregator>;
 
     disjunction_t::doc_iterators_t itrs;
     itrs.reserve(query_state.terms.size());
@@ -417,7 +417,8 @@ class ngram_similarity_query : public filter::prepared {
       return doc_iterator::empty();
     }
 
-    return make_disjunction<disjunction_t>(std::move(itrs));
+    // FIXME(gnusi): why we dishonor order?
+    return make_disjunction<disjunction_t>(std::move(itrs), NoopAggregator{});
   }
 
   doc_iterator::ptr execute_ngram_similarity(

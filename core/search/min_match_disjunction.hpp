@@ -44,6 +44,7 @@ namespace iresearch {
 template<typename DocIterator, typename Merger>
 class min_match_disjunction
     : public doc_iterator,
+      private Merger,
       private score_ctx {
  public:
   struct cost_iterator_adapter : score_iterator_adapter<DocIterator> {
@@ -66,9 +67,11 @@ class min_match_disjunction
 
   min_match_disjunction(
       doc_iterators_t&& itrs,
+      Merger&& merger,
       size_t min_match_count = 1,
       const Order& ord = Order::kUnordered)
-    : itrs_(std::move(itrs)),
+    : Merger{std::move(merger)},
+      itrs_(std::move(itrs)),
       min_match_count_(
         std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
       lead_(itrs_.size()) {
@@ -245,6 +248,7 @@ class min_match_disjunction
  private:
   using attributes = std::tuple<document, cost, score>;
 
+  // FIXME(gnusi) compile time
   void prepare_score(const Order& ord) {
     if (ord.buckets.empty()) {
       return;
@@ -255,7 +259,7 @@ class min_match_disjunction
     score.resize(ord);
 
     scores_vals_.resize(itrs_.size());
-    score.reset(this, [](score_ctx* ctx) -> const byte_type* {
+    score.reset(this, [](score_ctx* ctx) -> const score_t* {
       auto& self = *static_cast<min_match_disjunction*>(ctx);
       auto* score_buf = std::get<irs::score>(self.attrs_).data();
       assert(!self.heap_.empty());
@@ -271,8 +275,9 @@ class min_match_disjunction
           detail::evaluate_score_iter(pVal, self.itrs_[it]);
       });
 
-      Merger::merge(score_buf, self.scores_vals_.data(),
-                    std::distance(self.scores_vals_.data(), pVal));
+      auto& merger = static_cast<Merger&>(self);
+      merger(score_buf, self.scores_vals_.data(),
+             size_t{std::distance(self.scores_vals_.data(), pVal)});
 
       return score_buf;
     });

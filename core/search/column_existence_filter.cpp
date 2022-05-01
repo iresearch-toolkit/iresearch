@@ -100,8 +100,7 @@ class column_prefix_existence_query final : public column_existence_query {
       const irs::Order& ord,
       ExecutionMode /*mode*/,
       const irs::attribute_provider* /*ctx*/) const override {
-    using scored_disjunction_t = irs::scored_disjunction_iterator<irs::doc_iterator::ptr, SumAggregator>;
-    using disjunction_t = irs::disjunction_iterator<irs::doc_iterator::ptr, SumAggregator>;
+    using adapter_t = irs::score_iterator_adapter<irs::doc_iterator::ptr>;
 
     const string_ref prefix = field_;
 
@@ -112,7 +111,7 @@ class column_prefix_existence_query final : public column_existence_query {
       return irs::doc_iterator::empty();
     }
 
-    disjunction_t::doc_iterators_t itrs;
+    std::vector<adapter_t> itrs;
 
     while (irs::starts_with(it->value().name(), prefix)) {
       const auto* column = segment.column(it->value().id());
@@ -128,11 +127,19 @@ class column_prefix_existence_query final : public column_existence_query {
       }
     }
 
-    if (ord.buckets.empty()) {
-      return irs::make_disjunction<disjunction_t>(std::move(itrs));
-    }
+    return ResoveMergeType(
+        sort::MergeType::AGGREGATE, ord.buckets.size(),
+        [&]<typename Aggregator>(Aggregator&& aggregator) -> irs::doc_iterator::ptr {
 
-    return irs::make_disjunction<scored_disjunction_t>(std::move(itrs), ord);
+      // FIXME(gnusi): compile time check
+      if (ord.buckets.empty()) {
+        using disjunction_t = irs::disjunction_iterator<irs::doc_iterator::ptr, Aggregator>;
+        return irs::make_disjunction<disjunction_t>(std::move(itrs), std::move(aggregator));
+      }
+
+      using scored_disjunction_t = irs::scored_disjunction_iterator<irs::doc_iterator::ptr, Aggregator>;
+      return irs::make_disjunction<scored_disjunction_t>(std::move(itrs), std::move(aggregator), ord);
+    });
   }
 }; // column_prefix_existence_query
 

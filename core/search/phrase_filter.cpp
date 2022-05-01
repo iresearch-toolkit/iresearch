@@ -291,11 +291,6 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
       const Order& ord,
       ExecutionMode /*mode*/,
       const attribute_provider* /*ctx*/) const override {
-    using conjunction_t = conjunction<doc_iterator::ptr, SumAggregator>;
-    using phrase_iterator_t = phrase_iterator<
-      conjunction_t,
-      fixed_phrase_frequency>;
-
     // get phrase state for the specified reader
     auto phrase_state = states_.find(rdr);
 
@@ -307,7 +302,7 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
     // get index features required for query & order
     const IndexFeatures features = ord.features | by_phrase::kRequiredFeatures;
 
-    conjunction_t::doc_iterators_t itrs;
+    std::vector<score_iterator_adapter<doc_iterator::ptr>> itrs;
     itrs.reserve(phrase_state->terms.size());
 
     std::vector<fixed_phrase_frequency::term_position_t> positions;
@@ -340,6 +335,10 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
       ++position;
     }
 
+    using phrase_iterator_t = phrase_iterator<
+      conjunction<doc_iterator::ptr, NoopAggregator>,
+      fixed_phrase_frequency>;
+
     return memory::make_managed<phrase_iterator_t>(
         std::move(itrs),
         std::move(positions),
@@ -353,11 +352,9 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
 
 class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
  public:
-  using conjunction_t = conjunction<doc_iterator::ptr, SumAggregator>;
-
   // FIXME add proper handling of overlapped case
   template<bool VolatileBoost>
-  using phrase_iterator_t = phrase_iterator<conjunction_t,
+  using phrase_iterator_t = phrase_iterator<conjunction<doc_iterator::ptr, NoopAggregator>,
                                             variadic_phrase_frequency<VolatileBoost>>;
 
   variadic_phrase_query(
@@ -376,8 +373,8 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
       ExecutionMode /*mode*/,
       const attribute_provider* /*ctx*/) const override {
     using adapter_t = variadic_phrase_adapter;
-    using disjunction_t = disjunction<doc_iterator::ptr, SumAggregator, adapter_t, true>;
     using compound_doc_iterator_t = irs::compound_doc_iterator<adapter_t>;
+    using disjunction_t = disjunction<doc_iterator::ptr, NoopAggregator, adapter_t, true>;
 
     // get phrase state for the specified reader
     auto phrase_state = states_.find(rdr);
@@ -390,7 +387,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
     // get features required for query & order
     const IndexFeatures features = ord.features | by_phrase::kRequiredFeatures;
 
-    conjunction_t::doc_iterators_t conj_itrs;
+    std::vector<score_iterator_adapter<doc_iterator::ptr>> conj_itrs;
     conj_itrs.reserve(phrase_state->terms.size());
 
     const auto phrase_size = phrase_state->num_terms.size();
@@ -410,13 +407,13 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
       auto& pos = positions[i];
       pos.second = *position;
 
-      disjunction_t::doc_iterators_t disj_itrs;
+      std::vector<adapter_t> disj_itrs;
       disj_itrs.reserve(num_terms);
       for (const auto end = term_state + num_terms; term_state != end; ++term_state) {
         assert(term_state->first);
 
-        disjunction_t::adapter docs(reader->postings(*term_state->first, features),
-                                    term_state->second);
+        adapter_t docs{reader->postings(*term_state->first, features),
+                       term_state->second};
 
         if (!docs.position) {
           // positions not found

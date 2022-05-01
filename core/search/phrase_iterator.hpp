@@ -442,8 +442,8 @@ class phrase_iterator final : public doc_iterator {
       const byte_type* stats,
       const Order& ord,
       boost_t boost)
-    : approx_(std::move(itrs)),
-      freq_(std::move(pos), ord) {
+    : approx_{std::move(itrs), NoopAggregator{}},
+      freq_{std::move(pos), ord} {
     std::get<attribute_ptr<document>>(attrs_) = irs::get_mutable<document>(&approx_);
     std::get<attribute_ptr<frequency>>(attrs_) = freq_.freq();
     std::get<attribute_ptr<filter_boost>>(attrs_) = freq_.boost();
