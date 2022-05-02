@@ -67,8 +67,8 @@ class min_match_disjunction
 
   min_match_disjunction(
       doc_iterators_t&& itrs,
+      size_t min_match_count,
       Merger&& merger,
-      size_t min_match_count = 1,
       const Order& ord = Order::kUnordered)
     : Merger{std::move(merger)},
       itrs_(std::move(itrs)),
@@ -267,7 +267,7 @@ class min_match_disjunction
       self.push_valid_to_lead();
 
       // score lead iterators
-      const irs::byte_type** pVal = self.scores_vals_.data();
+      const irs::score_t** pVal = self.scores_vals_.data();
       std::for_each(
         self.lead(), self.heap_.end(),
         [&self, &pVal](size_t it) {
@@ -438,7 +438,7 @@ class min_match_disjunction
   //////////////////////////////////////////////////////////////////////////////
   /// @returns the first iterator in the lead group
   //////////////////////////////////////////////////////////////////////////////
-  inline std::vector<size_t>::iterator lead() {
+  inline auto lead() {
     return heap_.end() - lead_;
   }
 
@@ -452,7 +452,7 @@ class min_match_disjunction
 
   doc_iterators_t itrs_; // sub iterators
   std::vector<size_t> heap_;
-  mutable std::vector<const irs::byte_type*> scores_vals_;
+  mutable std::vector<const irs::score_t*> scores_vals_;
   size_t min_match_count_; // minimum number of hits
   size_t lead_; // number of iterators in lead group
   attributes attrs_;

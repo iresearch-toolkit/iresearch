@@ -519,10 +519,8 @@ int search(
 
   {
     SCOPED_TIMER("Order build time");
-    irs::order sort;
 
-    sort.add(true, std::move(scr));
-    order = sort.prepare();
+    order = irs::Order::Prepare(std::span{&scr, 1});
   }
 
   struct task_provider_t {

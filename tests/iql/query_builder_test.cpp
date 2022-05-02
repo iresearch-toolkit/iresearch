@@ -61,7 +61,7 @@ class test_sort: public irs::sort {
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type*,
-        irs::byte_type*,
+        irs::score_t*,
         const irs::attribute_provider&,
         irs::boost_t) const override {
       return { nullptr, nullptr };
@@ -71,12 +71,6 @@ class test_sort: public irs::sort {
     }
     virtual irs::IndexFeatures features() const override {
       return irs::IndexFeatures::NONE;
-    }
-    virtual bool less(const irs::byte_type*, const irs::byte_type*) const override {
-      throw std::bad_function_call();
-    }
-    std::pair<size_t, size_t> score_size() const override {
-      return std::make_pair(size_t(0), size_t(0));
     }
     std::pair<size_t, size_t> stats_size() const override {
       return std::make_pair(size_t(0), size_t(0));

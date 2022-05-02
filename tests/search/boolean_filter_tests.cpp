@@ -152,7 +152,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
       assert(stats_);
 
       score_.resize(ord);
-      scorers_ = irs::Order::Scorers(
+      scorers_ = irs::Scorers(
         ord,
         irs::sub_reader::empty(),
         irs::empty_term_reader{0},
@@ -209,7 +209,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
  private:
   std::map<irs::type_info::type_id, irs::attribute*> attrs_;
   irs::cost est_;
-  irs::Order::Scorers scorers_;
+  irs::Scorers scorers_;
   docids_t::const_iterator first_;
   docids_t::const_iterator last_;
   const irs::byte_type* stats_;
@@ -14184,7 +14184,7 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential_ordered) {
     while (filter_itr->next()) {
       ASSERT_FALSE(!score);
       scored_result.emplace(
-        irs::bytes_ref{score->evaluate(), prepared_order.score_size() },
+        irs::bytes_ref{score->evaluate(), prepared_order.score_size },
         filter_itr->value());
       ++docs_count;
     }
@@ -14275,7 +14275,7 @@ TEST_P(boolean_filter_test_case, not_sequential_ordered) {
     while (filter_itr->next()) {
       ASSERT_FALSE(!score);
       scored_result.emplace(
-        irs::bytes_ref{ score->evaluate(), prepared_order.score_size() },
+        irs::bytes_ref{ score->evaluate(), prepared_order.score_size },
         filter_itr->value());
       ++docs_count;
     }
@@ -14715,7 +14715,7 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
         EXPECT_EQ(*expected_doc, doc->value);
         ++expected_doc;
 
-        scores.emplace_back(score->evaluate(), prepared_ord.score_size());
+        scores.emplace_back(score->evaluate(), prepared_ord.score_size);
       }
 
       ASSERT_EQ(expected_docs.end(), expected_doc);

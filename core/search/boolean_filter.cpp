@@ -107,8 +107,6 @@ irs::doc_iterator::ptr make_conjunction(
     QueryIterator begin,
     QueryIterator end,
     Args&&... args) {
-  typedef irs::conjunction<irs::doc_iterator::ptr, irs::SumAggregator> conjunction_t;
-
   assert(std::distance(begin, end) >= 0);
   const size_t size = std::distance(begin, end);
 
@@ -120,7 +118,7 @@ irs::doc_iterator::ptr make_conjunction(
       return begin->execute(rdr, ord, mode, ctx);
   }
 
-  conjunction_t::doc_iterators_t itrs;
+  std::vector<irs::score_iterator_adapter<irs::doc_iterator::ptr>> itrs;
   itrs.reserve(size);
 
   for (;begin != end; ++begin) {
@@ -134,10 +132,14 @@ irs::doc_iterator::ptr make_conjunction(
     itrs.emplace_back(std::move(docs));
   }
 
-  // FIXME(gnusi): handle mode
-  return irs::make_conjunction<conjunction_t>(
-     std::move(itrs), ord, std::forward<Args>(args)...
-  );
+  return irs::ResoveMergeType(
+      irs::sort::MergeType::AGGREGATE, // FIXME(gnusi): handle mode
+      ord.buckets.size(),
+      [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+        using conjunction_t = irs::conjunction<irs::doc_iterator::ptr, A>;
+        return irs::make_conjunction<conjunction_t>(std::move(itrs), std::move(aggregator),
+                                                    ord, std::forward<Args>(args)...);
+      });
 }
 
 } // LOCAL
@@ -272,10 +274,6 @@ class or_query final : public boolean_query {
 /// minimum number of clauses that should satisfy criteria
 //////////////////////////////////////////////////////////////////////////////
 class min_match_query final : public boolean_query {
- private:
-  using scored_disjunction_t = scored_min_match_iterator<doc_iterator::ptr, irs::SumAggregator>;
-  using disjunction_t = min_match_iterator<doc_iterator::ptr, irs::SumAggregator>; // FIXME use FAST version
-
  public:
   explicit min_match_query(size_t min_match_count)
     : min_match_count_(min_match_count) {
@@ -307,7 +305,7 @@ class min_match_query final : public boolean_query {
     // min_match_count <= size
     min_match_count = std::min(size, min_match_count);
 
-    disjunction_t::doc_iterators_t itrs;
+    std::vector<score_iterator_adapter<doc_iterator::ptr>> itrs;
     itrs.reserve(size);
 
     for (;begin != end; ++begin) {
@@ -327,7 +325,7 @@ class min_match_query final : public boolean_query {
 
  private:
   static doc_iterator::ptr make_min_match_disjunction(
-      disjunction_t::doc_iterators_t&& itrs,
+      std::vector<score_iterator_adapter<doc_iterator::ptr>>&& itrs,
       const Order& ord,
       size_t min_match_count) {
     const auto size = min_match_count > itrs.size() ? 0 : itrs.size();
@@ -341,24 +339,30 @@ class min_match_query final : public boolean_query {
         return std::move(itrs.front());
     }
 
-    if (min_match_count == size) {
-      using conjunction_t = conjunction<doc_iterator::ptr, typename disjunction_t::merger_type>;
+    return ResoveMergeType(sort::MergeType::AGGREGATE, ord.buckets.size(),
+    [&]<typename A>(A&& aggregator) -> doc_iterator::ptr {
+        using disjunction_t = min_match_iterator<doc_iterator::ptr, A>; // FIXME use FAST version
+        using scored_disjunction_t = scored_min_match_iterator<doc_iterator::ptr, A>;
 
-      // pure conjunction
-      return memory::make_managed<conjunction_t>(
-        conjunction_t::doc_iterators_t(
-          std::make_move_iterator(itrs.begin()),
-          std::make_move_iterator(itrs.end())), ord);
-    }
+        if (min_match_count == size) {
+          using conjunction_t = conjunction<doc_iterator::ptr, typename disjunction_t::merger_type>;
 
-    // min match disjunction
-    assert(min_match_count < size);
+          // pure conjunction
+          return memory::make_managed<conjunction_t>(
+            typename conjunction_t::doc_iterators_t(
+              std::make_move_iterator(itrs.begin()),
+              std::make_move_iterator(itrs.end())), std::move(aggregator), ord);
+        }
 
-    if (ord.buckets.empty()) {
-      return memory::make_managed<disjunction_t>(std::move(itrs), min_match_count);
-    }
+        // min match disjunction
+        assert(min_match_count < size);
 
-    return memory::make_managed<scored_disjunction_t>(std::move(itrs), min_match_count, ord);
+        if (ord.buckets.empty()) { // FIXME compile time
+          return memory::make_managed<disjunction_t>(std::move(itrs), min_match_count, std::move(aggregator));
+        }
+
+        return memory::make_managed<scored_disjunction_t>(std::move(itrs), min_match_count, std::move(aggregator), ord);
+    });
   }
 
   size_t min_match_count_;

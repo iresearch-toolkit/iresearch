@@ -222,7 +222,7 @@ class basic_disjunction final
   basic_disjunction(
       adapter&& lhs,
       adapter&& rhs,
-      Merger&& merger,
+      Merger&& merger = Merger{},
       const Order& ord = Order::kUnordered)
     : basic_disjunction(
         std::move(lhs), std::move(rhs), std::move(merger), ord,
@@ -425,9 +425,10 @@ class small_disjunction final
 
   explicit small_disjunction(
       doc_iterators_t&& itrs,
+      Merger&& merger = Merger{},
       const Order& ord = Order::kUnordered)
     : small_disjunction(
-        std::move(itrs), ord,
+        std::move(itrs), std::move(merger), ord,
         [this](){
           return std::accumulate(
             begin_, end_, cost::cost_t(0),
@@ -545,10 +546,12 @@ class small_disjunction final
   template<typename Estimation>
   small_disjunction(
       doc_iterators_t&& itrs,
+      Merger&& merger,
       const Order& ord,
       Estimation&& estimation,
       resolve_overload_tag)
-    : itrs_(itrs.size()),
+    : Merger{std::move(merger)},
+      itrs_(itrs.size()),
       scored_begin_(itrs_.begin()),
       begin_(scored_begin_),
       end_(itrs_.end()) {
@@ -588,7 +591,7 @@ class small_disjunction final
         auto& self = *static_cast<small_disjunction*>(ctx);
         auto* score_buf = std::get<irs::score>(self.attrs_).data();
         auto& doc = std::get<document>(self.attrs_);
-        const irs::byte_type** pVal = self.scores_vals_.data();
+        const irs::score_t** pVal = self.scores_vals_.data();
         for (auto begin = self.scored_begin_, end = self.end_; begin != end; ++begin) {
           auto value = begin->value();
 
@@ -651,7 +654,7 @@ class small_disjunction final
   iterator begin_; // beginning of unscored doc iterators range
   iterator end_; // end of scored doc iterator range
   attributes attrs_;
-  mutable std::vector<const irs::byte_type*> scores_vals_;
+  mutable std::vector<const irs::score_t*> scores_vals_;
 }; // small_disjunction
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -699,7 +702,7 @@ class disjunction final
 
   explicit disjunction(
       doc_iterators_t&& itrs,
-      Merger&& merger,
+      Merger&& merger = Merger{},
       const Order& ord = Order::kUnordered)
     : disjunction(
         std::move(itrs), std::move(merger), ord,
@@ -838,7 +841,7 @@ class disjunction final
       auto& doc = std::get<document>(self.attrs_);
 
       const auto its = self.hitch_all_iterators();
-      const irs::byte_type** pVal = self.scores_vals_.data();
+      const irs::score_t** pVal = self.scores_vals_.data();
       detail::evaluate_score_iter(pVal, self.lead());
       if (self.top().value() == doc.value) {
         irstd::heap::for_each_if(
@@ -997,7 +1000,7 @@ template<typename DocIterator,
          typename Merger,
          typename Traits,
          typename Adapter = score_iterator_adapter<DocIterator>>
-class block_disjunction final : public doc_iterator, private score_ctx {
+class block_disjunction final : public doc_iterator, private Merger, private score_ctx {
  public:
   using traits_type = Traits;
   using adapter  = Adapter;
@@ -1033,7 +1036,7 @@ class block_disjunction final : public doc_iterator, private score_ctx {
 
   explicit block_disjunction(
       doc_iterators_t&& itrs,
-      Merger&& merger,
+      Merger&& merger = Merger{},
       const Order& ord = Order::kUnordered)
     : block_disjunction(std::move(itrs), 1, std::move(merger), ord) {
   }
@@ -1041,7 +1044,7 @@ class block_disjunction final : public doc_iterator, private score_ctx {
   block_disjunction(
       doc_iterators_t&& itrs,
       size_t min_match_count,
-      Merger&& merger,
+      Merger&& merger = Merger{},
       const Order& ord = Order::kUnordered)
     : block_disjunction(
         std::move(itrs), min_match_count, std::move(merger), ord,
@@ -1199,7 +1202,7 @@ class block_disjunction final : public doc_iterator, private score_ctx {
           for (auto& it : itrs_) {
             if (!it.score->is_default() && doc.value == it->value()) {
               assert(it.score);
-              Merger::operator()(score_buf_.data(), it.score->evaluate());
+              static_cast<Merger&>(*this)(score_buf_.data(), it.score->evaluate());
             }
           }
 
@@ -1416,7 +1419,7 @@ class block_disjunction final : public doc_iterator, private score_ctx {
 
       if constexpr (Score) {
         assert(it.score);
-        Merger::operator()(score_buf_.get(offset), it.score->evaluate());
+        static_cast<Merger&>(*this)(score_buf_.get(offset), it.score->evaluate());
       }
 
       if constexpr (traits_type::min_match()) {

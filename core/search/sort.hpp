@@ -306,6 +306,7 @@ static_assert(std::is_nothrow_move_constructible_v<OrderBucket>);
 static_assert(std::is_nothrow_move_assignable_v<OrderBucket>);
 
 struct NoopAggregator{
+  void operator()(score_t*, const score_t*) const noexcept { }
   void operator()(score_t*, const score_t**, size_t) noexcept { }
 };
 
@@ -313,7 +314,7 @@ template<typename Merger, size_t Size>
 struct Aggregator {
   void operator()(score_t* dst, const score_t* src) const noexcept {
     for (size_t i = 0; i < Size; ++i) {
-      Merger::Merge(dst, src);
+      Merger::Merge(i, dst, src);
     }
   }
 
@@ -331,7 +332,7 @@ struct Aggregator<Merger, std::numeric_limits<size_t>::max()> {
 
   void operator()(score_t* dst, const score_t* src) const noexcept {
     for (size_t i = 0; i < size; ++i) {
-      Merger::Merge(dst, src);
+      Merger::Merge(i, dst, src);
     }
   }
 
@@ -345,14 +346,14 @@ struct Aggregator<Merger, std::numeric_limits<size_t>::max()> {
 };
 
 struct SumMerger {
-  static void MergeImpl(size_t idx,
-                        score_t* RESTRICT dst,
-                        const score_t* RESTRICT src) noexcept {
+  static void Merge(size_t idx,
+                    score_t* RESTRICT dst,
+                    const score_t* RESTRICT src) noexcept {
     dst[idx] += src[idx];
   }
 
-  static void MergeImpl(size_t idx, score_t* dst,
-                        const score_t** src_begin, size_t size) noexcept {
+  static void Merge(size_t idx, score_t* dst,
+                    const score_t** src_begin, size_t size) noexcept {
     auto& casted_dst = dst[idx];
     casted_dst = {};
 
@@ -382,31 +383,11 @@ struct SumMerger {
         break;
     }
   }
-
-  // FIXME(gnusi) determine in compile time, avoid duplication
-  static void Merge(std::span<const OrderBucket> buckets, score_t* dst,
-                    const score_t** src_begin, size_t size) noexcept {
-    switch (buckets.size()) {
-      case 0:
-        break;
-      case 1:
-        MergeImpl(buckets.front().score_index, dst, src_begin, size);
-        break;
-      case 2:
-        MergeImpl(buckets.front().score_index, dst, src_begin, size);
-        MergeImpl(buckets.back().score_index, dst, src_begin, size);
-      default:
-        for (auto& bucket : buckets) {
-          MergeImpl(bucket.score_index, dst, src_begin, size);
-        }
-        break;
-    }
-  }
 };
 
 struct MaxMerger {
-  static void MergeImpl(size_t idx, score_t* dst,
-                        const score_t** src_begin, size_t size) noexcept {
+  static void Merge(size_t idx, score_t* dst,
+                    const score_t** src_begin, size_t size) noexcept {
     auto& casted_dst = dst[idx];
 
     switch (size) {
@@ -430,34 +411,14 @@ struct MaxMerger {
     }
   }
 
-  static void MergeImpl(size_t idx,
-                        byte_type* RESTRICT dst,
-                        const byte_type* RESTRICT src) noexcept {
+  static void Merge(size_t idx,
+                    score_t* RESTRICT dst,
+                    const score_t* RESTRICT src) noexcept {
     auto& casted_dst = dst[idx];
     auto& casted_src = src[idx];
 
     if (casted_dst < casted_src) {
       casted_dst = casted_src;
-    }
-  }
-
-  // FIXME(gnusi) determine in compile time, avoid duplication
-  static void Merge(std::span<const OrderBucket> buckets, score_t* dst,
-                    const score_t** src_begin, size_t size) noexcept {
-    switch (buckets.size()) {
-      case 0:
-        break;
-      case 1:
-        MergeImpl(buckets.front().score_index, dst, src_begin, size);
-        break;
-      case 2:
-        MergeImpl(buckets.front().score_index, dst, src_begin, size);
-        MergeImpl(buckets.back().score_index, dst, src_begin, size);
-      default:
-        for (auto& bucket : buckets) {
-          MergeImpl(bucket.score_index, dst, src_begin, size);
-        }
-        break;
     }
   }
 };
@@ -469,23 +430,17 @@ auto ResoveMergeType(sort::MergeType type,
   auto impl = [&]<typename Merger>(){
     switch (num_buckets) {
       case 0:
-        return std::forward<Visitor>(visitor)
-            .template operator()(NoopAggregator{});
+        return visitor(NoopAggregator{});
       case 1:
-        return std::forward<Visitor>(visitor)
-            .template operator()(Aggregator<Merger, 1>{});
+        return visitor(Aggregator<Merger, 1>{});
       case 2:
-        return std::forward<Visitor>(visitor)
-            .template operator()(Aggregator<Merger, 2>{});
+        return visitor(Aggregator<Merger, 2>{});
       case 3:
-        return std::forward<Visitor>(visitor)
-            .template operator()(Aggregator<Merger, 3>{});
+        return visitor(Aggregator<Merger, 3>{});
       case 4:
-        return std::forward<Visitor>(visitor)
-            .template operator()(Aggregator<Merger, 4>{});
+        return visitor(Aggregator<Merger, 4>{});
       default:
-        return std::forward<Visitor>(visitor)
-            .template operator()(Aggregator<Merger, std::numeric_limits<size_t>::max()>{num_buckets});
+        return visitor(Aggregator<Merger, std::numeric_limits<size_t>::max()>{num_buckets});
     }
   };
 

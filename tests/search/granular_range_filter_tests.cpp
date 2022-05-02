@@ -1719,12 +1719,14 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
   {
     docs_t docs{ };
     costs_t costs{ docs.size() };
-    irs::order order;
 
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
     size_t finish_count = 0;
-    auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+    std::array<irs::sort::ptr, 1> scorers{
+        std::make_unique<tests::sort::custom_sort>() };
+    auto& scorer = static_cast<tests::sort::custom_sort&>(*scorers.front());
 
     scorer.collector_collect_field = [&collect_field_count](
         const irs::sub_reader&, const irs::term_reader&)->void{
@@ -1757,7 +1759,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     q.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     q.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-    check_query(q, order, docs, rdr, false);
+    check_query(q, scorers, docs, rdr, false);
     ASSERT_EQ(0, collect_field_count);
     ASSERT_EQ(0, collect_term_count);
     ASSERT_EQ(0, finish_count);
@@ -1767,12 +1769,14 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
   {
     docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
     costs_t costs{ docs.size() };
-    irs::order order;
 
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
     size_t finish_count = 0;
-    auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+    std::array<irs::sort::ptr, 1> scorers{
+        std::make_unique<tests::sort::custom_sort>() };
+    auto& scorer = static_cast<tests::sort::custom_sort&>(*scorers.front());
 
     scorer.collector_collect_field = [&collect_field_count](
         const irs::sub_reader&, const irs::term_reader&)->void{
@@ -1815,8 +1819,8 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
   {
     docs_t docs{ 1, 5, 7, 9, 10, 3, 4, 8, 11, 2, 6, 12, 13, 14, 15, 16, 17 };
     costs_t costs{ docs.size() };
-    irs::order order;
-    order.add<tests::sort::frequency_sort>(false);
+    std::array<irs::sort::ptr, 1> order {
+        std::make_unique<tests::sort::frequency_sort>() };
 
     irs::by_granular_range q;
     *q.mutable_field() = "value";
@@ -1832,8 +1836,8 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
   {
     docs_t docs{ 1, 5, 7, 9, 10, 3, 8, 2, 4, 6, 11, 12, 13, 14, 15, 16, 17 };
     costs_t costs{ docs.size() };
-    irs::order order;
-    order.add<tests::sort::frequency_sort>(false);
+    std::array<irs::sort::ptr, 1> order {
+        std::make_unique<tests::sort::frequency_sort>() };
 
     irs::by_granular_range q;
     *q.mutable_field() = "value";
@@ -1850,13 +1854,14 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
   {
     docs_t docs{ 4, 11, 12, 13, 14, 15, 16, 17 };
     costs_t costs{ docs.size() };
-    irs::order order;
     irs::numeric_token_stream max_stream;
     max_stream.reset((double_t)100.);
     auto* max_term = irs::get<irs::term_attribute>(max_stream);
 
     ASSERT_TRUE(max_stream.next());
-    order.add<tests::sort::frequency_sort>(false);
+
+    std::array<irs::sort::ptr, 1> order {
+        std::make_unique<tests::sort::frequency_sort>() };
 
     irs::by_granular_range q;
     *q.mutable_field() = "value";
@@ -1913,12 +1918,11 @@ TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
     docs.resize(size_t(end - begin));
     std::iota(docs.begin(), docs.end(), size_t(begin - seed + irs::doc_limits::min()));
     costs_t costs{ docs.size() };
-    irs::order order;
     irs::numeric_token_stream min_stream;
     min_stream.reset((double_t)begin);
 
-    order.add<tests::sort::frequency_sort>(false);
-    order.add<tests::sort::frequency_sort>(true);
+    std::array<irs::sort::ptr, 1> order {
+        std::make_unique<tests::sort::frequency_sort>() };
 
     irs::by_granular_range q;
     *q.mutable_field() = "seq";

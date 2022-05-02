@@ -156,7 +156,7 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
     ASSERT_TRUE(bool(score));
 
     while(docs->next()) {
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -198,7 +198,7 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
     auto* score = irs::get<irs::score>(*docs);
 
     while(docs->next()) {
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -399,7 +399,7 @@ TEST_P(bm25_test_case, test_phrase) {
     ASSERT_NE(nullptr, actual_value);
 
     while (docs->next()) {
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
 
       sorted.emplace(
@@ -452,7 +452,7 @@ TEST_P(bm25_test_case, test_phrase) {
     ASSERT_NE(nullptr, actual_value);
 
     while (docs->next()) {
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
 
       sorted.emplace(score_value,
@@ -516,7 +516,7 @@ TEST_P(bm25_test_case, test_query) {
     ASSERT_TRUE(bool(score));
 
     while(docs->next()) {
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -608,7 +608,7 @@ TEST_P(bm25_test_case, test_query) {
       ASSERT_TRUE(bool(score));
 
       while(docs->next()) {
-        const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+        const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
 
@@ -711,7 +711,7 @@ TEST_P(bm25_test_case, test_query) {
       ASSERT_TRUE(bool(score));
 
       while(docs->next()) {
-        const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+        const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
 
@@ -805,7 +805,7 @@ TEST_P(bm25_test_case, test_query) {
       ASSERT_TRUE(bool(score));
 
       while(docs->next()) {
-        const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+        const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
 
@@ -846,7 +846,7 @@ TEST_P(bm25_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
 
     while(docs->next()) {
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -888,7 +888,7 @@ TEST_P(bm25_test_case, test_query) {
     ASSERT_TRUE(bool(score));
 
     while(docs->next()) {
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -929,7 +929,7 @@ TEST_P(bm25_test_case, test_query) {
 //    ASSERT_TRUE(bool(score));
 //
 //    while(docs->next()) {
-//      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+//      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
 //      ASSERT_EQ(docs->value(), values->seek(docs->value()));
 //      in.reset(actual_value->value);
 //
@@ -969,7 +969,7 @@ TEST_P(bm25_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
 
     while(docs->next()) {
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -1010,7 +1010,7 @@ TEST_P(bm25_test_case, test_query) {
     ASSERT_TRUE(bool(score));
 
     while(docs->next()) {
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -1052,7 +1052,7 @@ TEST_P(bm25_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
 
     while(docs->next()) {
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -1092,7 +1092,7 @@ TEST_P(bm25_test_case, test_query) {
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
       ASSERT_EQ(1.5f, *reinterpret_cast<const float_t*>(score_value.c_str()));
@@ -1120,7 +1120,7 @@ TEST_P(bm25_test_case, test_query) {
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
       ASSERT_EQ(0.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
@@ -1149,7 +1149,7 @@ TEST_P(bm25_test_case, test_query) {
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
       ASSERT_EQ(1.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
@@ -1179,7 +1179,7 @@ TEST_P(bm25_test_case, test_query) {
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
       ASSERT_EQ(0.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
@@ -1479,7 +1479,7 @@ TEST_P(bm25_test_case, test_order) {
     ASSERT_TRUE(bool(score));
 
     for (; docs->next();) {
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
