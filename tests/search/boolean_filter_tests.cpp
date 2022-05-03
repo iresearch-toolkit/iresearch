@@ -8369,6 +8369,8 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     using ExpectedType = irs::block_disjunction<
         irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
         irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.is_default());
@@ -8433,11 +8435,12 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     using ExpectedType = irs::block_disjunction<
         irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>,
         irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.is_default());
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
-
 
     auto* doc = irs::get<irs::document>(it);
     ASSERT_FALSE(irs::doc_limits::valid(doc->value));
@@ -8489,6 +8492,8 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     using ExpectedType = irs::block_disjunction<
         irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
         irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.is_default());
@@ -8536,6 +8541,8 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     using ExpectedType = irs::block_disjunction<
         irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
         irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.is_default());
@@ -8588,6 +8595,8 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     using ExpectedType = irs::block_disjunction<
         irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
         irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.is_default());
@@ -10557,10 +10566,6 @@ TEST(block_disjunction_test, seek_next_no_readahead_two_blocks) {
 }
 
 TEST(block_disjunction_test, scored_seek_next_no_readahead) {
-  using disjunction = irs::block_disjunction<
-    irs::doc_iterator::ptr,
-    irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
-
   // disjunction without score, sub-iterators with scores
   {
     std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
@@ -10571,8 +10576,28 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, 
                       irs::Order::Prepare(detail::basic_sort{4}));
 
-    auto res = detail::execute_all<disjunction::adapter>(docs);
-    disjunction it(std::move(res.first), irs::Order::kUnordered, irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, 0,
+        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          using disjunction = irs::block_disjunction<
+            irs::doc_iterator::ptr, A,
+            irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+          using adapter = typename disjunction::adapter;
+
+          auto res = detail::execute_all<adapter>(docs);;
+          cached_order = std::move(res.second);
+
+          return irs::memory::make_managed<disjunction>(
+              std::move(res.first), std::move(aggregator),
+              irs::Order::kUnordered, 1); // custom cost
+        });
+
+    using ExpectedType = irs::block_disjunction<
+        irs::doc_iterator::ptr, irs::NoopAggregator,
+        irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -10611,8 +10636,28 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
 
-    auto res = detail::execute_all<disjunction::adapter>(docs);
-    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, 1,
+        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          using disjunction = irs::block_disjunction<
+            irs::doc_iterator::ptr, A,
+            irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+          using adapter = typename disjunction::adapter;
+
+          auto res = detail::execute_all<adapter>(docs);;
+          cached_order = std::move(res.second);
+
+          return irs::memory::make_managed<disjunction>(
+              std::move(res.first), std::move(aggregator),
+              prepared_order, 1); // custom cost
+        });
+
+    using ExpectedType = irs::block_disjunction<
+        irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
+        irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -10659,8 +10704,28 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
 
-    auto res = detail::execute_all<disjunction::adapter>(docs);
-    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::MAX, prepared_order.buckets.size(),
+        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          using disjunction = irs::block_disjunction<
+            irs::doc_iterator::ptr, A,
+            irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+          using adapter = typename disjunction::adapter;
+
+          auto res = detail::execute_all<adapter>(docs);;
+          cached_order = std::move(res.second);
+
+          return irs::memory::make_managed<disjunction>(
+              std::move(res.first), std::move(aggregator),
+              prepared_order, 1); // custom cost
+        });
+
+    using ExpectedType = irs::block_disjunction<
+        irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>,
+        irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -10706,8 +10771,28 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
 
-    auto res = detail::execute_all<disjunction::adapter>(docs);
-    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, prepared_order.buckets.size(),
+        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          using disjunction = irs::block_disjunction<
+            irs::doc_iterator::ptr, A,
+            irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+          using adapter = typename disjunction::adapter;
+
+          auto res = detail::execute_all<adapter>(docs);;
+          cached_order = std::move(res.second);
+
+          return irs::memory::make_managed<disjunction>(
+              std::move(res.first), std::move(aggregator),
+              prepared_order, 1); // custom cost
+        });
+
+    using ExpectedType = irs::block_disjunction<
+        irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
+        irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -10753,8 +10838,28 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
 
-    auto res = detail::execute_all<disjunction::adapter>(docs);
-    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::MAX, prepared_order.buckets.size(),
+        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          using disjunction = irs::block_disjunction<
+            irs::doc_iterator::ptr, A,
+            irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+          using adapter = typename disjunction::adapter;
+
+          auto res = detail::execute_all<adapter>(docs);;
+          cached_order = std::move(res.second);
+
+          return irs::memory::make_managed<disjunction>(
+              std::move(res.first), std::move(aggregator),
+              prepared_order, 1); // custom cost
+        });
+
+    using ExpectedType = irs::block_disjunction<
+        irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>,
+        irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -10798,8 +10903,28 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
 
-    auto res = detail::execute_all<disjunction::adapter>(docs);
-    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, prepared_order.size(),
+        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          using disjunction = irs::block_disjunction<
+            irs::doc_iterator::ptr, A,
+            irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+          using adapter = typename disjunction::adapter;
+
+          auto res = detail::execute_all<adapter>(docs);;
+          cached_order = std::move(res.second);
+
+          return irs::memory::make_managed<disjunction>(
+              std::move(res.first), std::move(aggregator),
+              prepared_order, 1); // custom cost
+        });
+
+    using ExpectedType = irs::block_disjunction<
+        irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
+        irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -10843,8 +10968,28 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
 
-    auto res = detail::execute_all<disjunction::adapter>(docs);
-    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::MAX, prepared_order.buckets.size(),
+        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          using disjunction = irs::block_disjunction<
+            irs::doc_iterator::ptr, A,
+            irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+          using adapter = typename disjunction::adapter;
+
+          auto res = detail::execute_all<adapter>(docs);;
+          cached_order = std::move(res.second);
+
+          return irs::memory::make_managed<disjunction>(
+              std::move(res.first), std::move(aggregator),
+              prepared_order, 1); // custom cost
+        });
+
+    using ExpectedType = irs::block_disjunction<
+        irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>,
+        irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -11468,8 +11613,6 @@ TEST(disjunction_test, seek_next) {
 }
 
 TEST(disjunction_test, scored_seek_next) {
-  using disjunction = irs::disjunction<irs::doc_iterator::ptr>;
-
   // disjunction without score, sub-iterators with scores
   {
     std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
@@ -11480,8 +11623,24 @@ TEST(disjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
                       irs::Order::Prepare(detail::basic_sort{4}));
 
-    auto res = detail::execute_all<disjunction::adapter>(docs);
-    disjunction it(std::move(res.first), irs::Order::kUnordered, irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, irs::Order::kUnordered.buckets.size(),
+        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
+          using adapter = typename disjunction::adapter;
+
+          auto res = detail::execute_all<adapter>(docs);;
+          cached_order = std::move(res.second);
+
+          return irs::memory::make_managed<disjunction>(
+              std::move(res.first), std::move(aggregator),
+              irs::Order::kUnordered, 1); // custom cost
+        });
+
+    using ExpectedType = irs::disjunction<irs::doc_iterator::ptr, irs::NoopAggregator>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -11518,10 +11677,26 @@ TEST(disjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
                       irs::Order::Prepare(detail::basic_sort{4}));
 
-    auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max());
+    auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
 
-    auto res = detail::execute_all<disjunction::adapter>(docs);
-    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, prepared_order.buckets.size(),
+        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
+          using adapter = typename disjunction::adapter;
+
+          auto res = detail::execute_all<adapter>(docs);
+          cached_order = std::move(res.second);
+
+          return irs::memory::make_managed<disjunction>(
+              std::move(res.first), std::move(aggregator),
+              prepared_order, 1); // custom cost
+        });
+
+    using ExpectedType = irs::disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -11568,8 +11743,24 @@ TEST(disjunction_test, scored_seek_next) {
 
     auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()};
 
-    auto res = detail::execute_all<disjunction::adapter>(docs);
-    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::MAX, prepared_order.buckets.size(),
+        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
+          using adapter = typename disjunction::adapter;
+
+          auto res = detail::execute_all<adapter>(docs);
+          cached_order = std::move(res.second);
+
+          return irs::memory::make_managed<disjunction>(
+              std::move(res.first), std::move(aggregator),
+              prepared_order, 1); // custom cost
+        });
+
+    using ExpectedType = irs::disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -11615,8 +11806,24 @@ TEST(disjunction_test, scored_seek_next) {
 
     auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
 
-    auto res = detail::execute_all<disjunction::adapter>(docs);
-    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, prepared_order.buckets.size(),
+        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
+          using adapter = typename disjunction::adapter;
+
+          auto res = detail::execute_all<adapter>(docs);
+          cached_order = std::move(res.second);
+
+          return irs::memory::make_managed<disjunction>(
+              std::move(res.first), std::move(aggregator),
+              prepared_order, 1); // custom cost
+        });
+
+    using ExpectedType = irs::disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -11662,8 +11869,24 @@ TEST(disjunction_test, scored_seek_next) {
 
     auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()}));
 
-    auto res = detail::execute_all<disjunction::adapter>(docs);
-    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::MAX, prepared_order.buckets.size(),
+        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
+          using adapter = typename disjunction::adapter;
+
+          auto res = detail::execute_all<adapter>(docs);
+          cached_order = std::move(res.second);
+
+          return irs::memory::make_managed<disjunction>(
+              std::move(res.first), std::move(aggregator),
+              prepared_order, 1); // custom cost
+        });
+
+    using ExpectedType = irs::disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -11707,8 +11930,24 @@ TEST(disjunction_test, scored_seek_next) {
 
     auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
 
-    auto res = detail::execute_all<disjunction::adapter>(docs);
-    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE, 1); // custom cost
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, prepared_order.buckets.size(),
+        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
+          using adapter = typename disjunction::adapter;
+
+          auto res = detail::execute_all<adapter>(docs);
+          cached_order = std::move(res.second);
+
+          return irs::memory::make_managed<disjunction>(
+              std::move(res.first), std::move(aggregator),
+              prepared_order, 1); // custom cost
+        });
+
+    using ExpectedType = irs::disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -11752,8 +11991,24 @@ TEST(disjunction_test, scored_seek_next) {
 
     auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
 
-    auto res = detail::execute_all<disjunction::adapter>(docs);
-    disjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX, 1); // custom cost
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::MAX, prepared_order.buckets.size(),
+        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
+          using adapter = typename disjunction::adapter;
+
+          auto res = detail::execute_all<adapter>(docs);
+          cached_order = std::move(res.second);
+
+          return irs::memory::make_managed<disjunction>(
+              std::move(res.first), std::move(aggregator),
+              prepared_order, 1); // custom cost
+        });
+
+    using ExpectedType = irs::disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -11806,9 +12061,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-          min_match_count
-        );
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+          min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -11826,9 +12080,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -11847,9 +12100,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -11867,10 +12119,9 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> expected{};
       std::vector<irs::doc_id_t> result;
       {
-        disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+        disjunction it{
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count};
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -11888,10 +12139,9 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> expected{};
       std::vector<irs::doc_id_t> result;
       {
-        disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+        disjunction it{
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count};
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
 
@@ -11920,10 +12170,9 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> expected = detail::union_all(docs);
       std::vector<irs::doc_id_t> result;
       {
-        disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+        disjunction it{
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count};
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -11941,10 +12190,9 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> expected = detail::union_all(docs);
       std::vector<irs::doc_id_t> result;
       {
-        disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+        disjunction it{
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count};
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -11962,10 +12210,9 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> expected{ 7 };
       std::vector<irs::doc_id_t> result;
       {
-        disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+        disjunction it{
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count};
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -11984,9 +12231,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12006,9 +12252,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12028,9 +12273,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12050,9 +12294,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12081,9 +12324,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12123,9 +12365,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12144,9 +12385,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12166,9 +12406,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12188,9 +12427,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12210,9 +12448,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12241,9 +12478,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12262,9 +12498,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12282,9 +12517,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12302,9 +12536,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12323,9 +12556,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12344,9 +12576,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12365,9 +12596,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12394,8 +12624,7 @@ TEST(min_match_disjunction_test, next) {
         std::vector<irs::doc_id_t> result;
         {
           disjunction it(
-              detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 0
-          );
+              detail::execute_all<disjunction::cost_iterator_adapter>(docs), 0);
           auto* doc = irs::get<irs::document>(it);
           ASSERT_TRUE(bool(doc));
           ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12412,8 +12641,7 @@ TEST(min_match_disjunction_test, next) {
         std::vector<irs::doc_id_t> result;
         {
           disjunction it(
-              detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 1
-          );
+              detail::execute_all<disjunction::cost_iterator_adapter>(docs), 1);
           auto* doc = irs::get<irs::document>(it);
           ASSERT_TRUE(bool(doc));
           ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12430,8 +12658,8 @@ TEST(min_match_disjunction_test, next) {
         std::vector<irs::doc_id_t> result;
         {
           disjunction it(
-              detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), std::numeric_limits<size_t>::max()
-          );
+              detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+              std::numeric_limits<size_t>::max());
           auto* doc = irs::get<irs::document>(it);
           ASSERT_TRUE(bool(doc));
           ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12474,9 +12702,8 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-        detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-        min_match_count
-      );
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+          min_match_count);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -12500,9 +12727,8 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-          min_match_count
-      );
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+          min_match_count);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -12524,9 +12750,8 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-          min_match_count
-      );
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+          min_match_count);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -12544,9 +12769,8 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-          min_match_count
-      );
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+          min_match_count);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -12564,9 +12788,8 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-          min_match_count
-      );
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+          min_match_count);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -12602,9 +12825,8 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-          min_match_count
-      );
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+          min_match_count);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -12629,9 +12851,8 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-          min_match_count
-      );
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+          min_match_count);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -12653,9 +12874,8 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-          min_match_count
-      );
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+          min_match_count);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -12673,9 +12893,8 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-          min_match_count
-      );
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+          min_match_count);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -12694,9 +12913,8 @@ TEST(min_match_disjunction_test, seek) {
       };
 
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-          min_match_count
-      );
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+          min_match_count);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -12719,9 +12937,16 @@ TEST(min_match_disjunction_test, seek) {
     };
 
     {
-      disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 0
-      );
+      disjunction it(detail::execute_all<disjunction::cost_iterator_adapter>(docs), 0);
+      auto* doc = irs::get<irs::document>(it);
+      ASSERT_TRUE(bool(doc));
+      for (const auto& target : expected) {
+        ASSERT_EQ(target.expected, it.seek(target.target));
+      }
+    }
+
+    {
+      disjunction it(detail::execute_all<disjunction::cost_iterator_adapter>(docs), 1);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -12731,19 +12956,8 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 1
-      );
-      auto* doc = irs::get<irs::document>(it);
-      ASSERT_TRUE(bool(doc));
-      for (const auto& target : expected) {
-        ASSERT_EQ(target.expected, it.seek(target.target));
-      }
-    }
-
-    {
-      disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), std::numeric_limits<size_t>::max()
-      );
+        detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+        std::numeric_limits<size_t>::max());
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -12775,8 +12989,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 0
-      );
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs), 0);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -12786,8 +12999,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 1
-      );
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs), 1);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -12797,8 +13009,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 2
-      );
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs), 2);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -12808,8 +13019,8 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), std::numeric_limits<size_t>::max()
-      );
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+          std::numeric_limits<size_t>::max());
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -12842,8 +13053,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 0
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs), 0);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
         for (const auto& target : expected) {
@@ -12853,8 +13063,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 1
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs), 1);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         for (const auto& target : expected) {
@@ -12873,8 +13082,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 2
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs), 2);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         for (const auto& target : expected) {
@@ -12892,8 +13100,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 3
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs), 3);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         for (const auto& target : expected) {
@@ -12912,8 +13119,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 5
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs), 5);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         for (const auto& target : expected) {
@@ -12923,8 +13129,8 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), std::numeric_limits<size_t>::max()
-        );
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs),
+            std::numeric_limits<size_t>::max());
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         for (const auto& target : expected) {
@@ -12945,7 +13151,7 @@ TEST(min_match_disjunction_test, seek_next) {
       { 1, 5, 6, 9, 29 }
     };
 
-    disjunction it(detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), 2);
+    disjunction it(detail::execute_all<disjunction::cost_iterator_adapter>(docs), 2);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 

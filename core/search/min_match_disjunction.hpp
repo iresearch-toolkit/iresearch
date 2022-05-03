@@ -68,7 +68,7 @@ class min_match_disjunction
   min_match_disjunction(
       doc_iterators_t&& itrs,
       size_t min_match_count,
-      Merger&& merger,
+      Merger&& merger = Merger{},
       const Order& ord = Order::kUnordered)
     : Merger{std::move(merger)},
       itrs_(std::move(itrs)),
