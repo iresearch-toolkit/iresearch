@@ -92,42 +92,42 @@ TEST_P(all_filter_test_case, all_order) {
   {
     docs_t docs{
       1, 4, 5, 16, 17, 20, 21, 2, 3, 6, 7, 18, 19, 22, 23, 8, 9,
-      12, 13, 24, 25, 28, 29, 10, 11, 14, 15, 26, 27, 30, 31, 32
-    };
-    irs::order order;
+      12, 13, 24, 25, 28, 29, 10, 11, 14, 15, 26, 27, 30, 31, 32 };
     size_t collector_collect_field_count = 0;
     size_t collector_collect_term_count = 0;
     size_t collector_finish_count = 0;
     size_t scorer_score_count = 0;
-    auto& sort = order.add<tests::sort::custom_sort>(false);
 
-    sort.collector_collect_field = [&collector_collect_field_count](
+    irs::sort::ptr bucket{std::make_unique<tests::sort::custom_sort>()};
+    auto* sort = static_cast<tests::sort::custom_sort*>(bucket.get());
+
+    sort->collector_collect_field = [&collector_collect_field_count](
         const irs::sub_reader&, const irs::term_reader&)->void {
       ++collector_collect_field_count;
     };
-    sort.collector_collect_term = [&collector_collect_term_count](
+    sort->collector_collect_term = [&collector_collect_term_count](
         const irs::sub_reader&,
         const irs::term_reader&, const irs::attribute_provider&)->void {
       ++collector_collect_term_count;
     };
-    sort.collectors_collect_ = [&collector_finish_count](
+    sort->collectors_collect_ = [&collector_finish_count](
         const irs::byte_type*,
         const irs::index_reader&,
         const irs::sort::field_collector*,
         const irs::sort::term_collector*)->void {
       ++collector_finish_count;
     };
-    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void {
+    sort->scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void {
       dst = src;
     };
-    sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool {
+    sort->scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool {
       return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA);
     };
-    sort.scorer_score = [&scorer_score_count](irs::doc_id_t)->void {
+    sort->scorer_score = [&scorer_score_count](irs::doc_id_t)->void {
       ++scorer_score_count;
     };
 
-    check_query(irs::all(), order, docs, rdr);
+    check_query(irs::all(), std::span{&bucket, 1}, docs, rdr);
     ASSERT_EQ(0, collector_collect_field_count); // should not be executed
     ASSERT_EQ(0, collector_collect_term_count); // should not be executed
     ASSERT_EQ(1, collector_finish_count);
@@ -140,56 +140,53 @@ TEST_P(all_filter_test_case, all_order) {
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
       17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
     };
-    irs::order order;
-    auto& sort = order.add<tests::sort::custom_sort>(false);
+
+    irs::sort::ptr bucket{std::make_unique<tests::sort::custom_sort>()};
+    auto& sort = static_cast<tests::sort::custom_sort&>(*bucket);
 
     sort.prepare_field_collector_ = []()->irs::sort::field_collector::ptr { return nullptr; };
     sort.prepare_scorer = [](
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type*,
-        irs::byte_type*,
+        irs::score_t*,
         const irs::attribute_provider&) -> irs::score_function {
       return { nullptr, nullptr };
     };
     sort.prepare_term_collector_ = []()->irs::sort::term_collector::ptr { return nullptr; };
-    check_query(irs::all(), order, docs, rdr, false);
+    check_query(irs::all(), std::span{&bucket, 1}, docs, rdr, false);
   }
 
   // frequency order
   {
     docs_t docs{
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-      17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
-    };
-    irs::order order;
+      17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
 
-    order.add<tests::sort::frequency_sort>(false);
-    check_query(irs::all(), order, docs, rdr);
+    irs::sort::ptr sort{std::make_unique<tests::sort::frequency_sort>()};
+
+    check_query(irs::all(), std::span{&sort, 1}, docs, rdr);
   }
 
   // bm25 order
   {
     docs_t docs{
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-      17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
-    };
-    irs::order order;
+      17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
 
-    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
-    check_query(irs::all(), order, docs, rdr);
+    auto sort = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+
+    check_query(irs::all(), std::span{&sort, 1}, docs, rdr);
   }
 
   // tfidf order
   {
     docs_t docs{
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-      17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
-    };
-    irs::order order;
+      17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
 
-    order.add(true, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
-    check_query(irs::all(), order, docs, rdr);
+    auto sort = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+    check_query(irs::all(), std::span{&sort, 1}, docs, rdr);
   }
 }
 

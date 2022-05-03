@@ -1774,9 +1774,9 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    std::array<irs::sort::ptr, 1> scorers{
+    std::array<irs::sort::ptr, 1> order{
         std::make_unique<tests::sort::custom_sort>() };
-    auto& scorer = static_cast<tests::sort::custom_sort&>(*scorers.front());
+    auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](
         const irs::sub_reader&, const irs::term_reader&)->void{

@@ -265,13 +265,9 @@ TEST(bitset_iterator_test, next) {
 }
 
 TEST(bitset_iterator_test, seek) {
-  auto& reader = irs::sub_reader::empty();
-  const irs::byte_type* filter_attrs = irs::bytes_ref::EMPTY.c_str();
-  irs::order order;
-
-  order.add<tests::sort::custom_sort>(false);
-
-  auto prepared_order = order.prepare();
+  const tests::sort::custom_sort impl;
+  const irs::sort* sort = &impl;
+  auto prepared_order = irs::Order::Prepare(std::span(&sort, 1));
 
   {
     // empty bitset

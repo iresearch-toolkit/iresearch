@@ -36,6 +36,45 @@ const score_t* no_score(score_ctx* ctx) noexcept {
   return reinterpret_cast<score_t*>(ctx);
 }
 
+template<typename Iterator>
+Order Prepare(Iterator begin, Iterator end) {
+  Order ord;
+  ord.buckets.reserve(std::distance(begin, end));
+
+  size_t stats_align = 0;
+
+  for (; begin != end; ++begin) {
+    auto prepared = begin->prepare();
+
+    if (!prepared) {
+      // skip empty sorts
+      continue;
+    }
+
+    // cppcheck-suppress shadowFunction
+    const auto stats_size = prepared->stats_size();
+    assert(stats_size.second <= alignof(std::max_align_t));
+    assert(math::is_power2(stats_size.second)); // math::is_power2(0) returns true
+
+    stats_align = std::max(stats_align, stats_size.second);
+
+    ord.stats_size = memory::align_up(ord.stats_size, stats_size.second);
+    ord.features |= prepared->features();
+
+    ord.buckets.emplace_back(
+      std::move(prepared),
+      ord.score_size,
+      ord.stats_size);
+
+    ord.stats_size += memory::align_up(stats_size.first, stats_size.second);
+  }
+
+  ord.stats_size = memory::align_up(ord.stats_size, stats_align);
+  ord.score_size = sizeof(score_t)*ord.buckets.size();
+
+  return ord;
+}
+
 }
 
 namespace iresearch {
@@ -66,41 +105,15 @@ sort::sort(const type_info& type) noexcept
 }
 
 Order Order::Prepare(std::span<const sort::ptr> order) {
-  Order ord;
-  ord.buckets.reserve(order.size());
+  using PtrIterator = ptr_iterator<decltype(order)::iterator>;
 
-  size_t stats_align = 0;
+  return ::Prepare(PtrIterator{std::begin(order)}, PtrIterator{std::end(order)});
+}
 
-  for (auto& entry : order) {
-    auto prepared = entry->prepare();
+Order Order::Prepare(std::span<const sort*> order) {
+  using PtrIterator = ptr_iterator<decltype(order)::iterator>;
 
-    if (!prepared) {
-      // skip empty sorts
-      continue;
-    }
-
-    // cppcheck-suppress shadowFunction
-    const auto stats_size = prepared->stats_size();
-    assert(stats_size.second <= alignof(std::max_align_t));
-    assert(math::is_power2(stats_size.second)); // math::is_power2(0) returns true
-
-    stats_align = std::max(stats_align, stats_size.second);
-
-    ord.stats_size = memory::align_up(ord.stats_size, stats_size.second);
-    ord.features |= prepared->features();
-
-    ord.buckets.emplace_back(
-      std::move(prepared),
-      ord.score_size,
-      ord.stats_size);
-
-    ord.stats_size += memory::align_up(stats_size.first, stats_size.second);
-  }
-
-  ord.stats_size = memory::align_up(ord.stats_size, stats_align);
-  ord.score_size = sizeof(score_t)*ord.buckets.size();
-
-  return ord;
+  return ::Prepare(PtrIterator{std::begin(order)}, PtrIterator{std::end(order)});
 }
 
 const Order Order::kUnordered;

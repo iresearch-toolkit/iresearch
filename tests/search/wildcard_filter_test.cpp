@@ -190,12 +190,14 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
   {
     docs_t docs{ 1, 4, 9, 16, 21, 24, 26, 29, 31, 32 };
     costs_t costs{ docs.size() };
-    irs::order order;
 
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
     size_t finish_count = 0;
-    auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+    std::array<irs::sort::ptr, 1> order{
+        std::make_unique<tests::sort::custom_sort>()};
+    auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
       ++collect_field_count;
@@ -222,8 +224,9 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
   {
     docs_t docs{ 31, 32, 1, 4, 9, 16, 21, 24, 26, 29 };
     costs_t costs{ docs.size() };
-    irs::order order;
-    order.add<tests::sort::frequency_sort>(false);
+
+    std::array<irs::sort::ptr, 1> order{
+        std::make_unique<tests::sort::frequency_sort>()};
 
     check_query(make_filter("prefix", "%"), order, docs, rdr);
   }
@@ -232,8 +235,9 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
   {
     docs_t docs{ 31, 32, 1, 4, 16, 21, 26, 29 };
     costs_t costs{ docs.size() };
-    irs::order order;
-    order.add<tests::sort::frequency_sort>(false);
+
+    std::array<irs::sort::ptr, 1> order{
+        std::make_unique<tests::sort::frequency_sort>()};
 
     check_query(make_filter("prefix", "a%"), order, docs, rdr);
   }

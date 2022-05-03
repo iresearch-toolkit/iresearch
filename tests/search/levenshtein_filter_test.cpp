@@ -161,14 +161,16 @@ TEST_P(by_edit_distance_test_case, test_order) {
   {
     docs_t docs{28, 29};
     costs_t costs{ docs.size() };
-    irs::order order;
 
     size_t term_collectors_count = 0;
     size_t field_collectors_count = 0;
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
     size_t finish_count = 0;
-    auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+    std::array<irs::sort::ptr, 1> order{
+        std::make_unique<tests::sort::custom_sort>() };
+    auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](
         const irs::sub_reader&, const irs::term_reader&)->void{
@@ -207,14 +209,16 @@ TEST_P(by_edit_distance_test_case, test_order) {
   {
     docs_t docs{28, 29};
     costs_t costs{ docs.size() };
-    irs::order order;
 
     size_t term_collectors_count = 0;
     size_t field_collectors_count = 0;
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
     size_t finish_count = 0;
-    auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+    std::array<irs::sort::ptr, 1> order{
+        std::make_unique<tests::sort::custom_sort>() };
+    auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](
         const irs::sub_reader&, const irs::term_reader&)->void{
@@ -253,14 +257,16 @@ TEST_P(by_edit_distance_test_case, test_order) {
   {
     docs_t docs{29};
     costs_t costs{ docs.size() };
-    irs::order order;
 
     size_t term_collectors_count = 0;
     size_t field_collectors_count = 0;
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
     size_t finish_count = 0;
-    auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+    std::array<irs::sort::ptr, 1> order{
+        std::make_unique<tests::sort::custom_sort>() };
+    auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](
         const irs::sub_reader&, const irs::term_reader&)->void{
@@ -479,14 +485,13 @@ TEST_P(by_edit_distance_test_case, bm25) {
     add_segment(gen, irs::OM_CREATE, opts);
   }
 
-  irs::order ord;
-  auto scorer = irs::scorers::get(
-    "bm25",
-    irs::type<irs::text_format::json>::get(),
-    irs::string_ref::NIL);
-  ASSERT_NE(nullptr, scorer);
-  ord.add(false, std::move(scorer));
-  auto prepared_order = ord.prepare();
+  std::array<irs::sort::ptr, 1> order{
+      irs::scorers::get("bm25",
+                        irs::type<irs::text_format::json>::get(),
+                        irs::string_ref::NIL) };
+  ASSERT_NE(nullptr, order.front());
+
+  auto prepared_order = irs::Order::Prepare(order);
 
   auto index = open_reader();
   ASSERT_NE(nullptr, index);

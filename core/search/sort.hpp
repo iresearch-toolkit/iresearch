@@ -291,6 +291,11 @@ struct Order final : private util::noncopyable {
   static const Order kUnordered;
 
   static Order Prepare(std::span<const sort::ptr> order);
+  static Order Prepare(std::span<const sort*> order);
+  static Order Prepare(const sort& order) {
+    const auto* p = &order;
+    return Prepare(std::span{&p, 1});
+  }
 
   Order() = default;
   Order(Order&&) = default;
