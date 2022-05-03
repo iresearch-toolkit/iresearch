@@ -96,48 +96,33 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
   static_assert(std::is_nothrow_move_constructible<doc_iterator_t>::value,
                 "default move constructor expected");
 
-  struct doc_iterators {
-    // intentionally implicit
-    doc_iterators(doc_iterators_t&& itrs) noexcept
-      : itrs(std::move(itrs)) {
-      assert(!this->itrs.empty());
-
-      // sort subnodes in ascending order by their cost
-      std::sort(this->itrs.begin(), this->itrs.end(),
-        [](const auto& lhs, const auto& rhs) {
-          return cost::extract(lhs, cost::MAX) < cost::extract(rhs, cost::MAX);
-      });
-
-      front = this->itrs.front().it.get();
-      assert(front);
-      front_doc = irs::get_mutable<document>(front);
-      assert(front_doc);
-    }
-
-    doc_iterator* front;
-    document* front_doc;
-    doc_iterators_t itrs;
-  }; // doc_iterators
-
-  conjunction(
-      doc_iterators&& itrs,
-      Merger&& merger,
-      const Order& ord = Order::kUnordered)
+  explicit conjunction(
+      doc_iterators_t&& itrs,
+      Merger&& merger = Merger{})
     : Merger{std::move(merger)},
-      itrs_(std::move(itrs.itrs)),
-      front_(itrs.front),
-      front_doc_(itrs.front_doc) {
+      itrs_{[](doc_iterators_t&& itrs){
+        assert(!itrs.empty());
+
+        // sort subnodes in ascending order by their cost
+        std::sort(std::begin(itrs), std::end(itrs),
+          [](const auto& lhs, const auto& rhs) {
+            return cost::extract(lhs, cost::MAX) < cost::extract(rhs, cost::MAX); });
+
+        return itrs;
+      }(std::move(itrs))},
+      front_{itrs_.front().it.get()},
+      front_doc_{irs::get_mutable<document>(front_)} {
     assert(!itrs_.empty());
     assert(front_);
     assert(front_doc_);
     std::get<attribute_ptr<document>>(attrs_) = itrs.front_doc;
     std::get<attribute_ptr<cost>>(attrs_)     = irs::get_mutable<cost>(itrs.front);
 
-    prepare_score(ord);
+    prepare_score();
   }
 
-  auto begin() const noexcept { return itrs_.begin(); }
-  auto end() const noexcept { return itrs_.end(); }
+  auto begin() const noexcept { return std::begin(itrs_); }
+  auto end() const noexcept { return std::end(itrs_); }
 
   // size of conjunction
   size_t size() const noexcept { return itrs_.size(); }
@@ -173,14 +158,14 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     score>;
 
   // FIXME(gnusi): move to compilation time
-  void prepare_score(const Order& ord) {
-    if (ord.buckets.empty()) {
+  void prepare_score() {
+    if (!Merger::size()) {
       return;
     }
 
     auto& score = std::get<irs::score>(attrs_);
 
-    score.resize(ord);
+    score.resize(Merger::size());
 
     // copy scores into separate container
     // to avoid extra checks

@@ -86,12 +86,12 @@ irs::doc_iterator::ptr make_disjunction(
       if (ord.buckets.empty()) {
           using disjunction_t = irs::disjunction_iterator<irs::doc_iterator::ptr, Aggregator>;
         return irs::make_disjunction<disjunction_t>(
-          std::move(itrs), std::move(aggregator), ord, std::forward<Args>(args)...);
+          std::move(itrs), std::move(aggregator), std::forward<Args>(args)...);
       }
 
       using scored_disjunction_t = irs::scored_disjunction_iterator<irs::doc_iterator::ptr, Aggregator>;
       return irs::make_disjunction<scored_disjunction_t>(
-        std::move(itrs), std::move(aggregator), ord, std::forward<Args>(args)...);
+        std::move(itrs), std::move(aggregator), std::forward<Args>(args)...);
 
     });
 
@@ -138,7 +138,7 @@ irs::doc_iterator::ptr make_conjunction(
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
         using conjunction_t = irs::conjunction<irs::doc_iterator::ptr, A>;
         return irs::make_conjunction<conjunction_t>(std::move(itrs), std::move(aggregator),
-                                                    ord, std::forward<Args>(args)...);
+                                                    std::forward<Args>(args)...);
       });
 }
 
@@ -319,8 +319,7 @@ class min_match_query final : public boolean_query {
     }
 
     // FIXME(gnusi): handle mode
-    return make_min_match_disjunction(
-      std::move(itrs), ord, min_match_count);
+    return make_min_match_disjunction(std::move(itrs), ord, min_match_count);
   }
 
  private:
@@ -357,11 +356,11 @@ class min_match_query final : public boolean_query {
         // min match disjunction
         assert(min_match_count < size);
 
-        if (ord.buckets.empty()) { // FIXME compile time
+        if (ord.buckets.empty()) { // FIXME(gnusi) compile time
           return memory::make_managed<disjunction_t>(std::move(itrs), min_match_count, std::move(aggregator));
         }
 
-        return memory::make_managed<scored_disjunction_t>(std::move(itrs), min_match_count, std::move(aggregator), ord);
+        return memory::make_managed<scored_disjunction_t>(std::move(itrs), min_match_count, std::move(aggregator));
     });
   }
 

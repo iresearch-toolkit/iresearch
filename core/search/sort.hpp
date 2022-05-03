@@ -311,12 +311,17 @@ static_assert(std::is_nothrow_move_constructible_v<OrderBucket>);
 static_assert(std::is_nothrow_move_assignable_v<OrderBucket>);
 
 struct NoopAggregator{
+  constexpr size_t size() const noexcept { return 0; }
   void operator()(score_t*, const score_t*) const noexcept { }
   void operator()(score_t*, const score_t**, size_t) noexcept { }
 };
 
 template<typename Merger, size_t Size>
 struct Aggregator {
+  constexpr size_t size() const noexcept {
+    return Size;
+  }
+
   void operator()(score_t* dst, const score_t* src) const noexcept {
     for (size_t i = 0; i < Size; ++i) {
       Merger::Merge(i, dst, src);
@@ -333,10 +338,14 @@ struct Aggregator {
 template<typename Merger>
 struct Aggregator<Merger, std::numeric_limits<size_t>::max()> {
   explicit Aggregator(size_t size) noexcept
-    : size{size} {}
+    : count{size} {}
+
+  size_t size() const noexcept {
+    return count;
+  }
 
   void operator()(score_t* dst, const score_t* src) const noexcept {
-    for (size_t i = 0; i < size; ++i) {
+    for (size_t i = 0; i < count; ++i) {
       Merger::Merge(i, dst, src);
     }
   }
@@ -347,7 +356,7 @@ struct Aggregator<Merger, std::numeric_limits<size_t>::max()> {
     }
   }
 
-  size_t size;
+  size_t count;
 };
 
 struct SumMerger {

@@ -86,6 +86,10 @@ class score : public attribute {
     buf_.resize(order.score_size);
   }
 
+  void resize(size_t count) {
+    buf_.resize(count*sizeof(score_t));
+  }
+
   score_t* data() const noexcept {
     return reinterpret_cast<score_t*>(buf_.data());
   }

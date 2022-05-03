@@ -111,10 +111,10 @@ class min_match_buffer<0> {
 
 class score_buffer {
  public:
-  score_buffer(const Order& ord, size_t size)
-    : bucket_size_(ord.score_size),
+  score_buffer(size_t num_buckets, size_t size)
+    : bucket_size_{num_buckets*sizeof(score_t)},
       buf_size_(bucket_size_*size),
-      buf_(ord.buckets.empty() ? nullptr : new byte_type[buf_size_]) {
+      buf_(!buf_size_ ? nullptr : new byte_type[buf_size_]) {
     if (buf_) {
       std::memset(data(), 0, this->size());
     }
@@ -144,7 +144,7 @@ class score_buffer {
 }; // score_buffer
 
 struct empty_score_buffer {
-  explicit empty_score_buffer(const Order&, size_t) noexcept { }
+  explicit empty_score_buffer(size_t, size_t) noexcept { }
 
   score_t* get(size_t) noexcept {
     assert(false);
@@ -222,23 +222,21 @@ class basic_disjunction final
   basic_disjunction(
       adapter&& lhs,
       adapter&& rhs,
-      Merger&& merger = Merger{},
-      const Order& ord = Order::kUnordered)
-    : basic_disjunction(
-        std::move(lhs), std::move(rhs), std::move(merger), ord,
+      Merger&& merger = Merger{})
+    : basic_disjunction{
+        std::move(lhs), std::move(rhs), std::move(merger),
         [this](){ return cost::extract(lhs_, 0) + cost::extract(rhs_, 0); },
-        resolve_overload_tag{}) {
+        resolve_overload_tag{}} {
   }
 
   basic_disjunction(
       adapter&& lhs,
       adapter&& rhs,
       Merger&& merger,
-      const Order& ord,
       cost::cost_t est)
-    : basic_disjunction(
+    : basic_disjunction{
         std::move(lhs), std::move(rhs), std::move(merger),
-        ord, est, resolve_overload_tag{}) {
+        est, resolve_overload_tag{}} {
   }
 
   virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
@@ -296,27 +294,26 @@ class basic_disjunction final
       adapter&& lhs,
       adapter&& rhs,
       Merger&& merger,
-      const Order& ord,
       Estimation&& estimation,
       resolve_overload_tag)
     : Merger{std::move(merger)},
       lhs_(std::move(lhs)),
       rhs_(std::move(rhs)),
-      no_score_value_(ord.score_size, 0) {
+      no_score_value_(Merger::size()*sizeof(score_t), 0) {
     std::get<cost>(attrs_).reset(std::forward<Estimation>(estimation));
 
-    prepare_score(ord);
+    prepare_score();
   }
 
-  void prepare_score(const Order& ord) {
-    if (ord.buckets.empty()) {
+  void prepare_score() {
+    if (!Merger::size()) {
       return;
     }
 
     assert(lhs_.score && rhs_.score); // must be ensure by the adapter
 
     auto& score = std::get<irs::score>(attrs_);
-    score.resize(ord);
+    score.resize(Merger::size());
 
     const bool lhs_score_empty = lhs_.score->is_default();
     const bool rhs_score_empty = rhs_.score->is_default();
@@ -418,17 +415,15 @@ class small_disjunction final
   small_disjunction(
       doc_iterators_t&& itrs,
       Merger&& merger,
-      const Order& ord,
       cost::cost_t est)
-    : small_disjunction(std::move(itrs), std::move(merger), ord, est, resolve_overload_tag()) {
+    : small_disjunction{std::move(itrs), std::move(merger), est, resolve_overload_tag()} {
   }
 
   explicit small_disjunction(
       doc_iterators_t&& itrs,
-      Merger&& merger = Merger{},
-      const Order& ord = Order::kUnordered)
-    : small_disjunction(
-        std::move(itrs), std::move(merger), ord,
+      Merger&& merger = Merger{})
+    : small_disjunction{
+        std::move(itrs), std::move(merger),
         [this](){
           return std::accumulate(
             begin_, end_, cost::cost_t(0),
@@ -436,7 +431,7 @@ class small_disjunction final
               return lhs + cost::extract(rhs, 0);
           });
         },
-        resolve_overload_tag()) {
+        resolve_overload_tag()} {
   }
 
   virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
@@ -547,7 +542,6 @@ class small_disjunction final
   small_disjunction(
       doc_iterators_t&& itrs,
       Merger&& merger,
-      const Order& ord,
       Estimation&& estimation,
       resolve_overload_tag)
     : Merger{std::move(merger)},
@@ -572,16 +566,16 @@ class small_disjunction final
       }
     }
 
-    prepare_score(ord);
+    prepare_score();
   }
 
-  void prepare_score(const Order& ord) {
-    if (ord.buckets.empty()) {
+  void prepare_score() {
+    if (!Merger::size()) {
       return;
     }
 
     auto& score = std::get<irs::score>(attrs_);
-    score.resize(ord);
+    score.resize(Merger::size());
 
     // prepare score
     if (scored_begin_ != end_) {
@@ -695,17 +689,15 @@ class disjunction final
   disjunction(
       doc_iterators_t&& itrs,
       Merger&& merger,
-      const Order& ord,
       cost::cost_t est)
-    : disjunction(std::move(itrs), std::move(merger), ord, est, resolve_overload_tag()) {
+    : disjunction{std::move(itrs), std::move(merger), est, resolve_overload_tag()} {
   }
 
   explicit disjunction(
       doc_iterators_t&& itrs,
-      Merger&& merger = Merger{},
-      const Order& ord = Order::kUnordered)
-    : disjunction(
-        std::move(itrs), std::move(merger), ord,
+      Merger&& merger = Merger{})
+    : disjunction{
+        std::move(itrs), std::move(merger),
         [this](){
           return std::accumulate(
             itrs_.begin(), itrs_.end(), cost::cost_t(0),
@@ -713,7 +705,7 @@ class disjunction final
               return lhs + cost::extract(rhs, 0);
           });
         },
-        resolve_overload_tag()) {
+        resolve_overload_tag{}} {
   }
 
   virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
@@ -803,7 +795,6 @@ class disjunction final
   disjunction(
       doc_iterators_t&& itrs,
       Merger&& merger,
-      const Order& ord,
       Estimation&& estimation,
       resolve_overload_tag)
     : Merger{std::move(merger)},
@@ -822,16 +813,16 @@ class disjunction final
     heap_.resize(itrs_.size());
     std::iota(heap_.begin(), heap_.end(), size_t(0));
 
-    prepare_score(ord);
+    prepare_score();
   }
 
-  void prepare_score(const Order& ord) {
-    if (ord.buckets.empty()) {
+  void prepare_score() {
+    if (!Merger::size()) {
       return;
     }
 
     auto& score = std::get<irs::score>(attrs_);
-    score.resize(ord);
+    score.resize(Merger::size());
 
     scores_vals_.resize(itrs_.size(), nullptr);
     score.reset(this, [](score_ctx* ctx) -> const score_t* {
@@ -1019,35 +1010,31 @@ class block_disjunction final : public doc_iterator, private Merger, private sco
   block_disjunction(
       doc_iterators_t&& itrs,
       Merger&& merger,
-      const Order& ord,
       cost::cost_t est)
-    : block_disjunction(std::move(itrs), 1, std::move(merger), ord, est) {
+    : block_disjunction{std::move(itrs), 1, std::move(merger), est} {
   }
 
   block_disjunction(
       doc_iterators_t&& itrs,
       size_t min_match_count,
       Merger&& merger,
-      const Order& ord,
       cost::cost_t est)
-    : block_disjunction(std::move(itrs), min_match_count, std::move(merger), ord,
-                        est, resolve_overload_tag()) {
+    : block_disjunction{std::move(itrs), min_match_count, std::move(merger),
+                        est, resolve_overload_tag()} {
   }
 
   explicit block_disjunction(
       doc_iterators_t&& itrs,
-      Merger&& merger = Merger{},
-      const Order& ord = Order::kUnordered)
-    : block_disjunction(std::move(itrs), 1, std::move(merger), ord) {
+      Merger&& merger = Merger{})
+    : block_disjunction{std::move(itrs), 1, std::move(merger)} {
   }
 
   block_disjunction(
       doc_iterators_t&& itrs,
       size_t min_match_count,
-      Merger&& merger = Merger{},
-      const Order& ord = Order::kUnordered)
-    : block_disjunction(
-        std::move(itrs), min_match_count, std::move(merger), ord,
+      Merger&& merger = Merger{})
+    : block_disjunction{
+        std::move(itrs), min_match_count, std::move(merger),
         [this](){
           return std::accumulate(
             itrs_.begin(), itrs_.end(), cost::cost_t(0),
@@ -1055,7 +1042,7 @@ class block_disjunction final : public doc_iterator, private Merger, private sco
               return lhs + cost::extract(rhs, 0);
           });
         },
-        resolve_overload_tag()) {
+        resolve_overload_tag()} {
   }
 
   size_t match_count() const noexcept {
@@ -1229,6 +1216,7 @@ class block_disjunction final : public doc_iterator, private Merger, private sco
 
   static_assert(block_size()*size_t(num_blocks()) < std::numeric_limits<doc_id_t>::max());
 
+  // FIXME(gnusi): stack based score_buffer for constant cases
   using score_buffer_type = std::conditional_t<traits_type::score(),
     detail::score_buffer,
     detail::empty_score_buffer>;
@@ -1245,7 +1233,6 @@ class block_disjunction final : public doc_iterator, private Merger, private sco
       doc_iterators_t&& itrs,
       size_t min_match_count,
       Merger&& merger,
-      const Order& ord,
       Estimation&& estimation,
       resolve_overload_tag)
     : Merger{std::move(merger)},
@@ -1253,7 +1240,7 @@ class block_disjunction final : public doc_iterator, private Merger, private sco
       match_count_(itrs_.empty()
         ? size_t(0)
         : static_cast<size_t>(!traits_type::min_match())),
-      score_buf_(ord, window()),
+      score_buf_(Merger::size(), window()),
       match_buf_(min_match_count) {
     std::get<cost>(attrs_).reset(std::forward<Estimation>(estimation));
 
@@ -1261,9 +1248,9 @@ class block_disjunction final : public doc_iterator, private Merger, private sco
       std::get<document>(attrs_).value = doc_limits::eof();
     }
 
-    if (traits_type::score() && !ord.buckets.empty()) {
+    if (traits_type::score() && Merger::size()) {
       auto& score = std::get<irs::score>(attrs_);
-      score.resize(ord);
+      score.resize(Merger::size());
 
       score.reset(this, [](score_ctx* ctx) noexcept -> const score_t* {
         return static_cast<block_disjunction*>(ctx)->score_value_;

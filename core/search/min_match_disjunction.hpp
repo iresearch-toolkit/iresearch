@@ -68,8 +68,7 @@ class min_match_disjunction
   min_match_disjunction(
       doc_iterators_t&& itrs,
       size_t min_match_count,
-      Merger&& merger = Merger{},
-      const Order& ord = Order::kUnordered)
+      Merger&& merger = Merger{})
     : Merger{std::move(merger)},
       itrs_(std::move(itrs)),
       min_match_count_(
@@ -97,7 +96,7 @@ class min_match_disjunction
     heap_.resize(itrs_.size());
     std::iota(heap_.begin(), heap_.end(), size_t(0));
 
-    prepare_score(ord);
+    prepare_score();
   }
 
   virtual attribute* get_mutable(type_info::type_id id) noexcept override {
@@ -248,15 +247,13 @@ class min_match_disjunction
  private:
   using attributes = std::tuple<document, cost, score>;
 
-  // FIXME(gnusi) compile time
-  void prepare_score(const Order& ord) {
-    if (ord.buckets.empty()) {
+  void prepare_score() {
+    if (!Merger::size()) {
       return;
     }
 
     auto& score = std::get<irs::score>(attrs_);
-
-    score.resize(ord);
+    score.resize(Merger::size());
 
     scores_vals_.resize(itrs_.size());
     score.reset(this, [](score_ctx* ctx) -> const score_t* {
