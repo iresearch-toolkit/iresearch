@@ -81,18 +81,15 @@ irs::doc_iterator::ptr make_disjunction(
   return irs::ResoveMergeType(
     irs::sort::MergeType::AGGREGATE,  // FIXME(gnusi): handle mode
     ord.buckets.size(),
-    [&]<typename Aggregator>(Aggregator&& aggregator) -> irs::doc_iterator::ptr {
-      // FIXME(gnusi): compile time
-      if (ord.buckets.empty()) {
-          using disjunction_t = irs::disjunction_iterator<irs::doc_iterator::ptr, Aggregator>;
-        return irs::make_disjunction<disjunction_t>(
-          std::move(itrs), std::move(aggregator), std::forward<Args>(args)...);
-      }
+    [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+      using disjunction_t = std::conditional_t<
+          std::is_same_v<A, irs::NoopAggregator>,
+          irs::disjunction_iterator<irs::doc_iterator::ptr, A>,
+          irs::scored_disjunction_iterator<irs::doc_iterator::ptr, A>>;
 
-      using scored_disjunction_t = irs::scored_disjunction_iterator<irs::doc_iterator::ptr, Aggregator>;
-      return irs::make_disjunction<scored_disjunction_t>(
-        std::move(itrs), std::move(aggregator), std::forward<Args>(args)...);
-
+      return irs::make_disjunction<disjunction_t>(std::move(itrs),
+                                                  std::move(aggregator),
+                                                  std::forward<Args>(args)...);
     });
 
 }
@@ -137,7 +134,9 @@ irs::doc_iterator::ptr make_conjunction(
       ord.buckets.size(),
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
         using conjunction_t = irs::conjunction<irs::doc_iterator::ptr, A>;
-        return irs::make_conjunction<conjunction_t>(std::move(itrs), std::move(aggregator),
+
+        return irs::make_conjunction<conjunction_t>(std::move(itrs),
+                                                    std::move(aggregator),
                                                     std::forward<Args>(args)...);
       });
 }
@@ -340,27 +339,27 @@ class min_match_query final : public boolean_query {
 
     return ResoveMergeType(sort::MergeType::AGGREGATE, ord.buckets.size(),
     [&]<typename A>(A&& aggregator) -> doc_iterator::ptr {
-        using disjunction_t = min_match_iterator<doc_iterator::ptr, A>; // FIXME use FAST version
-        using scored_disjunction_t = scored_min_match_iterator<doc_iterator::ptr, A>;
-
         if (min_match_count == size) {
-          using conjunction_t = conjunction<doc_iterator::ptr, typename disjunction_t::merger_type>;
+          using conjunction_t = conjunction<doc_iterator::ptr, A>;
 
           // pure conjunction
           return memory::make_managed<conjunction_t>(
-            typename conjunction_t::doc_iterators_t(
-              std::make_move_iterator(itrs.begin()),
-              std::make_move_iterator(itrs.end())), std::move(aggregator));
+              typename conjunction_t::doc_iterators_t{std::make_move_iterator(std::begin(itrs)),
+                                                      std::make_move_iterator(std::end(itrs))},
+              std::move(aggregator));
         }
 
         // min match disjunction
         assert(min_match_count < size);
 
-        if (ord.buckets.empty()) { // FIXME(gnusi) compile time
-          return memory::make_managed<disjunction_t>(std::move(itrs), min_match_count, std::move(aggregator));
-        }
+        using disjunction_t = std::conditional_t<
+            std::is_same_v<A, irs::NoopAggregator>,
+            min_match_iterator<doc_iterator::ptr, A>, // FIXME use FAST version
+            scored_min_match_iterator<doc_iterator::ptr, A>>;
 
-        return memory::make_managed<scored_disjunction_t>(std::move(itrs), min_match_count, std::move(aggregator));
+        return memory::make_managed<disjunction_t>(std::move(itrs),
+                                                   min_match_count,
+                                                   std::move(aggregator));
     });
   }
 

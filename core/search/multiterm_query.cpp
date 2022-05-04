@@ -103,12 +103,6 @@ bool lazy_bitset_iterator::refill(
   return false;
 }
 
-template<typename Aggregator>
-using ScoredDisjunction = scored_disjunction_iterator<doc_iterator::ptr, Aggregator>;
-
-template<typename Aggregator>
-using Disjunction = disjunction_iterator<doc_iterator::ptr, Aggregator>;
-
 }
 
 namespace iresearch {
@@ -135,8 +129,8 @@ doc_iterator::ptr multiterm_query::execute(
 
   const bool has_unscored_terms = !state->unscored_terms.empty();
 
-  Disjunction<NoopAggregator>::doc_iterators_t itrs(
-    state->scored_states.size() + size_t(has_unscored_terms));
+  std::vector<score_iterator_adapter<doc_iterator::ptr>> itrs(
+      state->scored_states.size() + size_t(has_unscored_terms));
   auto it = itrs.begin();
 
   // add an iterator for each of the scored states
@@ -184,17 +178,18 @@ doc_iterator::ptr multiterm_query::execute(
     itrs.erase(it, itrs.end());
   }
 
-  return ResoveMergeType(merge_type_, ord.buckets.size(),
-                         [&]<typename Aggregator>(Aggregator&& aggregator) -> irs::doc_iterator::ptr {
-                           // FIXME: make it constexpr
-                           if (ord.buckets.empty()) {
-                             return make_disjunction<Disjunction<Aggregator>>(
-                                 std::move(itrs), std::move(aggregator), state->estimation());
-                           }
+  return ResoveMergeType(
+      merge_type_, ord.buckets.size(),
+      [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+        using disjunction_t = std::conditional_t<
+            std::is_same_v<A, irs::NoopAggregator>,
+            disjunction_iterator<doc_iterator::ptr, A>,
+            scored_disjunction_iterator<doc_iterator::ptr, A>>;
 
-                           return make_disjunction<ScoredDisjunction<Aggregator>>(
-                               std::move(itrs), std::move(aggregator), state->estimation());
-                         });
+        return make_disjunction<disjunction_t>(std::move(itrs),
+                                               std::move(aggregator),
+                                               state->estimation());
+      });
 }
 
 } // ROOT

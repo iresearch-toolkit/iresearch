@@ -129,16 +129,14 @@ class column_prefix_existence_query final : public column_existence_query {
 
     return ResoveMergeType(
         sort::MergeType::AGGREGATE, ord.buckets.size(),
-        [&]<typename Aggregator>(Aggregator&& aggregator) -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
 
-      // FIXME(gnusi): compile time check
-      if (ord.buckets.empty()) {
-        using disjunction_t = irs::disjunction_iterator<irs::doc_iterator::ptr, Aggregator>;
+        using disjunction_t = std::conditional_t<
+            std::is_same_v<A, irs::NoopAggregator>,
+            irs::disjunction_iterator<irs::doc_iterator::ptr, A>,
+            irs::scored_disjunction_iterator<irs::doc_iterator::ptr, A>>;
+
         return irs::make_disjunction<disjunction_t>(std::move(itrs), std::move(aggregator));
-      }
-
-      using scored_disjunction_t = irs::scored_disjunction_iterator<irs::doc_iterator::ptr, Aggregator>;
-      return irs::make_disjunction<scored_disjunction_t>(std::move(itrs), std::move(aggregator));
     });
   }
 }; // column_prefix_existence_query
