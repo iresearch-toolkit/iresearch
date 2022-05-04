@@ -1965,20 +1965,20 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(3, *reinterpret_cast<const size_t*>(score.evaluate())); // 1 + 2
+    ASSERT_EQ(3, *score.evaluate()); // 1 + 2
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(3, *reinterpret_cast<const size_t*>(score.evaluate())); // 1 + 2
+    ASSERT_EQ(3, *score.evaluate()); // 1 + 2
     ASSERT_TRUE(it.next());
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // 2
+    ASSERT_EQ(2, *score.evaluate()); // 2
     ASSERT_EQ(6, it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_EQ(11, it.seek(10));
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -2026,20 +2026,20 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1, 2)
+    ASSERT_EQ(2, *score.evaluate()); // std::max(1, 2)
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1, 2)
+    ASSERT_EQ(2, *score.evaluate()); // std::max(1, 2)
     ASSERT_TRUE(it.next());
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2)
+    ASSERT_EQ(2, *score.evaluate()); // std::max(2)
     ASSERT_EQ(6, it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(1, *score.evaluate()); // std::max(1)
     ASSERT_EQ(11, it.seek(10));
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(1, *score.evaluate()); // std::max(1)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(1, *score.evaluate()); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -2083,20 +2083,20 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(6, it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(11, it.seek(10));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -2139,20 +2139,20 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(6, it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(11, it.seek(10));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -2196,20 +2196,20 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_EQ(11, it.seek(10));
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -2254,20 +2254,20 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_EQ(11, it.seek(10));
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -2311,20 +2311,20 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(11, it.seek(10));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -2368,20 +2368,20 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(11, it.seek(10));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -3064,20 +3064,20 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(6, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
+    ASSERT_EQ(6, *score.evaluate()); // 2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // 2
+    ASSERT_EQ(2, *score.evaluate()); // 2
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -3124,20 +3124,20 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1, 2, 4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1, 2, 4)
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1, 2, 4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1, 2, 4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2, 4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(2, 4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(1, *score.evaluate()); // std::max(1)
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2)
+    ASSERT_EQ(2, *score.evaluate()); // std::max(2)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(1, *score.evaluate()); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -3183,20 +3183,20 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(5, *score.evaluate()); // 1+4
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(5, *score.evaluate()); // 1+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // 4
+    ASSERT_EQ(4, *score.evaluate()); // 4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
+    ASSERT_EQ(0, *score.evaluate()); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -3242,20 +3242,20 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1, 4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1, 4)
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1, 4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1, 4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(1, *score.evaluate()); // std::max(1)
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // default value
+    ASSERT_EQ(0, *score.evaluate()); // default value
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(1, *score.evaluate()); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -3299,20 +3299,20 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(0, *score.evaluate()); // 1+4
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(0, *score.evaluate()); // 1+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 4
+    ASSERT_EQ(0, *score.evaluate()); // 4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(0, *score.evaluate()); // 1
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
+    ASSERT_EQ(0, *score.evaluate()); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(0, *score.evaluate()); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -3356,20 +3356,20 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -3980,10 +3980,10 @@ TEST(block_disjunction_test, next_scored) {
   // single iterator case, values don't fit single block
   // disjunction score, sub-iterators with scores
   {
-    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
-      { 1, 1 }, { 2, 1 }, { 5, 1 }, { 7, 1 }, { 9, 1 },
-      { 11, 1 }, { 45, 1 }, { 65, 1 }, { 78, 1 }, { 127, 1 } };
-    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    std::vector<std::pair<irs::doc_id_t, irs::score_t>> expected{
+      { 1, 1.f }, { 2, 1.f }, { 5, 1.f }, { 7, 1.f }, { 9, 1.f },
+      { 11, 1.f }, { 45, 1.f }, { 65, 1.f }, { 78, 1.f }, { 127, 1.f } };
+    std::vector<std::pair<irs::doc_id_t, irs::score_t>> result;
 
     std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
     docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45, 65, 78, 127},
@@ -4020,7 +4020,7 @@ TEST(block_disjunction_test, next_scored) {
       ASSERT_EQ(1, irs::cost::extract(it));
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -4035,10 +4035,10 @@ TEST(block_disjunction_test, next_scored) {
   // single iterator case, values don't fit single block, gap between block
   // disjunction score, sub-iterators with scores
   {
-    std::vector<std::pair<irs::doc_id_t, size_t>> expected{
-      { 1, 2 }, { 2, 2 }, { 5, 2 }, { 7, 2 }, { 9, 2 }, { 11, 2 },
-      { 1145, 2 }, { 111165, 2 }, { 1111178, 2 }, { 111111127, 2 }};
-    std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    std::vector<std::pair<irs::doc_id_t, irs::score_t>> expected{
+      { 1, 2.f }, { 2.f, 2.f }, { 5, 2.f }, { 7, 2.f }, { 9, 2.f }, { 11, 2.f },
+      { 1145, 2.f }, { 111165, 2.f }, { 1111178, 2.f }, { 111111127, 2.f }};
+    std::vector<std::pair<irs::doc_id_t, irs::score_t>> result;
 
     std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
     docs.emplace_back(
@@ -4077,7 +4077,7 @@ TEST(block_disjunction_test, next_scored) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -4192,7 +4192,7 @@ TEST(block_disjunction_test, next_scored) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -4248,7 +4248,7 @@ TEST(block_disjunction_test, next_scored) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -4304,7 +4304,7 @@ TEST(block_disjunction_test, next_scored) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -4361,7 +4361,7 @@ TEST(block_disjunction_test, next_scored) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -4415,7 +4415,7 @@ TEST(block_disjunction_test, next_scored) {
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
         result.push_back(it.value());
-        ASSERT_EQ(9, *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(9.f, *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -4466,7 +4466,7 @@ TEST(block_disjunction_test, next_scored) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (; it.next();) {
         result.push_back(it.value());
-        ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(4.f, *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -4587,7 +4587,7 @@ TEST(block_disjunction_test, next_scored) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -4648,7 +4648,7 @@ TEST(block_disjunction_test, next_scored) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -4704,7 +4704,7 @@ TEST(block_disjunction_test, next_scored) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -4759,7 +4759,7 @@ TEST(block_disjunction_test, next_scored) {
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
         result.push_back(it.value());
-        ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(4, *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -4920,7 +4920,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       ASSERT_EQ(1, irs::cost::extract(it));
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -4977,7 +4977,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -5089,7 +5089,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -5144,7 +5144,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -5199,7 +5199,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -5254,7 +5254,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -5305,7 +5305,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
         result.push_back(it.value());
-        ASSERT_EQ(9, *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(9.f, *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -5354,7 +5354,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (; it.next();) {
         result.push_back(it.value());
-        ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(4, *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -5481,7 +5481,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -5537,7 +5537,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -5589,7 +5589,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
-        result.emplace_back(it.value(), *reinterpret_cast<const size_t*>(score.evaluate()));
+        result.emplace_back(it.value(), *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -5641,7 +5641,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
         result.push_back(it.value());
-        ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
+        ASSERT_EQ(4, *score.evaluate());
         ASSERT_EQ(1, it.match_count());
       }
       ASSERT_EQ(0, it.match_count());
@@ -7543,7 +7543,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -7608,7 +7608,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -7661,7 +7661,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -7711,7 +7711,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(target.expected, it.seek( target.target ));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -7763,7 +7763,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -7814,7 +7814,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -7870,7 +7870,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -7929,7 +7929,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -7979,7 +7979,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -8033,7 +8033,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -8231,7 +8231,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -8295,7 +8295,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -8349,7 +8349,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -8397,7 +8397,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -8449,7 +8449,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -8499,7 +8499,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -8554,7 +8554,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -8613,7 +8613,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -8663,7 +8663,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -8717,7 +8717,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(target.expected, it.seek(target.target));
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
-      ASSERT_EQ(target.score, *reinterpret_cast<const size_t*>(score.evaluate()));
+      ASSERT_EQ(target.score, *score.evaluate());
     }
   }
 
@@ -10492,20 +10492,20 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(6, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
+    ASSERT_EQ(6, *score.evaluate()); // 2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // 2
+    ASSERT_EQ(2, *score.evaluate()); // 2
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -10556,20 +10556,20 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(1, *score.evaluate()); // std::max(1)
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2)
+    ASSERT_EQ(2, *score.evaluate()); // std::max(2)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(1, *score.evaluate()); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -10619,20 +10619,20 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(5, *score.evaluate()); // 1+4
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(5, *score.evaluate()); // 1+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // 4
+    ASSERT_EQ(4, *score.evaluate()); // 4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
+    ASSERT_EQ(0, *score.evaluate()); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -10682,20 +10682,20 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,4)
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(1, *score.evaluate()); // std::max(1)
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
+    ASSERT_EQ(0, *score.evaluate()); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(1, *score.evaluate()); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -10743,20 +10743,20 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(0, *score.evaluate()); // 1+4
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(0, *score.evaluate()); // 1+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 4
+    ASSERT_EQ(0, *score.evaluate()); // 4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(0, *score.evaluate()); // 1
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
+    ASSERT_EQ(0, *score.evaluate()); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(0, *score.evaluate()); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -10804,20 +10804,20 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -11505,20 +11505,20 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(6, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
+    ASSERT_EQ(6, *score.evaluate()); // 2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // 2
+    ASSERT_EQ(2, *score.evaluate()); // 2
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -11565,20 +11565,20 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(1, *score.evaluate()); // std::max(1)
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(2, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2)
+    ASSERT_EQ(2, *score.evaluate()); // std::max(2)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(1, *score.evaluate()); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -11624,20 +11624,20 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(5, *score.evaluate()); // 1+4
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(5, *score.evaluate()); // 1+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // 4
+    ASSERT_EQ(4, *score.evaluate()); // 4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
+    ASSERT_EQ(0, *score.evaluate()); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -11683,20 +11683,20 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,4)
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(1, *score.evaluate()); // std::max(1)
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
+    ASSERT_EQ(0, *score.evaluate()); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1)
+    ASSERT_EQ(1, *score.evaluate()); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -11740,20 +11740,20 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(0, *score.evaluate()); // 1+4
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(0, *score.evaluate()); // 1+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 4
+    ASSERT_EQ(0, *score.evaluate()); // 4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(0, *score.evaluate()); // 1
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); //
+    ASSERT_EQ(0, *score.evaluate()); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(0, *score.evaluate()); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -11797,20 +11797,20 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -13050,17 +13050,17 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(6, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
+    ASSERT_EQ(6, *score.evaluate()); // 2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(5, *score.evaluate()); // 1+4
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(6, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
+    ASSERT_EQ(6, *score.evaluate()); // 2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -13107,17 +13107,17 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,4)
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(2,4)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -13163,17 +13163,17 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(5, *score.evaluate()); // 1+2+4
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(5, *score.evaluate()); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
+    ASSERT_EQ(4, *score.evaluate()); // 2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(5, *score.evaluate()); // 1+4
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
+    ASSERT_EQ(4, *score.evaluate()); // 2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -13221,17 +13221,17 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(4, *score.evaluate());
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(4, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(4, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(4, *score.evaluate());
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(4, *score.evaluate());
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -13275,17 +13275,17 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(0, *score.evaluate()); // 1+2+4
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(0, *score.evaluate()); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
+    ASSERT_EQ(0, *score.evaluate()); // 2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+4
+    ASSERT_EQ(0, *score.evaluate()); // 1+4
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 2+4
+    ASSERT_EQ(0, *score.evaluate()); // 2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -13329,17 +13329,17 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(5, it.seek(5));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(29, it.seek(27));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -13782,17 +13782,17 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_EQ(4, it.seek(3));
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_EQ(14, it.seek(14));
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -13889,17 +13889,17 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(12, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4+5
+    ASSERT_EQ(12, *score.evaluate()); // 1+2+4+5
     ASSERT_EQ(4, it.seek(3));
-    ASSERT_EQ(12, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4+5
+    ASSERT_EQ(12, *score.evaluate()); // 1+2+4+5
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    ASSERT_EQ(12, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4+5
+    ASSERT_EQ(12, *score.evaluate()); // 1+2+4+5
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    ASSERT_EQ(12, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4+5
+    ASSERT_EQ(12, *score.evaluate()); // 1+2+4+5
     ASSERT_EQ(14, it.seek(14));
-    ASSERT_EQ(12, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4+5
+    ASSERT_EQ(12, *score.evaluate()); // 1+2+4+5
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -13945,17 +13945,17 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_EQ(4, it.seek(3));
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_EQ(14, it.seek(14));
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -14001,17 +14001,17 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_EQ(4, it.seek(3));
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_EQ(14, it.seek(14));
-    ASSERT_EQ(7, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(7, *score.evaluate()); // 1+2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -14057,17 +14057,17 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_EQ(4, it.seek(3));
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_EQ(14, it.seek(14));
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -14111,17 +14111,17 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_EQ(4, it.seek(3));
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_EQ(14, it.seek(14));
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate())); // 1
+    ASSERT_EQ(1, *score.evaluate()); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -14165,17 +14165,17 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_EQ(4, it.seek(3));
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_EQ(14, it.seek(14));
-    ASSERT_EQ(1, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(1, *score.evaluate());
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -14220,17 +14220,17 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(5, *score.evaluate()); // 1+2+4
     ASSERT_EQ(4, it.seek(3));
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(5, *score.evaluate()); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(5, *score.evaluate()); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(5, *score.evaluate()); // 1+2+4
     ASSERT_EQ(14, it.seek(14));
-    ASSERT_EQ(5, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(5, *score.evaluate()); // 1+2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -14275,17 +14275,17 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_EQ(4, it.seek(3));
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_EQ(14, it.seek(14));
-    ASSERT_EQ(4, *reinterpret_cast<const size_t*>(score.evaluate())); // std::max(1,2,4)
+    ASSERT_EQ(4, *score.evaluate()); // std::max(1,2,4)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -14328,17 +14328,17 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(0, *score.evaluate()); // 1+2+4
     ASSERT_EQ(4, it.seek(3));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(0, *score.evaluate()); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(0, *score.evaluate()); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(0, *score.evaluate()); // 1+2+4
     ASSERT_EQ(14, it.seek(14));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate())); // 1+2+4
+    ASSERT_EQ(0, *score.evaluate()); // 1+2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
@@ -14381,17 +14381,17 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(4, it.seek(3));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_EQ(14, it.seek(14));
-    ASSERT_EQ(0, *reinterpret_cast<const size_t*>(score.evaluate()));
+    ASSERT_EQ(0, *score.evaluate());
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
     ASSERT_FALSE(it.next());
