@@ -242,28 +242,21 @@ std::vector<DocIterator> execute_all(
 }
 
 template<typename DocIterator>
-std::pair<std::vector<DocIterator>, std::vector<irs::Order>> execute_all(
-    std::span<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs) {
+std::vector<DocIterator> execute_all(
+    std::span<const std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs) {
   const irs::byte_type* stats = irs::bytes_ref::EMPTY.c_str();
-  std::vector<irs::Order> order;
-  order.reserve(docs.size());
   std::vector<DocIterator> itrs;
   itrs.reserve(docs.size());
-  for (const auto& entry : docs) {
-    const auto& [doc, ord] = entry;
-
-    order.emplace_back(std::move(ord));
-
-    if (order.back().buckets.empty()) {
+  for (const auto& [doc, ord] : docs) {
+    if (ord.buckets.empty()) {
       itrs.emplace_back(irs::memory::make_managed<detail::basic_doc_iterator>(
         doc.begin(), doc.end()));
     } else {
       itrs.emplace_back(irs::memory::make_managed<detail::basic_doc_iterator>(
-        doc.begin(), doc.end(), stats, order.back(), irs::kNoBoost));
+        doc.begin(), doc.end(), stats, ord, irs::kNoBoost));
     }
   }
-
-  return { std::move(itrs), std::move(order) };
+  return itrs;
 }
 
 struct seek_doc {
@@ -2983,7 +2976,7 @@ TEST(small_disjunction_test, scored_seek_next) {
   { 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 0,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
 
@@ -2995,12 +2988,10 @@ TEST(small_disjunction_test, scored_seek_next) {
           docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
                             irs::Order::Prepare(detail::basic_sort{4}));
 
-          auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
+          auto itrs = detail::execute_all<adapter>(docs);;
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              irs::Order::kUnordered, 1); // custom cost
+              std::move(itrs), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::small_disjunction<irs::doc_iterator::ptr, irs::NoopAggregator>;
@@ -3037,7 +3028,7 @@ TEST(small_disjunction_test, scored_seek_next) {
   {
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
 
@@ -3050,10 +3041,9 @@ TEST(small_disjunction_test, scored_seek_next) {
                             irs::Order::Prepare(detail::basic_sort{4}));
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::small_disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
@@ -3098,7 +3088,7 @@ TEST(small_disjunction_test, scored_seek_next) {
   {
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
 
@@ -3111,10 +3101,9 @@ TEST(small_disjunction_test, scored_seek_next) {
                             irs::Order::Prepare(detail::basic_sort{4}));
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::small_disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
@@ -3159,7 +3148,7 @@ TEST(small_disjunction_test, scored_seek_next) {
   {
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
 
@@ -3171,10 +3160,9 @@ TEST(small_disjunction_test, scored_seek_next) {
                             irs::Order::Prepare(detail::basic_sort{4}));
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::small_disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
@@ -3219,7 +3207,7 @@ TEST(small_disjunction_test, scored_seek_next) {
   {
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
 
@@ -3231,10 +3219,9 @@ TEST(small_disjunction_test, scored_seek_next) {
                             irs::Order::Prepare(detail::basic_sort{4}));
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::small_disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
@@ -3279,7 +3266,7 @@ TEST(small_disjunction_test, scored_seek_next) {
   {
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
 
@@ -3289,10 +3276,9 @@ TEST(small_disjunction_test, scored_seek_next) {
           docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, irs::Order{});
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::small_disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
@@ -3337,7 +3323,7 @@ TEST(small_disjunction_test, scored_seek_next) {
   {
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
 
@@ -3347,10 +3333,9 @@ TEST(small_disjunction_test, scored_seek_next) {
           docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, irs::Order{});
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::small_disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
@@ -3945,7 +3930,7 @@ TEST(block_disjunction_test, next_scored) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, irs::Order::kUnordered.buckets.size(),
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
@@ -3956,11 +3941,9 @@ TEST(block_disjunction_test, next_scored) {
                                              irs::Order::Prepare(detail::basic_sort{1})));
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                irs::Order::kUnordered, 1); // custom cost
+                std::move(res), std::move(aggregator), 1); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4004,7 +3987,7 @@ TEST(block_disjunction_test, next_scored) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
@@ -4015,11 +3998,9 @@ TEST(block_disjunction_test, next_scored) {
                                              irs::Order::Prepare(detail::basic_sort{1})));
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 1); // custom cost
+                std::move(res), std::move(aggregator), 1); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4061,7 +4042,7 @@ TEST(block_disjunction_test, next_scored) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
@@ -4073,11 +4054,9 @@ TEST(block_disjunction_test, next_scored) {
                              irs::Order::Prepare(detail::basic_sort{2})));
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4120,7 +4099,7 @@ TEST(block_disjunction_test, next_scored) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
@@ -4132,11 +4111,9 @@ TEST(block_disjunction_test, next_scored) {
             docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::Order{});
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4180,7 +4157,7 @@ TEST(block_disjunction_test, next_scored) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
@@ -4192,11 +4169,9 @@ TEST(block_disjunction_test, next_scored) {
             docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29, 126 }, irs::Order{}));
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4238,7 +4213,7 @@ TEST(block_disjunction_test, next_scored) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
@@ -4251,11 +4226,9 @@ TEST(block_disjunction_test, next_scored) {
                                              irs::Order::Prepare(detail::basic_sort{2})));
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4297,7 +4270,7 @@ TEST(block_disjunction_test, next_scored) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::MAX, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
@@ -4310,11 +4283,9 @@ TEST(block_disjunction_test, next_scored) {
                                              irs::Order::Prepare(detail::basic_sort{2})));
 
             auto res = detail::execute_all<adapter>(docs);
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4356,7 +4327,7 @@ TEST(block_disjunction_test, next_scored) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
@@ -4370,11 +4341,9 @@ TEST(block_disjunction_test, next_scored) {
                               irs::Order::Prepare(detail::basic_sort{1}));
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4419,18 +4388,16 @@ TEST(block_disjunction_test, next_scored) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4473,18 +4440,16 @@ TEST(block_disjunction_test, next_scored) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4525,18 +4490,16 @@ TEST(block_disjunction_test, next_scored) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4566,7 +4529,7 @@ TEST(block_disjunction_test, next_scored) {
         irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
         irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
 
-    disjunction it({}, {}, order(1).prepare());
+    disjunction it({}, {});
 
     auto& score = irs::score::get(it);
     ASSERT_FALSE(score.is_default());
@@ -4598,18 +4561,16 @@ TEST(block_disjunction_test, next_scored) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::MAX, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 3); // custom cost
+                std::move(res), std::move(aggregator), 3); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4661,18 +4622,16 @@ TEST(block_disjunction_test, next_scored) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 3); // custom cost
+                std::move(res), std::move(aggregator), 3); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4718,18 +4677,16 @@ TEST(block_disjunction_test, next_scored) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 3); // custom cost
+                std::move(res), std::move(aggregator), 3); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4775,18 +4732,16 @@ TEST(block_disjunction_test, next_scored) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::MAX, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 3); // custom cost
+                std::move(res), std::move(aggregator), 3); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4830,18 +4785,16 @@ TEST(block_disjunction_test, next_scored) {
 
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::MAX, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 3); // custom cost
+                std::move(res), std::move(aggregator), 3); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4886,18 +4839,16 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::MAX, 0,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                irs::Order::kUnordered, 3); // custom cost
+                std::move(res), std::move(aggregator), 3); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4943,18 +4894,16 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                irs::Order::kUnordered, 1); // custom cost
+                std::move(res), std::move(aggregator), 1); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -5001,18 +4950,16 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 0,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                irs::Order::kUnordered, 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -5058,18 +5005,16 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -5117,18 +5062,16 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -5174,18 +5117,16 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -5231,18 +5172,16 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::MAX, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -5288,18 +5227,16 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -5341,18 +5278,16 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -5393,18 +5328,16 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -5443,18 +5376,16 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 2); // custom cost
+                std::move(res), std::move(aggregator), 2); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -5482,17 +5413,13 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
   {
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = irs::Order{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
           using adapter = typename disjunction::adapter;
 
-          cached_order = order(1);
-
-          return irs::memory::make_managed<disjunction>(
-              std::vector<irs::doc_iterator::ptr>{}, std::move(aggregator),
-              cached_order);
+          return irs::memory::make_managed<disjunction>(std::vector<adapter>{}, std::move(aggregator));
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -5528,18 +5455,16 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::MAX, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 3); // custom cost
+                std::move(res), std::move(aggregator), 3); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -5586,18 +5511,16 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 3); // custom cost
+                std::move(res), std::move(aggregator), 3); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -5640,18 +5563,16 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 3); // custom cost
+                std::move(res), std::move(aggregator), 3); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -5693,18 +5614,16 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::MAX, 1,
-          [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+          [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
             auto res = detail::execute_all<adapter>(docs);;
-            cached_order = std::move(res.second);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res.first), std::move(aggregator),
-                cached_order.front(), 3); // custom cost
+                std::move(res), std::move(aggregator), 3); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -5745,18 +5664,16 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 3); // custom cost
+              std::move(res), std::move(aggregator), 3); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -7492,12 +7409,14 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
   {
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 0,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
 
-          return irs::memory::make_managed<disjunction>(std::vector<irs::doc_iterator::ptr>{});
+          using adapter = typename disjunction::adapter;
+
+          return irs::memory::make_managed<disjunction>(std::vector<adapter>{}, std::move(aggregator));
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -7537,18 +7456,16 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
   auto it_ptr = irs::ResoveMergeType(
      irs::sort::MergeType::AGGREGATE, 1,
-      [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+      [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
         using disjunction = irs::block_disjunction<
           irs::doc_iterator::ptr, A,
           irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
         using adapter = typename disjunction::adapter;
 
         auto res = detail::execute_all<adapter>(docs);;
-        cached_order = std::move(res.second);
 
         return irs::memory::make_managed<disjunction>(
-            std::move(res.first), std::move(aggregator),
-            cached_order.front(), 2); // custom cost
+            std::move(res), std::move(aggregator), 2); // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -7598,18 +7515,16 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
   auto it_ptr = irs::ResoveMergeType(
      irs::sort::MergeType::AGGREGATE, 1,
-      [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+      [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
         using disjunction = irs::block_disjunction<
           irs::doc_iterator::ptr, A,
           irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
         using adapter = typename disjunction::adapter;
 
         auto res = detail::execute_all<adapter>(docs);;
-        cached_order = std::move(res.second);
 
         return irs::memory::make_managed<disjunction>(
-            std::move(res.first), std::move(aggregator),
-            cached_order.front(), 2); // custom cost
+            std::move(res), std::move(aggregator), 2); // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -7664,18 +7579,16 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
   auto it_ptr = irs::ResoveMergeType(
      irs::sort::MergeType::MAX, 1,
-      [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+      [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
         using disjunction = irs::block_disjunction<
           irs::doc_iterator::ptr, A,
           irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
         using adapter = typename disjunction::adapter;
 
         auto res = detail::execute_all<adapter>(docs);;
-        cached_order = std::move(res.second);
 
         return irs::memory::make_managed<disjunction>(
-            std::move(res.first), std::move(aggregator),
-            cached_order.front(), 2); // custom cost
+            std::move(res), std::move(aggregator), 2); // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -7722,18 +7635,15 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
-
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -7772,18 +7682,16 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -7827,18 +7735,16 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -7880,18 +7786,16 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -7939,18 +7843,16 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -8000,18 +7902,16 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -8052,18 +7952,16 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -8108,18 +8006,16 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -8164,18 +8060,16 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -8248,25 +8142,18 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       {irs::doc_limits::eof(), irs::doc_limits::eof(), 0, 0 },
     };
 
-    auto res = detail::execute_all<disjunction::adapter>(docs);
-
-    disjunction it(std::move(res.first), irs::Order::kUnordered,
-                   irs::sort::MergeType::AGGREGATE, 2); // custom cost
-
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -8316,18 +8203,16 @@ TEST(block_disjunction_test, seek_scored_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -8382,18 +8267,16 @@ TEST(block_disjunction_test, seek_scored_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -8439,18 +8322,16 @@ TEST(block_disjunction_test, seek_scored_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -8488,18 +8369,16 @@ TEST(block_disjunction_test, seek_scored_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -8542,18 +8421,16 @@ TEST(block_disjunction_test, seek_scored_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -8594,18 +8471,16 @@ TEST(block_disjunction_test, seek_scored_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -8652,18 +8527,16 @@ TEST(block_disjunction_test, seek_scored_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -8713,18 +8586,16 @@ TEST(block_disjunction_test, seek_scored_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -8765,18 +8636,16 @@ TEST(block_disjunction_test, seek_scored_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -8821,18 +8690,16 @@ TEST(block_disjunction_test, seek_scored_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -8877,18 +8744,16 @@ TEST(block_disjunction_test, seek_scored_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              cached_order.front(), 2); // custom cost
+              std::move(res), std::move(aggregator), 2); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -10542,18 +10407,16 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 0,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              irs::Order::kUnordered, 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -10600,17 +10463,16 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -10665,17 +10527,16 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -10729,17 +10590,16 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -10793,17 +10653,16 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -10855,17 +10714,16 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -10917,17 +10775,16 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::block_disjunction<
@@ -11571,16 +11428,14 @@ TEST(disjunction_test, scored_seek_next) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, irs::Order::kUnordered.buckets.size(),
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);;
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator),
-              irs::Order::kUnordered, 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::disjunction<irs::doc_iterator::ptr, irs::NoopAggregator>;
@@ -11625,15 +11480,14 @@ TEST(disjunction_test, scored_seek_next) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
@@ -11686,15 +11540,14 @@ TEST(disjunction_test, scored_seek_next) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
@@ -11746,15 +11599,14 @@ TEST(disjunction_test, scored_seek_next) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
@@ -11806,15 +11658,14 @@ TEST(disjunction_test, scored_seek_next) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
@@ -11864,15 +11715,14 @@ TEST(disjunction_test, scored_seek_next) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
@@ -11922,15 +11772,14 @@ TEST(disjunction_test, scored_seek_next) {
 
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 1,
-        [&, cached_order = std::vector<irs::Order>{}]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
+        [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
 
           auto res = detail::execute_all<adapter>(docs);
-          cached_order = std::move(res.second);
 
           return irs::memory::make_managed<disjunction>(
-              std::move(res.first), std::move(aggregator), 1); // custom cost
+              std::move(res), std::move(aggregator), 1); // custom cost
         });
 
     using ExpectedType = irs::disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
@@ -12272,9 +12121,8 @@ TEST(min_match_disjunction_test, next) {
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs),
-            min_match_count
-        );
+            detail::execute_all<disjunction ::cost_iterator_adapter>(docs),
+            min_match_count);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -13115,8 +12963,6 @@ TEST(min_match_disjunction_test, seek_next) {
 }
 
 TEST(min_match_disjunction_test, scored_seek_next) {
-  using disjunction = irs::min_match_disjunction<irs::doc_iterator::ptr>;
-
   // disjunction without score, sub-iterators with scores
   {
     std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
@@ -13127,8 +12973,22 @@ TEST(min_match_disjunction_test, scored_seek_next) {
       docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 9, 29 },
                         irs::Order::Prepare(detail::basic_sort{4}));
 
-    auto res = detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs);
-    disjunction it(std::move(res.first), 2, irs::Order::kUnordered);
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::MAX, 0,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using disjunction = irs::min_match_disjunction<irs::doc_iterator::ptr, A>;
+          using adapter = typename disjunction::cost_iterator_adapter;
+
+         auto res = detail::execute_all<adapter>(docs);
+
+         return irs::memory::make_managed<disjunction>(
+           std::move(res), 2, std::move(aggregator));
+       });
+
+    using ExpectedType = irs::basic_disjunction<irs::doc_iterator::ptr, irs::NoopAggregator>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -13163,10 +13023,22 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 9, 29 },
                       irs::Order::Prepare(detail::basic_sort{4}));
 
-    auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, 1,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using disjunction = irs::min_match_disjunction<irs::doc_iterator::ptr, A>;
+          using adapter = typename disjunction::cost_iterator_adapter;
 
-    auto res = detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs);
-    disjunction it(std::move(res.first), 2, prepared_order, irs::sort::MergeType::AGGREGATE);
+         auto res = detail::execute_all<adapter>(docs);
+
+         return irs::memory::make_managed<disjunction>(
+           std::move(res), 2, std::move(aggregator));
+       });
+
+    using ExpectedType = irs::basic_disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -13208,10 +13080,22 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 9, 29 },
                       irs::Order::Prepare(detail::basic_sort{4}));
 
-    auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::MAX, 1,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using disjunction = irs::min_match_disjunction<irs::doc_iterator::ptr, A>;
+          using adapter = typename disjunction::cost_iterator_adapter;
 
-    auto res = detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs);
-    disjunction it(std::move(res.first), 2, prepared_order, irs::sort::MergeType::MAX);
+         auto res = detail::execute_all<adapter>(docs);
+
+         return irs::memory::make_managed<disjunction>(
+           std::move(res), 2, std::move(aggregator));
+       });
+
+    using ExpectedType = irs::basic_disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -13249,13 +13133,25 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
                       irs::Order::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::Order{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 9, 29 }
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 9, 29 },
                       irs::Order::Prepare(detail::basic_sort{4}));
 
-    auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, 1,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using disjunction = irs::min_match_disjunction<irs::doc_iterator::ptr, A>;
+          using adapter = typename disjunction::cost_iterator_adapter;
 
-    auto res = detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs);
-    disjunction it(std::move(res.first), 2, prepared_order, irs::sort::MergeType::AGGREGATE);
+         auto res = detail::execute_all<adapter>(docs);
+
+         return irs::memory::make_managed<disjunction>(
+           std::move(res), 2, std::move(aggregator));
+       });
+
+    using ExpectedType = irs::min_match_disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -13298,8 +13194,22 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
     auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
 
-    auto res = detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs);
-    disjunction it(std::move(res.first), 2, prepared_order, irs::sort::MergeType::MAX);
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::MAX, 1,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using disjunction = irs::min_match_disjunction<irs::doc_iterator::ptr, A>;
+          using adapter = typename disjunction::cost_iterator_adapter;
+
+         auto res = detail::execute_all<adapter>(docs);
+
+         return irs::memory::make_managed<disjunction>(
+           std::move(res), 2, std::move(aggregator));
+       });
+
+    using ExpectedType = irs::min_match_disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -13338,10 +13248,22 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::Order{});
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 9, 29 }, irs::Order{});
 
-    auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, 1,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using disjunction = irs::min_match_disjunction<irs::doc_iterator::ptr, A>;
+          using adapter = typename disjunction::cost_iterator_adapter;
 
-    auto res = detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs);
-    disjunction it(std::move(res.first), 2, prepared_order, irs::sort::MergeType::AGGREGATE);
+         auto res = detail::execute_all<adapter>(docs);
+
+         return irs::memory::make_managed<disjunction>(
+           std::move(res), 2, std::move(aggregator));
+       });
+
+    using ExpectedType = irs::min_match_disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -13380,10 +13302,22 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::Order{});
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 9, 29 }, irs::Order{});
 
-    auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::MAX, 1,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using disjunction = irs::min_match_disjunction<irs::doc_iterator::ptr, A>;
+          using adapter = typename disjunction::cost_iterator_adapter;
 
-    auto res = detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs);
-    disjunction it(std::move(res.first), 2, prepared_order, irs::sort::MergeType::MAX);
+         auto res = detail::execute_all<adapter>(docs);
+
+         return irs::memory::make_managed<disjunction>(
+           std::move(res), 2, std::move(aggregator));
+       });
+
+    using ExpectedType = irs::min_match_disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -13811,7 +13745,6 @@ TEST(conjunction_test, seek_next) {
 }
 
 TEST(conjunction_test, scored_seek_next) {
-  using conjunction = irs::conjunction<irs::doc_iterator::ptr>;
 
   // conjunction with score, sub-iterators with scores, aggregation
   {
@@ -13823,10 +13756,21 @@ TEST(conjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 8, 14 },
                       irs::Order::Prepare(detail::basic_sort{4}));
 
-    auto prepared_order = irs::Order::Prepare(detail::basic_sortstd::numeric_limits<size_t>::max()});
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, 1,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
-    auto res = detail::execute_all<conjunction::doc_iterator_t>(docs);
-    conjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE);
+          auto res = detail::execute_all<typename conjunction::doc_iterator_t>(docs);
+
+          return irs::memory::make_managed<conjunction>(
+              std::move(res), std::move(aggregator));
+       });
+
+    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -13868,8 +13812,21 @@ TEST(conjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 8, 14 },
                       irs::Order::Prepare(detail::basic_sort{4}));
 
-    auto res = detail::execute_all<conjunction::doc_iterator_t>(docs);
-    conjunction it(std::move(res.first), irs::Order::kUnordered);
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, 0,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
+
+          auto res = detail::execute_all<typename conjunction::doc_iterator_t>(docs);
+
+          return irs::memory::make_managed<conjunction>(
+              std::move(res), std::move(aggregator));
+       });
+
+    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr, irs::NoopAggregator>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -13906,10 +13863,21 @@ TEST(conjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 8, 14 },
                       irs::Order::Prepare(detail::basic_sort{5}));
 
-    auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, 1,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
-    auto res = detail::execute_all<conjunction::doc_iterator_t>(docs);
-    conjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE);
+          auto res = detail::execute_all<typename conjunction::doc_iterator_t>(docs);
+
+          return irs::memory::make_managed<conjunction>(
+              std::move(res), std::move(aggregator));
+       });
+
+    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -13951,10 +13919,21 @@ TEST(conjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 8, 14 },
                       irs::Order::Prepare(detail::basic_sort{4}));
 
-    auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::MAX, 1,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
-    auto res = detail::execute_all<conjunction::doc_iterator_t>(docs);
-    conjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX);
+          auto res = detail::execute_all<typename conjunction::doc_iterator_t>(docs);
+
+          return irs::memory::make_managed<conjunction>(
+              std::move(res), std::move(aggregator));
+       });
+
+    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -13996,10 +13975,21 @@ TEST(conjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 8, 14 },
                       irs::Order::Prepare(detail::basic_sort{4}));
 
-    auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, 1,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
-    auto res = detail::execute_all<conjunction::doc_iterator_t>(docs);
-    conjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE);
+          auto res = detail::execute_all<typename conjunction::doc_iterator_t>(docs);
+
+          return irs::memory::make_managed<conjunction>(
+              std::move(res), std::move(aggregator));
+       });
+
+    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -14033,7 +14023,7 @@ TEST(conjunction_test, scored_seek_next) {
 
   // conjunction with score, sub-iterators with scores, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 4, 5, 7, 8, 9, 11, 14, 45 },
                       irs::Order::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 6, 8, 12, 14, 29 },
@@ -14041,10 +14031,21 @@ TEST(conjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 8, 14 },
                       irs::Order::Prepare(detail::basic_sort{4}));
 
-    auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::MAX, 1,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
-    auto res = detail::execute_all<conjunction::doc_iterator_t>(docs);
-    conjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX);
+          auto res = detail::execute_all<typename conjunction::doc_iterator_t>(docs);
+
+          return irs::memory::make_managed<conjunction>(
+              std::move(res), std::move(aggregator));
+       });
+
+    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -14078,16 +14079,27 @@ TEST(conjunction_test, scored_seek_next) {
 
   // conjunction with score, 1 sub-iterator with scores, aggregation
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 4, 5, 7, 8, 9, 11, 14, 45 },
                       irs::Order::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 6, 8, 12, 14, 29 }, irs::Order{});
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 8, 14 }, irs::Order{});
 
-    auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, 1,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
-    auto res = detail::execute_all<conjunction::doc_iterator_t>(docs);
-    conjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE);
+          auto res = detail::execute_all<typename conjunction::doc_iterator_t>(docs);
+
+          return irs::memory::make_managed<conjunction>(
+              std::move(res), std::move(aggregator));
+       });
+
+    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -14121,16 +14133,27 @@ TEST(conjunction_test, scored_seek_next) {
 
   // conjunction with score, 1 sub-iterators with scores, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 4, 5, 7, 8, 9, 11, 14, 45 },
                       irs::Order::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 6, 8, 12, 14, 29 }, irs::Order{});
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 8, 14 }, irs::Order{});
 
-    auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::MAX, 1,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
-    auto res = detail::execute_all<conjunction::doc_iterator_t>(docs);
-    conjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX);
+          auto res = detail::execute_all<typename conjunction::doc_iterator_t>(docs);
+
+          return irs::memory::make_managed<conjunction>(
+              std::move(res), std::move(aggregator));
+       });
+
+    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -14171,10 +14194,21 @@ TEST(conjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 8, 14 },
                       irs::Order::Prepare(detail::basic_sort{4}));
 
-    auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, 1,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
-    auto res = detail::execute_all<conjunction::doc_iterator_t>(docs);
-    conjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE);
+          auto res = detail::execute_all<typename conjunction::doc_iterator_t>(docs);
+
+          return irs::memory::make_managed<conjunction>(
+              std::move(res), std::move(aggregator));
+       });
+
+    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -14215,10 +14249,21 @@ TEST(conjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 8, 14 },
                       irs::Order::Prepare(detail::basic_sort{4}));
 
-    auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::MAX, 1,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
-    auto res = detail::execute_all<conjunction::doc_iterator_t>(docs);
-    conjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX);
+          auto res = detail::execute_all<typename conjunction::doc_iterator_t>(docs);
+
+          return irs::memory::make_managed<conjunction>(
+              std::move(res), std::move(aggregator));
+       });
+
+    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -14257,10 +14302,21 @@ TEST(conjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 6, 8, 12, 14, 29 }, irs::Order{});
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 8, 14 }, irs::Order{});
 
-    auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::AGGREGATE, 1,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
-    auto res = detail::execute_all<conjunction::doc_iterator_t>(docs);
-    conjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::AGGREGATE);
+          auto res = detail::execute_all<typename conjunction::doc_iterator_t>(docs);
+
+          return irs::memory::make_managed<conjunction>(
+              std::move(res), std::move(aggregator));
+       });
+
+    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -14299,10 +14355,21 @@ TEST(conjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 6, 8, 12, 14, 29 }, irs::Order{});
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 4, 5, 8, 14 }, irs::Order{});
 
-    auto prepared_order = irs::Order::Prepare(detail::basic_sort{std::numeric_limits<size_t>::max()});
+    auto it_ptr = irs::ResoveMergeType(
+       irs::sort::MergeType::MAX, 1,
+       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
-    auto res = detail::execute_all<conjunction::doc_iterator_t>(docs);
-    conjunction it(std::move(res.first), prepared_order, irs::sort::MergeType::MAX);
+          auto res = detail::execute_all<typename conjunction::doc_iterator_t>(docs);
+
+          return irs::memory::make_managed<conjunction>(
+              std::move(res), std::move(aggregator));
+       });
+
+    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
+    ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
+    auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
+
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -14847,8 +14914,8 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     root.add<irs::all>();
     append<irs::by_term>(root, "duplicated", "abcd");
     root.min_match_count(5);
-    ord.add<sort::custom_sort>(false);
-    check_query(root, ord, docs_t{ 1 }, rdr);
+    irs::sort::ptr sort{std::make_unique<sort::custom_sort>()};
+    check_query(root, std::span{&sort, 1}, docs_t{ 1 }, rdr);
   }
 
   // optimization should adjust min_match
@@ -14888,13 +14955,13 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     root.add<irs::all>();
     append<irs::by_term>(root, "duplicated", "abcd");
     root.min_match_count(3);
-    irs::order ord;
-    ord.add<sort::custom_sort>(false);
-    check_query(root, ord, docs_t{ 1,  2, 3, 4, 5, 6, 7, 8,
-                                   9, 10, 11, 12, 13, 14, 15,
-                                   16, 17, 18, 19, 20, 21, 22,
-                                   23, 24, 25, 26, 27, 28, 29,
-                                   30, 31, 32 }, rdr);
+    irs::sort::ptr sort{std::make_unique<sort::custom_sort>()};
+    check_query(root, std::span{&sort, 1},
+                docs_t{ 1,  2, 3, 4, 5, 6, 7, 8,
+                       9, 10, 11, 12, 13, 14, 15,
+                       16, 17, 18, 19, 20, 21, 22,
+                       23, 24, 25, 26, 27, 28, 29,
+                       30, 31, 32 }, rdr);
   }
 }
 
@@ -15027,18 +15094,11 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential_ordered) {
         const irs::sort::term_collector*)->void {
       ++collector_finish_count;
     };
-    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
-    sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs > rhs); }; // reverse order
     sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
 
     auto prepared_order = irs::Order::Prepare(sort);
     auto prepared_filter = not_node.prepare(*rdr, prepared_order);
-    auto score_less = [&prepared_order](
-      const irs::bytes_ref& lhs, const irs::bytes_ref& rhs
-    )->bool {
-      return prepared_order.less(lhs.c_str(), rhs.c_str());
-    };
-    std::multimap<irs::bstring, irs::doc_id_t, decltype(score_less)> scored_result(score_less);
+    std::multimap<irs::score_t, irs::doc_id_t> scored_result;
 
     ASSERT_EQ(1, rdr->size());
     auto& segment = (*rdr)[0];
@@ -15051,9 +15111,7 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential_ordered) {
 
     while (filter_itr->next()) {
       ASSERT_FALSE(!score);
-      scored_result.emplace(
-        irs::bytes_ref{score->evaluate(), prepared_order.score_size },
-        filter_itr->value());
+      scored_result.emplace(*score->evaluate(), filter_itr->value());
       ++docs_count;
     }
 
@@ -15118,18 +15176,11 @@ TEST_P(boolean_filter_test_case, not_sequential_ordered) {
         const irs::sort::term_collector*)->void {
       ++collector_finish_count;
     };
-    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
-    sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs > rhs); }; // reverse order
     sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
 
     auto prepared_order = irs::Order::Prepare(sort);
     auto prepared_filter = root.prepare(*rdr, prepared_order);
-    auto score_less = [&prepared_order](
-      const irs::bytes_ref& lhs, const irs::bytes_ref& rhs
-    )->bool {
-      return prepared_order.less(lhs.c_str(), rhs.c_str());
-    };
-    std::multimap<irs::bstring, irs::doc_id_t, decltype(score_less)> scored_result(score_less);
+    std::multimap<irs::score_t, irs::doc_id_t> scored_result;
 
     ASSERT_EQ(1, rdr->size());
     auto& segment = (*rdr)[0];
@@ -15142,9 +15193,7 @@ TEST_P(boolean_filter_test_case, not_sequential_ordered) {
 
     while (filter_itr->next()) {
       ASSERT_FALSE(!score);
-      scored_result.emplace(
-        irs::bytes_ref{ score->evaluate(), prepared_order.score_size },
-        filter_itr->value());
+      scored_result.emplace(*score->evaluate(), filter_itr->value());
       ++docs_count;
     }
 
@@ -15259,9 +15308,8 @@ TEST_P(boolean_filter_test_case, not_sequential) {
       // will exclude some docs (but A will stay) and produce another 'all'
       sub.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
       // if 'all' will add at least 1 to score totals score will be 3 and expected order will break
-      irs::order ord;
-      ord.add<tests::sort::boost>(false);
-      check_query(root, ord, docs_t{ 2, 1}, rdr);
+      irs::sort::ptr sort{std::make_unique<tests::sort::boost>()};
+      check_query(root, std::span{&sort, 1}, docs_t{ 2, 1}, rdr);
     }
   }
 
@@ -15556,8 +15604,8 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
       std::make_unique<irs::bm25_sort>() };
 
     auto prepared_ord = irs::Order::Prepare(ord);
-    ASSERT_FALSE(prepared_ord.empty());
-    ASSERT_EQ(2, prepared_ord.size());
+    ASSERT_FALSE(prepared_ord.buckets.empty());
+    ASSERT_EQ(2, prepared_ord.buckets.size());
 
     auto prepared = root.prepare(*rdr, prepared_ord);
     ASSERT_NE(nullptr, prepared);
@@ -15583,7 +15631,8 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
         EXPECT_EQ(*expected_doc, doc->value);
         ++expected_doc;
 
-        scores.emplace_back(score->evaluate(), prepared_ord.score_size);
+        scores.emplace_back(reinterpret_cast<const irs::byte_type*>(score->evaluate()),
+                            prepared_ord.score_size);
       }
 
       ASSERT_EQ(expected_docs.end(), expected_doc);
@@ -15959,7 +16008,6 @@ TEST(Or_test, optimize_all_scored) {
 
 
 TEST(Or_test, optimize_only_all_boosted) {
-  irs::order ord;
   auto pord = irs::Order::Prepare(tests::sort::boost{});
   irs::Or root;
   root.boost(2);
@@ -15974,9 +16022,7 @@ TEST(Or_test, optimize_only_all_boosted) {
 }
 
 TEST(Or_test, boosted_not) {
-  tests::sort::boost sort;
-
-  auto pord = irs::Order::Prepare(std::span{&sort, 1});
+  auto pord = irs::Order::Prepare(tests::sort::boost{});
   irs::Or root;
   {
     auto& neg = root.add<irs::Not>();

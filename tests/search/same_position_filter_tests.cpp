@@ -60,8 +60,8 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
       size_t finish_count = 0;
-      irs::order order;
-      auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+      tests::sort::custom_sort scorer;
 
       scorer.collector_collect_field = [&collect_field_count](
           const irs::sub_reader&, const irs::term_reader&)->void{
@@ -87,7 +87,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
 
-      auto pord = order.prepare();
+      auto pord = irs::Order::Prepare(scorer);
       auto prepared = filter.prepare(index, pord);
       ASSERT_EQ(0, collect_field_count); // should not be executed
       ASSERT_EQ(0, collect_term_count); // should not be executed
@@ -102,8 +102,8 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
       size_t finish_count = 0;
-      irs::order order;
-      auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+      tests::sort::custom_sort scorer;
 
       scorer.collector_collect_field = [&collect_field_count](
           const irs::sub_reader&, const irs::term_reader&)->void{
@@ -129,7 +129,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
 
-      auto pord = order.prepare();
+      auto pord = irs::Order::Prepare(scorer);
       auto prepared = filter.prepare(index, pord);
       ASSERT_EQ(2, collect_field_count); // 1 field in 2 segments
       ASSERT_EQ(2, collect_term_count); // 1 term in 2 segments
@@ -145,8 +145,8 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
       size_t finish_count = 0;
-      irs::order order;
-      auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+      tests::sort::custom_sort scorer;
 
       scorer.collector_collect_field = [&collect_field_count](
           const irs::sub_reader&, const irs::term_reader&)->void{
@@ -172,7 +172,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
 
-      auto pord = order.prepare();
+      auto pord = irs::Order::Prepare(scorer);
       auto prepared = filter.prepare(index, pord);
       ASSERT_EQ(4, collect_field_count); // 2 fields (1 per term since treated as a disjunction) in 2 segments
       ASSERT_EQ(4, collect_term_count); // 2 term in 2 segments
@@ -521,7 +521,7 @@ TEST(by_same_position_test, ctor) {
 
   static_assert(
     (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) ==
-    irs::by_same_position::required());
+    irs::by_same_position::kRequiredFeatures);
 }
 
 TEST(by_same_position_test, boost) {

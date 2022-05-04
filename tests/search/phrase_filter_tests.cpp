@@ -4842,8 +4842,8 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
     size_t finish_count = 0;
-    irs::order ord;
-    auto& sort = ord.add<tests::sort::custom_sort>(false);
+
+    tests::sort::custom_sort sort;
 
     sort.collector_collect_field = [&collect_field_count](
         const irs::sub_reader&, const irs::term_reader&)->void{
@@ -4868,15 +4868,8 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     sort.prepare_term_collector_ = [&sort]()->irs::sort::term_collector::ptr {
       return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(sort);
     };
-    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void {
-      ASSERT_TRUE(
-        irs::doc_limits::invalid() == dst
-        || dst == src
-      );
-      dst = src;
-    };
 
-    auto pord = ord.prepare();
+    auto pord = irs::Order::Prepare(sort);
     auto prepared = q.prepare(rdr, pord);
     ASSERT_EQ(1, collect_field_count); // 1 field in 1 segment
     ASSERT_EQ(6, collect_term_count); // 6 different terms
@@ -5197,8 +5190,8 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
     size_t finish_count = 0;
-    irs::order ord;
-    auto& sort = ord.add<tests::sort::custom_sort>(false);
+
+    tests::sort::custom_sort sort;
 
     sort.collector_collect_field = [&collect_field_count](
         const irs::sub_reader&, const irs::term_reader&)->void{
@@ -5223,15 +5216,8 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     sort.prepare_term_collector_ = [&sort]()->irs::sort::term_collector::ptr {
       return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(sort);
     };
-    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void {
-      ASSERT_TRUE(
-        irs::doc_limits::invalid() == dst
-        || dst == src
-      );
-      dst = src;
-    };
 
-    auto pord = ord.prepare();
+    auto pord = irs::Order::Prepare(sort);
     auto prepared = q.prepare(rdr, pord);
     ASSERT_EQ(1, collect_field_count); // 1 field in 1 segment
     ASSERT_EQ(3, collect_term_count); // 3 different terms
@@ -5723,9 +5709,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     lt2.max_distance = 1;
     lt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("quik"));
 
-    irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
-    auto prepared_order = order.prepare();
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
+    auto prepared_order = irs::Order::Prepare(*scorer);
 
     auto prepared = q.prepare(rdr, prepared_order);
 
@@ -5785,9 +5770,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
     pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
 
-    irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
-    auto prepared_order = order.prepare();
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
+    auto prepared_order = irs::Order::Prepare(*scorer);
 
     auto prepared = q.prepare(rdr, prepared_order);
 
@@ -5844,9 +5828,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     pos1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("hotdog")), 0.5f);
     pos1.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("the")), 0.75f);
 
-    irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
-    auto prepared_order = order.prepare();
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
+    auto prepared_order = irs::Order::Prepare(*scorer);
 
     auto prepared = q.prepare(rdr, prepared_order);
 
@@ -5937,9 +5920,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
     st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("that")));
 
-    irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
-    auto prepared_order = order.prepare();
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
+    auto prepared_order = irs::Order::Prepare(*scorer);
 
     auto prepared = q.prepare(rdr, prepared_order);
 
@@ -6085,9 +6067,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("fox")), 0.5f);
     st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("that")));
 
-    irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
-    auto prepared_order = order.prepare();
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
+    auto prepared_order = irs::Order::Prepare(*scorer);
 
     auto prepared = q.prepare(rdr, prepared_order);
 
@@ -6259,9 +6240,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     pt1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("go"));
     pt2.term = irs::ref_cast<irs::byte_type>(irs::string_ref("like"));
 
-    irs::order order;
-    order.add(true, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }"));
-    auto prepared_order = order.prepare();
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
+    auto prepared_order = irs::Order::Prepare(*scorer);
 
     auto prepared = q.prepare(rdr, prepared_order);
 
@@ -6959,17 +6939,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("looking"));
     q.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("forward"));
 
-    irs::order ord;
-    auto& sort = ord.add<tests::sort::custom_sort>(false);
-    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void {
-      ASSERT_TRUE(
-        irs::doc_limits::invalid() == dst
-        || dst == src
-      );
-      dst = src;
-    };
-
-    auto pord = ord.prepare();
+    auto pord = irs::Order::Prepare(tests::sort::custom_sort{});
     auto prepared = q.prepare(rdr, pord);
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -6992,7 +6962,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_FALSE(!score);
 
     ASSERT_TRUE(docs->next());
-    ASSERT_EQ(docs->value(),pord.get<irs::doc_id_t>(score->evaluate(), 0));
+    ASSERT_EQ(docs->value(), *score->evaluate());
     ASSERT_EQ(1, freq->value);
     ASSERT_EQ(docs->value(), values->seek(docs->value()));
     ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
@@ -7021,17 +6991,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("look"));
     q.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("forward"));
 
-    irs::order ord;
-    auto& sort = ord.add<tests::sort::custom_sort>(false);
-    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void {
-      ASSERT_TRUE(
-        irs::doc_limits::invalid() == dst
-        || dst == src
-      );
-      dst = src;
-    };
-
-    auto pord = ord.prepare();
+    auto pord = irs::Order::Prepare(tests::sort::custom_sort{});
     auto prepared = q.prepare(rdr, pord);
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -7054,7 +7014,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_FALSE(!score);
 
     ASSERT_TRUE(docs->next());
-    ASSERT_EQ(docs->value(),pord.get<irs::doc_id_t>(score->evaluate(), 0));
+    ASSERT_EQ(docs->value(),*score->evaluate());
     ASSERT_EQ(1, freq->value);
     ASSERT_EQ(docs->value(), values->seek(docs->value()));
     ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
@@ -7111,16 +7071,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
   // fox quick with order
   {
-    irs::order ord;
-    auto& sort = ord.add<tests::sort::custom_sort>(false);
-    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void {
-      ASSERT_TRUE(
-        irs::doc_limits::invalid() == dst
-        || dst == src
-      );
-      dst = src;
-    };
-    auto pord = ord.prepare();
+    auto pord = irs::Order::Prepare(tests::sort::custom_sort{});
 
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
@@ -7427,7 +7378,7 @@ TEST(by_phrase_test, ctor) {
 
   static_assert(
     (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) ==
-    irs::by_phrase::required());
+    irs::by_phrase::kRequiredFeatures);
 }
 
 TEST(by_phrase_test, boost) {

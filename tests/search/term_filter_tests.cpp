@@ -109,9 +109,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
     filter.boost(0.f);
 
     // create order
-    irs::order ord;
-    ord.add<tests::sort::boost>(false);
-    auto pord = ord.prepare();
+    auto pord = irs::Order::Prepare(tests::sort::boost{});
 
     // without boost
     {
@@ -127,8 +125,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
       // first hit
       {
         ASSERT_TRUE(docs->next());
-        auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
-        ASSERT_EQ(irs::boost_t(0), doc_boost);
+        ASSERT_EQ(irs::boost_t(0), *scr->evaluate());
         ASSERT_EQ(docs->value(), doc->value);
       }
 
@@ -150,8 +147,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
       // first hit
       {
         ASSERT_TRUE(docs->next());
-        auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
-        ASSERT_EQ(irs::boost_t(value), doc_boost);
+        ASSERT_EQ(irs::boost_t(value), *scr->evaluate());
       }
 
       ASSERT_FALSE(docs->next());
@@ -459,8 +455,8 @@ class term_filter_test_case : public tests::filter_test_case_base {
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
       size_t finish_count = 0;
-      irs::order ord;
-      auto& scorer = ord.add<tests::sort::custom_sort>(false);
+
+      tests::sort::custom_sort scorer;
 
       scorer.collector_collect_field = [&collect_field_count](
           const irs::sub_reader&, const irs::term_reader&)->void{
@@ -487,7 +483,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
       };
 
       std::set<irs::doc_id_t> expected{ 31, 32 };
-      auto pord = ord.prepare();
+      auto pord = irs::Order::Prepare(scorer);
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
 

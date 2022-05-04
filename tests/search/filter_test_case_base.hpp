@@ -259,9 +259,6 @@ struct custom_sort: public irs::sort {
                                     const irs::byte_type*, irs::score_t*,
                                     const irs::attribute_provider&)> prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector_;
-  std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
-  std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_max;
-  std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
   std::function<void(irs::doc_id_t&)> scorer_score;
   std::function<void()> term_reset_;
   std::function<void()> field_reset_;
@@ -277,13 +274,8 @@ struct custom_sort: public irs::sort {
 /// @brief order by frequency, then if equal order by doc_id_t
 //////////////////////////////////////////////////////////////////////////////
 struct frequency_sort: public irs::sort {
-  struct score_t {
-    irs::doc_id_t id;
-    double value;
-  };
-
   struct stats_t {
-    size_t count;
+    irs::doc_id_t count;
   };
 
   class prepared: public irs::PreparedSortBase<stats_t> {
@@ -316,17 +308,17 @@ struct frequency_sort: public irs::sort {
 
     struct scorer: public irs::score_ctx {
       scorer(
-          const size_t* docs_count,
-          const irs::document* doc_id_attr,
-          irs::byte_type* score_buf)
-        : doc_id_attr(doc_id_attr),
+          const irs::doc_id_t* docs_count,
+          const irs::document* doc,
+          irs::score_t* score_buf)
+        : doc(doc),
           docs_count(docs_count),
           score_buf(score_buf) {
       }
 
-      const irs::document* doc_id_attr;
-      const size_t* docs_count;
-      irs::byte_type* score_buf;
+      const irs::document* doc;
+      const irs::doc_id_t* docs_count;
+      irs::score_t* score_buf;
     };
 
     prepared() = default;
@@ -358,22 +350,27 @@ struct frequency_sort: public irs::sort {
         irs::score_t* buf,
         const irs::attribute_provider& doc_attrs,
         irs::boost_t /*boost*/) const override {
-      auto* doc_id_t = irs::get<irs::document>(doc_attrs);
+      auto* doc = irs::get<irs::document>(doc_attrs);
       auto& stats = stats_cast(stats_buf);
-      const size_t* docs_count = &stats.count;
+      const irs::doc_id_t* docs_count = &stats.count;
       return {
-        irs::memory::make_unique<frequency_sort::prepared::scorer>(docs_count, doc_id_t, score_buf),
+        irs::memory::make_unique<frequency_sort::prepared::scorer>(docs_count, doc, buf),
         [](irs::score_ctx* ctx) -> const irs::score_t* {
           const auto& state = *reinterpret_cast<scorer*>(ctx);
 
-          buf.id = state.doc_id_attr->value;
+          constexpr irs::doc_id_t kShift{10000};
+          EXPECT_LT(*state.docs_count, kShift);
 
-          // docs_count may be nullptr if no collector called, e.g. by range_query for bitset_doc_iterator
+          // docs_count may be nullptr if no collector called,
+          // e.g. by range_query for bitset_doc_iterator
           if (state.docs_count) {
-            buf.value = 1. / *state.docs_count;
+            *state.score_buf = 1.f / *state.docs_count;
           } else {
-            buf.value = 0;
+            *state.score_buf = 0.f;
           }
+
+          *state.score_buf *= kShift;
+          *state.score_buf += (static_cast<float_t>(state.doc->value) / kShift);
 
           return state.score_buf;
         }
@@ -382,21 +379,6 @@ struct frequency_sort: public irs::sort {
 
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
       return irs::memory::make_unique<term_collector>();
-    }
-
-    virtual bool less(const irs::byte_type* lhs_buf, const irs::byte_type* rhs_buf) const override {
-      auto lhs = traits_t::score_cast(lhs_buf);
-      if (!irs::doc_limits::valid(lhs.id)) {
-        lhs.value = std::numeric_limits<double>::infinity();
-      }
-      auto rhs = traits_t::score_cast(rhs_buf);
-      if (!irs::doc_limits::valid(rhs.id)) {
-        rhs.value = std::numeric_limits<double>::infinity();
-      }
-
-      return lhs.value == rhs.value
-        ? std::less<irs::doc_id_t>()(lhs.id, rhs.id)
-        : std::less<double>()(lhs.value, rhs.value);
     }
   };
 
@@ -454,8 +436,8 @@ class filter_test_case_base : public index_test_base {
       const auto& [lhs_buf, lhs_doc] = lhs;
       const auto& [rhs_buf, rhs_doc] = rhs;
 
-      const auto* lhs_score = lhs_buf.c_str();
-      const auto* rhs_score = rhs_buf.c_str();
+      const auto* lhs_score = reinterpret_cast<const float*>(lhs_buf.c_str());
+      const auto* rhs_score = reinterpret_cast<const float*>(rhs_buf.c_str());
 
       for (size_t i = 0; i < size; ++i) {
         if (const auto r = (lhs_score[i] <=> rhs_score[i]); r != 0) {

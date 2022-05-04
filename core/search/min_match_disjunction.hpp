@@ -274,7 +274,7 @@ class min_match_disjunction
 
       auto& merger = static_cast<Merger&>(self);
       merger(score_buf, self.scores_vals_.data(),
-             size_t{std::distance(self.scores_vals_.data(), pVal)});
+             size_t(std::distance(self.scores_vals_.data(), pVal)));
 
       return score_buf;
     });

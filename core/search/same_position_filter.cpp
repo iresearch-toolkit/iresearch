@@ -44,9 +44,8 @@ class same_position_iterator final : public Conjunction {
   same_position_iterator(
       typename Conjunction::doc_iterators_t&& itrs,
       typename Conjunction::merger_type&& merger,
-      const Order& ord,
       positions_t&& pos)
-    : Conjunction(std::move(itrs), std::move(merger), ord),
+    : Conjunction(std::move(itrs), std::move(merger)),
       pos_(std::move(pos)) {
     assert(!pos_.empty());
   }
@@ -190,8 +189,7 @@ class same_position_query final : public filter::prepared {
       using conjunction_t = conjunction<doc_iterator::ptr, Aggregator>;
 
       return make_conjunction<same_position_iterator<conjunction_t>>(
-        std::move(itrs), std::move(aggregator), ord, std::move(positions)
-      );
+          std::move(itrs), std::move(aggregator), std::move(positions));
     });
 
   }

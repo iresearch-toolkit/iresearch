@@ -111,40 +111,41 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
   {
     const docs_t docs{ 1, 21, 31, 32 };
     costs_t costs{ docs.size() };
-    irs::order order;
 
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
     size_t finish_count = 0;
-    auto& scorer = order.add<tests::sort::custom_sort>(false);
 
-    scorer.collector_collect_field = [&collect_field_count](
+    irs::sort::ptr impl{std::make_unique<tests::sort::custom_sort>()};
+    auto* scorer = static_cast<tests::sort::custom_sort*>(impl.get());
+
+    scorer->collector_collect_field = [&collect_field_count](
         const irs::sub_reader&, const irs::term_reader&)->void{
       ++collect_field_count;
     };
-    scorer.collector_collect_term = [&collect_term_count](
+    scorer->collector_collect_term = [&collect_term_count](
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::attribute_provider&)->void{
       ++collect_term_count;
     };
-    scorer.collectors_collect_ = [&finish_count](
+    scorer->collectors_collect_ = [&finish_count](
         irs::byte_type*,
         const irs::index_reader&,
         const irs::sort::field_collector*,
         const irs::sort::term_collector*)->void {
       ++finish_count;
     };
-    scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
-      return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
+    scorer->prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(*scorer);
     };
-    scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
-      return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
+    scorer->prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(*scorer);
     };
 
     const auto filter = make_filter("prefix", { {"abcd", 1.f}, {"abcd", 1.f}, {"abc", 1.f}, {"abcy", 1.f} });
 
-    check_query(filter, order, docs, rdr);
+    check_query(filter, std::span{&impl, 1}, docs, rdr);
     ASSERT_EQ(1, collect_field_count); // 1 fields in 1 segment
     ASSERT_EQ(3, collect_term_count); // 3 different terms
     ASSERT_EQ(3, finish_count); // 3 unque terms
@@ -154,24 +155,24 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
   {
     const docs_t docs{ 21, 31, 32, 1 };
     const costs_t costs{ docs.size() };
-    irs::order order;
-    order.add<irs::boost_sort>(true);
+
+    irs::sort::ptr impl{std::make_unique<irs::boost_sort>()};
 
     const auto filter = make_filter("prefix", { {"abcd", 0.5f}, {"abcd", 1.f}, {"abc", 1.f}, {"abcy", 1.f} });
 
-    check_query(filter, order, docs, rdr);
+    check_query(filter, std::span{&impl, 1}, docs, rdr);
   }
 
   // check negative boost
   {
     const docs_t docs{ 21, 31, 32, 1 };
     const costs_t costs{ docs.size() };
-    irs::order order;
-    order.add<irs::boost_sort>(true);
+
+    irs::sort::ptr impl{std::make_unique<irs::boost_sort>()};
 
     const auto filter = make_filter("prefix", { {"abcd", -1.f}, {"abcd", 0.5f}, {"abc", 0.65}, {"abcy", 0.5f} });
 
-    check_query(filter, order, docs, rdr);
+    check_query(filter, std::span{&impl, 1}, docs, rdr);
   }
 }
 

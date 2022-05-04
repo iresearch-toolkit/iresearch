@@ -138,7 +138,7 @@ class column_prefix_existence_query final : public column_existence_query {
       }
 
       using scored_disjunction_t = irs::scored_disjunction_iterator<irs::doc_iterator::ptr, Aggregator>;
-      return irs::make_disjunction<scored_disjunction_t>(std::move(itrs), std::move(aggregator), ord);
+      return irs::make_disjunction<scored_disjunction_t>(std::move(itrs), std::move(aggregator));
     });
   }
 }; // column_prefix_existence_query

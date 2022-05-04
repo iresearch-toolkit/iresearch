@@ -758,12 +758,12 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      irs::order order;
       size_t collector_collect_field_count = 0;
       size_t collector_collect_term_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<tests::sort::custom_sort>(false);
+
+      tests::sort::custom_sort sort;
 
       sort.collector_collect_field = [&collector_collect_field_count](
           const irs::sub_reader&, const irs::term_reader&)->void {
@@ -782,18 +782,11 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
           const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
-      sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
-      sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA); };
       sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
 
-      auto prepared_order = order.prepare();
+      auto prepared_order = irs::Order::Prepare(sort);
       auto prepared_filter = filter.prepare(*rdr, prepared_order);
-      auto score_less = [&prepared_order](
-        const iresearch::bytes_ref& lhs, const iresearch::bytes_ref& rhs
-      )->bool {
-        return prepared_order.less(lhs.c_str(), rhs.c_str());
-      };
-      std::multimap<iresearch::bstring, iresearch::doc_id_t, decltype(score_less)> scored_result(score_less);
+      std::multimap<irs::score_t, iresearch::doc_id_t> scored_result;
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -813,9 +806,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       while (filter_itr->next()) {
         ASSERT_FALSE(!score);
-        scored_result.emplace(
-          irs::bytes_ref(score->evaluate(), prepared_order.score_size),
-          filter_itr->value());
+        scored_result.emplace(*score->evaluate(), filter_itr->value());
         ASSERT_TRUE(column_itr->next());
         ASSERT_EQ(filter_itr->value(), column_itr->value());
         ASSERT_EQ(filter_itr->value(), doc->value);
@@ -847,12 +838,12 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_column_existence filter = make_filter(column_name, true);
 
-      irs::order order;
       size_t collector_collect_field_count = 0;
       size_t collector_collect_term_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<tests::sort::custom_sort>(false);
+
+      tests::sort::custom_sort sort;
 
       sort.collector_collect_field = [&collector_collect_field_count](
           const irs::sub_reader&, const irs::term_reader&)->void {
@@ -871,18 +862,11 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
           const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
-      sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
-      sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA); };
       sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
 
-      auto prepared_order = order.prepare();
+      auto prepared_order = irs::Order::Prepare(sort);
       auto prepared_filter = filter.prepare(*rdr, prepared_order);
-      auto score_less = [&prepared_order](
-        const iresearch::bytes_ref& lhs, const iresearch::bytes_ref& rhs
-      )->bool {
-        return prepared_order.less(lhs.c_str(), rhs.c_str());
-      };
-      std::multimap<iresearch::bstring, iresearch::doc_id_t, decltype(score_less)> scored_result(score_less);
+      std::multimap<irs::score_t, iresearch::doc_id_t> scored_result;
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -899,9 +883,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       while (filter_itr->next()) {
         ASSERT_FALSE(!score);
-        scored_result.emplace(
-          irs::bytes_ref(score->evaluate(), prepared_order.score_size),
-          filter_itr->value());
+        scored_result.emplace(*score->evaluate(), filter_itr->value());
         ASSERT_TRUE(column_itr->next());
         ASSERT_EQ(filter_itr->value(), column_itr->value());
         ++docs_count;
@@ -933,12 +915,12 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       irs::by_column_existence filter = make_filter(column_name, true);
 
-      irs::order order;
       size_t collector_collect_field_count = 0;
       size_t collector_collect_term_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<tests::sort::custom_sort>(false);
+
+      tests::sort::custom_sort sort;
 
       sort.collector_collect_field = [&collector_collect_field_count](
           const irs::sub_reader&, const irs::term_reader&)->void {
@@ -957,18 +939,11 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
           const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
-      sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
-      sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA); };
       sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
 
-      auto prepared_order = order.prepare();
+      auto prepared_order = irs::Order::Prepare(sort);
       auto prepared_filter = filter.prepare(*rdr, prepared_order);
-      auto score_less = [&prepared_order](
-        const iresearch::bytes_ref& lhs, const iresearch::bytes_ref& rhs
-      )->bool {
-        return prepared_order.less(lhs.c_str(), rhs.c_str());
-      };
-      std::multimap<iresearch::bstring, iresearch::doc_id_t, decltype(score_less)> scored_result(score_less);
+      std::multimap<irs::score_t, irs::doc_id_t> scored_result;
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -985,9 +960,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       while (filter_itr->next()) {
         ASSERT_FALSE(!score);
-        scored_result.emplace(
-          irs::bytes_ref(score->evaluate(), prepared_order.score_size),
-          filter_itr->value());
+        scored_result.emplace(*score->evaluate(), filter_itr->value());
         ASSERT_TRUE(column_itr->next());
         ASSERT_EQ(filter_itr->value(), column_itr->value());
         ++docs_count;

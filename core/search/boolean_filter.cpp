@@ -350,7 +350,7 @@ class min_match_query final : public boolean_query {
           return memory::make_managed<conjunction_t>(
             typename conjunction_t::doc_iterators_t(
               std::make_move_iterator(itrs.begin()),
-              std::make_move_iterator(itrs.end())), std::move(aggregator), ord);
+              std::make_move_iterator(itrs.end())), std::move(aggregator));
         }
 
         // min match disjunction

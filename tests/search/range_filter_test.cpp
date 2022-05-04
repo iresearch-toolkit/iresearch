@@ -1021,12 +1021,13 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
       costs_t costs{ docs.size() };
-      irs::order order;
 
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
       size_t finish_count = 0;
-      auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+      irs::sort::ptr sort{std::make_unique<tests::sort::custom_sort>()};
+      auto& scorer = static_cast<tests::sort::custom_sort&>(*sort);
 
       scorer.collector_collect_field = [&collect_field_count](
           const irs::sub_reader&, const irs::term_reader&)->void{
@@ -1059,7 +1060,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
       filter.mutable_options()->range.max = irs::numeric_utils::numeric_traits<double_t>::inf();
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      check_query(filter, order, docs, rdr);
+      check_query(filter, std::span{&sort, 1}, docs, rdr);
       ASSERT_EQ(11, collect_field_count); // 1 field in 1 segment
       ASSERT_EQ(11, collect_term_count); // 11 different terms
       ASSERT_EQ(11, finish_count); // 11 different terms
@@ -1069,22 +1070,19 @@ class range_filter_test_case : public tests::filter_test_case_base {
     {
       docs_t docs{ 1, 5, 7, 9, 10, 3, 4, 8, 11, 2, 6, 12, 13, 14, 15, 16, 17 };
       costs_t costs{ docs.size() };
-      irs::order order;
 
       irs::by_range filter;
       *filter.mutable_field() = "value";
 
-      order.add<tests::sort::frequency_sort>(false);
-      check_query(filter, order, docs, rdr);
+      irs::sort::ptr sort{std::make_unique<tests::sort::frequency_sort>()};
+
+      check_query(filter, std::span{&sort, 1}, docs, rdr);
     }
 
     // value = (..;..) + scored_terms_limit
     {
       docs_t docs{ 1, 5, 7, 9, 10, 3, 8, 2, 4, 6, 11, 12, 13, 14, 15, 16, 17 };
       costs_t costs{ docs.size() };
-      irs::order order;
-
-      order.add<tests::sort::frequency_sort>(false);
 
       irs::by_range filter;
       *filter.mutable_field() = "value";
@@ -1094,20 +1092,20 @@ class range_filter_test_case : public tests::filter_test_case_base {
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       filter.mutable_options()->scored_terms_limit = 2;
 
-      check_query(filter, order, docs, rdr);
+      irs::sort::ptr sort{std::make_unique<tests::sort::frequency_sort>()};
+
+      check_query(filter, std::span{&sort, 1}, docs, rdr);
     }
 
     // value = (..;100)
     {
       docs_t docs{ 4, 11, 12, 13, 14, 15, 16, 17 };
       costs_t costs{ docs.size() };
-      irs::order order;
       irs::numeric_token_stream max_stream;
       max_stream.reset((double_t)100.);
       auto* max_term = irs::get<irs::term_attribute>(max_stream);
 
       ASSERT_TRUE(max_stream.next());
-      order.add<tests::sort::frequency_sort>(false);
 
       irs::by_range filter;
       *filter.mutable_field() = "value";
@@ -1116,7 +1114,8 @@ class range_filter_test_case : public tests::filter_test_case_base {
       filter.mutable_options()->range.max = max_term->value;
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      check_query(filter, order, docs, rdr);
+      irs::sort::ptr sort{std::make_unique<tests::sort::frequency_sort>()};
+      check_query(filter, std::span{&sort, 1}, docs, rdr);
     }
   }
 }; // range_filter_test_case

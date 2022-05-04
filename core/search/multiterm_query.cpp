@@ -189,11 +189,11 @@ doc_iterator::ptr multiterm_query::execute(
                            // FIXME: make it constexpr
                            if (ord.buckets.empty()) {
                              return make_disjunction<Disjunction<Aggregator>>(
-                                 std::move(itrs), std::move(aggregator), ord, state->estimation());
+                                 std::move(itrs), std::move(aggregator), state->estimation());
                            }
 
                            return make_disjunction<ScoredDisjunction<Aggregator>>(
-                               std::move(itrs), std::move(aggregator), ord, state->estimation());
+                               std::move(itrs), std::move(aggregator), state->estimation());
                          });
 }
 

@@ -115,8 +115,8 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     assert(!itrs_.empty());
     assert(front_);
     assert(front_doc_);
-    std::get<attribute_ptr<document>>(attrs_) = itrs.front_doc;
-    std::get<attribute_ptr<cost>>(attrs_)     = irs::get_mutable<cost>(itrs.front);
+    std::get<attribute_ptr<document>>(attrs_) = const_cast<document*>(front_doc_);
+    std::get<attribute_ptr<cost>>(attrs_)     = irs::get_mutable<cost>(front_);
 
     prepare_score();
   }

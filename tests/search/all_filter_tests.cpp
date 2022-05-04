@@ -117,12 +117,6 @@ TEST_P(all_filter_test_case, all_order) {
         const irs::sort::term_collector*)->void {
       ++collector_finish_count;
     };
-    sort->scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void {
-      dst = src;
-    };
-    sort->scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool {
-      return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA);
-    };
     sort->scorer_score = [&scorer_score_count](irs::doc_id_t)->void {
       ++scorer_score_count;
     };

@@ -1170,7 +1170,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
       }
 
       direction.emplace_back(ascending, out.str());
-      buf.add<test_sort>(false);
+      buf = irs::Order::Prepare(test_sort{});
 
       return true;
     };

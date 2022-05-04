@@ -712,10 +712,6 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
 
     for (auto& entry: sorted) {
       auto& expected_entry = expected[i++];
-      ASSERT_TRUE(
-        sizeof(float_t) == entry.first.size()
-        //&& expected_entry.first == *reinterpret_cast<const float_t*>(&entry.first[0])
-      );
       ASSERT_EQ(expected_entry.second, entry.second);
     }
   }
@@ -1085,7 +1081,7 @@ TEST_P(tfidf_test_case, test_order) {
     ASSERT_EQ(expected.size(), sorted.size());
     const bool eq = std::equal(
       sorted.begin(), sorted.end(), expected.begin(),
-      [](const std::pair<iresearch::bstring, uint64_t>& lhs, uint64_t rhs) {
+      [](const std::pair<irs::score_t, uint64_t>& lhs, uint64_t rhs) {
         return lhs.second == rhs;
     });
     ASSERT_TRUE(eq);
