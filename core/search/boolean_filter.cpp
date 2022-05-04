@@ -79,7 +79,7 @@ irs::doc_iterator::ptr make_disjunction(
   }
 
   return irs::ResoveMergeType(
-    irs::sort::MergeType::AGGREGATE,  // FIXME(gnusi): handle mode
+    irs::sort::MergeType::AGGREGATE, // FIXME(gnusi): handle mode
     ord.buckets.size(),
     [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
       using disjunction_t = std::conditional_t<
