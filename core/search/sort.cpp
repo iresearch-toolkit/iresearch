@@ -43,7 +43,7 @@ Order Prepare(Iterator begin, Iterator end) {
 
   size_t stats_align = 0;
 
-  for (; begin != end; ++begin) {
+  for (size_t score_index = 0; begin != end; ++begin) {
     auto prepared = begin->prepare();
 
     if (!prepared) {
@@ -63,10 +63,11 @@ Order Prepare(Iterator begin, Iterator end) {
 
     ord.buckets.emplace_back(
       std::move(prepared),
-      ord.score_size,
+      score_index,
       ord.stats_size);
 
     ord.stats_size += memory::align_up(stats_size.first, stats_size.second);
+    ++score_index;
   }
 
   ord.stats_size = memory::align_up(ord.stats_size, stats_align);

@@ -183,7 +183,7 @@ TEST(sort_tests, prepare_order) {
     ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features);
     ASSERT_FALSE(prepared.buckets.empty());
     ASSERT_EQ(1, prepared.buckets.size());
-    ASSERT_EQ(4, prepared.score_size);
+    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
     ASSERT_EQ(4, prepared.stats_size);
 
     auto expected_offset = expected_offsets.begin();
@@ -221,15 +221,15 @@ TEST(sort_tests, prepare_order) {
     // second - stats offset
     constexpr std::array<std::pair<size_t, size_t>, 3> expected_offsets {
       std::pair{ 0, 0 }, // score: 0-1
-      std::pair{ 2, 2 }, // score: 2-3
-      std::pair{ 4, 4 }, // score: 4-7
+      std::pair{ 1, 2 }, // score: 2-3
+      std::pair{ 2, 4 }, // score: 4-7
     };
 
     auto prepared = irs::Order::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features);
     ASSERT_FALSE(prepared.buckets.empty());
     ASSERT_EQ(3, prepared.buckets.size());
-    ASSERT_EQ(8, prepared.score_size);
+    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
     ASSERT_EQ(8, prepared.stats_size);
 
     auto expected_offset = expected_offsets.begin();
@@ -267,15 +267,15 @@ TEST(sort_tests, prepare_order) {
     // second - stats offset
     constexpr std::array<std::pair<size_t, size_t>, 3> expected_offsets {
       std::pair{ 0, 0 }, // score: 0-1
-      std::pair{ 2, 2 }, // score: 2-3
-      std::pair{ 4, 4 }, // score: 4-7
+      std::pair{ 1, 2 }, // score: 2-3
+      std::pair{ 2, 4 }, // score: 4-7
     };
 
     auto prepared = irs::Order::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features);
     ASSERT_FALSE(prepared.buckets.empty());
     ASSERT_EQ(3, prepared.buckets.size());
-    ASSERT_EQ(8, prepared.score_size);
+    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
     ASSERT_EQ(8, prepared.stats_size);
 
     auto expected_offset = expected_offsets.begin();
@@ -319,15 +319,15 @@ TEST(sort_tests, prepare_order) {
     // second - stats offset
     constexpr std::array<std::pair<size_t, size_t>, 3> expected_offsets {
       std::pair{ 0, 0 }, // score: 0-1
-      std::pair{ 2, 2 }, // score: 2-3
-      std::pair{ 4, 4 }, // score: 4-7
+      std::pair{ 1, 2 }, // score: 2-3
+      std::pair{ 2, 4 }, // score: 4-7
     };
 
     auto prepared = irs::Order::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features);
     ASSERT_FALSE(prepared.buckets.empty());
     ASSERT_EQ(3, prepared.buckets.size());
-    ASSERT_EQ(8, prepared.score_size);
+    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
     ASSERT_EQ(8, prepared.stats_size);
 
     auto expected_offset = expected_offsets.begin();
@@ -379,7 +379,7 @@ TEST(sort_tests, prepare_order) {
     ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features);
     ASSERT_FALSE(prepared.buckets.empty());
     ASSERT_EQ(3, prepared.buckets.size());
-    ASSERT_EQ(3, prepared.score_size);
+    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
     ASSERT_EQ(3, prepared.stats_size);
 
     auto expected_offset = expected_offsets.begin();
@@ -416,14 +416,14 @@ TEST(sort_tests, prepare_order) {
     // second - stats offset
     constexpr std::array<std::pair<size_t, size_t>, 2> expected_offsets {
       std::pair{ 0, 0 }, // score: 0-0, padding: 1-1
-      std::pair{ 2, 2 }  // score: 2-3
+      std::pair{ 1, 2 }  // score: 2-3
     };
 
     auto prepared = irs::Order::Prepare(ord);
     ASSERT_FALSE(prepared.buckets.empty());
     ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features);
     ASSERT_EQ(2, prepared.buckets.size());
-    ASSERT_EQ(4, prepared.score_size);
+    ASSERT_EQ(8, prepared.score_size);
     ASSERT_EQ(4, prepared.stats_size);
 
     auto expected_offset = expected_offsets.begin();
@@ -470,15 +470,15 @@ TEST(sort_tests, prepare_order) {
     ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features);
     ASSERT_FALSE(prepared.buckets.empty());
     ASSERT_EQ(3, prepared.buckets.size());
-    ASSERT_EQ(8, prepared.score_size);
+    ASSERT_EQ(12, prepared.score_size);
     ASSERT_EQ(8, prepared.stats_size);
 
     // first - score offset
     // second - stats offset
     const std::vector<std::pair<size_t, size_t>> expected_offsets {
       { 0, 0 }, // score: 0-0, padding: 1-1
-      { 2, 2 }, // score: 2-3
-      { 4, 4 }  // score: 4-7
+      { 1, 2 }, // score: 2-3
+      { 2, 4 }  // score: 4-7
     };
 
     auto expected_offset = expected_offsets.begin();
@@ -534,15 +534,15 @@ TEST(sort_tests, prepare_order) {
     // second - stats offset
     constexpr std::array<std::pair<size_t, size_t>, 3> expected_offsets {
       std::pair{ 0, 0 },  // score: 0-0, padding: 1-3
-      std::pair{ 4, 4 },  // score: 4-8, padding: 9-11
-      std::pair{ 12, 12 } // score: 12-14
+      std::pair{ 1, 4 },  // score: 4-8, padding: 9-11
+      std::pair{ 2, 12 } // score: 12-14
     };
 
     auto prepared = irs::Order::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features);
     ASSERT_FALSE(prepared.buckets.empty());
     ASSERT_EQ(3, prepared.buckets.size());
-    ASSERT_EQ(16, prepared.score_size);
+    ASSERT_EQ(12, prepared.score_size);
     ASSERT_EQ(16, prepared.stats_size);
 
     auto expected_offset = expected_offsets.begin();
@@ -600,17 +600,17 @@ TEST(sort_tests, prepare_order) {
     // second - stats offset
     constexpr std::array<std::pair<size_t, size_t>, 5> expected_offsets {
       std::pair{ 0, 0 },   // score: 0-2, padding: 3-7
-      std::pair{ 8, 8 },   // score: 8-34, padding: 35-39
-      std::pair{ 40, 40 }, // score: 40-46, padding: 47-47
-      std::pair{ 48, 48 }, // score: 48-48
-      std::pair{ 49, 49 }  // score: 49-49
+      std::pair{ 1, 8 },   // score: 8-34, padding: 35-39
+      std::pair{ 2, 40 }, // score: 40-46, padding: 47-47
+      std::pair{ 3, 48 }, // score: 48-48
+      std::pair{ 4, 49 }  // score: 49-49
     };
 
     auto prepared = irs::Order::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features);
     ASSERT_FALSE(prepared.buckets.empty());
     ASSERT_EQ(5, prepared.buckets.size());
-    ASSERT_EQ(56, prepared.score_size);
+    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
     ASSERT_EQ(56, prepared.stats_size);
 
     auto expected_offset = expected_offsets.begin();
@@ -648,18 +648,18 @@ TEST(sort_tests, prepare_order) {
     // first - score offset
     // second - stats offset
     constexpr std::array<std::pair<size_t, size_t>, 5> expected_offsets {
-      std::pair{ 0, 0 },   // score: 0-26, padding: 27-31
-      std::pair{ 32, 32 }, // score: 32-34, padding: 34-35
-      std::pair{ 36, 36 }, // score: 36-42, padding: 43-43
-      std::pair{ 44, 44 }, // score: 44-44
-      std::pair{ 45, 45 }  // score: 45-45
+      std::pair{ 0, 0 },  // score: 0-26, padding: 27-31
+      std::pair{ 1, 32 }, // score: 32-34, padding: 34-35
+      std::pair{ 2, 36 }, // score: 36-42, padding: 43-43
+      std::pair{ 3, 44 }, // score: 44-44
+      std::pair{ 4, 45 }  // score: 45-45
     };
 
     auto prepared = irs::Order::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features);
     ASSERT_FALSE(prepared.buckets.empty());
     ASSERT_EQ(5, prepared.buckets.size());
-    ASSERT_EQ(48, prepared.score_size);
+    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
     ASSERT_EQ(48, prepared.stats_size);
 
     auto expected_offset = expected_offsets.begin();
@@ -697,18 +697,18 @@ TEST(sort_tests, prepare_order) {
     // first - score offset
     // second - stats offset
     constexpr std::array<std::pair<size_t, size_t>, 5> expected_offsets {
-      std::pair{ 0, 0 },   // score: 0-26, padding: 27-31
-      std::pair{ 32, 32 }, // score: 32-38, padding: 39-39
-      std::pair{ 40, 40 }, // score: 40-42
-      std::pair{ 43, 43 }, // score: 43-43
-      std::pair{ 44, 44 }  // score: 44-44
+      std::pair{ 0, 0 },  // score: 0-26, padding: 27-31
+      std::pair{ 1, 32 }, // score: 32-38, padding: 39-39
+      std::pair{ 2, 40 }, // score: 40-42
+      std::pair{ 3, 43 }, // score: 43-43
+      std::pair{ 4, 44 }  // score: 44-44
     };
 
     auto prepared = irs::Order::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, prepared.features);
     ASSERT_FALSE(prepared.buckets.empty());
     ASSERT_EQ(5, prepared.buckets.size());
-    ASSERT_EQ(48, prepared.score_size);
+    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
     ASSERT_EQ(48, prepared.stats_size);
 
     auto expected_offset = expected_offsets.begin();
@@ -747,17 +747,17 @@ TEST(sort_tests, prepare_order) {
     // second - stats offset
     constexpr std::array<std::pair<size_t, size_t>, 5> expected_offsets {
       std::pair{ 0,  0 },  // score: 0-26, padding: 27-31
-      std::pair{ 32, 32 }, // score: 32-33, padding: 34-35
-      std::pair{ 36, 36 }, // score: 36-39
-      std::pair{ 40, 40 }, // score: 40-40
-      std::pair{ 41, 41 }  // score: 41-41
+      std::pair{ 1, 32 }, // score: 32-33, padding: 34-35
+      std::pair{ 2, 36 }, // score: 36-39
+      std::pair{ 3, 40 }, // score: 40-40
+      std::pair{ 4, 41 }  // score: 41-41
     };
 
     auto prepared = irs::Order::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features);
     ASSERT_FALSE(prepared.buckets.empty());
     ASSERT_EQ(5, prepared.buckets.size());
-    ASSERT_EQ(48, prepared.score_size);
+    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
     ASSERT_EQ(48, prepared.stats_size);
 
     auto expected_offset = expected_offsets.begin();
@@ -796,17 +796,17 @@ TEST(sort_tests, prepare_order) {
     // second - stats offset
     constexpr std::array<std::pair<size_t, size_t>, 5> expected_offsets {
       std::pair{ 0,  0  }, // score: 0-26, padding: 27-31
-      std::pair{ 32, 32 }, // score: 32-35
-      std::pair{ 36, 36 }, // score: 36-37
-      std::pair{ 38, 38 }, // score: 38-38
-      std::pair{ 39, 39 }  // score: 39-39
+      std::pair{ 1, 32 }, // score: 32-35
+      std::pair{ 2, 36 }, // score: 36-37
+      std::pair{ 3, 38 }, // score: 38-38
+      std::pair{ 4, 39 }  // score: 39-39
     };
 
     auto prepared = irs::Order::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features);
     ASSERT_FALSE(prepared.buckets.empty());
     ASSERT_EQ(5, prepared.buckets.size());
-    ASSERT_EQ(40, prepared.score_size);
+    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
     ASSERT_EQ(40, prepared.stats_size);
 
     auto expected_offset = expected_offsets.begin();
@@ -845,17 +845,17 @@ TEST(sort_tests, prepare_order) {
     // second - stats offset
     constexpr std::array<std::pair<size_t, size_t>, 5> expected_offsets {
       std::pair{ 0,  0  }, // score: 0-26, padding: 27-31
-      std::pair{ 32, 32 }, // score: 32-35
-      std::pair{ 36, 36 }, // score: 36-37
-      std::pair{ 38, 38 }, // score: 38-38
-      std::pair{ 39, 39 }  // score: 39-39
+      std::pair{ 1, 32 }, // score: 32-35
+      std::pair{ 2, 36 }, // score: 36-37
+      std::pair{ 3, 38 }, // score: 38-38
+      std::pair{ 4, 39 }  // score: 39-39
     };
 
     auto prepared = irs::Order::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features);
     ASSERT_FALSE(prepared.buckets.empty());
     ASSERT_EQ(5, prepared.buckets.size());
-    ASSERT_EQ(40, prepared.score_size);
+    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
     ASSERT_EQ(40, prepared.stats_size);
 
     auto expected_offset = expected_offsets.begin();
