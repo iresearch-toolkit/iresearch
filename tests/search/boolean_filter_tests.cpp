@@ -2988,7 +2988,7 @@ TEST(small_disjunction_test, scored_seek_next) {
           docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
                             irs::Order::Prepare(detail::basic_sort{4}));
 
-          auto itrs = detail::execute_all<adapter>(docs);;
+          auto itrs = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(itrs), std::move(aggregator), 1); // custom cost
@@ -3040,7 +3040,7 @@ TEST(small_disjunction_test, scored_seek_next) {
           docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
                             irs::Order::Prepare(detail::basic_sort{4}));
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 1); // custom cost
@@ -3100,7 +3100,7 @@ TEST(small_disjunction_test, scored_seek_next) {
           docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
                             irs::Order::Prepare(detail::basic_sort{4}));
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 1); // custom cost
@@ -3159,7 +3159,7 @@ TEST(small_disjunction_test, scored_seek_next) {
           docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
                             irs::Order::Prepare(detail::basic_sort{4}));
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 1); // custom cost
@@ -3218,7 +3218,7 @@ TEST(small_disjunction_test, scored_seek_next) {
           docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
                             irs::Order::Prepare(detail::basic_sort{4}));
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 1); // custom cost
@@ -3275,7 +3275,7 @@ TEST(small_disjunction_test, scored_seek_next) {
           docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::Order{});
           docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, irs::Order{});
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 1); // custom cost
@@ -3332,7 +3332,7 @@ TEST(small_disjunction_test, scored_seek_next) {
           docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::Order{});
           docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, irs::Order{});
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 1); // custom cost
@@ -3940,7 +3940,7 @@ TEST(block_disjunction_test, next_scored) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 1); // custom cost
@@ -3997,7 +3997,7 @@ TEST(block_disjunction_test, next_scored) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 1); // custom cost
@@ -4053,7 +4053,7 @@ TEST(block_disjunction_test, next_scored) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 2); // custom cost
@@ -4111,7 +4111,7 @@ TEST(block_disjunction_test, next_scored) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 2); // custom cost
@@ -4168,7 +4168,7 @@ TEST(block_disjunction_test, next_scored) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 2); // custom cost
@@ -4224,7 +4224,7 @@ TEST(block_disjunction_test, next_scored) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 2); // custom cost
@@ -4337,7 +4337,7 @@ TEST(block_disjunction_test, next_scored) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 2); // custom cost
@@ -4391,7 +4391,7 @@ TEST(block_disjunction_test, next_scored) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 2); // custom cost
@@ -4443,7 +4443,7 @@ TEST(block_disjunction_test, next_scored) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 2); // custom cost
@@ -4493,7 +4493,7 @@ TEST(block_disjunction_test, next_scored) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 2); // custom cost
@@ -4564,7 +4564,7 @@ TEST(block_disjunction_test, next_scored) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 3); // custom cost
@@ -4625,7 +4625,7 @@ TEST(block_disjunction_test, next_scored) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 3); // custom cost
@@ -4680,7 +4680,7 @@ TEST(block_disjunction_test, next_scored) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 3); // custom cost
@@ -4735,7 +4735,7 @@ TEST(block_disjunction_test, next_scored) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 3); // custom cost
@@ -4788,7 +4788,7 @@ TEST(block_disjunction_test, next_scored) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 3); // custom cost
@@ -4842,7 +4842,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 3); // custom cost
@@ -4897,7 +4897,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 1); // custom cost
@@ -4953,7 +4953,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 2); // custom cost
@@ -5008,7 +5008,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 2); // custom cost
@@ -5065,7 +5065,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 2); // custom cost
@@ -5120,7 +5120,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 2); // custom cost
@@ -5175,7 +5175,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 2); // custom cost
@@ -5230,7 +5230,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 2); // custom cost
@@ -5281,7 +5281,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 2); // custom cost
@@ -5331,7 +5331,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 2); // custom cost
@@ -5379,7 +5379,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 2); // custom cost
@@ -5458,7 +5458,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 3); // custom cost
@@ -5514,7 +5514,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 3); // custom cost
@@ -5566,7 +5566,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 3); // custom cost
@@ -5617,7 +5617,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
             using adapter = typename disjunction::adapter;
 
-            auto res = detail::execute_all<adapter>(docs);;
+            auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
                 std::move(res), std::move(aggregator), 3); // custom cost
@@ -5667,7 +5667,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 3); // custom cost
@@ -7459,7 +7459,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
           irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
         using adapter = typename disjunction::adapter;
 
-        auto res = detail::execute_all<adapter>(docs);;
+        auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
             std::move(res), std::move(aggregator), 2); // custom cost
@@ -7518,7 +7518,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
           irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
         using adapter = typename disjunction::adapter;
 
-        auto res = detail::execute_all<adapter>(docs);;
+        auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
             std::move(res), std::move(aggregator), 2); // custom cost
@@ -7582,7 +7582,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
           irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
         using adapter = typename disjunction::adapter;
 
-        auto res = detail::execute_all<adapter>(docs);;
+        auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
             std::move(res), std::move(aggregator), 2); // custom cost
@@ -7638,7 +7638,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
         });
@@ -7685,7 +7685,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -7738,7 +7738,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -7789,7 +7789,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -7846,7 +7846,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -7905,7 +7905,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -7955,7 +7955,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -8009,7 +8009,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -8063,7 +8063,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -8147,7 +8147,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -8206,7 +8206,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -8270,7 +8270,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -8325,7 +8325,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -8372,7 +8372,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -8424,7 +8424,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -8474,7 +8474,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -8530,7 +8530,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -8589,7 +8589,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -8639,7 +8639,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -8693,7 +8693,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -8747,7 +8747,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 2); // custom cost
@@ -10410,7 +10410,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 1); // custom cost
@@ -10466,7 +10466,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 1); // custom cost
@@ -10530,7 +10530,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 1); // custom cost
@@ -10593,7 +10593,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 1); // custom cost
@@ -10656,7 +10656,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 1); // custom cost
@@ -10717,7 +10717,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 1); // custom cost
@@ -10778,7 +10778,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
             irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 1); // custom cost
@@ -11429,7 +11429,7 @@ TEST(disjunction_test, scored_seek_next) {
           using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
 
-          auto res = detail::execute_all<adapter>(docs);;
+          auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
               std::move(res), std::move(aggregator), 1); // custom cost
