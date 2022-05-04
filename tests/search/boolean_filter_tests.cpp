@@ -3928,6 +3928,10 @@ TEST(block_disjunction_test, next_scored) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
 
     {
+      std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+      docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
+                                       irs::Order::Prepare(detail::basic_sort{1})));
+
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, irs::Order::kUnordered.buckets.size(),
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
@@ -3935,10 +3939,6 @@ TEST(block_disjunction_test, next_scored) {
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
-
-            std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-            docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
-                                             irs::Order::Prepare(detail::basic_sort{1})));
 
             auto res = detail::execute_all<adapter>(docs);;
 
@@ -3984,6 +3984,10 @@ TEST(block_disjunction_test, next_scored) {
       { 1, 1 }, { 2, 1 }, { 5, 1 }, { 7, 1 }, { 9, 1 },
       { 11, 1 }, { 45, 1 }, { 65, 1 }, { 78, 1 }, { 127, 1 } };
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
+
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45, 65, 78, 127},
+                                     irs::Order::Prepare(detail::basic_sort{1})));
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
@@ -3992,10 +3996,6 @@ TEST(block_disjunction_test, next_scored) {
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
-
-            std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-            docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45, 65, 78, 127},
-                                             irs::Order::Prepare(detail::basic_sort{1})));
 
             auto res = detail::execute_all<adapter>(docs);;
 
@@ -4039,6 +4039,11 @@ TEST(block_disjunction_test, next_scored) {
       { 1, 2 }, { 2, 2 }, { 5, 2 }, { 7, 2 }, { 9, 2 }, { 11, 2 },
       { 1145, 2 }, { 111165, 2 }, { 1111178, 2 }, { 111111127, 2 }};
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
+
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    docs.emplace_back(
+        std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
+                       irs::Order::Prepare(detail::basic_sort{2})));
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
@@ -4047,11 +4052,6 @@ TEST(block_disjunction_test, next_scored) {
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
-
-            std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-            docs.emplace_back(
-              std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
-                             irs::Order::Prepare(detail::basic_sort{2})));
 
             auto res = detail::execute_all<adapter>(docs);;
 
@@ -4096,6 +4096,12 @@ TEST(block_disjunction_test, next_scored) {
       { 1, 0 }, { 2,  0 }, { 5,  0 }, { 6,  0 }, { 7,  0 },
       { 9, 0 }, { 11, 0 }, { 12, 0 }, { 29, 0 }, { 45, 0 } };
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
+
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
+                      irs::Order::Prepare(detail::basic_sort{2}));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::Order{});
+
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
@@ -4104,11 +4110,6 @@ TEST(block_disjunction_test, next_scored) {
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
-
-            std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-            docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
-                             irs::Order::Prepare(detail::basic_sort{2}));
-            docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::Order{});
 
             auto res = detail::execute_all<adapter>(docs);;
 
@@ -4154,6 +4155,10 @@ TEST(block_disjunction_test, next_scored) {
       { 12, 0 }, {29, 0 }, {45, 3 }, { 65, 3 }, {78, 3 }, {126, 0 }, {127, 3 }
     };
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45, 65, 78, 127},
+                                     irs::Order::Prepare(detail::basic_sort{3})));
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29, 126 }, irs::Order{}));
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
@@ -4162,11 +4167,6 @@ TEST(block_disjunction_test, next_scored) {
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
-
-            std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-            docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45, 65, 78, 127},
-                                             irs::Order::Prepare(detail::basic_sort{3})));
-            docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29, 126 }, irs::Order{}));
 
             auto res = detail::execute_all<adapter>(docs);;
 
@@ -4210,6 +4210,11 @@ TEST(block_disjunction_test, next_scored) {
       { 1, 5 }, { 2, 3 }, { 5, 5 }, { 6, 2 },  { 7, 3 }, { 9, 3 }, { 11, 3 }, { 12, 2, },
       { 29, 2 }, { 126, 2 }, { 1145, 3 }, { 111165, 3 }, { 1111178, 3 }, { 111111127, 3 } };
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
+                                     irs::Order::Prepare(detail::basic_sort{3})));
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29, 126 },
+                                     irs::Order::Prepare(detail::basic_sort{2})));
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
@@ -4218,12 +4223,6 @@ TEST(block_disjunction_test, next_scored) {
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
-
-            std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-            docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
-                                             irs::Order::Prepare(detail::basic_sort{3})));
-            docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29, 126 },
-                                             irs::Order::Prepare(detail::basic_sort{2})));
 
             auto res = detail::execute_all<adapter>(docs);;
 
@@ -4267,6 +4266,11 @@ TEST(block_disjunction_test, next_scored) {
       { 1, 3 }, { 2, 3 }, { 5, 3 }, { 6, 2 },  { 7, 3 }, { 9, 3 }, { 11, 3 }, { 12, 2, },
       { 29, 2 }, { 126, 2 }, { 1145, 3 }, { 111165, 3 }, { 1111178, 3 }, { 111111127, 3 } };
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
+                                     irs::Order::Prepare(detail::basic_sort{3})));
+    docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29, 126 },
+                                     irs::Order::Prepare(detail::basic_sort{2})));
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::MAX, 1,
@@ -4275,12 +4279,6 @@ TEST(block_disjunction_test, next_scored) {
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
-
-            std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-            docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
-                                             irs::Order::Prepare(detail::basic_sort{3})));
-            docs.emplace_back(std::make_pair(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29, 126 },
-                                             irs::Order::Prepare(detail::basic_sort{2})));
 
             auto res = detail::execute_all<adapter>(docs);
 
@@ -4324,6 +4322,12 @@ TEST(block_disjunction_test, next_scored) {
       { 1, 4 }, { 2, 4 }, { 5, 4 }, { 7, 4 } , { 9, 4 }, { 11, 4 }, { 45, 0 },
       { 1145, 4 }, { 111165, 4 }, { 1111178, 4 }, { 111111127, 4 }, { 1111111127, 1 }};
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
+                      irs::Order::Prepare(detail::basic_sort{4}));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, irs::Order{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1111111127 },
+                      irs::Order::Prepare(detail::basic_sort{1}));
     {
       auto it_ptr = irs::ResoveMergeType(
          irs::sort::MergeType::AGGREGATE, 1,
@@ -4332,13 +4336,6 @@ TEST(block_disjunction_test, next_scored) {
               irs::doc_iterator::ptr, A,
               irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
             using adapter = typename disjunction::adapter;
-
-            std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-            docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 1145, 111165, 1111178, 111111127 },
-                              irs::Order::Prepare(detail::basic_sort{4}));
-            docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, irs::Order{});
-            docs.emplace_back(std::vector<irs::doc_id_t>{ 1111111127 },
-                              irs::Order::Prepare(detail::basic_sort{1}));
 
             auto res = detail::execute_all<adapter>(docs);;
 
