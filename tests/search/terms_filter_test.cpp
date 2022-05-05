@@ -155,11 +155,9 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
   {
     const docs_t docs{ 21, 31, 32, 1 };
     const costs_t costs{ docs.size() };
-
-    irs::sort::ptr impl{std::make_unique<irs::boost_sort>()};
-
     const auto filter = make_filter("prefix", { {"abcd", 0.5f}, {"abcd", 1.f}, {"abc", 1.f}, {"abcy", 1.f} });
 
+    irs::sort::ptr impl{std::make_unique<irs::boost_sort>()};
     check_query(filter, std::span{&impl, 1}, docs, rdr);
   }
 
@@ -168,10 +166,9 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
     const docs_t docs{ 21, 31, 32, 1 };
     const costs_t costs{ docs.size() };
 
-    irs::sort::ptr impl{std::make_unique<irs::boost_sort>()};
-
     const auto filter = make_filter("prefix", { {"abcd", -1.f}, {"abcd", 0.5f}, {"abc", 0.65}, {"abcy", 0.5f} });
 
+    irs::sort::ptr impl{std::make_unique<irs::boost_sort>()};
     check_query(filter, std::span{&impl, 1}, docs, rdr);
   }
 }
