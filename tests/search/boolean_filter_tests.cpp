@@ -7452,7 +7452,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     };
 
   auto it_ptr = irs::ResoveMergeType(
-     irs::sort::MergeType::AGGREGATE, 1,
+     irs::sort::MergeType::AGGREGATE, 0,
       [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
         using disjunction = irs::block_disjunction<
           irs::doc_iterator::ptr, A,
@@ -7466,7 +7466,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       });
 
     using ExpectedType = irs::block_disjunction<
-        irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
+        irs::doc_iterator::ptr, irs::NoopAggregator,
         irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -7589,7 +7589,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       });
 
     using ExpectedType = irs::block_disjunction<
-        irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
+        irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>,
         irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -8056,7 +8056,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     };
 
     auto it_ptr = irs::ResoveMergeType(
-       irs::sort::MergeType::AGGREGATE, 1,
+       irs::sort::MergeType::AGGREGATE, 0,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
@@ -8070,7 +8070,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         });
 
     using ExpectedType = irs::block_disjunction<
-        irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
+        irs::doc_iterator::ptr, irs::NoopAggregator,
         irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -8140,7 +8140,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     };
 
     auto it_ptr = irs::ResoveMergeType(
-       irs::sort::MergeType::AGGREGATE, 1,
+       irs::sort::MergeType::AGGREGATE, 0,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
@@ -8154,7 +8154,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         });
 
     using ExpectedType = irs::block_disjunction<
-        irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
+        irs::doc_iterator::ptr, irs::NoopAggregator,
         irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -8740,7 +8740,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     };
 
     auto it_ptr = irs::ResoveMergeType(
-       irs::sort::MergeType::AGGREGATE, 1,
+       irs::sort::MergeType::AGGREGATE, 0,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
@@ -8754,7 +8754,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         });
 
     using ExpectedType = irs::block_disjunction<
-        irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
+        irs::doc_iterator::ptr, irs::NoopAggregator,
         irs::block_disjunction_traits<true, irs::MatchType::MATCH, true, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
