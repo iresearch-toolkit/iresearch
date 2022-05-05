@@ -117,8 +117,9 @@ TEST_P(all_filter_test_case, all_order) {
         const irs::sort::term_collector*)->void {
       ++collector_finish_count;
     };
-    sort->scorer_score = [&scorer_score_count](irs::doc_id_t, irs::score_t*)->void {
+    sort->scorer_score = [&scorer_score_count](irs::doc_id_t doc, irs::score_t* score)->void {
       ++scorer_score_count;
+      *score = irs::score_t(doc & 0xAAAAAAAA);
     };
 
     check_query(irs::all(), std::span{&bucket, 1}, docs, rdr);
