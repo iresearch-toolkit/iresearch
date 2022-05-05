@@ -122,7 +122,7 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
 
   auto prepared_order = irs::Order::Prepare(irs::tfidf_sort{true});
 
-  auto reader = iresearch::directory_reader::open(dir(), codec());
+  auto reader = irs::directory_reader::open(dir(), codec());
   auto& segment = *(reader.begin());
   const auto* column = segment.column("seq");
   ASSERT_NE(nullptr, column);
@@ -480,7 +480,7 @@ TEST_P(tfidf_test_case, test_query) {
 
   auto prepared_order = irs::Order::Prepare(irs::tfidf_sort{false, true});
 
-  auto reader = iresearch::directory_reader::open(dir(), codec());
+  auto reader = irs::directory_reader::open(dir(), codec());
   auto& segment = *(reader.begin());
   const auto* column = segment.column("seq");
   ASSERT_NE(nullptr, column);
@@ -1390,7 +1390,7 @@ TEST_P(tfidf_test_case, test_order) {
     add_segment(gen);
   }
 
-  auto reader = iresearch::directory_reader::open(dir(), codec());
+  auto reader = irs::directory_reader::open(dir(), codec());
   auto& segment = *(reader.begin());
 
   irs::by_term query;
@@ -1416,7 +1416,7 @@ TEST_P(tfidf_test_case, test_order) {
     irs::bytes_ref_input in;
     auto prepared = query.prepare(reader, prepared_order);
     auto docs = prepared->execute(segment, prepared_order);
-    auto* score = irs::get<iresearch::score>(*docs);
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     for (; docs->next();) {
