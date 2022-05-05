@@ -4104,7 +4104,7 @@ TEST(block_disjunction_test, next_scored) {
 
     {
       auto it_ptr = irs::ResoveMergeType(
-         irs::sort::MergeType::AGGREGATE, 1,
+         irs::sort::MergeType::AGGREGATE, 0,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -4118,7 +4118,7 @@ TEST(block_disjunction_test, next_scored) {
           });
 
       using ExpectedType = irs::block_disjunction<
-          irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
+          irs::doc_iterator::ptr, irs::NoopAggregator,
           irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 1>>;
       ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
       auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -4496,7 +4496,7 @@ TEST(block_disjunction_test, next_scored) {
             auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res), std::move(aggregator), 2); // custom cost
+                std::move(res), std::move(aggregator)); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
@@ -4845,11 +4845,11 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
             auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res), std::move(aggregator), 3); // custom cost
+                std::move(res), std::move(aggregator), 1); // custom cost
           });
 
       using ExpectedType = irs::block_disjunction<
-          irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>,
+          irs::doc_iterator::ptr, irs::NoopAggregator,
           irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
       ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
       auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -4904,7 +4904,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
           });
 
       using ExpectedType = irs::block_disjunction<
-          irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>,
+          irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
           irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
       ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
       auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -4946,7 +4946,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-         irs::sort::MergeType::AGGREGATE, 0,
+         irs::sort::MergeType::AGGREGATE, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -5001,7 +5001,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-         irs::sort::MergeType::AGGREGATE, 1,
+         irs::sort::MergeType::AGGREGATE, 0,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -5015,7 +5015,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
           });
 
       using ExpectedType = irs::block_disjunction<
-          irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
+          irs::doc_iterator::ptr, irs::NoopAggregator,
           irs::block_disjunction_traits<true, irs::MatchType::MATCH, false, 2>>;
       ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
       auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -5382,7 +5382,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
             auto res = detail::execute_all<adapter>(docs);
 
             return irs::memory::make_managed<disjunction>(
-                std::move(res), std::move(aggregator), 2); // custom cost
+                std::move(res), std::move(aggregator));
           });
 
       using ExpectedType = irs::block_disjunction<
