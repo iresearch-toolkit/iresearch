@@ -65,7 +65,7 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
       size_t finish_count = 0;
 
       std::array<irs::sort::ptr, 1> order{
-        std::make_unique<tests::sort::frequency_sort>() };
+        std::make_unique<tests::sort::custom_sort>() };
 
       auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 

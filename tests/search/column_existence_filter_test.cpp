@@ -782,7 +782,8 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
           const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
-      sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
+      sort.scorer_score = [&scorer_score_count](irs::doc_id_t, irs::score_t*)->void {
+        ++scorer_score_count; };
 
       auto prepared_order = irs::Order::Prepare(sort);
       auto prepared_filter = filter.prepare(*rdr, prepared_order);
@@ -862,7 +863,8 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
           const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
-      sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
+      sort.scorer_score = [&scorer_score_count](irs::doc_id_t, irs::score_t*)->void {
+        ++scorer_score_count; };
 
       auto prepared_order = irs::Order::Prepare(sort);
       auto prepared_filter = filter.prepare(*rdr, prepared_order);
@@ -939,7 +941,8 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
           const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
-      sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
+      sort.scorer_score = [&scorer_score_count](irs::doc_id_t score, irs::score_t*)->void {
+        ++scorer_score_count; };
 
       auto prepared_order = irs::Order::Prepare(sort);
       auto prepared_filter = filter.prepare(*rdr, prepared_order);

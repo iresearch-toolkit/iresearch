@@ -231,7 +231,7 @@ struct custom_sort: public irs::sort {
           doc_id = irs::get<irs::document>(state.document_attrs_)->value;
 
           if (state.sort_.scorer_score) {
-            state.sort_.scorer_score(doc_id);
+            state.sort_.scorer_score(doc_id, state.score_buf_);
           }
 
           return state.score_buf_;
@@ -259,7 +259,7 @@ struct custom_sort: public irs::sort {
                                     const irs::byte_type*, irs::score_t*,
                                     const irs::attribute_provider&)> prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector_;
-  std::function<void(irs::doc_id_t&)> scorer_score;
+  std::function<void(irs::doc_id_t, irs::score_t*)> scorer_score;
   std::function<void()> term_reset_;
   std::function<void()> field_reset_;
 

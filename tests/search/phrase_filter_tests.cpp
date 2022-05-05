@@ -4868,6 +4868,10 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     sort.prepare_term_collector_ = [&sort]()->irs::sort::term_collector::ptr {
       return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(sort);
     };
+    sort.scorer_score = [](irs::doc_id_t doc, irs::score_t* score) {
+      ASSERT_NE(nullptr, score);
+      *score = doc;
+    };
 
     auto pord = irs::Order::Prepare(sort);
     auto prepared = q.prepare(rdr, pord);
@@ -5215,6 +5219,10 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     };
     sort.prepare_term_collector_ = [&sort]()->irs::sort::term_collector::ptr {
       return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(sort);
+    };
+    sort.scorer_score = [](irs::doc_id_t doc, irs::score_t* score) {
+      ASSERT_NE(nullptr, score);
+      *score = doc;
     };
 
     auto pord = irs::Order::Prepare(sort);
@@ -6939,7 +6947,13 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("looking"));
     q.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("forward"));
 
-    auto pord = irs::Order::Prepare(tests::sort::custom_sort{});
+    tests::sort::custom_sort sort;
+    sort.scorer_score = [](irs::doc_id_t doc, irs::score_t* score) {
+      ASSERT_NE(nullptr, score);
+      *score = doc;
+    };
+    auto pord = irs::Order::Prepare(sort);
+
     auto prepared = q.prepare(rdr, pord);
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -6991,7 +7005,13 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("look"));
     q.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("forward"));
 
-    auto pord = irs::Order::Prepare(tests::sort::custom_sort{});
+    tests::sort::custom_sort sort;
+    sort.scorer_score = [](irs::doc_id_t doc, irs::score_t* score) {
+      ASSERT_NE(nullptr, score);
+      *score = doc;
+    };
+    auto pord = irs::Order::Prepare(sort);
+
     auto prepared = q.prepare(rdr, pord);
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -7071,12 +7091,17 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
   // fox quick with order
   {
-    auto pord = irs::Order::Prepare(tests::sort::custom_sort{});
-
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
     q.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("fox"));
     q.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+
+    tests::sort::custom_sort sort;
+    sort.scorer_score = [](irs::doc_id_t doc, irs::score_t* score) {
+      ASSERT_NE(nullptr, score);
+      *score = doc;
+    };
+    auto pord = irs::Order::Prepare(sort);
 
     auto prepared = q.prepare(rdr, pord);
 
