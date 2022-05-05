@@ -1892,7 +1892,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
            std::move(aggregator));
        });
 
-    using ExpectedType = irs::basic_disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
+    using ExpectedType = irs::basic_disjunction<irs::doc_iterator::ptr, irs::NoopAggregator>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
@@ -2971,22 +2971,21 @@ TEST(small_disjunction_test, seek_next) {
 }
 
 TEST(small_disjunction_test, scored_seek_next) {
-
   // disjunction without score, sub-iterators with scores
-  { 
+  {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
+                      irs::Order::Prepare(detail::basic_sort{1}));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 },
+                      irs::Order::Prepare(detail::basic_sort{2}));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
+                      irs::Order::Prepare(detail::basic_sort{4}));
+
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 0,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
-
-          std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
-                            irs::Order::Prepare(detail::basic_sort{1}));
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 },
-                            irs::Order::Prepare(detail::basic_sort{2}));
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
-                            irs::Order::Prepare(detail::basic_sort{4}));
 
           auto itrs = detail::execute_all<adapter>(docs);
 
@@ -3026,19 +3025,19 @@ TEST(small_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators with scores AGGREGATED score
   {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
+                      irs::Order::Prepare(detail::basic_sort{1}));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 },
+                      irs::Order::Prepare(detail::basic_sort{2}));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
+                      irs::Order::Prepare(detail::basic_sort{4}));
+
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
-
-          std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
-                            irs::Order::Prepare(detail::basic_sort{1}));
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 },
-                            irs::Order::Prepare(detail::basic_sort{2}));
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
-                            irs::Order::Prepare(detail::basic_sort{4}));
 
           auto res = detail::execute_all<adapter>(docs);
 
@@ -3086,19 +3085,19 @@ TEST(small_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators with scores, MAX score
   {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
+                      irs::Order::Prepare(detail::basic_sort{1}));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 },
+                      irs::Order::Prepare(detail::basic_sort{2}));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
+                      irs::Order::Prepare(detail::basic_sort{4}));
+
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
-
-          std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
-                            irs::Order::Prepare(detail::basic_sort{1}));
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 },
-                            irs::Order::Prepare(detail::basic_sort{2}));
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
-                            irs::Order::Prepare(detail::basic_sort{4}));
 
           auto res = detail::execute_all<adapter>(docs);
 
@@ -3146,18 +3145,18 @@ TEST(small_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators partially with scores, aggregation
   {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
+                      irs::Order::Prepare(detail::basic_sort{1}));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::Order{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
+                      irs::Order::Prepare(detail::basic_sort{4}));
+
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
-
-          std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
-                            irs::Order::Prepare(detail::basic_sort{1}));
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::Order{});
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
-                            irs::Order::Prepare(detail::basic_sort{4}));
 
           auto res = detail::execute_all<adapter>(docs);
 
@@ -3205,18 +3204,18 @@ TEST(small_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators partially with scores, max scores
   {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
+                      irs::Order::Prepare(detail::basic_sort{1}));
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::Order{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
+                      irs::Order::Prepare(detail::basic_sort{4}));
+
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
-
-          std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
-                            irs::Order::Prepare(detail::basic_sort{1}));
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::Order{});
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
-                            irs::Order::Prepare(detail::basic_sort{4}));
 
           auto res = detail::execute_all<adapter>(docs);
 
@@ -3264,16 +3263,16 @@ TEST(small_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators partially without scores, aggregation
   {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, irs::Order{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::Order{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, irs::Order{});
+
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::AGGREGATE, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
-
-          std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, irs::Order{});
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::Order{});
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, irs::Order{});
 
           auto res = detail::execute_all<adapter>(docs);
 
@@ -3321,16 +3320,16 @@ TEST(small_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators partially without scores, max
   {
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, irs::Order{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::Order{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, irs::Order{});
+
     auto it_ptr = irs::ResoveMergeType(
        irs::sort::MergeType::MAX, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
-
-          std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, irs::Order{});
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::Order{});
-          docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, irs::Order{});
 
           auto res = detail::execute_all<adapter>(docs);
 
@@ -12982,7 +12981,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
            std::move(res), 2, std::move(aggregator));
        });
 
-    using ExpectedType = irs::basic_disjunction<irs::doc_iterator::ptr, irs::NoopAggregator>;
+    using ExpectedType = irs::min_match_disjunction<irs::doc_iterator::ptr, irs::NoopAggregator>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
@@ -13032,7 +13031,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
            std::move(res), 2, std::move(aggregator));
        });
 
-    using ExpectedType = irs::basic_disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
+    using ExpectedType = irs::min_match_disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
@@ -13089,7 +13088,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
            std::move(res), 2, std::move(aggregator));
        });
 
-    using ExpectedType = irs::basic_disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
+    using ExpectedType = irs::min_match_disjunction<irs::doc_iterator::ptr, irs::Aggregator<irs::MaxMerger, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
@@ -13139,7 +13138,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
           using disjunction = irs::min_match_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::cost_iterator_adapter;
 
-         auto res = detail::execute_all<adapter>(docs);
+          auto res = detail::execute_all<adapter>(docs);
 
          return irs::memory::make_managed<disjunction>(
            std::move(res), 2, std::move(aggregator));
