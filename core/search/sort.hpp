@@ -554,7 +554,6 @@ class Scorers : private util::noncopyable { // noncopyable required by MSVC
   Scorers& operator=(Scorers&&) = default;
 
   std::vector<Scorer> scorers; // scorer + offset
-  const score_t* score_buf;
 };
 
 static_assert(std::is_nothrow_move_constructible_v<Scorers>);

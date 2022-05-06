@@ -126,8 +126,7 @@ Scorers::Scorers(
     const byte_type* stats_buf,
     score_t* score_buf,
     const attribute_provider& doc,
-    boost_t boost)
-  : score_buf{score_buf} {
+    boost_t boost) {
   scorers.reserve(order.buckets.size());
 
   for (auto& entry : order.buckets) {
