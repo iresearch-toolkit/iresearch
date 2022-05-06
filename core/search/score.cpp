@@ -28,13 +28,19 @@ namespace iresearch {
 /*static*/ const score score::kNoScore;
 
 void reset(irs::score& score, Scorers&& scorers) {
+  // FIXME(gnusi): revisit, we either have to
+  // disallow creation of nullptr scorers
+  // or correctly track score offsets
+
   switch (scorers.scorers.size()) {
     case 0: {
       score.reset();
     } break;
     case 1: {
       auto& scorer = scorers.scorers.front();
-      if (!scorer.bucket->score_index) {
+      if (0 == scorer.bucket->score_index) {
+        // The most important and frequent case when only
+        // one scorer is provided.
         score.reset(std::move(scorer.func));
       } else {
         struct ctx : score_ctx {
@@ -45,11 +51,12 @@ void reset(irs::score& score, Scorers&& scorers) {
           Scorer scorer;
         };
 
+        // FIXME(gnusi): revisit
         score.reset(
           memory::make_unique<ctx>(std::move(scorer)),
           [](score_ctx* ctx, score_t* res) noexcept {
-            auto& state = *static_cast<struct ctx*>(ctx);
-            state.scorer.func(res + 1);
+            auto& scorer = static_cast<struct ctx*>(ctx)->scorer;
+            scorer.func(res + scorer.bucket->score_index);
         });
       }
     } break;

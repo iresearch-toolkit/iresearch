@@ -270,13 +270,13 @@ class sort {
 };
 
 struct OrderBucket : util::noncopyable {
-  explicit OrderBucket(
-      sort::prepared::ptr&& bucket,
-      size_t score_index,
-      size_t stats_offset) noexcept
+  OrderBucket(sort::prepared::ptr&& bucket,
+              size_t score_index,
+              size_t stats_offset) noexcept
     : bucket(std::move(bucket)),
       score_index{score_index},
       stats_offset{stats_offset} {
+    assert(this->bucket);
   }
 
   OrderBucket(OrderBucket&&) = default;
