@@ -1081,7 +1081,7 @@ class range_filter_test_case : public tests::filter_test_case_base {
 
     // value = (..;..) + scored_terms_limit
     {
-      docs_t docs{ 1, 5, 7, 9, 10, 3, 8, 2, 4, 6, 11, 12, 13, 14, 15, 16, 17 };
+      docs_t docs{ 2, 4, 6, 11, 12, 13, 14, 15, 16, 17, 1, 5, 7, 9, 10, 3, 8 };
       costs_t costs{ docs.size() };
 
       irs::by_range filter;

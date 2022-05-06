@@ -1834,7 +1834,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
 
   // value = (..;..) + scored_terms_limit
   {
-    docs_t docs{ 1, 5, 7, 9, 10, 3, 8, 2, 4, 6, 11, 12, 13, 14, 15, 16, 17 };
+    docs_t docs{ 2, 4, 6, 11, 12, 13, 14, 15, 16, 17, 1, 5, 7, 9, 10, 3, 8 };
     costs_t costs{ docs.size() };
     std::array<irs::sort::ptr, 1> order {
         std::make_unique<tests::sort::frequency_sort>() };

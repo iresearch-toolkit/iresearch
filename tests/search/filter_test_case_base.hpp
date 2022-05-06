@@ -358,14 +358,10 @@ struct frequency_sort: public irs::sort {
         [](irs::score_ctx* ctx) -> const irs::score_t* {
           const auto& state = *reinterpret_cast<scorer*>(ctx);
 
-          constexpr irs::doc_id_t kShift{10000};
-          EXPECT_LT(*state.docs_count, kShift);
-
           // docs_count may be nullptr if no collector called,
           // e.g. by range_query for bitset_doc_iterator
           if (state.docs_count) {
-            *state.score_buf = static_cast<float_t>(kShift) / (*state.docs_count) +
-                               (static_cast<float_t>(state.doc->value) / kShift);
+            *state.score_buf = 1.f / (*state.docs_count);
           } else {
             *state.score_buf = std::numeric_limits<irs::score_t>::infinity();
           }
