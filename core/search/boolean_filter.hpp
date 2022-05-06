@@ -38,15 +38,19 @@ namespace iresearch {
 //////////////////////////////////////////////////////////////////////////////
 class boolean_filter : public filter, private util::noncopyable {
  public:
-  typedef std::vector<filter::ptr> filters_t;
-  typedef ptr_iterator<filters_t::const_iterator> const_iterator;
-  typedef ptr_iterator<filters_t::iterator> iterator;
+  auto begin() const { return ptr_iterator{std::begin(filters_)}; }
+  auto end() const { return ptr_iterator{std::end(filters_)}; }
 
-  const_iterator begin() const { return const_iterator(filters_.begin()); }
-  const_iterator end() const { return const_iterator(filters_.end()); }
+  auto begin() { return ptr_iterator{std::begin(filters_)}; }
+  auto end() { return ptr_iterator{std::end(filters_)}; }
 
-  iterator begin() { return iterator(filters_.begin()); }
-  iterator end() { return iterator(filters_.end()); }
+  sort::MergeType merge_type() const noexcept {
+    return merge_type_;
+  }
+
+  void merge_type(sort::MergeType merge_type) noexcept {
+    merge_type_ = merge_type;
+  }
 
   template<typename T>
   T& add() {
@@ -79,13 +83,14 @@ class boolean_filter : public filter, private util::noncopyable {
   void group_filters(std::vector<const filter*>& incl,
                      std::vector<const filter*>& excl) const;
 
-  filters_t filters_;
+  std::vector<filter::ptr> filters_;
+  sort::MergeType merge_type_{sort::MergeType::AGGREGATE};
 };
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class And
 //////////////////////////////////////////////////////////////////////////////
-class And : public boolean_filter {
+class And final : public boolean_filter {
  public:
   static ptr make();
 
@@ -103,7 +108,7 @@ class And : public boolean_filter {
 //////////////////////////////////////////////////////////////////////////////
 /// @class Or
 //////////////////////////////////////////////////////////////////////////////
-class Or : public boolean_filter {
+class Or : public boolean_filter { // FIXME: remove iql and make final
  public:
   static ptr make();
 

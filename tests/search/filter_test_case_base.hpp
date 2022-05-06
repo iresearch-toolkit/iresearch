@@ -364,13 +364,11 @@ struct frequency_sort: public irs::sort {
           // docs_count may be nullptr if no collector called,
           // e.g. by range_query for bitset_doc_iterator
           if (state.docs_count) {
-            *state.score_buf = 1.f / *state.docs_count;
+            *state.score_buf = static_cast<float_t>(kShift) / (*state.docs_count) +
+                               (static_cast<float_t>(state.doc->value) / kShift);
           } else {
-            *state.score_buf = 0.f;
+            *state.score_buf = std::numeric_limits<irs::score_t>::infinity();
           }
-
-          *state.score_buf *= kShift;
-          *state.score_buf += (static_cast<float_t>(state.doc->value) / kShift);
 
           return state.score_buf;
         }
@@ -440,8 +438,14 @@ class filter_test_case_base : public index_test_base {
       const auto* rhs_score = reinterpret_cast<const float*>(rhs_buf.c_str());
 
       for (size_t i = 0; i < size; ++i) {
-        if (const auto r = (lhs_score[i] <=> rhs_score[i]); r != 0) {
-          return r < 0;
+        const auto r = (lhs_score[i] <=> rhs_score[i]);
+
+        if (r < 0) {
+          return true;
+        }
+
+        if (r > 0) {
+          return false;
         }
       }
 

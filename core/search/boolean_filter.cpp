@@ -52,6 +52,7 @@ irs::doc_iterator::ptr make_disjunction(
     const irs::sub_reader& rdr,
     const irs::Order& ord,
     irs::ExecutionMode mode,
+    irs::sort::MergeType merge_type,
     const irs::attribute_provider* ctx,
     QueryIterator begin,
     QueryIterator end,
@@ -79,18 +80,18 @@ irs::doc_iterator::ptr make_disjunction(
   }
 
   return irs::ResoveMergeType(
-    irs::sort::MergeType::AGGREGATE, // FIXME(gnusi): handle mode
-    ord.buckets.size(),
-    [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-      using disjunction_t = std::conditional_t<
-          std::is_same_v<A, irs::NoopAggregator>,
-          irs::disjunction_iterator<irs::doc_iterator::ptr, A>,
-          irs::scored_disjunction_iterator<irs::doc_iterator::ptr, A>>;
+      merge_type,
+      ord.buckets.size(),
+      [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+        using disjunction_t = std::conditional_t<
+            std::is_same_v<A, irs::NoopAggregator>,
+            irs::disjunction_iterator<irs::doc_iterator::ptr, A>,
+            irs::scored_disjunction_iterator<irs::doc_iterator::ptr, A>>;
 
-      return irs::make_disjunction<disjunction_t>(std::move(itrs),
-                                                  std::move(aggregator),
-                                                  std::forward<Args>(args)...);
-    });
+        return irs::make_disjunction<disjunction_t>(std::move(itrs),
+                                                    std::move(aggregator),
+                                                    std::forward<Args>(args)...);
+      });
 
 }
 
@@ -100,6 +101,7 @@ irs::doc_iterator::ptr make_conjunction(
     const irs::sub_reader& rdr,
     const irs::Order& ord,
     irs::ExecutionMode mode,
+    irs::sort::MergeType merge_type,
     const irs::attribute_provider* ctx,
     QueryIterator begin,
     QueryIterator end,
@@ -118,7 +120,7 @@ irs::doc_iterator::ptr make_conjunction(
   std::vector<irs::score_iterator_adapter<irs::doc_iterator::ptr>> itrs;
   itrs.reserve(size);
 
-  for (;begin != end; ++begin) {
+  for (; begin != end; ++begin) {
     auto docs = begin->execute(rdr, ord, mode, ctx);
 
     // filter out empty iterators
@@ -130,7 +132,7 @@ irs::doc_iterator::ptr make_conjunction(
   }
 
   return irs::ResoveMergeType(
-      irs::sort::MergeType::AGGREGATE, // FIXME(gnusi): handle mode
+      merge_type,
       ord.buckets.size(),
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
         using conjunction_t = irs::conjunction<irs::doc_iterator::ptr, A>;
@@ -151,7 +153,8 @@ class boolean_query : public filter::prepared {
   typedef std::vector<filter::prepared::ptr> queries_t;
   typedef ptr_iterator<queries_t::const_iterator> iterator;
 
-  boolean_query() noexcept : excl_(0) { }
+  boolean_query() noexcept
+    : excl_{0} { }
 
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
@@ -167,8 +170,9 @@ class boolean_query : public filter::prepared {
 
     // exclusion part does not affect scoring at all
     auto excl = ::make_disjunction(rdr, Order::kUnordered,
-                                   ExecutionMode::kAll, ctx,
-                                   begin() + excl_, end());
+                                   ExecutionMode::kAll,
+                                   irs::sort::MergeType::AGGREGATE,
+                                   ctx, begin() + excl_, end());
 
     // got empty iterator for excluded
     if (doc_limits::eof(excl->value())) {
@@ -183,6 +187,7 @@ class boolean_query : public filter::prepared {
       const index_reader& rdr,
       const Order& ord,
       boost_t boost,
+      sort::MergeType merge_type,
       const attribute_provider* ctx,
       std::span<const filter* const> incl,
       std::span<const filter* const> excl) {
@@ -207,6 +212,7 @@ class boolean_query : public filter::prepared {
     // nothrow block
     queries_ = std::move(queries);
     excl_ = incl.size();
+    merge_type_ = merge_type;
   }
 
   iterator begin() const { return iterator(queries_.begin()); }
@@ -225,12 +231,17 @@ class boolean_query : public filter::prepared {
     iterator begin,
     iterator end) const = 0;
 
+  sort::MergeType merge_type() const noexcept {
+    return merge_type_;
+  }
+
  private:
   // 0..excl_-1 - included queries
   // excl_..queries.end() - excluded queries
   queries_t queries_;
   // index of the first excluded query
   size_t excl_;
+  sort::MergeType merge_type_{sort::MergeType::AGGREGATE};
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -246,7 +257,7 @@ class and_query final : public boolean_query {
       const attribute_provider* ctx,
       iterator begin,
       iterator end) const override {
-    return ::make_conjunction(rdr, ord, mode, ctx, begin, end);
+    return ::make_conjunction(rdr, ord, mode, merge_type(), ctx, begin, end);
   }
 };
 
@@ -263,7 +274,7 @@ class or_query final : public boolean_query {
       const attribute_provider* ctx,
       iterator begin,
       iterator end) const override {
-    return ::make_disjunction(rdr, ord, mode, ctx, begin, end);
+    return ::make_disjunction(rdr, ord, mode, merge_type(), ctx, begin, end);
   }
 }; // or_query
 
@@ -274,8 +285,8 @@ class or_query final : public boolean_query {
 //////////////////////////////////////////////////////////////////////////////
 class min_match_query final : public boolean_query {
  public:
-  explicit min_match_query(size_t min_match_count)
-    : min_match_count_(min_match_count) {
+  explicit min_match_query(size_t min_match_count) noexcept
+    : min_match_count_{min_match_count} {
     assert(min_match_count_ > 1);
   }
 
@@ -298,7 +309,7 @@ class min_match_query final : public boolean_query {
       return doc_iterator::empty();
     } else if (min_match_count == size) {
       // pure conjunction
-      return ::make_conjunction(rdr, ord, mode, ctx, begin, end);
+      return ::make_conjunction(rdr, ord, mode, merge_type(), ctx, begin, end);
     }
 
     // min_match_count <= size
@@ -317,15 +328,15 @@ class min_match_query final : public boolean_query {
       }
     }
 
-    // FIXME(gnusi): handle mode
-    return make_min_match_disjunction(std::move(itrs), ord, min_match_count);
+    return make_min_match_disjunction(std::move(itrs), ord, min_match_count, merge_type());
   }
 
  private:
   static doc_iterator::ptr make_min_match_disjunction(
       std::vector<score_iterator_adapter<doc_iterator::ptr>>&& itrs,
       const Order& ord,
-      size_t min_match_count) {
+      size_t min_match_count,
+      sort::MergeType merge_type) {
     const auto size = min_match_count > itrs.size() ? 0 : itrs.size();
 
     switch (size) {
@@ -337,30 +348,32 @@ class min_match_query final : public boolean_query {
         return std::move(itrs.front());
     }
 
-    return ResoveMergeType(sort::MergeType::AGGREGATE, ord.buckets.size(),
-    [&]<typename A>(A&& aggregator) -> doc_iterator::ptr {
-        if (min_match_count == size) {
-          using conjunction_t = conjunction<doc_iterator::ptr, A>;
+    return ResoveMergeType(
+        merge_type,
+        ord.buckets.size(),
+        [&]<typename A>(A&& aggregator) -> doc_iterator::ptr {
+          if (min_match_count == size) {
+            using conjunction_t = conjunction<doc_iterator::ptr, A>;
 
-          // pure conjunction
-          return memory::make_managed<conjunction_t>(
-              typename conjunction_t::doc_iterators_t{std::make_move_iterator(std::begin(itrs)),
-                                                      std::make_move_iterator(std::end(itrs))},
-              std::move(aggregator));
-        }
+                  // pure conjunction
+            return memory::make_managed<conjunction_t>(
+                typename conjunction_t::doc_iterators_t{std::make_move_iterator(std::begin(itrs)),
+                                                        std::make_move_iterator(std::end(itrs))},
+                std::move(aggregator));
+          }
 
-        // min match disjunction
-        assert(min_match_count < size);
+                // min match disjunction
+          assert(min_match_count < size);
 
-        using disjunction_t = std::conditional_t<
-            std::is_same_v<A, irs::NoopAggregator>,
-            min_match_iterator<doc_iterator::ptr, A>, // FIXME use FAST version
-            scored_min_match_iterator<doc_iterator::ptr, A>>;
+          using disjunction_t = std::conditional_t<
+              std::is_same_v<A, irs::NoopAggregator>,
+              min_match_iterator<doc_iterator::ptr, A>, // FIXME use FAST version
+              scored_min_match_iterator<doc_iterator::ptr, A>>;
 
-        return memory::make_managed<disjunction_t>(std::move(itrs),
-                                                   min_match_count,
-                                                   std::move(aggregator));
-    });
+          return memory::make_managed<disjunction_t>(std::move(itrs),
+                                                     min_match_count,
+                                                     std::move(aggregator));
+        });
   }
 
   size_t min_match_count_;
@@ -522,7 +535,7 @@ filter::prepared::ptr And::prepare(
     return incl.front()->prepare(rdr, ord, boost, ctx);
   }
   auto q = memory::make_managed<and_query>();
-  q->prepare(rdr, ord, boost, ctx, incl, excl);
+  q->prepare(rdr, ord, boost, merge_type(), ctx, incl, excl);
   return q;
 }
 
@@ -621,7 +634,7 @@ filter::prepared::ptr Or::prepare(
     q = memory::make_managed<min_match_query>(adjusted_min_match_count);
   }
 
-  q->prepare(rdr, ord, boost, ctx, incl, excl);
+  q->prepare(rdr, ord, boost, merge_type(), ctx, incl, excl);
   return q;
 }
 
@@ -650,7 +663,7 @@ filter::prepared::ptr Not::prepare(
     const std::array<const irs::filter*, 1> excl{ res.first };
 
     auto q = memory::make_managed<and_query>();
-    q->prepare(rdr, ord, boost, ctx, incl, excl);
+    q->prepare(rdr, ord, boost, sort::MergeType::AGGREGATE, ctx, incl, excl);
     return q;
   }
 

@@ -14937,9 +14937,11 @@ TEST_P(boolean_filter_test_case, or_sequential) {
                               23, 24, 25, 26, 27, 28, 29,
                               30, 31, 32 }, rdr);
   }
+
   //scored
   {
     irs::Or root;
+    root.merge_type(irs::sort::MergeType::MAX);
     append<irs::by_term>(root, "name", "A");
     root.add<irs::all>();
     root.add<irs::all>();
@@ -14952,6 +14954,11 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     append<irs::by_term>(root, "duplicated", "abcd");
     root.min_match_count(3);
     irs::sort::ptr sort{std::make_unique<sort::custom_sort>()};
+    auto& impl = static_cast<sort::custom_sort&>(*sort);
+    impl.scorer_score = [](auto doc, auto* score) {
+      *score = doc;
+    };
+
     check_query(root, std::span{&sort, 1},
                 docs_t{ 1,  2, 3, 4, 5, 6, 7, 8,
                        9, 10, 11, 12, 13, 14, 15,
@@ -15090,13 +15097,14 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential_ordered) {
         const irs::sort::term_collector*)->void {
       ++collector_finish_count;
     };
-    sort.scorer_score = [&scorer_score_count](irs::doc_id_t score, irs::score_t*)->void {
+    sort.scorer_score = [&scorer_score_count](irs::doc_id_t doc, irs::score_t* score) {
       ++scorer_score_count;
+      *score = doc;
     };
 
     auto prepared_order = irs::Order::Prepare(sort);
     auto prepared_filter = not_node.prepare(*rdr, prepared_order);
-    std::multimap<irs::score_t, irs::doc_id_t> scored_result;
+    std::multimap<irs::score_t, irs::doc_id_t, std::greater<>> scored_result;
 
     ASSERT_EQ(1, rdr->size());
     auto& segment = (*rdr)[0];
@@ -15174,12 +15182,14 @@ TEST_P(boolean_filter_test_case, not_sequential_ordered) {
         const irs::sort::term_collector*)->void {
       ++collector_finish_count;
     };
-    sort.scorer_score = [&scorer_score_count](irs::doc_id_t score, irs::score_t*)->void {
-      ++scorer_score_count; };
+    sort.scorer_score = [&scorer_score_count](irs::doc_id_t doc, irs::score_t* score)->void {
+      ++scorer_score_count;
+      *score = doc;
+    };
 
     auto prepared_order = irs::Order::Prepare(sort);
     auto prepared_filter = root.prepare(*rdr, prepared_order);
-    std::multimap<irs::score_t, irs::doc_id_t> scored_result;
+    std::multimap<irs::score_t, irs::doc_id_t, std::greater<>> scored_result;
 
     ASSERT_EQ(1, rdr->size());
     auto& segment = (*rdr)[0];
