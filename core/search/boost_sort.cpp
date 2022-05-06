@@ -61,23 +61,28 @@ struct prepared final : PreparedSortBase<void> {
     auto* volatile_boost = irs::get<irs::filter_boost>(attrs);
 
     if (!volatile_boost) {
-      *score_buf = boost;
+      if (score_buf) {
+        *score_buf = boost;
+
+        return { nullptr, score_function::kDefaultScoreFunc };
+      }
+
+      uintptr_t tmp{};
+      std::memcpy(&tmp, &boost, sizeof boost);
 
       return {
-        reinterpret_cast<score_ctx*>(score_buf),
-        [](irs::score_ctx* ctx) noexcept -> const score_t* {
-          return reinterpret_cast<score_t*>(ctx);
+        reinterpret_cast<score_ctx*>(tmp),
+        [](score_ctx* ctx, score_t* res) noexcept {
+          std::memcpy(res, reinterpret_cast<void*>(ctx), sizeof(score_t));
         }
       };
     }
 
     return {
       memory::make_unique<volatile_boost_score_ctx>(score_buf, volatile_boost, boost),
-      [](irs::score_ctx* ctx) noexcept -> const score_t* {
+      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
         auto& state = *reinterpret_cast<volatile_boost_score_ctx*>(ctx);
-        *state.score_buf = state.volatile_boost->value*state.boost;
-
-        return state.score_buf;
+        *res = state.volatile_boost->value*state.boost;
       }
     };
   }

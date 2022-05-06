@@ -37,11 +37,10 @@ all_iterator::all_iterator(
   if (!order.buckets.empty()) {
     auto& score = std::get<irs::score>(attrs_);
 
-    score.resize(order);
-
     Scorers scorers(
       order, reader, irs::empty_term_reader(docs_count),
-      query_stats, score.data(),
+      query_stats,
+      /*score_buf*/ nullptr, // FIXME(gnusi) ???
       *this, boost);
 
     irs::reset(score, std::move(scorers));

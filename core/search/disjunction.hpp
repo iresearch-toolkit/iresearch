@@ -53,15 +53,6 @@ FORCE_INLINE void pop_heap(Iterator first, Iterator last, Pred comp) {
   #endif
 }
 
-template<typename DocIterator>
-FORCE_INLINE void evaluate_score_iter(const irs::score_t**& pVal, DocIterator& src) {
-  const auto* score = src.score;
-  assert(score); // must be ensure by the adapter
-  if (!score->is_default()) {
-    *pVal++ = score->evaluate();
-  }
-};
-
 template<size_t Size>
 class min_match_buffer {
  public:
@@ -113,8 +104,9 @@ class score_buffer {
  public:
   score_buffer(size_t num_buckets, size_t size)
     : bucket_size_{num_buckets*sizeof(score_t)},
-      buf_size_(bucket_size_*size),
-      buf_(!buf_size_ ? nullptr : new byte_type[buf_size_]) {
+      buf_size_{bucket_size_*size},
+      buf_{!buf_size_ ? nullptr : new byte_type[buf_size_ + bucket_size_]},
+      temp_{buf_.get() + buf_size_} {
     if (buf_) {
       std::memset(data(), 0, this->size());
     }
@@ -129,6 +121,10 @@ class score_buffer {
     return reinterpret_cast<score_t*>(buf_.get());
   }
 
+  score_t* temp() noexcept {
+    return reinterpret_cast<score_t*>(temp_);
+  }
+
   size_t size() const noexcept {
     return buf_size_;
   }
@@ -141,6 +137,7 @@ class score_buffer {
   size_t bucket_size_;
   size_t buf_size_;
   std::unique_ptr<byte_type[]> buf_;
+  byte_type* temp_;
 }; // score_buffer
 
 struct empty_score_buffer {
@@ -152,6 +149,8 @@ struct empty_score_buffer {
   }
 
   score_t* data() noexcept { return nullptr; }
+
+  score_t* temp() noexcept { return nullptr; }
 
   size_t size() const noexcept { return 0; }
 
@@ -298,8 +297,7 @@ class basic_disjunction final
       resolve_overload_tag)
     : Merger{std::move(merger)},
       lhs_(std::move(lhs)),
-      rhs_(std::move(rhs)),
-      no_score_value_(Merger::size()*sizeof(score_t), 0) {
+      rhs_(std::move(rhs)) {
     std::get<cost>(attrs_).reset(std::forward<Estimation>(estimation));
 
     prepare_score();
@@ -313,37 +311,34 @@ class basic_disjunction final
     assert(lhs_.score && rhs_.score); // must be ensure by the adapter
 
     auto& score = std::get<irs::score>(attrs_);
-    score.resize(Merger::size());
+    score_buf_.resize(Merger::size()*sizeof(score_t));
 
     const bool lhs_score_empty = lhs_.score->is_default();
     const bool rhs_score_empty = rhs_.score->is_default();
 
     if (!lhs_score_empty && !rhs_score_empty) {
       // both sub-iterators have score
-      score.reset(this, [](score_ctx* ctx) -> const score_t* {
+      score.reset(this, [](score_ctx* ctx, score_t* res) noexcept {
         auto& self = *static_cast<basic_disjunction*>(ctx);
+        auto* tmp = reinterpret_cast<score_t*>(self.score_buf_.data());
 
-        const score_t* score_values[2] {
-          self.score_iterator_impl(self.lhs_),
-          self.score_iterator_impl(self.rhs_) };
-
-        auto* score_buf = std::get<irs::score>(self.attrs_).data();
-
-        static_cast<Merger&>(self)(score_buf, score_values, 2);
-
-        return score_buf;
+        // FIXME(gnusi)
+        auto& merger = static_cast<Merger&>(self);
+        self.score_iterator_impl(self.lhs_, res);
+        self.score_iterator_impl(self.rhs_, tmp);
+        merger(res, tmp);
       });
     } else if (!lhs_score_empty) {
       // only left sub-iterator has score
-      score.reset(this, [](score_ctx* ctx) -> const score_t* {
+      score.reset(this, [](score_ctx* ctx, score_t* res) noexcept {
         auto& self = *static_cast<basic_disjunction*>(ctx);
-        return self.score_iterator_impl(self.lhs_);
+        return self.score_iterator_impl(self.lhs_, res);
       });
     } else if (!rhs_score_empty) {
       // only right sub-iterator has score
-      score.reset(this, [](score_ctx* ctx) -> const score_t* {
+      score.reset(this, [](score_ctx* ctx, score_t* res) noexcept {
         auto& self = *static_cast<basic_disjunction*>(ctx);
-        return self.score_iterator_impl(self.rhs_);
+        return self.score_iterator_impl(self.rhs_, res);
       });
     } else {
       assert(score.is_default());
@@ -365,7 +360,7 @@ class basic_disjunction final
     }
   }
 
-  const score_t* score_iterator_impl(adapter& it) const {
+  void score_iterator_impl(adapter& it, score_t* res) const {
     auto& doc = std::get<document>(attrs_);
     auto value = it.value();
 
@@ -374,10 +369,10 @@ class basic_disjunction final
     }
 
     if (value == doc.value) {
-      return it.score->evaluate();
+      it.score->evaluate(res);
+    } else {
+      std::memset(res, 0, Merger::size()*sizeof(score_t));
     }
-
-    return reinterpret_cast<const score_t*>(no_score_value_.c_str());
   }
 
   using attributes = std::tuple<document, score, cost>;
@@ -385,7 +380,7 @@ class basic_disjunction final
   mutable adapter lhs_;
   mutable adapter rhs_;
   attributes attrs_;
-  bstring no_score_value_; // empty score value
+  bstring score_buf_;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -575,34 +570,29 @@ class small_disjunction final
     }
 
     auto& score = std::get<irs::score>(attrs_);
-    score.resize(Merger::size());
+    score_buf_.resize(Merger::size()*sizeof(score_t));
 
     // prepare score
     if (scored_begin_ != end_) {
-      scores_vals_.resize(size_t(std::distance(scored_begin_, end_)));
-
-      score.reset(this, [](irs::score_ctx* ctx) -> const score_t* {
+      score.reset(this, [](irs::score_ctx* ctx, score_t* res) noexcept {
         auto& self = *static_cast<small_disjunction*>(ctx);
-        auto* score_buf = std::get<irs::score>(self.attrs_).data();
-        auto& doc = std::get<document>(self.attrs_);
-        const irs::score_t** pVal = self.scores_vals_.data();
+        auto& merger = static_cast<Merger&>(self);
+        auto* score_buf = reinterpret_cast<score_t*>(self.score_buf_.data());
+        const auto doc = std::get<document>(self.attrs_).value;
+
+        std::memset(res, 0, sizeof(score_t)*merger.size());
         for (auto begin = self.scored_begin_, end = self.end_; begin != end; ++begin) {
           auto value = begin->value();
 
-          if (value < doc.value) {
-            value = (*begin)->seek(doc.value);
+          if (value < doc) {
+            value = (*begin)->seek(doc);
           }
 
-          if (value == doc.value) {
-            *pVal++ = begin->score->evaluate();
+          if (value == doc) {
+            begin->score->evaluate(score_buf);
+            merger(res, score_buf);
           }
         }
-
-        static_cast<Merger&>(self)(score_buf,
-                                   self.scores_vals_.data(),
-                                   std::distance(self.scores_vals_.data(), pVal));
-
-        return score_buf;
       });
     } else {
       assert(score.is_default());
@@ -648,7 +638,7 @@ class small_disjunction final
   iterator begin_; // beginning of unscored doc iterators range
   iterator end_; // end of scored doc iterator range
   attributes attrs_;
-  mutable std::vector<const irs::score_t*> scores_vals_;
+  bstring score_buf_; // FIXME(gnusi): compile time size
 }; // small_disjunction
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -822,34 +812,37 @@ class disjunction final
     }
 
     auto& score = std::get<irs::score>(attrs_);
-    score.resize(Merger::size());
+    score_buf_.resize(Merger::size()*sizeof(score_t));
 
-    scores_vals_.resize(itrs_.size(), nullptr);
-    score.reset(this, [](score_ctx* ctx) -> const score_t* {
+    score.reset(this, [](score_ctx* ctx, score_t* res) noexcept  {
+      auto evaluate_score_iter = [](irs::score_t* res, auto& src) {
+        const auto* score = src.score;
+        assert(score); // must be ensure by the adapter
+        if (!score->is_default()) {
+          score->evaluate(res);
+        }
+      };
+
       auto& self = *static_cast<disjunction*>(ctx);
       assert(!self.heap_.empty());
-      auto* score_buf = std::get<irs::score>(self.attrs_).data();
-      auto& doc = std::get<document>(self.attrs_);
+      auto* score_buf = reinterpret_cast<score_t*>(self.score_buf_.data());
 
       const auto its = self.hitch_all_iterators();
-      const irs::score_t** pVal = self.scores_vals_.data();
-      detail::evaluate_score_iter(pVal, self.lead());
-      if (self.top().value() == doc.value) {
+      evaluate_score_iter(res, self.lead());
+      if (const auto doc = std::get<document>(self.attrs_).value;
+          self.top().value() == doc) {
         irstd::heap::for_each_if(
           its.first, its.second,
-          [&self, &doc](const size_t it) noexcept {
+          [&self, doc](const size_t it) noexcept {
             assert(it < self.itrs_.size());
-            return self.itrs_[it].value() == doc.value;
+            return self.itrs_[it].value() == doc;
           },
-          [&self, &pVal](size_t it) {
+          [&self, score_buf, res, &evaluate_score_iter](size_t it) {
             assert(it < self.itrs_.size());
-            detail::evaluate_score_iter(pVal, self.itrs_[it]);
+            evaluate_score_iter(score_buf, self.itrs_[it]);
+            static_cast<Merger&>(self)(res, score_buf);
         });
       }
-      static_cast<Merger&>(self)(score_buf, self.scores_vals_.data(),
-                                 std::distance(self.scores_vals_.data(), pVal));
-
-      return score_buf;
     });
   }
 
@@ -930,9 +923,9 @@ class disjunction final
     return {begin, end};
   }
 
+  bstring score_buf_; // FIXME(gnusi): compile time size
   doc_iterators_t itrs_;
   heap_container heap_;
-  mutable std::vector<const irs::score_t*> scores_vals_;
   attributes attrs_;
 }; // disjunction
 
@@ -1189,7 +1182,8 @@ class block_disjunction final : public doc_iterator, private Merger, private sco
           for (auto& it : itrs_) {
             if (!it.score->is_default() && doc.value == it->value()) {
               assert(it.score);
-              static_cast<Merger&>(*this)(score_buf_.data(), it.score->evaluate());
+              it.score->evaluate(score_buf_.temp());
+              static_cast<Merger&>(*this)(score_buf_.data(), score_buf_.temp());
             }
           }
 
@@ -1250,10 +1244,11 @@ class block_disjunction final : public doc_iterator, private Merger, private sco
 
     if (traits_type::score() && Merger::size()) {
       auto& score = std::get<irs::score>(attrs_);
-      score.resize(Merger::size());
 
-      score.reset(this, [](score_ctx* ctx) noexcept -> const score_t* {
-        return static_cast<block_disjunction*>(ctx)->score_value_;
+      score.reset(this, [](score_ctx* ctx, score_t* res) noexcept {
+        auto& self = static_cast<block_disjunction&>(*ctx);
+        // FIXME(gnusi)
+        std::memcpy(res, self.score_value_, static_cast<Merger&>(self).size());
       });
     }
 
@@ -1406,7 +1401,8 @@ class block_disjunction final : public doc_iterator, private Merger, private sco
 
       if constexpr (Score) {
         assert(it.score);
-        static_cast<Merger&>(*this)(score_buf_.get(offset), it.score->evaluate());
+        it.score->evaluate(score_buf_.temp());
+        static_cast<Merger&>(*this)(score_buf_.get(offset), score_buf_.temp());
       }
 
       if constexpr (traits_type::min_match()) {

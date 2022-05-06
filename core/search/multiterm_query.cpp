@@ -36,11 +36,9 @@ class lazy_bitset_iterator final : public bitset_doc_iterator {
   lazy_bitset_iterator(
       const sub_reader& segment,
       const term_reader& field,
-      const Order& ord,
       std::span<const multiterm_state::unscored_term_state> states,
       cost::cost_t estimation) noexcept
     : bitset_doc_iterator(estimation),
-      score_(ord),
       field_(&field),
       segment_(&segment),
       states_(states) {
@@ -150,11 +148,10 @@ doc_iterator::ptr multiterm_query::execute(
         assert(entry.stat_offset < stats.size());
         auto* stat = stats[entry.stat_offset].c_str();
 
-        score->resize(ord);
-
         Scorers scorers(
           ord, segment, *state->reader, stat,
-          score->data(), *docs, entry.boost*boost());
+          /*score_buf*/ nullptr, // FIXME(gnusi) ???
+          *docs, entry.boost*boost());
 
         irs::reset(*score, std::move(scorers));
       }
@@ -167,7 +164,7 @@ doc_iterator::ptr multiterm_query::execute(
   if (has_unscored_terms) {
     *it = {
       memory::make_managed<::lazy_bitset_iterator>(
-        segment, *state->reader, ord,
+        segment, *state->reader,
         state->unscored_terms,
         state->unscored_states_estimation)
     };

@@ -61,11 +61,10 @@ doc_iterator::ptr term_query::execute(
     auto* score = irs::get_mutable<irs::score>(docs.get());
 
     if (score) {
-      score->resize(ord);
-
       Scorers scorers(
         ord, rdr, *state->reader,
-        stats_.c_str(), score->data(),
+        stats_.c_str(),
+        /*score_buf*/ nullptr, // FIXME(gnusi) ???
         *docs, boost());
 
       irs::reset(*score, std::move(scorers));

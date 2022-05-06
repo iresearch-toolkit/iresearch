@@ -253,30 +253,34 @@ class min_match_disjunction
     }
 
     auto& score = std::get<irs::score>(attrs_);
-    score.resize(Merger::size());
+    score_buf_.resize(Merger::size()*sizeof(score_t));
 
     scores_vals_.resize(itrs_.size());
-    score.reset(this, [](score_ctx* ctx) -> const score_t* {
+    score.reset(this, [](score_ctx* ctx, score_t* res) noexcept {
+      auto evaluate_score_iter = [](irs::score_t* res, auto& src) {
+        const auto* score = src.score;
+        assert(score); // must be ensure by the adapter
+        if (!score->is_default()) {
+          score->evaluate(res);
+        }
+      };
+
       auto& self = *static_cast<min_match_disjunction*>(ctx);
-      auto* score_buf = std::get<irs::score>(self.attrs_).data();
+      auto& merger = static_cast<Merger&>(self);
+      auto* score_buf = reinterpret_cast<score_t*>(self.score_buf_.data());
       assert(!self.heap_.empty());
 
       self.push_valid_to_lead();
 
       // score lead iterators
-      const irs::score_t** pVal = self.scores_vals_.data();
+      std::memset(res, 0, merger.size()*sizeof(score_t));
       std::for_each(
         self.lead(), self.heap_.end(),
-        [&self, &pVal](size_t it) {
+        [&self, &evaluate_score_iter, &merger, res, score_buf](size_t it) {
           assert(it < self.itrs_.size());
-          detail::evaluate_score_iter(pVal, self.itrs_[it]);
+          evaluate_score_iter(score_buf, self.itrs_[it]);
+          merger(res, score_buf);
       });
-
-      auto& merger = static_cast<Merger&>(self);
-      merger(score_buf, self.scores_vals_.data(),
-             size_t(std::distance(self.scores_vals_.data(), pVal)));
-
-      return score_buf;
     });
   }
 
@@ -453,6 +457,7 @@ class min_match_disjunction
   size_t min_match_count_; // minimum number of hits
   size_t lead_; // number of iterators in lead group
   attributes attrs_;
+  bstring score_buf_; // FIXME(gnusi): compile time size
 };
 
 } // ROOT

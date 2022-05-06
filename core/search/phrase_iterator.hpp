@@ -455,11 +455,10 @@ class phrase_iterator final : public doc_iterator {
     if (!ord.buckets.empty()) {
       auto& score = std::get<irs::score>(attrs_);
 
-      score.resize(ord);
-
       Scorers scorers(
         ord, segment, field, stats,
-        score.data(), *this, boost);
+        /*score_buf*/ nullptr, // FIXME(gnusi) ???
+        *this, boost);
 
       irs::reset(score, std::move(scorers));
     }

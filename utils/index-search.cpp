@@ -656,10 +656,10 @@ int search(
               threshold->value = sorted.front().first;
             }
 
-            while (docs->next()) {
+            for (float_t score_value; docs->next(); ) {
               ++doc_count;
 
-              const auto score_value = *reinterpret_cast<const float_t*>(score->evaluate());
+              score->evaluate(&score_value);
 
               if (left) {
                 sorted.emplace_back(score_value, doc->value);

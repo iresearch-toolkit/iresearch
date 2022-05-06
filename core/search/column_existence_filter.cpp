@@ -69,11 +69,11 @@ class column_existence_query : public irs::filter::prepared {
       auto* score = irs::get_mutable<irs::score>(it.get());
 
       if (score) {
-        score->resize(ord);
-
         Scorers scorers(
           ord, segment, empty_term_reader(column.size()),
-          stats_.c_str(), score->data(), *it, boost());
+          stats_.c_str(),
+          /*score_buf*/ nullptr, // FIXME(gnusi) ???
+          *it, boost());
 
         irs::reset(*score, std::move(scorers));
       }

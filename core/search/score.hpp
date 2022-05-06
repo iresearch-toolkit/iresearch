@@ -32,7 +32,6 @@ namespace iresearch {
 class score : public attribute {
  public:
   static const score kNoScore;
-  static const score_f kDefaultScoreFunc;
 
   static constexpr string_ref type_name() noexcept {
     return "iresearch::score";
@@ -45,21 +44,19 @@ class score : public attribute {
   }
 
   // cppcheck-suppress shadowFunction
-  score() noexcept;
-  explicit score(const Order& ord);
+  score() noexcept = default;
 
   bool is_default() const noexcept {
-    return reinterpret_cast<score_ctx*>(data()) == func_.ctx()
-           && func_.func() == kDefaultScoreFunc;
+    return func_.func() == score_function::kDefaultScoreFunc;
   }
 
-  [[nodiscard]] FORCE_INLINE const float_t* evaluate() const {
+   FORCE_INLINE void evaluate(score_t* res) const noexcept {
     assert(func_);
-    return func_();
+    func_(res);
   }
 
   // Reset score to default value
-  void reset() noexcept;
+  void reset() noexcept { func_ = {}; }
 
   void reset(const score& score) noexcept {
     assert(score.func_);
@@ -82,29 +79,7 @@ class score : public attribute {
     func_ = std::move(func);
   }
 
-  void resize(const Order& order) {
-    buf_.resize(order.score_size);
-  }
-
-  void resize(size_t count) {
-    buf_.resize(count*sizeof(score_t));
-  }
-
-  score_t* data() const noexcept {
-    return reinterpret_cast<score_t*>(buf_.data());
-  }
-
-  size_t size() const noexcept {
-    return buf_.size();
-  }
-
-  void clear() noexcept {
-    assert(!buf_.empty());
-    std::memset(const_cast<byte_type*>(buf_.data()), 0, buf_.size());
-  }
-
  private:
-  mutable bstring buf_;
   score_function func_;
 };
 

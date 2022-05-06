@@ -259,13 +259,11 @@ struct idf final {
 
 struct ScoreContext : public irs::score_ctx {
   ScoreContext(
-      score_t* score_buf,
       irs::boost_t boost,
       const tfidf::idf& idf,
       const frequency* freq,
       const irs::filter_boost* filter_boost = nullptr) noexcept
-    : score_buf{score_buf},
-      freq{freq ? *freq : kEmptyFreq},
+    : freq{freq ? *freq : kEmptyFreq},
       filter_boost{filter_boost},
       idf{boost * idf.value} {
     assert(freq);
@@ -274,7 +272,6 @@ struct ScoreContext : public irs::score_ctx {
   ScoreContext(const ScoreContext&) = delete;
   ScoreContext& operator=(const ScoreContext&) = delete;
 
-  score_t* score_buf;
   const frequency& freq;
   const irs::filter_boost* filter_boost;
   float_t idf; // precomputed : boost * idf
@@ -316,13 +313,12 @@ auto MakeNormAdapter(Reader&& reader) {
 template<typename Norm>
 struct NormScoreContext final : public ScoreContext {
   NormScoreContext(
-      score_t* score_buf,
       Norm&& norm,
       boost_t boost,
       const tfidf::idf& idf,
       const frequency* freq,
       const irs::filter_boost* filter_boost = nullptr) noexcept
-    : ScoreContext{score_buf, boost, idf, freq, filter_boost},
+    : ScoreContext{boost, idf, freq, filter_boost},
       norm{std::move(norm)} {
   }
 
@@ -335,7 +331,7 @@ struct MakeScoreFunctionImpl {
   static score_function Make(Args&&... args) {
     return {
         memory::make_unique<Ctx>(std::forward<Args>(args)...),
-        [](irs::score_ctx* ctx) noexcept -> const score_t* {
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
           auto& state = *static_cast<Ctx*>(ctx);
 
           float_t idf;
@@ -347,12 +343,10 @@ struct MakeScoreFunctionImpl {
           }
 
           if constexpr (std::is_same_v<Ctx, ScoreContext>) {
-            *state.score_buf = ::tfidf(state.freq.value, idf);
+            *res = ::tfidf(state.freq.value, idf);
           } else {
-            *state.score_buf = ::tfidf(state.freq.value, idf) * state.norm();
+            *res = ::tfidf(state.freq.value, idf) * state.norm();
           }
-
-          return state.score_buf;
         }
     };
   }
@@ -418,12 +412,18 @@ class sort final: public irs::PreparedSortBase<tfidf::idf> {
       }
 
       // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
-      *score = boost;
+      if (score) {
+        *score = boost;
+        return { nullptr, score_function::kDefaultScoreFunc };
+      }
+
+      uintptr_t tmp{};
+      std::memcpy(&tmp, &boost, sizeof boost);
 
       return {
-        reinterpret_cast<ScoreContext*>(score),
-        [](irs::score_ctx* ctx) noexcept -> const score_t* {
-          return reinterpret_cast<score_t*>(ctx);
+        reinterpret_cast<score_ctx*>(tmp),
+        [](score_ctx* ctx, score_t* res) noexcept {
+          std::memcpy(res, reinterpret_cast<void*>(ctx), sizeof(score_t));
         }
       };
     }
@@ -442,7 +442,7 @@ class sort final: public irs::PreparedSortBase<tfidf::idf> {
 
       auto prepare_norm_scorer = [&]<typename Norm>(Norm&& norm) -> score_function {
         return MakeScoreFunction<NormScoreContext<Norm>>(
-            filter_boost, score, std::move(norm), boost, stats, freq);
+            filter_boost, std::move(norm), boost, stats, freq);
       };
 
       const auto& features = field.meta().features;
@@ -468,7 +468,7 @@ class sort final: public irs::PreparedSortBase<tfidf::idf> {
     }
 
     return MakeScoreFunction<ScoreContext>(
-        filter_boost, score, boost, stats, freq);
+        filter_boost, boost, stats, freq);
   }
 
   virtual irs::sort::term_collector::ptr prepare_term_collector() const override {

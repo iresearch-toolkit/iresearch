@@ -63,11 +63,13 @@ struct score_ctx {
   virtual ~score_ctx() = default;
 };
 
-using score_f = const score_t*(*)(score_ctx* ctx);
+using score_f = void(*)(score_ctx* ctx, score_t* res) noexcept;
 
 // Convenient wrapper around score_f and score_ctx.
 class score_function : util::noncopyable {
  public:
+  static const score_f kDefaultScoreFunc;
+
   score_function() noexcept;
   score_function(memory::managed_ptr<score_ctx>&& ctx, const score_f func) noexcept
     : ctx_(std::move(ctx)), func_(func) {
@@ -81,10 +83,9 @@ class score_function : util::noncopyable {
   score_function(score_function&& rhs) noexcept;
   score_function& operator=(score_function&& rhs) noexcept;
 
-  // cppcheck-suppress CastIntegerToAddressAtReturn
-  const float_t* operator()() const {
+  FORCE_INLINE void operator()(score_t* res) const noexcept {
     assert(func_);
-    return func_(ctx_.get());
+    return func_(ctx_.get(), res);
   }
 
   bool operator==(const score_function& rhs) const noexcept {

@@ -307,22 +307,18 @@ struct stats final {
 
 struct BM15Context : public irs::score_ctx {
   BM15Context(
-      score_t* score_buf,
       float_t k,
       irs::boost_t boost,
       const bm25::stats& stats,
       const frequency* freq,
       const filter_boost* fb = nullptr) noexcept
-    : score_buf{score_buf},
-      freq{freq ? freq : &kEmptyFreq},
+    : freq{freq ? freq : &kEmptyFreq},
       filter_boost{fb},
       num{boost * (k + 1) * stats.idf},
       norm_const{k}  {
     assert(this->freq);
-    assert(this->score_buf);
   }
 
-  score_t* score_buf;
   const frequency* freq; // document frequency
   const irs::filter_boost* filter_boost;
   float_t num; // partially precomputed numerator : boost * (k + 1) * idf
@@ -332,14 +328,13 @@ struct BM15Context : public irs::score_ctx {
 template<typename Norm>
 struct BM25Context final : public BM15Context {
   BM25Context(
-      score_t* score_buf,
       float_t k,
       irs::boost_t boost,
       const bm25::stats& stats,
       const frequency* freq,
       Norm&& norm,
       const irs::filter_boost* filter_boost = nullptr) noexcept
-    : BM15Context{score_buf, k, boost, stats, freq, filter_boost},
+    : BM15Context{k, boost, stats, freq, filter_boost},
       norm{std::move(norm)},
       norm_length{stats.norm_length},
       norm_cache{stats.norm_cache} {
@@ -399,7 +394,7 @@ struct MakeScoreFunctionImpl<BM15Context> {
   static score_function Make(Args&&... args) {
     return {
         memory::make_unique<Ctx>(std::forward<Args>(args)...),
-        [](irs::score_ctx* ctx) noexcept -> const score_t* {
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
           auto& state = *static_cast<Ctx*>(ctx);
 
           const float_t tf = static_cast<float_t>(state.freq->value);
@@ -414,9 +409,7 @@ struct MakeScoreFunctionImpl<BM15Context> {
 
           const float_t c1 = state.norm_const;
 
-          *state.score_buf = c0 - c0 / (1.f + tf / c1);
-
-          return state.score_buf;
+          *res = c0 - c0 / (1.f + tf / c1);
         }
     };
   }
@@ -430,7 +423,7 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
   static score_function Make(Args&&... args) {
     return {
         memory::make_unique<Ctx>(std::forward<Args>(args)...),
-        [](irs::score_ctx* ctx) noexcept -> const score_t* {
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
           auto& state = *static_cast<Ctx*>(ctx);
 
           float_t tf;
@@ -448,20 +441,16 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
             c0 = state.num;
           }
 
-          auto& buf = *state.score_buf;
-
           if constexpr (NormType::kNorm2Tiny == Norm::kType) {
             static_assert(std::is_same_v<uint32_t, decltype(state.norm())>);
             const float_t inv_c1 = state.norm_cache[state.norm() & uint32_t{0xFF}];
 
-            buf = c0 - c0 / (1.f + tf * inv_c1);
+            *res = c0 - c0 / (1.f + tf * inv_c1);
           } else {
             const float_t c1 = state.norm_const + state.norm_length * state.norm();
 
-            buf = c0 - c0 * c1 / (c1 + tf);
+            *res = c0 - c0 * c1 / (c1 + tf);
           }
-
-          return state.score_buf;
         }
     };
   }
@@ -550,12 +539,18 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
       }
 
       // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
-      *score = boost;
+      if (score) {
+        *score = boost;
+        return { nullptr, score_function::kDefaultScoreFunc };
+      }
+
+      uintptr_t tmp{};
+      std::memcpy(&tmp, &boost, sizeof boost);
 
       return {
-        reinterpret_cast<BM15Context*>(score),
-        [](irs::score_ctx* ctx) noexcept -> const score_t* {
-          return reinterpret_cast<score_t*>(ctx);
+        reinterpret_cast<score_ctx*>(tmp),
+        [](score_ctx* ctx, score_t* res) noexcept {
+          std::memcpy(res, reinterpret_cast<void*>(ctx), sizeof(score_t));
         }
       };
     }
@@ -573,7 +568,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
 
       auto prepare_norm_scorer = [&]<typename Norm>(Norm&& norm) -> score_function {
         return MakeScoreFunction<BM25Context<Norm>>(
-            filter_boost, score, k_, boost, stats, freq, std::move(norm));
+            filter_boost, k_, boost, stats, freq, std::move(norm));
       };
 
       const auto& features = field.meta().features;
@@ -602,7 +597,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
 
     // BM15
     return MakeScoreFunction<BM15Context>(
-        filter_boost, score, k_, boost, stats, freq);
+        filter_boost, k_, boost, stats, freq);
   }
 
   virtual irs::sort::term_collector::ptr prepare_term_collector() const override {

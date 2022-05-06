@@ -32,10 +32,6 @@ namespace {
 
 using namespace irs;
 
-const score_t* no_score(score_ctx* ctx) noexcept {
-  return reinterpret_cast<score_t*>(ctx);
-}
-
 template<typename Iterator>
 Order Prepare(Iterator begin, Iterator end) {
   Order ord;
@@ -76,27 +72,31 @@ Order Prepare(Iterator begin, Iterator end) {
   return ord;
 }
 
+void default_score(score_ctx*, score_t*) noexcept { }
+
 }
 
 namespace iresearch {
 
 REGISTER_ATTRIBUTE(filter_boost);
 
+/*static*/ const score_f score_function::kDefaultScoreFunc{&::default_score};
+
 score_function::score_function() noexcept
-  : func_(&::no_score) {
+  : func_{kDefaultScoreFunc} {
 }
 
 score_function::score_function(score_function&& rhs) noexcept
   : ctx_(std::move(rhs.ctx_)),
     func_(rhs.func_) {
-  rhs.func_ = &::no_score;
+  rhs.func_ = kDefaultScoreFunc;
 }
 
 score_function& score_function::operator=(score_function&& rhs) noexcept {
   if (this != &rhs) {
     ctx_ = std::move(rhs.ctx_);
     func_ = rhs.func_;
-    rhs.func_ = &::no_score;
+    rhs.func_ = kDefaultScoreFunc;
   }
   return *this;
 }
@@ -146,7 +146,9 @@ Scorers::Scorers(
       scorers.emplace_back(std::move(scorer), &entry);
     }
 
-    ++score_buf;
+    if (score_buf) {
+      ++score_buf;
+    }
   }
 }
 

@@ -165,7 +165,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
 
     auto& score = std::get<irs::score>(attrs_);
 
-    score.resize(Merger::size());
+    score_buf_.resize(Merger::size()*sizeof(score_t));
 
     // copy scores into separate container
     // to avoid extra checks
@@ -177,7 +177,6 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
         scores_.push_back(score);
       }
     }
-    score_vals_.resize(scores_.size());
 
     // prepare score
     switch (scores_.size()) {
@@ -188,39 +187,48 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
         score.reset(*scores_.front());
         break;
       case 2:
-        score.reset(this, [](score_ctx* ctx) -> const score_t* {
+        score.reset(this, [](score_ctx* ctx, score_t* res) noexcept {
           auto& self = *static_cast<conjunction*>(ctx);
-          auto* score_buf = std::get<irs::score>(self.attrs_).data();
-          self.score_vals_.front() = self.scores_.front()->evaluate();
-          self.score_vals_.back() = self.scores_.back()->evaluate();
-          static_cast<Merger&>(self)(score_buf, self.score_vals_.data(), 2);
+          auto* tmp = reinterpret_cast<score_t*>(self.score_buf_.data());
 
-          return score_buf;
+          // FIXME(gnusi)
+          auto& merger = static_cast<Merger&>(self);
+          std::memset(res, 0, merger.size()*sizeof(score_t));
+          self.scores_.front()->evaluate(res);
+          self.scores_.back()->evaluate(tmp);
+          merger(res, tmp);
         });
         break;
       case 3:
-        score.reset(this, [](score_ctx* ctx) -> const score_t* {
+        score.reset(this, [](score_ctx* ctx, score_t* res) noexcept {
           auto& self = *static_cast<conjunction*>(ctx);
-          auto* score_buf = std::get<irs::score>(self.attrs_).data();
-          self.score_vals_.front() = self.scores_.front()->evaluate();
-          self.score_vals_[1] = self.scores_[1]->evaluate();
-          self.score_vals_.back() = self.scores_.back()->evaluate();
-          static_cast<Merger&>(self)(score_buf, self.score_vals_.data(), 3);
+          auto* tmp = reinterpret_cast<score_t*>(self.score_buf_.data());
 
-          return score_buf;
+          // FIXME(gnusi)
+          auto& merger = static_cast<Merger&>(self);
+          std::memset(res, 0, merger.size()*sizeof(score_t));
+          self.scores_.front()->evaluate(res);
+          self.scores_[1]->evaluate(tmp);
+          merger(res, tmp);
+          self.scores_.back()->evaluate(tmp);
+          merger(res, tmp);
         });
         break;
       default:
-        score.reset(this, [](score_ctx* ctx) -> const score_t* {
+        score.reset(this, [](score_ctx* ctx, score_t* res) noexcept {
           auto& self = *static_cast<conjunction*>(ctx);
-          auto* score_buf = std::get<irs::score>(self.attrs_).data();
-          auto* score_val = self.score_vals_.data();
-          for (auto* it_score : self.scores_) {
-            *score_val++ = it_score->evaluate();
-          }
-          static_cast<Merger&>(self)(score_buf, self.score_vals_.data(), self.score_vals_.size());
+          auto* tmp = reinterpret_cast<score_t*>(self.score_buf_.data());
+          auto begin = std::begin(self.scores_);
+          auto end = std::end(self.scores_);
 
-          return score_buf;
+          // FIXME(gnusi)
+          auto& merger = static_cast<Merger&>(self);
+          std::memset(res, 0, merger.size()*sizeof(score_t));
+          (*begin)->evaluate(res);
+          for (++begin; begin != end; ++begin) {
+            (*begin)->evaluate(tmp);
+            merger(res, tmp);
+          }
         });
         break;
     }
@@ -257,10 +265,10 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     return target;
   }
 
+  bstring score_buf_; // FIXME(gnusi): compile time size
   attributes attrs_;
   doc_iterators_t itrs_;
   std::vector<const score*> scores_; // valid sub-scores
-  mutable std::vector<const score_t*> score_vals_;
   irs::doc_iterator* front_;
   const irs::document* front_doc_{};
 }; // conjunction

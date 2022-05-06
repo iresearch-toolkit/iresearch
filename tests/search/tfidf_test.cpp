@@ -150,8 +150,9 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
-      const irs::score_t score_value{*score->evaluate()};
+    while (docs->next()) {
+      irs::score_t score_value{};
+      score->evaluate(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -191,7 +192,8 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
     auto* score = irs::get<irs::score>(*docs);
 
     while(docs->next()) {
-      const irs::score_t score_value{*score->evaluate()};
+      irs::score_t score_value{};
+      score->evaluate(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -397,8 +399,11 @@ TEST_P(tfidf_test_case, test_phrase) {
     while (docs->next()) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
 
+      irs::score_t score_value;
+      score->evaluate(&score_value);
+
       sorted.emplace(
-        *score->evaluate(),
+        score_value,
         irs::to_string<std::string>(actual_value->value.c_str()));
     }
 
@@ -449,8 +454,11 @@ TEST_P(tfidf_test_case, test_phrase) {
     while (docs->next()) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
 
+      irs::score_t score_value;
+      score->evaluate(&score_value);
+
       sorted.emplace(
-        *score->evaluate(),
+        score_value,
         irs::to_string<std::string>(actual_value->value.c_str()));
     }
 
@@ -504,13 +512,16 @@ TEST_P(tfidf_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
+    while (docs->next()) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
+      irs::score_t score_value;
+      score->evaluate(&score_value);
+
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(*score->evaluate(), seq);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -595,13 +606,14 @@ TEST_P(tfidf_test_case, test_query) {
       auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
-      while(docs->next()) {
+      for (irs::score_t score_value{}; docs->next(); ) {
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
 
         auto str_seq = irs::read_string<std::string>(in);
         auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-        sorted.emplace(*score->evaluate(), seq);
+        score->evaluate(&score_value);
+        sorted.emplace(score_value, seq);
       }
     }
 
@@ -701,9 +713,12 @@ TEST_P(tfidf_test_case, test_query) {
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
 
+        irs::score_t score_value;
+        score->evaluate(&score_value);
+
         auto str_seq = irs::read_string<std::string>(in);
         auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-        sorted.emplace(*score->evaluate(), seq);
+        sorted.emplace(score_value, seq);
       }
     }
 
@@ -794,9 +809,12 @@ TEST_P(tfidf_test_case, test_query) {
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
 
+        irs::score_t score_value;
+        score->evaluate(&score_value);
+
         auto str_seq = irs::read_string<std::string>(in);
         auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-        sorted.emplace(*score->evaluate(), seq);
+        sorted.emplace(score_value, seq);
       }
     }
 
@@ -831,13 +849,14 @@ TEST_P(tfidf_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
+    for (irs::score_t score_value{}; docs->next(); ) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(*score->evaluate(), seq);
+      score->evaluate(&score_value);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -872,13 +891,14 @@ TEST_P(tfidf_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
+    for (irs::score_t score_value{}; docs->next(); ) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(*score->evaluate(), seq);
+      score->evaluate(&score_value);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -960,13 +980,14 @@ TEST_P(tfidf_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
+    for (irs::score_t score_value{}; docs->next(); ) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(*score->evaluate(), seq);
+      score->evaluate(&score_value);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -1008,13 +1029,14 @@ TEST_P(tfidf_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
+    for (irs::score_t score_value{}; docs->next(); ) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(*score->evaluate(), seq);
+      score->evaluate(&score_value);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -1051,13 +1073,14 @@ TEST_P(tfidf_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
+    for (irs::score_t score_value{}; docs->next(); ) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(*score->evaluate(), seq);
+      score->evaluate(&score_value);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -1086,10 +1109,11 @@ TEST_P(tfidf_test_case, test_query) {
     ASSERT_FALSE(score->is_default());
 
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
-    while(docs->next()) {
+    while (docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
-      const irs::score_t score_value{*score->evaluate()};
+      irs::score_t score_value{};
+      score->evaluate(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
       ASSERT_EQ(1.5f, score_value);
@@ -1114,10 +1138,11 @@ TEST_P(tfidf_test_case, test_query) {
     ASSERT_TRUE(score->is_default());
 
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
-    while(docs->next()) {
+    while (docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
-      const irs::score_t score_value{*score->evaluate()};
+      irs::score_t score_value{};
+      score->evaluate(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
       ASSERT_EQ(0.f, score_value);
@@ -1143,10 +1168,11 @@ TEST_P(tfidf_test_case, test_query) {
     ASSERT_FALSE(score->is_default());
 
     irs::doc_id_t doc = irs::doc_limits::min();
-    while(docs->next()) {
+    while (docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
-      const irs::score_t score_value{*score->evaluate()};
+      irs::score_t score_value{};
+      score->evaluate(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
       ASSERT_EQ(1.f, score_value);
@@ -1176,7 +1202,8 @@ TEST_P(tfidf_test_case, test_query) {
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
-      const irs::score_t score_value{*score->evaluate()};
+      irs::score_t score_value{};
+      score->evaluate(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
       ASSERT_EQ(0.f, score_value);
@@ -1419,13 +1446,15 @@ TEST_P(tfidf_test_case, test_order) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    for (; docs->next();) {
+    for (irs::score_t score_value{}; docs->next(); ) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(*score->evaluate(), seq);
+
+      score->evaluate(&score_value);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());

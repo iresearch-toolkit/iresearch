@@ -166,11 +166,10 @@ class same_position_query final : public filter::prepared {
         auto* score = irs::get_mutable<irs::score>(docs.get());
 
         if (score) {
-          score->resize(ord);
-
           Scorers scorers(
             ord, segment, *term_state.reader,
-            term_stats->c_str(), score->data(),
+            term_stats->c_str(),
+            /*score_buf*/ nullptr, // FIXME(gnusi) ???
             *docs, boost());
 
           irs::reset(*score, std::move(scorers));
