@@ -441,6 +441,8 @@ template<typename Visitor>
 auto ResoveMergeType(sort::MergeType type,
                      size_t num_buckets,
                      Visitor&& visitor) {
+  constexpr size_t kRuntimeSize = std::numeric_limits<size_t>::max();
+
   auto impl = [&]<typename Merger>(){
     switch (num_buckets) {
       case 0:
@@ -454,7 +456,7 @@ auto ResoveMergeType(sort::MergeType type,
       case 4:
         return visitor(Aggregator<Merger, 4>{});
       default:
-        return visitor(Aggregator<Merger, std::numeric_limits<size_t>::max()>{num_buckets});
+        return visitor(Aggregator<Merger, kRuntimeSize>{num_buckets});
     }
   };
 
@@ -465,7 +467,7 @@ auto ResoveMergeType(sort::MergeType type,
       return impl.template operator()<MaxMerger>();
     default:
       assert(false);
-      return std::forward<Visitor>(visitor).template operator()(NoopAggregator{});
+      return visitor(NoopAggregator{});
   }
 }
 
