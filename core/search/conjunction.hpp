@@ -193,7 +193,6 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
 
           // FIXME(gnusi)
           auto& merger = static_cast<Merger&>(self);
-          std::memset(res, 0, merger.size()*sizeof(score_t));
           self.scores_.front()->evaluate(res);
           self.scores_.back()->evaluate(tmp);
           merger(res, tmp);
@@ -206,7 +205,6 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
 
           // FIXME(gnusi)
           auto& merger = static_cast<Merger&>(self);
-          std::memset(res, 0, merger.size()*sizeof(score_t));
           self.scores_.front()->evaluate(res);
           self.scores_[1]->evaluate(tmp);
           merger(res, tmp);
