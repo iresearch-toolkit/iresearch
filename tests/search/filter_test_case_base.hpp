@@ -425,10 +425,11 @@ class filter_test_case_base : public index_test_base {
       std::span<const irs::sort::ptr> order,
       const std::vector<irs::doc_id_t>& expected,
       const irs::index_reader& rdr,
-      bool score_must_be_present = true) {
+      bool score_must_be_present = true,
+      bool reverse = false) {
     auto prepared_order = irs::Order::Prepare(order);
     auto prepared_filter = filter.prepare(rdr, prepared_order);
-    auto score_less = [size = prepared_order.buckets.size()](
+    auto score_less = [reverse, size = prepared_order.buckets.size()](
         const std::pair<irs::bstring, irs::doc_id_t>& lhs,
         const std::pair<irs::bstring, irs::doc_id_t>& rhs)->bool {
       const auto& [lhs_buf, lhs_doc] = lhs;
@@ -441,11 +442,11 @@ class filter_test_case_base : public index_test_base {
         const auto r = (lhs_score[i] <=> rhs_score[i]);
 
         if (r < 0) {
-          return true;
+          return !reverse;
         }
 
         if (r > 0) {
-          return false;
+          return reverse;
         }
       }
 
