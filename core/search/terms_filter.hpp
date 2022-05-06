@@ -66,6 +66,7 @@ struct by_terms_options {
   using search_terms = std::set<search_term>;
 
   search_terms terms;
+  sort::MergeType merge_type{sort::MergeType::AGGREGATE};
 
   bool operator==(const by_terms_options& rhs) const noexcept {
     return terms == rhs.terms;
