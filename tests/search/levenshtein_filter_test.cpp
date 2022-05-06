@@ -525,10 +525,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto expected_doc = std::begin(expected_docs);
     while (docs->next()) {
-      const auto* scr = score->evaluate();
-      ASSERT_NE(nullptr, scr);
-      const float_t* value = reinterpret_cast<const float_t*>(scr);
-      ASSERT_FLOAT_EQ(expected_doc->first, *value);
+      irs::score_t value;
+      score->evaluate(&value);
+      ASSERT_FLOAT_EQ(expected_doc->first, value);
       ASSERT_EQ(expected_doc->second, docs->value());
       ++expected_doc;
     }
@@ -562,10 +561,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto expected_doc = std::begin(expected_docs);
     while (docs->next()) {
-      const auto* scr = score->evaluate();
-      ASSERT_NE(nullptr, scr);
-      const float_t* value = reinterpret_cast<const float_t*>(scr);
-      ASSERT_FLOAT_EQ(expected_doc->first, *value);
+      irs::score_t value;
+      score->evaluate(&value);
+      ASSERT_FLOAT_EQ(expected_doc->first, value);
       ASSERT_EQ(expected_doc->second, docs->value());
       ++expected_doc;
     }
@@ -599,10 +597,10 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto expected_doc = std::begin(expected_docs);
     while (docs->next()) {
-      const auto* scr = score->evaluate();
-      ASSERT_NE(nullptr, scr);
-      const float_t* value = reinterpret_cast<const float_t*>(scr);
-      ASSERT_FLOAT_EQ(expected_doc->first, *value);
+      irs::score_t value;
+      score->evaluate(&value);
+
+      ASSERT_FLOAT_EQ(expected_doc->first, value);
       ASSERT_EQ(expected_doc->second, docs->value());
       ++expected_doc;
     }
@@ -648,10 +646,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
     while (docs->next()) {
-      const auto* scr = score->evaluate();
-      ASSERT_NE(nullptr, scr);
-      const float_t* value = reinterpret_cast<const float_t*>(scr);
-      actual_docs.emplace_back(*value, docs->value());
+      irs::score_t value;
+      score->evaluate(&value);
+      actual_docs.emplace_back(value, docs->value());
     }
     ASSERT_FALSE(docs->next());
     ASSERT_EQ(std::size(expected_docs), actual_docs.size());
@@ -705,10 +702,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
     while (docs->next()) {
-      const auto* scr = score->evaluate();
-      ASSERT_NE(nullptr, scr);
-      const float_t* value = reinterpret_cast<const float_t*>(scr);
-      actual_docs.emplace_back(*value, docs->value());
+      irs::score_t value;
+      score->evaluate(&value);
+      actual_docs.emplace_back(value, docs->value());
     }
 
     ASSERT_FALSE(docs->next());
@@ -765,10 +761,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
     while (docs->next()) {
-      const auto* scr = score->evaluate();
-      ASSERT_NE(nullptr, scr);
-      const float_t* value = reinterpret_cast<const float_t*>(scr);
-      actual_docs.emplace_back(*value, docs->value());
+      irs::score_t value;
+      score->evaluate(&value);
+      actual_docs.emplace_back(value, docs->value());
     }
 
     ASSERT_FALSE(docs->next());

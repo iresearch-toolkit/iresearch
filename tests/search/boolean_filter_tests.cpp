@@ -76,11 +76,10 @@ struct basic_sort : irs::sort {
   }
 
   struct basic_scorer final : irs::score_ctx {
-    basic_scorer(size_t idx, irs::score_t* score_buf) noexcept
-      : idx(idx), score_buf(score_buf) {}
+    explicit basic_scorer(size_t idx) noexcept
+      : idx(idx) {}
 
     size_t idx;
-    irs::score_t* score_buf;
   };
 
   struct prepared_sort final : irs::PreparedSortBase<void> {
@@ -95,16 +94,14 @@ struct basic_sort : irs::sort {
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type*,
-        irs::score_t* score_buf,
+        irs::score_t* /*score_buf*/,
         const irs::attribute_provider&,
         irs::boost_t) const override {
       return {
-        std::unique_ptr<irs::score_ctx>(new basic_scorer(idx, score_buf)),
-        [](irs::score_ctx* ctx) -> const irs::score_t* {
+        std::unique_ptr<irs::score_ctx>(new basic_scorer(idx)),
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
           const auto& state = *reinterpret_cast<basic_scorer*>(ctx);
-          *state.score_buf = static_cast<uint32_t>(state.idx);
-
-          return state.score_buf;
+          *res = static_cast<uint32_t>(state.idx);
         }
       };
     }
@@ -147,22 +144,20 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
     if (!ord.buckets.empty()) {
       assert(stats_);
 
-      score_.resize(ord);
       scorers_ = irs::Scorers(
         ord,
         irs::sub_reader::empty(),
         irs::empty_term_reader{0},
         stats_,
-        score_.data(),
+        nullptr,
         *this,
         boost);
 
-      score_.reset(this, [](irs::score_ctx* ctx) {
+      score_.reset(this, [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
         const auto& self = *static_cast<basic_doc_iterator*>(ctx);
         for (auto& scorer : self.scorers_.scorers) {
-          scorer.func();
+          scorer.func(res++);
         }
-        return self.scorers_.score_buf;
       });
 
       attrs_[irs::type<irs::score>::id()] = &score_;
@@ -378,7 +373,8 @@ TEST(boolean_query_boost, hierarchy) {
     {
       ASSERT_TRUE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
-      auto doc_boost = *scr->evaluate();
+      irs::score_t doc_boost;
+      scr->evaluate(&doc_boost);
       ASSERT_EQ(4*value*value*value+value*value, doc_boost);
     }
 
@@ -387,7 +383,8 @@ TEST(boolean_query_boost, hierarchy) {
     {
       ASSERT_TRUE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
-      auto doc_boost = *scr->evaluate();
+      irs::score_t doc_boost;
+      scr->evaluate(&doc_boost);
       ASSERT_EQ(4*value*value*value+value*value, doc_boost);
     }
 
@@ -465,7 +462,8 @@ TEST(boolean_query_boost, hierarchy) {
     {
       ASSERT_TRUE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
-      auto doc_boost = *scr->evaluate();
+      irs::score_t doc_boost;
+      scr->evaluate(&doc_boost);
       ASSERT_EQ(2*value*value*value+4*value*value+value, doc_boost);
     }
 
@@ -474,7 +472,8 @@ TEST(boolean_query_boost, hierarchy) {
     {
       ASSERT_TRUE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
-      auto doc_boost = *scr->evaluate();
+      irs::score_t doc_boost;
+      scr->evaluate(&doc_boost);
       ASSERT_EQ(value*value*value+3*value*value+value, doc_boost);
     }
 
@@ -483,7 +482,8 @@ TEST(boolean_query_boost, hierarchy) {
     {
       ASSERT_TRUE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
-      auto doc_boost = *scr->evaluate();
+      irs::score_t doc_boost;
+      scr->evaluate(&doc_boost);
       ASSERT_EQ(value*value*value+value*value+value, doc_boost);
     }
 
@@ -557,7 +557,8 @@ TEST(boolean_query_boost, hierarchy) {
     // the first hit should be scored as value^3+2*value^2+3*value^2+value
     {
       ASSERT_TRUE(docs->next());
-      auto doc_boost = *scr->evaluate();
+      irs::score_t doc_boost;
+      scr->evaluate(&doc_boost);
       ASSERT_EQ(value*value*value+5*value*value+value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -565,7 +566,8 @@ TEST(boolean_query_boost, hierarchy) {
     // the second hit should be scored as value
     {
       ASSERT_TRUE(docs->next());
-      auto doc_boost = *scr->evaluate();
+      irs::score_t doc_boost;
+      scr->evaluate(&doc_boost);
       ASSERT_EQ(value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -573,7 +575,8 @@ TEST(boolean_query_boost, hierarchy) {
     // the third hit should be scored as value
     {
       ASSERT_TRUE(docs->next());
-      auto doc_boost = *scr->evaluate();
+      irs::score_t doc_boost;
+      scr->evaluate(&doc_boost);
       ASSERT_EQ(value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -634,7 +637,8 @@ TEST(boolean_query_boost, and_filter) {
     auto* scr = irs::get<irs::score>(*docs);
     ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
-    auto doc_boost = *scr->evaluate() ;
+    irs::score_t doc_boost;
+    scr->evaluate(&doc_boost);
     ASSERT_EQ(value, doc_boost);
     ASSERT_FALSE(docs->next());
   }
@@ -666,7 +670,8 @@ TEST(boolean_query_boost, and_filter) {
     auto* scr = irs::get<irs::score>(*docs);
     ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
-    auto doc_boost = *scr->evaluate() ;
+    irs::score_t doc_boost;
+    scr->evaluate(&doc_boost);
     ASSERT_EQ(value*value, doc_boost);
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(docs->next());
@@ -707,7 +712,8 @@ TEST(boolean_query_boost, and_filter) {
     auto* scr = irs::get<irs::score>(*docs);
     ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
-    auto doc_boost = *scr->evaluate() ;
+    irs::score_t doc_boost;
+    scr->evaluate(&doc_boost);
     ASSERT_EQ(2*value*value, doc_boost);
     ASSERT_EQ(docs->value(), doc->value);
 
@@ -753,7 +759,8 @@ TEST(boolean_query_boost, and_filter) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
-    auto doc_boost = *scr->evaluate() ;
+    irs::score_t doc_boost;
+    scr->evaluate(&doc_boost);
     ASSERT_EQ(3*value*value+value, doc_boost);
 
     ASSERT_FALSE(docs->next());
@@ -798,7 +805,8 @@ TEST(boolean_query_boost, and_filter) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
-    auto doc_boost = *scr->evaluate() ;
+    irs::score_t doc_boost;
+    scr->evaluate(&doc_boost);
     ASSERT_EQ(3*value, doc_boost);
 
     ASSERT_FALSE(docs->next());
@@ -844,7 +852,8 @@ TEST(boolean_query_boost, and_filter) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
-    auto doc_boost = *scr->evaluate() ;
+    irs::score_t doc_boost;
+    scr->evaluate(&doc_boost);
     ASSERT_EQ(irs::boost_t(0), doc_boost);
 
     ASSERT_FALSE(docs->next());
@@ -904,7 +913,8 @@ TEST(boolean_query_boost, or_filter) {
     ASSERT_FALSE(!scr);
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(docs->next());
-    auto doc_boost = *scr->evaluate();
+    irs::score_t doc_boost;
+    scr->evaluate(&doc_boost);
     ASSERT_EQ(value, doc_boost);
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(docs->next());
@@ -939,7 +949,8 @@ TEST(boolean_query_boost, or_filter) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
-    auto doc_boost = *scr->evaluate();
+    irs::score_t doc_boost;
+    scr->evaluate(&doc_boost);
     ASSERT_EQ(value*value, doc_boost);
     ASSERT_FALSE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
@@ -976,7 +987,8 @@ TEST(boolean_query_boost, or_filter) {
     // exists in both results
     {
       ASSERT_TRUE(docs->next());
-      auto doc_boost = *scr->evaluate();
+      irs::score_t doc_boost;
+      scr->evaluate(&doc_boost);
       ASSERT_EQ(2 * value * value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -985,7 +997,8 @@ TEST(boolean_query_boost, or_filter) {
     // exists in second result only
     {
       ASSERT_TRUE(docs->next());
-      auto doc_boost = *scr->evaluate();
+      irs::score_t doc_boost;
+      scr->evaluate(&doc_boost);
       ASSERT_EQ(value * value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1034,7 +1047,8 @@ TEST(boolean_query_boost, or_filter) {
     // first hit
     {
       ASSERT_TRUE(docs->next());
-      auto doc_boost = *scr->evaluate();
+      irs::score_t doc_boost;
+      scr->evaluate(&doc_boost);
       ASSERT_EQ(3*value*value + value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1042,7 +1056,8 @@ TEST(boolean_query_boost, or_filter) {
     // second hit
     {
       ASSERT_TRUE(docs->next());
-      auto doc_boost = *scr->evaluate();
+      irs::score_t doc_boost;
+      scr->evaluate(&doc_boost);
       ASSERT_EQ(2*value*value + value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1091,7 +1106,8 @@ TEST(boolean_query_boost, or_filter) {
     // first hit
     {
       ASSERT_TRUE(docs->next());
-      auto doc_boost = *scr->evaluate();
+      irs::score_t doc_boost;
+      scr->evaluate(&doc_boost);
       ASSERT_EQ(3*value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1099,7 +1115,8 @@ TEST(boolean_query_boost, or_filter) {
     // second hit
     {
       ASSERT_TRUE(docs->next());
-      auto doc_boost = *scr->evaluate();
+      irs::score_t doc_boost;
+      scr->evaluate(&doc_boost);
       ASSERT_EQ(2*value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1147,7 +1164,8 @@ TEST(boolean_query_boost, or_filter) {
     // first hit
     {
       ASSERT_TRUE(docs->next());
-      auto doc_boost = *scr->evaluate();
+      irs::score_t doc_boost;
+      scr->evaluate(&doc_boost);
       ASSERT_EQ(irs::boost_t(0), doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1155,7 +1173,8 @@ TEST(boolean_query_boost, or_filter) {
     // second hit
     {
       ASSERT_TRUE(docs->next());
-      auto doc_boost = *scr->evaluate();
+      irs::score_t doc_boost;
+      scr->evaluate(&doc_boost);
       ASSERT_EQ(irs::boost_t(0), doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -15117,7 +15136,9 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential_ordered) {
 
     while (filter_itr->next()) {
       ASSERT_FALSE(!score);
-      scored_result.emplace(*score->evaluate(), filter_itr->value());
+      irs::score_t score_value;
+      score->evaluate(&score_value);
+      scored_result.emplace(score_value, filter_itr->value());
       ++docs_count;
     }
 
@@ -15202,7 +15223,9 @@ TEST_P(boolean_filter_test_case, not_sequential_ordered) {
 
     while (filter_itr->next()) {
       ASSERT_FALSE(!score);
-      scored_result.emplace(*score->evaluate(), filter_itr->value());
+      irs::score_t score_value;
+      score->evaluate(&score_value);
+      scored_result.emplace(score_value, filter_itr->value());
       ++docs_count;
     }
 
@@ -15640,8 +15663,9 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
         EXPECT_EQ(*expected_doc, doc->value);
         ++expected_doc;
 
-        scores.emplace_back(reinterpret_cast<const irs::byte_type*>(score->evaluate()),
-                            prepared_ord.score_size);
+        irs::bstring score_value(prepared_ord.score_size, 0);
+        score->evaluate(reinterpret_cast<irs::score_t*>(score_value.data()));
+        scores.emplace_back(std::move(score_value));
       }
 
       ASSERT_EQ(expected_docs.end(), expected_doc);
@@ -15858,7 +15882,8 @@ TEST(And_test, not_boosted) {
   auto* doc = irs::get<irs::document>(*docs);
 
   ASSERT_TRUE(docs->next());
-  auto doc_boost = *scr->evaluate();
+  irs::score_t doc_boost;
+  scr->evaluate(&doc_boost);
   ASSERT_EQ(5., doc_boost); // FIXME: should be 9 if we will boost negation
   ASSERT_EQ(1, doc->value);
 
@@ -16051,7 +16076,8 @@ TEST(Or_test, boosted_not) {
   auto* doc = irs::get<irs::document>(*docs);
 
   ASSERT_TRUE(docs->next());
-  auto doc_boost = *scr->evaluate();
+  irs::score_t doc_boost;
+  scr->evaluate(&doc_boost);
   ASSERT_EQ(5., doc_boost); // FIXME: should be 9 if we will boost negation
   ASSERT_EQ(1, doc->value);
   ASSERT_FALSE(docs->next());

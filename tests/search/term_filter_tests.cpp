@@ -125,7 +125,9 @@ class term_filter_test_case : public tests::filter_test_case_base {
       // first hit
       {
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(irs::boost_t(0), *scr->evaluate());
+        irs::score_t score_value;
+        scr->evaluate(&score_value);
+        ASSERT_EQ(irs::boost_t(0), score_value);
         ASSERT_EQ(docs->value(), doc->value);
       }
 
@@ -147,7 +149,9 @@ class term_filter_test_case : public tests::filter_test_case_base {
       // first hit
       {
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(irs::boost_t(value), *scr->evaluate());
+        irs::score_t score_value;
+        scr->evaluate(&score_value);
+        ASSERT_EQ(irs::boost_t(value), score_value);
       }
 
       ASSERT_FALSE(docs->next());
@@ -491,7 +495,8 @@ class term_filter_test_case : public tests::filter_test_case_base {
       ASSERT_FALSE(!scr);
 
       while (docs->next()) {
-        const auto* score_value = scr->evaluate();
+        irs::score_t score_value;
+        scr->evaluate(&score_value);
         UNUSED(score_value);
         ASSERT_EQ(1, expected.erase(docs->value()));
       }

@@ -840,20 +840,17 @@ struct test_score_ctx : public irs::score_ctx {
       std::vector<size_t>* f,
       const irs::frequency* p,
       std::vector<irs::boost_t>* b,
-      const irs::filter_boost* fb,
-      irs::score_t* score_buf) noexcept
+      const irs::filter_boost* fb) noexcept
     : freq(f),
       filter_boost(b),
       freq_from_filter(p),
-      boost_from_filter(fb),
-      score_buf(score_buf) {
+      boost_from_filter(fb) {
   }
 
   std::vector<size_t>* freq;
   std::vector<irs::boost_t>* filter_boost;
   const irs::frequency* freq_from_filter;
   const irs::filter_boost* boost_from_filter;
-  irs::score_t* score_buf;
 };
 
 TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
@@ -905,18 +902,17 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
     const irs::sub_reader& /*segment*/,
     const irs::term_reader& /*term*/,
     const irs::byte_type* /*stats_buf*/,
-    irs::score_t* score_buf,
+    irs::score_t* /*score_buf*/,
     const irs::attribute_provider& attr)->irs::score_function {
       auto* freq = irs::get<irs::frequency>(attr);
       auto* boost = irs::get<irs::filter_boost>(attr);
       return {
-        irs::memory::make_unique<test_score_ctx>(&frequency, freq, &filter_boost, boost, score_buf),
-        [](irs::score_ctx* ctx) noexcept -> const irs::score_t* {
+        irs::memory::make_unique<test_score_ctx>(&frequency, freq, &filter_boost, boost),
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
           const auto& freq = *reinterpret_cast<test_score_ctx*>(ctx);
           freq.freq->push_back(freq.freq_from_filter->value);
           freq.filter_boost->push_back(freq.boost_from_filter->value);
-
-          return freq.score_buf;
+          *res = {};
         }
       };
   };
@@ -983,18 +979,17 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
       const irs::sub_reader& /*segment*/,
       const irs::term_reader& /*term*/,
       const irs::byte_type* /*stats_buf*/,
-      irs::score_t* score_buf,
+      irs::score_t* /*score_buf*/,
       const irs::attribute_provider& attr)->irs::score_function {
     auto* freq = irs::get<irs::frequency>(attr);
     auto* boost = irs::get<irs::filter_boost>(attr);
     return {
-        irs::memory::make_unique<test_score_ctx>(&frequency, freq, &filter_boost, boost, score_buf),
-        [](irs::score_ctx* ctx) noexcept -> const irs::score_t* {
+        irs::memory::make_unique<test_score_ctx>(&frequency, freq, &filter_boost, boost),
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
           const auto& freq = *reinterpret_cast<test_score_ctx*>(ctx);
           freq.freq->push_back(freq.freq_from_filter->value);
           freq.filter_boost->push_back(freq.boost_from_filter->value);
-
-          return freq.score_buf;
+          *res = {};
         }
     };
   };

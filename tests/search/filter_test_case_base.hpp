@@ -215,7 +215,7 @@ struct custom_sort: public irs::sort {
       return {
         irs::memory::make_unique<custom_sort::prepared::scorer>(
            sort_, segment_reader, term_reader,
-           filter_node_attrs, document_attrs, score_buf),
+           filter_node_attrs, document_attrs),
         [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
           const auto& state = *reinterpret_cast<scorer*>(ctx);
 
@@ -331,14 +331,14 @@ struct frequency_sort: public irs::sort {
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type* stats_buf,
-        irs::score_t* buf,
+        irs::score_t* /*buf*/,
         const irs::attribute_provider& doc_attrs,
         irs::boost_t /*boost*/) const override {
       auto* doc = irs::get<irs::document>(doc_attrs);
       auto& stats = stats_cast(stats_buf);
       const irs::doc_id_t* docs_count = &stats.count;
       return {
-        irs::memory::make_unique<frequency_sort::prepared::scorer>(docs_count, doc, buf),
+        irs::memory::make_unique<frequency_sort::prepared::scorer>(docs_count, doc),
         [](irs::score_ctx* ctx, irs::score_t* res) noexcept  {
           const auto& state = *reinterpret_cast<scorer*>(ctx);
 
@@ -381,7 +381,7 @@ class filter_test_case_base : public index_test_base {
     std::vector<irs::cost::cost_t> result_costs;
     get_query_result(
       filter.prepare(rdr, irs::Order::kUnordered),
-      rdr, result, result_costs);
+      rdr, nullptr, result, result_costs);
     ASSERT_EQ(expected, result);
     ASSERT_EQ(expected_costs, result_costs);
   }
@@ -394,7 +394,7 @@ class filter_test_case_base : public index_test_base {
     std::vector<irs::cost::cost_t> result_costs;
     get_query_result(
       filter.prepare(rdr, irs::Order::kUnordered),
-      rdr, result, result_costs);
+      rdr, nullptr, result, result_costs);
     ASSERT_EQ(expected, result);
   }
 
@@ -444,15 +444,15 @@ class filter_test_case_base : public index_test_base {
         ASSERT_FALSE(score_must_be_present);
       }
 
+      irs::bstring score_value(prepared_order.score_size, 0);
+
       while (docs->next()) {
         ASSERT_EQ(docs->value(), doc->value);
 
         if (score && !score->is_default()) {
-          scored_result.emplace(
-            irs::bstring(reinterpret_cast<const irs::byte_type*>(score->evaluate()),
-                         prepared_order.score_size),
-            docs->value()
-          );
+          score->evaluate(reinterpret_cast<irs::score_t*>(score_value.data()));
+
+          scored_result.emplace(score_value, docs->value());
         } else {
           scored_result.emplace(
             irs::bstring(prepared_order.score_size, 0),
@@ -476,6 +476,7 @@ class filter_test_case_base : public index_test_base {
   void get_query_result(
       const irs::filter::prepared::ptr& q,
       const irs::index_reader& rdr,
+      irs::score_t* score_value,
       std::vector<irs::doc_id_t>& result,
       std::vector<irs::cost::cost_t>& result_costs) {
     for (const auto& sub : rdr) {
@@ -492,8 +493,7 @@ class filter_test_case_base : public index_test_base {
         ASSERT_EQ(docs->value(), doc->value);
 
         if (score) {
-          const auto* score_value = score->evaluate();
-          UNUSED(score_value);
+          score->evaluate(score_value);
         }
         // put score attributes to iterator
         result.push_back(docs->value());
