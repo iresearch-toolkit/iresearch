@@ -146,18 +146,17 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
     if (!ord.buckets.empty()) {
       assert(stats_);
 
-      scorers_ = irs::Scorers(
-        ord,
-        irs::sub_reader::empty(),
-        irs::empty_term_reader{0},
-        stats_,
-        nullptr,
-        *this,
-        boost);
+      scorers_ = irs::PrepareScorers(ord,
+                                     irs::sub_reader::empty(),
+                                     irs::empty_term_reader{0},
+                                     stats_,
+                                     nullptr,
+                                     *this,
+                                     boost);
 
       score_.reset(this, [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
         const auto& self = *static_cast<basic_doc_iterator*>(ctx);
-        for (auto& scorer : self.scorers_.scorers) {
+        for (auto& scorer : self.scorers_) {
           scorer.func(res++);
         }
       });
@@ -205,7 +204,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
  private:
   std::map<irs::type_info::type_id, irs::attribute*> attrs_;
   irs::cost est_;
-  irs::Scorers scorers_;
+  std::vector<irs::Scorer> scorers_;
   docids_t::const_iterator first_;
   docids_t::const_iterator last_;
   const irs::byte_type* stats_;
@@ -214,8 +213,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
 }; // basic_doc_iterator
 
 std::vector<irs::doc_id_t> union_all(
-    const std::vector<std::vector<irs::doc_id_t>>& docs
-) {
+    const std::vector<std::vector<irs::doc_id_t>>& docs) {
   std::vector<irs::doc_id_t> result;
   for(auto& part : docs) {
     std::copy(part.begin(), part.end(), std::back_inserter(result));
