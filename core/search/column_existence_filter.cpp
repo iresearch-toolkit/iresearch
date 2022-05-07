@@ -65,11 +65,9 @@ class column_existence_query : public irs::filter::prepared {
       return doc_iterator::empty();
     }
 
-    if (!ord.buckets.empty()) {
-      auto* score = irs::get_mutable<irs::score>(it.get());
-
-      if (score) {
-        auto scorers = PrepareScorers(ord, segment,
+    if (!ord.empty()) {
+      if (auto* score = irs::get_mutable<irs::score>(it.get()); score) {
+        auto scorers = PrepareScorers(ord.buckets(), segment,
                                       empty_term_reader(column.size()),
                                       stats_.c_str(),
                                       /*score_buf*/ nullptr, // FIXME(gnusi) ???
@@ -129,7 +127,7 @@ class column_prefix_existence_query final : public column_existence_query {
 
     return ResoveMergeType(
         sort::MergeType::AGGREGATE,
-        ord.buckets.size(),
+        ord.buckets().size(),
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
 
         using disjunction_t = std::conditional_t<
@@ -160,10 +158,10 @@ filter::prepared::ptr by_column_existence::prepare(
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
-  bstring stats(order.stats_size, 0);
+  bstring stats(order.stats_size(), 0);
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
-  PrepareCollectors(order.buckets, stats_buf, reader);
+  PrepareCollectors(order.buckets(), stats_buf, reader);
 
   filter_boost *= boost();
 

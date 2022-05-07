@@ -65,9 +65,9 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 
 field_collectors::field_collectors(const Order& order)
-  : collectors_base<field_collector_wrapper>(order.buckets.size(), order) {
+  : collectors_base<field_collector_wrapper>(order.buckets().size(), order) {
   auto collectors = collectors_.begin();
-  for (auto& bucket : order.buckets) {
+  for (auto& bucket : order.buckets()) {
     *collectors = bucket.bucket->prepare_field_collector();
     assert(*collectors); // ensured by wrapper
     ++collectors;
@@ -125,7 +125,7 @@ void field_collectors::finish(byte_type* stats_buf, const index_reader& index) c
 // -----------------------------------------------------------------------------
 
 term_collectors::term_collectors(const Order& buckets, size_t size)
-  : collectors_base<term_collector_wrapper>(buckets.buckets.size()*size, buckets) {
+  : collectors_base<term_collector_wrapper>(buckets.buckets().size()*size, buckets) {
   // add term collectors from each bucket
   // layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
   // cppcheck-suppress shadowFunction
@@ -133,7 +133,7 @@ term_collectors::term_collectors(const Order& buckets, size_t size)
   // cppcheck-suppress shadowFunction
   auto end = collectors_.end();
   for (; begin != end; ) {
-    for (auto& entry : buckets.buckets) {
+    for (auto& entry : buckets.buckets()) {
       assert(entry.bucket); // ensured by order::prepare
 
       *begin = entry.bucket->prepare_term_collector();

@@ -109,7 +109,7 @@ class collectors_base {
   using iterator_type = typename std::vector<Collector>::const_iterator;
 
   explicit collectors_base(size_t size, const Order& order)
-    : collectors_(size), buckets_{order.buckets} {
+    : collectors_(size), buckets_{order.buckets()} {
   }
 
   collectors_base(collectors_base&&) = default;

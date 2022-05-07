@@ -208,7 +208,7 @@ filter::prepared::ptr proxy_filter::prepare(
     assert(false);
     return filter::prepared::empty();
   }
-  if (!ord.buckets.empty()) {
+  if (!ord.empty()) {
     // Currently we do not support caching scores.
     // Proxy filter should not be used with scorers!
     assert(false);

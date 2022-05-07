@@ -36,7 +36,7 @@ class fixed_phrase_frequency {
   fixed_phrase_frequency(
       std::vector<term_position_t>&& pos,
       const Order& ord)
-    : pos_(std::move(pos)), order_empty_(ord.buckets.empty()) {
+    : pos_(std::move(pos)), order_empty_(ord.empty()) {
     assert(!pos_.empty()); // must not be empty
     assert(0 == pos_.front().second); // lead offset is always 0
   }
@@ -140,7 +140,7 @@ class variadic_phrase_frequency {
       const Order& ord)
     : pos_(std::move(pos)),
       phrase_size_(pos_.size()),
-      order_empty_(ord.buckets.empty()) {
+      order_empty_(ord.empty()) {
     assert(!pos_.empty() && phrase_size_); // must not be empty
     assert(0 == pos_.front().second); // lead offset is always 0
   }
@@ -275,7 +275,7 @@ class variadic_phrase_frequency_overlapped {
       const Order& ord)
     : pos_(std::move(pos)),
       phrase_size_(pos_.size()),
-      order_empty_(ord.buckets.empty()) {
+      order_empty_(ord.empty()) {
     assert(!pos_.empty() && phrase_size_); // must not be empty
     assert(0 == pos_.front().second); // lead offset is always 0
   }
@@ -452,10 +452,10 @@ class phrase_iterator final : public doc_iterator {
     std::get<irs::cost>(attrs_).reset(
       [this](){ return cost::extract(approx_); });
 
-    if (!ord.buckets.empty()) {
+    if (!ord.empty()) {
       auto& score = std::get<irs::score>(attrs_);
 
-      auto scorers = PrepareScorers(ord, segment, field, stats,
+      auto scorers = PrepareScorers(ord.buckets(), segment, field, stats,
                                     /*score_buf*/ nullptr, // FIXME(gnusi) ???
                                     *this, boost);
 

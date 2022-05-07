@@ -33,11 +33,14 @@ namespace {
 using namespace irs;
 
 template<typename Iterator>
-Order Prepare(Iterator begin, Iterator end) {
-  Order ord;
-  ord.buckets.reserve(std::distance(begin, end));
+std::tuple<std::vector<OrderBucket>, size_t, IndexFeatures> Prepare(
+    Iterator begin, Iterator end) {
+  std::vector<OrderBucket> buckets;
+  buckets.reserve(std::distance(begin, end));
 
-  size_t stats_align = 0;
+  IndexFeatures features{};
+  size_t stats_size{};
+  size_t stats_align{};
 
   for (size_t score_index = 0; begin != end; ++begin) {
     auto prepared = begin->prepare();
@@ -48,28 +51,24 @@ Order Prepare(Iterator begin, Iterator end) {
     }
 
     // cppcheck-suppress shadowFunction
-    const auto stats_size = prepared->stats_size();
-    assert(stats_size.second <= alignof(std::max_align_t));
-    assert(math::is_power2(stats_size.second)); // math::is_power2(0) returns true
+    const auto [bucket_stats_size, bucket_stats_align] = prepared->stats_size();
+    assert(bucket_stats_align <= alignof(std::max_align_t));
+    assert(math::is_power2(bucket_stats_align)); // math::is_power2(0) returns true
 
-    stats_align = std::max(stats_align, stats_size.second);
+    stats_align = std::max(stats_align, bucket_stats_align);
 
-    ord.stats_size = memory::align_up(ord.stats_size, stats_size.second);
-    ord.features |= prepared->features();
+    stats_size = memory::align_up(stats_size, bucket_stats_align);
+    features |= prepared->features();
 
-    ord.buckets.emplace_back(
-      std::move(prepared),
-      score_index,
-      ord.stats_size);
+    buckets.emplace_back(std::move(prepared), score_index, stats_size);
 
-    ord.stats_size += memory::align_up(stats_size.first, stats_size.second);
+    stats_size += memory::align_up(bucket_stats_size, bucket_stats_align);
     ++score_index;
   }
 
-  ord.stats_size = memory::align_up(ord.stats_size, stats_align);
-  ord.score_size = sizeof(score_t)*ord.buckets.size();
+  stats_size = memory::align_up(stats_size, stats_align);
 
-  return ord;
+  return { std::move(buckets), stats_size, features };
 }
 
 void default_score(score_ctx*, score_t*) noexcept { }
@@ -106,31 +105,37 @@ sort::sort(const type_info& type) noexcept
 }
 
 Order Order::Prepare(std::span<const sort::ptr> order) {
-  using PtrIterator = ptr_iterator<decltype(order)::iterator>;
-
-  return ::Prepare(PtrIterator{std::begin(order)}, PtrIterator{std::end(order)});
+  return std::apply(
+      [](auto&&... args) {
+        return Order{std::forward<decltype(args)>(args)...}; },
+      ::Prepare(ptr_iterator{std::begin(order)},
+                ptr_iterator{std::end(order)})
+    );
 }
 
 Order Order::Prepare(std::span<const sort*> order) {
-  using PtrIterator = ptr_iterator<decltype(order)::iterator>;
-
-  return ::Prepare(PtrIterator{std::begin(order)}, PtrIterator{std::end(order)});
+  return std::apply(
+      [](auto&&... args) {
+        return Order{std::forward<decltype(args)>(args)...}; },
+      ::Prepare(ptr_iterator{std::begin(order)},
+                ptr_iterator{std::end(order)})
+    );
 }
 
 const Order Order::kUnordered;
 
 
-std::vector<Scorer> PrepareScorers(const Order& order,
-                                    const sub_reader& segment,
-                                    const term_reader& field,
-                                    const byte_type* stats_buf,
-                                    score_t* score_buf,
-                                    const attribute_provider& doc,
-                                    boost_t boost) {
+std::vector<Scorer> PrepareScorers(std::span<const OrderBucket> buckets,
+                                   const sub_reader& segment,
+                                   const term_reader& field,
+                                   const byte_type* stats_buf,
+                                   score_t* score_buf,
+                                   const attribute_provider& doc,
+                                   boost_t boost) {
   std::vector<Scorer> scorers;
-  scorers.reserve(order.buckets.size());
+  scorers.reserve(buckets.size());
 
-  for (auto& entry : order.buckets) {
+  for (auto& entry : buckets) {
     assert(stats_buf);
     assert(entry.bucket); // ensured by Order
     const auto& bucket = *entry.bucket;

@@ -134,7 +134,7 @@ class same_position_query final : public filter::prepared {
     }
 
     // get features required for query & order
-    const IndexFeatures features = ord.features | by_same_position::kRequiredFeatures;
+    const IndexFeatures features = ord.features() | by_same_position::kRequiredFeatures;
 
     std::vector<score_iterator_adapter<irs::doc_iterator::ptr>> itrs;
     itrs.reserve(query_state->size());
@@ -142,7 +142,7 @@ class same_position_query final : public filter::prepared {
     std::vector<position::ref> positions;
     positions.reserve(itrs.size());
 
-    const bool no_score = ord.buckets.empty();
+    const bool no_score = ord.empty();
     auto term_stats = stats_.begin();
     for (auto& term_state : *query_state) {
       auto* reader = term_state.reader;
@@ -166,7 +166,8 @@ class same_position_query final : public filter::prepared {
         auto* score = irs::get_mutable<irs::score>(docs.get());
 
         if (score) {
-          auto scorers = PrepareScorers(ord, segment, *term_state.reader,
+          auto scorers = PrepareScorers(ord.buckets(), segment,
+                                        *term_state.reader,
                                         term_stats->c_str(),
                                         /*score_buf*/ nullptr, // FIXME(gnusi) ???
                                         *docs, boost());
@@ -183,7 +184,7 @@ class same_position_query final : public filter::prepared {
 
     return irs::ResoveMergeType(
         irs::sort::MergeType::AGGREGATE,
-        ord.buckets.size(),
+        ord.buckets().size(),
         [&]<typename Aggregator>(Aggregator&& aggregator) -> irs::doc_iterator::ptr {
       using conjunction_t = conjunction<doc_iterator::ptr, Aggregator>;
 
@@ -257,7 +258,7 @@ filter::prepared::ptr by_same_position::prepare(
       seek_term_iterator::ptr term = field->iterator(SeekMode::NORMAL);
 
       if (!term->seek(branch.second)) {
-        if (ord.buckets.empty()) {
+        if (ord.empty()) {
           break;
         } else {
           // continue here because we should collect 
@@ -292,7 +293,7 @@ filter::prepared::ptr by_same_position::prepare(
   size_t term_idx = 0;
   same_position_query::stats_t stats(size);
   for (auto& stat : stats) {
-    stat.resize(ord.stats_size);
+    stat.resize(ord.stats_size());
     auto* stats_buf = const_cast<byte_type*>(stat.data());
     term_stats.finish(stats_buf, term_idx++, field_stats, index);
   }

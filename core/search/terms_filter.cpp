@@ -144,7 +144,7 @@ filter::prepared::ptr by_terms::prepare(
   std::vector<bstring> stats(size);
   size_t term_idx = 0;
   for (auto& stat : stats) {
-    stat.resize(order.stats_size, 0);
+    stat.resize(order.stats_size(), 0);
     auto* stats_buf = const_cast<byte_type*>(stat.data());
     term_stats.finish(stats_buf, term_idx++, field_stats, index);
   }

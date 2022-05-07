@@ -34,8 +34,8 @@ all_iterator::all_iterator(
   : max_doc_{doc_id_t(doc_limits::min() + docs_count - 1)} {
   std::get<cost>(attrs_).reset(max_doc_);
 
-  if (!order.buckets.empty()) {
-    auto scorers = PrepareScorers(order, reader,
+  if (!order.empty()) {
+    auto scorers = PrepareScorers(order.buckets(), reader,
                                   irs::empty_term_reader(docs_count),
                                   query_stats,
                                   /*score_buf*/ nullptr, // FIXME(gnusi) ???

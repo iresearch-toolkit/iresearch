@@ -566,7 +566,7 @@ DEFINE_FACTORY_DEFAULT(by_granular_range) // cppcheck-suppress unknownMacro
     }
   }
 
-  limited_sample_collector<term_frequency> collector(ord.buckets.empty() ? 0 : scored_terms_limit); // object for collecting order stats
+  limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   granular_states states(index.size());
   multiterm_visitor<granular_states> mtv(collector, states);
 

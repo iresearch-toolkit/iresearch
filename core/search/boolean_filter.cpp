@@ -81,7 +81,7 @@ irs::doc_iterator::ptr make_disjunction(
 
   return irs::ResoveMergeType(
       merge_type,
-      ord.buckets.size(),
+      ord.buckets().size(),
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
         using disjunction_t = std::conditional_t<
             std::is_same_v<A, irs::NoopAggregator>,
@@ -133,7 +133,7 @@ irs::doc_iterator::ptr make_conjunction(
 
   return irs::ResoveMergeType(
       merge_type,
-      ord.buckets.size(),
+      ord.buckets().size(),
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
         using conjunction_t = irs::conjunction<irs::doc_iterator::ptr, A>;
 
@@ -350,7 +350,7 @@ class min_match_query final : public boolean_query {
 
     return ResoveMergeType(
         merge_type,
-        ord.buckets.size(),
+        ord.buckets().size(),
         [&]<typename A>(A&& aggregator) -> doc_iterator::ptr {
           if (min_match_count == size) {
             using conjunction_t = conjunction<doc_iterator::ptr, A>;
@@ -517,7 +517,7 @@ filter::prepared::ptr And::prepare(
       // new_boost * OR_BOOST * LEFT_BOOST. If we substitute new_boost back we will get
       // ( boost * OR_BOOST * ALL_BOOST + boost * OR_BOOST * LEFT_BOOST) - original non-optimized boost value
       auto left_boost = (*incl.begin())->boost();
-      if (this->boost() != 0 && left_boost != 0 && !ord.buckets.empty()) {
+      if (this->boost() != 0 && left_boost != 0 && !ord.empty()) {
         boost = (boost * this->boost() * all_boost + boost * this->boost() * left_boost)
           / (left_boost * this->boost());
       } else {
@@ -585,7 +585,7 @@ filter::prepared::ptr Or::prepare(
     }
   }
   if (all_count != 0) {
-    if (ord.buckets.empty() && incl.size() > 1 && min_match_count_ <= all_count) {
+    if (ord.empty() && incl.size() > 1 && min_match_count_ <= all_count) {
       // if we have at least one all in include group - all other filters are not necessary
       // in case there is no scoring and 'all' count satisfies  min_match
       assert(incl_all != nullptr);

@@ -1453,8 +1453,8 @@ TEST_P(bm25_test_case, test_order) {
   const irs::sort* impl{&sort};
 
   auto prepared_order = irs::Order::Prepare(std::span{&impl, 1});
-  ASSERT_EQ(sizeof(irs::score_t), prepared_order.score_size);
-  ASSERT_EQ(1, prepared_order.buckets.size());
+  ASSERT_EQ(sizeof(irs::score_t), prepared_order.score_size());
+  ASSERT_EQ(1, prepared_order.buckets().size());
 
   uint64_t seq = 0;
   const auto* column = segment.column("seq");

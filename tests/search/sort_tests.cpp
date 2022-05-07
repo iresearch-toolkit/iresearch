@@ -102,10 +102,10 @@ struct aligned_scorer : public irs::sort {
   }
 
   explicit aligned_scorer(
-      irs::IndexFeatures index_features = irs::IndexFeatures::NONE,
+      irs::IndexFeatures index_features_ = irs::IndexFeatures::NONE,
       bool empty_scorer = true)
     : irs::sort(irs::type<aligned_scorer>::get()),
-      index_features_(index_features),
+      index_features_(index_features_),
       empty_scorer_(empty_scorer) {
   }
 
@@ -130,10 +130,10 @@ TEST(sort_tests, static_const) {
   static_assert("iresearch::filter_boost" == irs::type<irs::filter_boost>::name());
   static_assert(irs::kNoBoost == irs::filter_boost().value);
 
-  ASSERT_TRUE(irs::Order::kUnordered.buckets.empty());
-  ASSERT_EQ(0, irs::Order::kUnordered.score_size);
-  ASSERT_EQ(0, irs::Order::kUnordered.stats_size);
-  ASSERT_EQ(irs::IndexFeatures::NONE, irs::Order::kUnordered.features);
+  ASSERT_TRUE(irs::Order::kUnordered.buckets().empty());
+  ASSERT_EQ(0, irs::Order::kUnordered.score_size());
+  ASSERT_EQ(0, irs::Order::kUnordered.stats_size());
+  ASSERT_EQ(irs::IndexFeatures::NONE, irs::Order::kUnordered.features());
 }
 
 TEST(sort_tests, score_traits) {
@@ -170,14 +170,14 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = irs::Order::Prepare(ord);
-    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features);
-    ASSERT_FALSE(prepared.buckets.empty());
-    ASSERT_EQ(1, prepared.buckets.size());
-    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
-    ASSERT_EQ(4, prepared.stats_size);
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
+    ASSERT_FALSE(prepared.buckets().empty());
+    ASSERT_EQ(1, prepared.buckets().size());
+    ASSERT_EQ(prepared.buckets().size()*sizeof(irs::score_t), prepared.score_size());
+    ASSERT_EQ(4, prepared.stats_size());
 
     auto expected_offset = expected_offsets.begin();
-    for (auto& bucket : prepared.buckets) {
+    for (auto& bucket : prepared.buckets()) {
       ASSERT_NE(nullptr, bucket.bucket);
       ASSERT_EQ(expected_offset->first, bucket.score_index);
       ASSERT_EQ(expected_offset->second, bucket.stats_offset);
@@ -185,10 +185,10 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size, 0);
-    irs::bstring score_buf(prepared.score_size, 0);
+    irs::bstring stats_buf(prepared.stats_size(), 0);
+    irs::bstring score_buf(prepared.score_size(), 0);
     auto scorers = irs::PrepareScorers(
-        prepared, irs::sub_reader::empty(),
+        prepared.buckets(), irs::sub_reader::empty(),
         irs::empty_term_reader(0), stats_buf.c_str(),
         reinterpret_cast<irs::score_t*>(score_buf.data()),
         EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -216,14 +216,14 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = irs::Order::Prepare(ord);
-    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features);
-    ASSERT_FALSE(prepared.buckets.empty());
-    ASSERT_EQ(3, prepared.buckets.size());
-    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
-    ASSERT_EQ(8, prepared.stats_size);
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
+    ASSERT_FALSE(prepared.buckets().empty());
+    ASSERT_EQ(3, prepared.buckets().size());
+    ASSERT_EQ(prepared.buckets().size()*sizeof(irs::score_t), prepared.score_size());
+    ASSERT_EQ(8, prepared.stats_size());
 
     auto expected_offset = expected_offsets.begin();
-    for (auto& bucket : prepared.buckets) {
+    for (auto& bucket : prepared.buckets()) {
       ASSERT_NE(nullptr, bucket.bucket);
       ASSERT_EQ(expected_offset->first, bucket.score_index);
       ASSERT_EQ(expected_offset->second, bucket.stats_offset);
@@ -231,10 +231,10 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size, 0);
-    irs::bstring score_buf(prepared.score_size, 0);
+    irs::bstring stats_buf(prepared.stats_size(), 0);
+    irs::bstring score_buf(prepared.score_size(), 0);
     auto scorers = irs::PrepareScorers(
-            prepared, irs::sub_reader::empty(),
+            prepared.buckets(), irs::sub_reader::empty(),
             irs::empty_term_reader(0), stats_buf.c_str(),
             reinterpret_cast<irs::score_t*>(score_buf.data()),
             EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -262,14 +262,14 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = irs::Order::Prepare(ord);
-    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features);
-    ASSERT_FALSE(prepared.buckets.empty());
-    ASSERT_EQ(3, prepared.buckets.size());
-    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
-    ASSERT_EQ(8, prepared.stats_size);
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
+    ASSERT_FALSE(prepared.buckets().empty());
+    ASSERT_EQ(3, prepared.buckets().size());
+    ASSERT_EQ(prepared.buckets().size()*sizeof(irs::score_t), prepared.score_size());
+    ASSERT_EQ(8, prepared.stats_size());
 
     auto expected_offset = expected_offsets.begin();
-    for (auto& bucket : prepared.buckets) {
+    for (auto& bucket : prepared.buckets()) {
       ASSERT_NE(nullptr, bucket.bucket);
       ASSERT_EQ(expected_offset->first, bucket.score_index);
       ASSERT_EQ(expected_offset->second, bucket.stats_offset);
@@ -277,17 +277,17 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size, 0);
-    irs::bstring score_buf(prepared.score_size, 0);
+    irs::bstring stats_buf(prepared.stats_size(), 0);
+    irs::bstring score_buf(prepared.score_size(), 0);
     auto scorers = irs::PrepareScorers(
-      prepared, irs::sub_reader::empty(),
+      prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
       reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(1 == scorers.size());
     auto& scorer = scorers.front();
     ASSERT_NE(nullptr, scorer.func);
-    ASSERT_EQ(&prepared.buckets[0], scorer.bucket);
+    ASSERT_EQ(&prepared.buckets()[0], scorer.bucket);
 
     irs::score score;
     ASSERT_TRUE(score.is_default());
@@ -314,14 +314,14 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = irs::Order::Prepare(ord);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features);
-    ASSERT_FALSE(prepared.buckets.empty());
-    ASSERT_EQ(3, prepared.buckets.size());
-    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
-    ASSERT_EQ(8, prepared.stats_size);
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
+    ASSERT_FALSE(prepared.buckets().empty());
+    ASSERT_EQ(3, prepared.buckets().size());
+    ASSERT_EQ(prepared.buckets().size()*sizeof(irs::score_t), prepared.score_size());
+    ASSERT_EQ(8, prepared.stats_size());
 
     auto expected_offset = expected_offsets.begin();
-    for (auto& bucket : prepared.buckets) {
+    for (auto& bucket : prepared.buckets()) {
       ASSERT_NE(nullptr, bucket.bucket);
       ASSERT_EQ(expected_offset->first, bucket.score_index);
       ASSERT_EQ(expected_offset->second, bucket.stats_offset);
@@ -329,17 +329,17 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size, 0);
-    irs::bstring score_buf(prepared.score_size, 0);
+    irs::bstring stats_buf(prepared.stats_size(), 0);
+    irs::bstring score_buf(prepared.score_size(), 0);
     auto scorers = irs::PrepareScorers(
-      prepared, irs::sub_reader::empty(),
+      prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
       reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(1 == scorers.size());
     auto& scorer = scorers.front();
     ASSERT_NE(nullptr, scorer.func);
-    ASSERT_EQ(&prepared.buckets[1], scorer.bucket);
+    ASSERT_EQ(&prepared.buckets()[1], scorer.bucket);
 
     irs::score score;
     ASSERT_TRUE(score.is_default());
@@ -366,14 +366,14 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = irs::Order::Prepare(ord);
-    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features);
-    ASSERT_FALSE(prepared.buckets.empty());
-    ASSERT_EQ(3, prepared.buckets.size());
-    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
-    ASSERT_EQ(3, prepared.stats_size);
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
+    ASSERT_FALSE(prepared.buckets().empty());
+    ASSERT_EQ(3, prepared.buckets().size());
+    ASSERT_EQ(prepared.buckets().size()*sizeof(irs::score_t), prepared.score_size());
+    ASSERT_EQ(3, prepared.stats_size());
 
     auto expected_offset = expected_offsets.begin();
-    for (auto& bucket : prepared.buckets) {
+    for (auto& bucket : prepared.buckets()) {
       ASSERT_NE(nullptr, bucket.bucket);
       ASSERT_EQ(expected_offset->first, bucket.score_index);
       ASSERT_EQ(expected_offset->second, bucket.stats_offset);
@@ -381,10 +381,10 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size, 0);
-    irs::bstring score_buf(prepared.score_size, 0);
+    irs::bstring stats_buf(prepared.stats_size(), 0);
+    irs::bstring score_buf(prepared.score_size(), 0);
     auto scorers = irs::PrepareScorers(
-      prepared, irs::sub_reader::empty(),
+      prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
       reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -410,14 +410,14 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = irs::Order::Prepare(ord);
-    ASSERT_FALSE(prepared.buckets.empty());
-    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features);
-    ASSERT_EQ(2, prepared.buckets.size());
-    ASSERT_EQ(8, prepared.score_size);
-    ASSERT_EQ(4, prepared.stats_size);
+    ASSERT_FALSE(prepared.buckets().empty());
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
+    ASSERT_EQ(2, prepared.buckets().size());
+    ASSERT_EQ(8, prepared.score_size());
+    ASSERT_EQ(4, prepared.stats_size());
 
     auto expected_offset = expected_offsets.begin();
-    for (auto& bucket : prepared.buckets) {
+    for (auto& bucket : prepared.buckets()) {
       ASSERT_NE(nullptr, bucket.bucket);
       ASSERT_EQ(expected_offset->first, bucket.score_index);
       ASSERT_EQ(expected_offset->second, bucket.stats_offset);
@@ -425,20 +425,20 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size, 0);
-    irs::bstring score_buf(prepared.score_size, 0);
+    irs::bstring stats_buf(prepared.stats_size(), 0);
+    irs::bstring score_buf(prepared.score_size(), 0);
     auto scorers = irs::PrepareScorers(
-      prepared, irs::sub_reader::empty(),
+      prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
       reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(2 == scorers.size());
     auto& front = scorers.front();
     ASSERT_NE(nullptr, front.func);
-    ASSERT_EQ(&prepared.buckets[0], front.bucket);
+    ASSERT_EQ(&prepared.buckets()[0], front.bucket);
     auto& back = scorers.back();
     ASSERT_NE(nullptr, back.func);
-    ASSERT_EQ(&prepared.buckets[1], back.bucket);
+    ASSERT_EQ(&prepared.buckets()[1], back.bucket);
 
     irs::score score;
     ASSERT_TRUE(score.is_default());
@@ -457,11 +457,11 @@ TEST(sort_tests, prepare_order) {
         std::make_unique<aligned_scorer<aligned_value<4, 4>>>(irs::IndexFeatures::NONE, false) };
 
     auto prepared = irs::Order::Prepare(ord);
-    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features);
-    ASSERT_FALSE(prepared.buckets.empty());
-    ASSERT_EQ(3, prepared.buckets.size());
-    ASSERT_EQ(12, prepared.score_size);
-    ASSERT_EQ(8, prepared.stats_size);
+    ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
+    ASSERT_FALSE(prepared.buckets().empty());
+    ASSERT_EQ(3, prepared.buckets().size());
+    ASSERT_EQ(12, prepared.score_size());
+    ASSERT_EQ(8, prepared.stats_size());
 
     // first - score offset
     // second - stats offset
@@ -472,7 +472,7 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto expected_offset = expected_offsets.begin();
-    for (auto& bucket : prepared.buckets) {
+    for (auto& bucket : prepared.buckets()) {
       ASSERT_NE(nullptr, bucket.bucket);
       ASSERT_EQ(expected_offset->first, bucket.score_index);
       ASSERT_EQ(expected_offset->second, bucket.stats_offset);
@@ -480,10 +480,10 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size, 0);
-    irs::bstring score_buf(prepared.score_size, 0);
+    irs::bstring stats_buf(prepared.stats_size(), 0);
+    irs::bstring score_buf(prepared.score_size(), 0);
     auto scorers = irs::PrepareScorers(
-      prepared, irs::sub_reader::empty(),
+      prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
       reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -491,17 +491,17 @@ TEST(sort_tests, prepare_order) {
     {
       auto& scorer = scorers[0];
       ASSERT_NE(nullptr, scorer.func);
-      ASSERT_EQ(&prepared.buckets[0], scorer.bucket);
+      ASSERT_EQ(&prepared.buckets()[0], scorer.bucket);
     }
     {
       auto& scorer = scorers[1];
       ASSERT_NE(nullptr, scorer.func);
-      ASSERT_EQ(&prepared.buckets[1], scorer.bucket);
+      ASSERT_EQ(&prepared.buckets()[1], scorer.bucket);
     }
     {
       auto& scorer = scorers[2];
       ASSERT_NE(nullptr, scorer.func);
-      ASSERT_EQ(&prepared.buckets[2], scorer.bucket);
+      ASSERT_EQ(&prepared.buckets()[2], scorer.bucket);
     }
 
     irs::score score;
@@ -529,14 +529,14 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = irs::Order::Prepare(ord);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features);
-    ASSERT_FALSE(prepared.buckets.empty());
-    ASSERT_EQ(3, prepared.buckets.size());
-    ASSERT_EQ(12, prepared.score_size);
-    ASSERT_EQ(16, prepared.stats_size);
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
+    ASSERT_FALSE(prepared.buckets().empty());
+    ASSERT_EQ(3, prepared.buckets().size());
+    ASSERT_EQ(12, prepared.score_size());
+    ASSERT_EQ(16, prepared.stats_size());
 
     auto expected_offset = expected_offsets.begin();
-    for (auto& bucket : prepared.buckets) {
+    for (auto& bucket : prepared.buckets()) {
       ASSERT_NE(nullptr, bucket.bucket);
       ASSERT_EQ(expected_offset->first, bucket.score_index);
       ASSERT_EQ(expected_offset->second, bucket.stats_offset);
@@ -544,10 +544,10 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size, 0);
-    irs::bstring score_buf(prepared.score_size, 0);
+    irs::bstring stats_buf(prepared.stats_size(), 0);
+    irs::bstring score_buf(prepared.score_size(), 0);
     auto scorers = irs::PrepareScorers(
-      prepared, irs::sub_reader::empty(),
+      prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
       reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -555,12 +555,12 @@ TEST(sort_tests, prepare_order) {
     {
       auto& scorer = scorers[0];
       ASSERT_NE(nullptr, scorer.func);
-      ASSERT_EQ(&prepared.buckets[0], scorer.bucket);
+      ASSERT_EQ(&prepared.buckets()[0], scorer.bucket);
     }
     {
       auto& scorer = scorers[1];
       ASSERT_NE(nullptr, scorer.func);
-      ASSERT_EQ(&prepared.buckets[2], scorer.bucket);
+      ASSERT_EQ(&prepared.buckets()[2], scorer.bucket);
     }
 
     irs::score score;
@@ -597,14 +597,14 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = irs::Order::Prepare(ord);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features);
-    ASSERT_FALSE(prepared.buckets.empty());
-    ASSERT_EQ(5, prepared.buckets.size());
-    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
-    ASSERT_EQ(56, prepared.stats_size);
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
+    ASSERT_FALSE(prepared.buckets().empty());
+    ASSERT_EQ(5, prepared.buckets().size());
+    ASSERT_EQ(prepared.buckets().size()*sizeof(irs::score_t), prepared.score_size());
+    ASSERT_EQ(56, prepared.stats_size());
 
     auto expected_offset = expected_offsets.begin();
-    for (auto& bucket : prepared.buckets) {
+    for (auto& bucket : prepared.buckets()) {
       ASSERT_NE(nullptr, bucket.bucket);
       ASSERT_EQ(expected_offset->first, bucket.score_index);
       ASSERT_EQ(expected_offset->second, bucket.stats_offset);
@@ -612,10 +612,10 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size, 0);
-    irs::bstring score_buf(prepared.score_size, 0);
+    irs::bstring stats_buf(prepared.stats_size(), 0);
+    irs::bstring score_buf(prepared.score_size(), 0);
     auto scorers = irs::PrepareScorers(
-      prepared, irs::sub_reader::empty(),
+      prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
       reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -646,14 +646,14 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = irs::Order::Prepare(ord);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features);
-    ASSERT_FALSE(prepared.buckets.empty());
-    ASSERT_EQ(5, prepared.buckets.size());
-    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
-    ASSERT_EQ(48, prepared.stats_size);
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
+    ASSERT_FALSE(prepared.buckets().empty());
+    ASSERT_EQ(5, prepared.buckets().size());
+    ASSERT_EQ(prepared.buckets().size()*sizeof(irs::score_t), prepared.score_size());
+    ASSERT_EQ(48, prepared.stats_size());
 
     auto expected_offset = expected_offsets.begin();
-    for (auto& bucket : prepared.buckets) {
+    for (auto& bucket : prepared.buckets()) {
       ASSERT_NE(nullptr, bucket.bucket);
       ASSERT_EQ(expected_offset->first, bucket.score_index);
       ASSERT_EQ(expected_offset->second, bucket.stats_offset);
@@ -661,10 +661,10 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size, 0);
-    irs::bstring score_buf(prepared.score_size, 0);
+    irs::bstring stats_buf(prepared.stats_size(), 0);
+    irs::bstring score_buf(prepared.score_size(), 0);
     auto scorers = irs::PrepareScorers(
-      prepared, irs::sub_reader::empty(),
+      prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
       reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -695,14 +695,14 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = irs::Order::Prepare(ord);
-    ASSERT_EQ(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, prepared.features);
-    ASSERT_FALSE(prepared.buckets.empty());
-    ASSERT_EQ(5, prepared.buckets.size());
-    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
-    ASSERT_EQ(48, prepared.stats_size);
+    ASSERT_EQ(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, prepared.features());
+    ASSERT_FALSE(prepared.buckets().empty());
+    ASSERT_EQ(5, prepared.buckets().size());
+    ASSERT_EQ(prepared.buckets().size()*sizeof(irs::score_t), prepared.score_size());
+    ASSERT_EQ(48, prepared.stats_size());
 
     auto expected_offset = expected_offsets.begin();
-    for (auto& bucket : prepared.buckets) {
+    for (auto& bucket : prepared.buckets()) {
       ASSERT_NE(nullptr, bucket.bucket);
       ASSERT_EQ(expected_offset->first, bucket.score_index);
       ASSERT_EQ(expected_offset->second, bucket.stats_offset);
@@ -710,10 +710,10 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size, 0);
-    irs::bstring score_buf(prepared.score_size, 0);
+    irs::bstring stats_buf(prepared.stats_size(), 0);
+    irs::bstring score_buf(prepared.score_size(), 0);
     auto scorers = irs::PrepareScorers(
-      prepared, irs::sub_reader::empty(),
+      prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
       reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -744,14 +744,14 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = irs::Order::Prepare(ord);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features);
-    ASSERT_FALSE(prepared.buckets.empty());
-    ASSERT_EQ(5, prepared.buckets.size());
-    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
-    ASSERT_EQ(48, prepared.stats_size);
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
+    ASSERT_FALSE(prepared.buckets().empty());
+    ASSERT_EQ(5, prepared.buckets().size());
+    ASSERT_EQ(prepared.buckets().size()*sizeof(irs::score_t), prepared.score_size());
+    ASSERT_EQ(48, prepared.stats_size());
 
     auto expected_offset = expected_offsets.begin();
-    for (auto& bucket : prepared.buckets) {
+    for (auto& bucket : prepared.buckets()) {
       ASSERT_NE(nullptr, bucket.bucket);
       ASSERT_EQ(expected_offset->first, bucket.score_index);
       ASSERT_EQ(expected_offset->second, bucket.stats_offset);
@@ -759,10 +759,10 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size, 0);
-    irs::bstring score_buf(prepared.score_size, 0);
+    irs::bstring stats_buf(prepared.stats_size(), 0);
+    irs::bstring score_buf(prepared.score_size(), 0);
     auto scorers = irs::PrepareScorers(
-      prepared, irs::sub_reader::empty(),
+      prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
       reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -793,14 +793,14 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = irs::Order::Prepare(ord);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features);
-    ASSERT_FALSE(prepared.buckets.empty());
-    ASSERT_EQ(5, prepared.buckets.size());
-    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
-    ASSERT_EQ(40, prepared.stats_size);
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
+    ASSERT_FALSE(prepared.buckets().empty());
+    ASSERT_EQ(5, prepared.buckets().size());
+    ASSERT_EQ(prepared.buckets().size()*sizeof(irs::score_t), prepared.score_size());
+    ASSERT_EQ(40, prepared.stats_size());
 
     auto expected_offset = expected_offsets.begin();
-    for (auto& bucket : prepared.buckets) {
+    for (auto& bucket : prepared.buckets()) {
       ASSERT_NE(nullptr, bucket.bucket);
       ASSERT_EQ(expected_offset->first, bucket.score_index);
       ASSERT_EQ(expected_offset->second, bucket.stats_offset);
@@ -808,10 +808,10 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size, 0);
-    irs::bstring score_buf(prepared.score_size, 0);
+    irs::bstring stats_buf(prepared.stats_size(), 0);
+    irs::bstring score_buf(prepared.score_size(), 0);
     auto scorers = irs::PrepareScorers(
-      prepared, irs::sub_reader::empty(),
+      prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
       reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -842,14 +842,14 @@ TEST(sort_tests, prepare_order) {
     };
 
     auto prepared = irs::Order::Prepare(ord);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features);
-    ASSERT_FALSE(prepared.buckets.empty());
-    ASSERT_EQ(5, prepared.buckets.size());
-    ASSERT_EQ(prepared.buckets.size()*sizeof(irs::score_t), prepared.score_size);
-    ASSERT_EQ(40, prepared.stats_size);
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
+    ASSERT_FALSE(prepared.buckets().empty());
+    ASSERT_EQ(5, prepared.buckets().size());
+    ASSERT_EQ(prepared.buckets().size()*sizeof(irs::score_t), prepared.score_size());
+    ASSERT_EQ(40, prepared.stats_size());
 
     auto expected_offset = expected_offsets.begin();
-    for (auto& bucket : prepared.buckets) {
+    for (auto& bucket : prepared.buckets()) {
       ASSERT_NE(nullptr, bucket.bucket);
       ASSERT_EQ(expected_offset->first, bucket.score_index);
       ASSERT_EQ(expected_offset->second, bucket.stats_offset);
@@ -857,10 +857,10 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size, 0);
-    irs::bstring score_buf(prepared.score_size, 0);
+    irs::bstring stats_buf(prepared.stats_size(), 0);
+    irs::bstring score_buf(prepared.score_size(), 0);
     auto scorers = irs::PrepareScorers(
-      prepared, irs::sub_reader::empty(),
+      prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
       reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);

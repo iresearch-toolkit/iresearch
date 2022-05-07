@@ -296,7 +296,8 @@ struct OrderBucket : util::noncopyable {
 };
 
 // Set of compiled sort entries
-struct Order final : private util::noncopyable {
+class Order final : private util::noncopyable {
+ public:
   static const Order kUnordered;
 
   static Order Prepare(std::span<const sort::ptr> order);
@@ -310,10 +311,25 @@ struct Order final : private util::noncopyable {
   Order(Order&&) = default;
   Order& operator=(Order&&) = default;
 
-  std::vector<OrderBucket> buckets;
-  size_t score_size{ };
-  size_t stats_size{ };
-  IndexFeatures features{ IndexFeatures::NONE };
+  bool empty() const noexcept { return buckets_.empty(); }
+  std::span<const OrderBucket> buckets() const noexcept { return buckets_; }
+  size_t score_size() const noexcept { return score_size_; }
+  size_t stats_size() const noexcept { return stats_size_; }
+  IndexFeatures features() const noexcept { return features_; }
+
+ private:
+  Order(std::vector<OrderBucket>&& buckets,
+        size_t stats_size,
+        IndexFeatures features) noexcept
+      : buckets_{std::move(buckets)},
+        score_size_(buckets_.size()*sizeof(score_t)),
+        stats_size_{stats_size},
+        features_{features} {}
+
+  std::vector<OrderBucket> buckets_;
+  size_t score_size_{ };
+  size_t stats_size_{ };
+  IndexFeatures features_{ IndexFeatures::NONE };
 };
 
 static_assert(std::is_nothrow_move_constructible_v<OrderBucket>);
@@ -557,7 +573,7 @@ struct Scorer {
 
 // FIXME(gnusi): SBO
 // Prepare scorer for each of the bucket
-std::vector<Scorer> PrepareScorers(const Order& buckets,
+std::vector<Scorer> PrepareScorers(std::span<const OrderBucket> buckets,
                                    const sub_reader& segment,
                                    const term_reader& field,
                                    const byte_type* stats,

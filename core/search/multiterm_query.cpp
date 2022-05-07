@@ -122,7 +122,7 @@ doc_iterator::ptr multiterm_query::execute(
   assert(reader);
 
   // get required features for order
-  const IndexFeatures features = ord.features;
+  const IndexFeatures features = ord.features();
   auto& stats = this->stats();
 
   const bool has_unscored_terms = !state->unscored_terms.empty();
@@ -132,7 +132,7 @@ doc_iterator::ptr multiterm_query::execute(
   auto it = itrs.begin();
 
   // add an iterator for each of the scored states
-  const bool no_score = ord.buckets.empty();
+  const bool no_score = ord.empty();
   for (auto& entry : state->scored_states) {
     assert(entry.cookie);
     auto docs = reader->postings(*entry.cookie, features);
@@ -148,7 +148,7 @@ doc_iterator::ptr multiterm_query::execute(
         assert(entry.stat_offset < stats.size());
         auto* stat = stats[entry.stat_offset].c_str();
 
-        auto scorers = PrepareScorers(ord, segment, *state->reader, stat,
+        auto scorers = PrepareScorers(ord.buckets(), segment, *state->reader, stat,
                                       /*score_buf*/ nullptr, // FIXME(gnusi) ???
                                       *docs, entry.boost*boost());
 
@@ -175,7 +175,7 @@ doc_iterator::ptr multiterm_query::execute(
   }
 
   return ResoveMergeType(
-      merge_type_, ord.buckets.size(),
+      merge_type_, ord.buckets().size(),
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
         using disjunction_t = std::conditional_t<
             std::is_same_v<A, irs::NoopAggregator>,

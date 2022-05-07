@@ -407,7 +407,7 @@ class filter_test_case_base : public index_test_base {
       bool reverse = false) {
     auto prepared_order = irs::Order::Prepare(order);
     auto prepared_filter = filter.prepare(rdr, prepared_order);
-    auto score_less = [reverse, size = prepared_order.buckets.size()](
+    auto score_less = [reverse, size = prepared_order.buckets().size()](
         const std::pair<irs::bstring, irs::doc_id_t>& lhs,
         const std::pair<irs::bstring, irs::doc_id_t>& rhs)->bool {
       const auto& [lhs_buf, lhs_doc] = lhs;
@@ -444,7 +444,7 @@ class filter_test_case_base : public index_test_base {
         ASSERT_FALSE(score_must_be_present);
       }
 
-      irs::bstring score_value(prepared_order.score_size, 0);
+      irs::bstring score_value(prepared_order.score_size(), 0);
 
       while (docs->next()) {
         ASSERT_EQ(docs->value(), doc->value);
@@ -455,7 +455,7 @@ class filter_test_case_base : public index_test_base {
           scored_result.emplace(score_value, docs->value());
         } else {
           scored_result.emplace(
-            irs::bstring(prepared_order.score_size, 0),
+            irs::bstring(prepared_order.score_size(), 0),
             docs->value()
           );
         }

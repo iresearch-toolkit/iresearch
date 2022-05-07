@@ -243,7 +243,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
   }
 
   std::vector<bstring> stats(1);
-  stats.back().resize(order.stats_size, 0);
+  stats.back().resize(order.stats_size(), 0);
   auto* stats_buf = const_cast<byte_type*>(stats[0].data());
   term_stats.finish(stats_buf, 0, field_stats, index);
 

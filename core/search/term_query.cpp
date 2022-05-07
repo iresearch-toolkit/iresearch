@@ -53,15 +53,15 @@ doc_iterator::ptr term_query::execute(
   assert(reader);
 
   auto docs = (mode == ExecutionMode::kTop)
-    ? reader->wanderator(*state->cookie, ord.features)
-    : reader->postings(*state->cookie, ord.features);
+    ? reader->wanderator(*state->cookie, ord.features())
+    : reader->postings(*state->cookie, ord.features());
   assert(docs);
 
-  if (!ord.buckets.empty()) {
+  if (!ord.empty()) {
     auto* score = irs::get_mutable<irs::score>(docs.get());
 
     if (score) {
-      auto scorers = PrepareScorers(ord, rdr, *state->reader,
+      auto scorers = PrepareScorers(ord.buckets(), rdr, *state->reader,
                                     stats_.c_str(),
                                     /*score_buf*/ nullptr, // FIXME(gnusi) ???
                                     *docs, boost());

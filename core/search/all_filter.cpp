@@ -61,10 +61,10 @@ filter::prepared::ptr all::prepare(
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
-  bstring stats(order.stats_size, 0);
+  bstring stats(order.stats_size(), 0);
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
-  PrepareCollectors(order.buckets, stats_buf, reader);
+  PrepareCollectors(order.buckets(), stats_buf, reader);
 
   return memory::make_managed<all_query>(std::move(stats), this->boost()*filter_boost);
 }

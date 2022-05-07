@@ -143,10 +143,10 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
     attrs_[irs::type<irs::cost>::id()] = &est_;
     attrs_[irs::type<irs::document>::id()] = &doc_;
 
-    if (!ord.buckets.empty()) {
+    if (!ord.empty()) {
       assert(stats_);
 
-      scorers_ = irs::PrepareScorers(ord,
+      scorers_ = irs::PrepareScorers(ord.buckets(),
                                      irs::sub_reader::empty(),
                                      irs::empty_term_reader{0},
                                      stats_,
@@ -243,7 +243,7 @@ std::vector<DocIterator> execute_all(
   std::vector<DocIterator> itrs;
   itrs.reserve(docs.size());
   for (const auto& [doc, ord] : docs) {
-    if (ord.buckets.empty()) {
+    if (ord.empty()) {
       itrs.emplace_back(irs::memory::make_managed<detail::basic_doc_iterator>(
         doc.begin(), doc.end()));
     } else {
@@ -4050,7 +4050,8 @@ TEST(block_disjunction_test, next_scored) {
                                        irs::Order::Prepare(detail::basic_sort{1})));
 
       auto it_ptr = irs::ResoveMergeType(
-         irs::sort::MergeType::AGGREGATE, irs::Order::kUnordered.buckets.size(),
+         irs::sort::MergeType::AGGREGATE,
+         irs::Order::kUnordered.buckets().size(),
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -11671,7 +11672,8 @@ TEST(disjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-       irs::sort::MergeType::AGGREGATE, irs::Order::kUnordered.buckets.size(),
+       irs::sort::MergeType::AGGREGATE,
+       irs::Order::kUnordered.buckets().size(),
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -16009,8 +16011,8 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
       std::make_unique<irs::bm25_sort>() };
 
     auto prepared_ord = irs::Order::Prepare(ord);
-    ASSERT_FALSE(prepared_ord.buckets.empty());
-    ASSERT_EQ(2, prepared_ord.buckets.size());
+    ASSERT_FALSE(prepared_ord.empty());
+    ASSERT_EQ(2, prepared_ord.buckets().size());
 
     auto prepared = root.prepare(*rdr, prepared_ord);
     ASSERT_NE(nullptr, prepared);
@@ -16036,7 +16038,7 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
         EXPECT_EQ(*expected_doc, doc->value);
         ++expected_doc;
 
-        irs::bstring score_value(prepared_ord.score_size, 0);
+        irs::bstring score_value(prepared_ord.score_size(), 0);
         score->evaluate(reinterpret_cast<irs::score_t*>(score_value.data()));
         scores.emplace_back(std::move(score_value));
       }

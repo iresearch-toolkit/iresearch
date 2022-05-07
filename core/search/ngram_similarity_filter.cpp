@@ -69,7 +69,7 @@ class ngram_similarity_doc_iterator final
       approx_(std::move(itrs), min_match_count, NoopAggregator{}), // we are not interested in disjunction`s scoring
       min_match_count_(min_match_count),
       total_terms_count_(static_cast<boost_t>(total_terms_count)), // avoid runtime conversion
-      empty_order_(ord.buckets.empty()) {
+      empty_order_(ord.empty()) {
     std::get<attribute_ptr<document>>(attrs_) = irs::get_mutable<document>(&approx_);
 
     // FIXME find a better estimation
@@ -79,7 +79,7 @@ class ngram_similarity_doc_iterator final
     if (!empty_order_) {
       auto& score = std::get<irs::score>(attrs_);
 
-      auto scorers = PrepareScorers(ord, segment, field, stats,
+      auto scorers = PrepareScorers(ord.buckets(), segment, field, stats,
                                     /*score_buf*/ nullptr, // FIXME(gnusi) ???
                                     *this, boost);
 
@@ -381,7 +381,7 @@ class ngram_similarity_query : public filter::prepared {
       return doc_iterator::empty();
     }
 
-    if (1 == min_match_count_ && ord.buckets.empty()) {
+    if (1 == min_match_count_ && ord.empty()) {
       return execute_simple_disjunction(*query_state);
     } else {
       return execute_ngram_similarity(rdr, *query_state, ord);
@@ -425,7 +425,7 @@ class ngram_similarity_query : public filter::prepared {
       const Order& ord) const {
     approximation::doc_iterators_t itrs;
     itrs.reserve(query_state.terms.size());
-    const IndexFeatures features = ord.features | by_ngram_similarity::kRequiredFeatures;
+    const IndexFeatures features = ord.features() | by_ngram_similarity::kRequiredFeatures;
     for (auto& term_state : query_state.terms) {
       if (term_state == nullptr) {
         continue;
@@ -531,7 +531,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     term_states.reserve(terms_count);
   }
 
-  bstring stats(ord.stats_size, 0);
+  bstring stats(ord.stats_size(), 0);
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
   for (size_t term_idx = 0; term_idx < terms_count; ++term_idx) {

@@ -300,7 +300,7 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
     }
 
     // get index features required for query & order
-    const IndexFeatures features = ord.features | by_phrase::kRequiredFeatures;
+    const IndexFeatures features = ord.features() | by_phrase::kRequiredFeatures;
 
     std::vector<score_iterator_adapter<doc_iterator::ptr>> itrs;
     itrs.reserve(phrase_state->terms.size());
@@ -385,7 +385,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
     }
 
     // get features required for query & order
-    const IndexFeatures features = ord.features | by_phrase::kRequiredFeatures;
+    const IndexFeatures features = ord.features() | by_phrase::kRequiredFeatures;
 
     std::vector<score_iterator_adapter<doc_iterator::ptr>> conj_itrs;
     conj_itrs.reserve(phrase_state->terms.size());
@@ -492,7 +492,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     const Order& ord,
     boost_t boost) const {
   const auto phrase_size = options().size();
-  const auto is_ord_empty = ord.buckets.empty();
+  const auto is_ord_empty = ord.empty();
 
   // stats collectors
   field_collectors field_stats(ord);
@@ -556,7 +556,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   const size_t base_offset = options().begin()->first;
 
   // finish stats
-  bstring stats(ord.stats_size, 0); // aggregated phrase stats
+  bstring stats(ord.stats_size(), 0); // aggregated phrase stats
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
   fixed_phrase_query::positions_t positions(phrase_size);
@@ -605,7 +605,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
   // iterate over the segments
   const string_ref field = this->field();
-  const auto is_ord_empty = ord.buckets.empty();
+  const auto is_ord_empty = ord.empty();
 
   phrase_term_visitor<decltype(phrase_terms)> ptv(phrase_terms);
 
@@ -671,7 +671,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
   // finish stats
   assert(phrase_size == phrase_part_stats.size());
-  bstring stats(ord.stats_size, 0); // aggregated phrase stats
+  bstring stats(ord.stats_size(), 0); // aggregated phrase stats
   auto* stats_buf = const_cast<byte_type*>(stats.data());
   auto collector = phrase_part_stats.begin();
 
