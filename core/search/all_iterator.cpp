@@ -35,13 +35,13 @@ all_iterator::all_iterator(
   std::get<cost>(attrs_).reset(max_doc_);
 
   if (!order.buckets.empty()) {
-    auto& score = std::get<irs::score>(attrs_);
+    auto scorers = PrepareScorers(order, reader,
+                                  irs::empty_term_reader(docs_count),
+                                  query_stats,
+                                  /*score_buf*/ nullptr, // FIXME(gnusi) ???
+                                  *this, boost);
 
-    Scorers scorers(
-      order, reader, irs::empty_term_reader(docs_count),
-      query_stats,
-      /*score_buf*/ nullptr, // FIXME(gnusi) ???
-      *this, boost);
+    auto& score = std::get<irs::score>(attrs_);
 
     irs::reset(score, std::move(scorers));
   }

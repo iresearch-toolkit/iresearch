@@ -555,26 +555,16 @@ struct Scorer {
   const OrderBucket* bucket;
 };
 
-// A convenient class for doc_iterators to invoke scorer functions
-// on scorers in each order bucket
-class Scorers : private util::noncopyable { // noncopyable required by MSVC
- public:
-  Scorers() = default;
-  Scorers(const Order& buckets,
-          const sub_reader& segment,
-          const term_reader& field,
-          const byte_type* stats,
-          score_t* score,
-          const attribute_provider& doc,
-          boost_t boost);
-  Scorers(Scorers&&) = default;
-  Scorers& operator=(Scorers&&) = default;
+// FIXME(gnusi): SBO
+// Prepare scorer for each of the bucket
+std::vector<Scorer> PrepareScorers(const Order& buckets,
+                                   const sub_reader& segment,
+                                   const term_reader& field,
+                                   const byte_type* stats,
+                                   score_t* score,
+                                   const attribute_provider& doc,
+                                   boost_t boost);
 
-  std::vector<Scorer> scorers; // scorer + offset
-};
-
-static_assert(std::is_nothrow_move_constructible_v<Scorers>);
-static_assert(std::is_nothrow_move_assignable_v<Scorers>);
 
 // Prepare empty collectors, i.e. call collect(...) on each of the
 // buckets without explicitly collecting field or term statistics,

@@ -148,10 +148,9 @@ doc_iterator::ptr multiterm_query::execute(
         assert(entry.stat_offset < stats.size());
         auto* stat = stats[entry.stat_offset].c_str();
 
-        Scorers scorers(
-          ord, segment, *state->reader, stat,
-          /*score_buf*/ nullptr, // FIXME(gnusi) ???
-          *docs, entry.boost*boost());
+        auto scorers = PrepareScorers(ord, segment, *state->reader, stat,
+                                      /*score_buf*/ nullptr, // FIXME(gnusi) ???
+                                      *docs, entry.boost*boost());
 
         irs::reset(*score, std::move(scorers));
       }

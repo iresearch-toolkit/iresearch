@@ -119,14 +119,15 @@ Order Order::Prepare(std::span<const sort*> order) {
 
 const Order Order::kUnordered;
 
-Scorers::Scorers(
-    const Order& order,
-    const sub_reader& segment,
-    const term_reader& field,
-    const byte_type* stats_buf,
-    score_t* score_buf,
-    const attribute_provider& doc,
-    boost_t boost) {
+
+std::vector<Scorer> PrepareScorers(const Order& order,
+                                    const sub_reader& segment,
+                                    const term_reader& field,
+                                    const byte_type* stats_buf,
+                                    score_t* score_buf,
+                                    const attribute_provider& doc,
+                                    boost_t boost) {
+  std::vector<Scorer> scorers;
   scorers.reserve(order.buckets.size());
 
   for (auto& entry : order.buckets) {
@@ -149,6 +150,8 @@ Scorers::Scorers(
       ++score_buf;
     }
   }
+
+  return scorers;
 }
 
 void PrepareCollectors(

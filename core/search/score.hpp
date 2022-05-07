@@ -83,7 +83,7 @@ class score : public attribute {
   score_function func_;
 };
 
-void reset(irs::score& score, Scorers&& scorers);
+void reset(irs::score& score, std::vector<Scorer>&& scorers);
 
 } // ROOT
 

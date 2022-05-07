@@ -27,17 +27,17 @@ namespace iresearch {
 
 /*static*/ const score score::kNoScore;
 
-void reset(irs::score& score, Scorers&& scorers) {
+void reset(irs::score& score, std::vector<Scorer>&& scorers) {
   // FIXME(gnusi): revisit, we either have to
   // disallow creation of nullptr scorers
   // or correctly track score offsets
 
-  switch (scorers.scorers.size()) {
+  switch (scorers.size()) {
     case 0: {
       score.reset();
     } break;
     case 1: {
-      auto& scorer = scorers.scorers.front();
+      auto& scorer = scorers.front();
       if (0 == scorer.bucket->score_index) {
         // The most important and frequent case when only
         // one scorer is provided.
@@ -62,35 +62,35 @@ void reset(irs::score& score, Scorers&& scorers) {
     } break;
     case 2: {
       struct ctx : score_ctx {
-        explicit ctx(Scorers&& scorers) noexcept
-          : scorers(std::move(scorers)) {
+        explicit ctx(std::vector<Scorer>&& scorers) noexcept
+          : scorers{std::move(scorers)} {
         }
 
-        Scorers scorers;
+        std::vector<Scorer> scorers;
       };
 
       score.reset(
         memory::make_unique<ctx>(std::move(scorers)),
         [](score_ctx* ctx, score_t* res)  noexcept  {
           auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
-          scorers.scorers.front().func(res);
-          scorers.scorers.back().func(res + 1);
+          scorers.front().func(res);
+          scorers.back().func(res + 1);
       });
     } break;
     default: {
       struct ctx : score_ctx {
-        explicit ctx(Scorers&& scorers) noexcept
-          : scorers(std::move(scorers)) {
+        explicit ctx(std::vector<Scorer>&& scorers) noexcept
+          : scorers{std::move(scorers)} {
         }
 
-        Scorers scorers;
+        std::vector<Scorer> scorers;
       };
 
       score.reset(
         memory::make_unique<ctx>(std::move(scorers)),
         [](score_ctx* ctx, score_t* res) noexcept {
           auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
-          for (auto& scorer : scorers.scorers) {
+          for (auto& scorer : scorers) {
             scorer.func(res++);
           }
       });
