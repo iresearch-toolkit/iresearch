@@ -165,7 +165,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
 
     auto& score = std::get<irs::score>(attrs_);
 
-    score_buf_.resize(Merger::size()*sizeof(score_t));
+    score_buf_.resize(Merger::byte_size());
 
     // copy scores into separate container
     // to avoid extra checks
@@ -221,7 +221,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
 
           // FIXME(gnusi)
           auto& merger = static_cast<Merger&>(self);
-          std::memset(res, 0, merger.size()*sizeof(score_t));
+          std::memset(res, 0, merger.byte_size());
           (*begin)->evaluate(res);
           for (++begin; begin != end; ++begin) {
             (*begin)->evaluate(tmp);

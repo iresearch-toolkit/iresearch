@@ -544,13 +544,14 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
         return { nullptr, score_function::kDefaultScoreFunc };
       }
 
-      uintptr_t tmp{};
-      std::memcpy(&tmp, &boost, sizeof boost);
+      uintptr_t ctx;
+      std::memcpy(&ctx, &boost, sizeof boost);
 
       return {
-        reinterpret_cast<score_ctx*>(tmp),
+        reinterpret_cast<score_ctx*>(ctx),
         [](score_ctx* ctx, score_t* res) noexcept {
-          std::memcpy(res, reinterpret_cast<void*>(ctx), sizeof(score_t));
+          const auto boost = reinterpret_cast<uintptr_t>(ctx);
+          std::memcpy(res, &boost, sizeof(score_t));
         }
       };
     }

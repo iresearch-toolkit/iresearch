@@ -100,6 +100,8 @@ struct basic_sort : irs::sort {
       return {
         std::unique_ptr<irs::score_ctx>(new basic_scorer(idx)),
         [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          ASSERT_NE(nullptr, res);
+          ASSERT_NE(nullptr, ctx);
           const auto& state = *reinterpret_cast<basic_scorer*>(ctx);
           *res = static_cast<uint32_t>(state.idx);
         }

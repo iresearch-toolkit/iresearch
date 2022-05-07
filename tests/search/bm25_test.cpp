@@ -1112,11 +1112,11 @@ TEST_P(bm25_test_case, test_query) {
     ASSERT_TRUE(bool(score));
     ASSERT_TRUE(score->is_default());
 
-    irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
+    irs::doc_id_t doc = irs::doc_limits::min();
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
-      irs::score_t score_value;
+      irs::score_t score_value{}; // FIXME(gnusi)
       score->evaluate(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
@@ -1177,7 +1177,7 @@ TEST_P(bm25_test_case, test_query) {
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
-      irs::score_t score_value;
+      irs::score_t score_value{}; // FIXME(gnusi)
       score->evaluate(&score_value);
 
       ASSERT_EQ(docs->value(), values->seek(docs->value()));

@@ -311,7 +311,7 @@ class basic_disjunction final
     assert(lhs_.score && rhs_.score); // must be ensure by the adapter
 
     auto& score = std::get<irs::score>(attrs_);
-    score_buf_.resize(Merger::size()*sizeof(score_t));
+    score_buf_.resize(Merger::byte_size());
 
     const bool lhs_score_empty = lhs_.score->is_default();
     const bool rhs_score_empty = rhs_.score->is_default();
@@ -371,7 +371,7 @@ class basic_disjunction final
     if (value == doc.value) {
       it.score->evaluate(res);
     } else {
-      std::memset(res, 0, Merger::size()*sizeof(score_t));
+      std::memset(res, 0, Merger::byte_size());
     }
   }
 
@@ -570,7 +570,7 @@ class small_disjunction final
     }
 
     auto& score = std::get<irs::score>(attrs_);
-    score_buf_.resize(Merger::size()*sizeof(score_t));
+    score_buf_.resize(Merger::byte_size());
 
     // prepare score
     if (scored_begin_ != end_) {
@@ -812,7 +812,7 @@ class disjunction final
     }
 
     auto& score = std::get<irs::score>(attrs_);
-    score_buf_.resize(Merger::size()*sizeof(score_t));
+    score_buf_.resize(Merger::byte_size());
 
     score.reset(this, [](score_ctx* ctx, score_t* res) noexcept  {
       auto evaluate_score_iter = [](irs::score_t* res, auto& src) {
@@ -1248,7 +1248,7 @@ class block_disjunction final : public doc_iterator, private Merger, private sco
       score.reset(this, [](score_ctx* ctx, score_t* res) noexcept {
         auto& self = static_cast<block_disjunction&>(*ctx);
         // FIXME(gnusi)
-        std::memcpy(res, self.score_value_, static_cast<Merger&>(self).size());
+        std::memcpy(res, self.score_value_, static_cast<Merger&>(self).byte_size());
       });
     }
 

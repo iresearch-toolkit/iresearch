@@ -321,31 +321,36 @@ static_assert(std::is_nothrow_move_assignable_v<OrderBucket>);
 
 struct NoopAggregator{
   constexpr size_t size() const noexcept { return 0; }
+  constexpr size_t byte_size() const noexcept { return 0; }
   void operator()(score_t*, const score_t*) const noexcept { }
   void operator()(score_t*, const score_t**, size_t) noexcept { }
 };
 
 template<typename Merger, size_t Size>
-struct Aggregator {
+struct Aggregator : Merger {
   constexpr size_t size() const noexcept {
     return Size;
   }
 
+  constexpr size_t byte_size() const noexcept {
+    return Size*sizeof(score_t);
+  }
+
   void operator()(score_t* dst, const score_t* src) const noexcept {
     for (size_t i = 0; i < Size; ++i) {
-      Merger::Merge(i, dst, src);
+      Merger::operator()(i, dst, src);
     }
   }
 
   void operator()(score_t* dst, const score_t** src, size_t size) const noexcept {
     for (size_t i = 0; i < Size; ++i) {
-      Merger::Merge(i, dst, src, size);
+      Merger::operator()(i, dst, src, size);
     }
   }
 };
 
 template<typename Merger>
-struct Aggregator<Merger, std::numeric_limits<size_t>::max()> {
+struct Aggregator<Merger, std::numeric_limits<size_t>::max()> : Merger {
   explicit Aggregator(size_t size) noexcept
     : count{size} {}
 
@@ -353,15 +358,19 @@ struct Aggregator<Merger, std::numeric_limits<size_t>::max()> {
     return count;
   }
 
+  size_t byte_size() const noexcept {
+    return size()*sizeof(score_t);
+  }
+
   void operator()(score_t* dst, const score_t* src) const noexcept {
     for (size_t i = 0; i < count; ++i) {
-      Merger::Merge(i, dst, src);
+      Merger::operator()(i, dst, src);
     }
   }
 
   void operator()(score_t* dst, const score_t** src, size_t size) const noexcept {
     for (size_t i = 0; i < size; ++i) {
-      Merger::Merge(i, dst, src, size);
+      Merger::operator()(i, dst, src, size);
     }
   }
 
@@ -369,14 +378,14 @@ struct Aggregator<Merger, std::numeric_limits<size_t>::max()> {
 };
 
 struct SumMerger {
-  static void Merge(size_t idx,
-                    score_t* RESTRICT dst,
-                    const score_t* RESTRICT src) noexcept {
+  void operator()(size_t idx,
+                  score_t* RESTRICT dst,
+                  const score_t* RESTRICT src) const noexcept {
     dst[idx] += src[idx];
   }
 
-  static void Merge(size_t idx, score_t* dst,
-                    const score_t** src_begin, size_t size) noexcept {
+  void operator()(size_t idx, score_t* dst,
+                  const score_t** src_begin, size_t size) const noexcept {
     auto& casted_dst = dst[idx];
     casted_dst = {};
 
@@ -409,8 +418,8 @@ struct SumMerger {
 };
 
 struct MaxMerger {
-  static void Merge(size_t idx, score_t* dst,
-                    const score_t** src_begin, size_t size) noexcept {
+  void operator()(size_t idx, score_t* dst,
+                  const score_t** src_begin, size_t size) const noexcept {
     auto& casted_dst = dst[idx];
 
     switch (size) {
@@ -434,9 +443,9 @@ struct MaxMerger {
     }
   }
 
-  static void Merge(size_t idx,
-                    score_t* RESTRICT dst,
-                    const score_t* RESTRICT src) noexcept {
+  void operator()(size_t idx,
+                  score_t* RESTRICT dst,
+                  const score_t* RESTRICT src) const noexcept {
     auto& casted_dst = dst[idx];
     auto& casted_src = src[idx];
 
