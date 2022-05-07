@@ -332,6 +332,9 @@ struct MakeScoreFunctionImpl {
     return {
         memory::make_unique<Ctx>(std::forward<Args>(args)...),
         [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          assert(res);
+          assert(ctx);
+
           auto& state = *static_cast<Ctx*>(ctx);
 
           float_t idf;
@@ -423,6 +426,9 @@ class sort final: public irs::PreparedSortBase<tfidf::idf> {
       return {
         reinterpret_cast<score_ctx*>(ctx),
         [](score_ctx* ctx, score_t* res) noexcept {
+          assert(res);
+          assert(ctx);
+
           const auto boost = reinterpret_cast<uintptr_t>(ctx);
           std::memcpy(res, &boost, sizeof(score_t));
         }

@@ -395,6 +395,9 @@ struct MakeScoreFunctionImpl<BM15Context> {
     return {
         memory::make_unique<Ctx>(std::forward<Args>(args)...),
         [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          assert(res);
+          assert(ctx);
+
           auto& state = *static_cast<Ctx*>(ctx);
 
           const float_t tf = static_cast<float_t>(state.freq->value);
@@ -424,6 +427,9 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
     return {
         memory::make_unique<Ctx>(std::forward<Args>(args)...),
         [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          assert(res);
+          assert(ctx);
+
           auto& state = *static_cast<Ctx*>(ctx);
 
           float_t tf;
@@ -550,6 +556,9 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
       return {
         reinterpret_cast<score_ctx*>(ctx),
         [](score_ctx* ctx, score_t* res) noexcept {
+          assert(res);
+          assert(ctx);
+
           const auto boost = reinterpret_cast<uintptr_t>(ctx);
           std::memcpy(res, &boost, sizeof(score_t));
         }
