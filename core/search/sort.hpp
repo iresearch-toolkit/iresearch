@@ -88,6 +88,14 @@ class score_function : util::noncopyable {
     return func_(ctx_.get(), res);
   }
 
+  bool operator==(std::nullptr_t) const noexcept {
+    return static_cast<bool>(*this);
+  }
+
+  bool operator!=(std::nullptr_t) const noexcept {
+    return !(*this == nullptr);
+  }
+
   bool operator==(const score_function& rhs) const noexcept {
     return ctx_ == rhs.ctx_ && func_ == rhs.func_;
   }
