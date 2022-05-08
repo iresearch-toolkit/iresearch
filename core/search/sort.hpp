@@ -72,7 +72,7 @@ class ScoreFunction : util::noncopyable {
   static const score_f kDefault;
 
   static ScoreFunction Default(size_t size) noexcept {
-    // FIXME(gnusi): use std::bit_cast when Apple will finally support it
+    // FIXME(gnusi): use std::bit_cast when avaibale
     return { reinterpret_cast<score_ctx*>(size), kDefault };
   }
 
@@ -88,6 +88,24 @@ class ScoreFunction : util::noncopyable {
   }
   ScoreFunction(ScoreFunction&& rhs) noexcept;
   ScoreFunction& operator=(ScoreFunction&& rhs) noexcept;
+
+  score_ctx* Ctx() const noexcept { return ctx_.get(); }
+  score_f Func() const noexcept { return func_; }
+
+  void Reset(memory::managed_ptr<score_ctx>&& ctx, const score_f func) noexcept {
+    ctx_ = std::move(ctx);
+    func_ = func;
+  }
+
+  void Reset(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept {
+    ctx_ = memory::to_managed<score_ctx>(std::move(ctx));
+    func_ = func;
+  }
+
+  void Reset(score_ctx* ctx, const score_f func) noexcept {
+    ctx_ = memory::to_managed<score_ctx, false>(ctx);
+    func_ = func;
+  }
 
   FORCE_INLINE void operator()(score_t* res) const noexcept {
     assert(func_);
@@ -110,22 +128,12 @@ class ScoreFunction : util::noncopyable {
     return !(*this == rhs);
   }
 
-  score_ctx* Ctx() const noexcept { return ctx_.get(); }
-  score_f Func() const noexcept { return func_; }
-
-  void Reset(memory::managed_ptr<score_ctx>&& ctx, const score_f func) noexcept {
-    ctx_ = std::move(ctx);
-    func_ = func;
+  bool operator==(score_f rhs) const noexcept {
+    return func_ == rhs;
   }
 
-  void Reset(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept {
-    ctx_ = memory::to_managed<score_ctx>(std::move(ctx));
-    func_ = func;
-  }
-
-  void Reset(score_ctx* ctx, const score_f func) noexcept {
-    ctx_ = memory::to_managed<score_ctx, false>(ctx);
-    func_ = func;
+  bool operator!=(score_f rhs) const noexcept {
+    return !(*this == rhs);
   }
 
   explicit operator bool() const noexcept {

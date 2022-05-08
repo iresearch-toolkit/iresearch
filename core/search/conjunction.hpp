@@ -173,7 +173,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     for (auto& it : itrs_) {
       auto* score = const_cast<irs::score*>(it.score); // FIXME(gnus): remove const cast
       assert(score); // ensured by score_iterator_adapter
-      if (score->Func() != ScoreFunction::kDefault) {
+      if (*score != ScoreFunction::kDefault) {
         scores_.emplace_back(score);
       }
     }
@@ -181,7 +181,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     // prepare score
     switch (scores_.size()) {
       case 0:
-        assert(score.Func() == ScoreFunction::kDefault);
+        assert(score == ScoreFunction::kDefault);
         score = ScoreFunction::Default(Merger::byte_size());
         break;
       case 1:

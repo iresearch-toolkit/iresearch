@@ -260,7 +260,7 @@ class min_match_disjunction
       auto evaluate_score_iter = [](irs::score_t* res, auto& src) {
         auto* score = src.score;
         assert(score); // must be ensure by the adapter
-        if (score->Func() != ScoreFunction::kDefaultScoreFunc) {
+        if (*score != ScoreFunction::kDefault) {
           (*score)(res);
         }
       };
