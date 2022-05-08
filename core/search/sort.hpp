@@ -69,11 +69,11 @@ using score_f = void(*)(score_ctx* ctx, score_t* res) noexcept;
 class ScoreFunction : util::noncopyable {
  public:
   // Default implementation sets result to 0.
-  static const score_f kDefaultScoreFunc;
+  static const score_f kDefault;
 
   static ScoreFunction Default(size_t size) noexcept {
     // FIXME(gnusi): use std::bit_cast when Apple will finally support it
-    return { reinterpret_cast<score_ctx*>(size), kDefaultScoreFunc };
+    return { reinterpret_cast<score_ctx*>(size), kDefault };
   }
 
   ScoreFunction() noexcept;

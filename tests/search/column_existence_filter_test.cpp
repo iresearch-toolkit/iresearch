@@ -810,7 +810,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       while (filter_itr->next()) {
         ASSERT_FALSE(!score);
         irs::score_t score_value;
-        score->evaluate(&score_value);
+        (*score)(&score_value);
         scored_result.emplace(score_value, filter_itr->value());
         ASSERT_TRUE(column_itr->next());
         ASSERT_EQ(filter_itr->value(), column_itr->value());
@@ -893,7 +893,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
         ASSERT_FALSE(!score);
 
         irs::score_t score_value;
-        score->evaluate(&score_value);
+        (*score)(&score_value);
 
         scored_result.emplace(score_value, filter_itr->value());
         ASSERT_TRUE(column_itr->next());
@@ -976,7 +976,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       while (filter_itr->next()) {
         ASSERT_FALSE(!score);
         irs::score_t score_value;
-        score->evaluate(&score_value);
+        (*score)(&score_value);
         scored_result.emplace(score_value, filter_itr->value());
         ASSERT_TRUE(column_itr->next());
         ASSERT_EQ(filter_itr->value(), column_itr->value());

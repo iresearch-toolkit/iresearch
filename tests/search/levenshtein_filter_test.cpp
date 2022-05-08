@@ -514,7 +514,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->is_default());
+    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
       { 6.21361256f, 261 },
@@ -526,7 +526,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
     auto expected_doc = std::begin(expected_docs);
     while (docs->next()) {
       irs::score_t value;
-      score->evaluate(&value);
+      (*score)(&value);
       ASSERT_FLOAT_EQ(expected_doc->first, value);
       ASSERT_EQ(expected_doc->second, docs->value());
       ++expected_doc;
@@ -552,7 +552,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->is_default());
+    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
       { 9.9112005f, 272 },
@@ -562,7 +562,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
     auto expected_doc = std::begin(expected_docs);
     while (docs->next()) {
       irs::score_t value;
-      score->evaluate(&value);
+      (*score)(&value);
       ASSERT_FLOAT_EQ(expected_doc->first, value);
       ASSERT_EQ(expected_doc->second, docs->value());
       ++expected_doc;
@@ -588,7 +588,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->is_default());
+    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
       { 9.9112005f, 272 },
@@ -598,7 +598,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
     auto expected_doc = std::begin(expected_docs);
     while (docs->next()) {
       irs::score_t value;
-      score->evaluate(&value);
+      (*score)(&value);
 
       ASSERT_FLOAT_EQ(expected_doc->first, value);
       ASSERT_EQ(expected_doc->second, docs->value());
@@ -625,7 +625,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->is_default());
+    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
       { 8.1443901f, 265   },
@@ -647,7 +647,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
     std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
     while (docs->next()) {
       irs::score_t value;
-      score->evaluate(&value);
+      (*score)(&value);
       actual_docs.emplace_back(value, docs->value());
     }
     ASSERT_FALSE(docs->next());
@@ -692,7 +692,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->is_default());
+    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
         { 3.8292058f, 275 },
@@ -703,7 +703,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
     std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
     while (docs->next()) {
       irs::score_t value;
-      score->evaluate(&value);
+      (*score)(&value);
       actual_docs.emplace_back(value, docs->value());
     }
 
@@ -751,7 +751,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->is_default());
+    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
       { 3.8292058f, 275 },
@@ -762,7 +762,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
     std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
     while (docs->next()) {
       irs::score_t value;
-      score->evaluate(&value);
+      (*score)(&value);
       actual_docs.emplace_back(value, docs->value());
     }
 

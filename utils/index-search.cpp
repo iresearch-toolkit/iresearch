@@ -659,7 +659,7 @@ int search(
             for (float_t score_value; docs->next(); ) {
               ++doc_count;
 
-              score->evaluate(&score_value);
+              (*score)(&score_value);
 
               if (left) {
                 sorted.emplace_back(score_value, doc->value);

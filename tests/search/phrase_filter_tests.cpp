@@ -6977,7 +6977,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     ASSERT_TRUE(docs->next());
     irs::score_t score_value;
-    score->evaluate(&score_value);
+    (*score)(&score_value);
     ASSERT_EQ(docs->value(), score_value);
     ASSERT_EQ(1, freq->value);
     ASSERT_EQ(docs->value(), values->seek(docs->value()));
@@ -7037,7 +7037,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     ASSERT_TRUE(docs->next());
     irs::score_t score_value;
-    score->evaluate(&score_value);
+    (*score)(&score_value);
     ASSERT_EQ(docs->value(), score_value);
     ASSERT_EQ(1, freq->value);
     ASSERT_EQ(docs->value(), values->seek(docs->value()));

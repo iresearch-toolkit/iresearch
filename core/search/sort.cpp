@@ -82,23 +82,23 @@ namespace iresearch {
 
 REGISTER_ATTRIBUTE(filter_boost);
 
-/*static*/ const score_f ScoreFunction::kDefaultScoreFunc{&::default_score};
+/*static*/ const score_f ScoreFunction::kDefault{&::default_score};
 
 ScoreFunction::ScoreFunction() noexcept
-  : func_{kDefaultScoreFunc} {
+  : func_{kDefault} {
 }
 
 ScoreFunction::ScoreFunction(ScoreFunction&& rhs) noexcept
   : ctx_(std::move(rhs.ctx_)),
     func_(rhs.func_) {
-  rhs.func_ = kDefaultScoreFunc;
+  rhs.func_ = kDefault;
 }
 
 ScoreFunction& ScoreFunction::operator=(ScoreFunction&& rhs) noexcept {
   if (this != &rhs) {
     ctx_ = std::move(rhs.ctx_);
     func_ = rhs.func_;
-    rhs.func_ = kDefaultScoreFunc;
+    rhs.func_ = kDefault;
   }
   return *this;
 }

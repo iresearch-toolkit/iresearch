@@ -446,8 +446,8 @@ class filter_test_case_base : public index_test_base {
       while (docs->next()) {
         ASSERT_EQ(docs->value(), doc->value);
 
-        if (score && !score->is_default()) {
-          score->evaluate(reinterpret_cast<irs::score_t*>(score_value.data()));
+        if (score && score->Func() != irs::ScoreFunction::kDefault) {
+          (*score)(reinterpret_cast<irs::score_t*>(score_value.data()));
 
           scored_result.emplace(score_value, docs->value());
         } else {
@@ -490,7 +490,7 @@ class filter_test_case_base : public index_test_base {
         ASSERT_EQ(docs->value(), doc->value);
 
         if (score) {
-          score->evaluate(score_value);
+          (*score)(score_value);
         }
         // put score attributes to iterator
         result.push_back(docs->value());

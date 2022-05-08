@@ -42,15 +42,6 @@ struct score : public attribute, public ScoreFunction {
     return score ? *score : kNoScore;
   }
 
-  bool is_default() const noexcept {
-    return Func() == ScoreFunction::kDefaultScoreFunc;
-  }
-
-  FORCE_INLINE void evaluate(score_t* res) const noexcept {
-    assert(*this);
-    (*this)(res);
-  }
-
   using ScoreFunction::operator=;
 };
 

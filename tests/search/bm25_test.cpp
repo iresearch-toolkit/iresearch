@@ -152,7 +152,7 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
 
     while(docs->next()) {
       irs::score_t score_value;
-      score->evaluate(&score_value);
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -195,7 +195,7 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
 
     while(docs->next()) {
       irs::score_t score_value;
-      score->evaluate(&score_value);
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -389,7 +389,7 @@ TEST_P(bm25_test_case, test_phrase) {
 
     while (docs->next()) {
       irs::score_t score_value;
-      score->evaluate(&score_value);
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
 
       sorted.emplace(
@@ -443,7 +443,7 @@ TEST_P(bm25_test_case, test_phrase) {
 
     while (docs->next()) {
       irs::score_t score_value;
-      score->evaluate(&score_value);
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
 
       sorted.emplace(score_value,
@@ -506,7 +506,7 @@ TEST_P(bm25_test_case, test_query) {
 
     while(docs->next()) {
       irs::score_t score_value;
-      score->evaluate(&score_value);
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -599,7 +599,7 @@ TEST_P(bm25_test_case, test_query) {
 
       while(docs->next()) {
         irs::score_t score_value;
-        score->evaluate(&score_value);
+        (*score)(&score_value);
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
 
@@ -703,7 +703,7 @@ TEST_P(bm25_test_case, test_query) {
 
       while(docs->next()) {
         irs::score_t score_value;
-        score->evaluate(&score_value);
+        (*score)(&score_value);
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
 
@@ -798,7 +798,7 @@ TEST_P(bm25_test_case, test_query) {
 
       while(docs->next()) {
         irs::score_t score_value;
-        score->evaluate(&score_value);
+        (*score)(&score_value);
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
 
@@ -840,7 +840,7 @@ TEST_P(bm25_test_case, test_query) {
 
     while(docs->next()) {
       irs::score_t score_value;
-      score->evaluate(&score_value);
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -883,7 +883,7 @@ TEST_P(bm25_test_case, test_query) {
 
     while(docs->next()) {
       irs::score_t score_value;
-      score->evaluate(&score_value);
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -925,7 +925,7 @@ TEST_P(bm25_test_case, test_query) {
 //
 //    while(docs->next()) {
 //      irs::score_t score_value;
-//      score->evaluate(&score_value);
+//      (*score)(&score_value);
 //      ASSERT_EQ(docs->value(), values->seek(docs->value()));
 //      in.reset(actual_value->value);
 //
@@ -966,7 +966,7 @@ TEST_P(bm25_test_case, test_query) {
 
     while(docs->next()) {
       irs::score_t score_value;
-      score->evaluate(&score_value);
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -1008,7 +1008,7 @@ TEST_P(bm25_test_case, test_query) {
 
     while(docs->next()) {
       irs::score_t score_value;
-      score->evaluate(&score_value);
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -1051,7 +1051,7 @@ TEST_P(bm25_test_case, test_query) {
 
     while(docs->next()) {
       irs::score_t score_value;
-      score->evaluate(&score_value);
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -1088,7 +1088,7 @@ TEST_P(bm25_test_case, test_query) {
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
       irs::score_t score_value;
-      score->evaluate(&score_value);
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
       ASSERT_EQ(1.5f, score_value);
@@ -1110,14 +1110,14 @@ TEST_P(bm25_test_case, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
-    ASSERT_TRUE(score->is_default());
+    ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
     irs::doc_id_t doc = irs::doc_limits::min();
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
       irs::score_t score_value;
-      score->evaluate(&score_value);
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
       ASSERT_EQ(0.f, score_value);
@@ -1140,14 +1140,14 @@ TEST_P(bm25_test_case, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
-    ASSERT_FALSE(score->is_default());
+    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
     irs::doc_id_t doc = irs::doc_limits::min();
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
       irs::score_t score_value;
-      score->evaluate(&score_value);
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
       ASSERT_EQ(1.f, score_value);
@@ -1171,14 +1171,14 @@ TEST_P(bm25_test_case, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
-    ASSERT_TRUE(score->is_default());
+    ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
     irs::doc_id_t doc = irs::doc_limits::min();
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
       irs::score_t score_value;
-      score->evaluate(&score_value);
+      (*score)(&score_value);
 
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
@@ -1479,7 +1479,7 @@ TEST_P(bm25_test_case, test_order) {
 
     for (; docs->next();) {
       irs::score_t score_value;
-      score->evaluate(&score_value);
+      (*score)(&score_value);
 
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);

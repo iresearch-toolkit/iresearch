@@ -251,7 +251,7 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
         ASSERT_EQ(doc, it->seek(doc));
@@ -271,7 +271,7 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       ASSERT_EQ(doc, it->seek(doc));
       ASSERT_EQ(doc, it->seek(doc));
@@ -289,7 +289,7 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       ASSERT_EQ(doc, it->seek(doc));
       ASSERT_EQ(doc, it->seek(doc));
@@ -315,7 +315,7 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
       ASSERT_TRUE(it->next());
       ASSERT_EQ(irs::doc_limits::min(), document->value);
       ASSERT_EQ(118775, it->seek(118774));
@@ -390,7 +390,7 @@ TEST_P(columnstore2_test_case, sparse_column) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
         SCOPED_TRACE(doc);
@@ -412,7 +412,7 @@ TEST_P(columnstore2_test_case, sparse_column) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       const auto str = std::to_string(doc);
       ASSERT_EQ(doc, it->seek(doc));
@@ -435,7 +435,7 @@ TEST_P(columnstore2_test_case, sparse_column) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       const auto str = std::to_string(doc);
       ASSERT_EQ(doc, it->seek(doc));
@@ -470,7 +470,7 @@ TEST_P(columnstore2_test_case, sparse_column) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
       ASSERT_TRUE(it->next());
       ASSERT_EQ(irs::doc_limits::min(), document->value);
       ASSERT_EQ(118775, it->seek(118774));
@@ -566,7 +566,7 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
         SCOPED_TRACE(doc);
@@ -587,7 +587,7 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       const auto str = std::to_string(doc);
       ASSERT_EQ(doc, it->seek(doc));
@@ -610,7 +610,7 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       const auto str = std::to_string(doc);
       ASSERT_EQ(doc, it->seek(doc));
@@ -644,7 +644,7 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
       ASSERT_TRUE(it->next());
       ASSERT_EQ(irs::doc_limits::min(), document->value);
       ASSERT_EQ(118775, it->seek(118775));
@@ -745,7 +745,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
         ASSERT_EQ(doc, it->seek(doc));
@@ -765,7 +765,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       ASSERT_EQ(doc, it->seek(doc));
       ASSERT_EQ(doc, it->seek(doc));
@@ -784,7 +784,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       ASSERT_EQ(doc, it->seek(doc));
       assert_payload(doc, payload->value);
@@ -915,7 +915,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
         ASSERT_EQ(doc, it->seek(doc));
@@ -935,7 +935,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       ASSERT_EQ(doc, it->seek(doc));
       ASSERT_EQ(doc, it->seek(doc));
@@ -954,7 +954,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       ASSERT_EQ(doc, it->seek(doc));
       assert_payload(doc, payload->value);
@@ -1061,7 +1061,7 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
         ASSERT_EQ(doc, it->seek(doc));
@@ -1085,7 +1085,7 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       ASSERT_EQ(doc, it->seek(doc));
       ASSERT_TRUE(payload->value.null());
@@ -1107,7 +1107,7 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       ASSERT_EQ(doc, it->seek(doc));
       ASSERT_EQ(doc, it->seek(doc));
@@ -1132,7 +1132,7 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
       ASSERT_TRUE(it->next());
       ASSERT_EQ(irs::doc_limits::min(), document->value);
       ASSERT_TRUE(payload->value.null());
@@ -1211,7 +1211,7 @@ TEST_P(columnstore2_test_case, dense_column) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
         ASSERT_EQ(doc, it->seek(doc));
@@ -1232,7 +1232,7 @@ TEST_P(columnstore2_test_case, dense_column) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       const auto str = std::to_string(doc);
       ASSERT_EQ(doc, it->seek(doc));
@@ -1255,7 +1255,7 @@ TEST_P(columnstore2_test_case, dense_column) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       const auto str = std::to_string(doc);
       ASSERT_EQ(doc, it->seek(doc));
@@ -1288,7 +1288,7 @@ TEST_P(columnstore2_test_case, dense_column) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
       ASSERT_TRUE(it->next());
       ASSERT_EQ(irs::doc_limits::min(), document->value);
       const auto str = std::to_string(118774);
@@ -1368,7 +1368,7 @@ TEST_P(columnstore2_test_case, dense_column_range) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       const auto str = std::to_string(MIN);
       ASSERT_EQ(MIN, it->seek(42));
@@ -1394,7 +1394,7 @@ TEST_P(columnstore2_test_case, dense_column_range) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
         const auto expected_doc = (doc <= MIN ? MIN : doc);
@@ -1419,7 +1419,7 @@ TEST_P(columnstore2_test_case, dense_column_range) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       const auto expected_doc = (doc <= MIN ? MIN : doc);
       const auto str = std::to_string(expected_doc);
@@ -1441,7 +1441,7 @@ TEST_P(columnstore2_test_case, dense_column_range) {
       ASSERT_EQ(column->size(), cost->estimate());
       auto* score = irs::get<irs::score>(*it);
       ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->is_default());
+      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       const auto expected_doc = (doc <= MIN ? MIN : doc);
       const auto str = std::to_string(expected_doc);
@@ -1555,7 +1555,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
         ASSERT_EQ(column->size(), cost->estimate());
         auto* score = irs::get<irs::score>(*it);
         ASSERT_NE(nullptr, score);
-        ASSERT_TRUE(score->is_default());
+        ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
         for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
           ASSERT_EQ(doc, it->seek(doc));
@@ -1577,7 +1577,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
         ASSERT_EQ(column->size(), cost->estimate());
         auto* score = irs::get<irs::score>(*it);
         ASSERT_NE(nullptr, score);
-        ASSERT_TRUE(score->is_default());
+        ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
         ASSERT_EQ(doc, it->seek(doc));
         ASSERT_EQ(doc, it->seek(doc));
@@ -1598,7 +1598,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
         ASSERT_EQ(column->size(), cost->estimate());
         auto* score = irs::get<irs::score>(*it);
         ASSERT_NE(nullptr, score);
-        ASSERT_TRUE(score->is_default());
+        ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
         ASSERT_EQ(doc, it->seek(doc));
         ASSERT_EQ(sizeof doc, payload->value.size());
@@ -1682,7 +1682,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
         ASSERT_EQ(column->size(), cost->estimate());
         auto* score = irs::get<irs::score>(*it);
         ASSERT_NE(nullptr, score);
-        ASSERT_TRUE(score->is_default());
+        ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
         for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
           ASSERT_EQ(doc, it->seek(doc));
@@ -1703,7 +1703,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
         ASSERT_EQ(column->size(), cost->estimate());
         auto* score = irs::get<irs::score>(*it);
         ASSERT_NE(nullptr, score);
-        ASSERT_TRUE(score->is_default());
+        ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
         ASSERT_EQ(doc, it->seek(doc));
         ASSERT_EQ(doc, it->seek(doc));
@@ -1723,7 +1723,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
         ASSERT_EQ(column->size(), cost->estimate());
         auto* score = irs::get<irs::score>(*it);
         ASSERT_NE(nullptr, score);
-        ASSERT_TRUE(score->is_default());
+        ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
         ASSERT_EQ(doc, it->seek(doc));
         ASSERT_EQ(1, payload->value.size());
@@ -1856,7 +1856,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
         ASSERT_EQ(column->size(), cost->estimate());
         auto* score = irs::get<irs::score>(*it);
         ASSERT_NE(nullptr, score);
-        ASSERT_TRUE(score->is_default());
+        ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
         for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
           ASSERT_EQ(doc, it->seek(doc));
@@ -1878,7 +1878,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
         ASSERT_EQ(column->size(), cost->estimate());
         auto* score = irs::get<irs::score>(*it);
         ASSERT_NE(nullptr, score);
-        ASSERT_TRUE(score->is_default());
+        ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
         ASSERT_EQ(doc, it->seek(doc));
         ASSERT_EQ(doc, it->seek(doc));
@@ -1899,7 +1899,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
         ASSERT_EQ(column->size(), cost->estimate());
         auto* score = irs::get<irs::score>(*it);
         ASSERT_NE(nullptr, score);
-        ASSERT_TRUE(score->is_default());
+        ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
         ASSERT_EQ(doc, it->seek(doc));
         ASSERT_EQ(sizeof doc, payload->value.size());

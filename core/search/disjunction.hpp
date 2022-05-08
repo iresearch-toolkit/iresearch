@@ -313,8 +313,8 @@ class basic_disjunction final
     auto& score = std::get<irs::score>(attrs_);
     score_buf_.resize(Merger::byte_size());
 
-    const bool lhs_score_empty = lhs_.score->is_default();
-    const bool rhs_score_empty = rhs_.score->is_default();
+    const bool lhs_score_empty = lhs_.score->Func() == ScoreFunction::kDefault;
+    const bool rhs_score_empty = rhs_.score->Func() == ScoreFunction::kDefault;
 
     if (!lhs_score_empty && !rhs_score_empty) {
       // both sub-iterators have score
@@ -341,7 +341,7 @@ class basic_disjunction final
         return self.score_iterator_impl(self.rhs_, res);
       });
     } else {
-      assert(score.is_default());
+      assert(score.Func() == ScoreFunction::kDefault);
       score = ScoreFunction::Default(Merger::byte_size());
     }
   }
@@ -370,7 +370,7 @@ class basic_disjunction final
     }
 
     if (value == doc.value) {
-      it.score->evaluate(res);
+      (*it.score)(res);
     } else {
       std::memset(res, 0, Merger::byte_size());
     }
@@ -553,7 +553,7 @@ class small_disjunction final
 
     auto rbegin = itrs_.rbegin();
     for (auto& it : itrs) {
-      if (it.score->is_default()) {
+      if (it.score->Func() == ScoreFunction::kDefault) {
         *scored_begin_ = std::move(it);
         ++scored_begin_;
       } else {
@@ -590,19 +590,19 @@ class small_disjunction final
           }
 
           if (value == doc) {
-            begin->score->evaluate(score_buf);
+            (*begin->score)(score_buf);
             merger(res, score_buf);
           }
         }
       });
     } else {
-      assert(score.is_default());
+      assert(score.Func() == ScoreFunction::kDefault);
       score = ScoreFunction::Default(Merger::byte_size());
     }
   }
 
   bool remove_iterator(typename doc_iterators_t::iterator it) {
-    if (it->score->is_default()) {
+    if (it->score->Func() == ScoreFunction::kDefault) {
       std::swap(*it, *begin_);
       ++begin_;
     } else {
@@ -820,8 +820,8 @@ class disjunction final
       auto evaluate_score_iter = [](irs::score_t* res, auto& src) {
         const auto* score = src.score;
         assert(score); // must be ensure by the adapter
-        if (!score->is_default()) {
-          score->evaluate(res);
+        if (score->Func() != ScoreFunction::kDefault) {
+          (*score)(res);
         }
       };
 
@@ -1182,9 +1182,9 @@ class block_disjunction final : public doc_iterator, private Merger, private sco
         if constexpr (traits_type::score()) { // FIXME decide based on merger?
           std::memset(score_buf_.data(), 0, score_buf_.bucket_size());
           for (auto& it : itrs_) {
-            if (!it.score->is_default() && doc.value == it->value()) {
+            if (it.score->Func() != ScoreFunction::kDefault && doc.value == it->value()) {
               assert(it.score);
-              it.score->evaluate(score_buf_.temp());
+              (*it.score)(score_buf_.temp());
               static_cast<Merger&>(*this)(score_buf_.data(), score_buf_.temp());
             }
           }
@@ -1345,7 +1345,7 @@ class block_disjunction final : public doc_iterator, private Merger, private sco
         // circumventing GCC 10.1 bug on ARM64
         constexpr bool is_score = traits_type::score(); 
         if constexpr (is_score) {
-          if (!it.score->is_default()) {
+          if (it.score->Func() != irs::ScoreFunction::kDefault) {
             return this->refill<true>(it, empty);
           }
         }
@@ -1403,7 +1403,7 @@ class block_disjunction final : public doc_iterator, private Merger, private sco
 
       if constexpr (Score) {
         assert(it.score);
-        it.score->evaluate(score_buf_.temp());
+        (*it.score)(score_buf_.temp());
         static_cast<Merger&>(*this)(score_buf_.get(offset), score_buf_.temp());
       }
 

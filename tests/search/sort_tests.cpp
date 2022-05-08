@@ -193,9 +193,9 @@ TEST(sort_tests, prepare_order) {
     ASSERT_TRUE(0 == scorers.size());
 
     irs::score score;
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     irs::reset(score, std::move(scorers));
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 
   {
@@ -238,9 +238,9 @@ TEST(sort_tests, prepare_order) {
     ASSERT_TRUE(0 == scorers.size());
 
     irs::score score;
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     irs::reset(score, std::move(scorers));
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 
   {
@@ -286,12 +286,12 @@ TEST(sort_tests, prepare_order) {
     ASSERT_EQ(&prepared.buckets()[0], scorer.bucket);
 
     irs::score score;
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     irs::reset(score, std::move(scorers));
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
 
     // noop
-    score.evaluate(reinterpret_cast<irs::score_t*>(score_buf.data()));
+    score(reinterpret_cast<irs::score_t*>(score_buf.data()));
   }
 
   {
@@ -337,12 +337,12 @@ TEST(sort_tests, prepare_order) {
     ASSERT_EQ(&prepared.buckets()[1], scorer.bucket);
 
     irs::score score;
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     irs::reset(score, std::move(scorers));
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
 
     // noop
-    score.evaluate(reinterpret_cast<irs::score_t*>(score_buf.data()));
+    score(reinterpret_cast<irs::score_t*>(score_buf.data()));
   }
 
   {
@@ -385,9 +385,9 @@ TEST(sort_tests, prepare_order) {
     ASSERT_TRUE(0 == scorers.size());
 
     irs::score score;
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     irs::reset(score, std::move(scorers));
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 
   {
@@ -434,12 +434,12 @@ TEST(sort_tests, prepare_order) {
     ASSERT_EQ(&prepared.buckets()[1], back.bucket);
 
     irs::score score;
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     irs::reset(score, std::move(scorers));
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
 
     // noop
-    score.evaluate(reinterpret_cast<irs::score_t*>(score_buf.data()));
+    score(reinterpret_cast<irs::score_t*>(score_buf.data()));
   }
 
   {
@@ -497,12 +497,12 @@ TEST(sort_tests, prepare_order) {
     }
 
     irs::score score;
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     irs::reset(score, std::move(scorers));
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
 
     // noop
-    score.evaluate(reinterpret_cast<irs::score_t*>(score_buf.data()));
+    score(reinterpret_cast<irs::score_t*>(score_buf.data()));
   }
 
   {
@@ -555,12 +555,12 @@ TEST(sort_tests, prepare_order) {
     }
 
     irs::score score;
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     irs::reset(score, std::move(scorers));
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
 
     // noop
-    score.evaluate(reinterpret_cast<irs::score_t*>(score_buf.data()));
+    score(reinterpret_cast<irs::score_t*>(score_buf.data()));
   }
 
   {
@@ -612,9 +612,9 @@ TEST(sort_tests, prepare_order) {
     ASSERT_TRUE(0 == scorers.size());
 
     irs::score score;
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     irs::reset(score, std::move(scorers));
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 
   {
@@ -660,9 +660,9 @@ TEST(sort_tests, prepare_order) {
     ASSERT_TRUE(0 == scorers.size());
 
     irs::score score;
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     irs::reset(score, std::move(scorers));
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 
   {
@@ -708,9 +708,9 @@ TEST(sort_tests, prepare_order) {
     ASSERT_TRUE(0 == scorers.size());
 
     irs::score score;
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     irs::reset(score, std::move(scorers));
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 
   {
@@ -756,9 +756,9 @@ TEST(sort_tests, prepare_order) {
     ASSERT_TRUE(0 == scorers.size());
 
     irs::score score;
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     irs::reset(score, std::move(scorers));
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 
   {
@@ -804,9 +804,9 @@ TEST(sort_tests, prepare_order) {
     ASSERT_TRUE(0 == scorers.size());
 
     irs::score score;
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     irs::reset(score, std::move(scorers));
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 
   {
@@ -852,9 +852,9 @@ TEST(sort_tests, prepare_order) {
     ASSERT_TRUE(0 == scorers.size());
 
     irs::score score;
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     irs::reset(score, std::move(scorers));
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 }
 

@@ -372,7 +372,7 @@ TEST(boolean_query_boost, hierarchy) {
       ASSERT_TRUE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
       irs::score_t doc_boost;
-      scr->evaluate(&doc_boost);
+      scr->operator()(&doc_boost);
       ASSERT_EQ(4*value*value*value+value*value, doc_boost);
     }
 
@@ -382,7 +382,7 @@ TEST(boolean_query_boost, hierarchy) {
       ASSERT_TRUE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
       irs::score_t doc_boost;
-      scr->evaluate(&doc_boost);
+      scr->operator()(&doc_boost);
       ASSERT_EQ(4*value*value*value+value*value, doc_boost);
     }
 
@@ -461,7 +461,7 @@ TEST(boolean_query_boost, hierarchy) {
       ASSERT_TRUE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
       irs::score_t doc_boost;
-      scr->evaluate(&doc_boost);
+      scr->operator()(&doc_boost);
       ASSERT_EQ(2*value*value*value+4*value*value+value, doc_boost);
     }
 
@@ -471,7 +471,7 @@ TEST(boolean_query_boost, hierarchy) {
       ASSERT_TRUE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
       irs::score_t doc_boost;
-      scr->evaluate(&doc_boost);
+      scr->operator()(&doc_boost);
       ASSERT_EQ(value*value*value+3*value*value+value, doc_boost);
     }
 
@@ -481,7 +481,7 @@ TEST(boolean_query_boost, hierarchy) {
       ASSERT_TRUE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
       irs::score_t doc_boost;
-      scr->evaluate(&doc_boost);
+      scr->operator()(&doc_boost);
       ASSERT_EQ(value*value*value+value*value+value, doc_boost);
     }
 
@@ -556,7 +556,7 @@ TEST(boolean_query_boost, hierarchy) {
     {
       ASSERT_TRUE(docs->next());
       irs::score_t doc_boost;
-      scr->evaluate(&doc_boost);
+      scr->operator()(&doc_boost);
       ASSERT_EQ(value*value*value+5*value*value+value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -565,7 +565,7 @@ TEST(boolean_query_boost, hierarchy) {
     {
       ASSERT_TRUE(docs->next());
       irs::score_t doc_boost;
-      scr->evaluate(&doc_boost);
+      scr->operator()(&doc_boost);
       ASSERT_EQ(value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -574,7 +574,7 @@ TEST(boolean_query_boost, hierarchy) {
     {
       ASSERT_TRUE(docs->next());
       irs::score_t doc_boost;
-      scr->evaluate(&doc_boost);
+      scr->operator()(&doc_boost);
       ASSERT_EQ(value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -636,7 +636,7 @@ TEST(boolean_query_boost, and_filter) {
     ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
     irs::score_t doc_boost;
-    scr->evaluate(&doc_boost);
+    scr->operator()(&doc_boost);
     ASSERT_EQ(value, doc_boost);
     ASSERT_FALSE(docs->next());
   }
@@ -669,7 +669,7 @@ TEST(boolean_query_boost, and_filter) {
     ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
     irs::score_t doc_boost;
-    scr->evaluate(&doc_boost);
+    scr->operator()(&doc_boost);
     ASSERT_EQ(value*value, doc_boost);
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(docs->next());
@@ -711,7 +711,7 @@ TEST(boolean_query_boost, and_filter) {
     ASSERT_FALSE(!scr);
     ASSERT_TRUE(docs->next());
     irs::score_t doc_boost;
-    scr->evaluate(&doc_boost);
+    scr->operator()(&doc_boost);
     ASSERT_EQ(2*value*value, doc_boost);
     ASSERT_EQ(docs->value(), doc->value);
 
@@ -758,7 +758,7 @@ TEST(boolean_query_boost, and_filter) {
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     irs::score_t doc_boost;
-    scr->evaluate(&doc_boost);
+    scr->operator()(&doc_boost);
     ASSERT_EQ(3*value*value+value, doc_boost);
 
     ASSERT_FALSE(docs->next());
@@ -804,7 +804,7 @@ TEST(boolean_query_boost, and_filter) {
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     irs::score_t doc_boost;
-    scr->evaluate(&doc_boost);
+    scr->operator()(&doc_boost);
     ASSERT_EQ(3*value, doc_boost);
 
     ASSERT_FALSE(docs->next());
@@ -851,7 +851,7 @@ TEST(boolean_query_boost, and_filter) {
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     irs::score_t doc_boost;
-    scr->evaluate(&doc_boost);
+    scr->operator()(&doc_boost);
     ASSERT_EQ(irs::boost_t(0), doc_boost);
 
     ASSERT_FALSE(docs->next());
@@ -912,7 +912,7 @@ TEST(boolean_query_boost, or_filter) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(docs->next());
     irs::score_t doc_boost;
-    scr->evaluate(&doc_boost);
+    scr->operator()(&doc_boost);
     ASSERT_EQ(value, doc_boost);
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(docs->next());
@@ -948,7 +948,7 @@ TEST(boolean_query_boost, or_filter) {
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
     irs::score_t doc_boost;
-    scr->evaluate(&doc_boost);
+    scr->operator()(&doc_boost);
     ASSERT_EQ(value*value, doc_boost);
     ASSERT_FALSE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
@@ -986,7 +986,7 @@ TEST(boolean_query_boost, or_filter) {
     {
       ASSERT_TRUE(docs->next());
       irs::score_t doc_boost;
-      scr->evaluate(&doc_boost);
+      scr->operator()(&doc_boost);
       ASSERT_EQ(2 * value * value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -996,7 +996,7 @@ TEST(boolean_query_boost, or_filter) {
     {
       ASSERT_TRUE(docs->next());
       irs::score_t doc_boost;
-      scr->evaluate(&doc_boost);
+      scr->operator()(&doc_boost);
       ASSERT_EQ(value * value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1046,7 +1046,7 @@ TEST(boolean_query_boost, or_filter) {
     {
       ASSERT_TRUE(docs->next());
       irs::score_t doc_boost;
-      scr->evaluate(&doc_boost);
+      scr->operator()(&doc_boost);
       ASSERT_EQ(3*value*value + value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1055,7 +1055,7 @@ TEST(boolean_query_boost, or_filter) {
     {
       ASSERT_TRUE(docs->next());
       irs::score_t doc_boost;
-      scr->evaluate(&doc_boost);
+      scr->operator()(&doc_boost);
       ASSERT_EQ(2*value*value + value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1105,7 +1105,7 @@ TEST(boolean_query_boost, or_filter) {
     {
       ASSERT_TRUE(docs->next());
       irs::score_t doc_boost;
-      scr->evaluate(&doc_boost);
+      scr->operator()(&doc_boost);
       ASSERT_EQ(3*value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1114,7 +1114,7 @@ TEST(boolean_query_boost, or_filter) {
     {
       ASSERT_TRUE(docs->next());
       irs::score_t doc_boost;
-      scr->evaluate(&doc_boost);
+      scr->operator()(&doc_boost);
       ASSERT_EQ(2*value, doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1163,7 +1163,7 @@ TEST(boolean_query_boost, or_filter) {
     {
       ASSERT_TRUE(docs->next());
       irs::score_t doc_boost;
-      scr->evaluate(&doc_boost);
+      scr->operator()(&doc_boost);
       ASSERT_EQ(irs::boost_t(0), doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1172,7 +1172,7 @@ TEST(boolean_query_boost, or_filter) {
     {
       ASSERT_TRUE(docs->next());
       irs::score_t doc_boost;
-      scr->evaluate(&doc_boost);
+      scr->operator()(&doc_boost);
       ASSERT_EQ(irs::boost_t(0), doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
@@ -1864,7 +1864,7 @@ TEST(basic_disjunction_test, seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -1918,7 +1918,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // estimation
@@ -1974,7 +1974,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
     ASSERT_NE(&irs::score::kNoScore, &score);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
 
     // estimation
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -1983,25 +1983,25 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(3, tmp); // 1 + 2
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(3, tmp); // 1 + 2
     ASSERT_TRUE(it.next());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(2, tmp); // 2
     ASSERT_EQ(6, it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_EQ(11, it.seek(10));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -2042,7 +2042,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
     ASSERT_NE(&irs::score::kNoScore, &score);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
 
     // estimation
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -2051,25 +2051,25 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(2, tmp); // std::max(1, 2)
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(2, tmp); // std::max(1, 2)
     ASSERT_TRUE(it.next());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(2, tmp); // std::max(2)
     ASSERT_EQ(6, it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // std::max(1)
     ASSERT_EQ(11, it.seek(10));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // std::max(1)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -2106,7 +2106,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
     ASSERT_NE(&irs::score::kNoScore, &score);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
 
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -2114,26 +2114,26 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
     ASSERT_TRUE(it.next());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(6, it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(11, it.seek(10));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(45, it.value());
     ASSERT_EQ(0, tmp);
     ASSERT_FALSE(it.next());
@@ -2170,7 +2170,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
     ASSERT_NE(&irs::score::kNoScore, &score);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
 
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -2179,25 +2179,25 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(6, it.value());
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(11, it.seek(10));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -2234,7 +2234,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
     ASSERT_NE(&irs::score::kNoScore, &score);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
 
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -2243,25 +2243,25 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_EQ(11, it.seek(10));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -2299,7 +2299,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
     ASSERT_NE(&irs::score::kNoScore, &score);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
 
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -2308,25 +2308,25 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_EQ(11, it.seek(10));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -2363,7 +2363,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
     ASSERT_NE(&irs::score::kNoScore, &score);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
 
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -2372,25 +2372,25 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(11, it.seek(10));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -2427,7 +2427,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
     ASSERT_NE(&irs::score::kNoScore, &score);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
 
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -2436,25 +2436,25 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(11, it.seek(10));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -3022,7 +3022,7 @@ TEST(small_disjunction_test, seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -3076,7 +3076,7 @@ TEST(small_disjunction_test, scored_seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -3128,7 +3128,7 @@ TEST(small_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -3138,25 +3138,25 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(6, tmp); // 2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(2, tmp); // 2
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -3195,7 +3195,7 @@ TEST(small_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -3205,25 +3205,25 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1, 2, 4)
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1, 2, 4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(2, 4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // std::max(1)
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(2, tmp); // std::max(2)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -3261,7 +3261,7 @@ TEST(small_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -3271,25 +3271,25 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(5, tmp); // 1+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(5, tmp); // 1+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // 4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -3327,7 +3327,7 @@ TEST(small_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -3337,25 +3337,25 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1, 4)
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1, 4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // std::max(1)
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // default value
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -3392,7 +3392,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
 
     // cost
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -3401,25 +3401,25 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -3455,7 +3455,7 @@ TEST(small_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -3465,25 +3465,25 @@ TEST(small_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -3513,7 +3513,7 @@ TEST(block_disjunction_test, check_attributes) {
     ASSERT_EQ(0, cost->estimate());
     auto* score = irs::get<irs::score>(it);
     ASSERT_NE(nullptr, score);
-    ASSERT_TRUE(score->is_default());
+    ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
   }
 
   // scoring, no order
@@ -3532,7 +3532,7 @@ TEST(block_disjunction_test, check_attributes) {
     ASSERT_EQ(0, cost->estimate());
     auto* score = irs::get<irs::score>(it);
     ASSERT_NE(nullptr, score);
-    ASSERT_TRUE(score->is_default());
+    ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
   }
 
   // no scoring, order
@@ -3553,7 +3553,7 @@ TEST(block_disjunction_test, check_attributes) {
     ASSERT_EQ(0, cost->estimate());
     auto* score = irs::get<irs::score>(it);
     ASSERT_NE(nullptr, score);
-    ASSERT_TRUE(score->is_default());
+    ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
   }
 
   // scoring, order
@@ -3573,7 +3573,7 @@ TEST(block_disjunction_test, check_attributes) {
     ASSERT_EQ(0, cost->estimate());
     auto* score = irs::get<irs::score>(it);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->is_default());
+    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
   }
 }
 
@@ -4071,7 +4071,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score, no order set
       auto& score = irs::score::get(it);
-      ASSERT_TRUE(score.is_default());
+      ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4127,7 +4127,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4137,7 +4137,7 @@ TEST(block_disjunction_test, next_scored) {
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -4185,7 +4185,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4196,7 +4196,7 @@ TEST(block_disjunction_test, next_scored) {
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -4245,7 +4245,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score, no order set
       auto& score = irs::score::get(it);
-      ASSERT_TRUE(score.is_default());
+      ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4302,7 +4302,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4313,7 +4313,7 @@ TEST(block_disjunction_test, next_scored) {
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -4360,7 +4360,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4371,7 +4371,7 @@ TEST(block_disjunction_test, next_scored) {
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -4418,7 +4418,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4429,7 +4429,7 @@ TEST(block_disjunction_test, next_scored) {
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -4477,7 +4477,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4488,7 +4488,7 @@ TEST(block_disjunction_test, next_scored) {
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -4533,7 +4533,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4544,7 +4544,7 @@ TEST(block_disjunction_test, next_scored) {
         ASSERT_EQ(doc->value, it.value());
         result.push_back(it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         ASSERT_EQ(9.f, score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -4587,7 +4587,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4597,7 +4597,7 @@ TEST(block_disjunction_test, next_scored) {
       for (; it.next();) {
         result.push_back(it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         ASSERT_EQ(4.f, score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -4639,7 +4639,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4661,7 +4661,7 @@ TEST(block_disjunction_test, next_scored) {
     disjunction it({}, {});
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -4710,7 +4710,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4720,7 +4720,7 @@ TEST(block_disjunction_test, next_scored) {
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -4773,7 +4773,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4783,7 +4783,7 @@ TEST(block_disjunction_test, next_scored) {
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -4831,7 +4831,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4841,7 +4841,7 @@ TEST(block_disjunction_test, next_scored) {
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -4887,7 +4887,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4898,7 +4898,7 @@ TEST(block_disjunction_test, next_scored) {
         ASSERT_EQ(doc->value, it.value());
         result.push_back(it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         ASSERT_EQ(4, score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -4942,7 +4942,7 @@ TEST(block_disjunction_test, next_scored) {
 
     // score is set
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -4996,7 +4996,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score, no order set
       auto& score = irs::score::get(it);
-      ASSERT_TRUE(score.is_default());
+      ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5051,7 +5051,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5061,7 +5061,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -5109,7 +5109,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5120,7 +5120,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -5166,7 +5166,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score, no order set
       auto& score = irs::score::get(it);
-      ASSERT_TRUE(score.is_default());
+      ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5223,7 +5223,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5234,7 +5234,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -5280,7 +5280,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5291,7 +5291,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -5337,7 +5337,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5348,7 +5348,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -5394,7 +5394,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5405,7 +5405,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -5447,7 +5447,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5458,7 +5458,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
         ASSERT_EQ(doc->value, it.value());
         result.push_back(it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         ASSERT_EQ(9.f, score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -5499,7 +5499,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5509,7 +5509,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       for (; it.next();) {
         result.push_back(it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         ASSERT_EQ(4, score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -5549,7 +5549,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5582,7 +5582,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -5628,7 +5628,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5638,7 +5638,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -5686,7 +5686,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5696,7 +5696,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       for (;it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -5740,7 +5740,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5750,7 +5750,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
       for (; it.next();) {
         ASSERT_EQ(doc->value, it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         result.emplace_back(it.value(), score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -5793,7 +5793,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.is_default());
+      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5804,7 +5804,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
         ASSERT_EQ(doc->value, it.value());
         result.push_back(it.value());
         irs::score_t score_value;
-        score.evaluate(&score_value);
+        score(&score_value);
         ASSERT_EQ(4, score_value);
         ASSERT_EQ(1, it.match_count());
       }
@@ -5845,7 +5845,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
     // score is set
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -7637,7 +7637,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
     // no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -7695,7 +7695,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -7708,7 +7708,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -7761,7 +7761,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
 
@@ -7775,7 +7775,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -7818,7 +7818,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -7830,7 +7830,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -7869,7 +7869,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -7882,7 +7882,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -7923,7 +7923,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -7936,7 +7936,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -7976,7 +7976,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -7989,7 +7989,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -8035,7 +8035,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8047,7 +8047,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -8096,7 +8096,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8108,7 +8108,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -8148,7 +8148,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8160,7 +8160,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -8204,7 +8204,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8216,7 +8216,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -8260,7 +8260,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8345,7 +8345,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
 
     // no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8403,7 +8403,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8416,7 +8416,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -8469,7 +8469,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8482,7 +8482,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -8526,7 +8526,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8538,7 +8538,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -8575,7 +8575,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8588,7 +8588,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -8629,7 +8629,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8642,7 +8642,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -8681,7 +8681,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8694,7 +8694,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -8739,7 +8739,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8751,7 +8751,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -8800,7 +8800,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8812,7 +8812,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -8852,7 +8852,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8864,7 +8864,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -8908,7 +8908,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8920,7 +8920,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
       irs::score_t score_value;
-      score.evaluate(&score_value);
+      score(&score_value);
       ASSERT_EQ(target.score, score_value);
     }
   }
@@ -8964,7 +8964,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -10428,7 +10428,7 @@ TEST(block_disjunction_test, seek_next_no_readahead) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10460,7 +10460,7 @@ TEST(block_disjunction_test, seek_next_no_readahead) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10498,7 +10498,7 @@ TEST(block_disjunction_test, next_seek_no_readahead) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10544,7 +10544,7 @@ TEST(block_disjunction_test, seek_next_no_readahead_two_blocks) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10576,7 +10576,7 @@ TEST(block_disjunction_test, seek_next_no_readahead_two_blocks) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10631,7 +10631,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10687,7 +10687,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10697,25 +10697,25 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(6, tmp); // 2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(2, tmp); // 2
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -10758,7 +10758,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10768,25 +10768,25 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // std::max(1)
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(2, tmp); // std::max(2)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -10828,7 +10828,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10838,25 +10838,25 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(5, tmp); // 1+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(5, tmp); // 1+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // 4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -10898,7 +10898,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10908,25 +10908,25 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,4)
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // std::max(1)
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -10966,7 +10966,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10976,25 +10976,25 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -11034,7 +11034,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -11044,25 +11044,25 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -11636,7 +11636,7 @@ TEST(disjunction_test, seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -11691,7 +11691,7 @@ TEST(disjunction_test, scored_seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -11743,7 +11743,7 @@ TEST(disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -11753,25 +11753,25 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(6, tmp); // 2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(2, tmp); // 2
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -11810,7 +11810,7 @@ TEST(disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -11820,25 +11820,25 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // std::max(1)
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(2, tmp); // std::max(2)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -11876,7 +11876,7 @@ TEST(disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -11886,25 +11886,25 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(5, tmp); // 1+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(5, tmp); // 1+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // 4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -11942,7 +11942,7 @@ TEST(disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -11952,25 +11952,25 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,4)
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // std::max(1)
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // std::max(1)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -12006,7 +12006,7 @@ TEST(disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -12016,25 +12016,25 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); //
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -12070,7 +12070,7 @@ TEST(disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -12080,25 +12080,25 @@ TEST(disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(7, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(45, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -13219,7 +13219,7 @@ TEST(min_match_disjunction_test, seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -13280,7 +13280,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -13330,7 +13330,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -13340,21 +13340,21 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(6, tmp); // 2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(5, tmp); // 1+4
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(6, tmp); // 2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -13393,7 +13393,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -13403,21 +13403,21 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,4)
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(2,4)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -13455,7 +13455,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -13465,21 +13465,21 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(5, tmp); // 1+2+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(5, tmp); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // 2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(5, tmp); // 1+4
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // 2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -13519,7 +13519,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -13529,21 +13529,21 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp);
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp);
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp);
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -13579,7 +13579,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -13589,21 +13589,21 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1+2+4
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1+4
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -13639,7 +13639,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -13649,21 +13649,21 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(5, it.seek(5));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(6, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(9, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(29, it.seek(27));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -14046,7 +14046,7 @@ TEST(conjunction_test, seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14098,7 +14098,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14108,21 +14108,21 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_EQ(4, it.seek(3));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_EQ(14, it.seek(14));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -14160,7 +14160,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14211,7 +14211,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14221,21 +14221,21 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(12, tmp); // 1+2+4+5
     ASSERT_EQ(4, it.seek(3));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(12, tmp); // 1+2+4+5
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(12, tmp); // 1+2+4+5
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(12, tmp); // 1+2+4+5
     ASSERT_EQ(14, it.seek(14));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(12, tmp); // 1+2+4+5
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -14273,7 +14273,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14283,21 +14283,21 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_EQ(4, it.seek(3));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_EQ(14, it.seek(14));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -14335,7 +14335,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14345,21 +14345,21 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_EQ(4, it.seek(3));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_EQ(14, it.seek(14));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(7, tmp); // 1+2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -14397,7 +14397,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14407,21 +14407,21 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_EQ(4, it.seek(3));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_EQ(14, it.seek(14));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -14457,7 +14457,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14467,21 +14467,21 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_EQ(4, it.seek(3));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_EQ(14, it.seek(14));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp); // 1
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -14517,7 +14517,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14527,21 +14527,21 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_EQ(4, it.seek(3));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_EQ(14, it.seek(14));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(1, tmp);
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -14578,7 +14578,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14588,21 +14588,21 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(5, tmp); // 1+2+4
     ASSERT_EQ(4, it.seek(3));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(5, tmp); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(5, tmp); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(5, tmp); // 1+2+4
     ASSERT_EQ(14, it.seek(14));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(5, tmp); // 1+2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -14639,7 +14639,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.is_default());
+    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14649,21 +14649,21 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_EQ(4, it.seek(3));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_EQ(14, it.seek(14));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(4, tmp); // std::max(1,2,4)
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -14698,7 +14698,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14708,21 +14708,21 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1+2+4
     ASSERT_EQ(4, it.seek(3));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1+2+4
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1+2+4
     ASSERT_EQ(14, it.seek(14));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp); // 1+2+4
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -14757,7 +14757,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.is_default());
+    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14767,21 +14767,21 @@ TEST(conjunction_test, scored_seek_next) {
     ASSERT_TRUE(it.next());
     ASSERT_EQ(1, it.value());
     irs::score_t tmp;
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(4, it.seek(3));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(5, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_TRUE(it.next());
     ASSERT_EQ(8, it.value());
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_EQ(14, it.seek(14));
-    score.evaluate(&tmp);
+    score(&tmp);
     ASSERT_EQ(0, tmp);
     ASSERT_FALSE(it.next());
     ASSERT_EQ(irs::doc_limits::eof(), it.value());
@@ -14809,7 +14809,7 @@ TEST(exclusion_test, next) {
 
       // score, no order set
       auto& score = irs::score::get(it);
-      ASSERT_TRUE(score.is_default());
+      ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
       ASSERT_FALSE(irs::get_mutable<irs::score>(&it));
       ASSERT_EQ(&score, &irs::score::kNoScore);
 
@@ -15510,7 +15510,7 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential_ordered) {
     while (filter_itr->next()) {
       ASSERT_FALSE(!score);
       irs::score_t score_value;
-      score->evaluate(&score_value);
+      score->operator()(&score_value);
       scored_result.emplace(score_value, filter_itr->value());
       ++docs_count;
     }
@@ -15597,7 +15597,7 @@ TEST_P(boolean_filter_test_case, not_sequential_ordered) {
     while (filter_itr->next()) {
       ASSERT_FALSE(!score);
       irs::score_t score_value;
-      score->evaluate(&score_value);
+      score->operator()(&score_value);
       scored_result.emplace(score_value, filter_itr->value());
       ++docs_count;
     }
@@ -16037,7 +16037,7 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
         ++expected_doc;
 
         irs::bstring score_value(prepared_ord.score_size(), 0);
-        score->evaluate(reinterpret_cast<irs::score_t*>(score_value.data()));
+        score->operator()(reinterpret_cast<irs::score_t*>(score_value.data()));
         scores.emplace_back(std::move(score_value));
       }
 
@@ -16256,7 +16256,7 @@ TEST(And_test, not_boosted) {
 
   ASSERT_TRUE(docs->next());
   irs::score_t doc_boost;
-  scr->evaluate(&doc_boost);
+  scr->operator()(&doc_boost);
   ASSERT_EQ(5., doc_boost); // FIXME: should be 9 if we will boost negation
   ASSERT_EQ(1, doc->value);
 
@@ -16450,7 +16450,7 @@ TEST(Or_test, boosted_not) {
 
   ASSERT_TRUE(docs->next());
   irs::score_t doc_boost;
-  scr->evaluate(&doc_boost);
+  scr->operator()(&doc_boost);
   ASSERT_EQ(5., doc_boost); // FIXME: should be 9 if we will boost negation
   ASSERT_EQ(1, doc->value);
   ASSERT_FALSE(docs->next());
