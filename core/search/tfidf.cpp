@@ -399,7 +399,7 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
 
     if (!freq) {
       if (!boost_as_score_ || 0.f == boost) {
-        return {nullptr, nullptr};
+        return ScoreFunction::Invalid();
       }
 
       // if there is no frequency then all the
@@ -426,9 +426,9 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
     if (normalize_) {
       auto* doc = irs::get<document>(doc_attrs);
 
-      if (!doc) {
+      if (IRS_UNLIKELY(!doc)) {
         // we need 'document' attribute to be exposed
-        return {nullptr, nullptr};
+        return ScoreFunction::Invalid();
       }
 
       auto prepare_norm_scorer =

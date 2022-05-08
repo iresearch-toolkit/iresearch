@@ -20,6 +20,9 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef IRESEARCH_SMALL_VECTOR_H
+#define IRESEARCH_SMALL_VECTOR_H
+
 #include <boost/container/small_vector.hpp>
 
 namespace iresearch {
@@ -28,3 +31,5 @@ template<typename T, std::size_t N, typename A = std::allocator<T>>
 using SmallVector = boost::container::small_vector<T, N, A>;
 
 }
+
+#endif  // IRESEARCH_SMALL_VECTOR_H

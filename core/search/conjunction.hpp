@@ -31,19 +31,16 @@
 
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class score_iterator_adapter
-/// @brief adapter to use doc_iterator with conjunction and disjunction
-////////////////////////////////////////////////////////////////////////////////
+// Adapter to use doc_iterator with conjunction and disjunction.
 template<typename DocIterator>
 struct score_iterator_adapter {
   typedef DocIterator doc_iterator_t;
 
   score_iterator_adapter() = default;
   score_iterator_adapter(doc_iterator_t&& it) noexcept
-    : it(std::move(it)),
-      doc(irs::get<irs::document>(*this->it)),
-      score(&irs::score::get(*this->it)) {
+      : it(std::move(it)),
+        doc(irs::get<irs::document>(*this->it)),
+        score(&irs::score::get(*this->it)) {
     assert(doc);
   }
 
@@ -62,30 +59,24 @@ struct score_iterator_adapter {
     return it->get_mutable(type);
   }
 
-  operator doc_iterator_t&&() noexcept {
-    return std::move(it);
-  }
+  operator doc_iterator_t&&() noexcept { return std::move(it); }
 
   // access iterator value without virtual call
-  doc_id_t value() const noexcept {
-    return doc->value;
-  }
+  doc_id_t value() const noexcept { return doc->value; }
 
   doc_iterator_t it;
   const irs::document* doc{};
   const irs::score* score{};
-}; // score_iterator_adapter
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class conjunction
-///-----------------------------------------------------------------------------
-/// c |  [0] <-- lead (the least cost iterator)
-/// o |  [1]    |
-/// s |  [2]    | tail (other iterators)
-/// t |  ...    |
-///   V  [n] <-- end
-///-----------------------------------------------------------------------------
-////////////////////////////////////////////////////////////////////////////////
+// Conjunction of N iterators
+// -----------------------------------------------------------------------------
+// c |  [0] <-- lead (the least cost iterator)
+// o |  [1]    |
+// s |  [2]    | tail (other iterators)
+// t |  ...    |
+//   V  [n] <-- end
+// -----------------------------------------------------------------------------
 template<typename DocIterator, typename Merger>
 class conjunction : public doc_iterator, private Merger, private score_ctx {
  public:
@@ -96,27 +87,28 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
   static_assert(std::is_nothrow_move_constructible_v<doc_iterator_t>,
                 "default move constructor expected");
 
-  explicit conjunction(
-      doc_iterators_t&& itrs,
-      Merger&& merger = Merger{})
-    : Merger{std::move(merger)},
-      itrs_{[](doc_iterators_t&& itrs){
-        assert(!itrs.empty());
+  explicit conjunction(doc_iterators_t&& itrs, Merger&& merger = Merger{})
+      : Merger{std::move(merger)},
+        itrs_{[](doc_iterators_t&& itrs) {
+          assert(!itrs.empty());
 
-        // sort subnodes in ascending order by their cost
-        std::sort(std::begin(itrs), std::end(itrs),
-          [](const auto& lhs, const auto& rhs) {
-            return cost::extract(lhs, cost::MAX) < cost::extract(rhs, cost::MAX); });
+          // sort subnodes in ascending order by their cost
+          std::sort(std::begin(itrs), std::end(itrs),
+                    [](const auto& lhs, const auto& rhs) {
+                      return cost::extract(lhs, cost::MAX) <
+                             cost::extract(rhs, cost::MAX);
+                    });
 
-        return itrs;
-      }(std::move(itrs))},
-      front_{itrs_.front().it.get()},
-      front_doc_{irs::get_mutable<document>(front_)} {
+          return itrs;
+        }(std::move(itrs))},
+        front_{itrs_.front().it.get()},
+        front_doc_{irs::get_mutable<document>(front_)} {
     assert(!itrs_.empty());
     assert(front_);
     assert(front_doc_);
-    std::get<attribute_ptr<document>>(attrs_) = const_cast<document*>(front_doc_);
-    std::get<attribute_ptr<cost>>(attrs_)     = irs::get_mutable<cost>(front_);
+    std::get<attribute_ptr<document>>(attrs_) =
+        const_cast<document*>(front_doc_);
+    std::get<attribute_ptr<cost>>(attrs_) = irs::get_mutable<cost>(front_);
 
     prepare_score();
   }
@@ -127,13 +119,12 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
   // size of conjunction
   size_t size() const noexcept { return itrs_.size(); }
 
-  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
+  virtual attribute* get_mutable(
+      irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t value() const override final {
-    return front_doc_->value;
-  }
+  virtual doc_id_t value() const override final { return front_doc_->value; }
 
   virtual bool next() override {
     if (!front_->next()) {
@@ -152,10 +143,8 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
   }
 
  private:
-  using attributes = std::tuple<
-    attribute_ptr<document>,
-    attribute_ptr<cost>,
-    score>;
+  using attributes =
+      std::tuple<attribute_ptr<document>, attribute_ptr<cost>, score>;
 
   // FIXME(gnusi): move to compilation time
   void prepare_score() {
@@ -171,8 +160,9 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     // to avoid extra checks
     scores_.reserve(itrs_.size());
     for (auto& it : itrs_) {
-      auto* score = const_cast<irs::score*>(it.score); // FIXME(gnus): remove const cast
-      assert(score); // ensured by score_iterator_adapter
+      // FIXME(gnus): remove const cast
+      auto* score = const_cast<irs::score*>(it.score);
+      assert(score);  // ensured by score_iterator_adapter
       if (*score != ScoreFunction::kDefault) {
         scores_.emplace_back(score);
       }
@@ -182,7 +172,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     switch (scores_.size()) {
       case 0:
         assert(score == ScoreFunction::kDefault);
-        score = ScoreFunction::Default(Merger::byte_size());
+        score = ScoreFunction::Default(Merger::size());
         break;
       case 1:
         score = std::move(*scores_.front());
@@ -238,7 +228,8 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
   doc_id_t converge(doc_id_t target) {
     assert(!doc_limits::eof(target));
 
-    for (auto rest = seek_rest(target); target != rest; rest = seek_rest(target)) {
+    for (auto rest = seek_rest(target); target != rest;
+         rest = seek_rest(target)) {
       target = front_->seek(rest);
       if (doc_limits::eof(target)) {
         break;
@@ -253,7 +244,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
   doc_id_t seek_rest(doc_id_t target) {
     assert(!doc_limits::eof(target));
 
-    for (auto it = itrs_.begin()+1, end = itrs_.end(); it != end; ++it) {
+    for (auto it = itrs_.begin() + 1, end = itrs_.end(); it != end; ++it) {
       const auto doc = (*it)->seek(target);
 
       if (target < doc) {
@@ -264,21 +255,18 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     return target;
   }
 
-  bstring score_buf_; // FIXME(gnusi): compile time size
+  bstring score_buf_;  // FIXME(gnusi): compile time size
   attributes attrs_;
   doc_iterators_t itrs_;
-  std::vector<score*> scores_; // valid sub-scores
+  std::vector<score*> scores_;  // valid sub-scores
   irs::doc_iterator* front_;
   const irs::document* front_doc_{};
-}; // conjunction
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @returns conjunction iterator created from the specified sub iterators 
-//////////////////////////////////////////////////////////////////////////////
+// Returns conjunction iterator created from the specified sub iterators
 template<typename Conjunction, typename... Args>
-doc_iterator::ptr make_conjunction(
-    typename Conjunction::doc_iterators_t&& itrs,
-    Args&&... args) {
+doc_iterator::ptr make_conjunction(typename Conjunction::doc_iterators_t&& itrs,
+                                   Args&&... args) {
   switch (itrs.size()) {
     case 0:
       // empty or unreachable search criteria
@@ -289,11 +277,10 @@ doc_iterator::ptr make_conjunction(
   }
 
   // conjunction
-  return memory::make_managed<Conjunction>(
-    std::move(itrs),
-    std::forward<Args>(args)...);
+  return memory::make_managed<Conjunction>(std::move(itrs),
+                                           std::forward<Args>(args)...);
 }
 
-} // ROOT
+}  // namespace iresearch
 
-#endif // IRESEARCH_CONJUNCTION_H
+#endif  // IRESEARCH_CONJUNCTION_H

@@ -70,10 +70,14 @@ class ScoreFunction : util::noncopyable {
   // Default implementation sets result to 0.
   static const score_f kDefault;
 
+  // Returns default scoring function setting `size` score buckets to 0.
   static ScoreFunction Default(size_t size) noexcept {
     // FIXME(gnusi): use std::bit_cast when avaibale
-    return {reinterpret_cast<score_ctx*>(size), kDefault};
+    return {reinterpret_cast<score_ctx*>(sizeof(score_t) * size), kDefault};
   }
+
+  // Returns invalid scoring function.
+  static ScoreFunction Invalid() noexcept { return {nullptr, nullptr}; }
 
   ScoreFunction() noexcept;
   ScoreFunction(memory::managed_ptr<score_ctx>&& ctx,
@@ -324,7 +328,7 @@ class Order final : private util::noncopyable {
 
   bool empty() const noexcept { return buckets_.empty(); }
   std::span<const OrderBucket> buckets() const noexcept {
-    return { buckets_.data(), buckets_.size() };
+    return {buckets_.data(), buckets_.size()};
   }
   size_t score_size() const noexcept { return score_size_; }
   size_t stats_size() const noexcept { return stats_size_; }

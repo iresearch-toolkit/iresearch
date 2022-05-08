@@ -536,7 +536,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
 
     if (!freq) {
       if (!boost_as_score_ || 0.f == boost) {
-        return {nullptr, nullptr};
+        return ScoreFunction::Invalid();
       }
 
       // if there is no frequency then all the scores
@@ -561,9 +561,9 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
     if (b_ != 0.f) {
       auto* doc = irs::get<document>(doc_attrs);
 
-      if (!doc) {
+      if (IRS_UNLIKELY(!doc)) {
         // We need 'document' attribute to be exposed.
-        return {nullptr, nullptr};
+        return ScoreFunction::Invalid();
       }
 
       auto prepare_norm_scorer =
