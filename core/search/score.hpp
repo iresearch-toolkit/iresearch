@@ -47,7 +47,6 @@ struct score : public attribute, public ScoreFunction {
 
 void reset(irs::score& score, std::vector<ScoreFunction>&& scorers);
 
-} // ROOT
+}  // namespace iresearch
 
-#endif // IRESEARCH_SCORE_H
-
+#endif  // IRESEARCH_SCORE_H

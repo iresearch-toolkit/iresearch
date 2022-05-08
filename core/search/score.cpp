@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "score.hpp"
+
 #include "shared.hpp"
 
 namespace iresearch {
@@ -30,8 +31,7 @@ namespace iresearch {
 void reset(irs::score& score, std::vector<ScoreFunction>&& scorers) {
   struct ctx : score_ctx {
     explicit ctx(std::vector<ScoreFunction>&& scorers) noexcept
-      : scorers{std::move(scorers)} {
-    }
+        : scorers{std::move(scorers)} {}
 
     std::vector<ScoreFunction> scorers;
   };
@@ -46,25 +46,23 @@ void reset(irs::score& score, std::vector<ScoreFunction>&& scorers) {
       score = std::move(scorers.front());
     } break;
     case 2: {
-      score.Reset(
-        memory::make_unique<ctx>(std::move(scorers)),
-        [](score_ctx* ctx, score_t* res)  noexcept  {
-          auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
-          scorers.front()(res);
-          scorers.back()(res + 1);
-      });
+      score.Reset(memory::make_unique<ctx>(std::move(scorers)),
+                  [](score_ctx* ctx, score_t* res) noexcept {
+                    auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
+                    scorers.front()(res);
+                    scorers.back()(res + 1);
+                  });
     } break;
     default: {
-      score.Reset(
-        memory::make_unique<ctx>(std::move(scorers)),
-        [](score_ctx* ctx, score_t* res) noexcept {
-          auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
-          for (auto& scorer : scorers) {
-            scorer(res++);
-          }
-      });
+      score.Reset(memory::make_unique<ctx>(std::move(scorers)),
+                  [](score_ctx* ctx, score_t* res) noexcept {
+                    auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
+                    for (auto& scorer : scorers) {
+                      scorer(res++);
+                    }
+                  });
     } break;
   }
 }
 
-} // ROOT
+}  // namespace iresearch

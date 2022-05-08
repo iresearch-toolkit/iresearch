@@ -23,9 +23,9 @@
 
 #include "sort.hpp"
 
-#include "shared.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
+#include "shared.hpp"
 #include "utils/memory_pool.hpp"
 
 namespace {
@@ -53,7 +53,8 @@ std::tuple<std::vector<OrderBucket>, size_t, IndexFeatures> Prepare(
     // cppcheck-suppress shadowFunction
     const auto [bucket_stats_size, bucket_stats_align] = prepared->stats_size();
     assert(bucket_stats_align <= alignof(std::max_align_t));
-    assert(math::is_power2(bucket_stats_align)); // math::is_power2(0) returns true
+    assert(math::is_power2(
+        bucket_stats_align));  // math::is_power2(0) returns true
 
     stats_align = std::max(stats_align, bucket_stats_align);
 
@@ -67,16 +68,16 @@ std::tuple<std::vector<OrderBucket>, size_t, IndexFeatures> Prepare(
 
   stats_size = memory::align_up(stats_size, stats_align);
 
-  return { std::move(buckets), stats_size, features };
+  return {std::move(buckets), stats_size, features};
 }
 
 void DefaultScore(score_ctx* ctx, score_t* res) noexcept {
   assert(res);
-   // FIXME(gnusi): use std::bit_cast when available
+  // FIXME(gnusi): use std::bit_cast when available
   std::memset(res, 0, reinterpret_cast<size_t>(ctx));
 }
 
-}
+}  // namespace
 
 namespace iresearch {
 
@@ -84,13 +85,10 @@ REGISTER_ATTRIBUTE(filter_boost);
 
 /*static*/ const score_f ScoreFunction::kDefault{&::DefaultScore};
 
-ScoreFunction::ScoreFunction() noexcept
-  : func_{kDefault} {
-}
+ScoreFunction::ScoreFunction() noexcept : func_{kDefault} {}
 
 ScoreFunction::ScoreFunction(ScoreFunction&& rhs) noexcept
-  : ctx_(std::move(rhs.ctx_)),
-    func_(rhs.func_) {
+    : ctx_(std::move(rhs.ctx_)), func_(rhs.func_) {
   rhs.func_ = kDefault;
 }
 
@@ -103,26 +101,24 @@ ScoreFunction& ScoreFunction::operator=(ScoreFunction&& rhs) noexcept {
   return *this;
 }
 
-sort::sort(const type_info& type) noexcept
-  : type_(type.id()) {
-}
+sort::sort(const type_info& type) noexcept : type_(type.id()) {}
 
 Order Order::Prepare(std::span<const sort::ptr> order) {
   return std::apply(
       [](auto&&... args) {
-        return Order{std::forward<decltype(args)>(args)...}; },
+        return Order{std::forward<decltype(args)>(args)...};
+      },
       ::Prepare(ptr_iterator{std::begin(order)},
-                ptr_iterator{std::end(order)})
-    );
+                ptr_iterator{std::end(order)}));
 }
 
 Order Order::Prepare(std::span<const sort*> order) {
   return std::apply(
       [](auto&&... args) {
-        return Order{std::forward<decltype(args)>(args)...}; },
+        return Order{std::forward<decltype(args)>(args)...};
+      },
       ::Prepare(ptr_iterator{std::begin(order)},
-                ptr_iterator{std::end(order)})
-    );
+                ptr_iterator{std::end(order)}));
 }
 
 const Order Order::kUnordered;
@@ -137,14 +133,14 @@ std::vector<ScoreFunction> PrepareScorers(std::span<const OrderBucket> buckets,
   scorers.reserve(buckets.size());
 
   for (auto& entry : buckets) {
-    assert(stats_buf);
-    assert(entry.bucket); // ensured by Order
     const auto& bucket = *entry.bucket;
 
+    if (IRS_UNLIKELY(!entry.bucket)) {
+      continue;
+    }
+
     auto scorer = bucket.prepare_scorer(
-      segment, field,
-      stats_buf + entry.stats_offset,
-      doc, boost);
+        segment, field, stats_buf + entry.stats_offset, doc, boost);
 
     if (IRS_LIKELY(scorer)) {
       scorers.emplace_back(std::move(scorer));
@@ -156,14 +152,14 @@ std::vector<ScoreFunction> PrepareScorers(std::span<const OrderBucket> buckets,
   return scorers;
 }
 
-void PrepareCollectors(
-    std::span<const OrderBucket> order,
-    byte_type* stats_buf,
-    const index_reader& index) {
-  for (auto& entry: order) {
-    assert(entry.bucket); // ensured by Order
-    entry.bucket->collect(stats_buf + entry.stats_offset, index, nullptr, nullptr);
+void PrepareCollectors(std::span<const OrderBucket> order, byte_type* stats_buf,
+                       const index_reader& index) {
+  for (auto& entry : order) {
+    if (IRS_LIKELY(entry.bucket)) {
+      entry.bucket->collect(stats_buf + entry.stats_offset, index, nullptr,
+                            nullptr);
+    }
   }
 }
 
-}
+}  // namespace iresearch

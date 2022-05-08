@@ -28,49 +28,33 @@
 namespace iresearch {
 
 class tfidf_sort : public sort {
-public:
+ public:
   using score_t = float_t;
 
-  static constexpr string_ref type_name() noexcept {
-    return "tfidf";
-  }
+  static constexpr string_ref type_name() noexcept { return "tfidf"; }
 
-  static constexpr bool WITH_NORMS() noexcept {
-    return false;
-  }
+  static constexpr bool WITH_NORMS() noexcept { return false; }
 
-  static constexpr bool BOOST_AS_SCORE() noexcept {
-    return false;
-  }
+  static constexpr bool BOOST_AS_SCORE() noexcept { return false; }
 
-  // for use with irs::order::add<T>() and default args (static build)
-  static sort::ptr make(
-    bool normalize = WITH_NORMS(),
-    bool boost_as_score = BOOST_AS_SCORE());
+  explicit tfidf_sort(bool normalize = WITH_NORMS(),
+                      bool boost_as_score = BOOST_AS_SCORE()) noexcept;
 
-  explicit tfidf_sort(
-    bool normalize = WITH_NORMS(),
-    bool boost_as_score = BOOST_AS_SCORE()) noexcept;
-
-  static void init(); // for trigering registration in a static build
+  static void init();  // for trigering registration in a static build
   bool normalize() const noexcept { return normalize_; }
   void normalize(bool value) noexcept { normalize_ = value; }
 
   // use boost as score even if frequency is not set
-  bool use_boost_as_score() const noexcept {
-    return boost_as_score_;
-  }
-  void use_boost_as_score(bool use) noexcept {
-    boost_as_score_ = use;
-  }
+  bool use_boost_as_score() const noexcept { return boost_as_score_; }
+  void use_boost_as_score(bool use) noexcept { boost_as_score_ = use; }
 
   virtual sort::prepared::ptr prepare() const override;
 
  private:
   bool normalize_;
   bool boost_as_score_;
-}; // tfidf_sort
+};
 
-}
+}  // namespace iresearch
 
 #endif
