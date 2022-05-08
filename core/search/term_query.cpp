@@ -56,10 +56,8 @@ doc_iterator::ptr term_query::execute(const sub_reader& rdr, const Order& ord,
     auto* score = irs::get_mutable<irs::score>(docs.get());
 
     if (score) {
-      auto scorers = PrepareScorers(ord.buckets(), rdr, *state->reader,
-                                    stats_.c_str(), *docs, boost());
-
-      *score = CompileScorers(std::move(scorers));
+      *score = CompileScore(ord.buckets(), rdr, *state->reader, stats_.c_str(),
+                            *docs, boost());
     }
   }
 

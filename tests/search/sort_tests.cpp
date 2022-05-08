@@ -229,15 +229,12 @@ TEST(sort_tests, prepare_order) {
 
     irs::bstring stats_buf(prepared.stats_size(), 0);
     irs::bstring score_buf(prepared.score_size(), 0);
-    auto scorers = irs::PrepareScorers(
-            prepared.buckets(), irs::sub_reader::empty(),
-            irs::empty_term_reader(0), stats_buf.c_str(),
-            EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
-    ASSERT_TRUE(0 == scorers.size());
 
     irs::score score;
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
-    score = irs::CompileScorers(std::move(scorers));
+    score = irs::CompileScore(prepared.buckets(), irs::sub_reader::empty(),
+                              irs::empty_term_reader(0), stats_buf.c_str(),
+                              EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 

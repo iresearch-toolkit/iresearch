@@ -33,12 +33,10 @@ all_iterator::all_iterator(const sub_reader& reader,
   std::get<cost>(attrs_).reset(max_doc_);
 
   if (!order.empty()) {
-    auto scorers = PrepareScorers(order.buckets(), reader,
-                                  irs::empty_term_reader(docs_count),
-                                  query_stats, *this, boost);
-
     auto& score = std::get<irs::score>(attrs_);
-    score = CompileScorers(std::move(scorers));
+    score = CompileScore(order.buckets(), reader,
+                         irs::empty_term_reader(docs_count), query_stats, *this,
+                         boost);
   }
 }
 

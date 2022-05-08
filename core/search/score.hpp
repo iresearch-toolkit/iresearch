@@ -29,7 +29,7 @@
 namespace iresearch {
 
 // Represents a score related for the particular document
-struct score : public attribute, public ScoreFunction {
+struct score : attribute, ScoreFunction {
   static const score kNoScore;
 
   static constexpr string_ref type_name() noexcept {
@@ -45,7 +45,27 @@ struct score : public attribute, public ScoreFunction {
   using ScoreFunction::operator=;
 };
 
+using Scorers = SmallVector<ScoreFunction, 2>;
+
+// Prepare scorer for each of the bucket.
+Scorers PrepareScorers(std::span<const OrderBucket> buckets,
+                       const sub_reader& segment, const term_reader& field,
+                       const byte_type* stats, const attribute_provider& doc,
+                       boost_t boost);
+
+// Compiles a set of prepared scorers into a single score function.
 ScoreFunction CompileScorers(Scorers&& scorers);
+
+template<typename... Args>
+ScoreFunction CompileScore(Args&&... args) {
+  return CompileScorers(PrepareScorers(std::forward<Args>(args)...));
+}
+
+// Prepare empty collectors, i.e. call collect(...) on each of the
+// buckets without explicitly collecting field or term statistics,
+// e.g. for 'all' filter.
+void PrepareCollectors(std::span<const OrderBucket> order, byte_type* stats,
+                       const index_reader& index);
 
 }  // namespace iresearch
 

@@ -123,41 +123,4 @@ Order Order::Prepare(std::span<const sort*> order) {
 
 const Order Order::kUnordered;
 
-Scorers PrepareScorers(std::span<const OrderBucket> buckets,
-                       const sub_reader& segment, const term_reader& field,
-                       const byte_type* stats_buf,
-                       const attribute_provider& doc, boost_t boost) {
-  Scorers scorers;
-  scorers.reserve(buckets.size());
-
-  for (auto& entry : buckets) {
-    const auto& bucket = *entry.bucket;
-
-    if (IRS_UNLIKELY(!entry.bucket)) {
-      continue;
-    }
-
-    auto scorer = bucket.prepare_scorer(
-        segment, field, stats_buf + entry.stats_offset, doc, boost);
-
-    if (IRS_LIKELY(scorer)) {
-      scorers.emplace_back(std::move(scorer));
-    } else {
-      scorers.emplace_back(ScoreFunction::Default(sizeof(score_t)));
-    }
-  }
-
-  return scorers;
-}
-
-void PrepareCollectors(std::span<const OrderBucket> order, byte_type* stats_buf,
-                       const index_reader& index) {
-  for (auto& entry : order) {
-    if (IRS_LIKELY(entry.bucket)) {
-      entry.bucket->collect(stats_buf + entry.stats_offset, index, nullptr,
-                            nullptr);
-    }
-  }
-}
-
 }  // namespace iresearch

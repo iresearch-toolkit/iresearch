@@ -310,6 +310,9 @@ struct OrderBucket : util::noncopyable {
   size_t stats_offset;         // offset in stats buffer
 };
 
+static_assert(std::is_nothrow_move_constructible_v<OrderBucket>);
+static_assert(std::is_nothrow_move_assignable_v<OrderBucket>);
+
 // Set of compiled sort entries
 class Order final : private util::noncopyable {
  public:
@@ -349,9 +352,6 @@ class Order final : private util::noncopyable {
   size_t stats_size_{};
   IndexFeatures features_{IndexFeatures::NONE};
 };
-
-static_assert(std::is_nothrow_move_constructible_v<OrderBucket>);
-static_assert(std::is_nothrow_move_assignable_v<OrderBucket>);
 
 struct NoopAggregator {
   constexpr size_t size() const noexcept { return 0; }
@@ -559,20 +559,6 @@ class PreparedSortBase<void> : public sort::prepared {
     return std::make_pair(size_t(0), size_t(0));
   }
 };
-
-using Scorers = SmallVector<ScoreFunction, 2>;
-
-// Prepare scorer for each of the bucket
-Scorers PrepareScorers(std::span<const OrderBucket> buckets,
-                       const sub_reader& segment, const term_reader& field,
-                       const byte_type* stats, const attribute_provider& doc,
-                       boost_t boost);
-
-// Prepare empty collectors, i.e. call collect(...) on each of the
-// buckets without explicitly collecting field or term statistics,
-// e.g. for 'all' filter
-void PrepareCollectors(std::span<const OrderBucket> order, byte_type* stats,
-                       const index_reader& index);
 
 }  // namespace iresearch
 

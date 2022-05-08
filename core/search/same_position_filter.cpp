@@ -159,11 +159,8 @@ class same_position_query final : public filter::prepared {
         auto* score = irs::get_mutable<irs::score>(docs.get());
 
         if (score) {
-          auto scorers =
-              PrepareScorers(ord.buckets(), segment, *term_state.reader,
-                             term_stats->c_str(), *docs, boost());
-
-          *score = CompileScorers(std::move(scorers));
+          *score = CompileScore(ord.buckets(), segment, *term_state.reader,
+                                term_stats->c_str(), *docs, boost());
         }
       }
 

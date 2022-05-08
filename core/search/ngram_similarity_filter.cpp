@@ -78,11 +78,7 @@ class ngram_similarity_doc_iterator final : public doc_iterator,
 
     if (!empty_order_) {
       auto& score = std::get<irs::score>(attrs_);
-
-      auto scorers =
-          PrepareScorers(ord.buckets(), segment, field, stats, *this, boost);
-
-      score = CompileScorers(std::move(scorers));
+      score = CompileScore(ord.buckets(), segment, field, stats, *this, boost);
     }
   }
 

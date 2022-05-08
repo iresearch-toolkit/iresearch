@@ -143,10 +143,8 @@ doc_iterator::ptr multiterm_query::execute(
         assert(entry.stat_offset < stats.size());
         auto* stat = stats[entry.stat_offset].c_str();
 
-        auto scorers = PrepareScorers(ord.buckets(), segment, *state->reader,
-                                      stat, *docs, entry.boost * boost());
-
-        *score = CompileScorers(std::move(scorers));
+        *score = CompileScore(ord.buckets(), segment, *state->reader, stat,
+                              *docs, entry.boost * boost());
       }
     }
 

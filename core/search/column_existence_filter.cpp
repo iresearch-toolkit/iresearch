@@ -59,11 +59,9 @@ class column_existence_query : public irs::filter::prepared {
 
     if (!ord.empty()) {
       if (auto* score = irs::get_mutable<irs::score>(it.get()); score) {
-        auto scorers = PrepareScorers(ord.buckets(), segment,
-                                      empty_term_reader(column.size()),
-                                      stats_.c_str(), *it, boost());
-
-        *score = CompileScorers(std::move(scorers));
+        *score = CompileScore(ord.buckets(), segment,
+                              empty_term_reader(column.size()), stats_.c_str(),
+                              *it, boost());
       }
     }
 
