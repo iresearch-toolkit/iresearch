@@ -372,12 +372,10 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
     const auto* field_ptr = down_cast<field_collector>(field);
     const auto* term_ptr = down_cast<term_collector>(term);
 
-    const auto docs_with_field =
-        field_ptr ? field_ptr->docs_with_field
-                  : 0;  // nullptr possible if e.g. 'all' filter
-    const auto docs_with_term =
-        term_ptr ? term_ptr->docs_with_term
-                 : 0;  // nullptr possible if e.g.'by_column_existence' filter
+    // nullptr possible if e.g. 'all' filter
+    const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0;
+    // nullptr possible if e.g.'by_column_existence' filter
+    const auto docs_with_term = term_ptr ? term_ptr->docs_with_term : 0;
 
     idf.value += float_t(
         std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0);
@@ -388,8 +386,7 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
     return IndexFeatures::FREQ;
   }
 
-  virtual irs::sort::field_collector::ptr prepare_field_collector()
-      const override {
+  virtual field_collector::ptr prepare_field_collector() const override {
     return irs::memory::make_unique<field_collector>();
   }
 
@@ -471,8 +468,7 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
     return MakeScoreFunction<ScoreContext>(filter_boost, boost, stats, freq);
   }
 
-  virtual irs::sort::term_collector::ptr prepare_term_collector()
-      const override {
+  virtual term_collector::ptr prepare_term_collector() const override {
     return irs::memory::make_unique<term_collector>();
   }
 

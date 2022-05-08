@@ -202,9 +202,11 @@ struct byte_ref_iterator {
 };
 
 struct field_collector final : public irs::sort::field_collector {
-  uint64_t docs_with_field = 0;  // number of documents containing the matched
-                                 // field (possibly without matching terms)
-  uint64_t total_term_freq = 0;  // number of terms for processed field
+  // number of documents containing the matched
+  // field (possibly without matching terms)
+  uint64_t docs_with_field = 0;
+  // number of terms for processed field
+  uint64_t total_term_freq = 0;
 
   virtual void collect(const irs::sub_reader& /*segment*/,
                        const irs::term_reader& field) override {
@@ -242,8 +244,8 @@ struct field_collector final : public irs::sort::field_collector {
 };
 
 struct term_collector final : public irs::sort::term_collector {
-  uint64_t docs_with_term =
-      0;  // number of documents containing the matched term
+  // number of documents containing the matched term
+  uint64_t docs_with_term = 0;
 
   virtual void collect(const irs::sub_reader& /*segment*/,
                        const irs::term_reader& /*field*/,
@@ -482,15 +484,12 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
     const auto* field_ptr = down_cast<field_collector>(field);
     const auto* term_ptr = down_cast<term_collector>(term);
 
-    const auto docs_with_field =
-        field_ptr ? field_ptr->docs_with_field
-                  : 0;  // nullptr possible if e.g. 'all' filter
-    const auto docs_with_term =
-        term_ptr ? term_ptr->docs_with_term
-                 : 0;  // nullptr possible if e.g.'by_column_existence' filter
-    const auto total_term_freq =
-        field_ptr ? field_ptr->total_term_freq
-                  : 0;  // nullptr possible if e.g. 'all' filter
+    // nullptr possible if e.g. 'all' filter
+    const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0;
+    // nullptr possible if e.g.'by_column_existence' filter
+    const auto docs_with_term = term_ptr ? term_ptr->docs_with_term : 0;
+    // nullptr possible if e.g. 'all' filter
+    const auto total_term_freq = field_ptr ? field_ptr->total_term_freq : 0;
 
     // precomputed idf value
     stats.idf += float_t(std::log1p((docs_with_field - docs_with_term + 0.5) /
@@ -524,8 +523,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
     return IndexFeatures::FREQ;
   }
 
-  virtual irs::sort::field_collector::ptr prepare_field_collector()
-      const override {
+  virtual field_collector::ptr prepare_field_collector() const override {
     return irs::memory::make_unique<field_collector>();
   }
 
@@ -610,8 +608,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
     return MakeScoreFunction<BM15Context>(filter_boost, k_, boost, stats, freq);
   }
 
-  virtual irs::sort::term_collector::ptr prepare_term_collector()
-      const override {
+  virtual term_collector::ptr prepare_term_collector() const override {
     return irs::memory::make_unique<term_collector>();
   }
 
@@ -619,7 +616,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
   float_t k_;
   float_t b_;
   bool boost_as_score_;
-};  // sort
+};
 
 }  // namespace bm25
 
