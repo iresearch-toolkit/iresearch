@@ -525,7 +525,7 @@ class small_disjunction final : public compound_doc_iterator<Adapter>,
         auto* score_buf = reinterpret_cast<score_t*>(self.score_buf_.data());
         const auto doc = std::get<document>(self.attrs_).value;
 
-        std::memset(res, 0, sizeof(score_t) * merger.size());
+        std::memset(res, 0, merger.byte_size());
         for (auto begin = self.scored_begin_, end = self.end_; begin != end;
              ++begin) {
           auto value = begin->value();

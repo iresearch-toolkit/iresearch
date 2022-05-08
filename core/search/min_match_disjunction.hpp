@@ -246,7 +246,7 @@ class min_match_disjunction : public doc_iterator,
     }
 
     auto& score = std::get<irs::score>(attrs_);
-    score_buf_.resize(Merger::size() * sizeof(score_t));
+    score_buf_.resize(Merger::byte_size());
 
     score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
       auto evaluate_score_iter = [](irs::score_t* res, auto& src) {
@@ -265,7 +265,7 @@ class min_match_disjunction : public doc_iterator,
       self.push_valid_to_lead();
 
       // score lead iterators
-      std::memset(res, 0, merger.size() * sizeof(score_t));
+      std::memset(res, 0, merger.byte_size());
       std::for_each(
           self.lead(), self.heap_.end(),
           [&self, &evaluate_score_iter, &merger, res, score_buf](size_t it) {
