@@ -155,7 +155,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
       score_.Reset(this, [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
         const auto& self = *static_cast<basic_doc_iterator*>(ctx);
         for (auto& scorer : self.scorers_) {
-          scorer.func(res++);
+          scorer(res++);
         }
       });
 
@@ -202,7 +202,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
  private:
   std::map<irs::type_info::type_id, irs::attribute*> attrs_;
   irs::cost est_;
-  std::vector<irs::Scorer> scorers_;
+  std::vector<irs::ScoreFunction> scorers_;
   docids_t::const_iterator first_;
   docids_t::const_iterator last_;
   const irs::byte_type* stats_;

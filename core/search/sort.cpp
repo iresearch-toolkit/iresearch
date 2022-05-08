@@ -42,7 +42,7 @@ std::tuple<std::vector<OrderBucket>, size_t, IndexFeatures> Prepare(
   size_t stats_size{};
   size_t stats_align{};
 
-  for (size_t score_index = 0; begin != end; ++begin) {
+  for (; begin != end; ++begin) {
     auto prepared = begin->prepare();
 
     if (!prepared) {
@@ -60,10 +60,9 @@ std::tuple<std::vector<OrderBucket>, size_t, IndexFeatures> Prepare(
     stats_size = memory::align_up(stats_size, bucket_stats_align);
     features |= prepared->features();
 
-    buckets.emplace_back(std::move(prepared), score_index, stats_size);
+    buckets.emplace_back(std::move(prepared), stats_size);
 
     stats_size += memory::align_up(bucket_stats_size, bucket_stats_align);
-    ++score_index;
   }
 
   stats_size = memory::align_up(stats_size, stats_align);
@@ -71,9 +70,10 @@ std::tuple<std::vector<OrderBucket>, size_t, IndexFeatures> Prepare(
   return { std::move(buckets), stats_size, features };
 }
 
-void default_score(score_ctx* ctx, score_t* res) noexcept {
+void DefaultScore(score_ctx* ctx, score_t* res) noexcept {
   assert(res);
-  std::memset(res, 0, reinterpret_cast<size_t>(ctx)); // FIXME
+   // FIXME(gnusi): use std::bit_cast when available
+  std::memset(res, 0, reinterpret_cast<size_t>(ctx));
 }
 
 }
@@ -82,7 +82,7 @@ namespace iresearch {
 
 REGISTER_ATTRIBUTE(filter_boost);
 
-/*static*/ const score_f ScoreFunction::kDefault{&::default_score};
+/*static*/ const score_f ScoreFunction::kDefault{&::DefaultScore};
 
 ScoreFunction::ScoreFunction() noexcept
   : func_{kDefault} {
@@ -127,14 +127,13 @@ Order Order::Prepare(std::span<const sort*> order) {
 
 const Order Order::kUnordered;
 
-
-std::vector<Scorer> PrepareScorers(std::span<const OrderBucket> buckets,
-                                   const sub_reader& segment,
-                                   const term_reader& field,
-                                   const byte_type* stats_buf,
-                                   const attribute_provider& doc,
-                                   boost_t boost) {
-  std::vector<Scorer> scorers;
+std::vector<ScoreFunction> PrepareScorers(std::span<const OrderBucket> buckets,
+                                          const sub_reader& segment,
+                                          const term_reader& field,
+                                          const byte_type* stats_buf,
+                                          const attribute_provider& doc,
+                                          boost_t boost) {
+  std::vector<ScoreFunction> scorers;
   scorers.reserve(buckets.size());
 
   for (auto& entry : buckets) {
@@ -147,9 +146,10 @@ std::vector<Scorer> PrepareScorers(std::span<const OrderBucket> buckets,
       stats_buf + entry.stats_offset,
       doc, boost);
 
-    if (scorer) {
-      // skip empty scorers
-      scorers.emplace_back(std::move(scorer), &entry);
+    if (IRS_LIKELY(scorer)) {
+      scorers.emplace_back(std::move(scorer));
+    } else {
+      scorers.emplace_back(ScoreFunction::Default(sizeof(score_t)));
     }
   }
 

@@ -311,10 +311,8 @@ class sort {
 
 struct OrderBucket : util::noncopyable {
   OrderBucket(sort::prepared::ptr&& bucket,
-              size_t score_index,
               size_t stats_offset) noexcept
     : bucket(std::move(bucket)),
-      score_index{score_index},
       stats_offset{stats_offset} {
     assert(this->bucket);
   }
@@ -323,7 +321,6 @@ struct OrderBucket : util::noncopyable {
   OrderBucket& operator=(OrderBucket&&) = default;
 
   sort::prepared::ptr bucket; // prepared score
-  size_t score_index; // scorer index
   size_t stats_offset; // offset in stats buffer
 };
 
@@ -591,26 +588,14 @@ class PreparedSortBase<void> : public sort::prepared {
   }
 };
 
-struct Scorer {
-  Scorer(ScoreFunction&& func, const OrderBucket* bucket) noexcept
-      : func(std::move(func)),
-        bucket(bucket) {
-    assert(this->func);
-    assert(this->bucket);
-  }
-
-  ScoreFunction func;
-  const OrderBucket* bucket;
-};
-
 // FIXME(gnusi): SBO
 // Prepare scorer for each of the bucket
-std::vector<Scorer> PrepareScorers(std::span<const OrderBucket> buckets,
-                                   const sub_reader& segment,
-                                   const term_reader& field,
-                                   const byte_type* stats,
-                                   const attribute_provider& doc,
-                                   boost_t boost);
+std::vector<ScoreFunction> PrepareScorers(std::span<const OrderBucket> buckets,
+                                          const sub_reader& segment,
+                                          const term_reader& field,
+                                          const byte_type* stats,
+                                          const attribute_provider& doc,
+                                          boost_t boost);
 
 
 // Prepare empty collectors, i.e. call collect(...) on each of the

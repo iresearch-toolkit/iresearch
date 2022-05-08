@@ -27,71 +27,40 @@ namespace iresearch {
 
 /*static*/ const score score::kNoScore;
 
-void reset(irs::score& score, std::vector<Scorer>&& scorers) {
-  // FIXME(gnusi): revisit, we either have to
-  // disallow creation of nullptr scorers
-  // or correctly track score offsets
+void reset(irs::score& score, std::vector<ScoreFunction>&& scorers) {
+  struct ctx : score_ctx {
+    explicit ctx(std::vector<ScoreFunction>&& scorers) noexcept
+      : scorers{std::move(scorers)} {
+    }
+
+    std::vector<ScoreFunction> scorers;
+  };
 
   switch (scorers.size()) {
     case 0: {
       score = ScoreFunction{};
     } break;
     case 1: {
-      auto& scorer = scorers.front();
-      if (0 == scorer.bucket->score_index) {
-        // The most important and frequent case when only
-        // one scorer is provided.
-        score = std::move(scorer.func);
-      } else {
-        struct ctx : score_ctx {
-          explicit ctx(Scorer&& scorer) noexcept
-            : scorer{std::move(scorer)} {
-          }
-
-          Scorer scorer;
-        };
-
-        // FIXME(gnusi): revisit
-        score.Reset(
-          memory::make_unique<ctx>(std::move(scorer)),
-          [](score_ctx* ctx, score_t* res) noexcept {
-            auto& scorer = static_cast<struct ctx*>(ctx)->scorer;
-            scorer.func(res + scorer.bucket->score_index);
-        });
-      }
+      // The most important and frequent case when only
+      // one scorer is provided.
+      score = std::move(scorers.front());
     } break;
     case 2: {
-      struct ctx : score_ctx {
-        explicit ctx(std::vector<Scorer>&& scorers) noexcept
-          : scorers{std::move(scorers)} {
-        }
-
-        std::vector<Scorer> scorers;
-      };
-
       score.Reset(
         memory::make_unique<ctx>(std::move(scorers)),
         [](score_ctx* ctx, score_t* res)  noexcept  {
           auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
-          scorers.front().func(res);
-          scorers.back().func(res + 1);
+          scorers.front()(res);
+          scorers.back()(res + 1);
       });
     } break;
     default: {
-      struct ctx : score_ctx {
-        explicit ctx(std::vector<Scorer>&& scorers) noexcept
-          : scorers{std::move(scorers)} {
-        }
-
-        std::vector<Scorer> scorers;
-      };
-
       score.Reset(
         memory::make_unique<ctx>(std::move(scorers)),
         [](score_ctx* ctx, score_t* res) noexcept {
           auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
           for (auto& scorer : scorers) {
-            scorer.func(res++);
+            scorer(res++);
           }
       });
     } break;

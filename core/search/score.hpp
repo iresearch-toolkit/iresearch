@@ -45,7 +45,7 @@ struct score : public attribute, public ScoreFunction {
   using ScoreFunction::operator=;
 };
 
-void reset(irs::score& score, std::vector<Scorer>&& scorers);
+void reset(irs::score& score, std::vector<ScoreFunction>&& scorers);
 
 } // ROOT
 
