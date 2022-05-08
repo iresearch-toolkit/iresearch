@@ -248,7 +248,6 @@ class min_match_disjunction : public doc_iterator,
     auto& score = std::get<irs::score>(attrs_);
     score_buf_.resize(Merger::size() * sizeof(score_t));
 
-    scores_vals_.resize(itrs_.size());
     score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
       auto evaluate_score_iter = [](irs::score_t* res, auto& src) {
         auto* score = src.score;
@@ -428,7 +427,6 @@ class min_match_disjunction : public doc_iterator,
 
   doc_iterators_t itrs_;  // sub iterators
   std::vector<size_t> heap_;
-  mutable std::vector<const irs::score_t*> scores_vals_;
   size_t min_match_count_;  // minimum number of hits
   size_t lead_;             // number of iterators in lead group
   attributes attrs_;
