@@ -145,7 +145,7 @@ TEST_P(all_filter_test_case, all_order) {
         const irs::term_reader&,
         const irs::byte_type*,
         irs::score_t*,
-        const irs::attribute_provider&) -> irs::score_function {
+        const irs::attribute_provider&) -> irs::ScoreFunction {
       return { nullptr, nullptr };
     };
     sort.prepare_term_collector_ = []()->irs::sort::term_collector::ptr { return nullptr; };

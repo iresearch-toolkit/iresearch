@@ -125,7 +125,7 @@ struct sort : irs::sort {
       return irs::memory::make_unique<term_collector>();
     }
 
-    virtual irs::score_function prepare_scorer(
+    virtual irs::ScoreFunction prepare_scorer(
         const irs::sub_reader& /*segment*/,
         const irs::term_reader& /*field*/,
         const irs::byte_type* /*stats*/,

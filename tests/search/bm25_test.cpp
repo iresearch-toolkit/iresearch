@@ -1116,7 +1116,7 @@ TEST_P(bm25_test_case, test_query) {
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
-      irs::score_t score_value{}; // FIXME(gnusi)
+      irs::score_t score_value;
       score->evaluate(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
@@ -1177,7 +1177,7 @@ TEST_P(bm25_test_case, test_query) {
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
-      irs::score_t score_value{}; // FIXME(gnusi)
+      irs::score_t score_value;
       score->evaluate(&score_value);
 
       ASSERT_EQ(docs->value(), values->seek(docs->value()));

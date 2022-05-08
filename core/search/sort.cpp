@@ -71,7 +71,10 @@ std::tuple<std::vector<OrderBucket>, size_t, IndexFeatures> Prepare(
   return { std::move(buckets), stats_size, features };
 }
 
-void default_score(score_ctx*, score_t*) noexcept { }
+void default_score(score_ctx* ctx, score_t* res) noexcept {
+  assert(res);
+  std::memset(res, 0, reinterpret_cast<size_t>(ctx)); // FIXME
+}
 
 }
 
@@ -79,19 +82,19 @@ namespace iresearch {
 
 REGISTER_ATTRIBUTE(filter_boost);
 
-/*static*/ const score_f score_function::kDefaultScoreFunc{&::default_score};
+/*static*/ const score_f ScoreFunction::kDefaultScoreFunc{&::default_score};
 
-score_function::score_function() noexcept
+ScoreFunction::ScoreFunction() noexcept
   : func_{kDefaultScoreFunc} {
 }
 
-score_function::score_function(score_function&& rhs) noexcept
+ScoreFunction::ScoreFunction(ScoreFunction&& rhs) noexcept
   : ctx_(std::move(rhs.ctx_)),
     func_(rhs.func_) {
   rhs.func_ = kDefaultScoreFunc;
 }
 
-score_function& score_function::operator=(score_function&& rhs) noexcept {
+ScoreFunction& ScoreFunction::operator=(ScoreFunction&& rhs) noexcept {
   if (this != &rhs) {
     ctx_ = std::move(rhs.ctx_);
     func_ = rhs.func_;

@@ -256,12 +256,12 @@ class min_match_disjunction
     score_buf_.resize(Merger::size()*sizeof(score_t));
 
     scores_vals_.resize(itrs_.size());
-    score.reset(this, [](score_ctx* ctx, score_t* res) noexcept {
+    score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
       auto evaluate_score_iter = [](irs::score_t* res, auto& src) {
-        const auto* score = src.score;
+        auto* score = src.score;
         assert(score); // must be ensure by the adapter
         if (!score->is_default()) {
-          score->evaluate(res);
+          (*score)(res);
         }
       };
 

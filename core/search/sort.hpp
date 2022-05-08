@@ -66,22 +66,28 @@ struct score_ctx {
 using score_f = void(*)(score_ctx* ctx, score_t* res) noexcept;
 
 // Convenient wrapper around score_f and score_ctx.
-class score_function : util::noncopyable {
+class ScoreFunction : util::noncopyable {
  public:
+  // Default implementation sets result to 0.
   static const score_f kDefaultScoreFunc;
 
-  score_function() noexcept;
-  score_function(memory::managed_ptr<score_ctx>&& ctx, const score_f func) noexcept
+  static ScoreFunction Default(size_t size) noexcept {
+    // FIXME(gnusi): use std::bit_cast when Apple will finally support it
+    return { reinterpret_cast<score_ctx*>(size), kDefaultScoreFunc };
+  }
+
+  ScoreFunction() noexcept;
+  ScoreFunction(memory::managed_ptr<score_ctx>&& ctx, const score_f func) noexcept
     : ctx_(std::move(ctx)), func_(func) {
   }
-  score_function(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept
-    : score_function(memory::to_managed<score_ctx>(std::move(ctx)), func) {
+  ScoreFunction(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept
+    : ScoreFunction(memory::to_managed<score_ctx>(std::move(ctx)), func) {
   }
-  score_function(score_ctx* ctx, const score_f func) noexcept
-    : score_function(memory::to_managed<score_ctx, false>(std::move(ctx)), func) {
+  ScoreFunction(score_ctx* ctx, const score_f func) noexcept
+    : ScoreFunction(memory::to_managed<score_ctx, false>(std::move(ctx)), func) {
   }
-  score_function(score_function&& rhs) noexcept;
-  score_function& operator=(score_function&& rhs) noexcept;
+  ScoreFunction(ScoreFunction&& rhs) noexcept;
+  ScoreFunction& operator=(ScoreFunction&& rhs) noexcept;
 
   FORCE_INLINE void operator()(score_t* res) const noexcept {
     assert(func_);
@@ -96,28 +102,28 @@ class score_function : util::noncopyable {
     return !(*this == nullptr);
   }
 
-  bool operator==(const score_function& rhs) const noexcept {
+  bool operator==(const ScoreFunction& rhs) const noexcept {
     return ctx_ == rhs.ctx_ && func_ == rhs.func_;
   }
 
-  bool operator!=(const score_function& rhs) const noexcept {
+  bool operator!=(const ScoreFunction& rhs) const noexcept {
     return !(*this == rhs);
   }
 
-  const score_ctx* ctx() const noexcept { return ctx_.get(); }
-  score_f func() const noexcept { return func_; }
+  score_ctx* Ctx() const noexcept { return ctx_.get(); }
+  score_f Func() const noexcept { return func_; }
 
-  void reset(memory::managed_ptr<score_ctx>&& ctx, const score_f func) noexcept {
+  void Reset(memory::managed_ptr<score_ctx>&& ctx, const score_f func) noexcept {
     ctx_ = std::move(ctx);
     func_ = func;
   }
 
-  void reset(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept {
+  void Reset(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept {
     ctx_ = memory::to_managed<score_ctx>(std::move(ctx));
     func_ = func;
   }
 
-  void reset(score_ctx* ctx, const score_f func) noexcept {
+  void Reset(score_ctx* ctx, const score_f func) noexcept {
     ctx_ = memory::to_managed<score_ctx, false>(ctx);
     func_ = func;
   }
@@ -128,6 +134,25 @@ class score_function : util::noncopyable {
 
  private:
   memory::managed_ptr<score_ctx> ctx_;
+  score_f func_;
+};
+
+class ScoreFunctionView {
+ public:
+  ScoreFunctionView(const ScoreFunction& func) noexcept
+    : ctx_{func.Ctx()}, func_{func.Func()} {}
+
+  explicit operator bool() const noexcept {
+    return nullptr != func_;
+  }
+
+  FORCE_INLINE void operator()(score_t* res) const noexcept {
+    assert(func_);
+    return func_(ctx_, res);
+  }
+
+ private:
+  score_ctx* ctx_;
   score_f func_;
 };
 
@@ -246,7 +271,7 @@ class sort {
     virtual field_collector::ptr prepare_field_collector() const = 0;
 
     // Create a stateful scorer used for computation of document scores
-    virtual score_function prepare_scorer(
+    virtual ScoreFunction prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats,
@@ -560,14 +585,14 @@ class PreparedSortBase<void> : public sort::prepared {
 };
 
 struct Scorer {
-  Scorer(score_function&& func, const OrderBucket* bucket) noexcept
+  Scorer(ScoreFunction&& func, const OrderBucket* bucket) noexcept
       : func(std::move(func)),
         bucket(bucket) {
     assert(this->func);
     assert(this->bucket);
   }
 
-  score_function func;
+  ScoreFunction func;
   const OrderBucket* bucket;
 };
 

@@ -90,7 +90,7 @@ struct basic_sort : irs::sort {
       return irs::IndexFeatures::NONE;
     }
 
-    virtual irs::score_function prepare_scorer(
+    virtual irs::ScoreFunction prepare_scorer(
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type*,
@@ -154,7 +154,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
                                      *this,
                                      boost);
 
-      score_.reset(this, [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+      score_.Reset(this, [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
         const auto& self = *static_cast<basic_doc_iterator*>(ctx);
         for (auto& scorer : self.scorers_) {
           scorer.func(res++);

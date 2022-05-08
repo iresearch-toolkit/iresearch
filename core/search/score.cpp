@@ -34,14 +34,14 @@ void reset(irs::score& score, std::vector<Scorer>&& scorers) {
 
   switch (scorers.size()) {
     case 0: {
-      score.reset();
+      score = ScoreFunction{};
     } break;
     case 1: {
       auto& scorer = scorers.front();
       if (0 == scorer.bucket->score_index) {
         // The most important and frequent case when only
         // one scorer is provided.
-        score.reset(std::move(scorer.func));
+        score = std::move(scorer.func);
       } else {
         struct ctx : score_ctx {
           explicit ctx(Scorer&& scorer) noexcept
@@ -52,7 +52,7 @@ void reset(irs::score& score, std::vector<Scorer>&& scorers) {
         };
 
         // FIXME(gnusi): revisit
-        score.reset(
+        score.Reset(
           memory::make_unique<ctx>(std::move(scorer)),
           [](score_ctx* ctx, score_t* res) noexcept {
             auto& scorer = static_cast<struct ctx*>(ctx)->scorer;
@@ -69,7 +69,7 @@ void reset(irs::score& score, std::vector<Scorer>&& scorers) {
         std::vector<Scorer> scorers;
       };
 
-      score.reset(
+      score.Reset(
         memory::make_unique<ctx>(std::move(scorers)),
         [](score_ctx* ctx, score_t* res)  noexcept  {
           auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
@@ -86,7 +86,7 @@ void reset(irs::score& score, std::vector<Scorer>&& scorers) {
         std::vector<Scorer> scorers;
       };
 
-      score.reset(
+      score.Reset(
         memory::make_unique<ctx>(std::move(scorers)),
         [](score_ctx* ctx, score_t* res) noexcept {
           auto& scorers = static_cast<struct ctx*>(ctx)->scorers;

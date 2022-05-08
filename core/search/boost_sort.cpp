@@ -51,7 +51,7 @@ struct prepared final : PreparedSortBase<void> {
     return IndexFeatures::NONE;
   }
 
-  score_function prepare_scorer(
+  ScoreFunction prepare_scorer(
       const sub_reader&,
       const term_reader&,
       const byte_type*,
@@ -64,7 +64,7 @@ struct prepared final : PreparedSortBase<void> {
       if (score_buf) {
         *score_buf = boost;
 
-        return { nullptr, score_function::kDefaultScoreFunc };
+        return { nullptr, ScoreFunction::kDefaultScoreFunc };
       }
 
       uintptr_t tmp{};

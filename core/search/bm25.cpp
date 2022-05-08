@@ -383,7 +383,7 @@ auto MakeNormAdapter(Reader&& reader) {
 template<typename Ctx>
 struct MakeScoreFunctionImpl{
   template<bool HasFilterBoost, typename... Args>
-  static score_function Make(Args&&... args);
+  static ScoreFunction Make(Args&&... args);
 };
 
 template<>
@@ -391,7 +391,7 @@ struct MakeScoreFunctionImpl<BM15Context> {
   using Ctx = BM15Context;
 
   template<bool HasFilterBoost, typename... Args>
-  static score_function Make(Args&&... args) {
+  static ScoreFunction Make(Args&&... args) {
     return {
         memory::make_unique<Ctx>(std::forward<Args>(args)...),
         [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
@@ -423,7 +423,7 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
   using Ctx = BM25Context<Norm>;
 
   template<bool HasFilterBoost, typename... Args>
-  static score_function Make(Args&&... args) {
+  static ScoreFunction Make(Args&&... args) {
     return {
         memory::make_unique<Ctx>(std::forward<Args>(args)...),
         [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
@@ -463,7 +463,7 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
 };
 
 template<typename Ctx, typename... Args>
-score_function MakeScoreFunction(const filter_boost* filter_boost,
+ScoreFunction MakeScoreFunction(const filter_boost* filter_boost,
                                  Args&&... args) noexcept {
   if (filter_boost) {
     return MakeScoreFunctionImpl<Ctx>::template Make<true>(
@@ -530,7 +530,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
     return irs::memory::make_unique<field_collector>();
   }
 
-  virtual score_function prepare_scorer(
+  virtual ScoreFunction prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* query_stats,
@@ -544,12 +544,8 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
         return { nullptr, nullptr };
       }
 
-      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
-      if (score) {
-        *score = boost;
-        return { nullptr, score_function::kDefaultScoreFunc };
-      }
-
+      // if there is no frequency then all the scores
+      // will be the same (e.g. filter irs::all)
       uintptr_t ctx;
       std::memcpy(&ctx, &boost, sizeof boost);
 
@@ -559,6 +555,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
           assert(res);
           assert(ctx);
 
+          // FIXME(gnusi): use std::bit_cast when avaiable
           const auto boost = reinterpret_cast<uintptr_t>(ctx);
           std::memcpy(res, &boost, sizeof(score_t));
         }
@@ -576,7 +573,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
         return { nullptr, nullptr };
       }
 
-      auto prepare_norm_scorer = [&]<typename Norm>(Norm&& norm) -> score_function {
+      auto prepare_norm_scorer = [&]<typename Norm>(Norm&& norm) -> ScoreFunction {
         return MakeScoreFunction<BM25Context<Norm>>(
             filter_boost, k_, boost, stats, freq, std::move(norm));
       };

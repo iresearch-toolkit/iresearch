@@ -93,7 +93,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
   using doc_iterator_t = score_iterator_adapter<DocIterator>;
   using doc_iterators_t = std::vector<doc_iterator_t>;
 
-  static_assert(std::is_nothrow_move_constructible<doc_iterator_t>::value,
+  static_assert(std::is_nothrow_move_constructible_v<doc_iterator_t>,
                 "default move constructor expected");
 
   explicit conjunction(
@@ -171,10 +171,10 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     // to avoid extra checks
     scores_.reserve(itrs_.size());
     for (auto& it : itrs_) {
-      const auto* score = it.score;
+      auto* score = const_cast<irs::score*>(it.score); // FIXME(gnus): remove const cast
       assert(score); // ensured by score_iterator_adapter
       if (!score->is_default()) {
-        scores_.push_back(score);
+        scores_.emplace_back(score);
       }
     }
 
@@ -182,38 +182,39 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     switch (scores_.size()) {
       case 0:
         assert(score.is_default());
+        score = ScoreFunction::Default(Merger::byte_size());
         break;
       case 1:
-        score.reset(*scores_.front());
+        score = std::move(*scores_.front());
         break;
       case 2:
-        score.reset(this, [](score_ctx* ctx, score_t* res) noexcept {
+        score.Reset(this, [](score_ctx* ctx, score_t* res) mutable noexcept {
           auto& self = *static_cast<conjunction*>(ctx);
           auto* tmp = reinterpret_cast<score_t*>(self.score_buf_.data());
 
           // FIXME(gnusi)
           auto& merger = static_cast<Merger&>(self);
-          self.scores_.front()->evaluate(res);
-          self.scores_.back()->evaluate(tmp);
+          (*self.scores_.front())(res);
+          (*self.scores_.back())(tmp);
           merger(res, tmp);
         });
         break;
       case 3:
-        score.reset(this, [](score_ctx* ctx, score_t* res) noexcept {
+        score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
           auto& self = *static_cast<conjunction*>(ctx);
           auto* tmp = reinterpret_cast<score_t*>(self.score_buf_.data());
 
           // FIXME(gnusi)
           auto& merger = static_cast<Merger&>(self);
-          self.scores_.front()->evaluate(res);
-          self.scores_[1]->evaluate(tmp);
+          (*self.scores_.front())(res);
+          (*self.scores_[1])(tmp);
           merger(res, tmp);
-          self.scores_.back()->evaluate(tmp);
+          (*self.scores_.back())(tmp);
           merger(res, tmp);
         });
         break;
       default:
-        score.reset(this, [](score_ctx* ctx, score_t* res) noexcept {
+        score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
           auto& self = *static_cast<conjunction*>(ctx);
           auto* tmp = reinterpret_cast<score_t*>(self.score_buf_.data());
           auto begin = std::begin(self.scores_);
@@ -266,7 +267,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
   bstring score_buf_; // FIXME(gnusi): compile time size
   attributes attrs_;
   doc_iterators_t itrs_;
-  std::vector<const score*> scores_; // valid sub-scores
+  std::vector<score*> scores_; // valid sub-scores
   irs::doc_iterator* front_;
   const irs::document* front_doc_{};
 }; // conjunction

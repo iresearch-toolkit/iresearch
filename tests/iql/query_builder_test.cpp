@@ -57,7 +57,7 @@ class test_sort: public irs::sort {
     virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
       return nullptr; // do not need to collect stats
     }
-    virtual irs::score_function prepare_scorer(
+    virtual irs::ScoreFunction prepare_scorer(
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type*,

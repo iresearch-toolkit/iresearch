@@ -29,8 +29,7 @@
 namespace iresearch {
 
 // Represents a score related for the particular document
-class score : public attribute {
- public:
+struct score : public attribute, public ScoreFunction {
   static const score kNoScore;
 
   static constexpr string_ref type_name() noexcept {
@@ -43,44 +42,16 @@ class score : public attribute {
     return score ? *score : kNoScore;
   }
 
-  // cppcheck-suppress shadowFunction
-  score() noexcept = default;
-
   bool is_default() const noexcept {
-    return func_.func() == score_function::kDefaultScoreFunc;
+    return Func() == ScoreFunction::kDefaultScoreFunc;
   }
 
-   FORCE_INLINE void evaluate(score_t* res) const noexcept {
-    assert(func_);
-    func_(res);
+  FORCE_INLINE void evaluate(score_t* res) const noexcept {
+    assert(*this);
+    (*this)(res);
   }
 
-  // Reset score to default value
-  void reset() noexcept { func_ = {}; }
-
-  void reset(const score& score) noexcept {
-    assert(score.func_);
-    func_.reset(const_cast<score_ctx*>(score.func_.ctx()),
-                score.func_.func());
-  }
-
-  void reset(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept {
-    assert(func);
-    func_.reset(std::move(ctx), func);
-  }
-
-  void reset(score_ctx* ctx, const score_f func) noexcept {
-    assert(func);
-    func_.reset(ctx, func);
-  }
-
-  void reset(score_function&& func) noexcept {
-    assert(func);
-    func_ = std::move(func);
-  }
-
- private:
-  score_function func_;
+  using ScoreFunction::operator=;
 };
 
 void reset(irs::score& score, std::vector<Scorer>&& scorers);
