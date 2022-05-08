@@ -275,7 +275,6 @@ class sort {
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats,
-      score_t* score,
       const attribute_provider& doc_attrs,
       boost_t boost) const = 0;
 
@@ -602,7 +601,6 @@ std::vector<Scorer> PrepareScorers(std::span<const OrderBucket> buckets,
                                    const sub_reader& segment,
                                    const term_reader& field,
                                    const byte_type* stats,
-                                   score_t* score,
                                    const attribute_provider& doc,
                                    boost_t boost);
 

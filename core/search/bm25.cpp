@@ -534,7 +534,6 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* query_stats,
-      score_t* score,
       const attribute_provider& doc_attrs,
       boost_t boost) const override {
     auto* freq = irs::get<frequency>(doc_attrs);

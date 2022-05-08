@@ -132,7 +132,6 @@ std::vector<Scorer> PrepareScorers(std::span<const OrderBucket> buckets,
                                    const sub_reader& segment,
                                    const term_reader& field,
                                    const byte_type* stats_buf,
-                                   score_t* score_buf,
                                    const attribute_provider& doc,
                                    boost_t boost) {
   std::vector<Scorer> scorers;
@@ -146,16 +145,11 @@ std::vector<Scorer> PrepareScorers(std::span<const OrderBucket> buckets,
     auto scorer = bucket.prepare_scorer(
       segment, field,
       stats_buf + entry.stats_offset,
-      score_buf,
       doc, boost);
 
     if (scorer) {
       // skip empty scorers
       scorers.emplace_back(std::move(scorer), &entry);
-    }
-
-    if (score_buf) {
-      ++score_buf;
     }
   }
 

@@ -61,7 +61,6 @@ class test_sort: public irs::sort {
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type*,
-        irs::score_t*,
         const irs::attribute_provider&,
         irs::boost_t) const override {
       return { nullptr, nullptr };

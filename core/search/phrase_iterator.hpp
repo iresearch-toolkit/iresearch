@@ -456,7 +456,6 @@ class phrase_iterator final : public doc_iterator {
       auto& score = std::get<irs::score>(attrs_);
 
       auto scorers = PrepareScorers(ord.buckets(), segment, field, stats,
-                                    /*score_buf*/ nullptr, // FIXME(gnusi) ???
                                     *this, boost);
 
       irs::reset(score, std::move(scorers));

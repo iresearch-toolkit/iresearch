@@ -75,7 +75,6 @@ struct aligned_scorer : public irs::sort {
         const irs::sub_reader& /*segment*/,
         const irs::term_reader& /*field*/,
         const irs::byte_type* /*stats*/,
-        irs::score_t* /*score_buf*/,
         const irs::attribute_provider& /*doc_attrs*/,
         irs::boost_t /*boost*/) const override {
       if (empty_scorer_) {
@@ -190,7 +189,6 @@ TEST(sort_tests, prepare_order) {
     auto scorers = irs::PrepareScorers(
         prepared.buckets(), irs::sub_reader::empty(),
         irs::empty_term_reader(0), stats_buf.c_str(),
-        reinterpret_cast<irs::score_t*>(score_buf.data()),
         EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(0 == scorers.size());
 
@@ -236,7 +234,6 @@ TEST(sort_tests, prepare_order) {
     auto scorers = irs::PrepareScorers(
             prepared.buckets(), irs::sub_reader::empty(),
             irs::empty_term_reader(0), stats_buf.c_str(),
-            reinterpret_cast<irs::score_t*>(score_buf.data()),
             EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(0 == scorers.size());
 
@@ -282,7 +279,6 @@ TEST(sort_tests, prepare_order) {
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
-      reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(1 == scorers.size());
     auto& scorer = scorers.front();
@@ -334,7 +330,6 @@ TEST(sort_tests, prepare_order) {
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
-      reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(1 == scorers.size());
     auto& scorer = scorers.front();
@@ -386,7 +381,6 @@ TEST(sort_tests, prepare_order) {
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
-      reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(0 == scorers.size());
 
@@ -430,7 +424,6 @@ TEST(sort_tests, prepare_order) {
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
-      reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(2 == scorers.size());
     auto& front = scorers.front();
@@ -485,7 +478,6 @@ TEST(sort_tests, prepare_order) {
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
-      reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(3 == scorers.size());
     {
@@ -549,7 +541,6 @@ TEST(sort_tests, prepare_order) {
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
-      reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(2 == scorers.size());
     {
@@ -617,7 +608,6 @@ TEST(sort_tests, prepare_order) {
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
-      reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(0 == scorers.size());
 
@@ -666,7 +656,6 @@ TEST(sort_tests, prepare_order) {
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
-      reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(0 == scorers.size());
 
@@ -715,7 +704,6 @@ TEST(sort_tests, prepare_order) {
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
-      reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(0 == scorers.size());
 
@@ -764,7 +752,6 @@ TEST(sort_tests, prepare_order) {
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
-      reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(0 == scorers.size());
 
@@ -813,7 +800,6 @@ TEST(sort_tests, prepare_order) {
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
-      reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(0 == scorers.size());
 
@@ -862,7 +848,6 @@ TEST(sort_tests, prepare_order) {
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::sub_reader::empty(),
       irs::empty_term_reader(0), stats_buf.c_str(),
-      reinterpret_cast<irs::score_t*>(score_buf.data()),
       EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
     ASSERT_TRUE(0 == scorers.size());
 

@@ -63,7 +63,6 @@ doc_iterator::ptr term_query::execute(
     if (score) {
       auto scorers = PrepareScorers(ord.buckets(), rdr, *state->reader,
                                     stats_.c_str(),
-                                    /*score_buf*/ nullptr, // FIXME(gnusi) ???
                                     *docs, boost());
 
       irs::reset(*score, std::move(scorers));

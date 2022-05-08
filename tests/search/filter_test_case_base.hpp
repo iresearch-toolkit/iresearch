@@ -64,7 +64,6 @@ struct boost : public irs::sort {
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type* /*query_attrs*/,
-        irs::score_t* /*score_buf*/,
         const irs::attribute_provider& /*doc_attrs*/,
         irs::boost_t boost) const override {
       return {
@@ -204,12 +203,11 @@ struct custom_sort: public irs::sort {
         const irs::sub_reader& segment_reader,
         const irs::term_reader& term_reader,
         const irs::byte_type* filter_node_attrs,
-        irs::score_t* score_buf,
         const irs::attribute_provider& document_attrs,
         irs::boost_t /*boost*/) const override {
       if (sort_.prepare_scorer) {
         return sort_.prepare_scorer(
-          segment_reader, term_reader, filter_node_attrs, score_buf, document_attrs);
+          segment_reader, term_reader, filter_node_attrs, document_attrs);
       }
 
       return {
@@ -243,7 +241,7 @@ struct custom_sort: public irs::sort {
   std::function<void(irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)> collectors_collect_;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector_;
   std::function<irs::ScoreFunction(const irs::sub_reader&, const irs::term_reader&,
-                                    const irs::byte_type*, irs::score_t*,
+                                    const irs::byte_type*,
                                     const irs::attribute_provider&)> prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector_;
   std::function<void(irs::doc_id_t, irs::score_t*)> scorer_score;
@@ -331,7 +329,6 @@ struct frequency_sort: public irs::sort {
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type* stats_buf,
-        irs::score_t* /*buf*/,
         const irs::attribute_provider& doc_attrs,
         irs::boost_t /*boost*/) const override {
       auto* doc = irs::get<irs::document>(doc_attrs);

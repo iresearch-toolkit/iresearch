@@ -129,7 +129,6 @@ struct sort : irs::sort {
         const irs::sub_reader& /*segment*/,
         const irs::term_reader& /*field*/,
         const irs::byte_type* /*stats*/,
-        irs::score_t* /*score_buf*/,
         const irs::attribute_provider& /*doc_attrs*/,
         irs::boost_t /*boost*/) const override {
       return { nullptr, nullptr };

@@ -144,7 +144,6 @@ TEST_P(all_filter_test_case, all_order) {
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type*,
-        irs::score_t*,
         const irs::attribute_provider&) -> irs::ScoreFunction {
       return { nullptr, nullptr };
     };

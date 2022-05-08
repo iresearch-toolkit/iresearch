@@ -70,7 +70,6 @@ class column_existence_query : public irs::filter::prepared {
         auto scorers = PrepareScorers(ord.buckets(), segment,
                                       empty_term_reader(column.size()),
                                       stats_.c_str(),
-                                      /*score_buf*/ nullptr, // FIXME(gnusi) ???
                                       *it, boost());
 
         irs::reset(*score, std::move(scorers));

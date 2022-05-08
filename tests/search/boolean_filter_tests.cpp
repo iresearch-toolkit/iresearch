@@ -94,7 +94,6 @@ struct basic_sort : irs::sort {
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type*,
-        irs::score_t* /*score_buf*/,
         const irs::attribute_provider&,
         irs::boost_t) const override {
       return {
@@ -150,7 +149,6 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
                                      irs::sub_reader::empty(),
                                      irs::empty_term_reader{0},
                                      stats_,
-                                     nullptr,
                                      *this,
                                      boost);
 

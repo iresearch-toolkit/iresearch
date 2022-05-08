@@ -169,7 +169,6 @@ class same_position_query final : public filter::prepared {
           auto scorers = PrepareScorers(ord.buckets(), segment,
                                         *term_state.reader,
                                         term_stats->c_str(),
-                                        /*score_buf*/ nullptr, // FIXME(gnusi) ???
                                         *docs, boost());
 
           irs::reset(*score, std::move(scorers));

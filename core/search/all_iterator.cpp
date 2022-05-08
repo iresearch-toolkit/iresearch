@@ -38,7 +38,6 @@ all_iterator::all_iterator(
     auto scorers = PrepareScorers(order.buckets(), reader,
                                   irs::empty_term_reader(docs_count),
                                   query_stats,
-                                  /*score_buf*/ nullptr, // FIXME(gnusi) ???
                                   *this, boost);
 
     auto& score = std::get<irs::score>(attrs_);

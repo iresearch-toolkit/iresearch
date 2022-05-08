@@ -32,16 +32,13 @@ sort::ptr make_json(string_ref /*args*/) {
 
 struct volatile_boost_score_ctx : score_ctx {
   volatile_boost_score_ctx(
-      score_t* score_buf,
       const filter_boost* volatile_boost,
       boost_t boost) noexcept
-    : score_buf{score_buf},
-      boost{boost},
+    : boost{boost},
       volatile_boost{volatile_boost} {
     assert(volatile_boost);
   }
 
-  score_t* score_buf;
   boost_t boost;
   const filter_boost* volatile_boost;
 };
@@ -55,31 +52,25 @@ struct prepared final : PreparedSortBase<void> {
       const sub_reader&,
       const term_reader&,
       const byte_type*,
-      score_t* score_buf,
       const irs::attribute_provider& attrs,
       irs::boost_t boost) const override {
     auto* volatile_boost = irs::get<irs::filter_boost>(attrs);
 
     if (!volatile_boost) {
-      if (score_buf) {
-        *score_buf = boost;
-
-        return { nullptr, ScoreFunction::kDefaultScoreFunc };
-      }
-
       uintptr_t tmp{};
       std::memcpy(&tmp, &boost, sizeof boost);
 
       return {
         reinterpret_cast<score_ctx*>(tmp),
         [](score_ctx* ctx, score_t* res) noexcept {
+          // FIXME(gnusi): use std::bit_cast when avaiable
           std::memcpy(res, reinterpret_cast<void*>(ctx), sizeof(score_t));
         }
       };
     }
 
     return {
-      memory::make_unique<volatile_boost_score_ctx>(score_buf, volatile_boost, boost),
+      memory::make_unique<volatile_boost_score_ctx>(volatile_boost, boost),
       [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
         auto& state = *reinterpret_cast<volatile_boost_score_ctx*>(ctx);
         *res = state.volatile_boost->value*state.boost;
