@@ -50,24 +50,21 @@ struct by_ngram_similarity_options {
   }
 };
 
-class by_ngram_similarity
-    : public filter_base<by_ngram_similarity_options> {
+class by_ngram_similarity : public filter_base<by_ngram_similarity_options> {
  public:
   static ptr make();
 
   // returns set of features required for filter
-  static constexpr IndexFeatures kRequiredFeatures = IndexFeatures::FREQ |
-                                                     IndexFeatures::POS;
+  static constexpr IndexFeatures kRequiredFeatures =
+      IndexFeatures::FREQ | IndexFeatures::POS;
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr,
-    const Order& ord,
-    boost_t boost,
-    const attribute_provider* ctx) const override;
+      const index_reader& rdr, const Order& ord, boost_t boost,
+      const attribute_provider* ctx) const override;
 };
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_NGRAM_SIMILARITY_FILTER_H
+#endif  // IRESEARCH_NGRAM_SIMILARITY_FILTER_H

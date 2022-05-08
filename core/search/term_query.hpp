@@ -35,16 +35,14 @@ class term_query final : public filter::prepared {
   struct term_state {
     const term_reader* reader{};
     seek_term_iterator::cookie_ptr cookie;
-  }; // term_state
+  };  // term_state
 
   typedef states_cache<term_state> states_t;
 
   explicit term_query(states_t&& states, bstring&& stats, boost_t boost);
 
   virtual doc_iterator::ptr execute(
-      const sub_reader& rdr,
-      const Order& ord,
-      ExecutionMode mode,
+      const sub_reader& rdr, const Order& ord, ExecutionMode mode,
       const attribute_provider* /*ctx*/) const override;
 
  private:
@@ -52,6 +50,6 @@ class term_query final : public filter::prepared {
   bstring stats_;
 };
 
-}
+}  // namespace iresearch
 
 #endif

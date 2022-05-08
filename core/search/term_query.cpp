@@ -27,20 +27,15 @@
 
 namespace iresearch {
 
-term_query::term_query(
-    term_query::states_t&& states,
-    bstring&& stats,
-    boost_t boost)
-  : filter::prepared(boost),
-    states_(std::move(states)),
-    stats_(std::move(stats)) {
-}
+term_query::term_query(term_query::states_t&& states, bstring&& stats,
+                       boost_t boost)
+    : filter::prepared(boost),
+      states_(std::move(states)),
+      stats_(std::move(stats)) {}
 
-doc_iterator::ptr term_query::execute(
-    const sub_reader& rdr,
-    const Order& ord,
-    ExecutionMode mode,
-    const attribute_provider* /*ctx*/) const {
+doc_iterator::ptr term_query::execute(const sub_reader& rdr, const Order& ord,
+                                      ExecutionMode mode,
+                                      const attribute_provider* /*ctx*/) const {
   // get term state for the specified reader
   auto state = states_.find(rdr);
 
@@ -53,8 +48,8 @@ doc_iterator::ptr term_query::execute(
   assert(reader);
 
   auto docs = (mode == ExecutionMode::kTop)
-    ? reader->wanderator(*state->cookie, ord.features())
-    : reader->postings(*state->cookie, ord.features());
+                  ? reader->wanderator(*state->cookie, ord.features())
+                  : reader->postings(*state->cookie, ord.features());
   assert(docs);
 
   if (!ord.empty()) {
@@ -62,14 +57,13 @@ doc_iterator::ptr term_query::execute(
 
     if (score) {
       auto scorers = PrepareScorers(ord.buckets(), rdr, *state->reader,
-                                    stats_.c_str(),
-                                    *docs, boost());
+                                    stats_.c_str(), *docs, boost());
 
-      irs::reset(*score, std::move(scorers));
+      *score = CompileScorers(std::move(scorers));
     }
   }
 
   return docs;
 }
 
-}
+}  // namespace iresearch

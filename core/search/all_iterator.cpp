@@ -21,29 +21,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "all_iterator.hpp"
+
 #include "formats/empty_term_reader.hpp"
 
 namespace iresearch {
 
-all_iterator::all_iterator(
-    const sub_reader& reader,
-    const byte_type* query_stats,
-    const Order& order,
-    uint64_t docs_count,
-    boost_t boost)
-  : max_doc_{doc_id_t(doc_limits::min() + docs_count - 1)} {
+all_iterator::all_iterator(const sub_reader& reader,
+                           const byte_type* query_stats, const Order& order,
+                           uint64_t docs_count, boost_t boost)
+    : max_doc_{doc_id_t(doc_limits::min() + docs_count - 1)} {
   std::get<cost>(attrs_).reset(max_doc_);
 
   if (!order.empty()) {
     auto scorers = PrepareScorers(order.buckets(), reader,
                                   irs::empty_term_reader(docs_count),
-                                  query_stats,
-                                  *this, boost);
+                                  query_stats, *this, boost);
 
     auto& score = std::get<irs::score>(attrs_);
-
-    irs::reset(score, std::move(scorers));
+    score = CompileScorers(std::move(scorers));
   }
 }
 
-} // ROOT
+}  // namespace iresearch

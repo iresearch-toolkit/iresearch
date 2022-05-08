@@ -193,7 +193,7 @@ TEST(sort_tests, prepare_order) {
 
     irs::score score;
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
-    irs::reset(score, std::move(scorers));
+    score = irs::CompileScorers(std::move(scorers));
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 
@@ -237,7 +237,7 @@ TEST(sort_tests, prepare_order) {
 
     irs::score score;
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
-    irs::reset(score, std::move(scorers));
+    score = irs::CompileScorers(std::move(scorers));
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 
@@ -283,7 +283,7 @@ TEST(sort_tests, prepare_order) {
 
     irs::score score;
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
-    irs::reset(score, std::move(scorers));
+    score = irs::CompileScorers(std::move(scorers));
     ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
 
     // noop
@@ -332,7 +332,7 @@ TEST(sort_tests, prepare_order) {
 
     irs::score score;
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
-    irs::reset(score, std::move(scorers));
+    score = irs::CompileScorers(std::move(scorers));
     ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
 
     // noop
@@ -379,7 +379,7 @@ TEST(sort_tests, prepare_order) {
 
     irs::score score;
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
-    irs::reset(score, std::move(scorers));
+    score = irs::CompileScorers(std::move(scorers));
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 
@@ -425,7 +425,7 @@ TEST(sort_tests, prepare_order) {
 
     irs::score score;
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
-    irs::reset(score, std::move(scorers));
+    score = irs::CompileScorers(std::move(scorers));
     ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
 
     // noop
@@ -475,7 +475,7 @@ TEST(sort_tests, prepare_order) {
 
     irs::score score;
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
-    irs::reset(score, std::move(scorers));
+    score = irs::CompileScorers(std::move(scorers));
     ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
 
     // noop
@@ -524,7 +524,7 @@ TEST(sort_tests, prepare_order) {
 
     irs::score score;
     ASSERT_TRUE(score == irs::ScoreFunction::kDefault);
-    irs::reset(score, std::move(scorers));
+    score = irs::CompileScorers(std::move(scorers));
     ASSERT_FALSE(score == irs::ScoreFunction::kDefault);
 
     // noop
@@ -580,7 +580,7 @@ TEST(sort_tests, prepare_order) {
 
     irs::score score;
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
-    irs::reset(score, std::move(scorers));
+    score = irs::CompileScorers(std::move(scorers));
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 
@@ -627,7 +627,7 @@ TEST(sort_tests, prepare_order) {
 
     irs::score score;
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
-    irs::reset(score, std::move(scorers));
+    score = irs::CompileScorers(std::move(scorers));
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 
@@ -674,7 +674,7 @@ TEST(sort_tests, prepare_order) {
 
     irs::score score;
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
-    irs::reset(score, std::move(scorers));
+    score = irs::CompileScorers(std::move(scorers));
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 
@@ -721,7 +721,7 @@ TEST(sort_tests, prepare_order) {
 
     irs::score score;
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
-    irs::reset(score, std::move(scorers));
+    score = irs::CompileScorers(std::move(scorers));
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 
@@ -768,7 +768,7 @@ TEST(sort_tests, prepare_order) {
 
     irs::score score;
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
-    irs::reset(score, std::move(scorers));
+    score = irs::CompileScorers(std::move(scorers));
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 
@@ -815,7 +815,7 @@ TEST(sort_tests, prepare_order) {
 
     irs::score score;
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
-    irs::reset(score, std::move(scorers));
+    score = irs::CompileScorers(std::move(scorers));
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
   }
 }

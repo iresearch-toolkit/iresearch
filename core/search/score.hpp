@@ -45,7 +45,7 @@ struct score : public attribute, public ScoreFunction {
   using ScoreFunction::operator=;
 };
 
-void reset(irs::score& score, Scorers&& scorers);
+ScoreFunction CompileScorers(Scorers&& scorers);
 
 }  // namespace iresearch
 

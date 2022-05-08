@@ -24,23 +24,19 @@
 #define IRESEARCH_ALL_ITERATOR_H
 
 #include "analysis/token_attributes.hpp"
-#include "index/iterators.hpp"
 #include "index/index_reader.hpp"
-#include "search/sort.hpp"
+#include "index/iterators.hpp"
 #include "search/cost.hpp"
 #include "search/score.hpp"
+#include "search/sort.hpp"
 #include "utils/frozen_attributes.hpp"
 
 namespace iresearch {
 
 class all_iterator final : public doc_iterator {
  public:
-  all_iterator(
-    const irs::sub_reader& reader,
-    const byte_type* query_stats,
-    const irs::Order& order,
-    uint64_t docs_count,
-    boost_t boost);
+  all_iterator(const irs::sub_reader& reader, const byte_type* query_stats,
+               const irs::Order& order, uint64_t docs_count, boost_t boost);
 
   virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
     return irs::get_mutable(attrs_, id);
@@ -61,9 +57,7 @@ class all_iterator final : public doc_iterator {
   virtual irs::doc_id_t seek(irs::doc_id_t target) noexcept override {
     auto& doc = std::get<document>(attrs_);
 
-    doc.value = target <= max_doc_
-      ? target
-      : doc_limits::eof();
+    doc.value = target <= max_doc_ ? target : doc_limits::eof();
 
     return doc.value;
   }
@@ -75,10 +69,10 @@ class all_iterator final : public doc_iterator {
  private:
   using attributes = std::tuple<document, cost, score>;
 
-  doc_id_t max_doc_; // largest valid doc_id
+  doc_id_t max_doc_;  // largest valid doc_id
   attributes attrs_;
-}; // all_iterator
+};
 
-} // ROOT
+}  // namespace iresearch
 
-#endif // IRESEARCH_ALL_ITERATOR_H
+#endif  // IRESEARCH_ALL_ITERATOR_H

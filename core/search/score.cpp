@@ -28,15 +28,15 @@ namespace iresearch {
 
 /*static*/ const score score::kNoScore;
 
-void reset(irs::score& score, Scorers&& scorers) {
+ScoreFunction CompileScorers(Scorers&& scorers) {
   switch (scorers.size()) {
     case 0: {
-      score = ScoreFunction{};
+      return ScoreFunction{};
     } break;
     case 1: {
       // The most important and frequent case when only
       // one scorer is provided.
-      score = std::move(scorers.front());
+      return std::move(scorers.front());
     } break;
     case 2: {
       struct ctx : score_ctx {
@@ -47,13 +47,13 @@ void reset(irs::score& score, Scorers&& scorers) {
         ScoreFunction func1;
       };
 
-      score.Reset(memory::make_unique<ctx>(std::move(scorers.front()),
-                                           std::move(scorers.back())),
-                  [](score_ctx* ctx, score_t* res) noexcept {
-                    auto* scorers = static_cast<struct ctx*>(ctx);
-                    scorers->func0(res);
-                    scorers->func1(res + 1);
-                  });
+      return {memory::make_unique<ctx>(std::move(scorers.front()),
+                                       std::move(scorers.back())),
+              [](score_ctx* ctx, score_t* res) noexcept {
+                auto* scorers = static_cast<struct ctx*>(ctx);
+                scorers->func0(res);
+                scorers->func1(res + 1);
+              }};
     } break;
     default: {
       struct ctx : score_ctx {
@@ -63,13 +63,13 @@ void reset(irs::score& score, Scorers&& scorers) {
         Scorers scorers;
       };
 
-      score.Reset(memory::make_unique<ctx>(std::move(scorers)),
-                  [](score_ctx* ctx, score_t* res) noexcept {
-                    auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
-                    for (auto& scorer : scorers) {
-                      scorer(res++);
-                    }
-                  });
+      return {memory::make_unique<ctx>(std::move(scorers)),
+              [](score_ctx* ctx, score_t* res) noexcept {
+                auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
+                for (auto& scorer : scorers) {
+                  scorer(res++);
+                }
+              }};
     } break;
   }
 }

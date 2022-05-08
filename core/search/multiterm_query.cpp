@@ -22,9 +22,9 @@
 
 #include "multiterm_query.hpp"
 
-#include "shared.hpp"
 #include "search/bitset_doc_iterator.hpp"
 #include "search/disjunction.hpp"
+#include "shared.hpp"
 #include "utils/bitset.hpp"
 
 namespace {
@@ -34,21 +34,19 @@ using namespace irs;
 class lazy_bitset_iterator final : public bitset_doc_iterator {
  public:
   lazy_bitset_iterator(
-      const sub_reader& segment,
-      const term_reader& field,
+      const sub_reader& segment, const term_reader& field,
       std::span<const multiterm_state::unscored_term_state> states,
       cost::cost_t estimation) noexcept
-    : bitset_doc_iterator(estimation),
-      field_(&field),
-      segment_(&segment),
-      states_(states) {
+      : bitset_doc_iterator(estimation),
+        field_(&field),
+        segment_(&segment),
+        states_(states) {
     assert(!states_.empty());
   }
 
   virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
-    return irs::type<score>::id() == id
-      ? &score_
-      : bitset_doc_iterator::get_mutable(id);
+    return irs::type<score>::id() == id ? &score_
+                                        : bitset_doc_iterator::get_mutable(id);
   }
 
  protected:
@@ -60,11 +58,9 @@ class lazy_bitset_iterator final : public bitset_doc_iterator {
   const term_reader* field_;
   const sub_reader* segment_;
   std::span<const multiterm_state::unscored_term_state> states_;
-}; // lazy_bitset_iterator
+};
 
-bool lazy_bitset_iterator::refill(
-    const word_t** begin,
-    const word_t** end) {
+bool lazy_bitset_iterator::refill(const word_t** begin, const word_t** end) {
   if (!field_) {
     return false;
   }
@@ -72,10 +68,11 @@ bool lazy_bitset_iterator::refill(
   const size_t bits = segment_->docs_count() + irs::doc_limits::min();
   const size_t words = bitset::bits_to_words(bits);
   set_ = memory::make_unique<word_t[]>(words);
-  std::memset(set_.get(), 0, sizeof(word_t)*words);
+  std::memset(set_.get(), 0, sizeof(word_t) * words);
 
-  auto provider = [begin = states_.begin(), end = states_.end()]() mutable noexcept
-      -> const seek_cookie* {
+  auto provider = [begin = states_.begin(),
+                   end =
+                       states_.end()]() mutable noexcept -> const seek_cookie* {
     if (begin != end) {
       auto* cookie = begin->get();
       // cppcheck-suppress unreadVariable
@@ -101,14 +98,12 @@ bool lazy_bitset_iterator::refill(
   return false;
 }
 
-}
+}  // namespace
 
 namespace iresearch {
 
 doc_iterator::ptr multiterm_query::execute(
-    const sub_reader& segment,
-    const Order& ord,
-    ExecutionMode /*mode*/,
+    const sub_reader& segment, const Order& ord, ExecutionMode /*mode*/,
     const attribute_provider* /*ctx*/) const {
   // get term state for the specified reader
   auto state = states_.find(segment);
@@ -148,10 +143,10 @@ doc_iterator::ptr multiterm_query::execute(
         assert(entry.stat_offset < stats.size());
         auto* stat = stats[entry.stat_offset].c_str();
 
-        auto scorers = PrepareScorers(ord.buckets(), segment, *state->reader, stat,
-                                      *docs, entry.boost*boost());
+        auto scorers = PrepareScorers(ord.buckets(), segment, *state->reader,
+                                      stat, *docs, entry.boost * boost());
 
-        irs::reset(*score, std::move(scorers));
+        *score = CompileScorers(std::move(scorers));
       }
     }
 
@@ -160,12 +155,9 @@ doc_iterator::ptr multiterm_query::execute(
   }
 
   if (has_unscored_terms) {
-    *it = {
-      memory::make_managed<::lazy_bitset_iterator>(
-        segment, *state->reader,
-        state->unscored_terms,
-        state->unscored_states_estimation)
-    };
+    *it = {memory::make_managed<::lazy_bitset_iterator>(
+        segment, *state->reader, state->unscored_terms,
+        state->unscored_states_estimation)};
     ++it;
   }
 
@@ -181,10 +173,9 @@ doc_iterator::ptr multiterm_query::execute(
             disjunction_iterator<doc_iterator::ptr, A>,
             scored_disjunction_iterator<doc_iterator::ptr, A>>;
 
-        return make_disjunction<disjunction_t>(std::move(itrs),
-                                               std::move(aggregator),
-                                               state->estimation());
+        return make_disjunction<disjunction_t>(
+            std::move(itrs), std::move(aggregator), state->estimation());
       });
 }
 
-} // ROOT
+}  // namespace iresearch
