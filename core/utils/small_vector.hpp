@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,33 +20,11 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SCORE_H
-#define IRESEARCH_SCORE_H
-
-#include "sort.hpp"
-#include "utils/attributes.hpp"
+#include <boost/container/small_vector.hpp>
 
 namespace iresearch {
 
-// Represents a score related for the particular document
-struct score : public attribute, public ScoreFunction {
-  static const score kNoScore;
+template<typename T, std::size_t N, typename A = std::allocator<T>>
+using SmallVector = boost::container::small_vector<T, N, A>;
 
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::score";
-  }
-
-  template<typename Provider>
-  static const score& get(const Provider& attrs) {
-    const auto* score = irs::get<irs::score>(attrs);
-    return score ? *score : kNoScore;
-  }
-
-  using ScoreFunction::operator=;
-};
-
-void reset(irs::score& score, Scorers&& scorers);
-
-}  // namespace iresearch
-
-#endif  // IRESEARCH_SCORE_H
+}

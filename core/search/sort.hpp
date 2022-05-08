@@ -24,13 +24,12 @@
 #ifndef IRESEARCH_SORT_H
 #define IRESEARCH_SORT_H
 
-#include <vector>
-
 #include "index/index_features.hpp"
 #include "utils/attribute_provider.hpp"
 #include "utils/attributes.hpp"
 #include "utils/iterator.hpp"
 #include "utils/math_utils.hpp"
+#include "utils/small_vector.hpp"
 
 namespace iresearch {
 
@@ -324,20 +323,24 @@ class Order final : private util::noncopyable {
   Order& operator=(Order&&) = default;
 
   bool empty() const noexcept { return buckets_.empty(); }
-  std::span<const OrderBucket> buckets() const noexcept { return buckets_; }
+  std::span<const OrderBucket> buckets() const noexcept {
+    return { buckets_.data(), buckets_.size() };
+  }
   size_t score_size() const noexcept { return score_size_; }
   size_t stats_size() const noexcept { return stats_size_; }
   IndexFeatures features() const noexcept { return features_; }
 
  private:
-  Order(std::vector<OrderBucket>&& buckets, size_t stats_size,
+  using OrderBuckets = SmallVector<OrderBucket, 2>;
+
+  Order(OrderBuckets&& buckets, size_t stats_size,
         IndexFeatures features) noexcept
       : buckets_{std::move(buckets)},
         score_size_(buckets_.size() * sizeof(score_t)),
         stats_size_{stats_size},
         features_{features} {}
 
-  std::vector<OrderBucket> buckets_;
+  OrderBuckets buckets_;
   size_t score_size_{};
   size_t stats_size_{};
   IndexFeatures features_{IndexFeatures::NONE};
@@ -553,14 +556,13 @@ class PreparedSortBase<void> : public sort::prepared {
   }
 };
 
-// FIXME(gnusi): SBO
+using Scorers = SmallVector<ScoreFunction, 2>;
+
 // Prepare scorer for each of the bucket
-std::vector<ScoreFunction> PrepareScorers(std::span<const OrderBucket> buckets,
-                                          const sub_reader& segment,
-                                          const term_reader& field,
-                                          const byte_type* stats,
-                                          const attribute_provider& doc,
-                                          boost_t boost);
+Scorers PrepareScorers(std::span<const OrderBucket> buckets,
+                       const sub_reader& segment, const term_reader& field,
+                       const byte_type* stats, const attribute_provider& doc,
+                       boost_t boost);
 
 // Prepare empty collectors, i.e. call collect(...) on each of the
 // buckets without explicitly collecting field or term statistics,

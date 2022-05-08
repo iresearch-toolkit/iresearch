@@ -32,10 +32,10 @@ namespace {
 
 using namespace irs;
 
-template<typename Iterator>
-std::tuple<std::vector<OrderBucket>, size_t, IndexFeatures> Prepare(
-    Iterator begin, Iterator end) {
-  std::vector<OrderBucket> buckets;
+template<typename Vector, typename Iterator>
+std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
+                                                  Iterator end) {
+  Vector buckets;
   buckets.reserve(std::distance(begin, end));
 
   IndexFeatures features{};
@@ -108,8 +108,8 @@ Order Order::Prepare(std::span<const sort::ptr> order) {
       [](auto&&... args) {
         return Order{std::forward<decltype(args)>(args)...};
       },
-      ::Prepare(ptr_iterator{std::begin(order)},
-                ptr_iterator{std::end(order)}));
+      ::Prepare<OrderBuckets>(ptr_iterator{std::begin(order)},
+                              ptr_iterator{std::end(order)}));
 }
 
 Order Order::Prepare(std::span<const sort*> order) {
@@ -117,19 +117,17 @@ Order Order::Prepare(std::span<const sort*> order) {
       [](auto&&... args) {
         return Order{std::forward<decltype(args)>(args)...};
       },
-      ::Prepare(ptr_iterator{std::begin(order)},
-                ptr_iterator{std::end(order)}));
+      ::Prepare<OrderBuckets>(ptr_iterator{std::begin(order)},
+                              ptr_iterator{std::end(order)}));
 }
 
 const Order Order::kUnordered;
 
-std::vector<ScoreFunction> PrepareScorers(std::span<const OrderBucket> buckets,
-                                          const sub_reader& segment,
-                                          const term_reader& field,
-                                          const byte_type* stats_buf,
-                                          const attribute_provider& doc,
-                                          boost_t boost) {
-  std::vector<ScoreFunction> scorers;
+Scorers PrepareScorers(std::span<const OrderBucket> buckets,
+                       const sub_reader& segment, const term_reader& field,
+                       const byte_type* stats_buf,
+                       const attribute_provider& doc, boost_t boost) {
+  Scorers scorers;
   scorers.reserve(buckets.size());
 
   for (auto& entry : buckets) {

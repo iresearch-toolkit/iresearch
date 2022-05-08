@@ -202,7 +202,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
  private:
   std::map<irs::type_info::type_id, irs::attribute*> attrs_;
   irs::cost est_;
-  std::vector<irs::ScoreFunction> scorers_;
+  irs::Scorers scorers_;
   docids_t::const_iterator first_;
   docids_t::const_iterator last_;
   const irs::byte_type* stats_;
@@ -4676,7 +4676,7 @@ TEST(block_disjunction_test, next_scored) {
 
   {
     std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, 
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
                       irs::Order::Prepare(detail::basic_sort{4}));
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 },
                       irs::Order::Prepare(detail::basic_sort{2}));
@@ -4734,7 +4734,7 @@ TEST(block_disjunction_test, next_scored) {
 
   {
     std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, 
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
                       irs::Order::Prepare(detail::basic_sort{16}));
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 },
                       irs::Order::Prepare(detail::basic_sort{8}));
@@ -10599,11 +10599,11 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
   // disjunction without score, sub-iterators with scores
   {
     std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
-    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 }, 
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
                       irs::Order::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 },
                       irs::Order::Prepare(detail::basic_sort{2}));
-    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, 
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
@@ -10870,7 +10870,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 2, 5, 7, 9, 11, 45 },
                     irs::Order::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6, 12, 29 }, irs::Order{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 }, 
+    docs.emplace_back(std::vector<irs::doc_id_t>{ 1, 5, 6 },
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
@@ -11096,7 +11096,7 @@ TEST(disjunction_test, next) {
       size_t heap{0};
       auto visitor = [](void* ptr, disjunction::adapter& iter) {
         EXPECT_FALSE(irs::doc_limits::eof(iter.doc->value));
-        auto pval = static_cast<uint32_t*>(ptr); 
+        auto pval = static_cast<uint32_t*>(ptr);
         *pval = *pval + 1;
         return true;
       };
