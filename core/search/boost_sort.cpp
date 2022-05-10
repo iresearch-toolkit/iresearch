@@ -58,8 +58,12 @@ struct prepared final : PreparedSortBase<void> {
 
       return {reinterpret_cast<score_ctx*>(tmp),
               [](score_ctx* ctx, score_t* res) noexcept {
+                assert(res);
+                assert(ctx);
+
                 // FIXME(gnusi): use std::bit_cast when avaiable
-                std::memcpy(res, reinterpret_cast<void*>(ctx), sizeof(score_t));
+                const auto boost = reinterpret_cast<uintptr_t>(ctx);
+                std::memcpy(res, &boost, sizeof(score_t));
               }};
     }
 
