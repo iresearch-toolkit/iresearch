@@ -39,7 +39,7 @@ class term_query final : public filter::prepared {
 
   typedef states_cache<term_state> states_t;
 
-  explicit term_query(states_t&& states, bstring&& stats, boost_t boost);
+  explicit term_query(states_t&& states, bstring&& stats, score_t boost);
 
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr, const Order& ord, ExecutionMode mode,

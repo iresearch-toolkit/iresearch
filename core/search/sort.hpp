@@ -41,7 +41,7 @@ struct sub_reader;
 struct term_reader;
 
 // Represents no boost value.
-constexpr boost_t kNoBoost{1.f};
+constexpr score_t kNoBoost{1.f};
 
 // Represents an addition to score from filter specific to a particular
 // document. May vary from document to document.
@@ -50,7 +50,7 @@ struct filter_boost final : attribute {
     return "iresearch::filter_boost";
   }
 
-  boost_t value{kNoBoost};
+  score_t value{kNoBoost};
 };
 
 // Stateful object used for computing the document score based on the
@@ -272,7 +272,7 @@ class sort {
                                          const term_reader& field,
                                          const byte_type* stats,
                                          const attribute_provider& doc_attrs,
-                                         boost_t boost) const = 0;
+                                         score_t boost) const = 0;
 
     // Create an object to be used for collecting index statistics, one
     // instance per matched term.

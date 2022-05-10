@@ -58,7 +58,7 @@ empty::empty() : filter(irs::type<empty>::get()) { }
 filter::prepared::ptr empty::prepare(
     const index_reader&,
     const Order&,
-    boost_t,
+    score_t,
     const attribute_provider*) const {
   return memory::to_managed<filter::prepared, false>(&empty_query::instance());
 }

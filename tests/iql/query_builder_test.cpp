@@ -62,7 +62,7 @@ class test_sort: public irs::sort {
         const irs::term_reader&,
         const irs::byte_type*,
         const irs::attribute_provider&,
-        irs::boost_t) const override {
+        irs::score_t) const override {
       return { nullptr, nullptr };
     }
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override {

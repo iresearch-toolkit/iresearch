@@ -36,7 +36,7 @@ namespace iresearch {
 class all_iterator final : public doc_iterator {
  public:
   all_iterator(const irs::sub_reader& reader, const byte_type* query_stats,
-               const irs::Order& order, uint64_t docs_count, boost_t boost);
+               const irs::Order& order, uint64_t docs_count, score_t boost);
 
   virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
     return irs::get_mutable(attrs_, id);

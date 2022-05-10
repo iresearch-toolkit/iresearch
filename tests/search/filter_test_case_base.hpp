@@ -45,11 +45,11 @@ namespace sort {
 struct boost : public irs::sort {
   struct score_ctx: public irs::score_ctx {
    public:
-    explicit score_ctx(irs::boost_t boost) noexcept
+    explicit score_ctx(irs::score_t boost) noexcept
     : boost_(boost) {
     }
 
-    irs::boost_t boost_;
+    irs::score_t boost_;
   };
 
   class prepared: public irs::PreparedSortBase<void> {
@@ -65,7 +65,7 @@ struct boost : public irs::sort {
         const irs::term_reader&,
         const irs::byte_type* /*query_attrs*/,
         const irs::attribute_provider& /*doc_attrs*/,
-        irs::boost_t boost) const override {
+        irs::score_t boost) const override {
       return {
         irs::memory::make_unique<boost::score_ctx>(boost),
         [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
@@ -78,7 +78,7 @@ struct boost : public irs::sort {
   }; // sort::boost::prepared
 
   static ptr make();
-  typedef irs::boost_t score_t;
+  typedef irs::score_t score_t;
   boost() : sort(irs::type<boost>::get()) {}
   virtual sort::prepared::ptr prepare() const {
     return irs::memory::make_unique<boost::prepared>();
@@ -204,7 +204,7 @@ struct custom_sort: public irs::sort {
         const irs::term_reader& term_reader,
         const irs::byte_type* filter_node_attrs,
         const irs::attribute_provider& document_attrs,
-        irs::boost_t /*boost*/) const override {
+        irs::score_t /*boost*/) const override {
       if (sort_.prepare_scorer) {
         return sort_.prepare_scorer(
           segment_reader, term_reader, filter_node_attrs, document_attrs);
@@ -330,7 +330,7 @@ struct frequency_sort: public irs::sort {
         const irs::term_reader&,
         const irs::byte_type* stats_buf,
         const irs::attribute_provider& doc_attrs,
-        irs::boost_t /*boost*/) const override {
+        irs::score_t /*boost*/) const override {
       auto* doc = irs::get<irs::document>(doc_attrs);
       auto& stats = stats_cast(stats_buf);
       const irs::doc_id_t* docs_count = &stats.count;
@@ -546,7 +546,7 @@ class empty_filter_visitor : public irs::filter_visitor {
     ++prepare_calls_counter_;
   }
 
-  virtual void visit(irs::boost_t boost) noexcept override {
+  virtual void visit(irs::score_t boost) noexcept override {
     ASSERT_NE(nullptr, it_);
     terms_.emplace_back(it_->value(), boost);
     ++visit_calls_counter_;
@@ -567,13 +567,13 @@ class empty_filter_visitor : public irs::filter_visitor {
     return visit_calls_counter_;
   }
 
-  const std::vector<std::pair<irs::bstring, irs::boost_t>>& terms() const noexcept {
+  const std::vector<std::pair<irs::bstring, irs::score_t>>& terms() const noexcept {
     return terms_;
   }
 
   template<typename Char>
-  std::vector<std::pair<irs::basic_string_ref<Char>, irs::boost_t>> term_refs() const {
-    std::vector<std::pair<irs::basic_string_ref<Char>, irs::boost_t>> refs(terms_.size());
+  std::vector<std::pair<irs::basic_string_ref<Char>, irs::score_t>> term_refs() const {
+    std::vector<std::pair<irs::basic_string_ref<Char>, irs::score_t>> refs(terms_.size());
     auto begin = refs.begin();
     for (auto& term : terms_) {
       begin->first = irs::ref_cast<Char>(term.first);
@@ -583,13 +583,13 @@ class empty_filter_visitor : public irs::filter_visitor {
     return refs;
   }
 
-  virtual void assert_boost(irs::boost_t boost) {
+  virtual void assert_boost(irs::score_t boost) {
     ASSERT_EQ(irs::kNoBoost, boost);
   }
 
  private:
   const irs::seek_term_iterator* it_{};
-  std::vector<std::pair<irs::bstring, irs::boost_t>> terms_;
+  std::vector<std::pair<irs::bstring, irs::score_t>> terms_;
   size_t prepare_calls_counter_ = 0;
   size_t visit_calls_counter_ = 0;
 }; // empty_filter_visitor

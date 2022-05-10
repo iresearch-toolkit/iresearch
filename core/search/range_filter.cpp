@@ -126,7 +126,7 @@ DEFINE_FACTORY_DEFAULT(by_range) // cppcheck-suppress unknownMacro
 /*static*/ filter::prepared::ptr by_range::prepare(
     const index_reader& index,
     const Order& ord,
-    boost_t boost,
+    score_t boost,
     string_ref field,
     const options_type::range_type& rng,
     size_t scored_terms_limit) {

@@ -147,7 +147,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
 
     // with boost
     {
-      irs::boost_t boost = 1.5f;
+      irs::score_t boost = 1.5f;
       irs::by_granular_range q;
       *q.mutable_field() = "name";
       irs::set_granular_term(q.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
@@ -1670,7 +1670,7 @@ TEST(by_granular_range_test, boost) {
 
   // with boost, empty query
   {
-    irs::boost_t boost = 1.5f;
+    irs::score_t boost = 1.5f;
     irs::by_granular_range q;
     *q.mutable_field() = "field";
     irs::set_granular_term(q.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
@@ -2217,7 +2217,7 @@ TEST_P(granular_range_filter_test_case, visit) {
   ASSERT_EQ(2, visitor.prepare_calls_counter());
   ASSERT_EQ(2, visitor.visit_calls_counter());
   ASSERT_EQ(
-    (std::vector<std::pair<irs::string_ref, irs::boost_t>>{
+    (std::vector<std::pair<irs::string_ref, irs::score_t>>{
       {"abc", irs::kNoBoost},
       {"abcd", irs::kNoBoost}
     }),

@@ -28,7 +28,7 @@ namespace iresearch {
 // Compiled all_filter that returns all documents
 class all_query final : public filter::prepared {
  public:
-  explicit all_query(bstring&& stats, boost_t boost)
+  explicit all_query(bstring&& stats, score_t boost)
     : filter::prepared(boost),
       stats_(std::move(stats)) {
   }
@@ -56,7 +56,7 @@ all::all() noexcept
 filter::prepared::ptr all::prepare(
     const index_reader& reader,
     const Order& order,
-    boost_t filter_boost,
+    score_t filter_boost,
     const attribute_provider* /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics

@@ -58,7 +58,7 @@ class ngram_similarity_doc_iterator final : public doc_iterator,
  public:
   ngram_similarity_doc_iterator(approximation::doc_iterators_t&& itrs,
                                 const sub_reader& segment,
-                                const term_reader& field, boost_t boost,
+                                const term_reader& field, score_t boost,
                                 const byte_type* stats,
                                 size_t total_terms_count,
                                 size_t min_match_count = 1,
@@ -68,7 +68,7 @@ class ngram_similarity_doc_iterator final : public doc_iterator,
         approx_(std::move(itrs), min_match_count, NoopAggregator{}),
         min_match_count_(min_match_count),
         // avoid runtime conversion
-        total_terms_count_(static_cast<boost_t>(total_terms_count)),
+        total_terms_count_(static_cast<score_t>(total_terms_count)),
         empty_order_(ord.empty()) {
     std::get<attribute_ptr<document>>(attrs_) =
         irs::get_mutable<document>(&approx_);
@@ -164,7 +164,7 @@ class ngram_similarity_doc_iterator final : public doc_iterator,
   std::vector<size_t> pos_sequence_;
   size_t min_match_count_;
   search_states_t search_buf_;
-  boost_t total_terms_count_;
+  score_t total_terms_count_;
   bool empty_order_;
 };
 
@@ -362,7 +362,7 @@ bool ngram_similarity_doc_iterator::check_serial_positions() {
     seq_freq_.value = freq;
     assert(!pos_.empty());
     std::get<filter_boost>(attrs_).value =
-        static_cast<boost_t>(longest_sequence_len) / total_terms_count_;
+        static_cast<score_t>(longest_sequence_len) / total_terms_count_;
   }
   return longest_sequence_len >= min_match_count_;
 }
@@ -371,7 +371,7 @@ bool ngram_similarity_doc_iterator::check_serial_positions() {
 class ngram_similarity_query : public filter::prepared {
  public:
   ngram_similarity_query(size_t min_match_count, states_t&& states,
-                         bstring&& stats, boost_t boost = kNoBoost)
+                         bstring&& stats, score_t boost = kNoBoost)
       : prepared(boost),
         min_match_count_(min_match_count),
         states_(std::move(states)),
@@ -467,7 +467,7 @@ class ngram_similarity_query : public filter::prepared {
 DEFINE_FACTORY_DEFAULT(by_ngram_similarity)  // cppcheck-suppress unknownMacro
 
 filter::prepared::ptr by_ngram_similarity::prepare(
-    const index_reader& rdr, const Order& ord, boost_t boost,
+    const index_reader& rdr, const Order& ord, score_t boost,
     const attribute_provider* /*ctx*/) const {
   const auto threshold = std::max(0.f, std::min(1.f, options().threshold));
   const auto& ngrams = options().ngrams;

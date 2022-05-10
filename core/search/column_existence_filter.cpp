@@ -32,7 +32,7 @@ using namespace irs;
 class column_existence_query : public irs::filter::prepared {
  public:
   explicit column_existence_query(std::string_view field, bstring&& stats,
-                                  boost_t boost)
+                                  score_t boost)
       : filter::prepared(boost), field_{field}, stats_(std::move(stats)) {}
 
   virtual doc_iterator::ptr execute(
@@ -75,7 +75,7 @@ class column_existence_query : public irs::filter::prepared {
 class column_prefix_existence_query final : public column_existence_query {
  public:
   explicit column_prefix_existence_query(std::string_view prefix,
-                                         bstring&& stats, boost_t boost)
+                                         bstring&& stats, score_t boost)
       : column_existence_query(prefix, std::move(stats), boost) {}
 
   virtual irs::doc_iterator::ptr execute(
@@ -128,7 +128,7 @@ namespace iresearch {
 DEFINE_FACTORY_DEFAULT(by_column_existence)  // cppcheck-suppress unknownMacro
 
 filter::prepared::ptr by_column_existence::prepare(
-    const index_reader& reader, const Order& order, boost_t filter_boost,
+    const index_reader& reader, const Order& order, score_t filter_boost,
     const attribute_provider* /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics

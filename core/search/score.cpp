@@ -31,7 +31,7 @@ namespace iresearch {
 Scorers PrepareScorers(std::span<const OrderBucket> buckets,
                        const sub_reader& segment, const term_reader& field,
                        const byte_type* stats_buf,
-                       const attribute_provider& doc, boost_t boost) {
+                       const attribute_provider& doc, score_t boost) {
   Scorers scorers;
   scorers.reserve(buckets.size());
 

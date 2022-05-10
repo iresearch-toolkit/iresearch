@@ -32,12 +32,12 @@ sort::ptr make_json(string_ref /*args*/) {
 
 struct volatile_boost_score_ctx : score_ctx {
   volatile_boost_score_ctx(const filter_boost* volatile_boost,
-                           boost_t boost) noexcept
+                           score_t boost) noexcept
       : boost{boost}, volatile_boost{volatile_boost} {
     assert(volatile_boost);
   }
 
-  boost_t boost;
+  score_t boost;
   const filter_boost* volatile_boost;
 };
 
@@ -49,7 +49,7 @@ struct prepared final : PreparedSortBase<void> {
   ScoreFunction prepare_scorer(const sub_reader&, const term_reader&,
                                const byte_type*,
                                const irs::attribute_provider& attrs,
-                               irs::boost_t boost) const override {
+                               irs::score_t boost) const override {
     auto* volatile_boost = irs::get<irs::filter_boost>(attrs);
 
     if (!volatile_boost) {

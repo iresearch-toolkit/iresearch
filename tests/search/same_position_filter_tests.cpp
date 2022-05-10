@@ -557,7 +557,7 @@ TEST(by_same_position_test, boost) {
 
   // with boost
   {
-    irs::boost_t boost = 1.5f;
+    irs::score_t boost = 1.5f;
     
     // no terms, return empty query
     {

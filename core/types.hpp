@@ -29,11 +29,10 @@
 
 namespace iresearch {
 
-typedef uint8_t byte_type;
-typedef uint64_t field_id;
-typedef uint32_t doc_id_t;
-typedef float_t score_t;
-typedef score_t boost_t;
+using byte_type = uint8_t;
+using field_id = uint64_t;
+using doc_id_t = uint32_t;
+using score_t = float_t;
 
 }
 

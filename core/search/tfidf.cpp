@@ -262,7 +262,7 @@ struct idf final {
 };
 
 struct ScoreContext : public irs::score_ctx {
-  ScoreContext(irs::boost_t boost, const tfidf::idf& idf, const frequency* freq,
+  ScoreContext(irs::score_t boost, const tfidf::idf& idf, const frequency* freq,
                const irs::filter_boost* filter_boost = nullptr) noexcept
       : freq{freq ? *freq : kEmptyFreq},
         filter_boost{filter_boost},
@@ -311,7 +311,7 @@ auto MakeNormAdapter(Reader&& reader) {
 
 template<typename Norm>
 struct NormScoreContext final : public ScoreContext {
-  NormScoreContext(Norm&& norm, boost_t boost, const tfidf::idf& idf,
+  NormScoreContext(Norm&& norm, score_t boost, const tfidf::idf& idf,
                    const frequency* freq,
                    const irs::filter_boost* filter_boost = nullptr) noexcept
       : ScoreContext{boost, idf, freq, filter_boost}, norm{std::move(norm)} {}
@@ -394,7 +394,7 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
                                        const term_reader& field,
                                        const byte_type* stats_buf,
                                        const attribute_provider& doc_attrs,
-                                       boost_t boost) const override {
+                                       score_t boost) const override {
     auto* freq = irs::get<frequency>(doc_attrs);
 
     if (!freq) {

@@ -72,7 +72,7 @@ DEFINE_FACTORY_DEFAULT(by_prefix) // cppcheck-suppress unknownMacro
 /*static*/ filter::prepared::ptr by_prefix::prepare(
     const index_reader& index,
     const Order& ord,
-    boost_t boost,
+    score_t boost,
     string_ref field,
     bytes_ref prefix,
     size_t scored_terms_limit) {

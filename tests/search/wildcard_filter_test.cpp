@@ -82,7 +82,7 @@ TEST(by_wildcard_test, boost) {
 
   // with boost
   {
-    irs::boost_t boost = 1.5f;
+    irs::score_t boost = 1.5f;
 
     irs::by_wildcard q = make_filter("field", "bar*");
     q.boost(boost);
@@ -459,7 +459,7 @@ TEST_P(wildcard_filter_test_case, visit) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{
+      (std::vector<std::pair<irs::string_ref, irs::score_t>>{
         {"abc", irs::kNoBoost},
       }),
       visitor.term_refs<char>());
@@ -476,7 +476,7 @@ TEST_P(wildcard_filter_test_case, visit) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(6, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{
+      (std::vector<std::pair<irs::string_ref, irs::score_t>>{
         {"abc", irs::kNoBoost},
         {"abcd", irs::kNoBoost},
         {"abcde", irs::kNoBoost},
@@ -498,7 +498,7 @@ TEST_P(wildcard_filter_test_case, visit) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(5, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{
+      (std::vector<std::pair<irs::string_ref, irs::score_t>>{
         {"abc", irs::kNoBoost},
         {"abcd", irs::kNoBoost},
         {"abcde", irs::kNoBoost},

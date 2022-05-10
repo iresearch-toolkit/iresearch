@@ -547,7 +547,7 @@ DEFINE_FACTORY_DEFAULT(by_granular_range) // cppcheck-suppress unknownMacro
 /*static*/ filter::prepared::ptr by_granular_range::prepare(
     const index_reader& index,
     const Order& ord,
-    boost_t boost,
+    score_t boost,
     string_ref field,
     const options_type::range_type& rng,
     size_t scored_terms_limit) {
@@ -632,7 +632,7 @@ DEFINE_FACTORY_DEFAULT(by_granular_range) // cppcheck-suppress unknownMacro
 
     virtual filter::prepared::ptr prepare(
         const index_reader&, const Order&,
-        boost_t, const attribute_provider*) const override {
+        score_t, const attribute_provider*) const override {
       return std::move(query_);
     }
 

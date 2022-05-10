@@ -54,7 +54,7 @@ namespace iresearch {
       virtual irs::filter::prepared::ptr prepare(
           const index_reader& rdr,
           const Order& ord,
-          boost_t boost,
+          score_t boost,
           const attribute_provider* ctx) const override {
         return filter_->prepare(rdr, ord, boost, ctx);
       };

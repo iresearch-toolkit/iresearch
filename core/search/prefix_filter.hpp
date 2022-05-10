@@ -80,7 +80,7 @@ class by_prefix : public filter_base<by_prefix_options> {
   static prepared::ptr prepare(
     const index_reader& index,
     const Order& ord,
-    boost_t boost,
+    score_t boost,
     string_ref field,
     bytes_ref prefix,
     size_t scored_terms_limit);
@@ -96,7 +96,7 @@ class by_prefix : public filter_base<by_prefix_options> {
   virtual filter::prepared::ptr prepare(
       const index_reader& index,
       const Order& ord,
-      boost_t boost,
+      score_t boost,
       const attribute_provider* /*ctx*/) const override {
     return prepare(index, ord, this->boost()*boost,
                    field(), options().term,

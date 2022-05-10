@@ -33,7 +33,7 @@ namespace iresearch {
 struct multiterm_state {
   struct term_state {
     term_state(seek_cookie::ptr&& cookie, uint32_t stat_offset,
-               boost_t boost = kNoBoost) noexcept
+               score_t boost = kNoBoost) noexcept
         : cookie(std::move(cookie)), stat_offset(stat_offset), boost(boost) {}
 
     seek_cookie::ptr cookie;
@@ -78,7 +78,7 @@ class multiterm_query : public filter::prepared {
   typedef std::vector<bstring> stats_t;
 
   explicit multiterm_query(states_t&& states,
-                           std::shared_ptr<stats_t> const& stats, boost_t boost,
+                           std::shared_ptr<stats_t> const& stats, score_t boost,
                            sort::MergeType merge_type)
 
       : prepared(boost),
@@ -89,7 +89,7 @@ class multiterm_query : public filter::prepared {
   }
 
   // multiterm_query will own stats
-  explicit multiterm_query(states_t&& states, stats_t&& stats, boost_t boost,
+  explicit multiterm_query(states_t&& states, stats_t&& stats, score_t boost,
                            sort::MergeType merge_type)
       : prepared(boost),
         states_(std::move(states)),

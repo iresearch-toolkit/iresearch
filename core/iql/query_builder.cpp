@@ -240,7 +240,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     irs::filter::prepared::ptr prepare(
         const irs::index_reader&,
         const irs::Order&,
-        irs::boost_t,
+        irs::score_t,
         const irs::attribute_provider*) const override {
       irs::filter::prepared::ptr result; // null-ptr result
       return result;

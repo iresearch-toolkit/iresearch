@@ -30,7 +30,7 @@ namespace {
 
 irs::by_terms make_filter(
     const irs::string_ref& field,
-    const std::vector<std::pair<irs::string_ref, irs::boost_t>>& terms) {
+    const std::vector<std::pair<irs::string_ref, irs::score_t>>& terms) {
   irs::by_terms q;
   *q.mutable_field() = field;
   for (auto& term : terms) {
@@ -83,7 +83,7 @@ TEST(by_terms_test, boost) {
 
   // with boost
   {
-    irs::boost_t boost = 1.5f;
+    irs::score_t boost = 1.5f;
 
     irs::by_terms q = make_filter("field", { { "bar", 0.5f }, {"baz", 0.25f} });
     q.boost(boost);
@@ -219,7 +219,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"xyz", 1.f}}),
+      (std::vector<std::pair<irs::string_ref, irs::score_t>>{{"xyz", 1.f}}),
       visitor.term_refs<char>());
   }
 
@@ -241,7 +241,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"xyz", 1.f}}),
+      (std::vector<std::pair<irs::string_ref, irs::score_t>>{{"xyz", 1.f}}),
       visitor.term_refs<char>());
   }
 
@@ -260,7 +260,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(3, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"abc", 0.5f}, {"abcd", 1.f}, {"abcy", 0.5f}}),
+      (std::vector<std::pair<irs::string_ref, irs::score_t>>{{"abc", 0.5f}, {"abcd", 1.f}, {"abcy", 0.5f}}),
       visitor.term_refs<char>());
   }
 
@@ -279,7 +279,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(3, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"abc", 0.5f}, {"abcd", 1.f}, {"abcy", 0.5f}}),
+      (std::vector<std::pair<irs::string_ref, irs::score_t>>{{"abc", 0.5f}, {"abcd", 1.f}, {"abcy", 0.5f}}),
       visitor.term_refs<char>());
   }
 
@@ -298,7 +298,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(3, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"abc", 0.5f}, {"abcd", 1.f}, {"abcy", 0.5f}}),
+      (std::vector<std::pair<irs::string_ref, irs::score_t>>{{"abc", 0.5f}, {"abcd", 1.f}, {"abcy", 0.5f}}),
       visitor.term_refs<char>());
   }
 }

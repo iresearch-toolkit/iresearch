@@ -28,7 +28,7 @@
 namespace iresearch {
 
 term_query::term_query(term_query::states_t&& states, bstring&& stats,
-                       boost_t boost)
+                       score_t boost)
     : filter::prepared(boost),
       states_(std::move(states)),
       stats_(std::move(stats)) {}

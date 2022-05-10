@@ -127,7 +127,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
         ASSERT_TRUE(docs->next());
         irs::score_t score_value;
         (*scr)(&score_value);
-        ASSERT_EQ(irs::boost_t(0), score_value);
+        ASSERT_EQ(irs::score_t(0), score_value);
         ASSERT_EQ(docs->value(), doc->value);
       }
 
@@ -137,7 +137,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
     // with boost
     {
-      const irs::boost_t value = 5;
+      const irs::score_t value = 5;
       filter.boost(value);
 
       auto prep = filter.prepare(rdr, pord);
@@ -151,7 +151,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
         ASSERT_TRUE(docs->next());
         irs::score_t score_value;
         (*scr)(&score_value);
-        ASSERT_EQ(irs::boost_t(value), score_value);
+        ASSERT_EQ(irs::score_t(value), score_value);
       }
 
       ASSERT_FALSE(docs->next());
@@ -632,7 +632,7 @@ TEST_P(term_filter_test_case, visit) {
   irs::by_term::visit(segment, *reader, term, visitor);
   ASSERT_EQ(1, visitor.prepare_calls_counter());
   ASSERT_EQ(1, visitor.visit_calls_counter());
-  ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"abc", irs::kNoBoost}}),
+  ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{{"abc", irs::kNoBoost}}),
             visitor.term_refs<char>());
   visitor.reset();
 }
@@ -667,7 +667,7 @@ TEST(by_term_test, boost) {
 
   // with boost
   {
-    irs::boost_t boost = 1.5f;
+    irs::score_t boost = 1.5f;
     irs::by_term q = make_filter("field", "term");
     q.boost(boost);
 

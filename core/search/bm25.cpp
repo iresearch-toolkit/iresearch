@@ -315,7 +315,7 @@ struct stats final {
 };  // stats
 
 struct BM15Context : public irs::score_ctx {
-  BM15Context(float_t k, irs::boost_t boost, const bm25::stats& stats,
+  BM15Context(float_t k, irs::score_t boost, const bm25::stats& stats,
               const frequency* freq, const filter_boost* fb = nullptr) noexcept
       : freq{freq ? freq : &kEmptyFreq},
         filter_boost{fb},
@@ -332,7 +332,7 @@ struct BM15Context : public irs::score_ctx {
 
 template<typename Norm>
 struct BM25Context final : public BM15Context {
-  BM25Context(float_t k, irs::boost_t boost, const bm25::stats& stats,
+  BM25Context(float_t k, irs::score_t boost, const bm25::stats& stats,
               const frequency* freq, Norm&& norm,
               const irs::filter_boost* filter_boost = nullptr) noexcept
       : BM15Context{k, boost, stats, freq, filter_boost},
@@ -531,7 +531,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
                                        const term_reader& field,
                                        const byte_type* query_stats,
                                        const attribute_provider& doc_attrs,
-                                       boost_t boost) const override {
+                                       score_t boost) const override {
     auto* freq = irs::get<frequency>(doc_attrs);
 
     if (!freq) {

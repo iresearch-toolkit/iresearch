@@ -40,7 +40,7 @@ struct fixed_phrase_state : util::noncopyable {
   // mimic std::pair interface
   struct term_state {
     term_state(seek_term_iterator::cookie_ptr&& first,
-               boost_t /*second*/) noexcept
+               score_t /*second*/) noexcept
       : first(std::move(first)) {
     }
 
@@ -56,7 +56,7 @@ static_assert(std::is_nothrow_move_assignable_v<fixed_phrase_state>);
 
 // Cached per reader variadic phrase state
 struct variadic_phrase_state : fixed_phrase_state {
-  using term_state = std::pair<seek_term_iterator::cookie_ptr, boost_t>;
+  using term_state = std::pair<seek_term_iterator::cookie_ptr, score_t>;
 
   std::vector<size_t> num_terms; // number of terms per phrase part
   phrase_state<term_state> terms;
@@ -167,7 +167,7 @@ struct prepare : util::noncopyable {
   prepare(const index_reader& index,
           const Order& order,
           std::string_view field,
-          const boost_t boost) noexcept
+          const score_t boost) noexcept
     : index(index), order(order),
       field(field), boost(boost) {
   }
@@ -175,7 +175,7 @@ struct prepare : util::noncopyable {
   const index_reader& index;
   const irs::Order& order;
   const string_ref field;
-  const boost_t boost;
+  const score_t boost;
 };
 
 }
@@ -200,7 +200,7 @@ class phrase_term_visitor final : public filter_visitor,
     found_ = true;
   }
 
-  virtual void visit(boost_t boost) override {
+  virtual void visit(score_t boost) override {
     assert(terms_ && collectors_ && segment_ && reader_);
 
     // disallow negative boost
@@ -261,7 +261,7 @@ class phrase_query : public filter::prepared {
       states_t&& states,
       positions_t&& positions,
       bstring&& stats,
-      boost_t boost) noexcept
+      score_t boost) noexcept
     : prepared(boost),
       states_(std::move(states)),
       positions_(std::move(positions)),
@@ -278,7 +278,7 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
  public:
   fixed_phrase_query(
       states_t&& states, positions_t&& positions,
-      bstring&& stats, boost_t boost) noexcept
+      bstring&& stats, score_t boost) noexcept
     : phrase_query<fixed_phrase_state>(
         std::move(states),  std::move(positions),
         std::move(stats), boost) {
@@ -359,7 +359,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
 
   variadic_phrase_query(
       states_t&& states, positions_t&& positions,
-      bstring&& stats, boost_t boost) noexcept
+      bstring&& stats, score_t boost) noexcept
     : phrase_query<variadic_phrase_state>(
         std::move(states), std::move(positions),
         std::move(stats), boost) {
@@ -462,7 +462,7 @@ DEFINE_FACTORY_DEFAULT(by_phrase)
 filter::prepared::ptr by_phrase::prepare(
     const index_reader& index,
     const Order& ord,
-    boost_t boost,
+    score_t boost,
     const attribute_provider* /*ctx*/) const {
   if (field().empty() || options().empty()) {
     // empty field or phrase
@@ -490,7 +490,7 @@ filter::prepared::ptr by_phrase::prepare(
 filter::prepared::ptr by_phrase::fixed_prepare_collect(
     const index_reader& index,
     const Order& ord,
-    boost_t boost) const {
+    score_t boost) const {
   const auto phrase_size = options().size();
   const auto is_ord_empty = ord.empty();
 
@@ -580,7 +580,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
 filter::prepared::ptr by_phrase::variadic_prepare_collect(
     const index_reader& index,
     const Order& ord,
-    boost_t boost) const {
+    score_t boost) const {
   const auto phrase_size = options().size();
 
   // stats collectors

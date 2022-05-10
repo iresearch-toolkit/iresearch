@@ -110,7 +110,7 @@ class same_position_query final : public filter::prepared {
   typedef std::vector<bstring> stats_t;
 
   explicit same_position_query(states_t&& states, stats_t&& stats,
-                               boost_t boost)
+                               score_t boost)
       : prepared(boost), states_(std::move(states)), stats_(std::move(stats)) {}
 
   using filter::prepared::execute;
@@ -193,7 +193,7 @@ namespace iresearch {
 DEFINE_FACTORY_DEFAULT(by_same_position)  // cppcheck-suppress unknownMacro
 
 filter::prepared::ptr by_same_position::prepare(
-    const index_reader& index, const Order& ord, boost_t boost,
+    const index_reader& index, const Order& ord, score_t boost,
     const attribute_provider* /*ctx*/) const {
   auto& terms = options().terms;
   const auto size = terms.size();

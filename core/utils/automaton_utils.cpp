@@ -404,7 +404,7 @@ filter::prepared::ptr prepare_automaton_filter(
     size_t scored_terms_limit,
     const index_reader& index,
     const Order& order,
-    boost_t boost) {
+    score_t boost) {
   auto matcher = make_automaton_matcher(acceptor);
 
   if (fst::kError == matcher.Properties(0)) {

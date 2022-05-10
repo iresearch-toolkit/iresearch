@@ -57,7 +57,7 @@ class filter {
 
     static prepared::ptr empty();
 
-    explicit prepared(boost_t boost = kNoBoost) noexcept
+    explicit prepared(score_t boost = kNoBoost) noexcept
       : boost_(boost) {
     }
     virtual ~prepared() = default;
@@ -75,13 +75,13 @@ class filter {
       ExecutionMode mode,
       const attribute_provider* ctx) const = 0;
 
-    boost_t boost() const noexcept { return boost_; }
+    score_t boost() const noexcept { return boost_; }
 
    protected:
-    void boost(boost_t boost) noexcept { boost_ *= boost; }
+    void boost(score_t boost) noexcept { boost_ *= boost; }
 
    private:
-    boost_t boost_;
+    score_t boost_;
   }; // prepared
 
   using ptr = std::unique_ptr<filter>;
@@ -105,7 +105,7 @@ class filter {
   virtual filter::prepared::ptr prepare(
       const index_reader& rdr,
       const Order& ord,
-      boost_t boost,
+      score_t boost,
       const attribute_provider* ctx) const = 0;
 
   filter::prepared::ptr prepare(
@@ -118,7 +118,7 @@ class filter {
   filter::prepared::ptr prepare(
       const index_reader& rdr,
       const Order& ord,
-      boost_t boost) const {
+      score_t boost) const {
     return prepare(rdr, ord, boost, nullptr);
   }
 
@@ -132,9 +132,9 @@ class filter {
     return prepare(rdr, Order::kUnordered);
   }
 
-  boost_t boost() const noexcept { return boost_; }
+  score_t boost() const noexcept { return boost_; }
 
-  filter& boost(boost_t boost) noexcept {
+  filter& boost(score_t boost) noexcept {
     boost_ = boost;
     return *this;
   }
@@ -147,7 +147,7 @@ class filter {
   }
 
  private:
-  boost_t boost_;
+  score_t boost_;
   type_info::type_id type_;
 }; // filter
 
@@ -226,7 +226,7 @@ class empty final : public filter {
   virtual filter::prepared::ptr prepare(
     const index_reader& rdr,
     const Order& ord,
-    boost_t boost,
+    score_t boost,
     const attribute_provider* ctx) const override;
 }; // empty
 

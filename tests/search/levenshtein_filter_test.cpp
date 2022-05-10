@@ -107,7 +107,7 @@ TEST(by_edit_distance_test, boost) {
 
   // with boost
   {
-    irs::boost_t boost = 1.5f;
+    irs::score_t boost = 1.5f;
 
     irs::by_edit_distance q;
     *q.mutable_field() = "field";
@@ -824,7 +824,7 @@ TEST_P(by_edit_distance_test_case, visit) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"abc", irs::kNoBoost}}),
+      (std::vector<std::pair<irs::string_ref, irs::score_t>>{{"abc", irs::kNoBoost}}),
       visitor.term_refs<char>());
     visitor.reset();
   }
@@ -844,7 +844,7 @@ TEST_P(by_edit_distance_test_case, visit) {
     ASSERT_EQ(3, visitor.visit_calls_counter());
 
     const auto actual_terms = visitor.term_refs<char>();
-    std::vector<std::pair<irs::string_ref, irs::boost_t>> expected_terms{
+    std::vector<std::pair<irs::string_ref, irs::score_t>> expected_terms{
       {"abc",  irs::kNoBoost},
       {"abcd", 2.f/3},
       {"abcy", 2.f/3},
@@ -878,7 +878,7 @@ TEST_P(by_edit_distance_test_case, visit) {
     ASSERT_EQ(5, visitor.visit_calls_counter());
 
     const auto actual_terms = visitor.term_refs<char>();
-    std::vector<std::pair<irs::string_ref, irs::boost_t>> expected_terms{
+    std::vector<std::pair<irs::string_ref, irs::score_t>> expected_terms{
       {"abc",  irs::kNoBoost},
       {"abcd", 2.f/3},
       {"abcde", 1.f/3},

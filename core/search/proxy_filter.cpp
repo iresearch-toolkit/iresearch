@@ -202,7 +202,7 @@ DEFINE_FACTORY_DEFAULT(proxy_filter);
 proxy_filter::proxy_filter() noexcept : filter(irs::type<proxy_filter>::get()) {}
 
 filter::prepared::ptr proxy_filter::prepare(
-    const index_reader& rdr, const Order& ord, boost_t boost,
+    const index_reader& rdr, const Order& ord, score_t boost,
     const attribute_provider* ctx) const {
   if (!cache_ || !cache_->real_filter_) {
     assert(false);

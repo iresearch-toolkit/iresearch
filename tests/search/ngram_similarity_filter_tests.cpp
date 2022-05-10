@@ -102,7 +102,7 @@ TEST(ngram_similarity_base_test, boost) {
 
   // with boost
   {
-    iresearch::boost_t boost = 1.5f;
+    iresearch::score_t boost = 1.5f;
 
     // no terms, return empty query
     {
@@ -839,7 +839,7 @@ struct test_score_ctx : public irs::score_ctx {
   test_score_ctx(
       std::vector<size_t>* f,
       const irs::frequency* p,
-      std::vector<irs::boost_t>* b,
+      std::vector<irs::score_t>* b,
       const irs::filter_boost* fb) noexcept
     : freq(f),
       filter_boost(b),
@@ -848,7 +848,7 @@ struct test_score_ctx : public irs::score_ctx {
   }
 
   std::vector<size_t>* freq;
-  std::vector<irs::boost_t>* filter_boost;
+  std::vector<irs::score_t>* filter_boost;
   const irs::frequency* freq_from_filter;
   const irs::filter_boost* boost_from_filter;
 };
@@ -870,7 +870,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   size_t collect_term_count = 0;
   size_t finish_count = 0;
   std::vector<size_t> frequency;
-  std::vector<irs::boost_t> filter_boost;
+  std::vector<irs::score_t> filter_boost;
 
   irs::sort::ptr order{std::make_unique<tests::sort::custom_sort>()};
   auto& scorer = static_cast<tests::sort::custom_sort&>(*order);
@@ -916,7 +916,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
       };
   };
   std::vector<size_t> expectedFrequency{1, 1, 2, 1, 1, 1, 1};
-  std::vector<irs::boost_t> expected_filter_boost{4.f/6.f, 4.f/6.f, 4.f/6.f, 4.f/6.f, 0.5, 0.5, 0.5};
+  std::vector<irs::score_t> expected_filter_boost{4.f/6.f, 4.f/6.f, 4.f/6.f, 4.f/6.f, 0.5, 0.5, 0.5};
   check_query(filter, std::span{&order, 1}, expected, rdr);
   ASSERT_EQ(expectedFrequency, frequency);
   ASSERT_EQ(expected_filter_boost.size(), filter_boost.size());
@@ -946,7 +946,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   size_t collect_term_count = 0;
   size_t finish_count = 0;
   std::vector<size_t> frequency;
-  std::vector<irs::boost_t> filter_boost;
+  std::vector<irs::score_t> filter_boost;
 
   irs::sort::ptr order{std::make_unique<tests::sort::custom_sort>()};
   auto& scorer = static_cast<tests::sort::custom_sort&>(*order);
@@ -992,7 +992,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
     };
   };
   std::vector<size_t> expected_frequency{1, 1, 2, 1, 1, 1, 1};
-  std::vector<irs::boost_t> expected_filter_boost{4.f/6.f, 4.f/6.f, 4.f/6.f, 4.f/6.f, 0.5, 0.5, 0.5};
+  std::vector<irs::score_t> expected_filter_boost{4.f/6.f, 4.f/6.f, 4.f/6.f, 4.f/6.f, 0.5, 0.5, 0.5};
   check_query(filter, std::span{&order, 1}, expected, rdr);
   ASSERT_EQ(expected_frequency, frequency);
   ASSERT_EQ(expected_filter_boost.size(), filter_boost.size());

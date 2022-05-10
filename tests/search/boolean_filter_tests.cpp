@@ -95,7 +95,7 @@ struct basic_sort : irs::sort {
         const irs::term_reader&,
         const irs::byte_type*,
         const irs::attribute_provider&,
-        irs::boost_t) const override {
+        irs::score_t) const override {
       return {
         std::unique_ptr<irs::score_ctx>(new basic_scorer(idx)),
         [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
@@ -133,7 +133,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
       const docids_t::const_iterator& last,
       const irs::byte_type* stats = nullptr,
       const irs::Order& ord = irs::Order::kUnordered,
-      irs::boost_t boost = irs::kNoBoost)
+      irs::score_t boost = irs::kNoBoost)
     : first_(first),
       last_(last),
       stats_(stats),
@@ -265,7 +265,7 @@ struct boosted: public irs::filter {
   struct prepared: irs::filter::prepared {
     explicit prepared(
         const basic_doc_iterator::docids_t& docs,
-        irs::boost_t boost)
+        irs::score_t boost)
       : irs::filter::prepared(boost), docs(docs) {
     }
 
@@ -289,7 +289,7 @@ struct boosted: public irs::filter {
   virtual irs::filter::prepared::ptr prepare(
       const irs::index_reader&,
       const irs::Order&,
-      irs::boost_t boost,
+      irs::score_t boost,
       const irs::attribute_provider* /*ctx*/) const override {
     return irs::memory::make_managed<boosted::prepared>(docs, this->boost()*boost);
   }
@@ -309,7 +309,7 @@ unsigned boosted::execute_count{ 0 };
 TEST(boolean_query_boost, hierarchy) {
   // hierarchy of boosted subqueries
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     auto pord = irs::Order::Prepare(tests::sort::boost{});
 
@@ -391,7 +391,7 @@ TEST(boolean_query_boost, hierarchy) {
 
   // hierarchy of boosted subqueries (multiple Or's)
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     auto pord = irs::Order::Prepare(tests::sort::boost{});
 
@@ -491,7 +491,7 @@ TEST(boolean_query_boost, hierarchy) {
 
   // hierarchy of boosted subqueries (multiple And's)
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     auto pord = irs::Order::Prepare(tests::sort::boost{});
 
@@ -599,7 +599,7 @@ TEST(boolean_query_boost, and_filter) {
 
   // boosted empty boolean query
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     irs::And root;
     root.boost(value);
@@ -614,7 +614,7 @@ TEST(boolean_query_boost, and_filter) {
 
   // single boosted subquery
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     auto pord = irs::Order::Prepare(tests::sort::boost{});
 
@@ -643,7 +643,7 @@ TEST(boolean_query_boost, and_filter) {
 
   // boosted root & single boosted subquery
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     auto pord = irs::Order::Prepare(tests::sort::boost{});
 
@@ -678,7 +678,7 @@ TEST(boolean_query_boost, and_filter) {
 
   // boosted root & several boosted subqueries
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     auto pord = irs::Order::Prepare(tests::sort::boost{});
 
@@ -721,7 +721,7 @@ TEST(boolean_query_boost, and_filter) {
 
   // boosted root & several boosted subqueries
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     auto pord = irs::Order::Prepare(tests::sort::boost{});
 
@@ -767,7 +767,7 @@ TEST(boolean_query_boost, and_filter) {
 
    // unboosted root & several boosted subqueries
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     auto pord = irs::Order::Prepare(tests::sort::boost{});
 
@@ -814,7 +814,7 @@ TEST(boolean_query_boost, and_filter) {
 
   // unboosted root & several unboosted subqueries
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     auto pord = irs::Order::Prepare(tests::sort::boost{});
 
@@ -852,7 +852,7 @@ TEST(boolean_query_boost, and_filter) {
     ASSERT_EQ(docs->value(), doc->value);
     irs::score_t doc_boost;
     scr->operator()(&doc_boost);
-    ASSERT_EQ(irs::boost_t(0), doc_boost);
+    ASSERT_EQ(irs::score_t(0), doc_boost);
 
     ASSERT_FALSE(docs->next());
     ASSERT_EQ(docs->value(), doc->value);
@@ -862,7 +862,7 @@ TEST(boolean_query_boost, and_filter) {
 TEST(boolean_query_boost, or_filter) {
   // single unboosted query
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     irs::Or root;
 
@@ -876,7 +876,7 @@ TEST(boolean_query_boost, or_filter) {
 
   // empty single boosted query
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     irs::Or root;
     root.boost(value);
@@ -891,7 +891,7 @@ TEST(boolean_query_boost, or_filter) {
 
   // boosted empty single query
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     auto pord = irs::Order::Prepare(tests::sort::boost{});
 
@@ -921,7 +921,7 @@ TEST(boolean_query_boost, or_filter) {
 
   // boosted single query & subquery
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     auto pord = irs::Order::Prepare(tests::sort::boost{});
 
@@ -956,7 +956,7 @@ TEST(boolean_query_boost, or_filter) {
 
   // boosted single query & several subqueries
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     auto pord = irs::Order::Prepare(tests::sort::boost{});
 
@@ -1007,7 +1007,7 @@ TEST(boolean_query_boost, or_filter) {
 
   // boosted root & several boosted subqueries
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     auto pord = irs::Order::Prepare(tests::sort::boost{});
 
@@ -1066,7 +1066,7 @@ TEST(boolean_query_boost, or_filter) {
 
   // unboosted root & several boosted subqueries
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     auto pord = irs::Order::Prepare(tests::sort::boost{});
 
@@ -1125,7 +1125,7 @@ TEST(boolean_query_boost, or_filter) {
 
   // unboosted root & several unboosted subqueries
   {
-    const irs::boost_t value = 5;
+    const irs::score_t value = 5;
 
     auto pord = irs::Order::Prepare(tests::sort::boost{});
 
@@ -1164,7 +1164,7 @@ TEST(boolean_query_boost, or_filter) {
       ASSERT_TRUE(docs->next());
       irs::score_t doc_boost;
       scr->operator()(&doc_boost);
-      ASSERT_EQ(irs::boost_t(0), doc_boost);
+      ASSERT_EQ(irs::score_t(0), doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
 
@@ -1173,7 +1173,7 @@ TEST(boolean_query_boost, or_filter) {
       ASSERT_TRUE(docs->next());
       irs::score_t doc_boost;
       scr->operator()(&doc_boost);
-      ASSERT_EQ(irs::boost_t(0), doc_boost);
+      ASSERT_EQ(irs::score_t(0), doc_boost);
       ASSERT_EQ(docs->value(), doc->value);
     }
 
@@ -1220,7 +1220,7 @@ struct unestimated: public irs::filter {
   virtual filter::prepared::ptr prepare(
       const irs::index_reader&,
       const irs::Order&,
-      irs::boost_t,
+      irs::score_t,
       const irs::attribute_provider*) const override {
     return irs::memory::make_managed<unestimated::prepared>();
   }
@@ -1284,7 +1284,7 @@ struct estimated: public irs::filter {
   virtual filter::prepared::ptr prepare(
       const irs::index_reader&,
       const irs::Order&,
-      irs::boost_t,
+      irs::score_t,
       const irs::attribute_provider*) const override {
     return irs::memory::make_managed<estimated::prepared>(est,&evaluated);
   }

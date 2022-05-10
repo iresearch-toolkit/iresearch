@@ -53,7 +53,7 @@ class term_visitor : private util::noncopyable {
     terms_ = &terms;
   }
 
-  void visit(boost_t /*boost*/) {
+  void visit(score_t /*boost*/) {
     // collect statistics
     assert(segment_ && reader_ && terms_);
     term_stats_.collect(*segment_, *reader_, 0, *terms_);
@@ -115,7 +115,7 @@ DEFINE_FACTORY_DEFAULT(by_term)
 /*static*/ filter::prepared::ptr by_term::prepare(
     const index_reader& index,
     const Order& ord,
-    boost_t boost,
+    score_t boost,
     string_ref field,
     bytes_ref term) {
   term_query::states_t states(index);

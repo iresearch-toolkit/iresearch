@@ -168,7 +168,7 @@ class boolean_query : public filter::prepared {
     return memory::make_managed<exclusion>(std::move(incl), std::move(excl));
   }
 
-  virtual void prepare(const index_reader& rdr, const Order& ord, boost_t boost,
+  virtual void prepare(const index_reader& rdr, const Order& ord, score_t boost,
                        sort::MergeType merge_type,
                        const attribute_provider* ctx,
                        std::span<const filter* const> incl,
@@ -358,7 +358,7 @@ bool boolean_filter::equals(const filter& rhs) const noexcept {
 }
 
 filter::prepared::ptr boolean_filter::prepare(
-    const index_reader& rdr, const Order& ord, boost_t boost,
+    const index_reader& rdr, const Order& ord, score_t boost,
     const attribute_provider* ctx) const {
   // determine incl/excl parts
   std::vector<const filter*> incl;
@@ -425,7 +425,7 @@ And::And() noexcept : boolean_filter(irs::type<And>::get()) {}
 filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
                                    std::vector<const filter*>& excl,
                                    const index_reader& rdr, const Order& ord,
-                                   boost_t boost,
+                                   score_t boost,
                                    const attribute_provider* ctx) const {
   // optimization step
   //  if include group empty itself or has 'empty' -> this whole conjunction is
@@ -435,7 +435,7 @@ filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
   }
 
   irs::all cumulative_all;
-  boost_t all_boost{0};
+  score_t all_boost{0};
   size_t all_count{0};
   for (auto filter : incl) {
     if (filter->type() == irs::type<irs::all>::id()) {
@@ -495,7 +495,7 @@ Or::Or() noexcept : boolean_filter(irs::type<Or>::get()), min_match_count_(1) {}
 filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
                                   std::vector<const filter*>& excl,
                                   const index_reader& rdr, const Order& ord,
-                                  boost_t boost,
+                                  score_t boost,
                                   const attribute_provider* ctx) const {
   // preparing
   boost *= this->boost();
@@ -517,7 +517,7 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
   size_t optimized_match_count = 0;
   // Optimization steps
 
-  boost_t all_boost{0};
+  score_t all_boost{0};
   size_t all_count{0};
   const irs::filter* incl_all{nullptr};
   for (auto filter : incl) {
@@ -589,7 +589,7 @@ DEFINE_FACTORY_DEFAULT(Not)
 Not::Not() noexcept : irs::filter(irs::type<Not>::get()) {}
 
 filter::prepared::ptr Not::prepare(const index_reader& rdr, const Order& ord,
-                                   boost_t boost,
+                                   score_t boost,
                                    const attribute_provider* ctx) const {
   const auto res = optimize_not(*this);
 

@@ -49,7 +49,7 @@ class proxy_filter final : public filter {
   using filter::prepare;
 
   filter::prepared::ptr prepare(const index_reader& rdr, const Order&,
-                                boost_t boost,
+                                score_t boost,
                                 const attribute_provider*) const override;
 
   template<typename T>
