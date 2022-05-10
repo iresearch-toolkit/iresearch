@@ -116,7 +116,7 @@ class ScoreFunction : util::noncopyable {
   }
 
   bool operator==(std::nullptr_t) const noexcept {
-    return static_cast<bool>(*this);
+    return !static_cast<bool>(*this);
   }
 
   bool operator!=(std::nullptr_t) const noexcept { return !(*this == nullptr); }
