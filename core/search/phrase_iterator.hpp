@@ -100,13 +100,13 @@ class fixed_phrase_frequency {
 struct variadic_phrase_adapter final
     : score_iterator_adapter<doc_iterator::ptr> {
   variadic_phrase_adapter() = default;
-  variadic_phrase_adapter(doc_iterator::ptr&& it, boost_t boost) noexcept
+  variadic_phrase_adapter(doc_iterator::ptr&& it, score_t boost) noexcept
       : score_iterator_adapter<doc_iterator::ptr>(std::move(it)),
         position(irs::get_mutable<irs::position>(this->it.get())),
         boost(boost) {}
 
   irs::position* position{};
-  boost_t boost{kNoBoost};
+  score_t boost{kNoBoost};
 };
 
 static_assert(std::is_nothrow_move_constructible_v<variadic_phrase_adapter>);
@@ -160,7 +160,7 @@ class variadic_phrase_frequency {
   struct sub_match_context {
     position::value_t term_position{pos_limits::eof()};
     position::value_t min_sought{pos_limits::eof()};
-    boost_t boost{};
+    score_t boost{};
     bool match{false};
   };
 
@@ -296,7 +296,7 @@ class variadic_phrase_frequency_overlapped {
   struct sub_match_context {
     position::value_t term_position{pos_limits::eof()};
     position::value_t min_sought{pos_limits::eof()};
-    boost_t boost{};
+    score_t boost{};
     uint32_t freq{};
   };
 
@@ -334,8 +334,8 @@ class variadic_phrase_frequency_overlapped {
     uint32_t phrase_freq = 0;  // phrase frequency for current lead_iterator
     // accumulated match frequency for current lead_iterator
     uint32_t match_freq;
-    boost_t phrase_boost = {};  // phrase boost for current lead_iterator
-    boost_t match_boost;  // accumulated match boost for current lead_iterator
+    score_t phrase_boost = {};  // phrase boost for current lead_iterator
+    score_t match_boost;  // accumulated match boost for current lead_iterator
     for (position::value_t base_position;
          !pos_limits::eof(base_position = lead->value());) {
       match_freq = 1;
@@ -411,7 +411,7 @@ class variadic_phrase_frequency_overlapped {
   const size_t phrase_size_;
   frequency phrase_freq_;      // freqency of the phrase in a document
   filter_boost phrase_boost_;  // boost of the phrase in a document
-  boost_t lead_boost_{0.f};    // boost from all matched lead iterators
+  score_t lead_boost_{0.f};    // boost from all matched lead iterators
   uint32_t lead_freq_{0};      // number of matched lead iterators
   const bool order_empty_;
 };
@@ -424,7 +424,7 @@ class phrase_iterator final : public doc_iterator {
   phrase_iterator(typename Conjunction::doc_iterators_t&& itrs,
                   std::vector<typename Frequency::term_position_t>&& pos,
                   const sub_reader& segment, const term_reader& field,
-                  const byte_type* stats, const Order& ord, boost_t boost)
+                  const byte_type* stats, const Order& ord, score_t boost)
       : approx_{std::move(itrs), NoopAggregator{}}, freq_{std::move(pos), ord} {
     std::get<attribute_ptr<document>>(attrs_) =
         irs::get_mutable<document>(&approx_);
@@ -438,10 +438,7 @@ class phrase_iterator final : public doc_iterator {
     if (!ord.empty()) {
       auto& score = std::get<irs::score>(attrs_);
 
-      auto scorers =
-          PrepareScorers(ord.buckets(), segment, field, stats, *this, boost);
-
-      score = CompileScorers(std::move(scorers));
+      score = CompileScore(ord.buckets(), segment, field, stats, *this, boost);
     }
   }
 

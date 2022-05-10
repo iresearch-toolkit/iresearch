@@ -67,7 +67,7 @@ class all_terms_collector : util::noncopyable {
     state_.docs_count = meta ? &meta->docs_count : &no_docs_;
   }
 
-  void visit(const boost_t boost) {
+  void visit(const score_t boost) {
     assert(state_);
     term_stats_.collect(*state_.segment, *state_.state->reader, stat_index_, *state_.terms);
 

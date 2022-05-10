@@ -51,7 +51,7 @@ using Scorers = SmallVector<ScoreFunction, 2>;
 Scorers PrepareScorers(std::span<const OrderBucket> buckets,
                        const sub_reader& segment, const term_reader& field,
                        const byte_type* stats, const attribute_provider& doc,
-                       boost_t boost);
+                       score_t boost);
 
 // Compiles a set of prepared scorers into a single score function.
 ScoreFunction CompileScorers(Scorers&& scorers);

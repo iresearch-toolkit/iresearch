@@ -37,15 +37,15 @@ struct filter_visitor;
 struct by_terms_options {
   struct search_term {
     bstring term;
-    boost_t boost;
+    score_t boost;
 
     search_term() = default;
 
-    explicit search_term(bstring&& term, boost_t boost = kNoBoost) noexcept
+    explicit search_term(bstring&& term, score_t boost = kNoBoost) noexcept
       : term(std::move(term)), boost(boost) {
     }
 
-    explicit search_term(bytes_ref term, boost_t boost = kNoBoost)
+    explicit search_term(bytes_ref term, score_t boost = kNoBoost)
       : term(term.c_str(), term.size()), boost(boost) {
     }
 
@@ -98,7 +98,7 @@ class by_terms final
   virtual filter::prepared::ptr prepare(
     const index_reader& index,
     const Order& order,
-    boost_t boost,
+    score_t boost,
     const attribute_provider* /*ctx*/) const override;
 };
 
