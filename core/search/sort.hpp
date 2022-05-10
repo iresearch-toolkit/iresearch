@@ -62,7 +62,7 @@ struct score_ctx {
   virtual ~score_ctx() = default;
 };
 
-using score_f = void (*)(score_ctx* ctx, score_t* res) noexcept;
+using score_f = void (*)(score_ctx* ctx, score_t* res);
 
 // Convenient wrapper around score_f and score_ctx.
 class ScoreFunction : util::noncopyable {

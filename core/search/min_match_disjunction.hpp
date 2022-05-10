@@ -249,7 +249,7 @@ class min_match_disjunction : public doc_iterator,
 
     auto& score = std::get<irs::score>(attrs_);
 
-    score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
+    score.Reset(this, [](score_ctx* ctx, score_t* res) {
       auto evaluate_score_iter = [](irs::score_t* res, auto& src) {
         auto* score = src.score;
         assert(score);  // must be ensure by the adapter

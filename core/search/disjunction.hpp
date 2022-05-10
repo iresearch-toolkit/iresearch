@@ -268,7 +268,7 @@ class basic_disjunction final : public compound_doc_iterator<Adapter>,
 
     if (!lhs_score_empty && !rhs_score_empty) {
       // both sub-iterators have score
-      score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
+      score.Reset(this, [](score_ctx* ctx, score_t* res) {
         // FIXME(gnusi)
         auto& self = *static_cast<basic_disjunction*>(ctx);
         auto& merger = static_cast<Merger&>(self);
@@ -278,13 +278,13 @@ class basic_disjunction final : public compound_doc_iterator<Adapter>,
       });
     } else if (!lhs_score_empty) {
       // only left sub-iterator has score
-      score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
+      score.Reset(this, [](score_ctx* ctx, score_t* res) {
         auto& self = *static_cast<basic_disjunction*>(ctx);
         return self.score_iterator_impl(self.lhs_, res);
       });
     } else if (!rhs_score_empty) {
       // only right sub-iterator has score
-      score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
+      score.Reset(this, [](score_ctx* ctx, score_t* res) {
         auto& self = *static_cast<basic_disjunction*>(ctx);
         return self.score_iterator_impl(self.rhs_, res);
       });
@@ -729,7 +729,7 @@ class disjunction final : public compound_doc_iterator<Adapter>,
 
     auto& score = std::get<irs::score>(attrs_);
 
-    score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
+    score.Reset(this, [](score_ctx* ctx, score_t* res) {
       auto evaluate_score_iter = [](irs::score_t* res, auto& src) {
         const auto* score = src.score;
         assert(score);  // must be ensure by the adapter

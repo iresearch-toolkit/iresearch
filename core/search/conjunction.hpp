@@ -175,7 +175,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
         score = std::move(*scores_.front());
         break;
       case 2:
-        score.Reset(this, [](score_ctx* ctx, score_t* res) mutable noexcept {
+        score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
           // FIXME(gnusi)
           auto& self = *static_cast<conjunction*>(ctx);
           auto& merger = static_cast<Merger&>(self);
