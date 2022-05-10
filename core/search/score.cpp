@@ -48,7 +48,7 @@ Scorers PrepareScorers(std::span<const OrderBucket> buckets,
     if (IRS_LIKELY(scorer)) {
       scorers.emplace_back(std::move(scorer));
     } else {
-      scorers.emplace_back(ScoreFunction::Default(sizeof(score_t)));
+      scorers.emplace_back(ScoreFunction::Default(1));
     }
   }
 

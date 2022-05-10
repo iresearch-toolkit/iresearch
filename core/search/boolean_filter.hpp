@@ -31,11 +31,8 @@
 
 namespace iresearch {
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class boolean_filter
-/// @brief defines user-side boolean filter, as the container for other
-/// filters
-//////////////////////////////////////////////////////////////////////////////
+// Represents user-side boolean filter as the container for other
+// filters.
 class boolean_filter : public filter, private util::noncopyable {
  public:
   auto begin() const { return ptr_iterator{std::begin(filters_)}; }
@@ -44,9 +41,7 @@ class boolean_filter : public filter, private util::noncopyable {
   auto begin() { return ptr_iterator{std::begin(filters_)}; }
   auto end() { return ptr_iterator{std::end(filters_)}; }
 
-  sort::MergeType merge_type() const noexcept {
-    return merge_type_;
-  }
+  sort::MergeType merge_type() const noexcept { return merge_type_; }
 
   void merge_type(sort::MergeType merge_type) noexcept {
     merge_type_ = merge_type;
@@ -87,9 +82,7 @@ class boolean_filter : public filter, private util::noncopyable {
   sort::MergeType merge_type_{sort::MergeType::AGGREGATE};
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class And
-//////////////////////////////////////////////////////////////////////////////
+// Represents conjunction
 class And final : public boolean_filter {
  public:
   static ptr make();
@@ -103,12 +96,10 @@ class And final : public boolean_filter {
       std::vector<const filter*>& incl, std::vector<const filter*>& excl,
       const index_reader& rdr, const Order& ord, boost_t boost,
       const attribute_provider* ctx) const override;
-};  // And
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class Or
-//////////////////////////////////////////////////////////////////////////////
-class Or : public boolean_filter { // FIXME: remove iql and make final
+// Represents disjunction
+class Or : public boolean_filter {  // FIXME: remove iql and make final
  public:
   static ptr make();
 
@@ -116,14 +107,10 @@ class Or : public boolean_filter { // FIXME: remove iql and make final
 
   using filter::prepare;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return minimum number of subqueries which must be satisfied
-  //////////////////////////////////////////////////////////////////////////////
+  // Return minimum number of subqueries which must be satisfied
   size_t min_match_count() const { return min_match_count_; }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets minimum number of subqueries which must be satisfied
-  //////////////////////////////////////////////////////////////////////////////
+  // Sets minimum number of subqueries which must be satisfied
   Or& min_match_count(size_t count) {
     min_match_count_ = count;
     return *this;
@@ -137,11 +124,9 @@ class Or : public boolean_filter { // FIXME: remove iql and make final
 
  private:
   size_t min_match_count_;
-};  // Or
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class not
-//////////////////////////////////////////////////////////////////////////////
+// Represents negation
 class Not : public filter {
  public:
   static ptr make();
@@ -152,14 +137,16 @@ class Not : public filter {
 
   template<typename T>
   const T* filter() const {
-    using type = typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
+    using type =
+        typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
 
     return static_cast<const type*>(filter_.get());
   }
 
   template<typename T>
   T& filter() {
-    using type = typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
+    using type =
+        typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
 
     filter_ = type::make();
     return static_cast<type&>(*filter_);

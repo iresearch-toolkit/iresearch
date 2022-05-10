@@ -355,16 +355,17 @@ class Order final : private util::noncopyable {
 
 struct NoopAggregator {
   constexpr size_t size() const noexcept { return 0; }
-  constexpr size_t byte_size() const noexcept { return 0; }
-  void operator()(score_t*, const score_t*) const noexcept {}
-  void operator()(score_t*, const score_t**, size_t) noexcept {}
 };
 
 template<typename Merger, size_t Size>
 struct Aggregator : Merger {
+  static_assert(Size > 0);
+
   constexpr size_t size() const noexcept { return Size; }
 
   constexpr size_t byte_size() const noexcept { return Size * sizeof(score_t); }
+
+  constexpr score_t* temp() noexcept { return buf.data(); }
 
   void operator()(score_t* dst, const score_t* src) const noexcept {
     for (size_t i = 0; i < Size; ++i) {
@@ -378,15 +379,22 @@ struct Aggregator : Merger {
       Merger::operator()(i, dst, src, size);
     }
   }
+
+  std::array<score_t, Size> buf;
 };
 
 template<typename Merger>
 struct Aggregator<Merger, std::numeric_limits<size_t>::max()> : Merger {
-  explicit Aggregator(size_t size) noexcept : count{size} {}
+  explicit Aggregator(size_t size) noexcept : count{size} {
+    assert(size);
+    buf.resize(byte_size());
+  }
 
   size_t size() const noexcept { return count; }
 
   size_t byte_size() const noexcept { return size() * sizeof(score_t); }
+
+  score_t* temp() noexcept { return reinterpret_cast<score_t*>(buf.data()); }
 
   void operator()(score_t* dst, const score_t* src) const noexcept {
     for (size_t i = 0; i < count; ++i) {
@@ -402,7 +410,13 @@ struct Aggregator<Merger, std::numeric_limits<size_t>::max()> : Merger {
   }
 
   size_t count;
+  bstring buf;
 };
+
+template<typename Aggregator>
+constexpr bool HasScore() noexcept {
+  return !std::is_same_v<Aggregator, NoopAggregator>;
+}
 
 struct SumMerger {
   void operator()(size_t idx, score_t* RESTRICT dst,

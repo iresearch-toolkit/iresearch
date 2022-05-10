@@ -166,10 +166,7 @@ doc_iterator::ptr multiterm_query::execute(
   return ResoveMergeType(
       merge_type_, ord.buckets().size(),
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using disjunction_t = std::conditional_t<
-            std::is_same_v<A, irs::NoopAggregator>,
-            disjunction_iterator<doc_iterator::ptr, A>,
-            scored_disjunction_iterator<doc_iterator::ptr, A>>;
+        using disjunction_t = disjunction_iterator<doc_iterator::ptr, A>;
 
         return make_disjunction<disjunction_t>(
             std::move(itrs), std::move(aggregator), state->estimation());

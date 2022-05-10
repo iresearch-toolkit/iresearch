@@ -90,7 +90,9 @@ class min_match_disjunction : public doc_iterator,
     heap_.resize(itrs_.size());
     std::iota(heap_.begin(), heap_.end(), size_t(0));
 
-    prepare_score();
+    if constexpr (HasScore<Merger>()) {
+      prepare_score();
+    }
   }
 
   virtual attribute* get_mutable(type_info::type_id id) noexcept override {
@@ -246,7 +248,6 @@ class min_match_disjunction : public doc_iterator,
     }
 
     auto& score = std::get<irs::score>(attrs_);
-    score_buf_.resize(Merger::byte_size());
 
     score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
       auto evaluate_score_iter = [](irs::score_t* res, auto& src) {
@@ -258,21 +259,19 @@ class min_match_disjunction : public doc_iterator,
       };
 
       auto& self = *static_cast<min_match_disjunction*>(ctx);
-      auto& merger = static_cast<Merger&>(self);
-      auto* score_buf = reinterpret_cast<score_t*>(self.score_buf_.data());
       assert(!self.heap_.empty());
 
       self.push_valid_to_lead();
 
       // score lead iterators
-      std::memset(res, 0, merger.byte_size());
-      std::for_each(
-          self.lead(), self.heap_.end(),
-          [&self, &evaluate_score_iter, &merger, res, score_buf](size_t it) {
-            assert(it < self.itrs_.size());
-            evaluate_score_iter(score_buf, self.itrs_[it]);
-            merger(res, score_buf);
-          });
+      std::memset(res, 0, static_cast<Merger&>(self).byte_size());
+      std::for_each(self.lead(), self.heap_.end(),
+                    [&self, &evaluate_score_iter, res](size_t it) {
+                      assert(it < self.itrs_.size());
+                      auto& merger = static_cast<Merger&>(self);
+                      evaluate_score_iter(merger.temp(), self.itrs_[it]);
+                      merger(res, merger.temp());
+                    });
     });
   }
 
@@ -430,7 +429,6 @@ class min_match_disjunction : public doc_iterator,
   size_t min_match_count_;  // minimum number of hits
   size_t lead_;             // number of iterators in lead group
   attributes attrs_;
-  bstring score_buf_;  // FIXME(gnusi): compile time size
 };
 
 }  // namespace iresearch

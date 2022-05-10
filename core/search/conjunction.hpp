@@ -110,7 +110,9 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
         const_cast<document*>(front_doc_);
     std::get<attribute_ptr<cost>>(attrs_) = irs::get_mutable<cost>(front_);
 
-    prepare_score();
+    if constexpr (HasScore<Merger>()) {
+      prepare_score();
+    }
   }
 
   auto begin() const noexcept { return std::begin(itrs_); }
@@ -146,15 +148,10 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
   using attributes =
       std::tuple<attribute_ptr<document>, attribute_ptr<cost>, score>;
 
-  // FIXME(gnusi): move to compilation time
   void prepare_score() {
-    if (!Merger::size()) {
-      return;
-    }
+    assert(Merger::size());
 
     auto& score = std::get<irs::score>(attrs_);
-
-    score_buf_.resize(Merger::byte_size());
 
     // copy scores into separate container
     // to avoid extra checks
@@ -179,44 +176,39 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
         break;
       case 2:
         score.Reset(this, [](score_ctx* ctx, score_t* res) mutable noexcept {
-          auto& self = *static_cast<conjunction*>(ctx);
-          auto* tmp = reinterpret_cast<score_t*>(self.score_buf_.data());
-
           // FIXME(gnusi)
+          auto& self = *static_cast<conjunction*>(ctx);
           auto& merger = static_cast<Merger&>(self);
           (*self.scores_.front())(res);
-          (*self.scores_.back())(tmp);
-          merger(res, tmp);
+          (*self.scores_.back())(merger.temp());
+          merger(res, merger.temp());
         });
         break;
       case 3:
         score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
-          auto& self = *static_cast<conjunction*>(ctx);
-          auto* tmp = reinterpret_cast<score_t*>(self.score_buf_.data());
-
           // FIXME(gnusi)
+          auto& self = *static_cast<conjunction*>(ctx);
           auto& merger = static_cast<Merger&>(self);
           (*self.scores_.front())(res);
-          (*self.scores_[1])(tmp);
-          merger(res, tmp);
-          (*self.scores_.back())(tmp);
-          merger(res, tmp);
+          (*self.scores_[1])(merger.temp());
+          merger(res, merger.temp());
+          (*self.scores_.back())(merger.temp());
+          merger(res, merger.temp());
         });
         break;
       default:
         score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
+          // FIXME(gnusi)
           auto& self = *static_cast<conjunction*>(ctx);
-          auto* tmp = reinterpret_cast<score_t*>(self.score_buf_.data());
+          auto& merger = static_cast<Merger&>(self);
           auto begin = std::begin(self.scores_);
           auto end = std::end(self.scores_);
 
-          // FIXME(gnusi)
-          auto& merger = static_cast<Merger&>(self);
           std::memset(res, 0, merger.byte_size());
           (**begin)(res);
           for (++begin; begin != end; ++begin) {
-            (**begin)(tmp);
-            merger(res, tmp);
+            (**begin)(merger.temp());
+            merger(res, merger.temp());
           }
         });
         break;
@@ -255,7 +247,6 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     return target;
   }
 
-  bstring score_buf_;  // FIXME(gnusi): compile time size
   attributes attrs_;
   doc_iterators_t itrs_;
   std::vector<score*> scores_;  // valid sub-scores
