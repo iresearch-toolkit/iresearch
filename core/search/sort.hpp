@@ -110,6 +110,8 @@ class ScoreFunction : util::noncopyable {
     func_ = func;
   }
 
+  bool IsNoop() const noexcept { return nullptr == ctx_ && kDefault == func_; }
+
   FORCE_INLINE void operator()(score_t* res) const noexcept {
     assert(func_);
     return func_(ctx_.get(), res);

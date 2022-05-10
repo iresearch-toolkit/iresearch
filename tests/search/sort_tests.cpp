@@ -864,8 +864,10 @@ TEST(sort_tests, prepare_order) {
     ASSERT_TRUE(5 == scorers.size());
 
     irs::score score;
+    ASSERT_TRUE(score.IsNoop());
     ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
     score = irs::CompileScorers(std::move(scorers));
+    ASSERT_FALSE(score.IsNoop());
     ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
   }
 }

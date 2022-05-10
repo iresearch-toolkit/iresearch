@@ -243,21 +243,11 @@ class min_match_disjunction : public doc_iterator,
   using attributes = std::tuple<document, cost, score>;
 
   void prepare_score() {
-    if (!Merger::size()) {
-      return;
-    }
+    assert(Merger::size());
 
     auto& score = std::get<irs::score>(attrs_);
 
     score.Reset(this, [](score_ctx* ctx, score_t* res) {
-      auto evaluate_score_iter = [](irs::score_t* res, auto& src) {
-        auto* score = src.score;
-        assert(score);  // must be ensure by the adapter
-        if (*score != ScoreFunction::kDefault) {
-          (*score)(res);
-        }
-      };
-
       auto& self = *static_cast<min_match_disjunction*>(ctx);
       assert(!self.heap_.empty());
 
@@ -265,13 +255,14 @@ class min_match_disjunction : public doc_iterator,
 
       // score lead iterators
       std::memset(res, 0, static_cast<Merger&>(self).byte_size());
-      std::for_each(self.lead(), self.heap_.end(),
-                    [&self, &evaluate_score_iter, res](size_t it) {
-                      assert(it < self.itrs_.size());
-                      auto& merger = static_cast<Merger&>(self);
-                      evaluate_score_iter(merger.temp(), self.itrs_[it]);
-                      merger(res, merger.temp());
-                    });
+      std::for_each(self.lead(), self.heap_.end(), [&self, res](size_t it) {
+        assert(it < self.itrs_.size());
+        if (auto& score = *self.itrs_[it].score; !score.IsNoop()) {
+          auto& merger = static_cast<Merger&>(self);
+          score(merger.temp());
+          merger(res, merger.temp());
+        }
+      });
     });
   }
 

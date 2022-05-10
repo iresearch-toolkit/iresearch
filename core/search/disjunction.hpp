@@ -730,19 +730,16 @@ class disjunction final : public compound_doc_iterator<Adapter>,
     auto& score = std::get<irs::score>(attrs_);
 
     score.Reset(this, [](score_ctx* ctx, score_t* res) {
-      auto evaluate_score_iter = [](irs::score_t* res, auto& src) {
-        const auto* score = src.score;
-        assert(score);  // must be ensure by the adapter
-        if (*score != ScoreFunction::kDefault) {
-          (*score)(res);
-        }
-      };
-
       auto& self = *static_cast<disjunction*>(ctx);
       assert(!self.heap_.empty());
 
       const auto its = self.hitch_all_iterators();
-      evaluate_score_iter(res, self.lead());
+
+      if (auto& score = *self.lead().score; !score.IsNoop()) {
+        score(res);
+      } else {
+        std::memset(res, 0, self.byte_size());
+      }
       if (const auto doc = std::get<document>(self.attrs_).value;
           self.top().value() == doc) {
         irstd::heap::for_each_if(
@@ -751,11 +748,13 @@ class disjunction final : public compound_doc_iterator<Adapter>,
               assert(it < self.itrs_.size());
               return self.itrs_[it].value() == doc;
             },
-            [&self, res, &evaluate_score_iter](size_t it) {
+            [&self, res](size_t it) {
               assert(it < self.itrs_.size());
-              auto& merger = static_cast<Merger&>(self);
-              evaluate_score_iter(merger.temp(), self.itrs_[it]);
-              merger(res, merger.temp());
+              if (auto& score = *self.itrs_[it].score; !score.IsNoop()) {
+                auto& merger = static_cast<Merger&>(self);
+                score(merger.temp());
+                merger(res, merger.temp());
+              }
             });
       }
     });
@@ -1218,7 +1217,6 @@ class block_disjunction final : public doc_iterator,
         //  }
         //}
 
-        // circumventing GCC 10.1 bug on ARM64
         if constexpr (HasScore<Merger>()) {
           assert(Merger::size());
           if (it.score->Func() != irs::ScoreFunction::kDefault) {
