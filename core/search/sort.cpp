@@ -88,15 +88,12 @@ REGISTER_ATTRIBUTE(filter_boost);
 ScoreFunction::ScoreFunction() noexcept : func_{kDefault} {}
 
 ScoreFunction::ScoreFunction(ScoreFunction&& rhs) noexcept
-    : ctx_(std::move(rhs.ctx_)), func_(rhs.func_) {
-  rhs.func_ = kDefault;
-}
+    : ctx_(std::move(rhs.ctx_)), func_(std::exchange(rhs.func_, kDefault)) {}
 
 ScoreFunction& ScoreFunction::operator=(ScoreFunction&& rhs) noexcept {
   if (this != &rhs) {
     ctx_ = std::move(rhs.ctx_);
-    func_ = rhs.func_;
-    rhs.func_ = kDefault;
+    func_ = std::exchange(rhs.func_, kDefault);
   }
   return *this;
 }
