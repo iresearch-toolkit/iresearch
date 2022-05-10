@@ -376,9 +376,10 @@ class filter_test_case_base : public index_test_base {
       const irs::index_reader& rdr) {
     std::vector<irs::doc_id_t> result;
     std::vector<irs::cost::cost_t> result_costs;
+    irs::score_t tmp;
     get_query_result(
       filter.prepare(rdr, irs::Order::kUnordered),
-      rdr, nullptr, result, result_costs);
+      rdr, &tmp, result, result_costs);
     ASSERT_EQ(expected, result);
     ASSERT_EQ(expected_costs, result_costs);
   }
@@ -389,9 +390,10 @@ class filter_test_case_base : public index_test_base {
       const irs::index_reader& rdr) {
     std::vector<irs::doc_id_t> result;
     std::vector<irs::cost::cost_t> result_costs;
+    irs::score_t tmp;
     get_query_result(
       filter.prepare(rdr, irs::Order::kUnordered),
-      rdr, nullptr, result, result_costs);
+      rdr, &tmp, result, result_costs);
     ASSERT_EQ(expected, result);
   }
 

@@ -3553,7 +3553,7 @@ TEST(block_disjunction_test, check_attributes) {
     ASSERT_EQ(0, cost->estimate());
     auto* score = irs::get<irs::score>(it);
     ASSERT_NE(nullptr, score);
-    ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score->Func() != irs::ScoreFunction::kDefault);
   }
 
   // scoring, order
