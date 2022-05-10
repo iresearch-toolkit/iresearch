@@ -91,8 +91,8 @@ class ScoreFunction : util::noncopyable {
   ScoreFunction(ScoreFunction&& rhs) noexcept;
   ScoreFunction& operator=(ScoreFunction&& rhs) noexcept;
 
-  score_ctx* Ctx() const noexcept { return ctx_.get(); }
-  score_f Func() const noexcept { return func_; }
+  [[nodiscard]] score_ctx* Ctx() const noexcept { return ctx_.get(); }
+  [[nodiscard]] score_f Func() const noexcept { return func_; }
 
   void Reset(memory::managed_ptr<score_ctx>&& ctx,
              const score_f func) noexcept {
@@ -137,23 +137,6 @@ class ScoreFunction : util::noncopyable {
 
  private:
   memory::managed_ptr<score_ctx> ctx_;
-  score_f func_;
-};
-
-class ScoreFunctionView {
- public:
-  ScoreFunctionView(const ScoreFunction& func) noexcept
-      : ctx_{func.Ctx()}, func_{func.Func()} {}
-
-  explicit operator bool() const noexcept { return nullptr != func_; }
-
-  FORCE_INLINE void operator()(score_t* res) const noexcept {
-    assert(func_);
-    return func_(ctx_, res);
-  }
-
- private:
-  score_ctx* ctx_;
   score_f func_;
 };
 
