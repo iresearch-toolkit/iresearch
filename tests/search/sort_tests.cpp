@@ -133,27 +133,6 @@ TEST(sort_tests, static_const) {
   ASSERT_EQ(irs::IndexFeatures::NONE, irs::Order::kUnordered.features());
 }
 
-TEST(sort_tests, score_traits) {
-  const irs::score_t values[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
-  const irs::score_t* ptrs[std::size(values)];
-  std::iota(std::begin(ptrs), std::end(ptrs), values);
-
-  for (size_t i = 0; i < std::size(values); ++i) {
-    float_t max_dst = 0;
-    float_t aggregated_dst = 0;
-
-    irs::Aggregator<irs::SumMerger, 1>{}(&aggregated_dst, ptrs, i);
-    irs::Aggregator<irs::MaxMerger, 1>{}(&max_dst, ptrs, i);
-
-    const auto begin = std::begin(values);
-    const auto end = begin + i;
-
-    ASSERT_EQ(std::accumulate(begin, end, 0), aggregated_dst);
-    const auto it = std::max_element(begin, end);
-    ASSERT_EQ(end == it ? 0 : *it, max_dst);
-  }
-}
-
 TEST(sort_tests, prepare_order) {
   {
     std::array<irs::sort::ptr, 2> ord{

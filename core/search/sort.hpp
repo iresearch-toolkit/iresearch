@@ -358,13 +358,6 @@ struct Aggregator : Merger {
     }
   }
 
-  void operator()(score_t* dst, const score_t** src,
-                  size_t size) const noexcept {
-    for (size_t i = 0; i < Size; ++i) {
-      Merger::operator()(i, dst, src, size);
-    }
-  }
-
   std::array<score_t, Size> buf;
 };
 
@@ -387,13 +380,6 @@ struct Aggregator<Merger, std::numeric_limits<size_t>::max()> : Merger {
     }
   }
 
-  void operator()(score_t* dst, const score_t** src,
-                  size_t size) const noexcept {
-    for (size_t i = 0; i < size; ++i) {
-      Merger::operator()(i, dst, src, size);
-    }
-  }
-
   size_t count;
   bstring buf;
 };
@@ -408,60 +394,9 @@ struct SumMerger {
                   const score_t* RESTRICT src) const noexcept {
     dst[idx] += src[idx];
   }
-
-  void operator()(size_t idx, score_t* dst, const score_t** src_begin,
-                  size_t size) const noexcept {
-    auto& casted_dst = dst[idx];
-    casted_dst = {};
-
-    const auto** src_end = src_begin + size;
-    const auto** src_next = src_begin + 4;
-    for (; src_next <= src_end; src_begin = src_next, src_next += 4) {
-      casted_dst += src_begin[0][idx] + src_begin[1][idx] + src_begin[2][idx] +
-                    src_begin[3][idx];
-    }
-
-    switch (std::distance(src_end, src_next)) {
-      case 0:
-        break;
-      case 1:
-        casted_dst += src_begin[0][idx] + src_begin[1][idx] + src_begin[2][idx];
-        break;
-      case 2:
-        casted_dst += src_begin[0][idx] + src_begin[1][idx];
-        break;
-      case 3:
-        casted_dst += src_begin[0][idx];
-        break;
-    }
-  }
 };
 
 struct MaxMerger {
-  void operator()(size_t idx, score_t* dst, const score_t** src_begin,
-                  size_t size) const noexcept {
-    auto& casted_dst = dst[idx];
-
-    switch (size) {
-      case 0:
-        casted_dst = {};
-        break;
-      case 1:
-        casted_dst = src_begin[0][idx];
-        break;
-      case 2:
-        casted_dst = std::max(src_begin[0][idx], src_begin[1][idx]);
-        break;
-      default:
-        casted_dst = (*src_begin)[idx];
-        const auto* src_end = src_begin + size;
-        for (++src_begin; src_begin != src_end;) {
-          casted_dst = std::max(*src_begin++[idx], casted_dst);
-        }
-        break;
-    }
-  }
-
   void operator()(size_t idx, score_t* RESTRICT dst,
                   const score_t* RESTRICT src) const noexcept {
     auto& casted_dst = dst[idx];

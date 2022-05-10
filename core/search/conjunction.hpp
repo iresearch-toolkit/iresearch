@@ -98,8 +98,12 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
                       return cost::extract(lhs, cost::MAX) <
                              cost::extract(rhs, cost::MAX);
                     });
-
+#if defined(__GNUC__) && (__GNUC__ < 11)
+          // Circumvent GCC10 compilation issue.
+          return std::move(itrs);
+#else
           return itrs;
+#endif
         }(std::move(itrs))},
         front_{itrs_.front().it.get()},
         front_doc_{irs::get_mutable<document>(front_)} {
