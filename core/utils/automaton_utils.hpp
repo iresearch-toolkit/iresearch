@@ -417,7 +417,7 @@ void visit(
     do {
       terms->read();
 
-      visitor.visit(no_boost());
+      visitor.visit(kNoBoost);
     } while (terms->next());
   }
 }
@@ -511,8 +511,8 @@ filter::prepared::ptr prepare_automaton_filter(
   const automaton& acceptor,
   size_t scored_terms_limit,
   const index_reader& index,
-  const order::prepared& order,
-  boost_t boost);
+  const Order& order,
+  score_t boost);
 
 }
 

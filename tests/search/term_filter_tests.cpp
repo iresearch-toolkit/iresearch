@@ -109,9 +109,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
     filter.boost(0.f);
 
     // create order
-    irs::order ord;
-    ord.add<tests::sort::boost>(false);
-    auto pord = ord.prepare();
+    auto pord = irs::Order::Prepare(tests::sort::boost{});
 
     // without boost
     {
@@ -127,8 +125,9 @@ class term_filter_test_case : public tests::filter_test_case_base {
       // first hit
       {
         ASSERT_TRUE(docs->next());
-        auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
-        ASSERT_EQ(irs::boost_t(0), doc_boost);
+        irs::score_t score_value;
+        (*scr)(&score_value);
+        ASSERT_EQ(irs::score_t(0), score_value);
         ASSERT_EQ(docs->value(), doc->value);
       }
 
@@ -138,7 +137,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
     // with boost
     {
-      const irs::boost_t value = 5;
+      const irs::score_t value = 5;
       filter.boost(value);
 
       auto prep = filter.prepare(rdr, pord);
@@ -150,8 +149,9 @@ class term_filter_test_case : public tests::filter_test_case_base {
       // first hit
       {
         ASSERT_TRUE(docs->next());
-        auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
-        ASSERT_EQ(irs::boost_t(value), doc_boost);
+        irs::score_t score_value;
+        (*scr)(&score_value);
+        ASSERT_EQ(irs::score_t(value), score_value);
       }
 
       ASSERT_FALSE(docs->next());
@@ -459,8 +459,8 @@ class term_filter_test_case : public tests::filter_test_case_base {
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
       size_t finish_count = 0;
-      irs::order ord;
-      auto& scorer = ord.add<tests::sort::custom_sort>(false);
+
+      tests::sort::custom_sort scorer;
 
       scorer.collector_collect_field = [&collect_field_count](
           const irs::sub_reader&, const irs::term_reader&)->void{
@@ -487,7 +487,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
       };
 
       std::set<irs::doc_id_t> expected{ 31, 32 };
-      auto pord = ord.prepare();
+      auto pord = irs::Order::Prepare(scorer);
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
 
@@ -495,7 +495,8 @@ class term_filter_test_case : public tests::filter_test_case_base {
       ASSERT_FALSE(!scr);
 
       while (docs->next()) {
-        const auto* score_value = scr->evaluate();
+        irs::score_t score_value;
+        (*scr)(&score_value);
         UNUSED(score_value);
         ASSERT_EQ(1, expected.erase(docs->value()));
       }
@@ -631,7 +632,7 @@ TEST_P(term_filter_test_case, visit) {
   irs::by_term::visit(segment, *reader, term, visitor);
   ASSERT_EQ(1, visitor.prepare_calls_counter());
   ASSERT_EQ(1, visitor.visit_calls_counter());
-  ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"abc", irs::no_boost()}}),
+  ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{{"abc", irs::kNoBoost}}),
             visitor.term_refs<char>());
   visitor.reset();
 }
@@ -646,7 +647,7 @@ TEST(by_term_test, ctor) {
   ASSERT_EQ(irs::type<irs::by_term>::id(), q.type());
   ASSERT_EQ(irs::by_term_options{}, q.options());
   ASSERT_EQ("", q.field());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 }
 
 TEST(by_term_test, equal) { 
@@ -661,12 +662,12 @@ TEST(by_term_test, boost) {
     irs::by_term q = make_filter("field", "term");
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::no_boost(), prepared->boost());
+    ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
   // with boost
   {
-    irs::boost_t boost = 1.5f;
+    irs::score_t boost = 1.5f;
     irs::by_term q = make_filter("field", "term");
     q.boost(boost);
 

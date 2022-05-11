@@ -53,7 +53,7 @@ class term_visitor : private util::noncopyable {
     terms_ = &terms;
   }
 
-  void visit(boost_t /*boost*/) {
+  void visit(score_t /*boost*/) {
     // collect statistics
     assert(segment_ && reader_ && terms_);
     term_stats_.collect(*segment_, *reader_, 0, *terms_);
@@ -92,7 +92,7 @@ void visit(
   // read term attributes
   terms->read();
 
-  visitor.visit(no_boost());
+  visitor.visit(kNoBoost);
 }
 
 }
@@ -114,8 +114,8 @@ DEFINE_FACTORY_DEFAULT(by_term)
 
 /*static*/ filter::prepared::ptr by_term::prepare(
     const index_reader& index,
-    const order::prepared& ord,
-    boost_t boost,
+    const Order& ord,
+    score_t boost,
     string_ref field,
     bytes_ref term) {
   term_query::states_t states(index);

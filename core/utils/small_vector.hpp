@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,24 +20,16 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "all_iterator.hpp"
+#ifndef IRESEARCH_SMALL_VECTOR_H
+#define IRESEARCH_SMALL_VECTOR_H
 
-#include "formats/empty_term_reader.hpp"
+#include <boost/container/small_vector.hpp>
 
 namespace iresearch {
 
-all_iterator::all_iterator(const sub_reader& reader,
-                           const byte_type* query_stats, const Order& order,
-                           uint64_t docs_count, score_t boost)
-    : max_doc_{doc_id_t(doc_limits::min() + docs_count - 1)} {
-  std::get<cost>(attrs_).reset(max_doc_);
+template<typename T, std::size_t N, typename A = std::allocator<T>>
+using SmallVector = boost::container::small_vector<T, N, A>;
 
-  if (!order.empty()) {
-    auto& score = std::get<irs::score>(attrs_);
-    score = CompileScore(order.buckets(), reader,
-                         irs::empty_term_reader(docs_count), query_stats, *this,
-                         boost);
-  }
 }
 
-}  // namespace iresearch
+#endif  // IRESEARCH_SMALL_VECTOR_H

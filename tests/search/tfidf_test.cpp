@@ -120,15 +120,9 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
     add_segment(gen, irs::OM_CREATE, opts);
   }
 
-  irs::order order;
-  order.add(true, std::make_unique<irs::tfidf_sort>(true));
+  auto prepared_order = irs::Order::Prepare(irs::tfidf_sort{true});
 
-  auto prepared_order = order.prepare();
-  auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
-    return prepared_order.less(lhs.c_str(), rhs.c_str());
-  };
-
-  auto reader = iresearch::directory_reader::open(dir(), codec());
+  auto reader = irs::directory_reader::open(dir(), codec());
   auto& segment = *(reader.begin());
   const auto* column = segment.column("seq");
   ASSERT_NE(nullptr, column);
@@ -147,7 +141,7 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
     filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::multimap<irs::score_t, uint64_t, std::greater<>> sorted;
     constexpr uint64_t expected[]{ 7, 0, 3, 1, 5, };
 
     irs::bytes_ref_input in;
@@ -156,8 +150,9 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+    while (docs->next()) {
+      irs::score_t score_value;
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -188,7 +183,7 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
     filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::multimap<irs::score_t, uint64_t, std::greater<>> sorted;
     constexpr uint64_t expected[]{ 0, 7, 5, 2, 3, 1, };
 
     irs::bytes_ref_input in;
@@ -197,7 +192,8 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
     auto* score = irs::get<irs::score>(*docs);
 
     while(docs->next()) {
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      irs::score_t score_value;
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
@@ -220,11 +216,9 @@ TEST_P(tfidf_test_case, consts) {
 }
 
 TEST_P(tfidf_test_case, test_load) {
-  irs::order order;
   auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
   ASSERT_NE(nullptr, scorer);
-  ASSERT_EQ(1, order.add(true, std::move(scorer)).size());
 }
 
 #ifndef IRESEARCH_DLL
@@ -366,13 +360,7 @@ TEST_P(tfidf_test_case, test_phrase) {
     add_segment(gen);
   }
 
-  irs::order order;
-  order.add(true, std::make_unique<irs::tfidf_sort>(false, true));
-  auto prepared_order = order.prepare();
-
-  auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {
-    return prepared_order.less(lhs.c_str(), rhs.c_str());
-  };
+  auto prepared_order = irs::Order::Prepare(irs::tfidf_sort{false, true});
 
   // read segment
   auto index = open_reader();
@@ -387,7 +375,7 @@ TEST_P(tfidf_test_case, test_phrase) {
     phrase.push_back(irs::by_term_options{}).term = irs::ref_cast<irs::byte_type>(irs::string_ref("jumps"));
     phrase.push_back(irs::by_term_options{}).term = irs::ref_cast<irs::byte_type>(irs::string_ref("high"));
 
-    std::multimap<irs::bstring, std::string, decltype(comparer)> sorted(comparer);
+    std::multimap<irs::score_t, std::string, std::greater<>> sorted;
 
     std::vector<std::string> expected {
       "O", // jumps high jumps high hotdog
@@ -411,8 +399,11 @@ TEST_P(tfidf_test_case, test_phrase) {
     while (docs->next()) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
 
+      irs::score_t score_value;
+      (*score)(&score_value);
+
       sorted.emplace(
-        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+        score_value,
         irs::to_string<std::string>(actual_value->value.c_str()));
     }
 
@@ -439,7 +430,7 @@ TEST_P(tfidf_test_case, test_phrase) {
     ct.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("meringue")));
     ct.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("marshmallows")));
 
-    std::multimap<irs::bstring, std::string, decltype(comparer)> sorted(comparer);
+    std::multimap<irs::score_t, std::string, std::greater<>> sorted;
 
     std::vector<std::string> expected{
       "SPWLC0", // cookies cake pie biscuit meringue cookies cake pie biscuit marshmallows paste bread
@@ -463,8 +454,11 @@ TEST_P(tfidf_test_case, test_phrase) {
     while (docs->next()) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
 
+      irs::score_t score_value;
+      (*score)(&score_value);
+
       sorted.emplace(
-        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+        score_value,
         irs::to_string<std::string>(actual_value->value.c_str()));
     }
 
@@ -492,15 +486,9 @@ TEST_P(tfidf_test_case, test_query) {
     add_segment(gen);
   }
 
-  irs::order order;
-  order.add(true, std::make_unique<irs::tfidf_sort>(false, true));
+  auto prepared_order = irs::Order::Prepare(irs::tfidf_sort{false, true});
 
-  auto prepared_order = order.prepare();
-  auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
-    return prepared_order.less(lhs.c_str(), rhs.c_str());
-  };
-
-  auto reader = iresearch::directory_reader::open(dir(), codec());
+  auto reader = irs::directory_reader::open(dir(), codec());
   auto& segment = *(reader.begin());
   const auto* column = segment.column("seq");
   ASSERT_NE(nullptr, column);
@@ -515,7 +503,7 @@ TEST_P(tfidf_test_case, test_query) {
     *filter.mutable_field() = "field";
     filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::multimap<irs::score_t, uint64_t, std::greater<>> sorted;
     std::vector<uint64_t> expected{ 0, 1, 5, 7 };
 
     irs::bytes_ref_input in;
@@ -524,15 +512,16 @@ TEST_P(tfidf_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
+    while (docs->next()) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
+      irs::score_t score_value;
+      (*score)(&score_value);
+
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(
-        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
-        seq);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -597,7 +586,7 @@ TEST_P(tfidf_test_case, test_query) {
     *filter.mutable_field() = "field";
     filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::multimap<irs::score_t, uint64_t, std::greater<>> sorted;
     std::vector<uint64_t> expected{
       0, 2, // segment 0
       5 // segment 1
@@ -617,15 +606,14 @@ TEST_P(tfidf_test_case, test_query) {
       auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
-      while(docs->next()) {
+      for (irs::score_t score_value; docs->next(); ) {
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
 
         auto str_seq = irs::read_string<std::string>(in);
         auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-        sorted.emplace(
-          irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
-          seq);
+        (*score)(&score_value);
+        sorted.emplace(score_value, seq);
       }
     }
 
@@ -701,7 +689,7 @@ TEST_P(tfidf_test_case, test_query) {
       sub.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     }
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::multimap<irs::score_t, uint64_t, std::greater<>> sorted;
     std::vector<uint64_t> expected{
       3, 7, // same value in 2 documents
       0, 2, 5 // same value in 3 documents
@@ -725,11 +713,12 @@ TEST_P(tfidf_test_case, test_query) {
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
 
+        irs::score_t score_value;
+        (*score)(&score_value);
+
         auto str_seq = irs::read_string<std::string>(in);
         auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-        sorted.emplace(
-          irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
-          seq);
+        sorted.emplace(score_value, seq);
       }
     }
 
@@ -795,7 +784,7 @@ TEST_P(tfidf_test_case, test_query) {
     *filter.mutable_field() = "prefix";
     filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref(""));
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::multimap<irs::score_t, uint64_t, std::greater<>> sorted;
     std::vector<uint64_t> expected{
       0, 8, 20, 28, // segment 0
       3, 15, 23, 25, // segment 1
@@ -820,11 +809,12 @@ TEST_P(tfidf_test_case, test_query) {
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
 
+        irs::score_t score_value;
+        (*score)(&score_value);
+
         auto str_seq = irs::read_string<std::string>(in);
         auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-        sorted.emplace(
-          irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
-          seq);
+        sorted.emplace(score_value, seq);
       }
     }
 
@@ -850,7 +840,7 @@ TEST_P(tfidf_test_case, test_query) {
     filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::multimap<irs::score_t, uint64_t, std::greater<>> sorted;
     std::vector<uint64_t> expected{ 0, 1, 5, 7 };
 
     irs::bytes_ref_input in;
@@ -859,15 +849,14 @@ TEST_P(tfidf_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
+    for (irs::score_t score_value; docs->next(); ) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(
-        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
-        seq);
+      (*score)(&score_value);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -893,7 +882,7 @@ TEST_P(tfidf_test_case, test_query) {
     filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
     filter.mutable_options()->scored_terms_limit = 1;
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::multimap<irs::score_t, uint64_t, std::greater<>> sorted;
     std::vector<uint64_t> expected{ 3, 7 };
 
     irs::bytes_ref_input in;
@@ -902,15 +891,14 @@ TEST_P(tfidf_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
+    for (irs::score_t score_value; docs->next(); ) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(
-       irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
-       seq);
+      (*score)(&score_value);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -935,7 +923,7 @@ TEST_P(tfidf_test_case, test_query) {
 //      .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("8")
 //      .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("9");
 //
-//    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+//    std::multimap<irs::score_t, uint64_t, std::greater<>> sorted;
 //    std::vector<uint64_t> expected{ 3, 7 };
 //
 //    irs::bytes_ref_input in;
@@ -944,11 +932,9 @@ TEST_P(tfidf_test_case, test_query) {
 //    auto* score = irs::get<irs::score>(*docs);
 //    ASSERT_TRUE(bool(score));
 //
-//    // ensure that we avoid COW for pre c++11 std::basic_string
-//    const irs::bytes_ref score_value = score->value();
-//
 //    while(docs->next()) {
-//      score->evaluate();
+//      irs::score_t score_value;
+//      (*score)(&score_value);
 //      ASSERT_EQ(docs->value(), values->seek(docs->value()));
 //      in.reset(actual_value->value);
 //
@@ -979,7 +965,7 @@ TEST_P(tfidf_test_case, test_query) {
     filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::multimap<irs::score_t, uint64_t, std::greater<>> sorted;
     std::vector<uint64_t> expected{
       // FIXME the following calculation is based on old formula
       7, // 3.45083 = sqrt(1)*(log(8/(4+1))+1) + sqrt(1)*(log(8/(2+1))+1)
@@ -995,15 +981,14 @@ TEST_P(tfidf_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
+    for (irs::score_t score_value; docs->next(); ) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(
-        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
-        seq);
+      (*score)(&score_value);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -1028,7 +1013,7 @@ TEST_P(tfidf_test_case, test_query) {
     filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::multimap<irs::score_t, uint64_t, std::greater<>> sorted;
     std::vector<uint64_t> expected{
       // FIXME the following calculation is based on old formula
       0, // 4.239268 = sqrt(1)*(log(8/(3+1))+1) + sqrt(3)*(log(8/(4+1))+1) + sqrt(0)*(log(8/(2+1))+1)
@@ -1045,15 +1030,14 @@ TEST_P(tfidf_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
+    for (irs::score_t score_value; docs->next(); ) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(
-        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
-        seq);
+      (*score)(&score_value);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -1076,7 +1060,7 @@ TEST_P(tfidf_test_case, test_query) {
     auto& phrase = *filter.mutable_options();
     phrase.push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::multimap<irs::score_t, uint64_t, std::greater<>> sorted;
     std::vector<std::pair<float_t, uint64_t>> expected = {
       { -1, 0 },
       { -1, 1 },
@@ -1090,15 +1074,14 @@ TEST_P(tfidf_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
+    for (irs::score_t score_value; docs->next(); ) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(
-        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
-        seq);
+      (*score)(&score_value);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -1106,10 +1089,6 @@ TEST_P(tfidf_test_case, test_query) {
 
     for (auto& entry: sorted) {
       auto& expected_entry = expected[i++];
-      ASSERT_TRUE(
-        sizeof(float_t) == entry.first.size()
-        //&& expected_entry.first == *reinterpret_cast<const float_t*>(&entry.first[0])
-      );
       ASSERT_EQ(expected_entry.second, entry.second);
     }
   }
@@ -1128,16 +1107,17 @@ TEST_P(tfidf_test_case, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
-    ASSERT_FALSE(score->is_default());
+    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
-    while(docs->next()) {
+    while (docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      irs::score_t score_value;
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
-      ASSERT_EQ(1.5f, *reinterpret_cast<const float_t*>(score_value.c_str()));
+      ASSERT_EQ(1.5f, score_value);
     }
     ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
@@ -1156,16 +1136,17 @@ TEST_P(tfidf_test_case, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
-    ASSERT_TRUE(score->is_default());
+    ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
-    while(docs->next()) {
+    while (docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      irs::score_t score_value;
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
-      ASSERT_EQ(0.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
+      ASSERT_EQ(0.f, score_value);
     }
     ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
@@ -1185,16 +1166,17 @@ TEST_P(tfidf_test_case, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
-    ASSERT_FALSE(score->is_default());
+    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
     irs::doc_id_t doc = irs::doc_limits::min();
-    while(docs->next()) {
+    while (docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      irs::score_t score_value;
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
-      ASSERT_EQ(1.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
+      ASSERT_EQ(1.f, score_value);
     }
     ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
@@ -1215,16 +1197,17 @@ TEST_P(tfidf_test_case, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
-    ASSERT_TRUE(score->is_default());
+    ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
     irs::doc_id_t doc = irs::doc_limits::min();
     while(docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
-      const irs::bytes_ref score_value(score->evaluate(), prepared_order.score_size());
+      irs::score_t score_value;
+      (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       ++doc;
-      ASSERT_EQ(0.f, *reinterpret_cast<const float_t*>(score_value.c_str()));
+      ASSERT_EQ(0.f, score_value);
     }
     ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
@@ -1435,19 +1418,13 @@ TEST_P(tfidf_test_case, test_order) {
     add_segment(gen);
   }
 
-  auto reader = iresearch::directory_reader::open(dir(), codec());
+  auto reader = irs::directory_reader::open(dir(), codec());
   auto& segment = *(reader.begin());
 
   irs::by_term query;
   *query.mutable_field() = "field";
 
-  iresearch::order ord;
-  ord.add<iresearch::tfidf_sort>(true, false, true);
-  auto prepared_order = ord.prepare();
-
-  auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {
-    return prepared_order.less(lhs.c_str(), rhs.c_str());
-  };
+  auto prepared_order = irs::Order::Prepare(irs::tfidf_sort{false, true});
 
   uint64_t seq = 0;
   const auto* column = segment.column("seq");
@@ -1461,32 +1438,30 @@ TEST_P(tfidf_test_case, test_order) {
 
     query.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
 
-    std::multimap<iresearch::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::multimap<irs::score_t, uint64_t, std::greater<>> sorted;
     std::vector<uint64_t> expected{ 0, 1, 5, 7 };
 
     irs::bytes_ref_input in;
     auto prepared = query.prepare(reader, prepared_order);
     auto docs = prepared->execute(segment, prepared_order);
-    auto* score = irs::get<iresearch::score>(*docs);
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    for (; docs->next();) {
+    for (irs::score_t score_value; docs->next(); ) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
       in.reset(actual_value->value);
 
-      auto str_seq = iresearch::read_string<std::string>(in);
+      auto str_seq = irs::read_string<std::string>(in);
       seq = strtoull(str_seq.c_str(), nullptr, 10);
-      sorted.emplace(
-        irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
-        seq);
+
+      (*score)(&score_value);
+      sorted.emplace(score_value, seq);
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
     const bool eq = std::equal(
       sorted.begin(), sorted.end(), expected.begin(),
-      [](const std::pair<iresearch::bstring, uint64_t>& lhs, uint64_t rhs) {
-        return lhs.second == rhs;
-    });
+      [](const auto& lhs, auto rhs) { return lhs.second == rhs; });
     ASSERT_TRUE(eq);
   }
 }

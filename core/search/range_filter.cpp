@@ -49,7 +49,7 @@ void collect_terms(
     visitor.prepare(segment, field, terms);
 
     do {
-      visitor.visit(no_boost());
+      visitor.visit(kNoBoost);
 
       if (!terms.next()) {
         break;
@@ -125,8 +125,8 @@ DEFINE_FACTORY_DEFAULT(by_range) // cppcheck-suppress unknownMacro
 
 /*static*/ filter::prepared::ptr by_range::prepare(
     const index_reader& index,
-    const order::prepared& ord,
-    boost_t boost,
+    const Order& ord,
+    score_t boost,
     string_ref field,
     const options_type::range_type& rng,
     size_t scored_terms_limit) {

@@ -137,7 +137,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
   /// @brief finish collecting and evaluate stats
   //////////////////////////////////////////////////////////////////////////////
   void score(const index_reader& index,
-             const order::prepared& order,
+             const Order& order,
              std::vector<bstring>& stats) {
     if (!scored_terms_limit_) {
       return; // nothing to score (optimization)
@@ -166,7 +166,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       scored_state.state->scored_states.emplace_back(
         std::move(scored_state.cookie),
         stats_entry.stats_offset,
-        static_cast<boost_t>(scored_state.key));
+        static_cast<score_t>(scored_state.key));
 
       // update estimation for scored state
       scored_state.state->scored_states_estimation += scored_state.docs_count;
@@ -188,7 +188,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
     explicit stats_state(
         const irs::index_reader& index,
         const irs::term_reader& field,
-        const irs::order::prepared& order,
+        const irs::Order& order,
         uint32_t& state_offset)
       : field_stats(order),
         term_stats(order, 1) { // 1 term per bstring because a range is treated as a disjunction
@@ -274,9 +274,9 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
 struct term_frequency {
   uint32_t offset;
   uint32_t frequency;
-  boost_t boost;
+  score_t boost;
 
-  explicit operator boost_t() const noexcept {
+  explicit operator score_t() const noexcept {
     return boost;
   }
 
@@ -321,7 +321,7 @@ class multiterm_visitor {
   }
 
   // FIXME can incorporate boost into collecting logic
-  void visit(boost_t boost) {
+  void visit(score_t boost) {
     // fill scoring candidates
     assert(docs_count_);
     key_.frequency = *docs_count_;

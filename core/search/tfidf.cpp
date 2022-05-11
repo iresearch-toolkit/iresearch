@@ -25,27 +25,27 @@
 #include <cmath>
 #include <string_view>
 
-#include "velocypack/Slice.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Parser.h"
-#include "velocypack/vpack.h"
-#include "velocypack/velocypack-aliases.h"
-
-#include "scorers.hpp"
 #include "analysis/token_attributes.hpp"
+#include "index/field_meta.hpp"
 #include "index/index_reader.hpp"
 #include "index/norm.hpp"
-#include "index/field_meta.hpp"
+#include "scorers.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/misc.hpp"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#include "velocypack/Slice.h"
+#include "velocypack/velocypack-aliases.h"
+#include "velocypack/vpack.h"
 
 namespace {
 
 const auto kSQRT = irs::cache_func<uint32_t, 2048>(
-  0, [](uint32_t i) noexcept { return std::sqrt(static_cast<float_t>(i)); });
+    0, [](uint32_t i) noexcept { return std::sqrt(static_cast<float_t>(i)); });
 
-const auto kRSQRT = irs::cache_func<uint32_t, 2048>(
-  1, [](uint32_t i) noexcept { return 1.f/std::sqrt(static_cast<float_t>(i)); });
+const auto kRSQRT = irs::cache_func<uint32_t, 2048>(1, [](uint32_t i) noexcept {
+  return 1.f / std::sqrt(static_cast<float_t>(i));
+});
 
 irs::sort::ptr make_from_bool(const VPackSlice slice) {
   assert(slice.isBool());
@@ -64,8 +64,10 @@ irs::sort::ptr make_from_object(const VPackSlice slice) {
     // optional bool
     if (slice.hasKey(WITH_NORMS_PARAM_NAME)) {
       if (!slice.get(WITH_NORMS_PARAM_NAME).isBool()) {
-        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing tfidf scorer from VPack arguments",
-          WITH_NORMS_PARAM_NAME.data());
+        IR_FRMT_ERROR(
+            "Non-boolean value in '%s' while constructing tfidf scorer from "
+            "VPack arguments",
+            WITH_NORMS_PARAM_NAME.data());
 
         return nullptr;
       }
@@ -86,7 +88,8 @@ irs::sort::ptr make_from_array(const VPackSlice slice) {
   if (size > 1) {
     // wrong number of arguments
     IR_FRMT_ERROR(
-      "Wrong number of arguments while constructing tfidf scorer from VPack arguments (must be <= 1)");
+        "Wrong number of arguments while constructing tfidf scorer from VPack "
+        "arguments (must be <= 1)");
     return nullptr;
   }
 
@@ -97,7 +100,8 @@ irs::sort::ptr make_from_array(const VPackSlice slice) {
   for (auto arg_slice : array) {
     if (!arg_slice.isBool()) {
       IR_FRMT_ERROR(
-        "Non-bool value on position `0` while constructing tfidf scorer from VPack arguments");
+          "Non-bool value on position `0` while constructing tfidf scorer from "
+          "VPack arguments");
       return nullptr;
     }
 
@@ -115,9 +119,10 @@ irs::sort::ptr make_vpack(const VPackSlice slice) {
       return make_from_object(slice);
     case VPackValueType::Array:
       return make_from_array(slice);
-    default: // wrong type
+    default:  // wrong type
       IR_FRMT_ERROR(
-        "Invalid VPack arguments passed while constructing tfidf scorer, arguments");
+          "Invalid VPack arguments passed while constructing tfidf scorer, "
+          "arguments");
       return nullptr;
   }
 }
@@ -140,12 +145,13 @@ irs::sort::ptr make_json(irs::string_ref args) {
     try {
       auto vpack = VPackParser::fromJson(args.c_str(), args.size());
       return make_vpack(vpack->slice());
-    } catch(const VPackException& ex) {
-        IR_FRMT_ERROR(
-          "Caught error '%s' while constructing VPack from JSON for tfidf scorer",
+    } catch (const VPackException& ex) {
+      IR_FRMT_ERROR(
+          "Caught error '%s' while constructing VPack from JSON for tfidf "
+          "scorer",
           ex.what());
-    } catch(...) {
-        IR_FRMT_ERROR(
+    } catch (...) {
+      IR_FRMT_ERROR(
           "Caught error while constructing VPack from JSON for tfidf scorer");
     }
     return nullptr;
@@ -166,8 +172,7 @@ struct byte_ref_iterator {
   const irs::byte_type* pos_;
 
   explicit byte_ref_iterator(irs::bytes_ref in)
-    : end_(in.c_str() + in.size()), pos_(in.c_str()) {
-  }
+      : end_(in.c_str() + in.size()), pos_(in.c_str()) {}
 
   irs::byte_type operator*() {
     if (pos_ >= end_) {
@@ -180,17 +185,17 @@ struct byte_ref_iterator {
   void operator++() { ++pos_; }
 };
 
-struct field_collector final: public irs::sort::field_collector {
-  uint64_t docs_with_field = 0; // number of documents containing the matched field (possibly without matching terms)
+struct field_collector final : public irs::sort::field_collector {
+  // number of documents containing the matched
+  // field (possibly without matching terms)
+  uint64_t docs_with_field = 0;
 
   virtual void collect(const irs::sub_reader& /*segment*/,
                        const irs::term_reader& field) override {
     docs_with_field += field.docs_count();
   }
 
-  virtual void reset() noexcept override {
-    docs_with_field = 0;
-  }
+  virtual void reset() noexcept override { docs_with_field = 0; }
 
   virtual void collect(irs::bytes_ref in) override {
     byte_ref_iterator itr(in);
@@ -208,8 +213,9 @@ struct field_collector final: public irs::sort::field_collector {
   }
 };
 
-struct term_collector final: public irs::sort::term_collector {
-  uint64_t docs_with_term = 0; // number of documents containing the matched term
+struct term_collector final : public irs::sort::term_collector {
+  // number of documents containing the matched term
+  uint64_t docs_with_term = 0;
 
   virtual void collect(const irs::sub_reader& /*segment*/,
                        const irs::term_reader& /*field*/,
@@ -221,9 +227,7 @@ struct term_collector final: public irs::sort::term_collector {
     }
   }
 
-  virtual void reset() noexcept override {
-    docs_with_term = 0;
-  }
+  virtual void reset() noexcept override { docs_with_term = 0; }
 
   virtual void collect(irs::bytes_ref in) override {
     byte_ref_iterator itr(in);
@@ -245,41 +249,33 @@ FORCE_INLINE float_t tfidf(uint32_t freq, float_t idf) noexcept {
   return idf * kSQRT.get<true>(freq);
 }
 
-} // LOCAL
+}  // namespace
 
 namespace iresearch {
 namespace tfidf {
 
 // empty frequency
-const frequency EMPTY_FREQ;
+const frequency kEmptyFreq;
 
 struct idf final {
   float_t value;
 };
 
-using score_t = tfidf_sort::score_t;
-
 struct ScoreContext : public irs::score_ctx {
-  ScoreContext(
-      byte_type* score_buf,
-      irs::boost_t boost,
-      const tfidf::idf& idf,
-      const frequency* freq,
-      const irs::filter_boost* filter_boost = nullptr) noexcept
-    : score_buf{score_buf},
-      freq{freq ? *freq : EMPTY_FREQ},
-      filter_boost{filter_boost},
-      idf{boost * idf.value} {
+  ScoreContext(irs::score_t boost, const tfidf::idf& idf, const frequency* freq,
+               const irs::filter_boost* filter_boost = nullptr) noexcept
+      : freq{freq ? *freq : kEmptyFreq},
+        filter_boost{filter_boost},
+        idf{boost * idf.value} {
     assert(freq);
   }
 
   ScoreContext(const ScoreContext&) = delete;
   ScoreContext& operator=(const ScoreContext&) = delete;
 
-  byte_type* score_buf;
   const frequency& freq;
   const irs::filter_boost* filter_boost;
-  float_t idf; // precomputed : boost * idf
+  float_t idf;  // precomputed : boost * idf
 };
 
 enum class NormType {
@@ -295,9 +291,7 @@ template<typename Reader, NormType Type>
 struct NormAdapter {
   static constexpr auto kType = Type;
 
-  explicit NormAdapter(Reader&& reader)
-    : reader{std::move(reader)} {
-  }
+  explicit NormAdapter(Reader&& reader) : reader{std::move(reader)} {}
 
   FORCE_INLINE float_t operator()() {
     if constexpr (kType < NormType::kNorm) {
@@ -317,16 +311,10 @@ auto MakeNormAdapter(Reader&& reader) {
 
 template<typename Norm>
 struct NormScoreContext final : public ScoreContext {
-  NormScoreContext(
-      byte_type* score_buf,
-      Norm&& norm,
-      boost_t boost,
-      const tfidf::idf& idf,
-      const frequency* freq,
-      const irs::filter_boost* filter_boost = nullptr) noexcept
-    : ScoreContext{score_buf, boost, idf, freq, filter_boost},
-      norm{std::move(norm)} {
-  }
+  NormScoreContext(Norm&& norm, score_t boost, const tfidf::idf& idf,
+                   const frequency* freq,
+                   const irs::filter_boost* filter_boost = nullptr) noexcept
+      : ScoreContext{boost, idf, freq, filter_boost}, norm{std::move(norm)} {}
 
   Norm norm;
 };
@@ -334,37 +322,34 @@ struct NormScoreContext final : public ScoreContext {
 template<typename Ctx>
 struct MakeScoreFunctionImpl {
   template<bool HasFilterBoost, typename... Args>
-  static score_function Make(Args&&... args) {
-    return {
-        memory::make_unique<Ctx>(std::forward<Args>(args)...),
-        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
-          auto& state = *static_cast<Ctx*>(ctx);
+  static ScoreFunction Make(Args&&... args) {
+    return {memory::make_unique<Ctx>(std::forward<Args>(args)...),
+            [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+              assert(res);
+              assert(ctx);
 
-          float_t idf;
-          if constexpr (HasFilterBoost) {
-            assert(state.filter_boost);
-            idf = state.idf * state.filter_boost->value;
-          } else {
-            idf = state.idf;
-          }
+              auto& state = *static_cast<Ctx*>(ctx);
 
-          auto& buf = sort::score_cast<score_t>(state.score_buf);
+              float_t idf;
+              if constexpr (HasFilterBoost) {
+                assert(state.filter_boost);
+                idf = state.idf * state.filter_boost->value;
+              } else {
+                idf = state.idf;
+              }
 
-          if constexpr (std::is_same_v<Ctx, ScoreContext>) {
-            buf = ::tfidf(state.freq.value, idf);
-          } else {
-            buf = ::tfidf(state.freq.value, idf) * state.norm();
-          }
-
-          return state.score_buf;
-        }
-    };
+              if constexpr (std::is_same_v<Ctx, ScoreContext>) {
+                *res = ::tfidf(state.freq.value, idf);
+              } else {
+                *res = ::tfidf(state.freq.value, idf) * state.norm();
+              }
+            }};
   }
 };
 
 template<typename Ctx, typename... Args>
-score_function MakeScoreFunction(const filter_boost* filter_boost,
-                                 Args&&... args) noexcept {
+ScoreFunction MakeScoreFunction(const filter_boost* filter_boost,
+                                Args&&... args) noexcept {
   if (filter_boost) {
     return MakeScoreFunctionImpl<Ctx>::template Make<true>(
         std::forward<Args>(args)..., filter_boost);
@@ -374,28 +359,26 @@ score_function MakeScoreFunction(const filter_boost* filter_boost,
       std::forward<Args>(args)...);
 }
 
-class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
+class sort final : public irs::PreparedSortBase<tfidf::idf> {
  public:
   explicit sort(bool normalize, bool boost_as_score) noexcept
-    : normalize_{normalize},
-      boost_as_score_{boost_as_score} {
-  }
+      : normalize_{normalize}, boost_as_score_{boost_as_score} {}
 
-  virtual void collect(
-      byte_type* stats_buf,
-      const irs::index_reader& /*index*/,
-      const irs::sort::field_collector* field,
-      const irs::sort::term_collector* term) const override {
+  virtual void collect(byte_type* stats_buf, const irs::index_reader& /*index*/,
+                       const irs::sort::field_collector* field,
+                       const irs::sort::term_collector* term) const override {
     auto& idf = stats_cast(stats_buf);
 
     const auto* field_ptr = down_cast<field_collector>(field);
     const auto* term_ptr = down_cast<term_collector>(term);
 
-    const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0; // nullptr possible if e.g. 'all' filter
-    const auto docs_with_term = term_ptr ? term_ptr->docs_with_term : 0; // nullptr possible if e.g.'by_column_existence' filter
+    // nullptr possible if e.g. 'all' filter
+    const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0;
+    // nullptr possible if e.g.'by_column_existence' filter
+    const auto docs_with_term = term_ptr ? term_ptr->docs_with_term : 0;
 
     idf.value += float_t(
-      std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0);
+        std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0);
     assert(idf.value >= 0.f);
   }
 
@@ -403,33 +386,37 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
     return IndexFeatures::FREQ;
   }
 
-  virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
+  virtual field_collector::ptr prepare_field_collector() const override {
     return irs::memory::make_unique<field_collector>();
   }
 
-  virtual score_function prepare_scorer(
-      const sub_reader& segment,
-      const term_reader& field,
-      const byte_type* stats_buf,
-      byte_type* score_buf,
-      const attribute_provider& doc_attrs,
-      boost_t boost) const override {
+  virtual ScoreFunction prepare_scorer(const sub_reader& segment,
+                                       const term_reader& field,
+                                       const byte_type* stats_buf,
+                                       const attribute_provider& doc_attrs,
+                                       score_t boost) const override {
     auto* freq = irs::get<frequency>(doc_attrs);
 
     if (!freq) {
       if (!boost_as_score_ || 0.f == boost) {
-        return { nullptr, nullptr };
+        return ScoreFunction::Invalid();
       }
 
-      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
-      irs::sort::score_cast<tfidf::score_t>(score_buf) = boost;
+      // if there is no frequency then all the
+      // scores will be the same (e.g. filter irs::all)
 
-      return {
-        reinterpret_cast<ScoreContext*>(score_buf),
-        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
-          return reinterpret_cast<byte_type*>(ctx);
-        }
-      };
+      uintptr_t ctx;
+      std::memcpy(&ctx, &boost, sizeof boost);
+
+      return {reinterpret_cast<score_ctx*>(ctx),
+              [](score_ctx* ctx, score_t* res) noexcept {
+                assert(res);
+                assert(ctx);
+
+                // FIXME: use std::bit_cast when available
+                const auto boost = reinterpret_cast<uintptr_t>(ctx);
+                std::memcpy(res, &boost, sizeof(score_t));
+              }};
     }
 
     auto& stats = stats_cast(stats_buf);
@@ -439,70 +426,71 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
     if (normalize_) {
       auto* doc = irs::get<document>(doc_attrs);
 
-      if (!doc) {
+      if (IRS_UNLIKELY(!doc)) {
         // we need 'document' attribute to be exposed
-        return { nullptr, nullptr };
+        return ScoreFunction::Invalid();
       }
 
-      auto prepare_norm_scorer = [&]<typename Norm>(Norm&& norm) -> score_function {
+      auto prepare_norm_scorer =
+          [&]<typename Norm>(Norm&& norm) -> ScoreFunction {
         return MakeScoreFunction<NormScoreContext<Norm>>(
-            filter_boost, score_buf, std::move(norm), boost, stats, freq);
+            filter_boost, std::move(norm), boost, stats, freq);
       };
 
       const auto& features = field.meta().features;
 
-      if (auto it = features.find(irs::type<Norm2>::id()); it != features.end()) {
-         if (Norm2::Context ctx; ctx.Reset(segment, it->second, *doc)) {
-           if (ctx.max_num_bytes == sizeof(byte_type)) {
-             return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
-                 return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm2Tiny>(std::move(reader))); });
-           }
+      if (auto it = features.find(irs::type<Norm2>::id());
+          it != features.end()) {
+        if (Norm2::Context ctx; ctx.Reset(segment, it->second, *doc)) {
+          if (ctx.max_num_bytes == sizeof(byte_type)) {
+            return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
+              return prepare_norm_scorer(
+                  MakeNormAdapter<NormType::kNorm2Tiny>(std::move(reader)));
+            });
+          }
 
-           return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
-               return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm2>(std::move(reader))); });
-         }
+          return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
+            return prepare_norm_scorer(
+                MakeNormAdapter<NormType::kNorm2>(std::move(reader)));
+          });
+        }
       }
 
-      if (auto it = features.find(irs::type<Norm>::id()); it != features.end()) {
-         if (Norm::Context ctx; ctx.Reset(segment, it->second, *doc)) {
-           return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm>(
-               Norm::MakeReader(std::move(ctx))));
-         }
+      if (auto it = features.find(irs::type<Norm>::id());
+          it != features.end()) {
+        if (Norm::Context ctx; ctx.Reset(segment, it->second, *doc)) {
+          return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm>(
+              Norm::MakeReader(std::move(ctx))));
+        }
       }
     }
 
-    return MakeScoreFunction<ScoreContext>(
-        filter_boost, score_buf, boost, stats, freq);
+    return MakeScoreFunction<ScoreContext>(filter_boost, boost, stats, freq);
   }
 
-  virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+  virtual term_collector::ptr prepare_term_collector() const override {
     return irs::memory::make_unique<term_collector>();
   }
 
  private:
   bool normalize_;
   bool boost_as_score_;
-}; // sort
+};  // sort
 
-} // tfidf 
-
-/*static*/ sort::ptr tfidf_sort::make(bool normalize, bool boost_as_score) {
-  return std::make_unique<tfidf_sort>(normalize, boost_as_score);
-}
+}  // namespace tfidf
 
 tfidf_sort::tfidf_sort(bool normalize, bool boost_as_score) noexcept
-  : sort{irs::type<tfidf_sort>::get()},
-    normalize_{normalize},
-    boost_as_score_{boost_as_score} {
-}
+    : sort{irs::type<tfidf_sort>::get()},
+      normalize_{normalize},
+      boost_as_score_{boost_as_score} {}
 
 /*static*/ void tfidf_sort::init() {
-  REGISTER_SCORER_JSON(tfidf_sort, make_json); // match registration above
-  REGISTER_SCORER_VPACK(tfidf_sort, make_vpack); // match registration above
+  REGISTER_SCORER_JSON(tfidf_sort, make_json);    // match registration above
+  REGISTER_SCORER_VPACK(tfidf_sort, make_vpack);  // match registration above
 }
 
 sort::prepared::ptr tfidf_sort::prepare() const {
   return memory::make_unique<tfidf::sort>(normalize_, boost_as_score_);
 }
 
-} // ROOT
+}  // namespace iresearch

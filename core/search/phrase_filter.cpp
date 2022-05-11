@@ -40,7 +40,7 @@ struct fixed_phrase_state : util::noncopyable {
   // mimic std::pair interface
   struct term_state {
     term_state(seek_term_iterator::cookie_ptr&& first,
-               boost_t /*second*/) noexcept
+               score_t /*second*/) noexcept
       : first(std::move(first)) {
     }
 
@@ -56,7 +56,7 @@ static_assert(std::is_nothrow_move_assignable_v<fixed_phrase_state>);
 
 // Cached per reader variadic phrase state
 struct variadic_phrase_state : fixed_phrase_state {
-  using term_state = std::pair<seek_term_iterator::cookie_ptr, boost_t>;
+  using term_state = std::pair<seek_term_iterator::cookie_ptr, score_t>;
 
   std::vector<size_t> num_terms; // number of terms per phrase part
   phrase_state<term_state> terms;
@@ -165,17 +165,17 @@ struct prepare : util::noncopyable {
   }
 
   prepare(const index_reader& index,
-          const order::prepared& order,
+          const Order& order,
           std::string_view field,
-          const boost_t boost) noexcept
+          const score_t boost) noexcept
     : index(index), order(order),
       field(field), boost(boost) {
   }
 
   const index_reader& index;
-  const irs::order::prepared& order;
+  const irs::Order& order;
   const string_ref field;
-  const boost_t boost;
+  const score_t boost;
 };
 
 }
@@ -200,7 +200,7 @@ class phrase_term_visitor final : public filter_visitor,
     found_ = true;
   }
 
-  virtual void visit(boost_t boost) override {
+  virtual void visit(score_t boost) override {
     assert(terms_ && collectors_ && segment_ && reader_);
 
     // disallow negative boost
@@ -211,7 +211,7 @@ class phrase_term_visitor final : public filter_visitor,
       collectors_->push_back();
       assert(stats_size_ == term_offset_);
       ++stats_size_;
-      volatile_boost_ |= (boost != no_boost());
+      volatile_boost_ |= (boost != kNoBoost);
     }
 
     collectors_->collect(*segment_, *reader_, term_offset_++, *terms_);
@@ -261,7 +261,7 @@ class phrase_query : public filter::prepared {
       states_t&& states,
       positions_t&& positions,
       bstring&& stats,
-      boost_t boost) noexcept
+      score_t boost) noexcept
     : prepared(boost),
       states_(std::move(states)),
       positions_(std::move(positions)),
@@ -278,7 +278,7 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
  public:
   fixed_phrase_query(
       states_t&& states, positions_t&& positions,
-      bstring&& stats, boost_t boost) noexcept
+      bstring&& stats, score_t boost) noexcept
     : phrase_query<fixed_phrase_state>(
         std::move(states),  std::move(positions),
         std::move(stats), boost) {
@@ -288,14 +288,9 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
 
   doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& ord,
+      const Order& ord,
       ExecutionMode /*mode*/,
       const attribute_provider* /*ctx*/) const override {
-    using conjunction_t = conjunction<doc_iterator::ptr>;
-    using phrase_iterator_t = phrase_iterator<
-      conjunction_t,
-      fixed_phrase_frequency>;
-
     // get phrase state for the specified reader
     auto phrase_state = states_.find(rdr);
 
@@ -305,9 +300,9 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
     }
 
     // get index features required for query & order
-    const IndexFeatures features = ord.features() | by_phrase::required();
+    const IndexFeatures features = ord.features() | by_phrase::kRequiredFeatures;
 
-    conjunction_t::doc_iterators_t itrs;
+    std::vector<score_iterator_adapter<doc_iterator::ptr>> itrs;
     itrs.reserve(phrase_state->terms.size());
 
     std::vector<fixed_phrase_frequency::term_position_t> positions;
@@ -340,6 +335,10 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
       ++position;
     }
 
+    using phrase_iterator_t = phrase_iterator<
+      conjunction<doc_iterator::ptr, NoopAggregator>,
+      fixed_phrase_frequency>;
+
     return memory::make_managed<phrase_iterator_t>(
         std::move(itrs),
         std::move(positions),
@@ -353,16 +352,14 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
 
 class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
  public:
-  using conjunction_t = conjunction<doc_iterator::ptr>;
-
   // FIXME add proper handling of overlapped case
   template<bool VolatileBoost>
-  using phrase_iterator_t = phrase_iterator<conjunction_t,
+  using phrase_iterator_t = phrase_iterator<conjunction<doc_iterator::ptr, NoopAggregator>,
                                             variadic_phrase_frequency<VolatileBoost>>;
 
   variadic_phrase_query(
       states_t&& states, positions_t&& positions,
-      bstring&& stats, boost_t boost) noexcept
+      bstring&& stats, score_t boost) noexcept
     : phrase_query<variadic_phrase_state>(
         std::move(states), std::move(positions),
         std::move(stats), boost) {
@@ -372,12 +369,12 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
 
   doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& ord,
+      const Order& ord,
       ExecutionMode /*mode*/,
       const attribute_provider* /*ctx*/) const override {
     using adapter_t = variadic_phrase_adapter;
-    using disjunction_t = disjunction<doc_iterator::ptr, adapter_t, true>;
     using compound_doc_iterator_t = irs::compound_doc_iterator<adapter_t>;
+    using disjunction_t = disjunction<doc_iterator::ptr, NoopAggregator, adapter_t, true>;
 
     // get phrase state for the specified reader
     auto phrase_state = states_.find(rdr);
@@ -388,9 +385,9 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
     }
 
     // get features required for query & order
-    const IndexFeatures features = ord.features() | by_phrase::required();
+    const IndexFeatures features = ord.features() | by_phrase::kRequiredFeatures;
 
-    conjunction_t::doc_iterators_t conj_itrs;
+    std::vector<score_iterator_adapter<doc_iterator::ptr>> conj_itrs;
     conj_itrs.reserve(phrase_state->terms.size());
 
     const auto phrase_size = phrase_state->num_terms.size();
@@ -410,13 +407,13 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
       auto& pos = positions[i];
       pos.second = *position;
 
-      disjunction_t::doc_iterators_t disj_itrs;
+      std::vector<adapter_t> disj_itrs;
       disj_itrs.reserve(num_terms);
       for (const auto end = term_state + num_terms; term_state != end; ++term_state) {
         assert(term_state->first);
 
-        disjunction_t::adapter docs(reader->postings(*term_state->first, features),
-                                    term_state->second);
+        adapter_t docs{reader->postings(*term_state->first, features),
+                       term_state->second};
 
         if (!docs.position) {
           // positions not found
@@ -464,8 +461,8 @@ DEFINE_FACTORY_DEFAULT(by_phrase)
 
 filter::prepared::ptr by_phrase::prepare(
     const index_reader& index,
-    const order::prepared& ord,
-    boost_t boost,
+    const Order& ord,
+    score_t boost,
     const attribute_provider* /*ctx*/) const {
   if (field().empty() || options().empty()) {
     // empty field or phrase
@@ -492,8 +489,8 @@ filter::prepared::ptr by_phrase::prepare(
 
 filter::prepared::ptr by_phrase::fixed_prepare_collect(
     const index_reader& index,
-    const order::prepared& ord,
-    boost_t boost) const {
+    const Order& ord,
+    score_t boost) const {
   const auto phrase_size = options().size();
   const auto is_ord_empty = ord.empty();
 
@@ -522,7 +519,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     }
 
     // check required features
-    if (required() != (reader->meta().index_features & required())) {
+    if (kRequiredFeatures != (reader->meta().index_features & kRequiredFeatures)) {
       continue;
     }
 
@@ -582,8 +579,8 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
 
 filter::prepared::ptr by_phrase::variadic_prepare_collect(
     const index_reader& index,
-    const order::prepared& ord,
-    boost_t boost) const {
+    const Order& ord,
+    score_t boost) const {
   const auto phrase_size = options().size();
 
   // stats collectors
@@ -621,7 +618,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     }
 
     // check required features
-    if (required() != (reader->meta().index_features & required())) {
+    if (kRequiredFeatures != (reader->meta().index_features & kRequiredFeatures)) {
       continue;
     }
 

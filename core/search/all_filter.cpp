@@ -28,14 +28,14 @@ namespace iresearch {
 // Compiled all_filter that returns all documents
 class all_query final : public filter::prepared {
  public:
-  explicit all_query(bstring&& stats, boost_t boost)
+  explicit all_query(bstring&& stats, score_t boost)
     : filter::prepared(boost),
       stats_(std::move(stats)) {
   }
 
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
-      const order::prepared& order,
+      const Order& order,
       ExecutionMode /*mode*/,
       const attribute_provider* /*ctx*/) const override {
     return memory::make_managed<all_iterator>(
@@ -55,8 +55,8 @@ all::all() noexcept
 
 filter::prepared::ptr all::prepare(
     const index_reader& reader,
-    const order::prepared& order,
-    boost_t filter_boost,
+    const Order& order,
+    score_t filter_boost,
     const attribute_provider* /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
@@ -64,7 +64,7 @@ filter::prepared::ptr all::prepare(
   bstring stats(order.stats_size(), 0);
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
-  order.prepare_collectors(stats_buf, reader);
+  PrepareCollectors(order.buckets(), stats_buf, reader);
 
   return memory::make_managed<all_query>(std::move(stats), this->boost()*filter_boost);
 }

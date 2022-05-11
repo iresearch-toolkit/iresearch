@@ -125,23 +125,13 @@ struct sort : irs::sort {
       return irs::memory::make_unique<term_collector>();
     }
 
-    virtual irs::score_function prepare_scorer(
+    virtual irs::ScoreFunction prepare_scorer(
         const irs::sub_reader& /*segment*/,
         const irs::term_reader& /*field*/,
         const irs::byte_type* /*stats*/,
-        irs::byte_type* /*score_buf*/,
         const irs::attribute_provider& /*doc_attrs*/,
-        irs::boost_t /*boost*/) const override {
+        irs::score_t /*boost*/) const override {
       return { nullptr, nullptr };
-    }
-
-    virtual bool less(const irs::byte_type* lhs,
-                      const irs::byte_type* rhs) const override {
-      return false;
-    }
-
-    virtual std::pair<size_t, size_t> score_size() const override {
-      return { 0, 0 };
     }
 
     virtual std::pair<size_t, size_t> stats_size() const override {

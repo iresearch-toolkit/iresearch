@@ -59,8 +59,8 @@ class by_term : public filter_base<by_term_options> {
 
   static prepared::ptr prepare(
     const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
+    const Order& ord,
+    score_t boost,
     string_ref field,
     bytes_ref term);
 
@@ -74,8 +74,8 @@ class by_term : public filter_base<by_term_options> {
 
   virtual prepared::ptr prepare(
       const index_reader& rdr,
-      const order::prepared& ord,
-      boost_t boost,
+      const Order& ord,
+      score_t boost,
       const attribute_provider* /*ctx*/) const override {
     return prepare(rdr, ord, boost*this->boost(),
                    field(), options().term);

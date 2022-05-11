@@ -155,8 +155,8 @@ field_visitor by_wildcard::visitor(bytes_ref term) {
 
 /*static*/ filter::prepared::ptr by_wildcard::prepare(
     const index_reader& index,
-    const order::prepared& order,
-    boost_t boost,
+    const Order& order,
+    score_t boost,
     string_ref field,
     bytes_ref term,
     size_t scored_terms_limit) {

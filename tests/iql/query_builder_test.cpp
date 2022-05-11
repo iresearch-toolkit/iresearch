@@ -57,13 +57,12 @@ class test_sort: public irs::sort {
     virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
       return nullptr; // do not need to collect stats
     }
-    virtual irs::score_function prepare_scorer(
+    virtual irs::ScoreFunction prepare_scorer(
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type*,
-        irs::byte_type*,
         const irs::attribute_provider&,
-        irs::boost_t) const override {
+        irs::score_t) const override {
       return { nullptr, nullptr };
     }
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
@@ -71,12 +70,6 @@ class test_sort: public irs::sort {
     }
     virtual irs::IndexFeatures features() const override {
       return irs::IndexFeatures::NONE;
-    }
-    virtual bool less(const irs::byte_type*, const irs::byte_type*) const override {
-      throw std::bad_function_call();
-    }
-    std::pair<size_t, size_t> score_size() const override {
-      return std::make_pair(size_t(0), size_t(0));
     }
     std::pair<size_t, size_t> stats_size() const override {
       return std::make_pair(size_t(0), size_t(0));
@@ -236,7 +229,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -288,7 +281,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -318,7 +311,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -383,7 +376,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -427,7 +420,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -471,7 +464,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -515,7 +508,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -549,7 +542,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_EQ(nullptr, query.error);
     ASSERT_NE(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_NE(nullptr, pQuery.get());
 
     auto docsItr = pQuery->execute(segment);
@@ -573,7 +566,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_EQ(nullptr, pQuery.get());
 
     ASSERT_EQ(0, query.error->find("@([8 - 11], 11): syntax error"));
@@ -586,7 +579,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_EQ(nullptr, pQuery.get());
 
     ASSERT_EQ(std::string("@(7): parse error"), *(query.error));
@@ -608,7 +601,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     ASSERT_NE(nullptr, query.error);
     ASSERT_EQ(nullptr, query.limit);
 
-    auto pQuery = query.filter->prepare(reader, irs::order::prepared::unordered());
+    auto pQuery = query.filter->prepare(reader, irs::Order::kUnordered);
     ASSERT_EQ(nullptr, pQuery.get());
 
     ASSERT_EQ(std::string("filter conversion error, node: @5\n('name'@2 == ('A'@3, 'bcd'@4)@5)@6"), *(query.error));
@@ -1176,7 +1169,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
       }
 
       direction.emplace_back(ascending, out.str());
-      buf.add<test_sort>(false);
+      buf = irs::Order::Prepare(test_sort{});
 
       return true;
     };

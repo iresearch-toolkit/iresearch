@@ -39,7 +39,7 @@ class lazy_filter_bitset : private util::noncopyable {
 
   explicit lazy_filter_bitset(const sub_reader& segment,
                               const filter::prepared& filter,
-                              const order::prepared& order,
+                              const Order& order,
                               ExecutionMode mode,
                               const attribute_provider* ctx) noexcept {
     const size_t bits = segment.docs_count() + doc_limits::min();
@@ -178,7 +178,7 @@ class proxy_query final : public filter::prepared {
   }
 
   doc_iterator::ptr execute(const sub_reader& rdr,
-                            const order::prepared& order,
+                            const Order& order,
                             ExecutionMode mode,
                             const attribute_provider* ctx) const override {
     // first try to find segment in cache.
@@ -202,7 +202,7 @@ DEFINE_FACTORY_DEFAULT(proxy_filter);
 proxy_filter::proxy_filter() noexcept : filter(irs::type<proxy_filter>::get()) {}
 
 filter::prepared::ptr proxy_filter::prepare(
-    const index_reader& rdr, const order::prepared& ord, boost_t boost,
+    const index_reader& rdr, const Order& ord, score_t boost,
     const attribute_provider* ctx) const {
   if (!cache_ || !cache_->real_filter_) {
     assert(false);

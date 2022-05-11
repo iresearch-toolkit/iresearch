@@ -403,8 +403,8 @@ filter::prepared::ptr prepare_automaton_filter(
     const automaton& acceptor,
     size_t scored_terms_limit,
     const index_reader& index,
-    const order::prepared& order,
-    boost_t boost) {
+    const Order& order,
+    score_t boost) {
   auto matcher = make_automaton_matcher(acceptor);
 
   if (fst::kError == matcher.Properties(0)) {

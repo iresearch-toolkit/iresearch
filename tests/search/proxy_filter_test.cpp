@@ -95,11 +95,11 @@ class doclist_test_iterator final : public doc_iterator,
 
 class doclist_test_query final : public filter::prepared {
  public:
-  doclist_test_query(const std::vector<doc_id_t>& documents, boost_t)
+  doclist_test_query(const std::vector<doc_id_t>& documents, score_t)
       : documents_(documents){};
 
   doc_iterator::ptr execute(const sub_reader& /*rdr*/,
-                            const order::prepared& /*order*/,
+                            const Order& /*order*/,
                             ExecutionMode /*mode*/,
                             const attribute_provider* /*ctx*/) const override {
     ++executes_;
@@ -124,8 +124,8 @@ class doclist_test_filter final : public filter {
   doclist_test_filter() noexcept
       : filter(irs::type<doclist_test_filter>::get()) {}
 
-  filter::prepared::ptr prepare(const index_reader&, const order::prepared&,
-                                boost_t boost,
+  filter::prepared::ptr prepare(const index_reader&, const Order&,
+                                score_t boost,
                                 const attribute_provider*) const override {
     ++prepares_;
     return memory::make_managed<doclist_test_query>(documents_, boost);

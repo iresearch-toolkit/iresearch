@@ -24,15 +24,15 @@
 #ifndef IRESEARCH_TYPES_H
 #define IRESEARCH_TYPES_H
 
-#include "shared.hpp"
+#include <cstdint>
+#include <cmath>
 
 namespace iresearch {
 
-typedef uint8_t byte_type;
-typedef uint32_t term_id;
-typedef uint64_t field_id;
-typedef uint32_t doc_id_t;
-typedef float_t boost_t;
+using byte_type = uint8_t;
+using field_id = uint64_t;
+using doc_id_t = uint32_t;
+using score_t = float_t;
 
 }
 

@@ -45,13 +45,13 @@ using namespace irs;
 ////////////////////////////////////////////////////////////////////////////////
 /// @returns levenshtein similarity
 ////////////////////////////////////////////////////////////////////////////////
-FORCE_INLINE boost_t similarity(uint32_t distance, uint32_t size) noexcept {
+FORCE_INLINE score_t similarity(uint32_t distance, uint32_t size) noexcept {
   assert(size);
 
-  static_assert(sizeof(boost_t) == sizeof(uint32_t),
-                "sizeof(boost_t) != sizeof(uint32_t)");
+  static_assert(sizeof(score_t) == sizeof(uint32_t),
+                "sizeof(score_t) != sizeof(uint32_t)");
 
-  return 1.f - boost_t(distance) / size;
+  return 1.f - score_t(distance) / size;
 }
 
 template<typename Invalid, typename Term, typename Levenshtein>
@@ -110,12 +110,12 @@ struct aggregated_stats_visitor : util::noncopyable {
   mutable typename StatesType::state_type* state{};
   mutable const sub_reader* segment{};
   mutable const term_reader* field{};
-  boost_t boost{ irs::no_boost() };
+  score_t boost{ irs::kNoBoost };
 };
 
-class top_terms_collector : public irs::top_terms_collector<top_term_state<boost_t>> {
+class top_terms_collector : public irs::top_terms_collector<top_term_state<score_t>> {
  public:
-  using base_type = irs::top_terms_collector<top_term_state<boost_t>>;
+  using base_type = irs::top_terms_collector<top_term_state<score_t>>;
 
   top_terms_collector(size_t size, field_collectors& field_stats)
     : base_type(size),
@@ -210,8 +210,8 @@ bool collect_terms(
 
 filter::prepared::ptr prepare_levenshtein_filter(
     const index_reader& index,
-    const order::prepared& order,
-    boost_t boost,
+    const Order& order,
+    score_t boost,
     string_ref field,
     bytes_ref prefix,
     bytes_ref term,
@@ -236,7 +236,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
     }
 
     aggregated_stats_visitor<decltype(states)> aggregate_stats(states, term_stats);
-    term_collector.visit([&aggregate_stats](top_term_state<boost_t>& state) {
+    term_collector.visit([&aggregate_stats](top_term_state<score_t>& state) {
       aggregate_stats.boost = std::max(0.f, state.key);
       state.visit(aggregate_stats);
     });
@@ -315,8 +315,8 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance) // cppcheck-suppress unknownMacro
 
 /*static*/ filter::prepared::ptr by_edit_distance::prepare(
     const index_reader& index,
-    const order::prepared& order,
-    boost_t boost,
+    const Order& order,
+    score_t boost,
     string_ref field,
     bytes_ref term,
     size_t scored_terms_limit,

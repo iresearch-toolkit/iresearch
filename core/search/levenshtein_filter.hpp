@@ -114,8 +114,8 @@ class by_edit_distance final
 
   static prepared::ptr prepare(
     const index_reader& index,
-    const order::prepared& order,
-    boost_t boost,
+    const Order& order,
+    score_t boost,
     string_ref field,
     bytes_ref term,
     size_t terms_limit,
@@ -131,8 +131,8 @@ class by_edit_distance final
 
   virtual filter::prepared::ptr prepare(
       const index_reader& index,
-      const order::prepared& order,
-      boost_t boost,
+      const Order& order,
+      score_t boost,
       const attribute_provider* /*ctx*/) const override {
     return prepare(index, order, this->boost()*boost,
                    field(), options().term, options().max_terms,

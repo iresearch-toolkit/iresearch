@@ -29,10 +29,8 @@
 namespace iresearch {
 
 // Represents a score related for the particular document
-class score : public attribute {
- public:
+struct score : attribute, ScoreFunction {
   static const score kNoScore;
-  static const score_f kDefaultScoreFunc;
 
   static constexpr string_ref type_name() noexcept {
     return "iresearch::score";
@@ -44,70 +42,31 @@ class score : public attribute {
     return score ? *score : kNoScore;
   }
 
-  // cppcheck-suppress shadowFunction
-  score() noexcept;
-  explicit score(const order::prepared& ord);
-
-  bool is_default() const noexcept {
-    return reinterpret_cast<score_ctx*>(data()) == func_.ctx()
-           && func_.func() == kDefaultScoreFunc;
-  }
-
-  [[nodiscard]] FORCE_INLINE const byte_type* evaluate() const {
-    assert(func_);
-    return func_();
-  }
-
-  // Reset score to default value
-  void reset() noexcept;
-
-  void reset(const score& score) noexcept {
-    assert(score.func_);
-    func_.reset(const_cast<score_ctx*>(score.func_.ctx()),
-                score.func_.func());
-  }
-
-  void reset(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept {
-    assert(func);
-    func_.reset(std::move(ctx), func);
-  }
-
-  void reset(score_ctx* ctx, const score_f func) noexcept {
-    assert(func);
-    func_.reset(ctx, func);
-  }
-
-  void reset(score_function&& func) noexcept {
-    assert(func);
-    func_ = std::move(func);
-  }
-
-  byte_type* realloc(const order::prepared& order) {
-    buf_.resize(order.score_size());
-    return const_cast<byte_type*>(buf_.data());
-  }
-
-  byte_type* data() const noexcept {
-    return const_cast<byte_type*>(buf_.c_str());
-  }
-
-  size_t size() const noexcept {
-    return buf_.size();
-  }
-
-  void clear() noexcept {
-    assert(!buf_.empty());
-    std::memset(const_cast<byte_type*>(buf_.data()), 0, buf_.size());
-  }
-
- private:
-  bstring buf_;
-  score_function func_;
+  using ScoreFunction::operator=;
 };
 
-void reset(irs::score& score, order::prepared::scorers&& scorers);
+using Scorers = SmallVector<ScoreFunction, 2>;
 
-} // ROOT
+// Prepare scorer for each of the bucket.
+Scorers PrepareScorers(std::span<const OrderBucket> buckets,
+                       const sub_reader& segment, const term_reader& field,
+                       const byte_type* stats, const attribute_provider& doc,
+                       score_t boost);
 
-#endif // IRESEARCH_SCORE_H
+// Compiles a set of prepared scorers into a single score function.
+ScoreFunction CompileScorers(Scorers&& scorers);
 
+template<typename... Args>
+ScoreFunction CompileScore(Args&&... args) {
+  return CompileScorers(PrepareScorers(std::forward<Args>(args)...));
+}
+
+// Prepare empty collectors, i.e. call collect(...) on each of the
+// buckets without explicitly collecting field or term statistics,
+// e.g. for 'all' filter.
+void PrepareCollectors(std::span<const OrderBucket> order, byte_type* stats,
+                       const index_reader& index);
+
+}  // namespace iresearch
+
+#endif  // IRESEARCH_SCORE_H

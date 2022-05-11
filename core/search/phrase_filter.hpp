@@ -151,9 +151,8 @@ class by_phrase_options {
 class by_phrase : public filter_base<by_phrase_options> {
  public:
   // Returns features required for phrase filter
-  static constexpr IndexFeatures required() noexcept {
-    return IndexFeatures::FREQ | IndexFeatures::POS;
-  }
+  static constexpr IndexFeatures kRequiredFeatures = IndexFeatures::FREQ |
+                                                     IndexFeatures::POS;
 
   static ptr make();
 
@@ -161,20 +160,20 @@ class by_phrase : public filter_base<by_phrase_options> {
 
   virtual filter::prepared::ptr prepare(
     const index_reader& index,
-    const order::prepared& ord,
-    boost_t boost,
+    const Order& ord,
+    score_t boost,
     const attribute_provider* ctx) const override;
 
  private:
   filter::prepared::ptr fixed_prepare_collect(
     const index_reader& index,
-    const order::prepared& ord,
-    boost_t boost) const;
+    const Order& ord,
+    score_t boost) const;
 
   filter::prepared::ptr variadic_prepare_collect(
     const index_reader& index,
-    const order::prepared& ord,
-    boost_t boost) const;
+    const Order& ord,
+    score_t boost) const;
 };
 
 }

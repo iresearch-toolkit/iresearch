@@ -31,22 +31,21 @@
 
 namespace iresearch {
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class boolean_filter
-/// @brief defines user-side boolean filter, as the container for other
-/// filters
-//////////////////////////////////////////////////////////////////////////////
+// Represents user-side boolean filter as the container for other
+// filters.
 class boolean_filter : public filter, private util::noncopyable {
  public:
-  typedef std::vector<filter::ptr> filters_t;
-  typedef ptr_iterator<filters_t::const_iterator> const_iterator;
-  typedef ptr_iterator<filters_t::iterator> iterator;
+  auto begin() const { return ptr_iterator{std::begin(filters_)}; }
+  auto end() const { return ptr_iterator{std::end(filters_)}; }
 
-  const_iterator begin() const { return const_iterator(filters_.begin()); }
-  const_iterator end() const { return const_iterator(filters_.end()); }
+  auto begin() { return ptr_iterator{std::begin(filters_)}; }
+  auto end() { return ptr_iterator{std::end(filters_)}; }
 
-  iterator begin() { return iterator(filters_.begin()); }
-  iterator end() { return iterator(filters_.end()); }
+  sort::MergeType merge_type() const noexcept { return merge_type_; }
+
+  void merge_type(sort::MergeType merge_type) noexcept {
+    merge_type_ = merge_type;
+  }
 
   template<typename T>
   T& add() {
@@ -63,7 +62,7 @@ class boolean_filter : public filter, private util::noncopyable {
   size_t size() const { return filters_.size(); }
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& rdr, const order::prepared& ord, boost_t boost,
+      const index_reader& rdr, const Order& ord, score_t boost,
       const attribute_provider* ctx) const override final;
 
  protected:
@@ -72,20 +71,19 @@ class boolean_filter : public filter, private util::noncopyable {
 
   virtual filter::prepared::ptr prepare(
       std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-      const index_reader& rdr, const order::prepared& ord, boost_t boost,
+      const index_reader& rdr, const Order& ord, score_t boost,
       const attribute_provider* ctx) const = 0;
 
  private:
   void group_filters(std::vector<const filter*>& incl,
                      std::vector<const filter*>& excl) const;
 
-  filters_t filters_;
+  std::vector<filter::ptr> filters_;
+  sort::MergeType merge_type_{sort::MergeType::AGGREGATE};
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class And
-//////////////////////////////////////////////////////////////////////////////
-class And : public boolean_filter {
+// Represents conjunction
+class And final : public boolean_filter {
  public:
   static ptr make();
 
@@ -96,14 +94,12 @@ class And : public boolean_filter {
  protected:
   virtual filter::prepared::ptr prepare(
       std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-      const index_reader& rdr, const order::prepared& ord, boost_t boost,
+      const index_reader& rdr, const Order& ord, score_t boost,
       const attribute_provider* ctx) const override;
-};  // And
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class Or
-//////////////////////////////////////////////////////////////////////////////
-class Or : public boolean_filter {
+// Represents disjunction
+class Or : public boolean_filter {  // FIXME: remove iql and make final
  public:
   static ptr make();
 
@@ -111,14 +107,10 @@ class Or : public boolean_filter {
 
   using filter::prepare;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return minimum number of subqueries which must be satisfied
-  //////////////////////////////////////////////////////////////////////////////
+  // Return minimum number of subqueries which must be satisfied
   size_t min_match_count() const { return min_match_count_; }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets minimum number of subqueries which must be satisfied
-  //////////////////////////////////////////////////////////////////////////////
+  // Sets minimum number of subqueries which must be satisfied
   Or& min_match_count(size_t count) {
     min_match_count_ = count;
     return *this;
@@ -127,16 +119,14 @@ class Or : public boolean_filter {
  protected:
   virtual filter::prepared::ptr prepare(
       std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-      const index_reader& rdr, const order::prepared& ord, boost_t boost,
+      const index_reader& rdr, const Order& ord, score_t boost,
       const attribute_provider* ctx) const override;
 
  private:
   size_t min_match_count_;
-};  // Or
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class not
-//////////////////////////////////////////////////////////////////////////////
+// Represents negation
 class Not : public filter {
  public:
   static ptr make();
@@ -147,14 +137,16 @@ class Not : public filter {
 
   template<typename T>
   const T* filter() const {
-    using type = typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
+    using type =
+        typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
 
     return static_cast<const type*>(filter_.get());
   }
 
   template<typename T>
   T& filter() {
-    using type = typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
+    using type =
+        typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
 
     filter_ = type::make();
     return static_cast<type&>(*filter_);
@@ -166,7 +158,7 @@ class Not : public filter {
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& rdr, const order::prepared& ord, boost_t boost,
+      const index_reader& rdr, const Order& ord, score_t boost,
       const attribute_provider* ctx) const override;
 
   virtual size_t hash() const noexcept override;

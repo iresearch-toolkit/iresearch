@@ -74,7 +74,7 @@ TEST(by_edit_distance_test, ctor) {
   ASSERT_EQ(irs::type<irs::by_edit_distance>::id(), q.type());
   ASSERT_EQ(irs::by_edit_distance_options{}, q.options());
   ASSERT_TRUE(q.field().empty());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 }
 
 TEST(by_edit_distance_test, equal) {
@@ -102,12 +102,12 @@ TEST(by_edit_distance_test, boost) {
     q.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar*"));
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::no_boost(), prepared->boost());
+    ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
   // with boost
   {
-    irs::boost_t boost = 1.5f;
+    irs::score_t boost = 1.5f;
 
     irs::by_edit_distance q;
     *q.mutable_field() = "field";
@@ -161,14 +161,16 @@ TEST_P(by_edit_distance_test_case, test_order) {
   {
     docs_t docs{28, 29};
     costs_t costs{ docs.size() };
-    irs::order order;
 
     size_t term_collectors_count = 0;
     size_t field_collectors_count = 0;
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
     size_t finish_count = 0;
-    auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+    std::array<irs::sort::ptr, 1> order{
+        std::make_unique<tests::sort::custom_sort>() };
+    auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](
         const irs::sub_reader&, const irs::term_reader&)->void{
@@ -207,14 +209,16 @@ TEST_P(by_edit_distance_test_case, test_order) {
   {
     docs_t docs{28, 29};
     costs_t costs{ docs.size() };
-    irs::order order;
 
     size_t term_collectors_count = 0;
     size_t field_collectors_count = 0;
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
     size_t finish_count = 0;
-    auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+    std::array<irs::sort::ptr, 1> order{
+        std::make_unique<tests::sort::custom_sort>() };
+    auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](
         const irs::sub_reader&, const irs::term_reader&)->void{
@@ -253,14 +257,16 @@ TEST_P(by_edit_distance_test_case, test_order) {
   {
     docs_t docs{29};
     costs_t costs{ docs.size() };
-    irs::order order;
 
     size_t term_collectors_count = 0;
     size_t field_collectors_count = 0;
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
     size_t finish_count = 0;
-    auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+    std::array<irs::sort::ptr, 1> order{
+        std::make_unique<tests::sort::custom_sort>() };
+    auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](
         const irs::sub_reader&, const irs::term_reader&)->void{
@@ -479,14 +485,13 @@ TEST_P(by_edit_distance_test_case, bm25) {
     add_segment(gen, irs::OM_CREATE, opts);
   }
 
-  irs::order ord;
-  auto scorer = irs::scorers::get(
-    "bm25",
-    irs::type<irs::text_format::json>::get(),
-    irs::string_ref::NIL);
-  ASSERT_NE(nullptr, scorer);
-  ord.add(false, std::move(scorer));
-  auto prepared_order = ord.prepare();
+  std::array<irs::sort::ptr, 1> order{
+      irs::scorers::get("bm25",
+                        irs::type<irs::text_format::json>::get(),
+                        irs::string_ref::NIL) };
+  ASSERT_NE(nullptr, order.front());
+
+  auto prepared_order = irs::Order::Prepare(order);
 
   auto index = open_reader();
   ASSERT_NE(nullptr, index);
@@ -509,7 +514,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->is_default());
+    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
       { 6.21361256f, 261 },
@@ -520,10 +525,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto expected_doc = std::begin(expected_docs);
     while (docs->next()) {
-      const auto* scr = score->evaluate();
-      ASSERT_NE(nullptr, scr);
-      const float_t* value = reinterpret_cast<const float_t*>(scr);
-      ASSERT_FLOAT_EQ(expected_doc->first, *value);
+      irs::score_t value;
+      (*score)(&value);
+      ASSERT_FLOAT_EQ(expected_doc->first, value);
       ASSERT_EQ(expected_doc->second, docs->value());
       ++expected_doc;
     }
@@ -548,7 +552,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->is_default());
+    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
       { 9.9112005f, 272 },
@@ -557,10 +561,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto expected_doc = std::begin(expected_docs);
     while (docs->next()) {
-      const auto* scr = score->evaluate();
-      ASSERT_NE(nullptr, scr);
-      const float_t* value = reinterpret_cast<const float_t*>(scr);
-      ASSERT_FLOAT_EQ(expected_doc->first, *value);
+      irs::score_t value;
+      (*score)(&value);
+      ASSERT_FLOAT_EQ(expected_doc->first, value);
       ASSERT_EQ(expected_doc->second, docs->value());
       ++expected_doc;
     }
@@ -585,7 +588,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->is_default());
+    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
       { 9.9112005f, 272 },
@@ -594,10 +597,10 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto expected_doc = std::begin(expected_docs);
     while (docs->next()) {
-      const auto* scr = score->evaluate();
-      ASSERT_NE(nullptr, scr);
-      const float_t* value = reinterpret_cast<const float_t*>(scr);
-      ASSERT_FLOAT_EQ(expected_doc->first, *value);
+      irs::score_t value;
+      (*score)(&value);
+
+      ASSERT_FLOAT_EQ(expected_doc->first, value);
       ASSERT_EQ(expected_doc->second, docs->value());
       ++expected_doc;
     }
@@ -622,7 +625,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->is_default());
+    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
       { 8.1443901f, 265   },
@@ -643,10 +646,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
     while (docs->next()) {
-      const auto* scr = score->evaluate();
-      ASSERT_NE(nullptr, scr);
-      const float_t* value = reinterpret_cast<const float_t*>(scr);
-      actual_docs.emplace_back(*value, docs->value());
+      irs::score_t value;
+      (*score)(&value);
+      actual_docs.emplace_back(value, docs->value());
     }
     ASSERT_FALSE(docs->next());
     ASSERT_EQ(std::size(expected_docs), actual_docs.size());
@@ -690,7 +692,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->is_default());
+    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
         { 3.8292058f, 275 },
@@ -700,10 +702,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
     while (docs->next()) {
-      const auto* scr = score->evaluate();
-      ASSERT_NE(nullptr, scr);
-      const float_t* value = reinterpret_cast<const float_t*>(scr);
-      actual_docs.emplace_back(*value, docs->value());
+      irs::score_t value;
+      (*score)(&value);
+      actual_docs.emplace_back(value, docs->value());
     }
 
     ASSERT_FALSE(docs->next());
@@ -750,7 +751,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->is_default());
+    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
       { 3.8292058f, 275 },
@@ -760,10 +761,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
     while (docs->next()) {
-      const auto* scr = score->evaluate();
-      ASSERT_NE(nullptr, scr);
-      const float_t* value = reinterpret_cast<const float_t*>(scr);
-      actual_docs.emplace_back(*value, docs->value());
+      irs::score_t value;
+      (*score)(&value);
+      actual_docs.emplace_back(value, docs->value());
     }
 
     ASSERT_FALSE(docs->next());
@@ -824,7 +824,7 @@ TEST_P(by_edit_distance_test_case, visit) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"abc", irs::no_boost()}}),
+      (std::vector<std::pair<irs::string_ref, irs::score_t>>{{"abc", irs::kNoBoost}}),
       visitor.term_refs<char>());
     visitor.reset();
   }
@@ -844,8 +844,8 @@ TEST_P(by_edit_distance_test_case, visit) {
     ASSERT_EQ(3, visitor.visit_calls_counter());
 
     const auto actual_terms = visitor.term_refs<char>();
-    std::vector<std::pair<irs::string_ref, irs::boost_t>> expected_terms{
-      {"abc",  irs::no_boost()},
+    std::vector<std::pair<irs::string_ref, irs::score_t>> expected_terms{
+      {"abc",  irs::kNoBoost},
       {"abcd", 2.f/3},
       {"abcy", 2.f/3},
     };
@@ -878,8 +878,8 @@ TEST_P(by_edit_distance_test_case, visit) {
     ASSERT_EQ(5, visitor.visit_calls_counter());
 
     const auto actual_terms = visitor.term_refs<char>();
-    std::vector<std::pair<irs::string_ref, irs::boost_t>> expected_terms{
-      {"abc",  irs::no_boost()},
+    std::vector<std::pair<irs::string_ref, irs::score_t>> expected_terms{
+      {"abc",  irs::kNoBoost},
       {"abcd", 2.f/3},
       {"abcde", 1.f/3},
       {"abcy", 2.f/3},

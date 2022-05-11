@@ -213,7 +213,7 @@ irs::string_ref splitFreq(const std::string& text) {
 
 irs::filter::prepared::ptr prepareFilter(
     const irs::directory_reader& reader,
-    const irs::order::prepared& order,
+    const irs::Order& order,
     category_t category,
     const std::string& text,
     const irs::analysis::analyzer::ptr& analyzer,
@@ -505,7 +505,7 @@ int search(
   SCOPED_TIMER("Total Time");
 
   irs::directory_reader reader;
-  irs::order::prepared order;
+  irs::Order order;
   irs::async_utils::thread_pool thread_pool(search_threads);
 
   {
@@ -519,10 +519,8 @@ int search(
 
   {
     SCOPED_TIMER("Order build time");
-    irs::order sort;
 
-    sort.add(true, std::move(scr));
-    order = sort.prepare();
+    order = irs::Order::Prepare(std::span{&scr, 1});
   }
 
   struct task_provider_t {
@@ -658,10 +656,10 @@ int search(
               threshold->value = sorted.front().first;
             }
 
-            while (docs->next()) {
+            for (float_t score_value; docs->next(); ) {
               ++doc_count;
 
-              const auto score_value = *reinterpret_cast<const float_t*>(score->evaluate());
+              (*score)(&score_value);
 
               if (left) {
                 sorted.emplace_back(score_value, doc->value);

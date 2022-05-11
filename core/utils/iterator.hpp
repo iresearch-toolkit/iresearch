@@ -103,18 +103,25 @@ class iterator_adaptor
 
 namespace detail {
 
-template<typename SmartPtr>
+template<typename Ptr>
 struct extract_element_type {
-  typedef typename SmartPtr::element_type value_type;
-  typedef typename SmartPtr::element_type& reference;
-  typedef typename SmartPtr::element_type* pointer;
+  typedef typename Ptr::element_type value_type;
+  typedef typename Ptr::element_type& reference;
+  typedef typename Ptr::element_type* pointer;
 };
 
-template<typename SmartPtr>
-struct extract_element_type<const SmartPtr> {
-  typedef const typename SmartPtr::element_type value_type;
-  typedef const typename SmartPtr::element_type& reference;
-  typedef const typename SmartPtr::element_type* pointer;
+template<typename Ptr>
+struct extract_element_type<const Ptr> {
+  typedef const typename Ptr::element_type value_type;
+  typedef const typename Ptr::element_type& reference;
+  typedef const typename Ptr::element_type* pointer;
+};
+
+template<typename Ptr>
+struct extract_element_type<Ptr*>{
+  typedef Ptr value_type;
+  typedef Ptr& reference;
+  typedef Ptr* pointer;
 };
 
 }

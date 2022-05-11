@@ -56,7 +56,7 @@ TEST(by_wildcard_test, ctor) {
   ASSERT_EQ(irs::type<irs::by_wildcard>::id(), q.type());
   ASSERT_EQ(irs::by_wildcard_options{}, q.options());
   ASSERT_TRUE(q.field().empty());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 }
 
 TEST(by_wildcard_test, equal) {
@@ -77,12 +77,12 @@ TEST(by_wildcard_test, boost) {
     irs::by_wildcard q = make_filter("field", "bar*");
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::no_boost(), prepared->boost());
+    ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
   // with boost
   {
-    irs::boost_t boost = 1.5f;
+    irs::score_t boost = 1.5f;
 
     irs::by_wildcard q = make_filter("field", "bar*");
     q.boost(boost);
@@ -190,12 +190,14 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
   {
     docs_t docs{ 1, 4, 9, 16, 21, 24, 26, 29, 31, 32 };
     costs_t costs{ docs.size() };
-    irs::order order;
 
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
     size_t finish_count = 0;
-    auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+    std::array<irs::sort::ptr, 1> order{
+        std::make_unique<tests::sort::custom_sort>()};
+    auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
       ++collect_field_count;
@@ -222,8 +224,9 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
   {
     docs_t docs{ 31, 32, 1, 4, 9, 16, 21, 24, 26, 29 };
     costs_t costs{ docs.size() };
-    irs::order order;
-    order.add<tests::sort::frequency_sort>(false);
+
+    std::array<irs::sort::ptr, 1> order{
+        std::make_unique<tests::sort::frequency_sort>()};
 
     check_query(make_filter("prefix", "%"), order, docs, rdr);
   }
@@ -232,8 +235,9 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
   {
     docs_t docs{ 31, 32, 1, 4, 16, 21, 26, 29 };
     costs_t costs{ docs.size() };
-    irs::order order;
-    order.add<tests::sort::frequency_sort>(false);
+
+    std::array<irs::sort::ptr, 1> order{
+        std::make_unique<tests::sort::frequency_sort>()};
 
     check_query(make_filter("prefix", "a%"), order, docs, rdr);
   }
@@ -455,8 +459,8 @@ TEST_P(wildcard_filter_test_case, visit) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{
-        {"abc", irs::no_boost()},
+      (std::vector<std::pair<irs::string_ref, irs::score_t>>{
+        {"abc", irs::kNoBoost},
       }),
       visitor.term_refs<char>());
 
@@ -472,13 +476,13 @@ TEST_P(wildcard_filter_test_case, visit) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(6, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{
-        {"abc", irs::no_boost()},
-        {"abcd", irs::no_boost()},
-        {"abcde", irs::no_boost()},
-        {"abcdrer", irs::no_boost()},
-        {"abcy", irs::no_boost()},
-        {"abde", irs::no_boost()}
+      (std::vector<std::pair<irs::string_ref, irs::score_t>>{
+        {"abc", irs::kNoBoost},
+        {"abcd", irs::kNoBoost},
+        {"abcde", irs::kNoBoost},
+        {"abcdrer", irs::kNoBoost},
+        {"abcy", irs::kNoBoost},
+        {"abde", irs::kNoBoost}
       }),
       visitor.term_refs<char>());
 
@@ -494,12 +498,12 @@ TEST_P(wildcard_filter_test_case, visit) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(5, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{
-        {"abc", irs::no_boost()},
-        {"abcd", irs::no_boost()},
-        {"abcde", irs::no_boost()},
-        {"abcdrer", irs::no_boost()},
-        {"abcy", irs::no_boost()},
+      (std::vector<std::pair<irs::string_ref, irs::score_t>>{
+        {"abc", irs::kNoBoost},
+        {"abcd", irs::kNoBoost},
+        {"abcde", irs::kNoBoost},
+        {"abcdrer", irs::kNoBoost},
+        {"abcy", irs::kNoBoost},
       }),
       visitor.term_refs<char>());
 
