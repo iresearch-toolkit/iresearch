@@ -148,7 +148,7 @@ irs::sort::ptr make_vpack(irs::string_ref args) {
     // default args
     return irs::memory::make_unique<irs::bm25_sort>();
   } else {
-    VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+    VPackSlice slice(irs::bit_cast<const uint8_t*>(args.c_str()));
     return make_vpack(slice);
   }
 }
@@ -541,16 +541,15 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
 
       // if there is no frequency then all the scores
       // will be the same (e.g. filter irs::all)
-      uintptr_t ctx;
+      uintptr_t ctx{};
       std::memcpy(&ctx, &boost, sizeof boost);
 
-      return {reinterpret_cast<score_ctx*>(ctx),
+      return {irs::bit_cast<score_ctx*>(ctx),
               [](score_ctx* ctx, score_t* res) noexcept {
                 assert(res);
                 assert(ctx);
 
-                // FIXME(gnusi): use std::bit_cast when avaiable
-                const auto boost = reinterpret_cast<uintptr_t>(ctx);
+                const auto boost = irs::bit_cast<uintptr_t>(ctx);
                 std::memcpy(res, &boost, sizeof(score_t));
               }};
     }

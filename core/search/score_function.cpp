@@ -26,8 +26,7 @@ namespace {
 
 void DefaultScore(irs::score_ctx* ctx, irs::score_t* res) noexcept {
   assert(res);
-  // FIXME(gnusi): use std::bit_cast when available
-  std::memset(res, 0, reinterpret_cast<size_t>(ctx));
+  std::memset(res, 0, irs::bit_cast<size_t>(ctx));
 }
 
 }  // namespace

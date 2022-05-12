@@ -53,16 +53,15 @@ struct prepared final : PreparedSortBase<void> {
     auto* volatile_boost = irs::get<irs::filter_boost>(attrs);
 
     if (!volatile_boost) {
-      uintptr_t tmp{};
-      std::memcpy(&tmp, &boost, sizeof boost);
+      uintptr_t ctx{};
+      std::memcpy(&ctx, &boost, sizeof boost);
 
-      return {reinterpret_cast<score_ctx*>(tmp),
+      return {irs::bit_cast<score_ctx*>(ctx),
               [](score_ctx* ctx, score_t* res) noexcept {
                 assert(res);
                 assert(ctx);
 
-                // FIXME(gnusi): use std::bit_cast when avaiable
-                const auto boost = reinterpret_cast<uintptr_t>(ctx);
+                const auto boost = irs::bit_cast<uintptr_t>(ctx);
                 std::memcpy(res, &boost, sizeof(score_t));
               }};
     }
@@ -70,7 +69,7 @@ struct prepared final : PreparedSortBase<void> {
     return {
         memory::make_unique<volatile_boost_score_ctx>(volatile_boost, boost),
         [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-          auto& state = *reinterpret_cast<volatile_boost_score_ctx*>(ctx);
+          auto& state = *irs::bit_cast<volatile_boost_score_ctx*>(ctx);
           *res = state.volatile_boost->value * state.boost;
         }};
   }
