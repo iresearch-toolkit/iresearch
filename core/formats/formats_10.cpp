@@ -322,23 +322,21 @@ struct pay_buffer : skip_buffer {
 }; // pay_buffer
 
 // Buffer carrying competitive block scores
-class score_buffer {
+class skip_score_stats {
  public:
-  using value_type = score_threshold::value_type;
-
   static void skip(index_input& in) {
     in.read_vint();
   }
 
-  static value_type read(index_input& in) {
+  static uint32_t read(index_input& in) {
     return in.read_vint();
   }
 
-  void add(value_type value) noexcept {
+  void add(uint32_t value) noexcept {
     freq_ = std::max(value, freq_);
   }
 
-  void add(score_buffer rhs) noexcept {
+  void add(skip_score_stats rhs) noexcept {
     add(rhs.freq_);
   }
 
@@ -351,8 +349,8 @@ class score_buffer {
   }
 
  private:
-  value_type freq_{};
-}; // score_buffer
+  uint32_t freq_{};
+};
 
 enum class TermsFormat : int32_t {
   MIN = 0,
@@ -853,7 +851,7 @@ class postings_writer final: public postings_writer_base {
   struct {
     uint32_t buf[FormatTraits::block_size()];               // buffer for encoding (worst case)
   } encbuf_;
-  score_buffer score_levels_[kMaxSkipLevels];
+  skip_score_stats score_levels_[kMaxSkipLevels];
   bool volatile_attributes_;
 }; // postings_writer
 
@@ -2083,7 +2081,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Read(
     ReadState<FieldTraits>(next, in);
 
     if constexpr (FieldTraits::wand() && FieldTraits::frequency()) {
-      score_buffer::skip(in);
+      skip_score_stats::skip(in);
     }
   } else {
     // stream exhausted
@@ -2301,8 +2299,8 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
   // hide 'ptr' defined in irs::doc_iterator
   using ptr = memory::managed_ptr<wanderator>;
 
-  wanderator()
-    : skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN, ReadSkip{}} {
+  wanderator(const ScoreFunctionFactory& factory)
+    : skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN, ReadSkip{factory}} {
     assert(
       std::all_of(std::begin(this->buf_.docs), std::end(this->buf_.docs),
                   [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
@@ -2328,10 +2326,21 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
   }
 
  private:
+  struct SkipScoreContext final : attribute_provider {
+    frequency freq;
+
+    attribute* get_mutable(irs::type_info::type_id id) noexcept final {
+      if (id == irs::type<frequency>::id()) {
+        return &freq;
+      }
+      return nullptr;
+    }
+  };
+
   class ReadSkip {
    public:
-    explicit ReadSkip()
-      : skip_levels_(1), skip_scores_(1) {
+    explicit ReadSkip(const ScoreFunctionFactory& factory)
+      : func_{factory(ctx_)}, skip_levels_(1), skip_scores_(1) {
     }
 
     void EnsureSorted() const noexcept;
@@ -2350,8 +2359,10 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
     SkipState& State() noexcept { return prev_skip_; }
 
    private:
+    SkipScoreContext ctx_; // must be initialized before `func_`
+    ScoreFunction func_;
     std::vector<SkipState> skip_levels_;
-    std::vector<score_buffer::value_type> skip_scores_;
+    std::vector<score_t> skip_scores_;
     SkipState prev_skip_; // skip context used by skip reader
     const score_threshold* threshold_{};
   };
@@ -2369,17 +2380,6 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
       this->begin_ = std::end(this->buf_.docs); // will trigger refill in "next"
     }
   }
-
-  struct SkipScoreContext final : attribute_provider {
-    frequency freq;
-
-    attribute* get_mutable(irs::type_info::type_id id) noexcept final {
-      if (id == irs::type<frequency>::id()) {
-        return &freq;
-      }
-      return nullptr;
-    }
-  };
 
   SkipReader<ReadSkip> skip_;
   attributes attrs_;
@@ -2452,15 +2452,14 @@ void wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(
     ReadState<FieldTraits>(next, in);
 
     if constexpr (FieldTraits::frequency()) {
-      auto& max_block_score = skip_scores_[level];
-      max_block_score = score_buffer::read(in);
+      ctx_.freq.value = skip_score_stats::read(in);
+      func_(&skip_scores_[level]);
     }
   } else {
      // stream exhausted
      next.doc = doc_limits::eof();
      if constexpr (FieldTraits::frequency()) {
-       auto& max_block_score = skip_scores_[level];
-       max_block_score = std::numeric_limits<score_buffer::value_type>::max();
+       skip_scores_[level] = std::numeric_limits<score_t>::max();
      }
   }
 }
@@ -3342,6 +3341,7 @@ class postings_reader final: public postings_reader_base {
   virtual irs::doc_iterator::ptr wanderator(
       IndexFeatures field_features,
       IndexFeatures required_features,
+      [[maybe_unused]] const ScoreFunctionFactory& factory,
       const term_meta& meta) override {
     if constexpr (FormatTraits::wand()) {
       if (meta.docs_count <= FormatTraits::block_size() ||
@@ -3354,9 +3354,9 @@ class postings_reader final: public postings_reader_base {
 
       return iterator_impl(
           field_features, required_features,
-          [&meta, this]<typename IteratorTraits, typename FieldTraits>() {
+          [&meta, &factory, this]<typename IteratorTraits, typename FieldTraits>() {
             auto it = memory::make_managed<::wanderator<
-                IteratorTraits, FieldTraits>>();
+                IteratorTraits, FieldTraits>>(factory);
 
             it->prepare(meta, doc_in_.get(), pos_in_.get(), pay_in_.get());
 

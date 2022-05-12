@@ -47,9 +47,17 @@ doc_iterator::ptr term_query::execute(const sub_reader& rdr, const Order& ord,
   auto* reader = state->reader;
   assert(reader);
 
-  auto docs = (mode == ExecutionMode::kTop)
-                  ? reader->wanderator(*state->cookie, ord.features())
-                  : reader->postings(*state->cookie, ord.features());
+  auto docs =
+      (mode == ExecutionMode::kTop && !ord.empty())
+          ? reader->wanderator(
+                *state->cookie,
+                [&, bucket = ord.buckets().front().bucket.get()](
+                    const attribute_provider& attrs) -> ScoreFunction {
+                  return bucket->prepare_scorer(rdr, *state->reader,
+                                                stats_.c_str(), attrs, boost());
+                },
+                ord.features())
+          : reader->postings(*state->cookie, ord.features());
   assert(docs);
 
   if (!ord.empty()) {

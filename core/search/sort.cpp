@@ -71,32 +71,11 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
   return {std::move(buckets), stats_size, features};
 }
 
-void DefaultScore(score_ctx* ctx, score_t* res) noexcept {
-  assert(res);
-  // FIXME(gnusi): use std::bit_cast when available
-  std::memset(res, 0, reinterpret_cast<size_t>(ctx));
-}
-
 }  // namespace
 
 namespace iresearch {
 
 REGISTER_ATTRIBUTE(filter_boost);
-
-/*static*/ const score_f ScoreFunction::kDefault{&::DefaultScore};
-
-ScoreFunction::ScoreFunction() noexcept : func_{kDefault} {}
-
-ScoreFunction::ScoreFunction(ScoreFunction&& rhs) noexcept
-    : ctx_(std::move(rhs.ctx_)), func_(std::exchange(rhs.func_, kDefault)) {}
-
-ScoreFunction& ScoreFunction::operator=(ScoreFunction&& rhs) noexcept {
-  if (this != &rhs) {
-    ctx_ = std::move(rhs.ctx_);
-    func_ = std::exchange(rhs.func_, kDefault);
-  }
-  return *this;
-}
 
 sort::sort(const type_info& type) noexcept : type_(type.id()) {}
 

@@ -731,7 +731,13 @@ void assert_docs(
 
   assert_docs(
     expected_term.postings(requested_features),
-    [&]() { return actual_terms.wanderator(*actual_cookie, requested_features); });
+    [&]() {
+      auto factory = [](const irs::attribute_provider&) {
+        // FIXME(gnusi)
+        return irs::ScoreFunction::Default(1);
+      };
+      return actual_terms.wanderator(*actual_cookie, std::move(factory), requested_features);
+    });
 
   // FIXME(gnusi): check bit_union
 }
