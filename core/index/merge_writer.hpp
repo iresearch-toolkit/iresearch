@@ -39,7 +39,7 @@ struct tracking_directory;
 struct sub_reader;
 class comparer;
 
-class merge_writer: public util::noncopyable {
+class merge_writer : public util::noncopyable {
  public:
   typedef std::shared_ptr<const irs::sub_reader> sub_reader_ptr;
   typedef std::function<bool()> flush_progress_t;
@@ -47,22 +47,21 @@ class merge_writer: public util::noncopyable {
   struct reader_ctx {
     explicit reader_ctx(sub_reader_ptr reader) noexcept;
 
-    sub_reader_ptr reader; // segment reader
-    std::vector<doc_id_t> doc_id_map; // FIXME use bitpacking vector
-    std::function<doc_id_t(doc_id_t)> doc_map; // mapping function
-  }; // reader_ctx
+    sub_reader_ptr reader;                      // segment reader
+    std::vector<doc_id_t> doc_id_map;           // FIXME use bitpacking vector
+    std::function<doc_id_t(doc_id_t)> doc_map;  // mapping function
+  };                                            // reader_ctx
 
   merge_writer() noexcept;
 
-  explicit merge_writer(
-      directory& dir,
-      const column_info_provider_t& column_info,
-      const feature_info_provider_t& feature_info,
-      const comparer* comparator = nullptr) noexcept
-    : dir_(dir),
-      column_info_(&column_info),
-      feature_info_(&feature_info),
-      comparator_(comparator) {
+  explicit merge_writer(directory& dir,
+                        const column_info_provider_t& column_info,
+                        const feature_info_provider_t& feature_info,
+                        const comparer* comparator = nullptr) noexcept
+      : dir_(dir),
+        column_info_(&column_info),
+        feature_info_(&feature_info),
+        comparator_(comparator) {
     assert(column_info);
   }
   merge_writer(merge_writer&&) = default;
@@ -80,15 +79,12 @@ class merge_writer: public util::noncopyable {
     readers_.emplace_back(reader);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief flush all of the added readers into a single segment
-  /// @param segment the segment that was flushed
-  /// @param progress report flush progress (abort if 'progress' returns false)
-  /// @return merge successful
-  //////////////////////////////////////////////////////////////////////////////
-  bool flush(
-    index_meta::index_segment_t& segment,
-    const flush_progress_t& progress = {});
+  // Flush all of the added readers into a single segment.
+  // `segment` the segment that was flushed.
+  // `progress` report flush progress (abort if 'progress' returns false).
+  // Return merge successful.
+  bool flush(index_meta::index_segment_t& segment,
+             const flush_progress_t& progress = {});
 
   const reader_ctx& operator[](size_t i) const noexcept {
     assert(i < readers_.size());
@@ -96,32 +92,25 @@ class merge_writer: public util::noncopyable {
   }
 
   // reserve enough space to hold 'size' readers
-  void reserve(size_t size) {
-    readers_.reserve(size);
-  }
+  void reserve(size_t size) { readers_.reserve(size); }
 
  private:
-  bool flush_sorted(
-    tracking_directory& dir,
-    index_meta::index_segment_t& segment,
-    const flush_progress_t& progress
-  );
+  bool flush_sorted(tracking_directory& dir,
+                    index_meta::index_segment_t& segment,
+                    const flush_progress_t& progress);
 
-  bool flush(
-    tracking_directory& dir,
-    index_meta::index_segment_t& segment,
-    const flush_progress_t& progress
-  );
+  bool flush(tracking_directory& dir, index_meta::index_segment_t& segment,
+             const flush_progress_t& progress);
 
   directory& dir_;
   std::vector<reader_ctx> readers_;
   const column_info_provider_t* column_info_;
   const feature_info_provider_t* feature_info_;
   const comparer* comparator_;
-}; // merge_writer
+};
 
 static_assert(std::is_nothrow_move_constructible_v<merge_writer>);
 
-}
+}  // namespace iresearch
 
 #endif

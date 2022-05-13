@@ -86,7 +86,7 @@ class sorted_europarl_doc_template : public tests::europarl_doc_template {
 }; // sorted_europal_doc_template
 
 struct string_comparer : irs::comparer {
-  virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
+  virtual bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {
     if (lhs.empty() && rhs.empty()) {
       return false;
     } else if (rhs.empty()) {
@@ -103,7 +103,7 @@ struct string_comparer : irs::comparer {
 };
 
 struct long_comparer : irs::comparer {
-  virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
+  virtual bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {
     if (lhs.null() && rhs.null()) {
       return false;
     } else if (rhs.null()) {
