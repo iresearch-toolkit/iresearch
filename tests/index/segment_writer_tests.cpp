@@ -132,7 +132,7 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
   } field;
 
   struct comparator final : irs::comparer {
-    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
+    virtual bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const noexcept override {
       return lhs < rhs;
     }
   } less;
@@ -245,7 +245,7 @@ TEST_F(segment_writer_tests, memory_store_sorted_field) {
   } field;
 
   struct comparator final : irs::comparer {
-    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
+    virtual bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const noexcept override {
       return lhs < rhs;
     }
   } less;
@@ -294,7 +294,7 @@ TEST_F(segment_writer_tests, memory_store_field_sorted) {
   } field;
 
   struct comparator final : irs::comparer {
-    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
+    virtual bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const noexcept override {
       return lhs < rhs;
     }
   } less;
