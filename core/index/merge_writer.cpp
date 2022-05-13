@@ -1092,12 +1092,12 @@ class SortingCompoundDocIterator : util::noncopyable {
       assert(lhs < itrs_.size());
       assert(rhs < itrs_.size());
 
-      const auto& lhs_it = itrs_[lhs];
-      const auto& rhs_it = itrs_[rhs];
+      const auto& [lhs_it, lhs_doc, lhs_pay] = itrs_[lhs];
+      const auto& [rhs_it, rhs_doc, rhs_pay] = itrs_[rhs];
 
       // FIXME(gnusi): Consider changing comparator to 3-way comparison
-      if (const bytes_ref lhs_value = lhs_it.payload->value,
-          rhs_value = rhs_it.payload->value;
+      if (const bytes_ref lhs_value = lhs_pay->value,
+          rhs_value = rhs_pay->value;
           (*less_)(rhs_value, lhs_value)) {
         return true;
       } else if ((*less_)(lhs_value, rhs_value)) {
@@ -1105,11 +1105,8 @@ class SortingCompoundDocIterator : util::noncopyable {
       }
 
       // tie braker to avoid splitting document blocks
-      if (lhs_it.it.get() == rhs_it.it.get()) {
-        return lhs_it.doc->value < rhs_it.doc->value;
-      }
-
-      return lhs_it.it.get() < rhs_it.it.get();
+      return lhs_it < rhs_it ||
+             (lhs_it < rhs_it && lhs_doc->value < rhs_doc->value);
     }
 
    private:
