@@ -122,6 +122,7 @@ set(IResearch_core_sources
   ./search/bitset_doc_iterator.cpp
   ./search/filter.cpp
   ./search/term_filter.cpp
+  ./search/nested_filter.cpp
   ./search/terms_filter.cpp
   ./search/prefix_filter.cpp
   ./search/range_filter.cpp
@@ -209,6 +210,7 @@ set(IResearch_core_headers
   ./search/cost.hpp
   ./search/filter.hpp
   ./search/term_filter.hpp
+  ./search/nested_filter.hpp
   ./search/phrase_filter.hpp
   ./search/same_position_filter.hpp
   ./search/prefix_filter.hpp
