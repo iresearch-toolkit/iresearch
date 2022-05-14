@@ -22,7 +22,12 @@
 
 #include "nested_filter.hpp"
 
+#include <tuple>
+
 #include "analysis/token_attributes.hpp"
+#include "search/cost.hpp"
+#include "search/score.hpp"
+#include "utils/frozen_attributes.hpp"
 #include "utils/type_limits.hpp"
 
 namespace {
@@ -33,35 +38,38 @@ class ChildToParentJoin final : public doc_iterator {
  public:
   ChildToParentJoin(doc_iterator::ptr&& parent,
                     doc_iterator::ptr&& child) noexcept
-      : parent_{std::move(parent)},
-        child_{std::move(child)},
-        parent_doc_{irs::get<document>(*parent_)} {
+      : parent_{std::move(parent)}, child_{std::move(child)} {
     assert(parent_);
     assert(child_);
+
+    // FIXME(gnusi): cost, score
+
+    std::get<attribute_ptr<document>>(attrs_) =
+        irs::get_mutable<document>(parent_.get());
   }
 
-  doc_id_t value() const noexcept override { return parent_doc_->value; }
+  doc_id_t value() const noexcept override {
+    return std::get<attribute_ptr<document>>(attrs_).ptr->value;
+  }
 
   attribute* get_mutable(irs::type_info::type_id id) override {
-    if (irs::type<document>::id() == id) {
-      return const_cast<document*>(parent_doc_);
-    }
-
-    return child_->get_mutable(id);
+    return irs::get_mutable(attrs_, id);
   }
 
-  doc_id_t seek(doc_id_t target) override;
-  bool next() override;
+  doc_id_t seek(doc_id_t target) override {
+    const auto child = child_->seek(target);
+    return parent_->seek(child);
+  }
+
+  bool next() override { return !doc_limits::eof(seek(value() + 1)); }
 
  private:
+  using attributes = std::tuple<attribute_ptr<document>, cost, score>;
+
   doc_iterator::ptr parent_;
   doc_iterator::ptr child_;
-  const document* parent_doc_;
+  attributes attrs_;
 };
-
-doc_id_t ChildToParentJoin::seek(doc_id_t target) { return doc_limits::eof(); }
-
-bool ChildToParentJoin::next() { return false; }
 
 class ByNesterQuery final : public filter::prepared {
  public:
