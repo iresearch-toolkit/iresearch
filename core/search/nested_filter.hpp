@@ -38,6 +38,9 @@ struct ByNestedOptions {
   // Child filter.
   filter::ptr child;
 
+  // Score merge type.
+  sort::MergeType merge_type{sort::MergeType::AGGREGATE};
+
   bool operator==(const ByNestedOptions& rhs) const noexcept {
     auto equal = [](const filter* lhs, const filter* rhs) noexcept {
       if (!lhs && !rhs) {
@@ -51,7 +54,8 @@ struct ByNestedOptions {
       return (*lhs) == (*rhs);
     };
 
-    return equal(parent.get(), rhs.parent.get()) &&
+    return merge_type == rhs.merge_type &&
+           equal(parent.get(), rhs.parent.get()) &&
            equal(child.get(), rhs.child.get());
   }
 
@@ -60,7 +64,7 @@ struct ByNestedOptions {
     if (child) {
       hash = hash_combine(hash, child->hash());
     }
-    return hash;
+    return hash_combine(hash, merge_type);
   }
 };
 

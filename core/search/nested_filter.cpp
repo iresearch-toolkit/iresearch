@@ -27,6 +27,7 @@
 #include "analysis/token_attributes.hpp"
 #include "search/cost.hpp"
 #include "search/score.hpp"
+#include "search/sort.hpp"
 #include "utils/frozen_attributes.hpp"
 #include "utils/type_limits.hpp"
 
@@ -34,18 +35,28 @@ namespace {
 
 using namespace irs;
 
-class ChildToParentJoin final : public doc_iterator {
+template<typename Merger>
+class ChildToParentJoin final : public doc_iterator,
+                                private Merger,
+                                private ScoreContext {
  public:
-  ChildToParentJoin(doc_iterator::ptr&& parent,
-                    doc_iterator::ptr&& child) noexcept
-      : parent_{std::move(parent)}, child_{std::move(child)} {
+  ChildToParentJoin(doc_iterator::ptr&& parent, doc_iterator::ptr&& child,
+                    Merger&& merger) noexcept
+      : Merger{std::move(merger)},
+        parent_{std::move(parent)},
+        child_{std::move(child)} {
     assert(parent_);
     assert(child_);
 
-    // FIXME(gnusi): cost, score
+    std::get<attribute_ptr<cost>>(attrs_) =
+        irs::get_mutable<cost>(child_.get());
 
     std::get<attribute_ptr<document>>(attrs_) =
         irs::get_mutable<document>(parent_.get());
+
+    if constexpr (HasScore<Merger>()) {
+      PrepareScore();
+    }
   }
 
   doc_id_t value() const noexcept override {
@@ -64,17 +75,57 @@ class ChildToParentJoin final : public doc_iterator {
   bool next() override { return !doc_limits::eof(seek(value() + 1)); }
 
  private:
-  using attributes = std::tuple<attribute_ptr<document>, cost, score>;
+  using attributes =
+      std::tuple<attribute_ptr<document>, attribute_ptr<cost>, score>;
+
+  void PrepareScore();
 
   doc_iterator::ptr parent_;
   doc_iterator::ptr child_;
   attributes attrs_;
+  const score* child_score_;
+  const document* child_doc_;
 };
+
+template<typename Merger>
+void ChildToParentJoin<Merger>::PrepareScore() {
+  assert(Merger::size());
+
+  auto& score = std::get<irs::score>(attrs_);
+  child_score_ = irs::get<irs::score>(*child_);
+  child_doc_ = irs::get<document>(*child_);
+
+  if (!child_score_ || !child_doc_) {
+    score = ScoreFunction::Default(Merger::size());
+    return;
+  }
+
+  score.Reset(this, [](ScoreContext* ctx, score_t* res) {
+    assert(ctx);
+    assert(res);
+    auto& self = static_cast<ChildToParentJoin&>(*ctx);
+    auto& merger = static_cast<Merger&>(self);
+
+    auto& child = *self.child_;
+    const auto parent_doc = self.value();
+    const auto* child_doc = self.child_doc_;
+    const auto& child_score = *self.child_score_;
+
+    child_score(res);
+    while (child.next() && child_doc->value < parent_doc) {
+      child_score(merger.temp());
+      merger(res, merger.temp());
+    }
+  });
+}
 
 class ByNesterQuery final : public filter::prepared {
  public:
-  ByNesterQuery(prepared::ptr&& parent, prepared::ptr&& child) noexcept
-      : parent_{std::move(parent)}, child_{std::move(child)} {
+  ByNesterQuery(prepared::ptr&& parent, prepared::ptr&& child,
+                sort::MergeType merge_type) noexcept
+      : parent_{std::move(parent)},
+        child_{std::move(child)},
+        merge_type_{merge_type} {
     assert(parent_);
     assert(child_);
   }
@@ -86,6 +137,7 @@ class ByNesterQuery final : public filter::prepared {
  private:
   prepared::ptr parent_;
   prepared::ptr child_;
+  sort::MergeType merge_type_;
 };
 
 doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
@@ -103,8 +155,12 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
     return doc_iterator::empty();
   }
 
-  return memory::make_managed<ChildToParentJoin>(std::move(parent),
-                                                 std::move(child));
+  return ResoveMergeType(
+      merge_type_, ord.buckets().size(),
+      [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+        return memory::make_managed<ChildToParentJoin<A>>(
+            std::move(parent), std::move(child), std::move(aggregator));
+      });
 }
 
 }  // namespace
@@ -131,7 +187,8 @@ filter::prepared::ptr ByNestedFilter::prepare(
   }
 
   return memory::make_managed<ByNesterQuery>(std::move(prepared_parent),
-                                             std::move(prepared_child));
+                                             std::move(prepared_child),
+                                             options().merge_type);
 }
 
 }  // namespace iresearch
