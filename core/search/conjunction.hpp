@@ -95,8 +95,8 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
           // sort subnodes in ascending order by their cost
           std::sort(std::begin(itrs), std::end(itrs),
                     [](const auto& lhs, const auto& rhs) {
-                      return cost::extract(lhs, cost::MAX) <
-                             cost::extract(rhs, cost::MAX);
+                      return cost::extract(lhs, cost::kMax) <
+                             cost::extract(rhs, cost::kMax);
                     });
 #if defined(__GNUC__) && (__GNUC__ < 11)
           // Circumvent GCC10 compilation issue.

@@ -1411,7 +1411,7 @@ TEST(boolean_query_estimation, and_filter) {
       }
     }
 
-    ASSERT_EQ(decltype(irs::cost::MAX)(irs::cost::MAX),
+    ASSERT_EQ(decltype(irs::cost::kMax)(irs::cost::kMax),
               irs::cost::extract(*docs));
   }
 

@@ -38,7 +38,7 @@ class cost final : public attribute {
 
   static constexpr string_ref type_name() noexcept { return "iresearch::cost"; }
 
-  static constexpr cost_t MAX = std::numeric_limits<cost_t>::max();
+  static constexpr cost_t kMax = std::numeric_limits<cost_t>::max();
 
   cost() = default;
 
@@ -51,7 +51,7 @@ class cost final : public attribute {
   // Returns a value of the "cost" attribute in the specified "src"
   // collection, or "def" value if there is no "cost" attribute in "src".
   template<typename Provider>
-  static cost_t extract(const Provider& src, cost_t def = MAX) noexcept {
+  static cost_t extract(const Provider& src, cost_t def = kMax) noexcept {
     if (auto* attr = irs::get<irs::cost>(src); attr) {
       return attr->estimate();
     } else {
