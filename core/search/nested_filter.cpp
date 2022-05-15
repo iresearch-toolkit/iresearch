@@ -95,7 +95,8 @@ void ChildToParentJoin<Merger>::PrepareScore() {
   child_score_ = irs::get<irs::score>(*child_);
   child_doc_ = irs::get<document>(*child_);
 
-  if (!child_score_ || !child_doc_) {
+  if (!child_doc_ || !child_score_ ||
+      *child_score_ == ScoreFunction::kDefault) {
     score = ScoreFunction::Default(Merger::size());
     return;
   }
