@@ -28,6 +28,7 @@
 #include "index/index_writer.hpp"
 #include "store/directory_cleaner.hpp"
 #include "store/memory_directory.hpp"
+#include "search/term_filter.hpp"
 #include "utils/directory_utils.hpp"
 
 using namespace std::chrono_literals;
@@ -35,6 +36,13 @@ using namespace std::chrono_literals;
 namespace {
 
 using namespace irs;
+
+auto MakeByTerm(std::string_view name, std::string_view value) {
+  auto filter = std::make_unique<irs::by_term>();
+  *filter->mutable_field() = name;
+  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  return filter;
+}
 
 directory_cleaner::removal_acceptor_t remove_except_current_segments(
     const directory& dir, const format& codec) {
