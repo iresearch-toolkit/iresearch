@@ -38,7 +38,7 @@ using namespace irs;
 template<typename Merger>
 class ChildToParentJoin final : public doc_iterator,
                                 private Merger,
-                                private ScoreContext {
+                                private score_ctx {
  public:
   ChildToParentJoin(doc_iterator::ptr&& parent, doc_iterator::ptr&& child,
                     Merger&& merger) noexcept
@@ -100,7 +100,7 @@ void ChildToParentJoin<Merger>::PrepareScore() {
     return;
   }
 
-  score.Reset(this, [](ScoreContext* ctx, score_t* res) {
+  score.Reset(this, [](score_ctx* ctx, score_t* res) {
     assert(ctx);
     assert(res);
     auto& self = static_cast<ChildToParentJoin&>(*ctx);
