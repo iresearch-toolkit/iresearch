@@ -60,6 +60,7 @@ set(IReSearch_tests_sources
   ./index/segment_writer_tests.cpp
   ./index/consolidation_policy_tests.cpp
   ./search/empty_filter_tests.cpp
+  ./search/nested_filter_test.cpp
   ./search/granular_range_filter_tests.cpp
   ./search/wildcard_filter_test.cpp
   ./search/levenshtein_filter_test.cpp

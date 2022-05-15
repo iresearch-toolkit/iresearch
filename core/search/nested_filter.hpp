@@ -43,15 +43,7 @@ struct ByNestedOptions {
 
   bool operator==(const ByNestedOptions& rhs) const noexcept {
     auto equal = [](const filter* lhs, const filter* rhs) noexcept {
-      if (!lhs && !rhs) {
-        return true;
-      }
-
-      if (lhs || rhs) {
-        return false;
-      }
-
-      return (*lhs) == (*rhs);
+      return ((!lhs && !rhs) || (lhs && rhs && *lhs == *rhs));
     };
 
     return merge_type == rhs.merge_type &&
