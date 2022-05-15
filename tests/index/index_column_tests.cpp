@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
-#include "iql/query_builder.hpp"
 #include "utils/lz4compression.hpp"
 #include "store/memory_directory.hpp"
 

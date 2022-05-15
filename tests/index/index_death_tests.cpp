@@ -27,7 +27,6 @@
 #include "search/term_filter.hpp"
 #include "store/memory_directory.hpp"
 #include "utils/index_utils.hpp"
-#include "iql/query_builder.hpp"
 
 namespace {
 

@@ -26,7 +26,6 @@
 #include "index/doc_generator.hpp"
 #include "index/index_tests.hpp"
 #include "index/index_writer.hpp"
-#include "iql/query_builder.hpp"
 #include "store/directory_cleaner.hpp"
 #include "store/memory_directory.hpp"
 #include "utils/directory_utils.hpp"

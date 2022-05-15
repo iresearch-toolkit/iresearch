@@ -99,7 +99,7 @@ class And final : public boolean_filter {
 };
 
 // Represents disjunction
-class Or : public boolean_filter {  // FIXME: remove iql and make final
+class Or final : public boolean_filter {
  public:
   static ptr make();
 

@@ -26,7 +26,6 @@
 #include "analysis/token_attributes.hpp"
 #include "index/doc_generator.hpp"
 #include "index/index_tests.hpp"
-#include "iql/query_builder.hpp"
 #include "search/cost.hpp"
 #include "store/memory_directory.hpp"
 #include "tests_shared.hpp"

@@ -23,7 +23,6 @@
 
 #include "index/comparer.hpp"
 #include "index/norm.hpp"
-#include "iql/query_builder.hpp"
 #include "utils/index_utils.hpp"
 
 #include "tests_shared.hpp"

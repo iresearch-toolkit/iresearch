@@ -24,7 +24,6 @@
 
 #include "index/norm.hpp"
 #include "search/term_filter.hpp"
-#include "iql/query_builder.hpp"
 #include "search/cost.hpp"
 #include "utils/index_utils.hpp"
 

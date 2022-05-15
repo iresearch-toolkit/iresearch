@@ -23,7 +23,6 @@
 
 #include "index_tests.hpp"
 #include "formats/formats_10.hpp"
-#include "iql/query_builder.hpp"
 #include "index/norm.hpp"
 #include "index/merge_writer.hpp"
 #include "index/comparer.hpp"

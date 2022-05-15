@@ -27,7 +27,7 @@
 
 #include "index/field_meta.hpp"
 #include "index/norm.hpp"
-#include "iql/query_builder.hpp"
+#include "search/term_filter.hpp"
 #include "store/memory_directory.hpp"
 #include "tests_shared.hpp"
 #include "utils/delta_compression.hpp"
@@ -60,6 +60,14 @@ bool visit(const irs::column_reader& reader,
 
   return true;
 }
+
+auto MakeByTerm(std::string_view name, std::string_view value) {
+  auto filter = std::make_unique<irs::by_term>();
+  *filter->mutable_field() = name;
+  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  return filter;
+}
+
 }  // namespace
 
 namespace tests {
@@ -248,12 +256,12 @@ class index_test_case : public tests::index_test_base {
 
       // add insert/remove/import
       {
-        auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
+        auto query_doc4 = MakeByTerm("name", "D");
         auto reader = irs::directory_reader::open(data_dir);
 
         ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                            doc6->stored.begin(), doc6->stored.end()));
-        writer->documents().remove(std::move(query_doc4.filter));
+        writer->documents().remove(std::move(query_doc4));
         ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir)));
       }
 
@@ -2528,7 +2536,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
   }
 
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     std::thread thread0([&writer, docs, &first_doc]() {
@@ -2554,7 +2562,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
     std::thread thread2([&writer, &query_doc1, &first_doc]() {
       while (!first_doc)
         ;  // busy-wait until first document loaded
-      writer->documents().remove(std::move(query_doc1.filter));
+      writer->documents().remove(std::move(query_doc1));
     });
 
     thread0.join();
@@ -2639,7 +2647,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
     writer->commit();
 
     // remove docs
-    writer->documents().remove(*(query_doc1_doc2.filter.get()));
+    writer->documents().remove(*(query_doc1_doc2.get()));
 
     // re-add docs into a single segment
     {
@@ -2704,7 +2712,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
     writer->commit();
 
     // remove docs
-    writer->documents().remove(*(query_doc1_doc2.filter.get()));
+    writer->documents().remove(*(query_doc1_doc2.get()));
 
     // re-add docs into a single segment
     {
@@ -2822,7 +2830,7 @@ TEST_P(index_test_case, document_context) {
 
   // during replace across commit blocks (single doc)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -2834,7 +2842,7 @@ TEST_P(index_test_case, document_context) {
 
     std::thread thread0([&writer, &query_doc1, &field]() -> void {
       writer->documents()
-          .replace(*query_doc1.filter)
+          .replace(*query_doc1)
           .insert<irs::Action::STORE>(field);
     });
 
@@ -2872,7 +2880,7 @@ TEST_P(index_test_case, document_context) {
 
   // during replace across commit blocks (functr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -2885,7 +2893,7 @@ TEST_P(index_test_case, document_context) {
 
     std::thread thread0([&writer, &query_doc1, &field]() -> void {
       writer->documents().replace(
-          *query_doc1.filter,
+          *query_doc1,
           [&field](irs::segment_writer::document& doc) -> bool {
             doc.insert<irs::Action::STORE>(field);
             return false;
@@ -2970,7 +2978,7 @@ TEST_P(index_test_case, document_context) {
 
   // holding document_context after remove across commit does not block
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -2981,7 +2989,7 @@ TEST_P(index_test_case, document_context) {
     auto ctx = writer->documents();
     auto field_cond_lock =
         irs::make_unique_lock(field.cond_mutex);  // wait for insertion to start
-    ctx.remove(*(query_doc1.filter));
+    ctx.remove(*(query_doc1));
     std::atomic<bool> commit(false);  // FIXME TODO remove once segment_context
                                       // will not block flush_all()
     std::thread thread1([&writer, &field, &commit]() -> void {
@@ -3041,7 +3049,7 @@ TEST_P(index_test_case, document_context) {
   // holding document_context after replace across commit does not block (single
   // doc)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -3052,7 +3060,7 @@ TEST_P(index_test_case, document_context) {
         irs::make_unique_lock(field.cond_mutex);  // wait for insertion to start
 
     {
-      auto doc = ctx.replace(*(query_doc1.filter));
+      auto doc = ctx.replace(*(query_doc1));
       doc.insert<irs::Action::INDEX>(doc2->indexed.begin(),
                                      doc2->indexed.end());
       doc.insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
@@ -3115,7 +3123,7 @@ TEST_P(index_test_case, document_context) {
   // holding document_context after replace across commit does not block
   // (functr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -3124,7 +3132,7 @@ TEST_P(index_test_case, document_context) {
     auto ctx = writer->documents();
     auto field_cond_lock =
         irs::make_unique_lock(field.cond_mutex);  // wait for insertion to start
-    ctx.replace(*(query_doc1.filter),
+    ctx.replace(*(query_doc1),
                 [&doc2](irs::segment_writer::document& doc) -> bool {
                   doc.insert<irs::Action::INDEX>(doc2->indexed.begin(),
                                                  doc2->indexed.end());
@@ -3463,7 +3471,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback removals
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -3472,7 +3480,7 @@ TEST_P(index_test_case, document_context) {
     {
       auto ctx = writer->documents();
 
-      ctx.remove(*(query_doc1.filter));
+      ctx.remove(*(query_doc1));
       ctx.reset();
     }
 
@@ -3501,7 +3509,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback removals + some more
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -3510,7 +3518,7 @@ TEST_P(index_test_case, document_context) {
     {
       auto ctx = writer->documents();
 
-      ctx.remove(*(query_doc1.filter));
+      ctx.remove(*(query_doc1));
       ctx.reset();
       {
         auto doc = ctx.insert();
@@ -3550,8 +3558,8 @@ TEST_P(index_test_case, document_context) {
 
   // rollback removals split over multiple segment_writers
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
-    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
+    auto query_doc2 = MakeByTerm("name", "B");
     irs::index_writer::init_options options;
     options.segment_docs_max = 1;  // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
@@ -3569,7 +3577,7 @@ TEST_P(index_test_case, document_context) {
         ASSERT_TRUE(doc.insert<irs::Action::STORE>(doc2->stored.begin(),
                                                    doc2->stored.end()));
       }
-      ctx.remove(*(query_doc1.filter));
+      ctx.remove(*(query_doc1));
       {
         auto doc = ctx.insert();
         ASSERT_TRUE(doc.insert<irs::Action::INDEX>(doc3->indexed.begin(),
@@ -3577,7 +3585,7 @@ TEST_P(index_test_case, document_context) {
         ASSERT_TRUE(doc.insert<irs::Action::STORE>(doc3->stored.begin(),
                                                    doc3->stored.end()));
       }
-      ctx.remove(*(query_doc2.filter));
+      ctx.remove(*(query_doc2));
       ctx.reset();
       {
         auto doc = ctx.insert();
@@ -3636,7 +3644,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replace (single doc)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -3646,7 +3654,7 @@ TEST_P(index_test_case, document_context) {
       auto ctx = writer->documents();
 
       {
-        auto doc = ctx.replace(*(query_doc1.filter));
+        auto doc = ctx.replace(*(query_doc1));
         ASSERT_TRUE(doc.insert<irs::Action::INDEX>(doc2->indexed.begin(),
                                                    doc2->indexed.end()));
         ASSERT_TRUE(doc.insert<irs::Action::STORE>(doc2->stored.begin(),
@@ -3680,7 +3688,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replace (single doc) + some more
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -3690,7 +3698,7 @@ TEST_P(index_test_case, document_context) {
       auto ctx = writer->documents();
 
       {
-        auto doc = ctx.replace(*(query_doc1.filter));
+        auto doc = ctx.replace(*(query_doc1));
         ASSERT_TRUE(doc.insert<irs::Action::INDEX>(doc2->indexed.begin(),
                                                    doc2->indexed.end()));
         ASSERT_TRUE(doc.insert<irs::Action::STORE>(doc2->stored.begin(),
@@ -3735,8 +3743,8 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replacements (single doc) split over multiple segment_writers
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
-    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
+    auto query_doc2 = MakeByTerm("name", "B");
     irs::index_writer::init_options options;
     options.segment_docs_max = 1;  // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
@@ -3748,14 +3756,14 @@ TEST_P(index_test_case, document_context) {
       auto ctx = writer->documents();
 
       {
-        auto doc = ctx.replace(*(query_doc1.filter));
+        auto doc = ctx.replace(*(query_doc1));
         ASSERT_TRUE(doc.insert<irs::Action::INDEX>(doc2->indexed.begin(),
                                                    doc2->indexed.end()));
         ASSERT_TRUE(doc.insert<irs::Action::STORE>(doc2->stored.begin(),
                                                    doc2->stored.end()));
       }
       {
-        auto doc = ctx.replace(*(query_doc2.filter));
+        auto doc = ctx.replace(*(query_doc2));
         ASSERT_TRUE(doc.insert<irs::Action::INDEX>(doc3->indexed.begin(),
                                                    doc3->indexed.end()));
         ASSERT_TRUE(doc.insert<irs::Action::STORE>(doc3->stored.begin(),
@@ -3819,7 +3827,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replace (functr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -3828,7 +3836,7 @@ TEST_P(index_test_case, document_context) {
     {
       auto ctx = writer->documents();
 
-      ctx.replace(*(query_doc1.filter),
+      ctx.replace(*(query_doc1),
                   [&doc2](irs::segment_writer::document& doc) -> bool {
                     doc.insert<irs::Action::INDEX>(doc2->indexed.begin(),
                                                    doc2->indexed.end());
@@ -3864,7 +3872,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replace (functr) + some more
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -3873,7 +3881,7 @@ TEST_P(index_test_case, document_context) {
     {
       auto ctx = writer->documents();
 
-      ctx.replace(*(query_doc1.filter),
+      ctx.replace(*(query_doc1),
                   [&doc2](irs::segment_writer::document& doc) -> bool {
                     doc.insert<irs::Action::INDEX>(doc2->indexed.begin(),
                                                    doc2->indexed.end());
@@ -3920,8 +3928,8 @@ TEST_P(index_test_case, document_context) {
 
   // rollback replacements (functr) split over multiple segment_writers
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
-    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
+    auto query_doc2 = MakeByTerm("name", "B");
     irs::index_writer::init_options options;
     options.segment_docs_max = 1;  // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
@@ -3932,7 +3940,7 @@ TEST_P(index_test_case, document_context) {
     {
       auto ctx = writer->documents();
 
-      ctx.replace(*(query_doc1.filter),
+      ctx.replace(*(query_doc1),
                   [&doc2](irs::segment_writer::document& doc) -> bool {
                     doc.insert<irs::Action::INDEX>(doc2->indexed.begin(),
                                                    doc2->indexed.end());
@@ -3940,7 +3948,7 @@ TEST_P(index_test_case, document_context) {
                                                    doc2->stored.end());
                     return false;
                   });
-      ctx.replace(*(query_doc2.filter),
+      ctx.replace(*(query_doc2),
                   [&doc3](irs::segment_writer::document& doc) -> bool {
                     doc.insert<irs::Action::INDEX>(doc3->indexed.begin(),
                                                    doc3->indexed.end());
@@ -4456,14 +4464,14 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove 1st (as reference)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    writer->documents().remove(*(query_doc1.filter.get()));
+    writer->documents().remove(*(query_doc1.get()));
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -4489,14 +4497,14 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove 1st (as unique_ptr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    writer->documents().remove(std::move(query_doc1.filter));
+    writer->documents().remove(std::move(query_doc1));
     writer->documents().remove(
         std::unique_ptr<irs::filter>(nullptr));  // test nullptr filter ignored
     writer->commit();
@@ -4524,7 +4532,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove 1st (as shared_ptr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -4532,7 +4540,7 @@ TEST_P(index_test_case, doc_removal) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->documents().remove(
-        std::shared_ptr<irs::filter>(std::move(query_doc1.filter)));
+        std::shared_ptr<irs::filter>(std::move(query_doc1)));
     writer->documents().remove(
         std::shared_ptr<irs::filter>(nullptr));  // test nullptr filter ignored
     writer->commit();
@@ -4560,13 +4568,13 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: remove + add
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc2 = MakeByTerm("name", "B");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     writer->documents().remove(
-        std::move(query_doc2.filter));  // not present yet
+        std::move(query_doc2));  // not present yet
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
@@ -4598,12 +4606,12 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove + readd
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    writer->documents().remove(std::move(query_doc1.filter));
+    writer->documents().remove(std::move(query_doc1));
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
@@ -4631,8 +4639,8 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove, old segment: remove
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
-    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
+    auto query_doc2 = MakeByTerm("name", "B");
+    auto query_doc3 = MakeByTerm("name", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -4641,9 +4649,9 @@ TEST_P(index_test_case, doc_removal) {
                        doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
-    writer->documents().remove(std::move(query_doc3.filter));
+    writer->documents().remove(std::move(query_doc3));
     writer->commit();  // document mask with 'doc3' created
-    writer->documents().remove(std::move(query_doc2.filter));
+    writer->documents().remove(std::move(query_doc2));
     writer->commit();  // new document mask with 'doc2','doc3' created
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -4678,7 +4686,7 @@ TEST_P(index_test_case, doc_removal) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc1_doc2.filter));
+    writer->documents().remove(std::move(query_doc1_doc2));
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     writer->commit();
@@ -4706,7 +4714,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add, old segment: remove
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc2 = MakeByTerm("name", "B");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -4716,7 +4724,7 @@ TEST_P(index_test_case, doc_removal) {
     writer->commit();
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
-    writer->documents().remove(std::move(query_doc2.filter));
+    writer->documents().remove(std::move(query_doc2));
     writer->documents().remove(
         std::unique_ptr<irs::filter>(nullptr));  // test nullptr filter ignored
     writer->commit();
@@ -4780,7 +4788,7 @@ TEST_P(index_test_case, doc_removal) {
                        doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
-    writer->documents().remove(std::move(query_doc1_doc3.filter));
+    writer->documents().remove(std::move(query_doc1_doc3));
     writer->documents().remove(
         std::shared_ptr<irs::filter>(nullptr));  // test nullptr filter ignored
     writer->commit();
@@ -4836,7 +4844,7 @@ TEST_P(index_test_case, doc_removal) {
         irs::iql::query_builder().build("name==B||name==F||name==I", "C");
     auto query_doc3_doc7 =
         irs::iql::query_builder().build("name==C||name==G", "C");
-    auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
+    auto query_doc4 = MakeByTerm("name", "D");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -4847,7 +4855,7 @@ TEST_P(index_test_case, doc_removal) {
                        doc3->stored.begin(), doc3->stored.end()));  // C
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));  // D
-    writer->documents().remove(std::move(query_doc4.filter));
+    writer->documents().remove(std::move(query_doc4));
     writer->commit();
     ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
                        doc5->stored.begin(), doc5->stored.end()));  // E
@@ -4855,13 +4863,13 @@ TEST_P(index_test_case, doc_removal) {
                        doc6->stored.begin(), doc6->stored.end()));  // F
     ASSERT_TRUE(insert(*writer, doc7->indexed.begin(), doc7->indexed.end(),
                        doc7->stored.begin(), doc7->stored.end()));  // G
-    writer->documents().remove(std::move(query_doc3_doc7.filter));
+    writer->documents().remove(std::move(query_doc3_doc7));
     writer->commit();
     ASSERT_TRUE(insert(*writer, doc8->indexed.begin(), doc8->indexed.end(),
                        doc8->stored.begin(), doc8->stored.end()));  // H
     ASSERT_TRUE(insert(*writer, doc9->indexed.begin(), doc9->indexed.end(),
                        doc9->stored.begin(), doc9->stored.end()));  // I
-    writer->documents().remove(std::move(query_doc2_doc6_doc9.filter));
+    writer->documents().remove(std::move(query_doc2_doc6_doc9));
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -4946,12 +4954,12 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update (as reference)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_TRUE(update(*writer, *(query_doc1.filter.get()),
+    ASSERT_TRUE(update(*writer, *(query_doc1.get()),
                        doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
@@ -4979,12 +4987,12 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update (as unique_ptr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_TRUE(update(*writer, std::move(query_doc1.filter),
+    ASSERT_TRUE(update(*writer, std::move(query_doc1),
                        doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
@@ -5012,13 +5020,13 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update (as shared_ptr)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(update(
-        *writer, std::shared_ptr<irs::filter>(std::move(query_doc1.filter)),
+        *writer, std::shared_ptr<irs::filter>(std::move(query_doc1)),
         doc2->indexed.begin(), doc2->indexed.end(), doc2->stored.begin(),
         doc2->stored.end()));
     writer->commit();
@@ -5046,7 +5054,7 @@ TEST_P(index_test_case, doc_update) {
 
   // old segment update
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -5054,7 +5062,7 @@ TEST_P(index_test_case, doc_update) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
-    ASSERT_TRUE(update(*writer, std::move(query_doc1.filter),
+    ASSERT_TRUE(update(*writer, std::move(query_doc1),
                        doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     writer->commit();
@@ -5105,20 +5113,20 @@ TEST_P(index_test_case, doc_update) {
 
   // 3x updates (same segment)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
-    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
-    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
+    auto query_doc2 = MakeByTerm("name", "B");
+    auto query_doc3 = MakeByTerm("name", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_TRUE(update(*writer, std::move(query_doc1.filter),
+    ASSERT_TRUE(update(*writer, std::move(query_doc1),
                        doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    ASSERT_TRUE(update(*writer, std::move(query_doc2.filter),
+    ASSERT_TRUE(update(*writer, std::move(query_doc2),
                        doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
-    ASSERT_TRUE(update(*writer, std::move(query_doc3.filter),
+    ASSERT_TRUE(update(*writer, std::move(query_doc3),
                        doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
@@ -5146,23 +5154,23 @@ TEST_P(index_test_case, doc_update) {
 
   // 3x updates (different segments)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
-    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
-    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
+    auto query_doc2 = MakeByTerm("name", "B");
+    auto query_doc3 = MakeByTerm("name", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
-    ASSERT_TRUE(update(*writer, std::move(query_doc1.filter),
+    ASSERT_TRUE(update(*writer, std::move(query_doc1),
                        doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
-    ASSERT_TRUE(update(*writer, std::move(query_doc2.filter),
+    ASSERT_TRUE(update(*writer, std::move(query_doc2),
                        doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     writer->commit();
-    ASSERT_TRUE(update(*writer, std::move(query_doc3.filter),
+    ASSERT_TRUE(update(*writer, std::move(query_doc3),
                        doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
@@ -5190,13 +5198,13 @@ TEST_P(index_test_case, doc_update) {
 
   // no matching documnts
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc2 = MakeByTerm("name", "B");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
-    ASSERT_TRUE(update(*writer, std::move(query_doc2.filter),
+    ASSERT_TRUE(update(*writer, std::move(query_doc2),
                        doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(),
                        doc2->stored.end()));  // non-existent document
@@ -5225,18 +5233,18 @@ TEST_P(index_test_case, doc_update) {
 
   // update + delete (same segment)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc2 = MakeByTerm("name", "B");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    ASSERT_TRUE(update(*writer, *(query_doc2.filter), doc3->indexed.begin(),
+    ASSERT_TRUE(update(*writer, *(query_doc2), doc3->indexed.begin(),
                        doc3->indexed.end(), doc3->stored.begin(),
                        doc3->stored.end()));
     writer->documents().remove(
-        *(query_doc2.filter));  // remove no longer existent
+        *(query_doc2));  // remove no longer existent
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -5266,7 +5274,7 @@ TEST_P(index_test_case, doc_update) {
 
   // update + delete (different segments)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc2 = MakeByTerm("name", "B");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -5274,12 +5282,12 @@ TEST_P(index_test_case, doc_update) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
-    ASSERT_TRUE(update(*writer, *(query_doc2.filter), doc3->indexed.begin(),
+    ASSERT_TRUE(update(*writer, *(query_doc2), doc3->indexed.begin(),
                        doc3->indexed.end(), doc3->stored.begin(),
                        doc3->stored.end()));
     writer->commit();
     writer->documents().remove(
-        *(query_doc2.filter));  // remove no longer existent
+        *(query_doc2));  // remove no longer existent
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -5328,15 +5336,15 @@ TEST_P(index_test_case, doc_update) {
 
   // delete + update (same segment)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc2 = MakeByTerm("name", "B");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    writer->documents().remove(*(query_doc2.filter));
-    ASSERT_TRUE(update(*writer, *(query_doc2.filter), doc3->indexed.begin(),
+    writer->documents().remove(*(query_doc2));
+    ASSERT_TRUE(update(*writer, *(query_doc2), doc3->indexed.begin(),
                        doc3->indexed.end(), doc3->stored.begin(),
                        doc3->stored.end()));  // update no longer existent
     writer->commit();
@@ -5364,7 +5372,7 @@ TEST_P(index_test_case, doc_update) {
 
   // delete + update (different segments)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc2 = MakeByTerm("name", "B");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -5372,9 +5380,9 @@ TEST_P(index_test_case, doc_update) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
-    writer->documents().remove(*(query_doc2.filter));
+    writer->documents().remove(*(query_doc2));
     writer->commit();
-    ASSERT_TRUE(update(*writer, *(query_doc2.filter), doc3->indexed.begin(),
+    ASSERT_TRUE(update(*writer, *(query_doc2), doc3->indexed.begin(),
                        doc3->indexed.end(), doc3->stored.begin(),
                        doc3->stored.end()));  // update no longer existent
     writer->commit();
@@ -5402,19 +5410,19 @@ TEST_P(index_test_case, doc_update) {
 
   // delete + update then update (2nd - update of modified doc) (same segment)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
-    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
+    auto query_doc2 = MakeByTerm("name", "B");
+    auto query_doc3 = MakeByTerm("name", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    writer->documents().remove(*(query_doc2.filter));
-    ASSERT_TRUE(update(*writer, *(query_doc2.filter), doc3->indexed.begin(),
+    writer->documents().remove(*(query_doc2));
+    ASSERT_TRUE(update(*writer, *(query_doc2), doc3->indexed.begin(),
                        doc3->indexed.end(), doc3->stored.begin(),
                        doc3->stored.end()));
-    ASSERT_TRUE(update(*writer, *(query_doc3.filter), doc4->indexed.begin(),
+    ASSERT_TRUE(update(*writer, *(query_doc3), doc4->indexed.begin(),
                        doc4->indexed.end(), doc4->stored.begin(),
                        doc4->stored.end()));
     writer->commit();
@@ -5443,8 +5451,8 @@ TEST_P(index_test_case, doc_update) {
   // delete + update then update (2nd - update of modified doc) (different
   // segments)
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
-    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
+    auto query_doc2 = MakeByTerm("name", "B");
+    auto query_doc3 = MakeByTerm("name", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -5452,13 +5460,13 @@ TEST_P(index_test_case, doc_update) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
-    writer->documents().remove(*(query_doc2.filter));
+    writer->documents().remove(*(query_doc2));
     writer->commit();
-    ASSERT_TRUE(update(*writer, *(query_doc2.filter), doc3->indexed.begin(),
+    ASSERT_TRUE(update(*writer, *(query_doc2), doc3->indexed.begin(),
                        doc3->indexed.end(), doc3->stored.begin(),
                        doc3->stored.end()));
     writer->commit();
-    ASSERT_TRUE(update(*writer, *(query_doc3.filter), doc4->indexed.begin(),
+    ASSERT_TRUE(update(*writer, *(query_doc3), doc4->indexed.begin(),
                        doc4->indexed.end(), doc4->stored.begin(),
                        doc4->stored.end()));
     writer->commit();
@@ -5506,7 +5514,7 @@ TEST_P(index_test_case, doc_update) {
     auto doc2 = gen.next();
     auto doc3 = gen.next();
     auto doc4 = gen.next();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
 
     irs::index_writer::init_options opts;
 
@@ -5559,7 +5567,7 @@ TEST_P(index_test_case, doc_update) {
     ASSERT_FALSE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                         doc4->stored.begin(),
                         doc4->stored.end()));  // index features differ
-    ASSERT_FALSE(update(*writer, *(query_doc1.filter.get()),
+    ASSERT_FALSE(update(*writer, *(query_doc1.get()),
                         doc3->indexed.begin(), doc3->indexed.end(),
                         doc3->stored.begin(), doc3->stored.end()));
     writer->commit();
@@ -5591,13 +5599,13 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update with single-doc functr
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     writer->documents().replace(
-        *query_doc1.filter,
+        *query_doc1,
         [&doc2](irs::segment_writer::document& doc) -> bool {
           doc.insert<irs::Action::INDEX>(doc2->indexed.begin(),
                                          doc2->indexed.end());
@@ -5630,7 +5638,7 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update with multiple-doc functr
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
     std::vector<tests::document const*> docs = {doc2, doc3};
     size_t i = 0;
@@ -5638,7 +5646,7 @@ TEST_P(index_test_case, doc_update) {
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     writer->documents().replace(
-        *query_doc1.filter,
+        *query_doc1,
         [&docs, &i](irs::segment_writer::document& doc) -> bool {
           doc.insert<irs::Action::INDEX>(docs[i]->indexed.begin(),
                                          docs[i]->indexed.end());
@@ -5675,7 +5683,7 @@ TEST_P(index_test_case, doc_update) {
 
   // new segment update with multiple-doc functr + rollback due to exception
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
     std::vector<tests::document const*> docs = {doc2, doc3};
     size_t i = 0;
@@ -5683,7 +5691,7 @@ TEST_P(index_test_case, doc_update) {
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_ANY_THROW(writer->documents().replace(
-        *query_doc1.filter,
+        *query_doc1,
         [&docs, &i](irs::segment_writer::document& doc) -> bool {
           doc.insert<irs::Action::INDEX>(docs[i]->indexed.begin(),
                                          docs[i]->indexed.end());
@@ -5777,7 +5785,7 @@ TEST_P(index_test_case, import_reader) {
 
   // add a reader with 1 segment no live-docs
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     irs::memory_directory data_dir;
     auto data_writer =
         irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
@@ -5799,7 +5807,7 @@ TEST_P(index_test_case, import_reader) {
     ASSERT_TRUE(insert(*data_writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     data_writer->commit();
-    data_writer->documents().remove(std::move(query_doc1.filter));
+    data_writer->documents().remove(std::move(query_doc1));
     data_writer->commit();
     writer->commit();  // ensure the writer has an initial completed state
     ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir, codec())));
@@ -5868,7 +5876,7 @@ TEST_P(index_test_case, import_reader) {
 
   // add a reader with 1 sparse segment
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     irs::memory_directory data_dir;
     auto data_writer =
         irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
@@ -5878,7 +5886,7 @@ TEST_P(index_test_case, import_reader) {
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*data_writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    data_writer->documents().remove(std::move(query_doc1.filter));
+    data_writer->documents().remove(std::move(query_doc1));
     data_writer->commit();
     ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir, codec())));
     writer->commit();
@@ -5977,7 +5985,7 @@ TEST_P(index_test_case, import_reader) {
                        doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*data_writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
-    data_writer->documents().remove(std::move(query_doc2_doc3.filter));
+    data_writer->documents().remove(std::move(query_doc2_doc3));
     data_writer->commit();
     ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir, codec())));
     writer->commit();
@@ -6010,7 +6018,7 @@ TEST_P(index_test_case, import_reader) {
 
   // add a reader with 2 mixed segments
   {
-    auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
+    auto query_doc4 = MakeByTerm("name", "D");
     irs::memory_directory data_dir;
     auto data_writer =
         irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
@@ -6025,7 +6033,7 @@ TEST_P(index_test_case, import_reader) {
                        doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*data_writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
-    data_writer->documents().remove(std::move(query_doc4.filter));
+    data_writer->documents().remove(std::move(query_doc4));
     data_writer->commit();
     ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir, codec())));
     writer->commit();
@@ -6062,7 +6070,7 @@ TEST_P(index_test_case, import_reader) {
 
   // new: add + add + delete, old: import
   {
-    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc2 = MakeByTerm("name", "B");
     irs::memory_directory data_dir;
     auto data_writer =
         irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
@@ -6076,7 +6084,7 @@ TEST_P(index_test_case, import_reader) {
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     writer->documents().remove(
-        std::move(query_doc2.filter));  // should not match any documents
+        std::move(query_doc2));  // should not match any documents
     ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir, codec())));
     writer->commit();
 
@@ -6189,9 +6197,9 @@ TEST_P(index_test_case, refresh_reader) {
   // modify state (delete doc2)
   {
     auto writer = open_writer(irs::OM_APPEND);
-    auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+    auto query_doc2 = MakeByTerm("name", "B");
 
-    writer->documents().remove(std::move(query_doc2.filter));
+    writer->documents().remove(std::move(query_doc2));
     writer->commit();
   }
 
@@ -6326,9 +6334,9 @@ TEST_P(index_test_case, refresh_reader) {
 // modify state (delete doc1)
 {
   auto writer = open_writer(irs::OM_APPEND);
-  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+  auto query_doc1 = MakeByTerm("name", "A");
 
-  writer->documents().remove(std::move(query_doc1.filter));
+  writer->documents().remove(std::move(query_doc1));
   writer->commit();
 }
 
@@ -7374,8 +7382,8 @@ TEST_P(index_test_case, consolidate_single_segment) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
-    writer->documents().remove(*query_doc1.filter);
+    auto query_doc1 = MakeByTerm("name", "A");
+    writer->documents().remove(*query_doc1);
     writer->commit();
     ASSERT_EQ(
         3,
@@ -7649,7 +7657,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   // long running transaction + segment removal
   {
     SetUp();  // recreate directory
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
 
     tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
@@ -7710,7 +7718,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // segment 3
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
-    writer->documents().remove(*query_doc1.filter);
+    writer->documents().remove(*query_doc1);
     writer->commit();                                  // commit transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));  // segments_2
 
@@ -7813,7 +7821,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   // long running transaction + document removal
   {
     SetUp();  // recreate directory
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
 
     tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
@@ -7882,7 +7890,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
     // remove doc1 in background
-    writer->documents().remove(*query_doc1.filter);
+    writer->documents().remove(*query_doc1);
     writer->commit();                                  // commit transaction
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir));  // unused column store
 
@@ -8044,7 +8052,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
 
     // remove doc1 in background
-    writer->documents().remove(*query_doc1_doc4.filter);
+    writer->documents().remove(*query_doc1_doc4);
     writer->commit();                                  // commit transaction
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir));  //  unused column store
 
@@ -9240,7 +9248,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes
   {
     SetUp();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -9264,7 +9272,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
-    writer->documents().remove(*query_doc1.filter);
+    writer->documents().remove(*query_doc1);
     ASSERT_TRUE(writer->begin());  // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
@@ -9412,7 +9420,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
-    writer->documents().remove(*query_doc1_doc4.filter);
+    writer->documents().remove(*query_doc1_doc4);
     ASSERT_TRUE(writer->begin());  // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
@@ -9539,8 +9547,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with delete committed and pending
   {
     SetUp();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
-    auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
+    auto query_doc4 = MakeByTerm("name", "D");
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
@@ -9565,7 +9573,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
-    writer->documents().remove(*query_doc1.filter);
+    writer->documents().remove(*query_doc1);
     ASSERT_TRUE(writer->begin());  // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
@@ -9594,7 +9602,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(
         irs::index_utils::consolidate_count())));
 
-    writer->documents().remove(*query_doc4.filter);
+    writer->documents().remove(*query_doc4);
 
     writer->commit();  // commit pending merge + delete
     ASSERT_EQ(count + 8, irs::directory_cleaner::clean(dir()));
@@ -9694,10 +9702,10 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     writer->commit();
 
     // remove one doc from new and old segment to make conolidation do something
-    auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
-    auto query_doc5 = irs::iql::query_builder().build("name==E", "C");
-    writer->documents().remove(*query_doc3.filter);
-    writer->documents().remove(*query_doc5.filter);
+    auto query_doc3 = MakeByTerm("name", "C");
+    auto query_doc5 = MakeByTerm("name", "E");
+    writer->documents().remove(*query_doc3);
+    writer->documents().remove(*query_doc5);
     writer->commit();
 
     count = 0;
@@ -9716,7 +9724,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // repeatable consolidation of already consolidated segment
   {
     SetUp();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
@@ -9746,7 +9754,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
-    writer->documents().remove(*query_doc1.filter);
+    writer->documents().remove(*query_doc1);
     ASSERT_TRUE(writer->begin());  // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
@@ -9791,8 +9799,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // commit
   {
     SetUp();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
-    auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
+    auto query_doc4 = MakeByTerm("name", "D");
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
@@ -9822,7 +9830,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
-    writer->documents().remove(*query_doc1.filter);
+    writer->documents().remove(*query_doc1);
     ASSERT_TRUE(writer->begin());  // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
@@ -9848,7 +9856,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
                             // consolidating_segments
           writer->commit();
           // new transaction with passed 1st phase
-          writer->documents().remove(*query_doc4.filter);
+          writer->documents().remove(*query_doc4);
           writer->begin();
           auto sub_policy = irs::index_utils::consolidation_policy(
               irs::index_utils::consolidate_count());
@@ -9871,7 +9879,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // check commit rollback and consolidation
   {
     SetUp();
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
@@ -9892,7 +9900,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir()));
 
-    writer->documents().remove(*query_doc1.filter);
+    writer->documents().remove(*query_doc1);
     ASSERT_TRUE(writer->begin());  // begin transaction
     // this consolidation will be postponed
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
@@ -9910,7 +9918,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    writer->documents().remove(*query_doc1.filter);
+    writer->documents().remove(*query_doc1);
     // make next commit
     writer->commit();
 
@@ -9968,7 +9976,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
-    writer->documents().remove(*query_doc1_doc4.filter);
+    writer->documents().remove(*query_doc1_doc4);
     ASSERT_TRUE(writer->begin());  // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
@@ -10182,7 +10190,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    writer->documents().remove(*query_doc1_doc4.filter);
+    writer->documents().remove(*query_doc1_doc4);
     writer->commit();  // commit pending merge + removal
     ASSERT_EQ(count + 6,
               irs::directory_cleaner::clean(
@@ -10381,7 +10389,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    writer->documents().remove(*query_doc3_doc4.filter);
+    writer->documents().remove(*query_doc3_doc4);
 
     // commit pending merge + removal
     // pending consolidation will fail (because segment 2 will have no live docs
@@ -11828,7 +11836,7 @@ doc4->stored.end());
     expected_consolidating_segments = { };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    writer->documents().remove(*(query_doc2_doc3.filter));
+    writer->documents().remove(*(query_doc2_doc3));
 
     // count number of files in segments
     count = 0;
@@ -12001,7 +12009,7 @@ segment 4.0 meta
     expected_consolidating_segments = { };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    writer->documents().remove(*(query_doc2_doc3.filter));
+    writer->documents().remove(*(query_doc2_doc3));
 
     // count number of files in segments
     count = 0;
@@ -12135,7 +12143,7 @@ segment 4.0 meta
     expected_consolidating_segments = { };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    writer->documents().remove(*(query_doc2_doc3.filter));
+    writer->documents().remove(*(query_doc2_doc3));
 
     writer->commit(); // flush segment (version 1) after releasing 'ctx'
     ASSERT_EQ(6, irs::directory_cleaner::clean(dir())); // segments_7,
@@ -12391,12 +12399,12 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty new segment
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    writer->documents().remove(std::move(query_doc1.filter));
+    writer->documents().remove(std::move(query_doc1));
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12405,13 +12413,13 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old segment
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc1.filter));
+    writer->documents().remove(std::move(query_doc1));
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -12431,7 +12439,7 @@ TEST_P(index_test_case, segment_consolidate) {
                        doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
-    writer->documents().remove(std::move(query_doc1_doc2.filter));
+    writer->documents().remove(std::move(query_doc1_doc2));
     writer->commit();
 
     ASSERT_TRUE(writer->consolidate(always_merge));
@@ -12478,7 +12486,7 @@ TEST_P(index_test_case, segment_consolidate) {
                        doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
-    writer->documents().remove(std::move(query_doc1_doc2.filter));
+    writer->documents().remove(std::move(query_doc1_doc2));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -12525,7 +12533,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc1_doc2.filter));
+    writer->documents().remove(std::move(query_doc1_doc2));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -12572,7 +12580,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc1_doc2.filter));
+    writer->documents().remove(std::move(query_doc1_doc2));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -12619,7 +12627,7 @@ TEST_P(index_test_case, segment_consolidate) {
   // do defragment old segment with uncommited removal (i.e. do not consider
   // uncomitted removals)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12627,7 +12635,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc1.filter));
+    writer->documents().remove(std::move(query_doc1));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(merge_if_masked));
     writer->commit();
@@ -12643,7 +12651,7 @@ TEST_P(index_test_case, segment_consolidate) {
   // do not defragment old segment with uncommited removal (i.e. do not consider
   // uncomitted removals)
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+    auto query_doc1 = MakeByTerm("name", "A");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12651,7 +12659,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc1.filter));
+    writer->documents().remove(std::move(query_doc1));
     ASSERT_TRUE(writer->consolidate(merge_if_masked));
     writer->commit();
 
@@ -12689,7 +12697,7 @@ TEST_P(index_test_case, segment_consolidate) {
                        doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
-    writer->documents().remove(std::move(query_doc1_doc3.filter));
+    writer->documents().remove(std::move(query_doc1_doc3));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -12742,7 +12750,7 @@ TEST_P(index_test_case, segment_consolidate) {
                        doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
-    writer->documents().remove(std::move(query_doc1_doc3.filter));
+    writer->documents().remove(std::move(query_doc1_doc3));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -12796,7 +12804,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc1_doc3.filter));
+    writer->documents().remove(std::move(query_doc1_doc3));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -12850,7 +12858,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc1_doc3.filter));
+    writer->documents().remove(std::move(query_doc1_doc3));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -12909,7 +12917,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                        doc6->stored.begin(), doc6->stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc1_doc3_doc5.filter));
+    writer->documents().remove(std::move(query_doc1_doc3_doc5));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -12973,7 +12981,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                        doc6->stored.begin(), doc6->stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc1_doc3_doc5.filter));
+    writer->documents().remove(std::move(query_doc1_doc3_doc5));
     writer->commit();
     ASSERT_TRUE(writer->consolidate(always_merge));
     writer->commit();
@@ -13521,7 +13529,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc2_doc3_doc4.filter));
+    writer->documents().remove(std::move(query_doc2_doc3_doc4));
     ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
                        doc5->stored.begin(), doc5->stored.end()));
     writer->commit();
@@ -13574,7 +13582,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc2_doc3_doc4.filter));
+    writer->documents().remove(std::move(query_doc2_doc3_doc4));
     ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
                        doc5->stored.begin(), doc5->stored.end()));
     writer->commit();
@@ -13660,7 +13668,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc2_doc4.filter));
+    writer->documents().remove(std::move(query_doc2_doc4));
     writer->commit();
     irs::index_utils::consolidate_docs_fill options;
     options.threshold = 1;
@@ -13712,7 +13720,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc2_doc4.filter));
+    writer->documents().remove(std::move(query_doc2_doc4));
     writer->commit();
     irs::index_utils::consolidate_docs_fill options;
     options.threshold = 0;
@@ -14095,15 +14103,15 @@ TEST_P(index_test_case, writer_insert_immediate_remove) {
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                      doc2->stored.begin(), doc2->stored.end()));
 
-  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
-  writer->documents().remove(*(query_doc1.filter.get()));
+  auto query_doc1 = MakeByTerm("name", "A");
+  writer->documents().remove(*(query_doc1.get()));
   writer->commit();
 
   // remove for initial segment to trigger consolidation
   // consolidation is needed to force opening all file handles and make cached
   // readers indeed hold reference to a file
-  auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
-  writer->documents().remove(*(query_doc3.filter.get()));
+  auto query_doc3 = MakeByTerm("name", "C");
+  writer->documents().remove(*(query_doc3.get()));
   writer->commit();
 
   // this consolidation should bring us to one consolidated segment without
@@ -14157,17 +14165,17 @@ TEST_P(index_test_case, writer_insert_immediate_remove_all) {
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                      doc2->stored.begin(), doc2->stored.end()));
 
-  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
-  writer->documents().remove(*(query_doc1.filter.get()));
-  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
-  writer->documents().remove(*(query_doc2.filter.get()));
+  auto query_doc1 = MakeByTerm("name", "A");
+  writer->documents().remove(*(query_doc1.get()));
+  auto query_doc2 = MakeByTerm("name", "B");
+  writer->documents().remove(*(query_doc2.get()));
   writer->commit();
 
   // remove for initial segment to trigger consolidation
   // consolidation is needed to force opening all file handles and make cached
   // readers indeed hold reference to a file
-  auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
-  writer->documents().remove(*(query_doc3.filter.get()));
+  auto query_doc3 = MakeByTerm("name", "C");
+  writer->documents().remove(*(query_doc3.get()));
   writer->commit();
 
   // this consolidation should bring us to one consolidated segment without
@@ -14212,10 +14220,10 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment) {
   ASSERT_GT(count, 0);
 
   // Remove all documents from segment
-  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
-  writer->documents().remove(*(query_doc1.filter.get()));
-  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
-  writer->documents().remove(*(query_doc2.filter.get()));
+  auto query_doc1 = MakeByTerm("name", "A");
+  writer->documents().remove(*(query_doc1.get()));
+  auto query_doc2 = MakeByTerm("name", "B");
+  writer->documents().remove(*(query_doc2.get()));
   writer->commit();
   {
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -14263,10 +14271,10 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment_consolidation) {
 
   writer->commit();  //  segment 2
 
-  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
-  writer->documents().remove(*(query_doc1.filter.get()));
-  auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
-  writer->documents().remove(*(query_doc3.filter.get()));
+  auto query_doc1 = MakeByTerm("name", "A");
+  writer->documents().remove(*(query_doc1.get()));
+  auto query_doc3 = MakeByTerm("name", "C");
+  writer->documents().remove(*(query_doc3.get()));
   writer->commit();
 
   // this consolidation should bring us to one consolidated segment without
@@ -14274,10 +14282,10 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment_consolidation) {
   ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
       irs::index_utils::consolidate_count())));
   // Remove all documents from 'new' segment
-  auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
-  writer->documents().remove(*(query_doc4.filter.get()));
-  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
-  writer->documents().remove(*(query_doc2.filter.get()));
+  auto query_doc4 = MakeByTerm("name", "D");
+  writer->documents().remove(*(query_doc4.get()));
+  auto query_doc2 = MakeByTerm("name", "B");
+  writer->documents().remove(*(query_doc2.get()));
   writer->commit();
   {
     auto reader = irs::directory_reader::open(dir(), codec());
