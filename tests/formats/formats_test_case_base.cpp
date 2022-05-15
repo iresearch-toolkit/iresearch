@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "formats_test_case_base.hpp"
+#include "search/term_filter.hpp"
 #include "formats/format_utils.hpp"
 #include "index/norm.hpp"
 #include "utils/lz4compression.hpp"
@@ -162,6 +163,13 @@ void format_test_case::assert_no_directory_artifacts(
   ASSERT_TRUE(index_files.empty());
 }
 
+auto MakeByTerm(std::string_view name, std::string_view value) {
+  auto filter = std::make_unique<irs::by_term>();
+  *filter->mutable_field() = name;
+  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  return filter;
+}
+
 TEST_P(format_test_case, directory_artifact_cleaner) {
   tests::json_doc_generator gen{
     resource("simple_sequential.json"),
@@ -170,10 +178,10 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
   tests::document const* doc2 = gen.next();
   tests::document const* doc3 = gen.next();
   tests::document const* doc4 = gen.next();
-  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
-  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
-  auto query_doc3 = irs::iql::query_builder().build("name==C", "C");
-  auto query_doc4 = irs::iql::query_builder().build("name==D", "C");
+  auto query_doc1 = MakeByTerm("name", "A");
+  auto query_doc2 = MakeByTerm("name", "B");
+  auto query_doc3 = MakeByTerm("name", "C");
+  auto query_doc4 = MakeByTerm("name", "D");
 
   std::vector<std::string> files;
   auto list_files = [&files] (std::string_view name) {
@@ -226,7 +234,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
 
     // delete record from first segment (creating new index_meta file + doc_mask file, remove old)
     {
-      writer->documents().remove(*(query_doc1.filter));
+      writer->documents().remove(*query_doc1);
       writer->commit();
       irs::directory_cleaner::clean(*dir); // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
@@ -234,7 +242,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
 
     // delete all record from first segment (creating new index_meta file, remove old meta + unused segment)
     {
-      writer->documents().remove(*(query_doc2.filter));
+      writer->documents().remove(*query_doc2);
       writer->commit();
       irs::directory_cleaner::clean(*dir); // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
@@ -242,7 +250,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
 
     // delete all records from second segment (creating new index_meta file, remove old meta + unused segment)
     {
-      writer->documents().remove(*(query_doc2.filter));
+      writer->documents().remove(*query_doc2);
       writer->commit();
       irs::directory_cleaner::clean(*dir); // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
@@ -294,7 +302,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
 
     // delete record from first segment (creating new doc_mask file)
     {
-      writer->documents().remove(*(query_doc1.filter));
+      writer->documents().remove(*query_doc1);
       writer->commit();
       irs::directory_cleaner::clean(*dir); // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
@@ -333,7 +341,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
 
     // delete record from first segment (creating new doc_mask file, not-remove old)
     {
-      writer->documents().remove(*(query_doc2.filter));
+      writer->documents().remove(*(query_doc2));
       writer->commit();
       irs::directory_cleaner::clean(*dir); // clean unused files
       assert_no_directory_artifacts(*dir, *codec(), reader_files);
@@ -341,7 +349,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
 
     // delete all record from first segment (creating new index_meta file, remove old meta but leave first segment)
     {
-      writer->documents().remove(*(query_doc3.filter));
+      writer->documents().remove(*(query_doc3));
       writer->commit();
       irs::directory_cleaner::clean(*dir); // clean unused files
       assert_no_directory_artifacts(*dir, *codec(), reader_files);
@@ -349,7 +357,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
 
     // delete all records from second segment (creating new index_meta file, remove old meta + unused segment)
     {
-      writer->documents().remove(*(query_doc4.filter));
+      writer->documents().remove(*(query_doc4));
       writer->commit();
       irs::directory_cleaner::clean(*dir); // clean unused files
       assert_no_directory_artifacts(*dir, *codec(), reader_files);
@@ -396,7 +404,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
         doc3->stored.begin(), doc3->stored.end()
       ));
       writer->commit(); // add second segment
-      writer->documents().remove(*(query_doc1.filter));
+      writer->documents().remove(*(query_doc1));
       writer->commit(); // remove first segment
     }
 

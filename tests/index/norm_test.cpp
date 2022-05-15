@@ -23,11 +23,19 @@
 #include "index_tests.hpp"
 
 #include "index/norm.hpp"
+#include "search/term_filter.hpp"
 #include "iql/query_builder.hpp"
 #include "search/cost.hpp"
 #include "utils/index_utils.hpp"
 
 namespace  {
+
+auto MakeByTerm(std::string_view name, std::string_view value) {
+  auto filter = std::make_unique<irs::by_term>();
+  *filter->mutable_field() = name;
+  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  return filter;
+}
 
 class Analyzer : public irs::analysis::analyzer {
  public:
@@ -1016,8 +1024,8 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
 
   // Remove document
   {
-    auto query_doc3 = irs::iql::query_builder().build("name==D", "C");
-    writer->documents().remove(*query_doc3.filter);
+    auto query_doc3 = MakeByTerm("name", "D");
+    writer->documents().remove(*query_doc3);
     writer->commit();
   }
 

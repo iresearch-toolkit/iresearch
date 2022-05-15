@@ -24,11 +24,19 @@
 #include "tests_shared.hpp"
 #include "index_tests.hpp"
 #include "formats/formats.hpp"
+#include "search/term_filter.hpp"
 #include "store/memory_directory.hpp"
 #include "utils/index_utils.hpp"
 #include "iql/query_builder.hpp"
 
 namespace {
+
+auto MakeByTerm(std::string_view name, std::string_view value) {
+  auto filter = std::make_unique<irs::by_term>();
+  *filter->mutable_field() = name;
+  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  return filter;
+}
 
 class failing_directory : public tests::directory_mock {
  public:
@@ -264,7 +272,7 @@ void open_reader(
   );
   const auto* doc1 = gen.next();
   const auto* doc2 = gen.next();
-  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+  auto query_doc2 = MakeByTerm("name", "B");
 
   auto codec = irs::formats::get(format);
   ASSERT_NE(nullptr, codec);
@@ -288,7 +296,7 @@ void open_reader(
       doc2->stored.begin(), doc2->stored.end()
     ));
 
-    writer->documents().remove(*query_doc2.filter);
+    writer->documents().remove(*query_doc2);
 
     ASSERT_TRUE(writer->commit());
   }
@@ -978,7 +986,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
   );
   const auto* doc1 = gen.next();
   const auto* doc2 = gen.next();
-  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+  auto query_doc2 = MakeByTerm("name", "B");
 
   auto codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec);
@@ -1013,7 +1021,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
          doc2->stored.begin(), doc2->stored.end()
        ));
 
-       writer->documents().remove(*query_doc2.filter);
+       writer->documents().remove(*query_doc2);
 
        ASSERT_THROW(writer->begin(), irs::io_error);
        ASSERT_FALSE(writer->begin()); // nothing to flush
@@ -1057,7 +1065,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
          doc2->stored.begin(), doc2->stored.end()
        ));
 
-       writer->documents().remove(*query_doc2.filter);
+       writer->documents().remove(*query_doc2);
 
        ASSERT_THROW(writer->begin(), irs::io_error);
     }
@@ -1114,7 +1122,7 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
   );
   const auto* doc1 = gen.next();
   const auto* doc2 = gen.next();
-  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+  auto query_doc2 = MakeByTerm("name", "B");
 
   auto codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec);
@@ -1147,7 +1155,7 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
          doc2->stored.begin(), doc2->stored.end()
        ));
 
-       writer->documents().remove(*query_doc2.filter);
+       writer->documents().remove(*query_doc2);
 
        ASSERT_THROW(writer->begin(), irs::io_error);
     }
@@ -1196,7 +1204,7 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
          doc2->stored.begin(), doc2->stored.end()
        ));
 
-       writer->documents().remove(*query_doc2.filter);
+       writer->documents().remove(*query_doc2);
 
        ASSERT_THROW(writer->begin(), irs::io_error);
     }
@@ -2926,7 +2934,7 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   );
   const auto* doc1 = gen.next();
   const auto* doc2 = gen.next();
-  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+  auto query_doc2 = MakeByTerm("name", "B");
 
   auto codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec);
@@ -2950,7 +2958,7 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
       doc2->stored.begin(), doc2->stored.end()
     ));
 
-    writer->documents().remove(*query_doc2.filter);
+    writer->documents().remove(*query_doc2);
 
     ASSERT_TRUE(writer->commit());
   }
@@ -3018,7 +3026,7 @@ TEST(index_death_test_formats_14, columnstore_reopen_fail) {
   );
   const auto* doc1 = gen.next();
   const auto* doc2 = gen.next();
-  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+  auto query_doc2 = MakeByTerm("name", "B");
 
   auto codec = irs::formats::get("1_4");
   ASSERT_NE(nullptr, codec);
@@ -3042,7 +3050,7 @@ TEST(index_death_test_formats_14, columnstore_reopen_fail) {
       doc2->stored.begin(), doc2->stored.end()
     ));
 
-    writer->documents().remove(*query_doc2.filter);
+    writer->documents().remove(*query_doc2);
 
     ASSERT_TRUE(writer->commit());
   }
@@ -3127,7 +3135,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   );
   const auto* doc1 = gen.next();
   const auto* doc2 = gen.next();
-  auto query_doc2 = irs::iql::query_builder().build("name==B", "C");
+  auto query_doc2 = MakeByTerm("name", "B");
 
   auto codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec);
@@ -3151,7 +3159,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
       doc2->stored.begin(), doc2->stored.end()
     ));
 
-    writer->documents().remove(*query_doc2.filter);
+    writer->documents().remove(*query_doc2);
 
     ASSERT_TRUE(writer->commit());
   }

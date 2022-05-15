@@ -1487,7 +1487,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
 
   // Remove document
   {
-    auto query_doc1 = irs::iql::query_builder().build("name==C", "C");
+    auto query_doc1 = MakeByTerm("name", "C");
     writer->documents().remove(*query_doc1.filter);
     writer->commit();
   }
