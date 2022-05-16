@@ -121,11 +121,24 @@ TEST(NestedFilterTest, ConstructFilter) {
 
 class NestedFilterTestCase : public tests::filter_test_case_base {
  protected:
+  struct Item {
+    std::string name;
+    int32_t price;
+    int32_t count;
+  };
+
+  struct Order {
+    std::string customer;
+    std::string date;
+    std::vector<Item> items;
+  };
+
   static constexpr auto kIndexAndStore =
       irs::Action::INDEX | irs::Action::STORE;
 
-  static void InsertItem(irs::index_writer::documents_context& trx,
-                         std::string_view item, int32_t price, int32_t count) {
+  static void InsertItemDocument(irs::index_writer::documents_context& trx,
+                                 std::string_view item, int32_t price,
+                                 int32_t count) {
     auto doc = trx.insert();
     ASSERT_TRUE(doc.insert<kIndexAndStore>(tests::string_field{"item", item}));
     ASSERT_TRUE(doc.insert<kIndexAndStore>(tests::int_field{
@@ -135,13 +148,22 @@ class NestedFilterTestCase : public tests::filter_test_case_base {
     ASSERT_TRUE(doc);
   }
 
-  static void InsertOrder(irs::index_writer::documents_context& trx,
-                          std::string_view customer, std::string_view date) {
+  static void InsertOrderDocument(irs::index_writer::documents_context& trx,
+                                  std::string_view customer,
+                                  std::string_view date) {
     auto doc = trx.insert();
     ASSERT_TRUE(
         doc.insert<kIndexAndStore>(tests::string_field{"customer", customer}));
     ASSERT_TRUE(doc.insert<kIndexAndStore>(tests::string_field{"date", date}));
     ASSERT_TRUE(doc);
+  }
+
+  static void InsertOrder(irs::index_writer& writer, const Order& order) {
+    auto trx = writer.documents();
+    for (const auto& [item, price, count] : order.items) {
+      InsertItemDocument(trx, item, price, count);
+    }
+    InsertOrderDocument(trx, order.customer, order.date);
   }
 };
 
@@ -150,26 +172,22 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
 
-  {
-    auto trx = writer->documents();
+  // Parent document: 6
+  InsertOrder(*writer, {"ArangoDB",
+                        "May",
+                        {{"Keyboard", 100, 1},
+                         {"Mouse", 50, 1},
+                         {"Display", 1000, 1},
+                         {"CPU", 5000, 1},
+                         {"RAM", 5000, 1}}});
 
-    {
-      InsertItem(trx, "Keyboard", 100, 1);
-      InsertItem(trx, "Mouse", 50, 1);
-      InsertItem(trx, "Display", 1000, 1);
-      InsertItem(trx, "CPU", 5000, 1);
-      InsertItem(trx, "RAM", 5000, 1);
-      InsertOrder(trx, "ArangoDB", "May");  // 6
-    }
-
-    {
-      InsertItem(trx, "Mouse", 10, 1);
-      InsertItem(trx, "Display", 1000, 1);
-      InsertItem(trx, "CPU", 1000, 1);
-      InsertItem(trx, "RAM", 5000, 1);
-      InsertOrder(trx, "Dell", "April");  // 11
-    }
-  }
+  // Parent document: 11
+  InsertOrder(*writer, {"Dell",
+                        "April",
+                        {{"Mouse", 10, 1},
+                         {"Display", 1000, 1},
+                         {"CPU", 1000, 1},
+                         {"RAM", 5000, 1}}});
 
   ASSERT_TRUE(writer->commit());
 
