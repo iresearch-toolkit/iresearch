@@ -102,7 +102,7 @@ struct postings_writer : attribute_provider {
 
   virtual ~postings_writer() = default;
   /* out - corresponding terms utils/utstream */
-  virtual void prepare( index_output& out, const flush_state& state ) = 0;  
+  virtual void prepare( index_output& out, const flush_state& state ) = 0;
   virtual void begin_field(IndexFeatures features) = 0;
   virtual state write(doc_iterator& docs) = 0;
   virtual void begin_block() = 0;
@@ -148,13 +148,13 @@ struct postings_reader {
   using term_provider_f = std::function<const term_meta*()>;
 
   virtual ~postings_reader() = default;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @arg in - corresponding stream
   /// @arg features - the set of features available for segment
   //////////////////////////////////////////////////////////////////////////////
   virtual void prepare(
-    index_input& in, 
+    index_input& in,
     const reader_state& state,
     IndexFeatures features) = 0;
 
@@ -348,6 +348,15 @@ struct columnstore_writer {
 namespace iresearch {
 
 struct column_reader {
+  enum class Mode {
+    // Default mode
+    kNormal,
+    // Open reader for conosolidation
+    kConsolidation,
+    // Reading payload isn't necessary
+    kMask
+  };
+
   virtual ~column_reader() = default;
 
   // Returns column id.
@@ -359,6 +368,7 @@ struct column_reader {
   // Returns column header.
   virtual bytes_ref payload() const = 0;
 
+  //FIXME(gnusi): implement mode
   // Returns the corresponding column iterator.
   // If the column implementation supports document payloads then it
   // can be accessed via the 'payload' attribute.
@@ -486,7 +496,7 @@ struct index_meta_reader {
     const directory& dir, std::string& name) const = 0;
 
   virtual void read(
-    const directory& dir, 
+    const directory& dir,
     index_meta& meta,
     string_ref filename = string_ref::NIL) = 0; // null == use meta
 

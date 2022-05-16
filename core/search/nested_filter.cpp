@@ -68,6 +68,7 @@ class ChildToParentJoin final : public doc_iterator,
   }
 
   doc_id_t seek(doc_id_t target) override {
+    // FIXME(gnusi): need to figure out the previous parent before target
     const auto child = child_->seek(target);
     return parent_->seek(child);
   }
