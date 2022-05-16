@@ -23,12 +23,24 @@
 
 #include "index_tests.hpp"
 #include "formats/formats_10.hpp"
+#include "search/term_filter.hpp"
 #include "index/norm.hpp"
 #include "index/merge_writer.hpp"
 #include "index/comparer.hpp"
 #include "store/memory_directory.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/lz4compression.hpp"
+
+namespace {
+
+irs::filter::ptr MakeByTerm(std::string_view name, std::string_view value) {
+  auto filter = std::make_unique<irs::by_term>();
+  *filter->mutable_field() = name;
+  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  return filter;
+}
+
+}
 
 namespace tests {
 
@@ -246,7 +258,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
 
   // populate directory
   {
-    auto query_doc4 = irs::iql::query_builder().build("doc_string==string4_data", "C");
+    irs::filter::ptr query_doc4 = MakeByTerm("doc_string", "string4_data");
     auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
     ASSERT_TRUE(insert(*writer, doc1.indexed.end(), doc1.indexed.end(), doc1.stored.begin(), doc1.stored.end()));
     ASSERT_TRUE(insert(*writer, doc3.indexed.end(), doc3.indexed.end(), doc3.stored.begin(), doc3.stored.end()));
@@ -254,7 +266,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
     ASSERT_TRUE(insert(*writer, doc2.indexed.end(), doc2.indexed.end(), doc2.stored.begin(), doc2.stored.end()));
     ASSERT_TRUE(insert(*writer, doc4.indexed.begin(), doc4.indexed.end(), doc4.stored.begin(), doc4.stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc4.filter));
+    writer->documents().remove(std::move(query_doc4));
     writer->commit();
   }
 
@@ -1161,7 +1173,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
 
   // populate directory
   {
-    auto query_doc4 = irs::iql::query_builder().build("doc_string==string4_data", "C");
+    irs::filter::ptr query_doc4 = MakeByTerm("doc_string", "string4_data");
     auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE, opts);
 
     ASSERT_TRUE(insert(*writer,
@@ -1178,7 +1190,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       doc4.indexed.begin(), doc4.indexed.end(),
       doc4.stored.begin(), doc4.stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc4.filter));
+    writer->documents().remove(std::move(query_doc4));
     writer->commit();
   }
 
@@ -2717,8 +2729,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
     // this missing doc will trigger sorting error in merge writer as it will be mapped to eof
     // and block all documents from same segment to be written in correct order.
     // to trigger error documents from second segment need docuemnt from first segment to maintain merged order
-    auto query_doc1 = irs::iql::query_builder().build(field + "==A", "C");
-    writer->documents().remove(std::move(query_doc1.filter));
+    irs::filter::ptr query = MakeByTerm(field, "A");
+    writer->documents().remove(std::move(query));
     writer->commit();
   }
 
@@ -2984,7 +2996,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
 
   // populate directory
   {
-    auto query_doc4 = irs::iql::query_builder().build("doc_string==string4_data", "C");
+    auto query_doc4 = MakeByTerm("doc_string", "string4_data");
     auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE, opts);
 
     ASSERT_TRUE(insert(*writer,
@@ -3001,7 +3013,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       doc4.indexed.begin(), doc4.indexed.end(),
       doc4.stored.begin(), doc4.stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc4.filter));
+    writer->documents().remove(std::move(query_doc4));
     writer->commit();
   }
 

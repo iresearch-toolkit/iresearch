@@ -269,7 +269,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     &tests::generic_json_field_factory);
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
-  auto query_doc1 = MakeByTerm("name", "A");
+  filter::ptr query_doc1 = MakeByTerm("name", "A");
   irs::memory_directory dir;
   auto codec_ptr = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec_ptr);
@@ -293,7 +293,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     ASSERT_FALSE(files.empty());
     file_set.insert(files.begin(), files.end());
 
-    writer->documents().remove(std::move(query_doc1.filter));
+    writer->documents().remove(std::move(query_doc1));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()));

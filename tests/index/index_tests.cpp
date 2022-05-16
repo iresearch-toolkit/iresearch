@@ -28,6 +28,7 @@
 #include "index/field_meta.hpp"
 #include "index/norm.hpp"
 #include "search/term_filter.hpp"
+#include "search/boolean_filter.hpp"
 #include "store/memory_directory.hpp"
 #include "tests_shared.hpp"
 #include "utils/delta_compression.hpp"
@@ -61,10 +62,26 @@ bool visit(const irs::column_reader& reader,
   return true;
 }
 
-auto MakeByTerm(std::string_view name, std::string_view value) {
+irs::filter::ptr MakeByTerm(std::string_view name, std::string_view value) {
   auto filter = std::make_unique<irs::by_term>();
   *filter->mutable_field() = name;
   filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  return filter;
+}
+
+irs::filter::ptr MakeByTermOrByTerm(std::string_view name0, std::string_view value0,
+                                    std::string_view name1, std::string_view value1) {
+  auto filter = std::make_unique<irs::Or>();
+  filter->add<irs::by_term>() = std::move(static_cast<irs::by_term&>(*MakeByTerm(name0, value0)));
+  filter->add<irs::by_term>() = std::move(static_cast<irs::by_term&>(*MakeByTerm(name1, value1)));
+  return filter;
+}
+
+irs::filter::ptr MakeOr(const std::vector<std::pair<std::string_view, std::string_view>>& parts) {
+  auto filter = std::make_unique<irs::Or>();
+  for (const auto& [name, value] : parts) {
+    filter->add<irs::by_term>() = std::move(static_cast<irs::by_term&>(*MakeByTerm(name, value)));
+  }
   return filter;
 }
 
@@ -2628,7 +2645,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
     std::condition_variable cond;
     std::mutex mutex;
     auto query_doc1_doc2 =
-        irs::iql::query_builder().build("name==A || name==B", "C");
+        MakeByTermOrByTerm("name", "A", "name", "B");
     auto writer = open_writer();
     auto lock = irs::make_unique_lock(mutex);
     std::atomic<bool> stop(false);
@@ -2701,7 +2718,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
   // add
   {
     auto query_doc1_doc2 =
-        irs::iql::query_builder().build("name==A || name==B", "C");
+        MakeByTermOrByTerm("name", "A", "name", "B");
     auto writer = open_writer();
 
     // initial add docs
@@ -4678,7 +4695,7 @@ TEST_P(index_test_case, doc_removal) {
   // new segment: add + add, old segment: remove + remove + add
   {
     auto query_doc1_doc2 =
-        irs::iql::query_builder().build("name==A||name==B", "C");
+        MakeByTermOrByTerm("name", "A", "name", "B");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -4775,8 +4792,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + remove, old segment: remove
   {
-    auto query_doc1_doc3 =
-        irs::iql::query_builder().build("name==A || name==C", "C");
+    auto query_doc1_doc3 = MakeByTermOrByTerm("name", "A", "name", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -4840,10 +4856,8 @@ TEST_P(index_test_case, doc_removal) {
   // new segment: add + remove, old segment: add + remove old-old segment:
   // remove
   {
-    auto query_doc2_doc6_doc9 =
-        irs::iql::query_builder().build("name==B||name==F||name==I", "C");
-    auto query_doc3_doc7 =
-        irs::iql::query_builder().build("name==C||name==G", "C");
+    auto query_doc2_doc6_doc9 = MakeOr({{"name", "B"}, {"name", "F"}, {"name", "I"}});
+    auto query_doc3_doc7 = MakeByTermOrByTerm("name", "C", "name", "G");
     auto query_doc4 = MakeByTerm("name", "D");
     auto writer = open_writer();
 
@@ -5969,8 +5983,7 @@ TEST_P(index_test_case, import_reader) {
 
   // add a reader with 2 sparse segments
   {
-    auto query_doc2_doc3 =
-        irs::iql::query_builder().build("name==B||name==C", "C");
+    auto query_doc2_doc3 = MakeOr({{"name", "B"}, {"name", "C"}});
     irs::memory_directory data_dir;
     auto data_writer =
         irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
@@ -7981,7 +7994,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   {
     SetUp();  // recreate directory
     auto query_doc1_doc4 =
-        irs::iql::query_builder().build("name==A||name==D", "C");
+        MakeByTermOrByTerm("name", "A", "name", "D");
 
     tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
@@ -9394,7 +9407,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   {
     SetUp();
     auto query_doc1_doc4 =
-        irs::iql::query_builder().build("name==A||name==D", "C");
+        MakeByTermOrByTerm("name", "A", "name", "D");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -9950,7 +9963,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   {
     SetUp();
     auto query_doc1_doc4 =
-        irs::iql::query_builder().build("name==A||name==D", "C");
+        MakeByTermOrByTerm("name", "A", "name", "D");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -10131,7 +10144,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   {
     SetUp();
     auto query_doc1_doc4 =
-        irs::iql::query_builder().build("name==A||name==D", "C");
+        MakeByTermOrByTerm("name", "A", "name", "D");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -10311,8 +10324,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes + inserts
   {
     SetUp();
-    auto query_doc3_doc4 =
-        irs::iql::query_builder().build("name==C||name==D", "C");
+    auto query_doc3_doc4 = MakeOr({{"name", "C"}, {"name", "D"}});
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -11785,8 +11797,7 @@ in doc4 ASSERT_FALSE(docsItr->next());
 
   // consolidate with uncommitted (inserts + deletes)
   {
-    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C",
-"C");
+    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C", "C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -12429,7 +12440,7 @@ TEST_P(index_test_case, segment_consolidate) {
   // remove empty old, defragment new
   {
     auto query_doc1_doc2 =
-        irs::iql::query_builder().build("name==A||name==B", "C");
+        MakeByTermOrByTerm("name", "A", "name", "B");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12476,7 +12487,7 @@ TEST_P(index_test_case, segment_consolidate) {
   // remove empty old, defragment new
   {
     auto query_doc1_doc2 =
-        irs::iql::query_builder().build("name==A||name==B", "C");
+        MakeByTermOrByTerm("name", "A", "name", "B");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12522,7 +12533,7 @@ TEST_P(index_test_case, segment_consolidate) {
   // remove empty old, defragment old
   {
     auto query_doc1_doc2 =
-        irs::iql::query_builder().build("name==A||name==B", "C");
+        MakeByTermOrByTerm("name", "A", "name", "B");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12569,7 +12580,7 @@ TEST_P(index_test_case, segment_consolidate) {
   // remove empty old, defragment old
   {
     auto query_doc1_doc2 =
-        irs::iql::query_builder().build("name==A||name==B", "C");
+        MakeByTermOrByTerm("name", "A", "name", "B");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12685,7 +12696,7 @@ TEST_P(index_test_case, segment_consolidate) {
   // merge new+old segment
   {
     auto query_doc1_doc3 =
-        irs::iql::query_builder().build("name==A||name==C", "C");
+        MakeByTermOrByTerm("name", "A", "name", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12738,7 +12749,7 @@ TEST_P(index_test_case, segment_consolidate) {
   // merge new+old segment
   {
     auto query_doc1_doc3 =
-        irs::iql::query_builder().build("name==A||name==C", "C");
+        MakeByTermOrByTerm("name", "A", "name", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12791,7 +12802,7 @@ TEST_P(index_test_case, segment_consolidate) {
   // merge old+old segment
   {
     auto query_doc1_doc3 =
-        irs::iql::query_builder().build("name==A||name==C", "C");
+        MakeByTermOrByTerm("name", "A", "name", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12845,7 +12856,7 @@ TEST_P(index_test_case, segment_consolidate) {
   // merge old+old segment
   {
     auto query_doc1_doc3 =
-        irs::iql::query_builder().build("name==A||name==C", "C");
+        MakeByTermOrByTerm("name", "A", "name", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12898,8 +12909,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old+old segment
   {
-    auto query_doc1_doc3_doc5 =
-        irs::iql::query_builder().build("name==A||name==C||name==E", "C");
+    auto query_doc1_doc3_doc5 = MakeOr({{"name", "A"}, {"name", "C"}, {"name", "E"}});
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12962,8 +12972,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old+old segment
   {
-    auto query_doc1_doc3_doc5 =
-        irs::iql::query_builder().build("name==A||name==C||name==E", "C");
+    auto query_doc1_doc3_doc5 = MakeOr({{"name", "A"},{"name", "C"},{"name", "E"}});
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -13517,7 +13526,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
   // valid docs count policy (merge)
   {
     auto query_doc2_doc3_doc4 =
-        irs::iql::query_builder().build("name==B||name==C||name==D", "C");
+        MakeOr({{"name", "B"}, {"name", "C"}, {"name", "D"}});
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -13570,7 +13579,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
   // valid docs count policy (not modified)
   {
     auto query_doc2_doc3_doc4 =
-        irs::iql::query_builder().build("name==B||name==C||name==D", "C");
+        MakeOr({{"name", "B"}, {"name", "C"}, {"name", "D"}});
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -13655,7 +13664,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
   // valid segment fill policy (merge)
   {
     auto query_doc2_doc4 =
-        irs::iql::query_builder().build("name==B||name==D", "C");
+        MakeByTermOrByTerm("name", "B", "name", "D");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -13707,7 +13716,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
   // valid segment fill policy (not modified)
   {
     auto query_doc2_doc4 =
-        irs::iql::query_builder().build("name==B||name==D", "C");
+        MakeByTermOrByTerm("name", "B", "name", "D");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
