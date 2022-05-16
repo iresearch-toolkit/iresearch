@@ -361,21 +361,25 @@ class FilterTestCaseBase : public index_test_base {
 
   static void CheckQuery(const irs::filter& filter, const Docs& expected,
                          const Costs& expected_costs,
-                         const irs::index_reader& index) {
+                         const irs::index_reader& index,
+                         std::string_view source_location = {}) {
+    SCOPED_TRACE(source_location);
     Docs result;
     Costs result_costs;
     GetQueryResult(filter.prepare(index, irs::Order::kUnordered), index, result,
-                   result_costs);
+                   result_costs, source_location);
     ASSERT_EQ(expected, result);
     ASSERT_EQ(expected_costs, result_costs);
   }
 
   static void CheckQuery(const irs::filter& filter, const Docs& expected,
-                         const irs::index_reader& index) {
+                         const irs::index_reader& index,
+                         std::string_view source_location = {}) {
+    SCOPED_TRACE(source_location);
     Docs result;
     Costs result_costs;
     GetQueryResult(filter.prepare(index, irs::Order::kUnordered), index, result,
-                   result_costs);
+                   result_costs, source_location);
     ASSERT_EQ(expected, result);
   }
 
@@ -389,12 +393,14 @@ class FilterTestCaseBase : public index_test_base {
  private:
   static void GetQueryResult(const irs::filter::prepared::ptr& q,
                              const irs::index_reader& index, Docs& result,
-                             Costs& result_costs);
+                             Costs& result_costs,
+                             std::string_view source_location);
 
   static void GetQueryResult(const irs::filter::prepared::ptr& q,
                              const irs::index_reader& index,
                              const irs::Order& ord, ScoredDocs& result,
-                             Costs& result_costs);
+                             Costs& result_costs,
+                             std::string_view source_location);
 };
 
 struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {

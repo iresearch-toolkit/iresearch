@@ -203,7 +203,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
   // Empty filter
   {
     irs::ByNestedFilter filter;
-    CheckQuery(filter, Docs{}, Costs{0}, reader);
+    CheckQuery(filter, Docs{}, Costs{0}, reader, SOURCE_LOCATION);
   }
 
   // Empty parent filter
@@ -211,7 +211,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     irs::ByNestedFilter filter;
     auto& opts = *filter.mutable_options();
     opts.child = std::make_unique<irs::all>();
-    CheckQuery(filter, Docs{}, Costs{0}, reader);
+    CheckQuery(filter, Docs{}, Costs{0}, reader, SOURCE_LOCATION);
   }
 
   // Empty child filter
@@ -219,7 +219,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     irs::ByNestedFilter filter;
     auto& opts = *filter.mutable_options();
     opts.parent = std::make_unique<irs::all>();
-    CheckQuery(filter, Docs{}, Costs{0}, reader);
+    CheckQuery(filter, Docs{}, Costs{0}, reader, SOURCE_LOCATION);
   }
 
   {
@@ -227,7 +227,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     auto& opts = *filter.mutable_options();
     opts.child = MakeByTerm("item", "Keyboard");
     opts.parent = MakeByColumnExistence("customer");
-    CheckQuery(filter, Docs{6}, Costs{1}, reader);
+    CheckQuery(filter, Docs{6}, Costs{1}, reader, SOURCE_LOCATION);
   }
 
   {
@@ -235,7 +235,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     auto& opts = *filter.mutable_options();
     opts.child = MakeByTerm("item", "Mouse");
     opts.parent = MakeByColumnExistence("customer");
-    CheckQuery(filter, Docs{6, 11}, Costs{3}, reader);
+    CheckQuery(filter, Docs{6, 11}, Costs{3}, reader, SOURCE_LOCATION);
   }
 
   {
@@ -243,7 +243,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     auto& opts = *filter.mutable_options();
     opts.child = MakeByTermAndRange("item", "Mouse", "price", 11);
     opts.parent = MakeByColumnExistence("customer");
-    CheckQuery(filter, Docs{11}, Costs{2}, reader);
+    CheckQuery(filter, Docs{11}, Costs{2}, reader, SOURCE_LOCATION);
   }
 }
 

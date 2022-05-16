@@ -38,7 +38,9 @@ DEFINE_FACTORY_DEFAULT(frequency_sort)
 
 void FilterTestCaseBase::GetQueryResult(const irs::filter::prepared::ptr& q,
                                         const irs::index_reader& rdr,
-                                        Docs& result, Costs& result_costs) {
+                                        Docs& result, Costs& result_costs,
+                                        std::string_view source_location) {
+  SCOPED_TRACE(source_location);
   result_costs.reserve(rdr.size());
 
   for (const auto& sub : rdr) {
@@ -77,8 +79,9 @@ void FilterTestCaseBase::GetQueryResult(const irs::filter::prepared::ptr& q,
 void FilterTestCaseBase::GetQueryResult(const irs::filter::prepared::ptr& q,
                                         const irs::index_reader& rdr,
                                         const irs::Order& ord,
-                                        ScoredDocs& result,
-                                        Costs& result_costs) {
+                                        ScoredDocs& result, Costs& result_costs,
+                                        std::string_view source_location) {
+  SCOPED_TRACE(source_location);
   result_costs.reserve(rdr.size());
 
   for (const auto& sub : rdr) {
