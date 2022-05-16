@@ -119,7 +119,7 @@ TEST(NestedFilterTest, ConstructFilter) {
   ASSERT_EQ(irs::kNoBoost, filter.boost());
 }
 
-class NestedFilterTestCase : public tests::filter_test_case_base {
+class NestedFilterTestCase : public tests::FilterTestCaseBase {
  protected:
   struct Item {
     std::string name;
@@ -203,7 +203,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
   // Empty filter
   {
     irs::ByNestedFilter filter;
-    check_query(filter, docs_t{}, costs_t{0}, reader);
+    CheckQuery(filter, Docs{}, Costs{0}, reader);
   }
 
   // Empty parent filter
@@ -211,7 +211,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     irs::ByNestedFilter filter;
     auto& opts = *filter.mutable_options();
     opts.child = std::make_unique<irs::all>();
-    check_query(filter, docs_t{}, costs_t{0}, reader);
+    CheckQuery(filter, Docs{}, Costs{0}, reader);
   }
 
   // Empty child filter
@@ -219,7 +219,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     irs::ByNestedFilter filter;
     auto& opts = *filter.mutable_options();
     opts.parent = std::make_unique<irs::all>();
-    check_query(filter, docs_t{}, costs_t{0}, reader);
+    CheckQuery(filter, Docs{}, Costs{0}, reader);
   }
 
   {
@@ -227,7 +227,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     auto& opts = *filter.mutable_options();
     opts.child = MakeByTerm("item", "Keyboard");
     opts.parent = MakeByColumnExistence("customer");
-    check_query(filter, docs_t{6}, costs_t{1}, reader);
+    CheckQuery(filter, Docs{6}, Costs{1}, reader);
   }
 
   {
@@ -235,7 +235,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     auto& opts = *filter.mutable_options();
     opts.child = MakeByTerm("item", "Mouse");
     opts.parent = MakeByColumnExistence("customer");
-    check_query(filter, docs_t{6, 11}, costs_t{3}, reader);
+    CheckQuery(filter, Docs{6, 11}, Costs{3}, reader);
   }
 
   {
@@ -243,7 +243,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     auto& opts = *filter.mutable_options();
     opts.child = MakeByTermAndRange("item", "Mouse", "price", 11);
     opts.parent = MakeByColumnExistence("customer");
-    check_query(filter, docs_t{11}, costs_t{2}, reader);
+    CheckQuery(filter, Docs{11}, Costs{2}, reader);
   }
 }
 

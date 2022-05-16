@@ -93,7 +93,7 @@ TEST(by_terms_test, boost) {
   }
 }
 
-class terms_filter_test_case : public tests::filter_test_case_base { };
+class terms_filter_test_case : public tests::FilterTestCaseBase { };
 
 TEST_P(terms_filter_test_case, simple_sequential_order) {
   // add segment
@@ -109,8 +109,8 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
 
   // empty prefix test collector call count for field/term/finish
   {
-    const docs_t docs{ 1, 21, 31, 32 };
-    costs_t costs{ docs.size() };
+    const Docs docs{ 1, 21, 31, 32 };
+    Costs costs{ docs.size() };
 
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
@@ -145,7 +145,7 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
 
     const auto filter = make_filter("prefix", { {"abcd", 1.f}, {"abcd", 1.f}, {"abc", 1.f}, {"abcy", 1.f} });
 
-    check_query(filter, std::span{&impl, 1}, docs, rdr);
+    CheckQuery(filter, std::span{&impl, 1}, docs, rdr);
     ASSERT_EQ(1, collect_field_count); // 1 fields in 1 segment
     ASSERT_EQ(3, collect_term_count); // 3 different terms
     ASSERT_EQ(3, finish_count); // 3 unque terms
@@ -153,23 +153,23 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
 
   // check boost
   {
-    const docs_t docs{ 21, 31, 32, 1 };
-    const costs_t costs{ docs.size() };
+    const Docs docs{ 21, 31, 32, 1 };
+    const Costs costs{ docs.size() };
     const auto filter = make_filter("prefix", { {"abcd", 0.5f}, {"abcd", 1.f}, {"abc", 1.f}, {"abcy", 1.f} });
 
     irs::sort::ptr impl{std::make_unique<irs::boost_sort>()};
-    check_query(filter, std::span{&impl, 1}, docs, rdr, true, true);
+    CheckQuery(filter, std::span{&impl, 1}, docs, rdr, true, true);
   }
 
   // check negative boost
   {
-    const docs_t docs{ 21, 31, 32, 1 };
-    const costs_t costs{ docs.size() };
+    const Docs docs{ 21, 31, 32, 1 };
+    const Costs costs{ docs.size() };
 
     const auto filter = make_filter("prefix", { {"abcd", -1.f}, {"abcd", 0.5f}, {"abc", 0.65}, {"abcy", 0.5f} });
 
     irs::sort::ptr impl{std::make_unique<irs::boost_sort>()};
-    check_query(filter, std::span{&impl, 1}, docs, rdr, true, true);
+    CheckQuery(filter, std::span{&impl, 1}, docs, rdr, true, true);
   }
 }
 
@@ -187,29 +187,29 @@ TEST_P(terms_filter_test_case, simple_sequential) {
   auto& segment = rdr[0];
 
   // empty query
-  check_query(irs::by_terms(), docs_t{}, costs_t{0}, rdr);
+  CheckQuery(irs::by_terms(), Docs{}, Costs{0}, rdr);
 
   // empty field
-  check_query(make_filter("", { { "xyz", 0.5f} }), docs_t{}, costs_t{0}, rdr);
+  CheckQuery(make_filter("", { { "xyz", 0.5f} }), Docs{}, Costs{0}, rdr);
 
   // invalid field
-  check_query(make_filter("same1", { { "xyz", 0.5f} }), docs_t{}, costs_t{0}, rdr);
+  CheckQuery(make_filter("same1", { { "xyz", 0.5f} }), Docs{}, Costs{0}, rdr);
 
   // invalid term
-  check_query(make_filter("same", { { "invalid_term", 0.5f} }), docs_t{}, costs_t{0}, rdr);
+  CheckQuery(make_filter("same", { { "invalid_term", 0.5f} }), Docs{}, Costs{0}, rdr);
 
   // no value requested to match
-  check_query(make_filter("duplicated", { } ), docs_t{}, costs_t{0}, rdr);
+  CheckQuery(make_filter("duplicated", { } ), Docs{}, Costs{0}, rdr);
 
   // match all
   {
-    docs_t result;
+    Docs result;
     for(size_t i = 0; i < 32; ++i) {
       result.push_back(irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i));
     }
-    costs_t costs{ result.size() };
+    Costs costs{ result.size() };
     const auto filter = make_filter("same", { { "xyz", 1.f } });
-    check_query(filter, result, costs, rdr);
+    CheckQuery(filter, result, costs, rdr);
 
     // test visit
     tests::empty_filter_visitor visitor;
@@ -225,13 +225,13 @@ TEST_P(terms_filter_test_case, simple_sequential) {
 
   // match all
   {
-    docs_t result;
+    Docs result;
     for(size_t i = 0; i < 32; ++i) {
       result.push_back(irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i));
     }
-    costs_t costs{ result.size() };
+    Costs costs{ result.size() };
     const auto filter = make_filter("same", { { "xyz", 1.f }, { "invalid_term", 0.5f} });
-    check_query(filter, result, costs, rdr);
+    CheckQuery(filter, result, costs, rdr);
 
     // test visit
     tests::empty_filter_visitor visitor;
@@ -247,10 +247,10 @@ TEST_P(terms_filter_test_case, simple_sequential) {
 
   // match something
   {
-    const docs_t result{ 1, 21, 31, 32 };
-    const costs_t costs{ result.size() };
+    const Docs result{ 1, 21, 31, 32 };
+    const Costs costs{ result.size() };
     const auto filter = make_filter("prefix", { { "abcd", 1.f }, {"abc", 0.5f}, {"abcy", 0.5f} });
-    check_query(filter, result, costs, rdr);
+    CheckQuery(filter, result, costs, rdr);
 
     // test visit
     tests::empty_filter_visitor visitor;
@@ -266,10 +266,10 @@ TEST_P(terms_filter_test_case, simple_sequential) {
 
   // duplicate terms are not allowed
   {
-    const docs_t result{ 1, 21, 31, 32 };
-    const costs_t costs{ result.size() };
+    const Docs result{ 1, 21, 31, 32 };
+    const Costs costs{ result.size() };
     const auto filter = make_filter("prefix", { { "abcd", 1.f }, { "abcd", 0.f }, {"abc", 0.5f}, {"abcy", 0.5f} });
-    check_query(filter, result, costs, rdr);
+    CheckQuery(filter, result, costs, rdr);
 
     // test visit
     tests::empty_filter_visitor visitor;
@@ -285,10 +285,10 @@ TEST_P(terms_filter_test_case, simple_sequential) {
 
   // test non existent term
   {
-    const docs_t result{ 1, 21, 31, 32 };
-    const costs_t costs{ result.size() };
+    const Docs result{ 1, 21, 31, 32 };
+    const Costs costs{ result.size() };
     const auto filter = make_filter("prefix", { { "abcd", 1.f }, { "invalid_term", 0.f }, {"abc", 0.5f}, {"abcy", 0.5f} });
-    check_query(filter, result, costs, rdr);
+    CheckQuery(filter, result, costs, rdr);
 
     // test visit
     tests::empty_filter_visitor visitor;

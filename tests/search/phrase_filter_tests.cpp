@@ -57,7 +57,7 @@ void analyzed_json_field_factory(
 
 }
 
-class phrase_filter_test_case : public tests::filter_test_case_base { };
+class phrase_filter_test_case : public tests::FilterTestCaseBase { };
 
 TEST_P(phrase_filter_test_case, sequential_one_term) {
   // add segment

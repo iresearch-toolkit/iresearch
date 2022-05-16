@@ -59,7 +59,7 @@ irs::by_edit_distance make_filter(
 
 }
 
-class levenshtein_filter_test_case : public tests::filter_test_case_base { };
+class levenshtein_filter_test_case : public tests::FilterTestCaseBase { };
 
 TEST(by_edit_distance_test, options) {
   irs::by_edit_distance_options opts;
@@ -141,7 +141,7 @@ TEST(by_edit_distance_test, test_type_of_prepared_query) {
 
 #endif
 
-class by_edit_distance_test_case : public tests::filter_test_case_base { };
+class by_edit_distance_test_case : public tests::FilterTestCaseBase { };
 
 TEST_P(by_edit_distance_test_case, test_order) {
   // add segment
@@ -156,11 +156,11 @@ TEST_P(by_edit_distance_test_case, test_order) {
   auto rdr = open_reader();
 
   // empty query
-  check_query(irs::by_edit_distance(), docs_t{}, costs_t{0}, rdr);
+  CheckQuery(irs::by_edit_distance(), Docs{}, Costs{0}, rdr);
 
   {
-    docs_t docs{28, 29};
-    costs_t costs{ docs.size() };
+    Docs docs{28, 29};
+    Costs costs{ docs.size() };
 
     size_t term_collectors_count = 0;
     size_t field_collectors_count = 0;
@@ -198,7 +198,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
       return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
 
-    check_query(make_filter("title", "", 1, 0, false), order, docs, rdr);
+    CheckQuery(make_filter("title", "", 1, 0, false), order, docs, rdr);
     ASSERT_EQ(1, field_collectors_count); // 1 field, 1 field collector
     ASSERT_EQ(1, term_collectors_count); // need only 1 term collector since we distribute stats across terms
     ASSERT_EQ(1, collect_field_count); // 1 fields
@@ -207,8 +207,8 @@ TEST_P(by_edit_distance_test_case, test_order) {
   }
 
   {
-    docs_t docs{28, 29};
-    costs_t costs{ docs.size() };
+    Docs docs{28, 29};
+    Costs costs{ docs.size() };
 
     size_t term_collectors_count = 0;
     size_t field_collectors_count = 0;
@@ -246,7 +246,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
       return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
 
-    check_query(make_filter("title", "", 1, 10, false), order, docs, rdr);
+    CheckQuery(make_filter("title", "", 1, 10, false), order, docs, rdr);
     ASSERT_EQ(1, field_collectors_count); // 1 field, 1 field collector
     ASSERT_EQ(1, term_collectors_count); // need only 1 term collector since we distribute stats across terms
     ASSERT_EQ(1, collect_field_count); // 1 fields
@@ -255,8 +255,8 @@ TEST_P(by_edit_distance_test_case, test_order) {
   }
 
   {
-    docs_t docs{29};
-    costs_t costs{ docs.size() };
+    Docs docs{29};
+    Costs costs{ docs.size() };
 
     size_t term_collectors_count = 0;
     size_t field_collectors_count = 0;
@@ -294,7 +294,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
       return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
 
-    check_query(make_filter("title", "", 1, 1, false), order, docs, rdr);
+    CheckQuery(make_filter("title", "", 1, 1, false), order, docs, rdr);
     ASSERT_EQ(1, field_collectors_count); // 1 field, 1 field collector
     ASSERT_EQ(1, term_collectors_count); // need only 1 term collector since we distribute stats across terms
     ASSERT_EQ(1, collect_field_count); // 1 fields
@@ -316,113 +316,113 @@ TEST_P(by_edit_distance_test_case, test_filter) {
   auto rdr = open_reader();
 
   // empty query
-  check_query(irs::by_edit_distance(), docs_t{}, costs_t{0}, rdr);
-  check_query(make_filter("title", "", 0, 0, false), docs_t{}, costs_t{0}, rdr);
+  CheckQuery(irs::by_edit_distance(), Docs{}, Costs{0}, rdr);
+  CheckQuery(make_filter("title", "", 0, 0, false), Docs{}, Costs{0}, rdr);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Levenshtein and Damerau-Levenshtein with prefix
   //////////////////////////////////////////////////////////////////////////////
   // distance 0 (term query)
-  check_query(make_filter("title", "", 0, 1024, false, "aaaw"), docs_t{32}, costs_t{1}, rdr);
-  check_query(make_filter("title", "w", 0, 1024, false, "aaa"), docs_t{32}, costs_t{1}, rdr);
-  check_query(make_filter("title", "w", 0, 1024, true, "aaa"), docs_t{32}, costs_t{1}, rdr);
-  check_query(make_filter("title", "", 0, 1024, false, ""), docs_t{}, costs_t{0}, rdr);
+  CheckQuery(make_filter("title", "", 0, 1024, false, "aaaw"), Docs{32}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "w", 0, 1024, false, "aaa"), Docs{32}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "w", 0, 1024, true, "aaa"), Docs{32}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "", 0, 1024, false, ""), Docs{}, Costs{0}, rdr);
   // distance 1
-  check_query(make_filter("title", "aa", 1, 1024, false, "aaabbba"), docs_t{9, 10}, costs_t{2}, rdr);
-  check_query(make_filter("title", "", 1, 1024, false, ""), docs_t{28,29}, costs_t{2}, rdr);
+  CheckQuery(make_filter("title", "aa", 1, 1024, false, "aaabbba"), Docs{9, 10}, Costs{2}, rdr);
+  CheckQuery(make_filter("title", "", 1, 1024, false, ""), Docs{28,29}, Costs{2}, rdr);
   // distance 2
-  check_query(make_filter("title", "ca", 2, 1024, false, "b"), docs_t{29,30}, costs_t{2}, rdr);
-  check_query(make_filter("title", "aa", 2, 1024, false, "aa"), docs_t{5,7,13,16,19,27,32}, costs_t{7}, rdr);
+  CheckQuery(make_filter("title", "ca", 2, 1024, false, "b"), Docs{29,30}, Costs{2}, rdr);
+  CheckQuery(make_filter("title", "aa", 2, 1024, false, "aa"), Docs{5,7,13,16,19,27,32}, Costs{7}, rdr);
   // distance 3
-  check_query(make_filter("title", "", 3, 1024, false, "aaa"), docs_t{5,7,13,16,19,32}, costs_t{6}, rdr);
-  check_query(make_filter("title", "", 3, 1024, true, "aaa"), docs_t{5,7,13,16,19,32}, costs_t{6}, rdr);
+  CheckQuery(make_filter("title", "", 3, 1024, false, "aaa"), Docs{5,7,13,16,19,32}, Costs{6}, rdr);
+  CheckQuery(make_filter("title", "", 3, 1024, true, "aaa"), Docs{5,7,13,16,19,32}, Costs{6}, rdr);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Levenshtein
   //////////////////////////////////////////////////////////////////////////////
 
   // distance 0 (term query)
-  check_query(make_filter("title", "aa", 0, 1024), docs_t{27}, costs_t{1}, rdr);
-  check_query(make_filter("title", "aa", 0, 0), docs_t{27}, costs_t{1}, rdr);
-  check_query(make_filter("title", "aa", 0, 10), docs_t{27}, costs_t{1}, rdr);
-  check_query(make_filter("title", "aa", 0, 0), docs_t{27}, costs_t{1}, rdr);
-  check_query(make_filter("title", "ababab", 0, 10), docs_t{17}, costs_t{1}, rdr);
-  check_query(make_filter("title", "ababab", 0, 0), docs_t{17}, costs_t{1}, rdr);
+  CheckQuery(make_filter("title", "aa", 0, 1024), Docs{27}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "aa", 0, 0), Docs{27}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "aa", 0, 10), Docs{27}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "aa", 0, 0), Docs{27}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "ababab", 0, 10), Docs{17}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "ababab", 0, 0), Docs{17}, Costs{1}, rdr);
 
   // distance 1
-  check_query(make_filter("title", "", 1, 1024), docs_t{28, 29}, costs_t{2}, rdr);
-  check_query(make_filter("title", "", 1, 0), docs_t{28, 29}, costs_t{2}, rdr);
-  check_query(make_filter("title", "", 1, 1), docs_t{29}, costs_t{1}, rdr);
-  check_query(make_filter("title", "aa", 1, 1024), docs_t{27, 28}, costs_t{2}, rdr);
-  check_query(make_filter("title", "aa", 1, 0), docs_t{27, 28}, costs_t{2}, rdr);
-  check_query(make_filter("title", "ababab", 1, 1024), docs_t{17}, costs_t{1}, rdr);
-  check_query(make_filter("title", "ababab", 0, 1024), docs_t{17}, costs_t{1}, rdr);
+  CheckQuery(make_filter("title", "", 1, 1024), Docs{28, 29}, Costs{2}, rdr);
+  CheckQuery(make_filter("title", "", 1, 0), Docs{28, 29}, Costs{2}, rdr);
+  CheckQuery(make_filter("title", "", 1, 1), Docs{29}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "aa", 1, 1024), Docs{27, 28}, Costs{2}, rdr);
+  CheckQuery(make_filter("title", "aa", 1, 0), Docs{27, 28}, Costs{2}, rdr);
+  CheckQuery(make_filter("title", "ababab", 1, 1024), Docs{17}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "ababab", 0, 1024), Docs{17}, Costs{1}, rdr);
 
   // distance 2
-  check_query(make_filter("title", "", 2, 1024), docs_t{27, 28, 29}, costs_t{3}, rdr);
-  check_query(make_filter("title", "", 2, 0), docs_t{27, 28, 29}, costs_t{3}, rdr);
-  check_query(make_filter("title", "", 2, 1), docs_t{29}, costs_t{1}, rdr);
-  check_query(make_filter("title", "", 2, 2), docs_t{28, 29}, costs_t{2}, rdr);
-  check_query(make_filter("title", "aa", 2, 1024), docs_t{27, 28, 29, 30, 32}, costs_t{5}, rdr);
-  check_query(make_filter("title", "aa", 2, 0), docs_t{27, 28, 29, 30, 32}, costs_t{5}, rdr);
-  check_query(make_filter("title", "ababab", 2, 1024), docs_t{17}, costs_t{1}, rdr);
-  check_query(make_filter("title", "ababab", 2, 0), docs_t{17}, costs_t{1}, rdr);
+  CheckQuery(make_filter("title", "", 2, 1024), Docs{27, 28, 29}, Costs{3}, rdr);
+  CheckQuery(make_filter("title", "", 2, 0), Docs{27, 28, 29}, Costs{3}, rdr);
+  CheckQuery(make_filter("title", "", 2, 1), Docs{29}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "", 2, 2), Docs{28, 29}, Costs{2}, rdr);
+  CheckQuery(make_filter("title", "aa", 2, 1024), Docs{27, 28, 29, 30, 32}, Costs{5}, rdr);
+  CheckQuery(make_filter("title", "aa", 2, 0), Docs{27, 28, 29, 30, 32}, Costs{5}, rdr);
+  CheckQuery(make_filter("title", "ababab", 2, 1024), Docs{17}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "ababab", 2, 0), Docs{17}, Costs{1}, rdr);
 
   // distance 3
-  check_query(make_filter("title", "", 3, 1024), docs_t{27, 28, 29, 30, 31}, costs_t{5}, rdr);
-  check_query(make_filter("title", "", 3, 0), docs_t{27, 28, 29, 30, 31}, costs_t{5}, rdr);
-  check_query(make_filter("title", "aaaa", 3, 10), docs_t{5, 7, 13, 16, 17, 18, 19, 21, 27, 28, 30, 32, }, costs_t{12}, rdr);
-  check_query(make_filter("title", "aaaa", 3, 0), docs_t{5, 7, 13, 16, 17, 18, 19, 21, 27, 28, 30, 32, }, costs_t{12}, rdr);
-  check_query(make_filter("title", "ababab", 3, 1024), docs_t{3, 5, 7, 13, 14, 15, 16, 17, 32}, costs_t{9}, rdr);
-  check_query(make_filter("title", "ababab", 3, 0), docs_t{3, 5, 7, 13, 14, 15, 16, 17, 32}, costs_t{9}, rdr);
+  CheckQuery(make_filter("title", "", 3, 1024), Docs{27, 28, 29, 30, 31}, Costs{5}, rdr);
+  CheckQuery(make_filter("title", "", 3, 0), Docs{27, 28, 29, 30, 31}, Costs{5}, rdr);
+  CheckQuery(make_filter("title", "aaaa", 3, 10), Docs{5, 7, 13, 16, 17, 18, 19, 21, 27, 28, 30, 32, }, Costs{12}, rdr);
+  CheckQuery(make_filter("title", "aaaa", 3, 0), Docs{5, 7, 13, 16, 17, 18, 19, 21, 27, 28, 30, 32, }, Costs{12}, rdr);
+  CheckQuery(make_filter("title", "ababab", 3, 1024), Docs{3, 5, 7, 13, 14, 15, 16, 17, 32}, Costs{9}, rdr);
+  CheckQuery(make_filter("title", "ababab", 3, 0), Docs{3, 5, 7, 13, 14, 15, 16, 17, 32}, Costs{9}, rdr);
 
   // distance 4
-  check_query(make_filter("title", "", 4, 1024), docs_t{27, 28, 29, 30, 31, 32}, costs_t{6}, rdr);
-  check_query(make_filter("title", "", 4, 0), docs_t{27, 28, 29, 30, 31, 32}, costs_t{6}, rdr);
-  check_query(make_filter("title", "ababab", 4, 1024), docs_t{3, 4, 5, 6, 7, 10, 13, 14, 15, 16, 17, 18, 19, 21, 27, 30, 32, 34}, costs_t{18}, rdr);
-  check_query(make_filter("title", "ababab", 4, 0), docs_t{3, 4, 5, 6, 7, 10, 13, 14, 15, 16, 17, 18, 19, 21, 27, 30, 32, 34}, costs_t{18}, rdr);
+  CheckQuery(make_filter("title", "", 4, 1024), Docs{27, 28, 29, 30, 31, 32}, Costs{6}, rdr);
+  CheckQuery(make_filter("title", "", 4, 0), Docs{27, 28, 29, 30, 31, 32}, Costs{6}, rdr);
+  CheckQuery(make_filter("title", "ababab", 4, 1024), Docs{3, 4, 5, 6, 7, 10, 13, 14, 15, 16, 17, 18, 19, 21, 27, 30, 32, 34}, Costs{18}, rdr);
+  CheckQuery(make_filter("title", "ababab", 4, 0), Docs{3, 4, 5, 6, 7, 10, 13, 14, 15, 16, 17, 18, 19, 21, 27, 30, 32, 34}, Costs{18}, rdr);
 
   // default provider doesn't support Levenshtein distances > 4
-  check_query(make_filter("title", "", 5, 1024), docs_t{}, costs_t{0}, rdr);
-  check_query(make_filter("title", "", 5, 0), docs_t{}, costs_t{0}, rdr);
-  check_query(make_filter("title", "", 6, 1024), docs_t{}, costs_t{0}, rdr);
-  check_query(make_filter("title", "", 6, 0), docs_t{}, costs_t{0}, rdr);
+  CheckQuery(make_filter("title", "", 5, 1024), Docs{}, Costs{0}, rdr);
+  CheckQuery(make_filter("title", "", 5, 0), Docs{}, Costs{0}, rdr);
+  CheckQuery(make_filter("title", "", 6, 1024), Docs{}, Costs{0}, rdr);
+  CheckQuery(make_filter("title", "", 6, 0), Docs{}, Costs{0}, rdr);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Damerau-Levenshtein
   //////////////////////////////////////////////////////////////////////////////
 
   // distance 0 (term query)
-  check_query(make_filter("title", "aa", 0, 1024, true), docs_t{27}, costs_t{1}, rdr);
-  check_query(make_filter("title", "aa", 0, 0, true), docs_t{27}, costs_t{1}, rdr);
-  check_query(make_filter("title", "ababab", 0, 1024, true), docs_t{17}, costs_t{1}, rdr);
-  check_query(make_filter("title", "ababab", 0, 0, true), docs_t{17}, costs_t{1}, rdr);
+  CheckQuery(make_filter("title", "aa", 0, 1024, true), Docs{27}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "aa", 0, 0, true), Docs{27}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "ababab", 0, 1024, true), Docs{17}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "ababab", 0, 0, true), Docs{17}, Costs{1}, rdr);
 
   // distance 1
-  check_query(make_filter("title", "", 1, 1024, true), docs_t{28, 29}, costs_t{2}, rdr);
-  check_query(make_filter("title", "", 1, 0, true), docs_t{28, 29}, costs_t{2}, rdr);
-  check_query(make_filter("title", "aa", 1, 1024, true), docs_t{27, 28}, costs_t{2}, rdr);
-  check_query(make_filter("title", "aa", 1, 0, true), docs_t{27, 28}, costs_t{2}, rdr);
-  check_query(make_filter("title", "ababab", 1, 1024, true), docs_t{17}, costs_t{1}, rdr);
-  check_query(make_filter("title", "ababab", 1, 0, true), docs_t{17}, costs_t{1}, rdr);
+  CheckQuery(make_filter("title", "", 1, 1024, true), Docs{28, 29}, Costs{2}, rdr);
+  CheckQuery(make_filter("title", "", 1, 0, true), Docs{28, 29}, Costs{2}, rdr);
+  CheckQuery(make_filter("title", "aa", 1, 1024, true), Docs{27, 28}, Costs{2}, rdr);
+  CheckQuery(make_filter("title", "aa", 1, 0, true), Docs{27, 28}, Costs{2}, rdr);
+  CheckQuery(make_filter("title", "ababab", 1, 1024, true), Docs{17}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "ababab", 1, 0, true), Docs{17}, Costs{1}, rdr);
 
   // distance 2
-  check_query(make_filter("title", "aa", 2, 1024, true), docs_t{27, 28, 29, 30, 32}, costs_t{5}, rdr);
-  check_query(make_filter("title", "aa", 2, 0, true), docs_t{27, 28, 29, 30, 32}, costs_t{5}, rdr);
-  check_query(make_filter("title", "ababab", 2, 1024, true), docs_t{17, 18}, costs_t{2}, rdr);
-  check_query(make_filter("title", "ababab", 2, 0, true), docs_t{17, 18}, costs_t{2}, rdr);
+  CheckQuery(make_filter("title", "aa", 2, 1024, true), Docs{27, 28, 29, 30, 32}, Costs{5}, rdr);
+  CheckQuery(make_filter("title", "aa", 2, 0, true), Docs{27, 28, 29, 30, 32}, Costs{5}, rdr);
+  CheckQuery(make_filter("title", "ababab", 2, 1024, true), Docs{17, 18}, Costs{2}, rdr);
+  CheckQuery(make_filter("title", "ababab", 2, 0, true), Docs{17, 18}, Costs{2}, rdr);
 
   // distance 3
-  check_query(make_filter("title", "", 3, 1024, true), docs_t{27, 28, 29, 30, 31}, costs_t{5}, rdr);
-  check_query(make_filter("title", "", 3, 0, true), docs_t{27, 28, 29, 30, 31}, costs_t{5}, rdr);
-  check_query(make_filter("title", "ababab", 3, 1024, true), docs_t{3, 5, 7, 13, 14, 15, 16, 17, 18, 32}, costs_t{10}, rdr);
-  check_query(make_filter("title", "ababab", 3, 0, true), docs_t{3, 5, 7, 13, 14, 15, 16, 17, 18, 32}, costs_t{10}, rdr);
+  CheckQuery(make_filter("title", "", 3, 1024, true), Docs{27, 28, 29, 30, 31}, Costs{5}, rdr);
+  CheckQuery(make_filter("title", "", 3, 0, true), Docs{27, 28, 29, 30, 31}, Costs{5}, rdr);
+  CheckQuery(make_filter("title", "ababab", 3, 1024, true), Docs{3, 5, 7, 13, 14, 15, 16, 17, 18, 32}, Costs{10}, rdr);
+  CheckQuery(make_filter("title", "ababab", 3, 0, true), Docs{3, 5, 7, 13, 14, 15, 16, 17, 18, 32}, Costs{10}, rdr);
 
   // default provider doesn't support Damerau-Levenshtein distances > 3
-  check_query(make_filter("title", "", 4, 1024, true), docs_t{}, costs_t{0}, rdr);
-  check_query(make_filter("title", "", 4, 0, true), docs_t{}, costs_t{0}, rdr);
-  check_query(make_filter("title", "", 5, 1024, true), docs_t{}, costs_t{0}, rdr);
-  check_query(make_filter("title", "", 5, 0, true), docs_t{}, costs_t{0}, rdr);
+  CheckQuery(make_filter("title", "", 4, 1024, true), Docs{}, Costs{0}, rdr);
+  CheckQuery(make_filter("title", "", 4, 0, true), Docs{}, Costs{0}, rdr);
+  CheckQuery(make_filter("title", "", 5, 1024, true), Docs{}, Costs{0}, rdr);
+  CheckQuery(make_filter("title", "", 5, 0, true), Docs{}, Costs{0}, rdr);
 }
 
 TEST_P(by_edit_distance_test_case, bm25) {

@@ -29,7 +29,7 @@
 
 namespace {
 
-class all_filter_test_case : public tests::filter_test_case_base { };
+class all_filter_test_case : public tests::FilterTestCaseBase { };
 
 TEST_P(all_filter_test_case, all_sequential) {
   // add segment
@@ -45,13 +45,13 @@ TEST_P(all_filter_test_case, all_sequential) {
   ASSERT_EQ(1, rdr->size());
   auto& segment = rdr[0];
 
-  docs_t docs{
+  Docs docs{
     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
     17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
   };
   std::vector<irs::cost::cost_t> cost{ docs.size() };
 
-  check_query(irs::all(), docs, cost, rdr);
+  CheckQuery(irs::all(), docs, cost, rdr);
 
   // check iterator attributes, no order
   auto it = irs::all().prepare(*rdr)->execute(segment);
@@ -77,20 +77,20 @@ TEST_P(all_filter_test_case, all_order) {
   auto rdr = open_reader();
 
   // empty query
-  //check_query(irs::all(), docs_t{}, costs_t{0}, rdr);
+  //CheckQuery(irs::all(), Docs{}, Costs{0}, rdr);
 
   // no order (same as empty order since no score is calculated)
   {
-    docs_t docs{
+    Docs docs{
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
       17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
     };
-    check_query(irs::all(), docs, costs_t{docs.size()}, rdr);
+    CheckQuery(irs::all(), docs, Costs{docs.size()}, rdr);
   }
 
   // custom order
   {
-    docs_t docs{
+    Docs docs{
       1, 4, 5, 16, 17, 20, 21, 2, 3, 6, 7, 18, 19, 22, 23, 8, 9,
       12, 13, 24, 25, 28, 29, 10, 11, 14, 15, 26, 27, 30, 31, 32 };
     size_t collector_collect_field_count = 0;
@@ -122,7 +122,7 @@ TEST_P(all_filter_test_case, all_order) {
       *score = irs::score_t(doc & 0xAAAAAAAA);
     };
 
-    check_query(irs::all(), std::span{&bucket, 1}, docs, rdr);
+    CheckQuery(irs::all(), std::span{&bucket, 1}, docs, rdr);
     ASSERT_EQ(0, collector_collect_field_count); // should not be executed
     ASSERT_EQ(0, collector_collect_term_count); // should not be executed
     ASSERT_EQ(1, collector_finish_count);
@@ -131,7 +131,7 @@ TEST_P(all_filter_test_case, all_order) {
 
   // custom order (no scorer)
   {
-    docs_t docs{
+    Docs docs{
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
       17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
     };
@@ -148,39 +148,39 @@ TEST_P(all_filter_test_case, all_order) {
       return { nullptr, nullptr };
     };
     sort.prepare_term_collector_ = []()->irs::sort::term_collector::ptr { return nullptr; };
-    check_query(irs::all(), std::span{&bucket, 1}, docs, rdr, false);
+    CheckQuery(irs::all(), std::span{&bucket, 1}, docs, rdr, false);
   }
 
   // frequency order
   {
-    docs_t docs{
+    Docs docs{
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
       17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
 
     irs::sort::ptr sort{std::make_unique<tests::sort::frequency_sort>()};
 
-    check_query(irs::all(), std::span{&sort, 1}, docs, rdr);
+    CheckQuery(irs::all(), std::span{&sort, 1}, docs, rdr);
   }
 
   // bm25 order
   {
-    docs_t docs{
+    Docs docs{
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
       17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
 
     auto sort = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
-    check_query(irs::all(), std::span{&sort, 1}, docs, rdr);
+    CheckQuery(irs::all(), std::span{&sort, 1}, docs, rdr);
   }
 
   // tfidf order
   {
-    docs_t docs{
+    Docs docs{
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
       17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
 
     auto sort = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
-    check_query(irs::all(), std::span{&sort, 1}, docs, rdr);
+    CheckQuery(irs::all(), std::span{&sort, 1}, docs, rdr);
   }
 }
 

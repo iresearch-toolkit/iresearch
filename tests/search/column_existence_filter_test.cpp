@@ -36,7 +36,7 @@ irs::by_column_existence make_filter(const irs::string_ref& field,
   return filter;
 }
 
-class column_existence_filter_test_case : public tests::filter_test_case_base {
+class column_existence_filter_test_case : public tests::FilterTestCaseBase {
  protected:
   void simple_sequential_mask() {
     // add segment

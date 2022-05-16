@@ -247,7 +247,7 @@ TEST_P(proxy_filter_test_case, test_full_dense) {
 INSTANTIATE_TEST_SUITE_P(proxy_filter_test_case, proxy_filter_test_case,
                          ::testing::Values(10, 15, 64, 100, 128));
 
-class proxy_filter_real_filter : public tests::filter_test_case_base {
+class proxy_filter_real_filter : public tests::FilterTestCaseBase {
  public:
   void init_index() {
     auto writer = open_writer(irs::OM_CREATE);
@@ -271,7 +271,7 @@ TEST_P(proxy_filter_real_filter, with_terms_filter) {
   *q.mutable_field() = "name";
   q.mutable_options()->term =
       irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
-  check_query(proxy, docs_t{1, 33}, rdr);
+  CheckQuery(proxy, Docs{1, 33}, rdr);
 }
 
 TEST_P(proxy_filter_real_filter, with_disjunction_filter) {
@@ -287,7 +287,7 @@ TEST_P(proxy_filter_real_filter, with_disjunction_filter) {
   *q1.mutable_field() = "name";
   q1.mutable_options()->term =
       irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
-  check_query(proxy, docs_t{1, 2, 33, 34}, rdr);
+  CheckQuery(proxy, Docs{1, 2, 33, 34}, rdr);
 }
 
 INSTANTIATE_TEST_SUITE_P(

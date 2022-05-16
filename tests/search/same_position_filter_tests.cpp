@@ -30,7 +30,7 @@
 #include "search/same_position_filter.hpp"
 #include "search/term_filter.hpp" 
 
-class same_position_filter_test_case : public tests::filter_test_case_base {
+class same_position_filter_test_case : public tests::FilterTestCaseBase {
  protected:
   void sub_objects_ordered() {
     // add segment

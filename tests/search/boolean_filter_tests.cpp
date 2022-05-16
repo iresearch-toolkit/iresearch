@@ -15103,7 +15103,7 @@ TEST(exclusion_test, seek) {
 // --SECTION--                                                Boolean test case
 // ----------------------------------------------------------------------------
 
-class boolean_filter_test_case : public filter_test_case_base {};
+class boolean_filter_test_case : public FilterTestCaseBase{};
 
 TEST_P(boolean_filter_test_case, or_sequential_multiple_segments) {
   // populate index
@@ -15191,13 +15191,13 @@ TEST_P(boolean_filter_test_case, or_sequential) {
   auto rdr = open_reader();
 
   // empty query
-  { check_query(irs::Or(), docs_t{}, rdr); }
+  { CheckQuery(irs::Or(), Docs{}, rdr); }
 
   {
     irs::Or root;
     append<irs::by_term>(root, "name", "V");  // 22
 
-    check_query(root, docs_t{22}, rdr);
+    CheckQuery(root, Docs{22}, rdr);
   }
 
   // name=W OR name=Z
@@ -15206,7 +15206,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     append<irs::by_term>(root, "name", "W");  // 23
     append<irs::by_term>(root, "name", "C");  // 3
 
-    check_query(root, docs_t{3, 23}, rdr);
+    CheckQuery(root, Docs{3, 23}, rdr);
   }
 
   // name=A OR name=Q OR name=Z
@@ -15216,7 +15216,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     append<irs::by_term>(root, "name", "Q");  // 17
     append<irs::by_term>(root, "name", "Z");  // 26
 
-    check_query(root, docs_t{1, 17, 26}, rdr);
+    CheckQuery(root, Docs{1, 17, 26}, rdr);
   }
 
   // name=A OR name=Q OR same!=xyz
@@ -15229,7 +15229,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
                                   "xyz");  // none (not within an OR must be
                                            // wrapped inside a single-branch OR)
 
-    check_query(root, docs_t{1, 17}, rdr);
+    CheckQuery(root, Docs{1, 17}, rdr);
   }
 
   // (name=A OR name=Q) OR same!=xyz
@@ -15242,7 +15242,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
                                   "xyz");  // none (not within an OR must be
                                            // wrapped inside a single-branch OR)
 
-    check_query(root, docs_t{1, 17}, rdr);
+    CheckQuery(root, Docs{1, 17}, rdr);
   }
 
   // name=A OR name=Q OR name=Z OR same=invalid_term OR invalid_field=V
@@ -15254,7 +15254,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     append<irs::by_term>(root, "same", "invalid_term");
     append<irs::by_term>(root, "invalid_field", "V");
 
-    check_query(root, docs_t{1, 17, 26}, rdr);
+    CheckQuery(root, Docs{1, 17, 26}, rdr);
   }
 
   // search : all terms
@@ -15266,7 +15266,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     append<irs::by_term>(root, "same", "xyz");  // 1..32
     append<irs::by_term>(root, "same", "invalid_term");
 
-    check_query(root, docs_t{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
+    CheckQuery(root, Docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
                              12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
                              23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
                 rdr);
@@ -15278,7 +15278,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     root.min_match_count(0);
     append<irs::by_term>(root, "name", "V");  // 22
 
-    check_query(root, docs_t{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
+    CheckQuery(root, Docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
                              12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
                              23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
                 rdr);
@@ -15289,7 +15289,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     irs::Or root;
     root.min_match_count(0);
 
-    check_query(root, docs_t{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
+    CheckQuery(root, Docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
                              12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
                              23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
                 rdr);
@@ -15305,7 +15305,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     append<irs::by_term>(root, "same", "invalid_term");
     root.min_match_count(root.size() + 1);
 
-    check_query(root, docs_t{}, rdr);
+    CheckQuery(root, Docs{}, rdr);
   }
 
   // name=A OR false
@@ -15314,7 +15314,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     append<irs::by_term>(root, "name", "A");  // 1
     root.add<irs::empty>();
 
-    check_query(root, docs_t{1}, rdr);
+    CheckQuery(root, Docs{1}, rdr);
   }
 
   // name!=A OR false
@@ -15324,7 +15324,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
         make_filter<irs::by_term>("name", "A");  // 1
     root.add<irs::empty>();
 
-    check_query(root, docs_t{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+    CheckQuery(root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
                              13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
                              24, 25, 26, 27, 28, 29, 30, 31, 32},
                 rdr);
@@ -15336,7 +15336,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     root.add<irs::Not>().filter<irs::by_term>() =
         make_filter<irs::by_term>("name", "A");  // 1
     append<irs::by_term>(root, "same", "NOT POSSIBLE");
-    check_query(root, docs_t{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+    CheckQuery(root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
                              13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
                              24, 25, 26, 27, 28, 29, 30, 31, 32},
                 rdr);
@@ -15351,7 +15351,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     root.add<irs::all>();
     append<irs::by_term>(root, "duplicated", "abcd");
     root.min_match_count(5);
-    check_query(root, docs_t{1}, rdr);
+    CheckQuery(root, Docs{1}, rdr);
   }
 
   // optimization should adjust min_match same but with score to check scored
@@ -15365,7 +15365,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     append<irs::by_term>(root, "duplicated", "abcd");
     root.min_match_count(5);
     irs::sort::ptr sort{std::make_unique<sort::custom_sort>()};
-    check_query(root, std::span{&sort, 1}, docs_t{1}, rdr);
+    CheckQuery(root, std::span{&sort, 1}, Docs{1}, rdr);
   }
 
   // optimization should adjust min_match
@@ -15385,7 +15385,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     root.add<irs::all>();
     append<irs::by_term>(root, "duplicated", "abcd");
     root.min_match_count(3);
-    check_query(root, docs_t{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
+    CheckQuery(root, Docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
                              12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
                              23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
                 rdr);
@@ -15410,9 +15410,9 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     auto& impl = static_cast<sort::custom_sort&>(*sort);
     impl.scorer_score = [](auto doc, auto* score) { *score = doc; };
 
-    check_query(
+    CheckQuery(
         root, std::span{&sort, 1},
-        docs_t{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
+        Docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
                17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
         rdr);
   }
@@ -15446,7 +15446,7 @@ TEST_P(boolean_filter_test_case, and_schemas) {
     irs::And root;
     append<irs::by_term>(root, "Name", "Product");
     append<irs::by_term>(root, "source", "AdventureWor3ks2014");
-    check_query(root, docs_t{}, rdr);
+    CheckQuery(root, Docs{}, rdr);
   }
 }
 
@@ -15461,14 +15461,14 @@ TEST_P(boolean_filter_test_case, and_sequential) {
   auto rdr = open_reader();
 
   // empty query
-  { check_query(irs::And(), docs_t{}, rdr); }
+  { CheckQuery(irs::And(), Docs{}, rdr); }
 
   // name=V
   {
     irs::And root;
     append<irs::by_term>(root, "name", "V");  // 22
 
-    check_query(root, docs_t{22}, rdr);
+    CheckQuery(root, Docs{22}, rdr);
   }
 
   // duplicated=abcd AND same=xyz
@@ -15476,7 +15476,7 @@ TEST_P(boolean_filter_test_case, and_sequential) {
     irs::And root;
     append<irs::by_term>(root, "duplicated", "abcd");  // 1,5,11,21,27,31
     append<irs::by_term>(root, "same", "xyz");         // 1..32
-    check_query(root, docs_t{1, 5, 11, 21, 27, 31}, rdr);
+    CheckQuery(root, Docs{1, 5, 11, 21, 27, 31}, rdr);
   }
 
   // duplicated=abcd AND same=xyz AND name=A
@@ -15485,7 +15485,7 @@ TEST_P(boolean_filter_test_case, and_sequential) {
     append<irs::by_term>(root, "duplicated", "abcd");  // 1,5,11,21,27,31
     append<irs::by_term>(root, "same", "xyz");         // 1..32
     append<irs::by_term>(root, "name", "A");           // 1
-    check_query(root, docs_t{1}, rdr);
+    CheckQuery(root, Docs{1}, rdr);
   }
 
   // duplicated=abcd AND same=xyz AND name=B
@@ -15494,7 +15494,7 @@ TEST_P(boolean_filter_test_case, and_sequential) {
     append<irs::by_term>(root, "duplicated", "abcd");  // 1,5,11,21,27,31
     append<irs::by_term>(root, "same", "xyz");         // 1..32
     append<irs::by_term>(root, "name", "B");           // 2
-    check_query(root, docs_t{}, rdr);
+    CheckQuery(root, Docs{}, rdr);
   }
 }
 
@@ -15693,14 +15693,14 @@ TEST_P(boolean_filter_test_case, not_sequential) {
   auto rdr = open_reader();
 
   // empty query
-  { check_query(irs::Not(), docs_t{}, rdr); }
+  { CheckQuery(irs::Not(), Docs{}, rdr); }
 
   // single not statement - empty result
   {
     irs::Not root;
     root.filter<irs::by_term>() = make_filter<irs::by_term>("same", "xyz");
 
-    check_query(root, docs_t{}, rdr);
+    CheckQuery(root, Docs{}, rdr);
   }
 
   // duplicated=abcd AND (NOT ( NOT name=A ))
@@ -15709,7 +15709,7 @@ TEST_P(boolean_filter_test_case, not_sequential) {
     root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
     root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>() =
         make_filter<irs::by_term>("name", "A");
-    check_query(root, docs_t{1}, rdr);
+    CheckQuery(root, Docs{1}, rdr);
   }
 
   // duplicated=abcd AND (NOT ( NOT (NOT (NOT ( NOT name=A )))))
@@ -15722,21 +15722,21 @@ TEST_P(boolean_filter_test_case, not_sequential) {
         .filter<irs::Not>()
         .filter<irs::Not>()
         .filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
-    check_query(root, docs_t{5, 11, 21, 27, 31}, rdr);
+    CheckQuery(root, Docs{5, 11, 21, 27, 31}, rdr);
   }
 
   // * AND NOT *
   {{irs::And root;
   root.add<irs::all>();
   root.add<irs::Not>().filter<irs::all>();
-  check_query(root, docs_t{}, rdr);
+  CheckQuery(root, Docs{}, rdr);
 }
 
 {
   irs::Or root;
   root.add<irs::all>();
   root.add<irs::Not>().filter<irs::all>();
-  check_query(root, docs_t{}, rdr);
+  CheckQuery(root, Docs{}, rdr);
 }
 }  // namespace tests
 
@@ -15745,7 +15745,7 @@ TEST_P(boolean_filter_test_case, not_sequential) {
 root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
 root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name",
                                                                         "A");
-check_query(root, docs_t{5, 11, 21, 27, 31}, rdr);
+CheckQuery(root, Docs{5, 11, 21, 27, 31}, rdr);
 }
 
 {
@@ -15753,7 +15753,7 @@ check_query(root, docs_t{5, 11, 21, 27, 31}, rdr);
   root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
   root.add<irs::Not>().filter<irs::by_term>() =
       make_filter<irs::by_term>("name", "A");
-  check_query(root, docs_t{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+  CheckQuery(root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
                            13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
                            24, 25, 26, 27, 28, 29, 30, 31, 32},
               rdr);
@@ -15780,7 +15780,7 @@ check_query(root, docs_t{5, 11, 21, 27, 31}, rdr);
   // if 'all' will add at least 1 to score totals score will be 3 and expected
   // order will break
   irs::sort::ptr sort{std::make_unique<tests::sort::boost>()};
-  check_query(root, std::span{&sort, 1}, docs_t{2, 1}, rdr);
+  CheckQuery(root, std::span{&sort, 1}, Docs{2, 1}, rdr);
 }
 }
 
@@ -15791,7 +15791,7 @@ root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name",
                                                                         "A");
 root.add<irs::Not>().filter<irs::by_term>() = make_filter<irs::by_term>("name",
                                                                         "A");
-check_query(root, docs_t{5, 11, 21, 27, 31}, rdr);
+CheckQuery(root, Docs{5, 11, 21, 27, 31}, rdr);
 }
 
 {
@@ -15801,7 +15801,7 @@ check_query(root, docs_t{5, 11, 21, 27, 31}, rdr);
       make_filter<irs::by_term>("name", "A");
   root.add<irs::Not>().filter<irs::by_term>() =
       make_filter<irs::by_term>("name", "A");
-  check_query(root, docs_t{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+  CheckQuery(root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
                            13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
                            24, 25, 26, 27, 28, 29, 30, 31, 32},
               rdr);
@@ -15817,7 +15817,7 @@ check_query(root, docs_t{5, 11, 21, 27, 31}, rdr);
         make_filter<irs::by_term>("name", "A");
     root.add<irs::Not>().filter<irs::by_term>() =
         make_filter<irs::by_term>("name", "E");
-    check_query(root, docs_t{11, 21, 27, 31}, rdr);
+    CheckQuery(root, Docs{11, 21, 27, 31}, rdr);
   }
 
   {
@@ -15827,7 +15827,7 @@ check_query(root, docs_t{5, 11, 21, 27, 31}, rdr);
         make_filter<irs::by_term>("name", "A");
     root.add<irs::Not>().filter<irs::by_term>() =
         make_filter<irs::by_term>("prefix", "abcd");
-    check_query(root, docs_t{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+    CheckQuery(root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
                              13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
                              24, 25, 26, 27, 28, 29, 30, 31, 32},
                 rdr);
@@ -15846,14 +15846,14 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential) {
   auto rdr = open_reader();
 
   // empty query
-  { check_query(irs::Not(), docs_t{}, rdr); }
+  { CheckQuery(irs::Not(), Docs{}, rdr); }
 
   // single not statement - empty result
   {
     irs::Not not_node;
     not_node.filter<irs::by_term>() = make_filter<irs::by_term>("same", "xyz"),
 
-    check_query(not_node, docs_t{}, rdr);
+    CheckQuery(not_node, Docs{}, rdr);
   }
 
   // single not statement - all docs
@@ -15862,7 +15862,7 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential) {
     not_node.filter<irs::by_term>() =
         make_filter<irs::by_term>("same", "invalid_term"),
 
-    check_query(not_node, docs_t{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
+    CheckQuery(not_node, Docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
                                  12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
                                  23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
                 rdr);
@@ -15873,7 +15873,7 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential) {
     irs::Not not_node;
     not_node.filter<irs::Not>().filter<irs::by_term>() =
         make_filter<irs::by_term>("name", "A");
-    check_query(not_node, docs_t{1}, rdr);
+    CheckQuery(not_node, Docs{1}, rdr);
   }
 
   // (NOT (NOT (NOT (NOT (NOT name=A)))))
@@ -15885,7 +15885,7 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential) {
         .filter<irs::Not>()
         .filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
 
-    check_query(not_node, docs_t{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+    CheckQuery(not_node, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
                                  13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
                                  24, 25, 26, 27, 28, 29, 30, 31, 32},
                 rdr);
@@ -15921,7 +15921,7 @@ TEST_P(boolean_filter_test_case, mixed) {
         append<irs::by_term>(child, "duplicated", "vczc");
       }
 
-      check_query(root, docs_t{1, 2, 3, 5, 8, 11, 14, 17, 19, 21, 24, 27, 31},
+      CheckQuery(root, Docs{1, 2, 3, 5, 8, 11, 14, 17, 19, 21, 24, 27, 31},
                   rdr);
     }
 
@@ -15951,7 +15951,7 @@ TEST_P(boolean_filter_test_case, mixed) {
         }
       }
 
-      check_query(root, docs_t{24}, rdr);
+      CheckQuery(root, Docs{24}, rdr);
     }
 
     // ((same=xyz AND duplicated=abcd) OR (name=A or name=C or NAME=P or name=U
@@ -16001,8 +16001,8 @@ TEST_P(boolean_filter_test_case, mixed) {
         }
       }
 
-      check_query(
-          root, docs_t{1, 2, 3, 5, 8, 11, 14, 16, 17, 19, 21, 24, 27, 31}, rdr);
+      CheckQuery(
+          root, Docs{1, 2, 3, 5, 8, 11, 14, 16, 17, 19, 21, 24, 27, 31}, rdr);
     }
 
     // (same=xyz AND duplicated=abcd) OR (same=xyz AND duplicated=vczc) AND *
@@ -16026,7 +16026,7 @@ TEST_P(boolean_filter_test_case, mixed) {
         append<irs::by_term>(child, "duplicated", "vczc");
       }
 
-      check_query(root, docs_t{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
+      CheckQuery(root, Docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
                                12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
                                23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
                   rdr);
@@ -16053,7 +16053,7 @@ TEST_P(boolean_filter_test_case, mixed) {
         append<irs::by_term>(child, "duplicated", "vczc");
       }
 
-      check_query(root, docs_t{}, rdr);
+      CheckQuery(root, Docs{}, rdr);
     }
   }
 }
