@@ -125,7 +125,7 @@ class NestedFilterTestCase : public tests::filter_test_case_base {
       irs::Action::INDEX | irs::Action::STORE;
 
   static void InsertItem(irs::index_writer::documents_context& trx,
-                         std::string_view item, int32_t count, int32_t price) {
+                         std::string_view item, int32_t price, int32_t count) {
     auto doc = trx.insert();
     ASSERT_TRUE(doc.insert<kIndexAndStore>(tests::string_field{"item", item}));
     ASSERT_TRUE(doc.insert<kIndexAndStore>(tests::int_field{
