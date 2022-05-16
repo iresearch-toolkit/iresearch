@@ -152,8 +152,10 @@ class NestedFilterTestCase : public tests::filter_test_case_base {
                                   std::string_view customer,
                                   std::string_view date) {
     auto doc = trx.insert();
-    ASSERT_TRUE(
-        doc.insert<kIndexAndStore>(tests::string_field{"customer", customer}));
+    if (!customer.empty()) {
+      ASSERT_TRUE(doc.insert<kIndexAndStore>(
+          tests::string_field{"customer", customer}));
+    }
     ASSERT_TRUE(doc.insert<kIndexAndStore>(tests::string_field{"date", date}));
     ASSERT_TRUE(doc);
   }
@@ -188,6 +190,9 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
                          {"Display", 1000, 1},
                          {"CPU", 1000, 1},
                          {"RAM", 5000, 1}}});
+
+  // Parent document: 13, missing "customer" field
+  InsertOrder(*writer, {"", "April", {{"Mouse", 10, 1}}});
 
   ASSERT_TRUE(writer->commit());
 
@@ -230,7 +235,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     auto& opts = *filter.mutable_options();
     opts.child = MakeByTerm("item", "Mouse");
     opts.parent = MakeByColumnExistence("customer");
-    check_query(filter, docs_t{6, 11}, costs_t{2}, reader);
+    check_query(filter, docs_t{6, 11}, costs_t{3}, reader);
   }
 
   {
@@ -238,7 +243,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     auto& opts = *filter.mutable_options();
     opts.child = MakeByTermAndRange("item", "Mouse", "price", 11);
     opts.parent = MakeByColumnExistence("customer");
-    check_query(filter, docs_t{11}, costs_t{1}, reader);
+    check_query(filter, docs_t{11}, costs_t{2}, reader);
   }
 }
 
