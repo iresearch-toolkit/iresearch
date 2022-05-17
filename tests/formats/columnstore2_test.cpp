@@ -1148,7 +1148,7 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
     }
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
-      auto it = column->iterator(hint());
+      auto it = column->iterator(doc % 2 ? hint() : irs::ColumnHint::kMask);
       auto* document = irs::get<irs::document>(*it);
       ASSERT_NE(nullptr, document);
       auto* payload = irs::get<irs::payload>(*it);
@@ -1276,102 +1276,144 @@ TEST_P(columnstore2_test_case, dense_column) {
     ASSERT_EQ(1, header_payload.size());
     ASSERT_EQ(42, header_payload[0]);
 
-    {
-      auto it = column->iterator(hint());
-      auto* document = irs::get<irs::document>(*it);
-      ASSERT_NE(nullptr, document);
-      auto* payload = irs::get<irs::payload>(*it);
-      ASSERT_NE(nullptr, payload);
-      auto* cost = irs::get<irs::cost>(*it);
-      ASSERT_NE(nullptr, cost);
-      ASSERT_EQ(column->size(), cost->estimate());
-      auto* score = irs::get<irs::score>(*it);
-      ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
+    auto assert_iterator = [&](irs::ColumnHint hint) {
+      {
+        auto it = column->iterator(hint);
+        auto* document = irs::get<irs::document>(*it);
+        ASSERT_NE(nullptr, document);
+        auto* payload = irs::get<irs::payload>(*it);
+        ASSERT_NE(nullptr, payload);
+        auto* cost = irs::get<irs::cost>(*it);
+        ASSERT_NE(nullptr, cost);
+        ASSERT_EQ(column->size(), cost->estimate());
+        auto* score = irs::get<irs::score>(*it);
+        ASSERT_NE(nullptr, score);
+        ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
+
+        for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
+          ASSERT_EQ(doc, it->seek(doc));
+          ASSERT_EQ(doc, it->seek(doc));
+          const auto str = std::to_string(doc);
+          if (hint == irs::ColumnHint::kMask) {
+            EXPECT_TRUE(payload->value.null());
+          } else {
+            EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+          }
+        }
+      }
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
-        ASSERT_EQ(doc, it->seek(doc));
-        ASSERT_EQ(doc, it->seek(doc));
+        auto it = column->iterator(hint);
+        auto* document = irs::get<irs::document>(*it);
+        ASSERT_NE(nullptr, document);
+        auto* payload = irs::get<irs::payload>(*it);
+        ASSERT_NE(nullptr, payload);
+        auto* cost = irs::get<irs::cost>(*it);
+        ASSERT_NE(nullptr, cost);
+        ASSERT_EQ(column->size(), cost->estimate());
+        auto* score = irs::get<irs::score>(*it);
+        ASSERT_NE(nullptr, score);
+        ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
+
         const auto str = std::to_string(doc);
-        EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+        ASSERT_EQ(doc, it->seek(doc));
+        if (hint == irs::ColumnHint::kMask) {
+          EXPECT_TRUE(payload->value.null());
+        } else {
+          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+        }
+        ASSERT_EQ(doc, it->seek(doc));
+        if (hint == irs::ColumnHint::kMask) {
+          EXPECT_TRUE(payload->value.null());
+        } else {
+          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+        }
+        ASSERT_EQ(doc, it->seek(doc - 1));
+        if (hint == irs::ColumnHint::kMask) {
+          EXPECT_TRUE(payload->value.null());
+        } else {
+          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+        }
       }
-    }
 
-    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
-      auto it = column->iterator(hint());
-      auto* document = irs::get<irs::document>(*it);
-      ASSERT_NE(nullptr, document);
-      auto* payload = irs::get<irs::payload>(*it);
-      ASSERT_NE(nullptr, payload);
-      auto* cost = irs::get<irs::cost>(*it);
-      ASSERT_NE(nullptr, cost);
-      ASSERT_EQ(column->size(), cost->estimate());
-      auto* score = irs::get<irs::score>(*it);
-      ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
+      // seek + next
+      for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX;
+           doc += 10000) {
+        auto it = column->iterator(hint);
+        auto* document = irs::get<irs::document>(*it);
+        ASSERT_NE(nullptr, document);
+        auto* payload = irs::get<irs::payload>(*it);
+        ASSERT_NE(nullptr, payload);
+        auto* cost = irs::get<irs::cost>(*it);
+        ASSERT_NE(nullptr, cost);
+        ASSERT_EQ(column->size(), cost->estimate());
+        auto* score = irs::get<irs::score>(*it);
+        ASSERT_NE(nullptr, score);
+        ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
-      const auto str = std::to_string(doc);
-      ASSERT_EQ(doc, it->seek(doc));
-      EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
-      ASSERT_EQ(doc, it->seek(doc));
-      EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
-      ASSERT_EQ(doc, it->seek(doc - 1));
-      EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
-    }
+        const auto str = std::to_string(doc);
+        ASSERT_EQ(doc, it->seek(doc));
+        if (hint == irs::ColumnHint::kMask) {
+          EXPECT_TRUE(payload->value.null());
+        } else {
+          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+        }
+        ASSERT_EQ(doc, it->seek(doc));
+        if (hint == irs::ColumnHint::kMask) {
+          EXPECT_TRUE(payload->value.null());
+        } else {
+          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+        }
 
-    // seek + next
-    for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 10000) {
-      auto it = column->iterator(hint());
-      auto* document = irs::get<irs::document>(*it);
-      ASSERT_NE(nullptr, document);
-      auto* payload = irs::get<irs::payload>(*it);
-      ASSERT_NE(nullptr, payload);
-      auto* cost = irs::get<irs::cost>(*it);
-      ASSERT_NE(nullptr, cost);
-      ASSERT_EQ(column->size(), cost->estimate());
-      auto* score = irs::get<irs::score>(*it);
-      ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
-
-      const auto str = std::to_string(doc);
-      ASSERT_EQ(doc, it->seek(doc));
-      EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
-      ASSERT_EQ(doc, it->seek(doc));
-      EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
-
-      auto next_it = column->iterator(hint());
-      auto* next_payload = irs::get<irs::payload>(*next_it);
-      ASSERT_NE(nullptr, next_payload);
-      ASSERT_EQ(doc, next_it->seek(doc));
-      EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
-      for (auto next_doc = doc + 1; next_doc <= MAX; ++next_doc) {
-        ASSERT_TRUE(next_it->next());
-        ASSERT_EQ(next_doc, next_it->value());
-        const auto str = std::to_string(next_doc);
-        EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
+        auto next_it = column->iterator(hint);
+        auto* next_payload = irs::get<irs::payload>(*next_it);
+        ASSERT_NE(nullptr, next_payload);
+        ASSERT_EQ(doc, next_it->seek(doc));
+        if (hint == irs::ColumnHint::kMask) {
+          EXPECT_TRUE(next_payload->value.null());
+        } else {
+          EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
+        }
+        for (auto next_doc = doc + 1; next_doc <= MAX; ++next_doc) {
+          ASSERT_TRUE(next_it->next());
+          ASSERT_EQ(next_doc, next_it->value());
+          const auto str = std::to_string(next_doc);
+          if (hint == irs::ColumnHint::kMask) {
+            EXPECT_TRUE(next_payload->value.null());
+          } else {
+            EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
+          }
+        }
       }
-    }
 
-    // next + seek
-    {
-      auto it = column->iterator(hint());
-      auto* document = irs::get<irs::document>(*it);
-      ASSERT_NE(nullptr, document);
-      auto* payload = irs::get<irs::payload>(*it);
-      ASSERT_NE(nullptr, payload);
-      auto* cost = irs::get<irs::cost>(*it);
-      ASSERT_NE(nullptr, cost);
-      ASSERT_EQ(column->size(), cost->estimate());
-      auto* score = irs::get<irs::score>(*it);
-      ASSERT_NE(nullptr, score);
-      ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
-      ASSERT_TRUE(it->next());
-      ASSERT_EQ(irs::doc_limits::min(), document->value);
-      const auto str = std::to_string(118774);
-      ASSERT_EQ(118774, it->seek(118774));
-      EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
-      ASSERT_TRUE(irs::doc_limits::eof(it->seek(MAX + 1)));
-    }
+      // next + seek
+      {
+        auto it = column->iterator(hint);
+        auto* document = irs::get<irs::document>(*it);
+        ASSERT_NE(nullptr, document);
+        auto* payload = irs::get<irs::payload>(*it);
+        ASSERT_NE(nullptr, payload);
+        auto* cost = irs::get<irs::cost>(*it);
+        ASSERT_NE(nullptr, cost);
+        ASSERT_EQ(column->size(), cost->estimate());
+        auto* score = irs::get<irs::score>(*it);
+        ASSERT_NE(nullptr, score);
+        ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
+        ASSERT_TRUE(it->next());
+        ASSERT_EQ(irs::doc_limits::min(), document->value);
+        const auto str = std::to_string(118774);
+        ASSERT_EQ(118774, it->seek(118774));
+        if (hint == irs::ColumnHint::kMask) {
+          EXPECT_TRUE(payload->value.null());
+        } else {
+          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+        }
+        ASSERT_TRUE(irs::doc_limits::eof(it->seek(MAX + 1)));
+      }
+    };
+
+    assert_iterator(hint());
+    assert_iterator(irs::ColumnHint::kMask);
   }
 }
 

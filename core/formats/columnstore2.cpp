@@ -168,6 +168,7 @@ class range_column_iterator final
  private:
   using payload_reader = PayloadReader;
 
+  // FIXME(gnusi): don't expose payload for noop_value_reader?
   using attributes = std::tuple<document, cost, score, irs::payload>;
 
  public:
