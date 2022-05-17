@@ -497,12 +497,16 @@ TEST_P(columnstore2_test_case, sparse_column) {
           ASSERT_EQ(nullptr, irs::get<irs::payload>(*next_it));
         }
         ASSERT_EQ(doc, next_it->seek(doc));
-        EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
+        if (next_payload) {
+          EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
+        }
         for (auto next_doc = doc + 2; next_doc <= MAX; next_doc += 2) {
           ASSERT_TRUE(next_it->next());
           ASSERT_EQ(next_doc, next_it->value());
           const auto str = std::to_string(next_doc);
-          EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
+          if (next_payload) {
+            EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
+          }
         }
       }
 
