@@ -412,7 +412,7 @@ TEST_P(sorted_index_test_case, simple_sequential) {
       auto& sorted_column = *segment.sort();
       ASSERT_EQ(segment.docs_count(), sorted_column.size());
 
-      auto sorted_column_it = sorted_column.iterator(false);
+      auto sorted_column_it = sorted_column.iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, sorted_column_it);
 
       auto* payload = irs::get<irs::payload>(*sorted_column_it);
@@ -476,7 +476,7 @@ TEST_P(sorted_index_test_case, simple_sequential) {
 
       ASSERT_EQ(id-1, column->size());
 
-      auto column_it = column->iterator(false);
+      auto column_it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, column_it);
 
       auto* payload = irs::get<irs::payload>(*column_it);
@@ -605,7 +605,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
         ASSERT_TRUE(sorted_column.name().null());
         ASSERT_TRUE(sorted_column.payload().empty());
 
-        auto sorted_column_it = sorted_column.iterator(false);
+        auto sorted_column_it = sorted_column.iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, sorted_column_it);
 
         auto* payload = irs::get<irs::payload>(*sorted_column_it);
@@ -671,7 +671,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
         ASSERT_EQ(id-1, column->size());
 
-        auto column_it = column->iterator(false);
+        auto column_it = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, column_it);
 
         auto* payload = irs::get<irs::payload>(*column_it);
@@ -779,7 +779,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
       ASSERT_TRUE(sorted_column.payload().empty());
       ASSERT_TRUE(sorted_column.name().null());
 
-      auto sorted_column_it = sorted_column.iterator(false);
+      auto sorted_column_it = sorted_column.iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, sorted_column_it);
 
       auto* payload = irs::get<irs::payload>(*sorted_column_it);
@@ -845,7 +845,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
       ASSERT_EQ(id-1, column->size());
 
-      auto column_it = column->iterator(false);
+      auto column_it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, column_it);
 
       auto* payload = irs::get<irs::payload>(*column_it);
@@ -952,7 +952,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
       ASSERT_TRUE(sorted_column.name().null());
       ASSERT_TRUE(sorted_column.payload().empty());
 
-      auto sorted_column_it = sorted_column.iterator(false);
+      auto sorted_column_it = sorted_column.iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, sorted_column_it);
 
       auto* payload = irs::get<irs::payload>(*sorted_column_it);
@@ -1018,7 +1018,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
 
       ASSERT_EQ(id-1, column->size());
 
-      auto column_it = column->iterator(false);
+      auto column_it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, column_it);
 
       auto* payload = irs::get<irs::payload>(*column_it);
@@ -1131,7 +1131,7 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_TRUE(column->payload().empty());
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1222,7 +1222,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_TRUE(column->payload().empty());
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1253,7 +1253,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       auto& segment = reader[1];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1300,7 +1300,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_TRUE(column->payload().empty());
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1432,7 +1432,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_TRUE(column->payload().empty());
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1465,7 +1465,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_EQ(0, column->payload().size());
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1512,7 +1512,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_EQ(0, column->payload().size());
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1542,7 +1542,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_EQ(0, column->payload().size());
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1590,7 +1590,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_wi
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_EQ(0, column->payload().size());
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1708,7 +1708,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       ASSERT_TRUE(column->name().null());
       ASSERT_EQ(0, column->payload().size());
       ASSERT_EQ(2, column->size());
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1742,7 +1742,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       ASSERT_TRUE(column->name().null());
       ASSERT_EQ(0, column->payload().size());
       ASSERT_EQ(2, column->size());
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1791,7 +1791,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) 
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_EQ(0, column->payload().size());
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);

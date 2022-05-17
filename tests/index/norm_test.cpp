@@ -376,7 +376,7 @@ void Norm2TestCase::AssertNormColumn(
   AssertNorm2Header(column->payload(), sizeof(T),
                     min->second, max->second);
 
-  auto values = column->iterator(false);
+  auto values = column->iterator(irs::ColumnHint::kNormal);
   auto* cost = irs::get<irs::cost>(*values);
   ASSERT_NE(nullptr, cost);
   ASSERT_EQ(cost->estimate(), expected_docs.size());

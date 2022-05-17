@@ -114,7 +114,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -216,7 +216,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -367,7 +367,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -518,7 +518,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -621,7 +621,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -724,7 +724,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -827,7 +827,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -930,7 +930,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1035,7 +1035,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1140,7 +1140,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1244,7 +1244,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1349,7 +1349,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1472,7 +1472,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1522,7 +1522,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1556,7 +1556,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1590,7 +1590,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1624,7 +1624,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1706,7 +1706,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1780,7 +1780,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1846,7 +1846,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1905,7 +1905,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1949,7 +1949,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2009,7 +2009,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2069,7 +2069,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2131,7 +2131,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2178,7 +2178,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2229,7 +2229,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2330,7 +2330,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2477,7 +2477,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2624,7 +2624,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2726,7 +2726,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2830,7 +2830,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2907,7 +2907,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2963,7 +2963,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3024,7 +3024,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3085,7 +3085,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3138,7 +3138,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3193,7 +3193,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3248,7 +3248,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3289,7 +3289,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3348,7 +3348,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3409,7 +3409,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3462,7 +3462,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3519,7 +3519,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3560,7 +3560,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3621,7 +3621,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3682,7 +3682,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3736,7 +3736,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3793,7 +3793,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3835,7 +3835,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3909,7 +3909,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3985,7 +3985,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4047,7 +4047,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4115,7 +4115,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4155,7 +4155,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4231,7 +4231,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4307,7 +4307,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4373,7 +4373,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4418,7 +4418,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4471,7 +4471,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4545,7 +4545,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4619,7 +4619,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4699,7 +4699,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4740,7 +4740,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4882,7 +4882,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5016,7 +5016,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5073,7 +5073,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5157,7 +5157,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5241,7 +5241,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5315,7 +5315,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5359,7 +5359,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5403,7 +5403,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5448,7 +5448,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5492,7 +5492,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5536,7 +5536,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5581,7 +5581,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5626,7 +5626,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5673,7 +5673,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5725,7 +5725,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5786,7 +5786,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5844,7 +5844,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5936,7 +5936,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6083,7 +6083,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6256,7 +6256,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6301,7 +6301,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6345,7 +6345,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6385,7 +6385,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6424,7 +6424,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6469,7 +6469,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6514,7 +6514,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6559,7 +6559,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6605,7 +6605,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6651,7 +6651,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6698,7 +6698,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6821,7 +6821,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6862,7 +6862,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6910,7 +6910,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6958,7 +6958,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -7018,7 +7018,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -7064,7 +7064,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -7112,7 +7112,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -7152,7 +7152,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -7189,7 +7189,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -7226,7 +7226,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -7264,7 +7264,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -7302,7 +7302,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -7340,7 +7340,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);

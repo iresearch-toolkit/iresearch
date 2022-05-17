@@ -53,7 +53,7 @@ namespace {
 
 bool visit(const irs::column_reader& reader,
            const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
-  auto it = reader.iterator(true);
+  auto it = reader.iterator(irs::ColumnHint::kConsolidation);
 
   irs::payload dummy;
   auto* doc = irs::get<irs::document>(*it);
@@ -921,10 +921,10 @@ void assert_pk(
 
   // check iterators & values
   {
-    auto actual_it = actual_reader.iterator(false);
+    auto actual_it = actual_reader.iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, actual_it);
 
-    auto actual_seek_it = actual_reader.iterator(false);
+    auto actual_seek_it = actual_reader.iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, actual_seek_it);
 
     auto* actual_key = irs::get<irs::document>(*actual_it);
@@ -937,7 +937,7 @@ void assert_pk(
       auto& expected_value = expected.first;
       ASSERT_TRUE(actual_it->next());
 
-      auto actual_stateless_seek_it = actual_reader.iterator(false);
+      auto actual_stateless_seek_it = actual_reader.iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, actual_stateless_seek_it);
 
       ASSERT_EQ(expected_key, actual_it->value());
@@ -993,10 +993,10 @@ void assert_column(
 
   // check iterators & values
   {
-    auto actual_it = actual_reader->iterator(false);
+    auto actual_it = actual_reader->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, actual_it);
 
-    auto actual_seek_it = actual_reader->iterator(false);
+    auto actual_seek_it = actual_reader->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, actual_seek_it);
 
     auto* actual_key = irs::get<irs::document>(*actual_it);
@@ -1007,7 +1007,7 @@ void assert_column(
     for (auto& [expected_key, expected_value] : expected_values) {
       ASSERT_TRUE(actual_it->next());
 
-      auto actual_stateless_seek_it = actual_reader->iterator(false);
+      auto actual_stateless_seek_it = actual_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, actual_stateless_seek_it);
 
       ASSERT_EQ(expected_key, actual_it->value());

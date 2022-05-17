@@ -279,7 +279,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
 
       // next
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -303,7 +303,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
 
       // seek
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -339,7 +339,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
 
       // next
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -363,7 +363,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
 
       // seek
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -394,7 +394,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
 
       // next
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -449,7 +449,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
 
       // seek + next
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);

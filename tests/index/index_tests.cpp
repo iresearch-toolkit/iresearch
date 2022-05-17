@@ -41,7 +41,7 @@
 namespace {
 bool visit(const irs::column_reader& reader,
            const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
-  auto it = reader.iterator(true);
+  auto it = reader.iterator(irs::ColumnHint::kConsolidation);
 
   irs::payload dummy;
   auto* doc = irs::get<irs::document>(*it);
@@ -825,7 +825,7 @@ class index_test_case : public tests::index_test_base {
         auto& segment = reader[0];
         const auto* column = segment.column("name");
         ASSERT_NE(nullptr, column);
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -846,7 +846,7 @@ class index_test_case : public tests::index_test_base {
         auto& segment = reader[1];
         auto* column = segment.column("name");
         ASSERT_NE(nullptr, column);
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -933,7 +933,7 @@ class index_test_case : public tests::index_test_base {
       auto& segment = reader[0];  // assume 0 is id of first/only segment
       auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -976,7 +976,7 @@ class index_test_case : public tests::index_test_base {
           if (!column) {
             return false;
           }
-          auto values = column->iterator(false);
+          auto values = column->iterator(irs::ColumnHint::kNormal);
           EXPECT_NE(nullptr, values);
           auto* actual_value = irs::get<irs::payload>(*values);
           EXPECT_NE(nullptr, actual_value);
@@ -1147,7 +1147,7 @@ class index_test_case : public tests::index_test_base {
         if (!column) {
           return false;
         }
-        auto reader = column->iterator(false);
+        auto reader = column->iterator(irs::ColumnHint::kNormal);
         EXPECT_NE(nullptr, reader);
         auto* actual_value = irs::get<irs::payload>(*reader);
         EXPECT_NE(nullptr, actual_value);
@@ -1205,7 +1205,7 @@ class index_test_case : public tests::index_test_base {
           return false;
         }
 
-        auto it = column->iterator(false);
+        auto it = column->iterator(irs::ColumnHint::kNormal);
 
         if (!it) {
           return false;
@@ -2020,7 +2020,7 @@ class index_test_case : public tests::index_test_base {
 
       const auto* column_reader = segment.column("stored");
       ASSERT_NE(nullptr, column_reader);
-      auto column = column_reader->iterator(false);
+      auto column = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, column);
       auto* actual_value = irs::get<irs::payload>(*column);
       ASSERT_NE(nullptr, actual_value);
@@ -2606,7 +2606,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
       auto& segment = reader[i];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -2977,7 +2977,7 @@ TEST_P(index_test_case, document_context) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3047,7 +3047,7 @@ TEST_P(index_test_case, document_context) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3121,7 +3121,7 @@ TEST_P(index_test_case, document_context) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3196,7 +3196,7 @@ TEST_P(index_test_case, document_context) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3236,7 +3236,7 @@ TEST_P(index_test_case, document_context) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3279,7 +3279,7 @@ TEST_P(index_test_case, document_context) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3326,7 +3326,7 @@ TEST_P(index_test_case, document_context) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3384,7 +3384,7 @@ TEST_P(index_test_case, document_context) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3449,7 +3449,7 @@ TEST_P(index_test_case, document_context) {
       auto& segment = reader[0];  // assume 0 is id of first segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -3469,7 +3469,7 @@ TEST_P(index_test_case, document_context) {
       auto& segment = reader[1];  // assume 1 is id of second segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -3508,7 +3508,7 @@ TEST_P(index_test_case, document_context) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3553,7 +3553,7 @@ TEST_P(index_test_case, document_context) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3622,7 +3622,7 @@ TEST_P(index_test_case, document_context) {
       auto& segment = reader[0];  // assume 0 is id of first segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -3642,7 +3642,7 @@ TEST_P(index_test_case, document_context) {
       auto& segment = reader[1];  // assume 1 is id of second segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -3687,7 +3687,7 @@ TEST_P(index_test_case, document_context) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3738,7 +3738,7 @@ TEST_P(index_test_case, document_context) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3805,7 +3805,7 @@ TEST_P(index_test_case, document_context) {
       auto& segment = reader[0];  // assume 0 is id of first segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -3825,7 +3825,7 @@ TEST_P(index_test_case, document_context) {
       auto& segment = reader[1];  // assume 1 is id of second segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -3871,7 +3871,7 @@ TEST_P(index_test_case, document_context) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3923,7 +3923,7 @@ TEST_P(index_test_case, document_context) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -3992,7 +3992,7 @@ TEST_P(index_test_case, document_context) {
       auto& segment = reader[0];  // assume 0 is id of first segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -4012,7 +4012,7 @@ TEST_P(index_test_case, document_context) {
       auto& segment = reader[1];  // assume 1 is id of second segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -4064,7 +4064,7 @@ TEST_P(index_test_case, document_context) {
       auto& segment = reader[0];  // assume 0 is id of first segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -4084,7 +4084,7 @@ TEST_P(index_test_case, document_context) {
       auto& segment = reader[1];  // assume 1 is id of second segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -4142,7 +4142,7 @@ TEST_P(index_test_case, document_context) {
           auto& segment = reader[0]; // assume 0 is id of first segment
           const auto* column = segment.column("name");
           ASSERT_NE(nullptr, column);
-          auto values = column->iterator(false);
+          auto values = column->iterator(irs::ColumnHint::kNormal);
           ASSERT_NE(nullptr, values);
           auto* actual_value = irs::get<irs::payload>(*values);
           ASSERT_NE(nullptr, actual_value);
@@ -4163,7 +4163,7 @@ TEST_P(index_test_case, document_context) {
           auto& segment = reader[1]; // assume 1 is id of second segment
           const auto* column = segment.column("name");
           ASSERT_NE(nullptr, column);
-          auto values = column->iterator(false);
+          auto values = column->iterator(irs::ColumnHint::kNormal);
           ASSERT_NE(nullptr, values);
           auto* actual_value = irs::get<irs::payload>(*values);
           ASSERT_NE(nullptr, actual_value);
@@ -4183,7 +4183,7 @@ TEST_P(index_test_case, document_context) {
           auto& segment = reader[2]; // assume 2 is id of third segment
           const auto* column = segment.column("name");
           ASSERT_NE(nullptr, column);
-          auto values = column->iterator(false);
+          auto values = column->iterator(irs::ColumnHint::kNormal);
           ASSERT_NE(nullptr, values);
           auto* actual_value = irs::get<irs::payload>(*values);
           ASSERT_NE(nullptr, actual_value);
@@ -4235,7 +4235,7 @@ TEST_P(index_test_case, document_context) {
       auto& segment = reader[0];  // assume 0 is id of first segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -4255,7 +4255,7 @@ TEST_P(index_test_case, document_context) {
       auto& segment = reader[1];  // assume 1 is id of second segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -4312,7 +4312,7 @@ TEST_P(index_test_case, document_context) {
           auto& segment = reader[0]; // assume 0 is id of first segment
           const auto* column = segment.column("name");
           ASSERT_NE(nullptr, column);
-          auto values = column->iterator(false);
+          auto values = column->iterator(irs::ColumnHint::kNormal);
           ASSERT_NE(nullptr, values);
           auto* actual_value = irs::get<irs::payload>(*values);
           ASSERT_NE(nullptr, actual_value);
@@ -4333,7 +4333,7 @@ TEST_P(index_test_case, document_context) {
           auto& segment = reader[1]; // assume 1 is id of second segment
           const auto* column = segment.column("name");
           ASSERT_NE(nullptr, column);
-          auto values = column->iterator(false);
+          auto values = column->iterator(irs::ColumnHint::kNormal);
           ASSERT_NE(nullptr, values);
           auto* actual_value = irs::get<irs::payload>(*values);
           ASSERT_NE(nullptr, actual_value);
@@ -4353,7 +4353,7 @@ TEST_P(index_test_case, document_context) {
           auto& segment = reader[2]; // assume 2 is id of third segment
           const auto* column = segment.column("name");
           ASSERT_NE(nullptr, column);
-          auto values = column->iterator(false);
+          auto values = column->iterator(irs::ColumnHint::kNormal);
           ASSERT_NE(nullptr, values);
           auto* actual_value = irs::get<irs::payload>(*values);
           ASSERT_NE(nullptr, actual_value);
@@ -4391,7 +4391,7 @@ TEST_P(index_test_case, document_context) {
       auto& segment = reader[0];  // assume 0 is id of first/old segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -4411,7 +4411,7 @@ TEST_P(index_test_case, document_context) {
       auto& segment = reader[1];  // assume 0 is id of first/new segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -4463,7 +4463,7 @@ TEST_P(index_test_case, doc_removal) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4496,7 +4496,7 @@ TEST_P(index_test_case, doc_removal) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4531,7 +4531,7 @@ TEST_P(index_test_case, doc_removal) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4567,7 +4567,7 @@ TEST_P(index_test_case, doc_removal) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4601,7 +4601,7 @@ TEST_P(index_test_case, doc_removal) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4638,7 +4638,7 @@ TEST_P(index_test_case, doc_removal) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4676,7 +4676,7 @@ TEST_P(index_test_case, doc_removal) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4713,7 +4713,7 @@ TEST_P(index_test_case, doc_removal) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -4753,7 +4753,7 @@ TEST_P(index_test_case, doc_removal) {
       auto& segment = reader[0];  // assume 0 is id of old segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -4773,7 +4773,7 @@ TEST_P(index_test_case, doc_removal) {
       auto& segment = reader[1];  // assume 1 is id of new segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -4816,7 +4816,7 @@ TEST_P(index_test_case, doc_removal) {
       auto& segment = reader[0];  // assume 0 is id of old segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -4836,7 +4836,7 @@ TEST_P(index_test_case, doc_removal) {
       auto& segment = reader[1];  // assume 1 is id of new segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -4893,7 +4893,7 @@ TEST_P(index_test_case, doc_removal) {
       auto& segment = reader[0];  // assume 0 is id of old-old segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -4913,7 +4913,7 @@ TEST_P(index_test_case, doc_removal) {
       auto& segment = reader[1];  // assume 1 is id of old segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -4933,7 +4933,7 @@ TEST_P(index_test_case, doc_removal) {
       auto& segment = reader[2];  // assume 2 is id of new segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -4983,7 +4983,7 @@ TEST_P(index_test_case, doc_update) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5016,7 +5016,7 @@ TEST_P(index_test_case, doc_update) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5050,7 +5050,7 @@ TEST_P(index_test_case, doc_update) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5089,7 +5089,7 @@ TEST_P(index_test_case, doc_update) {
       auto terms = segment.field("same");
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -5108,7 +5108,7 @@ TEST_P(index_test_case, doc_update) {
       auto& segment = reader[1];  // assume 1 is id of new segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -5150,7 +5150,7 @@ TEST_P(index_test_case, doc_update) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5194,7 +5194,7 @@ TEST_P(index_test_case, doc_update) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5229,7 +5229,7 @@ TEST_P(index_test_case, doc_update) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5266,7 +5266,7 @@ TEST_P(index_test_case, doc_update) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5311,7 +5311,7 @@ TEST_P(index_test_case, doc_update) {
       auto& segment = reader[0];  // assume 0 is id of old segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -5331,7 +5331,7 @@ TEST_P(index_test_case, doc_update) {
       auto& segment = reader[1];  // assume 1 is id of new segment
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -5368,7 +5368,7 @@ TEST_P(index_test_case, doc_update) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5406,7 +5406,7 @@ TEST_P(index_test_case, doc_update) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5446,7 +5446,7 @@ TEST_P(index_test_case, doc_update) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5490,7 +5490,7 @@ TEST_P(index_test_case, doc_update) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5591,7 +5591,7 @@ TEST_P(index_test_case, doc_update) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5634,7 +5634,7 @@ TEST_P(index_test_case, doc_update) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5675,7 +5675,7 @@ TEST_P(index_test_case, doc_update) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5721,7 +5721,7 @@ TEST_P(index_test_case, doc_update) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5868,7 +5868,7 @@ TEST_P(index_test_case, import_reader) {
     ASSERT_EQ(2, segment.docs_count());
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5911,7 +5911,7 @@ TEST_P(index_test_case, import_reader) {
     ASSERT_EQ(1, segment.docs_count());
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -5953,7 +5953,7 @@ TEST_P(index_test_case, import_reader) {
     ASSERT_EQ(4, segment.docs_count());
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6009,7 +6009,7 @@ TEST_P(index_test_case, import_reader) {
     ASSERT_EQ(2, segment.docs_count());
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6057,7 +6057,7 @@ TEST_P(index_test_case, import_reader) {
     ASSERT_EQ(3, segment.docs_count());
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6109,7 +6109,7 @@ TEST_P(index_test_case, import_reader) {
       ASSERT_EQ(2, segment.docs_count());
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -6134,7 +6134,7 @@ TEST_P(index_test_case, import_reader) {
       ASSERT_EQ(1, segment.docs_count());
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -6187,7 +6187,7 @@ TEST_P(index_test_case, refresh_reader) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6221,7 +6221,7 @@ TEST_P(index_test_case, refresh_reader) {
   auto& segment = reader[0];  // assume 0 is id of first/only segment
   const auto* column = segment.column("name");
   ASSERT_NE(nullptr, column);
-  auto values = column->iterator(false);
+  auto values = column->iterator(irs::ColumnHint::kNormal);
   ASSERT_NE(nullptr, values);
   auto* actual_value = irs::get<irs::payload>(*values);
   ASSERT_NE(nullptr, actual_value);
@@ -6247,7 +6247,7 @@ TEST_P(index_test_case, refresh_reader) {
   auto& segment = reader[0];  // assume 0 is id of first/only segment
   const auto* column = segment.column("name");
   ASSERT_NE(nullptr, column);
-  auto values = column->iterator(false);
+  auto values = column->iterator(irs::ColumnHint::kNormal);
   ASSERT_NE(nullptr, values);
   auto* actual_value = irs::get<irs::payload>(*values);
   ASSERT_NE(nullptr, actual_value);
@@ -6281,7 +6281,7 @@ TEST_P(index_test_case, refresh_reader) {
   auto& segment = reader[0];  // assume 0 is id of first/only segment
   const auto* column = segment.column("name");
   ASSERT_NE(nullptr, column);
-  auto values = column->iterator(false);
+  auto values = column->iterator(irs::ColumnHint::kNormal);
   ASSERT_NE(nullptr, values);
   auto* actual_value = irs::get<irs::payload>(*values);
   ASSERT_NE(nullptr, actual_value);
@@ -6303,7 +6303,7 @@ TEST_P(index_test_case, refresh_reader) {
     auto& segment = reader[0];  // assume 0 is id of first segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6323,7 +6323,7 @@ TEST_P(index_test_case, refresh_reader) {
     auto& segment = reader[1];  // assume 1 is id of second segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6361,7 +6361,7 @@ TEST_P(index_test_case, refresh_reader) {
     auto& segment = reader[0];  // assume 0 is id of first segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6381,7 +6381,7 @@ TEST_P(index_test_case, refresh_reader) {
     auto& segment = reader[1];  // assume 1 is id of second segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6406,7 +6406,7 @@ TEST_P(index_test_case, refresh_reader) {
   auto& segment = reader[0];  // assume 0 is id of second segment
   const auto* column = segment.column("name");
   ASSERT_NE(nullptr, column);
-  auto values = column->iterator(false);
+  auto values = column->iterator(irs::ColumnHint::kNormal);
   ASSERT_NE(nullptr, values);
   auto* actual_value = irs::get<irs::payload>(*values);
   ASSERT_NE(nullptr, actual_value);
@@ -6576,7 +6576,7 @@ TEST_P(index_test_case, segment_column_user_system) {
 
   column = segment.column("name");
   ASSERT_NE(nullptr, column);
-  auto values = column->iterator(false);
+  auto values = column->iterator(irs::ColumnHint::kNormal);
   ASSERT_NE(nullptr, values);
   auto* actual_value = irs::get<irs::payload>(*values);
   ASSERT_NE(nullptr, actual_value);
@@ -6703,7 +6703,7 @@ TEST_P(index_test_case, import_concurrent) {
   for (auto& segment : reader) {
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -6828,7 +6828,7 @@ TEST_P(index_test_case, concurrent_consolidation) {
   auto& segment = reader[0];
   const auto* column = segment.column("name");
   ASSERT_NE(nullptr, column);
-  auto values = column->iterator(false);
+  auto values = column->iterator(irs::ColumnHint::kNormal);
   ASSERT_NE(nullptr, values);
   auto* actual_value = irs::get<irs::payload>(*values);
   ASSERT_NE(nullptr, actual_value);
@@ -6966,7 +6966,7 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
   auto& segment = reader[0];
   const auto* column = segment.column("name");
   ASSERT_NE(nullptr, column);
-  auto values = column->iterator(false);
+  auto values = column->iterator(irs::ColumnHint::kNormal);
   ASSERT_NE(nullptr, values);
   auto* actual_value = irs::get<irs::payload>(*values);
   ASSERT_NE(nullptr, actual_value);
@@ -7106,7 +7106,7 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
   auto& segment = reader[0];
   const auto* column = segment.column("name");
   ASSERT_NE(nullptr, column);
-  auto values = column->iterator(false);
+  auto values = column->iterator(irs::ColumnHint::kNormal);
   ASSERT_NE(nullptr, values);
   auto* actual_value = irs::get<irs::payload>(*values);
   ASSERT_NE(nullptr, actual_value);
@@ -7234,7 +7234,7 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
   auto& segment = reader[0];
   const auto* column = segment.column("name");
   ASSERT_NE(nullptr, column);
-  auto values = column->iterator(false);
+  auto values = column->iterator(irs::ColumnHint::kNormal);
   ASSERT_NE(nullptr, values);
   auto* actual_value = irs::get<irs::payload>(*values);
   ASSERT_NE(nullptr, actual_value);
@@ -7433,7 +7433,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -7601,7 +7601,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -7623,7 +7623,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -7645,7 +7645,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       auto& segment = reader[2];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -7769,7 +7769,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -7791,7 +7791,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -7813,7 +7813,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       auto& segment = reader[2];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -7942,7 +7942,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
       // including deleted docs
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -7968,7 +7968,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
       // only live docs
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -8106,7 +8106,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
       // including deleted docs
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -8137,7 +8137,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
       // only live docs
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -8419,7 +8419,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -8508,7 +8508,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -8534,7 +8534,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -8630,7 +8630,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -8656,7 +8656,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -8786,7 +8786,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
     auto& segment = reader[i];
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -8932,7 +8932,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -9038,7 +9038,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -9064,7 +9064,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -9184,7 +9184,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -9210,7 +9210,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -9236,7 +9236,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       auto& segment = reader[2];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -9355,7 +9355,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // with deleted docs
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -9381,7 +9381,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // without deleted docs
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -9504,7 +9504,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // with deleted docs
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -9535,7 +9535,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // without deleted docs
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -9652,7 +9652,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
         // with deleted docs
         {
-          auto values = column->iterator(false);
+          auto values = column->iterator(irs::ColumnHint::kNormal);
           ASSERT_NE(nullptr, values);
           auto* actual_value = irs::get<irs::payload>(*values);
           ASSERT_NE(nullptr, actual_value);
@@ -9683,7 +9683,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
         // without deleted docs
         {
-          auto values = column->iterator(false);
+          auto values = column->iterator(irs::ColumnHint::kNormal);
           ASSERT_NE(nullptr, values);
           auto* actual_value = irs::get<irs::payload>(*values);
           ASSERT_NE(nullptr, actual_value);
@@ -10064,7 +10064,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // with deleted docs
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -10095,7 +10095,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // without deleted docs
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -10121,7 +10121,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -10236,7 +10236,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -10268,7 +10268,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // with deleted docs
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -10299,7 +10299,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
       // without deleted docs
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -10435,7 +10435,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -10463,7 +10463,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -10537,7 +10537,7 @@ doc1->stored.end());
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -10602,7 +10602,7 @@ doc1->stored.end());
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -10666,7 +10666,7 @@ doc1->stored.end());
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -10731,7 +10731,7 @@ doc1->stored.end());
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -10810,7 +10810,7 @@ doc2->stored.end());
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -10848,7 +10848,7 @@ in doc1 ASSERT_FALSE(docsItr->next());
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -10928,7 +10928,7 @@ doc2->stored.end());
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -10966,7 +10966,7 @@ in doc1 ASSERT_FALSE(docsItr->next());
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -11065,7 +11065,7 @@ doc3->stored.end());
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -11103,7 +11103,7 @@ in doc3 ASSERT_FALSE(docsItr->next());
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -11141,7 +11141,7 @@ in doc1 ASSERT_FALSE(docsItr->next());
       auto& segment = reader[2];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -11220,7 +11220,7 @@ doc2->stored.end());
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -11258,7 +11258,7 @@ in doc1 ASSERT_FALSE(docsItr->next());
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -11338,7 +11338,7 @@ doc2->stored.end());
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -11441,7 +11441,7 @@ consolidated segment that are valid in source segment
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -11482,7 +11482,7 @@ in doc1 ASSERT_FALSE(docsItr->next());
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -11523,7 +11523,7 @@ in doc2 ASSERT_FALSE(docsItr->next());
       auto& segment = reader[2];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -11635,7 +11635,7 @@ consolidated segment that are valid in source segment
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -11676,7 +11676,7 @@ in doc1 ASSERT_FALSE(docsItr->next());
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -11717,7 +11717,7 @@ in doc2 ASSERT_FALSE(docsItr->next());
       auto& segment = reader[2];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -11758,7 +11758,7 @@ in doc3 ASSERT_FALSE(docsItr->next());
       auto& segment = reader[3];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -11878,7 +11878,7 @@ segment 2 column store + segment 3.0 meta
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -11919,7 +11919,7 @@ in doc1 ASSERT_FALSE(docsItr->next());
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -12050,7 +12050,7 @@ meta + segment 5 column store
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -12193,7 +12193,7 @@ meta
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -12467,7 +12467,7 @@ TEST_P(index_test_case, segment_consolidate) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -12513,7 +12513,7 @@ TEST_P(index_test_case, segment_consolidate) {
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -12561,7 +12561,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(1, segment.docs_count());  // total count of documents
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -12608,7 +12608,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(1, segment.docs_count());  // total count of documents
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -12726,7 +12726,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(2, segment.docs_count());  // total count of documents
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -12779,7 +12779,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(2, segment.docs_count());  // total count of documents
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -12833,7 +12833,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(2, segment.docs_count());  // total count of documents
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -12887,7 +12887,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(2, segment.docs_count());  // total count of documents
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -12946,7 +12946,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(3, segment.docs_count());  // total count of documents
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -13009,7 +13009,7 @@ TEST_P(index_test_case, segment_consolidate) {
     ASSERT_EQ(3, segment.docs_count());  // total count of documents
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -13078,14 +13078,14 @@ TEST_P(index_test_case, segment_consolidate) {
 
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
     const auto* upper_case_column = segment.column("NAME");
     ASSERT_NE(nullptr, upper_case_column);
-    auto upper_case_values = upper_case_column->iterator(false);
+    auto upper_case_values = upper_case_column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, upper_case_values);
     auto* upper_case_actual_value = irs::get<irs::payload>(*upper_case_values);
     ASSERT_NE(nullptr, upper_case_actual_value);
@@ -13173,14 +13173,14 @@ TEST_P(index_test_case, segment_consolidate) {
 
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
     const auto* upper_case_column = segment.column("NAME");
     ASSERT_NE(nullptr, upper_case_column);
-    auto upper_case_values = upper_case_column->iterator(false);
+    auto upper_case_values = upper_case_column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, upper_case_values);
     auto* upper_case_actual_value = irs::get<irs::payload>(*upper_case_values);
     ASSERT_NE(nullptr, upper_case_actual_value);
@@ -13275,7 +13275,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -13302,7 +13302,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -13362,7 +13362,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -13389,7 +13389,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -13436,7 +13436,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -13482,7 +13482,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -13508,7 +13508,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -13562,7 +13562,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -13618,7 +13618,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -13646,7 +13646,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -13699,7 +13699,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -13754,7 +13754,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -13783,7 +13783,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -13873,7 +13873,7 @@ TEST_P(index_test_case, segment_options) {
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -13920,7 +13920,7 @@ TEST_P(index_test_case, segment_options) {
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -13947,7 +13947,7 @@ TEST_P(index_test_case, segment_options) {
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -13994,7 +13994,7 @@ TEST_P(index_test_case, segment_options) {
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -14021,7 +14021,7 @@ TEST_P(index_test_case, segment_options) {
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -14411,7 +14411,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     auto column_reader = segment.column(norm->second);
     ASSERT_NE(nullptr, column_reader);
     ASSERT_EQ(1, column_reader->size());
-    auto it = column_reader->iterator(false);
+    auto it = column_reader->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, it);
     auto payload = irs::get<irs::payload>(*it);
     ASSERT_NE(nullptr, payload);
@@ -14761,7 +14761,7 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
         ASSERT_EQ(1, irs::read<irs::doc_id_t>(p));
       }
 
-      auto it = column_reader->iterator(false);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
       auto payload = irs::get<irs::payload>(*it);
       ASSERT_NE(nullptr, payload);
@@ -14814,7 +14814,7 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
         auto* p = header_payload.c_str();
         ASSERT_EQ(2, irs::read<irs::doc_id_t>(p));
       }
-      auto it = column_reader->iterator(false);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
       auto payload = irs::get<irs::payload>(*it);
       ASSERT_NE(nullptr, payload);
@@ -15017,7 +15017,7 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
           ASSERT_EQ(1, irs::read<irs::doc_id_t>(p));
         }
 
-        auto it = column_reader->iterator(false);
+        auto it = column_reader->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, it);
         auto payload = irs::get<irs::payload>(*it);
         ASSERT_NE(nullptr, payload);
@@ -15107,7 +15107,7 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
           ASSERT_EQ(1, irs::read<irs::doc_id_t>(p));
         }
 
-        auto it = column_reader->iterator(false);
+        auto it = column_reader->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, it);
         auto payload = irs::get<irs::payload>(*it);
         ASSERT_NE(nullptr, payload);
@@ -15197,7 +15197,7 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
           ASSERT_EQ(1, irs::read<irs::doc_id_t>(p));
         }
 
-        auto it = column_reader->iterator(false);
+        auto it = column_reader->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, it);
         auto payload = irs::get<irs::payload>(*it);
         ASSERT_NE(nullptr, payload);
@@ -15330,7 +15330,7 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
         ASSERT_EQ(1, irs::read<irs::doc_id_t>(p));
       }
 
-      auto it = column_reader->iterator(false);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
       auto payload = irs::get<irs::payload>(*it);
       ASSERT_NE(nullptr, payload);

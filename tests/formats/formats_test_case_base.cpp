@@ -31,7 +31,7 @@ namespace {
 
 bool visit(const irs::column_reader& reader,
            const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
-  auto it = reader.iterator(true);
+  auto it = reader.iterator(irs::ColumnHint::kConsolidation);
 
   irs::payload dummy;
   auto* doc = irs::get<irs::document>(*it);
@@ -1170,7 +1170,7 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
 
     auto column = reader->column(column_id);
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -1223,7 +1223,7 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
 
     auto column = reader_1->column(column_id);
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
 
@@ -1277,7 +1277,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
     {
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_TRUE(!actual_value || actual_value->value.null());
@@ -1301,7 +1301,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
     {
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1347,7 +1347,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
     {
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1395,7 +1395,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       // iterate over field values (not cached)
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1434,7 +1434,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
     {
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_TRUE(!actual_value || actual_value->value.null());
@@ -1458,7 +1458,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
     {
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1625,7 +1625,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
     auto id_column = reader_1->column(columns["id"].first);
     ASSERT_NE(nullptr, id_column);
 
-    auto id_values = id_column->iterator(false);
+    auto id_values = id_column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, id_values);
     auto* id_payload = irs::get<irs::payload>(*id_values);
     ASSERT_NE(nullptr, id_payload);
@@ -1633,7 +1633,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
     auto name_column = reader_1->column(columns["name"].first);
     ASSERT_NE(nullptr, name_column);
 
-    auto name_values = name_column->iterator(false);
+    auto name_values = name_column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, name_values);
     auto* name_payload = irs::get<irs::payload>(*name_values);
     ASSERT_NE(nullptr, name_payload);
@@ -1714,7 +1714,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
 
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1739,7 +1739,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
 
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1771,7 +1771,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
 
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1947,14 +1947,14 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
       auto id_column = reader_1->column(columns_1["id"].first);
       ASSERT_NE(nullptr, id_column);
-      auto id_values = id_column->iterator(false);
+      auto id_values = id_column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, id_values);
       auto* id_payload = irs::get<irs::payload>(*id_values);
       ASSERT_NE(nullptr, id_payload);
 
       auto name_column = reader_1->column(columns_1["name"].first);
       ASSERT_NE(nullptr, name_column);
-      auto name_values = name_column->iterator(false);
+      auto name_values = name_column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, name_values);
       auto* name_payload = irs::get<irs::payload>(*name_values);
       ASSERT_NE(nullptr, name_payload);
@@ -1977,14 +1977,14 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
       auto id_column_2 = reader_2->column(columns_2["id"].first);
       ASSERT_NE(nullptr, id_column_2);
-      auto id_values_2 = id_column_2->iterator(false);
+      auto id_values_2 = id_column_2->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, id_values_2);
       auto* id_payload_2 = irs::get<irs::payload>(*id_values_2);
       ASSERT_NE(nullptr, id_payload_2);
 
       auto name_column_2 = reader_2->column(columns_2["name"].first);
       ASSERT_NE(nullptr, name_column_2);
-      auto name_values_2 = name_column_2->iterator(false);
+      auto name_values_2 = name_column_2->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, name_values_2);
       auto* name_payload_2 = irs::get<irs::payload>(*name_values_2);
       ASSERT_NE(nullptr, name_payload_2);
@@ -2011,14 +2011,14 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
       auto id_column = reader->column(columns_3["id"].first);
       ASSERT_NE(nullptr, id_column);
-      auto id_values = id_column->iterator(false);
+      auto id_values = id_column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, id_values);
       auto* id_payload = irs::get<irs::payload>(*id_values);
       ASSERT_NE(nullptr, id_payload);
 
       auto name_column = reader->column(columns_3["name"].first);
       ASSERT_NE(nullptr, name_column);
-      auto name_values = name_column->iterator(false);
+      auto name_values = name_column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, name_values);
       auto* name_payload = irs::get<irs::payload>(*name_values);
       ASSERT_NE(nullptr, name_payload);
@@ -2179,7 +2179,7 @@ TEST_P(format_test_case, columns_rw_typed) {
         if (res.second) {
           auto column = reader->column(columns[name].first);
           ASSERT_NE(nullptr, column);
-          res.first->second = column->iterator(false);
+          res.first->second = column->iterator(irs::ColumnHint::kNormal);
         }
 
         auto& column_iterator = *res.first->second;
@@ -2235,7 +2235,7 @@ TEST_P(format_test_case, columns_rw_typed) {
           ASSERT_NE(nullptr, column);
 
           auto& it = res.first->second;
-          it = column->iterator(false);
+          it = column->iterator(irs::ColumnHint::kNormal);
 
           auto* payload = irs::get<irs::payload>(*it);
           ASSERT_FALSE(!payload);
@@ -2309,7 +2309,7 @@ TEST_P(format_test_case, columns_rw_typed) {
           ASSERT_NE(nullptr, column);
 
           auto& it = res.first->second;
-          it = column->iterator(false);
+          it = column->iterator(irs::ColumnHint::kNormal);
           auto* payload = irs::get<irs::payload>(*it);
           ASSERT_FALSE(!payload);
           ASSERT_EQ(irs::doc_limits::invalid(), it->value());
@@ -2492,7 +2492,7 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
 
     // check iterator
     {
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       auto* payload = irs::get<irs::payload>(*it);
 
       for (auto& expected_value : expected_values) {
@@ -2544,7 +2544,7 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
 
     // check iterator
     {
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       auto* payload = irs::get<irs::payload>(*it);
 
       for (auto& expected_value : expected_values) {
@@ -2796,7 +2796,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment0_field4_id);
       ASSERT_NE(nullptr, column_reader);
-      auto column = column_reader->iterator(false);
+      auto column = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, column);
       auto* actual_value = irs::get<irs::payload>(*column);
       ASSERT_NE(nullptr, actual_value);
@@ -2886,7 +2886,7 @@ TEST_P(format_test_case, columns_rw) {
 
       // read (not cached)
       {
-        auto column = column_reader->iterator(false);
+        auto column = column_reader->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, column);
         auto* actual_value = irs::get<irs::payload>(*column);
         ASSERT_NE(nullptr, actual_value);
@@ -2900,7 +2900,7 @@ TEST_P(format_test_case, columns_rw) {
 
       // read (cached)
       {
-        auto column = column_reader->iterator(false);
+        auto column = column_reader->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, column);
         auto* actual_value = irs::get<irs::payload>(*column);
         ASSERT_NE(nullptr, actual_value);
@@ -2949,7 +2949,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment0_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator(false);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -2982,7 +2982,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment0_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator(false);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3013,7 +3013,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment0_field1_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator(false);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3049,7 +3049,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment0_field1_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator(false);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3087,7 +3087,7 @@ TEST_P(format_test_case, columns_rw) {
       irs::bytes_ref_input in;
       auto column_reader = reader->column(segment0_field1_id);
       ASSERT_NE(nullptr, column_reader);
-      auto column = column_reader->iterator(false);
+      auto column = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, column);
       auto* actual_value = irs::get<irs::payload>(*column);
       ASSERT_NE(nullptr, actual_value);
@@ -3129,7 +3129,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment0_empty_column_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator(false);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       ASSERT_TRUE(!irs::get<irs::payload>(*it));
@@ -3176,7 +3176,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment0_field2_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator(false);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3207,7 +3207,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment0_field2_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator(false);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3248,7 +3248,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment1_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator(false);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3280,7 +3280,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment1_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator(false);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3314,7 +3314,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment1_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      auto column = column_reader->iterator(false);
+      auto column = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, column);
       auto* actual_value = irs::get<irs::payload>(*column);
       ASSERT_NE(nullptr, actual_value);
@@ -3328,7 +3328,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment1_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator(false);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3740,7 +3740,7 @@ TEST_P(format_test_case_with_encryption, open_non_ecnrypted_with_encrypted) {
     std::unordered_set<irs::string_ref> expectedName = { "A" };
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
