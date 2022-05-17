@@ -446,8 +446,8 @@ doc_iterator::ptr column_base::make_iterator(Factory&& f) const {
 }
 
 struct noop_value_reader {
-  constexpr bytes_ref payload(doc_id_t) noexcept {
-    return bytes_ref::NIL;
+  constexpr bytes_ref payload(doc_id_t) const noexcept {
+    return {};
   }
 };
 
