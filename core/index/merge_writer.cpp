@@ -1123,7 +1123,7 @@ class sorting_compound_column_iterator : util::noncopyable {
       return false;
     }
 
-    auto it = segment.mask(segment.sort()->iterator(true));
+    auto it = segment.mask(segment.sort()->iterator(ColumnHint::kConsolidation));
 
     if (!it) {
       return false;
@@ -1206,7 +1206,7 @@ bool write_columns(
         const sub_reader& /*segment*/,
         const doc_map_f& doc_map,
         const irs::column_reader& column) {
-      auto it = column.iterator(true);
+      auto it = column.iterator(ColumnHint::kConsolidation);
       assert(it);
 
       if (IRS_LIKELY(it)) {
@@ -1284,7 +1284,7 @@ bool write_fields(
 
       // Tail columns can be removed if empty.
       if (reader) {
-        auto it = reader->iterator(true);
+        auto it = reader->iterator(ColumnHint::kConsolidation);
         assert(it);
 
         if (IRS_LIKELY(it)) {

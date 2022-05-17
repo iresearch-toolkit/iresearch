@@ -2001,7 +2001,7 @@ class sparse_column final : public column {
     refs_ = std::move(refs);
   }
 
-  virtual irs::doc_iterator::ptr iterator(bool consolidation) const override {
+  virtual irs::doc_iterator::ptr iterator(ColumnHint hint) const override {
     typedef column_iterator<column_t> iterator_t;
 
     if (empty()) {
@@ -2012,7 +2012,7 @@ class sparse_column final : public column {
         *this,
         refs_.data(),
         refs_.data() + refs_.size() - 1,
-        !consolidation); // -1 for upper bound
+        hint == ColumnHint::kNormal); // -1 for upper bound
   }
 
  private:
@@ -2149,7 +2149,7 @@ class dense_fixed_offset_column final : public column {
     min_ = this->max() - this->count() + 1;
   }
 
-  virtual irs::doc_iterator::ptr iterator(bool consolidation) const override {
+  virtual irs::doc_iterator::ptr iterator(ColumnHint hint) const override {
     typedef column_iterator<column_t> iterator_t;
 
     if (empty()) {
@@ -2157,7 +2157,8 @@ class dense_fixed_offset_column final : public column {
     }
 
     return memory::make_managed<iterator_t>(
-        *this, refs_.data(), refs_.data() + refs_.size(), !consolidation);
+        *this, refs_.data(), refs_.data() + refs_.size(),
+        hint == ColumnHint::kNormal);
   }
 
  private:
@@ -2274,7 +2275,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     min_ = this->max() - this->count();
   }
 
-  virtual irs::doc_iterator::ptr iterator(bool consolidation) const override;
+  virtual irs::doc_iterator::ptr iterator(ColumnHint hint) const override;
 
  private:
   class column_iterator final : public irs::doc_iterator {
@@ -2341,7 +2342,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   doc_id_t min_{}; // min key (less than any key in column)
 }; // dense_fixed_offset_column
 
-irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator(bool) const {
+irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator(ColumnHint) const {
   return empty()
     ? irs::doc_iterator::empty()
     : memory::make_managed<column_iterator>(*this);

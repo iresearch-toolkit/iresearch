@@ -30,10 +30,7 @@
 
 namespace {
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class empty_doc_iterator
-/// @brief represents an iterator with no documents 
-//////////////////////////////////////////////////////////////////////////////
+// Represents an iterator with no documents
 struct empty_doc_iterator final : irs::doc_iterator {
   empty_doc_iterator() noexcept
     : cost(0),
@@ -59,14 +56,11 @@ struct empty_doc_iterator final : irs::doc_iterator {
 
   irs::cost cost;
   irs::document doc{irs::doc_limits::eof()};
-}; // empty_doc_iterator
+};
 
 empty_doc_iterator kEmptyDocIterator;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class empty_term_iterator
-/// @brief represents an iterator without terms
-//////////////////////////////////////////////////////////////////////////////
+// Represents an iterator without terms
 struct empty_term_iterator : irs::term_iterator {
   virtual const irs::bytes_ref& value() const noexcept override final {
     return irs::bytes_ref::NIL;
@@ -79,14 +73,11 @@ struct empty_term_iterator : irs::term_iterator {
   virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override final {
     return nullptr;
   }
-}; // empty_term_iterator
+};
 
 empty_term_iterator kEmptyTermIterator;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class empty_seek_term_iterator
-/// @brief represents an iterator without terms
-//////////////////////////////////////////////////////////////////////////////
+// Represents an iterator without terms
 struct empty_seek_term_iterator final : irs::seek_term_iterator {
   virtual const irs::bytes_ref& value() const noexcept override final {
     return irs::bytes_ref::NIL;
@@ -108,19 +99,14 @@ struct empty_seek_term_iterator final : irs::seek_term_iterator {
   virtual irs::seek_cookie::ptr cookie() const noexcept override {
     return nullptr;
   }
-}; // empty_seek_term_iterator
+};
 
 empty_seek_term_iterator kEmptySeekIterator;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief represents a reader with no terms
-//////////////////////////////////////////////////////////////////////////////
+// Represents a reader with no terms
 const irs::empty_term_reader kEmptyTermReader{0};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class empty_field_iterator
-/// @brief represents a reader with no fields
-//////////////////////////////////////////////////////////////////////////////
+// Represents a reader with no fields
 struct empty_field_iterator final : irs::field_iterator {
   virtual const irs::term_reader& value() const override {
     return kEmptyTermReader;
@@ -133,7 +119,7 @@ struct empty_field_iterator final : irs::field_iterator {
   virtual bool next() override {
     return false;
   }
-}; // empty_field_iterator
+};
 
 empty_field_iterator kEmptyFieldIterator;
 
@@ -149,22 +135,19 @@ struct empty_column_reader final : irs::column_reader {
   // Returns the corresponding column iterator.
   // If the column implementation supports document payloads then it
   // can be accessed via the 'payload' attribute.
-  virtual irs::doc_iterator::ptr iterator(bool /*consolidtaion*/) const override {
+  virtual irs::doc_iterator::ptr iterator(irs::ColumnHint /*consolidtaion*/) const override {
     return irs::doc_iterator::empty();
   }
 
   virtual irs::doc_id_t size() const override { return 0; }
 };
 
-const empty_column_reader EMPTY_COLUMN_READER;
+const empty_column_reader kEmptyColumnReader;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class empty_column_iterator
-/// @brief represents a reader with no columns
-//////////////////////////////////////////////////////////////////////////////
+// Represents a reader with no columns
 struct empty_column_iterator final : irs::column_iterator {
   virtual const irs::column_reader& value() const override {
-    return EMPTY_COLUMN_READER;
+    return kEmptyColumnReader;
   }
 
   virtual bool seek(irs::string_ref) override {
@@ -174,7 +157,7 @@ struct empty_column_iterator final : irs::column_iterator {
   virtual bool next() override {
     return false;
   }
-}; // empty_column_iterator
+};
 
 empty_column_iterator kEmptyColumnIterator;
 
@@ -182,41 +165,21 @@ empty_column_iterator kEmptyColumnIterator;
 
 namespace iresearch {
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                    term_iterator
-// ----------------------------------------------------------------------------
-
 term_iterator::ptr term_iterator::empty() {
   return memory::to_managed<irs::term_iterator, false>(&kEmptyTermIterator);
 }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                               seek_term_iterator
-// ----------------------------------------------------------------------------
 
 seek_term_iterator::ptr seek_term_iterator::empty() {
   return memory::to_managed<irs::seek_term_iterator, false>(&kEmptySeekIterator);
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                seek_doc_iterator 
-// ----------------------------------------------------------------------------
-
 doc_iterator::ptr doc_iterator::empty() {
   return memory::to_managed<doc_iterator, false>(&kEmptyDocIterator);
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                   field_iterator 
-// ----------------------------------------------------------------------------
-
 field_iterator::ptr field_iterator::empty() {
   return memory::to_managed<irs::field_iterator, false>(&kEmptyFieldIterator);
 }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                  column_iterator 
-// ----------------------------------------------------------------------------
 
 column_iterator::ptr column_iterator::empty() {
   return memory::to_managed<irs::column_iterator, false>(&kEmptyColumnIterator);

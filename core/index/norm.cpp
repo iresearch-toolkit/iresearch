@@ -68,7 +68,7 @@ bool NormReaderContext::Reset(
   const auto* column = reader.column(column_id);
 
   if (column) {
-    auto it = column->iterator(false);
+    auto it = column->iterator(ColumnHint::kNormal);
     if (IRS_LIKELY(it)) {
       auto* payload = irs::get<irs::payload>(*it);
       if (IRS_LIKELY(payload)) {

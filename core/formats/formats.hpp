@@ -347,16 +347,16 @@ struct columnstore_writer {
 
 namespace iresearch {
 
-struct column_reader {
-  enum class Mode {
-    // Default mode
-    kNormal,
-    // Open reader for conosolidation
-    kConsolidation,
-    // Reading payload isn't necessary
-    kMask
-  };
+enum class ColumnHint : uint32_t {
+  // Nothing special
+  kNormal = 0,
+  // Open iterator for conosolidation
+  kConsolidation,
+  // Reading payload isn't necessary
+  kMask
+};
 
+struct column_reader {
   virtual ~column_reader() = default;
 
   // Returns column id.
@@ -372,7 +372,7 @@ struct column_reader {
   // Returns the corresponding column iterator.
   // If the column implementation supports document payloads then it
   // can be accessed via the 'payload' attribute.
-  virtual doc_iterator::ptr iterator(bool consolidation) const = 0;
+  virtual doc_iterator::ptr iterator(ColumnHint hint) const = 0;
 
   // Returns total number of columns.
   virtual doc_id_t size() const = 0;
