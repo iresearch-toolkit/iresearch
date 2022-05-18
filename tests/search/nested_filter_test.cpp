@@ -266,7 +266,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     opts.child = MakeByTerm("item", "Mouse");
     opts.parent = MakeByColumnExistence("customer");
 
-    const Tests tests = {{1, 1, {}}, {2, 9, {}}};
+    const Tests tests = {{1, 1, {}}, {2, 9, {}}, {2, 9, {}}};
 
     CheckQuery(filter, {}, {tests}, reader, SOURCE_LOCATION);
   }
