@@ -2689,8 +2689,7 @@ TEST(index_death_test_formats_14, columnstore_creation_fail_implicit_segment_flu
   // columnstore creation failure
   {
     irs::memory_directory impl;
-    // FIXME: SHOULD BE REMOVED
-    // irs::fs_directory impl("/home/alexey/Documents/ArangoDB/iresearch/build/bin/test");failing_directory dir(impl);
+    failing_directory dir(impl);
 
     // write index
     irs::index_writer::init_options opts;
@@ -3164,8 +3163,7 @@ TEST(index_death_test_formats_14, fails_in_length) {
       irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
       irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
-//    irs::memory_directory impl;
-    irs::fs_directory impl("/home/alexey/Documents/ArangoDB/iresearch/build/bin/test");
+    irs::memory_directory impl;
     failing_directory dir(impl);
 
     dir.register_failure(failing_directory::Failure::LENGTH, "_1.csd");
