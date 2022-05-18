@@ -104,7 +104,7 @@ class ChildToParentJoin final : public doc_iterator,
   doc_id_t seek(doc_id_t target) override {
     auto& doc = std::get<document>(attrs_);
 
-    if (target <= doc.value) {
+    if (IRS_UNLIKELY(target <= doc.value)) {
       return doc.value;
     }
 
@@ -115,6 +115,26 @@ class ChildToParentJoin final : public doc_iterator,
       return doc_limits::eof();
     }
 
+    return seek_internal(parent);
+  }
+
+  bool next() override {
+    if (IRS_LIKELY(parent_->next())) {
+      return !doc_limits::eof(seek_internal(parent_doc_->value));
+    }
+
+    std::get<document>(attrs_).value = doc_limits::eof();
+    return false;
+  }
+
+ private:
+  using attributes = std::tuple<document, attribute_ptr<cost>, score>;
+
+  doc_id_t seek_internal(doc_id_t parent) {
+    assert(!doc_limits::eof(parent));
+    auto& doc = std::get<document>(attrs_);
+
+    // First valid child
     const auto child = child_->seek(parent + 1);
 
     if (doc_limits::eof(child)) {
@@ -127,13 +147,11 @@ class ChildToParentJoin final : public doc_iterator,
       parent_->next();
     }
 
+    // FIXME(gnusi): validate children here according to query type
+    // any, all, min match
+
     return doc.value;
   }
-
-  bool next() override { return !doc_limits::eof(seek(value() + 1)); }
-
- private:
-  using attributes = std::tuple<document, attribute_ptr<cost>, score>;
 
   void PrepareScore();
 
