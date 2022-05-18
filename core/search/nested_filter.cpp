@@ -33,6 +33,40 @@
 
 namespace {
 
+// 1 2 3 4 5 6 7
+//
+// c c c p c c p
+// const auto prev = parent->seek_previous(target - 1);
+// const auto firstChild = child->seek(prev + 1); // first target's child
+// return parent->seek(firstChild + 1)
+//
+//
+// p p c c c
+// p c c c p c c
+//
+
+// do {
+//   const auto parent = parent->seek(target)
+//   const auto firstChild = child->seek(parent + 1);
+//   return parent->seek_prev(firstChild - 1)
+//
+//   while (parent->next() && parent->value() < firstChild);
+//
+//   const auto next = parent->value();
+//   child->seek(parent + 1);
+//   if (child < next) {
+//     break;
+//   }
+//   target = next;
+// while (true);
+
+// FIXME(gnusi): need to figure out the previous parent before target
+
+// FIXME(gnusi):
+// - tests for MinMerger
+// - add AvgMerger
+// - implement backwards seek for columnstore
+
 using namespace irs;
 
 template<typename Merger>
@@ -48,11 +82,11 @@ class ChildToParentJoin final : public doc_iterator,
     assert(parent_);
     assert(child_);
 
+    parent_doc_ = irs::get<irs::document>(*parent_);
+    child_doc_ = irs::get<irs::document>(*child_);
+
     std::get<attribute_ptr<cost>>(attrs_) =
         irs::get_mutable<cost>(child_.get());
-
-    std::get<attribute_ptr<document>>(attrs_) =
-        irs::get_mutable<document>(parent_.get());
 
     if constexpr (HasScore<Merger>()) {
       PrepareScore();
@@ -60,7 +94,7 @@ class ChildToParentJoin final : public doc_iterator,
   }
 
   doc_id_t value() const noexcept override {
-    return std::get<attribute_ptr<document>>(attrs_).ptr->value;
+    return std::get<document>(attrs_).value;
   }
 
   attribute* get_mutable(irs::type_info::type_id id) override {
@@ -68,16 +102,38 @@ class ChildToParentJoin final : public doc_iterator,
   }
 
   doc_id_t seek(doc_id_t target) override {
-    // FIXME(gnusi): need to figure out the previous parent before target
-    const auto child = child_->seek(target);
-    return parent_->seek(child);
+    auto& doc = std::get<document>(attrs_);
+
+    if (target <= doc.value) {
+      return doc.value;
+    }
+
+    auto parent = parent_->seek(target);
+
+    if (doc_limits::eof(parent)) {
+      doc.value = doc_limits::eof();
+      return doc_limits::eof();
+    }
+
+    const auto child = child_->seek(parent + 1);
+
+    if (doc_limits::eof(child)) {
+      doc.value = doc_limits::eof();
+      return doc_limits::eof();
+    }
+
+    while (parent_doc_->value < child) {
+      doc.value = parent_doc_->value;
+      parent_->next();
+    }
+
+    return doc.value;
   }
 
   bool next() override { return !doc_limits::eof(seek(value() + 1)); }
 
  private:
-  using attributes =
-      std::tuple<attribute_ptr<document>, attribute_ptr<cost>, score>;
+  using attributes = std::tuple<document, attribute_ptr<cost>, score>;
 
   void PrepareScore();
 
@@ -86,6 +142,7 @@ class ChildToParentJoin final : public doc_iterator,
   attributes attrs_;
   const score* child_score_;
   const document* child_doc_;
+  const document* parent_doc_;
 };
 
 template<typename Merger>
@@ -109,7 +166,7 @@ void ChildToParentJoin<Merger>::PrepareScore() {
     auto& merger = static_cast<Merger&>(self);
 
     auto& child = *self.child_;
-    const auto parent_doc = self.value();
+    const auto parent_doc = self.parent_doc_->value;
     const auto* child_doc = self.child_doc_;
     const auto& child_score = *self.child_score_;
 
