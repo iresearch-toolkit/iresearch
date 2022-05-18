@@ -144,6 +144,101 @@ void FilterTestCaseBase::GetQueryResult(const irs::filter::prepared::ptr& q,
 }
 
 void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
+                                    const Docs& expected,
+                                    const Costs& expected_costs,
+                                    const irs::index_reader& index,
+                                    std::string_view source_location) {
+  SCOPED_TRACE(source_location);
+  Docs result;
+  Costs result_costs;
+  GetQueryResult(filter.prepare(index, irs::Order::kUnordered), index, result,
+                 result_costs, source_location);
+  ASSERT_EQ(expected, result);
+  ASSERT_EQ(expected_costs, result_costs);
+}
+
+void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
+                                    std::span<const irs::sort::ptr> order,
+                                    const std::vector<Tests>& tests,
+                                    const irs::index_reader& rdr,
+                                    std::string_view source_location) {
+  SCOPED_TRACE(source_location);
+  auto ord = irs::Order::Prepare(order);
+  auto q = filter.prepare(rdr, ord);
+  ASSERT_NE(nullptr, q);
+
+  auto assert_equal_scores = [&](const std::vector<irs::score_t>& lhs,
+                                 irs::doc_iterator& rhs) {
+    auto* score = irs::get<irs::score>(rhs);
+
+    if (ord.empty()) {
+      ASSERT_TRUE(nullptr == score || score->IsNoop());
+      ASSERT_TRUE(lhs.empty());
+    } else {
+      ASSERT_NE(nullptr, score);
+
+      std::vector<irs::score_t> tmp(ord.buckets().size());
+      if (score) {
+        (*score)(tmp.data());
+      }
+      ASSERT_EQ(lhs, tmp);
+    }
+  };
+
+  auto assert_iterator = [&](auto& test, irs::doc_iterator& it) {
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_NE(nullptr, doc);
+    ASSERT_EQ(test.expected, it.seek(test.target));
+    ASSERT_EQ(test.expected, it.value());
+    ASSERT_EQ(test.expected, doc->value);
+    assert_equal_scores(test.score, it);
+  };
+
+  auto test = std::begin(tests);
+  for (const auto& sub : rdr) {
+    ASSERT_NE(test, std::end(tests));
+    auto random_docs = q->execute(sub, ord);
+    ASSERT_NE(nullptr, random_docs);
+
+    for (auto& test : *test) {
+      assert_iterator(test, *random_docs);
+
+      auto stateless_random_docs = q->execute(sub, ord);
+      ASSERT_NE(nullptr, stateless_random_docs);
+      assert_iterator(test, *stateless_random_docs);
+    }
+
+    ++test;
+  }
+}
+
+void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
+                                    std::span<const irs::sort::ptr> order,
+                                    const ScoredDocs& expected,
+                                    const irs::index_reader& index,
+                                    std::string_view source_location) {
+  SCOPED_TRACE(source_location);
+  ScoredDocs result;
+  Costs result_costs;
+  auto prepared = irs::Order::Prepare(order);
+  GetQueryResult(filter.prepare(index, prepared), index, prepared, result,
+                 result_costs, source_location);
+  ASSERT_EQ(expected, result);
+}
+
+void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
+                                    const Docs& expected,
+                                    const irs::index_reader& index,
+                                    std::string_view source_location) {
+  SCOPED_TRACE(source_location);
+  Docs result;
+  Costs result_costs;
+  GetQueryResult(filter.prepare(index, irs::Order::kUnordered), index, result,
+                 result_costs, source_location);
+  ASSERT_EQ(expected, result);
+}
+
+void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
                                     std::span<const irs::sort::ptr> order,
                                     const std::vector<irs::doc_id_t>& expected,
                                     const irs::index_reader& rdr,

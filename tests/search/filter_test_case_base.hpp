@@ -359,30 +359,40 @@ class FilterTestCaseBase : public index_test_base {
       std::vector<std::pair<irs::doc_id_t, std::vector<irs::score_t>>>;
   using Costs = std::vector<irs::cost::cost_t>;
 
+  struct Test {
+    irs::doc_id_t target;
+    irs::doc_id_t expected;
+    std::vector<irs::score_t> score;
+  };
+
+  using Tests = std::vector<Test>;
+
+  // Validate matched documents and query cost
   static void CheckQuery(const irs::filter& filter, const Docs& expected,
                          const Costs& expected_costs,
                          const irs::index_reader& index,
-                         std::string_view source_location = {}) {
-    SCOPED_TRACE(source_location);
-    Docs result;
-    Costs result_costs;
-    GetQueryResult(filter.prepare(index, irs::Order::kUnordered), index, result,
-                   result_costs, source_location);
-    ASSERT_EQ(expected, result);
-    ASSERT_EQ(expected_costs, result_costs);
-  }
+                         std::string_view source_location = {});
 
+  // Validate matched documents
   static void CheckQuery(const irs::filter& filter, const Docs& expected,
                          const irs::index_reader& index,
-                         std::string_view source_location = {}) {
-    SCOPED_TRACE(source_location);
-    Docs result;
-    Costs result_costs;
-    GetQueryResult(filter.prepare(index, irs::Order::kUnordered), index, result,
-                   result_costs, source_location);
-    ASSERT_EQ(expected, result);
-  }
+                         std::string_view source_location = {});
 
+  // Validate documents and its scores
+  static void CheckQuery(const irs::filter& filter,
+                         std::span<const irs::sort::ptr> order,
+                         const ScoredDocs& expected,
+                         const irs::index_reader& index,
+                         std::string_view source_location = {});
+
+  // Validate documents and its scores with test cases
+  static void CheckQuery(const irs::filter& filter,
+                         std::span<const irs::sort::ptr> order,
+                         const std::vector<Tests>& tests,
+                         const irs::index_reader& index,
+                         std::string_view source_location = {});
+
+  // Validate document order
   static void CheckQuery(const irs::filter& filter,
                          std::span<const irs::sort::ptr> order,
                          const std::vector<irs::doc_id_t>& expected,

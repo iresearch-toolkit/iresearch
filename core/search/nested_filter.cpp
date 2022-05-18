@@ -202,12 +202,14 @@ class ByNesterQuery final : public filter::prepared {
 doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
                                          const Order& ord, ExecutionMode mode,
                                          const attribute_provider* ctx) const {
-  auto parent = parent_->execute(rdr, ord, mode, ctx);
+  auto parent =
+      parent_->execute(rdr, Order::kUnordered, ExecutionMode::kAll, ctx);
 
   if (IRS_UNLIKELY(!parent || doc_limits::eof(parent->value()))) {
     return doc_iterator::empty();
   }
 
+  // FIXME(gnusi): how to handle execution mode?
   auto child = child_->execute(rdr, ord, mode, ctx);
 
   if (IRS_UNLIKELY(!child || doc_limits::eof(child->value()))) {
