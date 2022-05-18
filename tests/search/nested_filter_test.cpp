@@ -47,6 +47,26 @@ auto MakeByTerm(std::string_view name, std::string_view value) {
   return filter;
 }
 
+irs::filter::ptr MakeOr(
+    std::span<std::pair<std::string_view, std::string_view>> parts) {
+  auto filter = std::make_unique<irs::Or>();
+  for (const auto& [name, value] : parts) {
+    filter->add<irs::by_term>() =
+        std::move(static_cast<irs::by_term&>(*MakeByTerm(name, value)));
+  }
+  return filter;
+}
+
+irs::filter::ptr MakeAnd(
+    std::span<std::pair<std::string_view, std::string_view>> parts) {
+  auto filter = std::make_unique<irs::And>();
+  for (const auto& [name, value] : parts) {
+    filter->add<irs::by_term>() =
+        std::move(static_cast<irs::by_term&>(*MakeByTerm(name, value)));
+  }
+  return filter;
+}
+
 // name == value && range_field <= upper_bound
 auto MakeByTermAndRange(std::string_view name, std::string_view value,
                         std::string_view range_field, int32_t upper_bound) {
@@ -70,10 +90,9 @@ auto MakeByTermAndRange(std::string_view name, std::string_view value,
   return root;
 }
 
-auto MakeOptions(
-    std::string_view parent, std::string_view parent_value,
-    std::string_view child, std::string_view child_value,
-    irs::sort::MergeType merge_type = irs::sort::MergeType::kSum) {
+auto MakeOptions(std::string_view parent, std::string_view parent_value,
+                 std::string_view child, std::string_view child_value,
+                 irs::sort::MergeType merge_type = irs::sort::MergeType::kSum) {
   irs::ByNestedOptions opts;
   opts.merge_type = merge_type;
   opts.parent = std::make_unique<irs::by_term>();
@@ -184,6 +203,9 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
                          {"RAM", 5000, 1}}});
 
   // Parent document: 7
+  InsertOrder(*writer, {"Quest", "June", {{"CPU", 1000, 1}}});
+
+  // Parent document: 9
   InsertOrder(*writer, {"Dell",
                         "April",
                         {{"Mouse", 10, 1},
@@ -191,7 +213,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
                          {"CPU", 1000, 1},
                          {"RAM", 5000, 1}}});
 
-  // Parent document: 12, missing "customer" field
+  // Parent document: 14, missing "customer" field
   InsertOrder(*writer, {"", "April", {{"Mouse", 10, 1}}});
 
   ASSERT_TRUE(writer->commit());
@@ -235,7 +257,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     auto& opts = *filter.mutable_options();
     opts.child = MakeByTerm("item", "Mouse");
     opts.parent = MakeByColumnExistence("customer");
-    CheckQuery(filter, Docs{1, 7}, Costs{3}, reader, SOURCE_LOCATION);
+    CheckQuery(filter, Docs{1, 9}, Costs{3}, reader, SOURCE_LOCATION);
   }
 
   {
@@ -243,7 +265,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     auto& opts = *filter.mutable_options();
     opts.child = MakeByTermAndRange("item", "Mouse", "price", 11);
     opts.parent = MakeByColumnExistence("customer");
-    CheckQuery(filter, Docs{7}, Costs{2}, reader, SOURCE_LOCATION);
+    CheckQuery(filter, Docs{9}, Costs{2}, reader, SOURCE_LOCATION);
   }
 }
 
