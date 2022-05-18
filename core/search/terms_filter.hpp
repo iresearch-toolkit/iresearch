@@ -42,12 +42,10 @@ struct by_terms_options {
     search_term() = default;
 
     explicit search_term(bstring&& term, score_t boost = kNoBoost) noexcept
-      : term(std::move(term)), boost(boost) {
-    }
+        : term(std::move(term)), boost(boost) {}
 
     explicit search_term(bytes_ref term, score_t boost = kNoBoost)
-      : term(term.c_str(), term.size()), boost(boost) {
-    }
+        : term(term.c_str(), term.size()), boost(boost) {}
 
     bool operator==(const search_term& rhs) const noexcept {
       return term == rhs.term && boost == rhs.boost;
@@ -66,7 +64,7 @@ struct by_terms_options {
   using search_terms = std::set<search_term>;
 
   search_terms terms;
-  sort::MergeType merge_type{sort::MergeType::AGGREGATE};
+  sort::MergeType merge_type{sort::MergeType::kSum};
 
   bool operator==(const by_terms_options& rhs) const noexcept {
     return terms == rhs.terms;
@@ -82,27 +80,22 @@ struct by_terms_options {
 };
 
 // Filter by a set of terms
-class by_terms final
-    : public filter_base<by_terms_options> {
+class by_terms final : public filter_base<by_terms_options> {
  public:
   static ptr make();
 
-  static void visit(
-    const sub_reader& segment,
-    const term_reader& field,
-    const by_terms_options::search_terms& terms,
-    filter_visitor& visitor);
+  static void visit(const sub_reader& segment, const term_reader& field,
+                    const by_terms_options::search_terms& terms,
+                    filter_visitor& visitor);
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& index,
-    const Order& order,
-    score_t boost,
-    const attribute_provider* /*ctx*/) const override;
+      const index_reader& index, const Order& order, score_t boost,
+      const attribute_provider* /*ctx*/) const override;
 };
 
-}
+}  // namespace iresearch
 
 namespace std {
 
@@ -113,7 +106,6 @@ struct hash<::iresearch::by_terms_options> {
   }
 };
 
-}
+}  // namespace std
 
-#endif // IRESEARCH_TERMS_FILTER_H
-
+#endif  // IRESEARCH_TERMS_FILTER_H

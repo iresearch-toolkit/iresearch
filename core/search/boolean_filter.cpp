@@ -156,7 +156,7 @@ class boolean_query : public filter::prepared {
 
     // exclusion part does not affect scoring at all
     auto excl = ::make_disjunction(rdr, Order::kUnordered, ExecutionMode::kAll,
-                                   irs::sort::MergeType::AGGREGATE, ctx,
+                                   irs::sort::MergeType::kSum, ctx,
                                    begin() + excl_, end());
 
     // got empty iterator for excluded
@@ -218,7 +218,7 @@ class boolean_query : public filter::prepared {
   queries_t queries_;
   // index of the first excluded query
   size_t excl_;
-  sort::MergeType merge_type_{sort::MergeType::AGGREGATE};
+  sort::MergeType merge_type_{sort::MergeType::kSum};
 };
 
 // Represent a set of queries joint by "And"
@@ -605,7 +605,7 @@ filter::prepared::ptr Not::prepare(const index_reader& rdr, const Order& ord,
     const std::array<const irs::filter*, 1> excl{res.first};
 
     auto q = memory::make_managed<and_query>();
-    q->prepare(rdr, ord, boost, sort::MergeType::AGGREGATE, ctx, incl, excl);
+    q->prepare(rdr, ord, boost, sort::MergeType::kSum, ctx, incl, excl);
     return q;
   }
 

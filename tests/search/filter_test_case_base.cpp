@@ -60,6 +60,10 @@ void FilterTestCaseBase::GetQueryResult(const irs::filter::prepared::ptr& q,
       ASSERT_EQ(sequential_docs->value(), doc->value);
       ASSERT_EQ(doc->value, random_docs->seek(doc->value));
       ASSERT_EQ(doc->value, random_docs->value());
+      ASSERT_EQ(doc->value, random_docs->seek(doc->value));
+      ASSERT_EQ(doc->value, random_docs->value());
+      ASSERT_EQ(doc->value, stateless_random_docs->seek(doc->value));
+      ASSERT_EQ(doc->value, stateless_random_docs->value());
       ASSERT_EQ(doc->value, stateless_random_docs->seek(doc->value));
       ASSERT_EQ(doc->value, stateless_random_docs->value());
 
@@ -112,7 +116,9 @@ void FilterTestCaseBase::GetQueryResult(const irs::filter::prepared::ptr& q,
       ASSERT_NE(nullptr, stateless_random_docs);
       ASSERT_EQ(sequential_docs->value(), doc->value);
       ASSERT_EQ(doc->value, random_docs->seek(doc->value));
+      ASSERT_EQ(doc->value, random_docs->seek(doc->value));
       ASSERT_EQ(doc->value, random_docs->value());
+      ASSERT_EQ(doc->value, stateless_random_docs->seek(doc->value));
       ASSERT_EQ(doc->value, stateless_random_docs->seek(doc->value));
       ASSERT_EQ(doc->value, stateless_random_docs->value());
 

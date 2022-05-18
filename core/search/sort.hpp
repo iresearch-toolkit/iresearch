@@ -210,11 +210,17 @@ class sort {
 
   // Possible variants of merging multiple scores
   enum class MergeType {
-    // Aggregate multiple scores
-    AGGREGATE = 0,
+    // Do nothing
+    kNoop = 0,
 
-    // Find max among multiple scores
-    MAX
+    // Sum multiple scores
+    kSum,
+
+    // Find max amongst multiple scores
+    kMax,
+
+    // Find min amongst multiple scores
+    kMin
   };
 
   // Base class for all prepared(compiled) sort entries.
@@ -408,6 +414,18 @@ struct MaxMerger {
   }
 };
 
+struct MinMerger {
+  void operator()(size_t idx, score_t* RESTRICT dst,
+                  const score_t* RESTRICT src) const noexcept {
+    auto& casted_dst = dst[idx];
+    auto& casted_src = src[idx];
+
+    if (casted_src < casted_dst) {
+      casted_dst = casted_src;
+    }
+  }
+};
+
 template<typename Visitor>
 auto ResoveMergeType(sort::MergeType type, size_t num_buckets,
                      Visitor&& visitor) {
@@ -431,10 +449,14 @@ auto ResoveMergeType(sort::MergeType type, size_t num_buckets,
   };
 
   switch (type) {
-    case sort::MergeType::AGGREGATE:
+    case sort::MergeType::kNoop:
+      return visitor(NoopAggregator{});
+    case sort::MergeType::kSum:
       return impl.template operator()<SumMerger>();
-    case sort::MergeType::MAX:
+    case sort::MergeType::kMax:
       return impl.template operator()<MaxMerger>();
+    case sort::MergeType::kMin:
+      return impl.template operator()<MinMerger>();
     default:
       assert(false);
       return visitor(NoopAggregator{});

@@ -73,7 +73,7 @@ auto MakeByTermAndRange(std::string_view name, std::string_view value,
 auto MakeOptions(
     std::string_view parent, std::string_view parent_value,
     std::string_view child, std::string_view child_value,
-    irs::sort::MergeType merge_type = irs::sort::MergeType::AGGREGATE) {
+    irs::sort::MergeType merge_type = irs::sort::MergeType::kSum) {
   irs::ByNestedOptions opts;
   opts.merge_type = merge_type;
   opts.parent = std::make_unique<irs::by_term>();
@@ -95,7 +95,7 @@ TEST(NestedFilterTest, CheckOptions) {
     irs::ByNestedOptions opts;
     ASSERT_EQ(nullptr, opts.parent);
     ASSERT_EQ(nullptr, opts.child);
-    ASSERT_EQ(irs::sort::MergeType::AGGREGATE, opts.merge_type);
+    ASSERT_EQ(irs::sort::MergeType::kSum, opts.merge_type);
     ASSERT_EQ(opts, irs::ByNestedOptions{});
     ASSERT_EQ(opts.hash(), irs::ByNestedOptions{}.hash());
   }
@@ -109,7 +109,7 @@ TEST(NestedFilterTest, CheckOptions) {
     ASSERT_NE(opts0, MakeOptions("parent", "43", "child", "442"));
     ASSERT_NE(opts0, MakeOptions("parent", "42", "child", "443"));
     ASSERT_NE(opts0, MakeOptions("parent", "42", "child", "442",
-                                 irs::sort::MergeType::MAX));
+                                 irs::sort::MergeType::kMax));
   }
 }
 
@@ -162,10 +162,10 @@ class NestedFilterTestCase : public tests::FilterTestCaseBase {
 
   static void InsertOrder(irs::index_writer& writer, const Order& order) {
     auto trx = writer.documents();
+    InsertOrderDocument(trx, order.customer, order.date);
     for (const auto& [item, price, count] : order.items) {
       InsertItemDocument(trx, item, price, count);
     }
-    InsertOrderDocument(trx, order.customer, order.date);
   }
 };
 
@@ -174,7 +174,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
 
-  // Parent document: 6
+  // Parent document: 1
   InsertOrder(*writer, {"ArangoDB",
                         "May",
                         {{"Keyboard", 100, 1},
@@ -183,7 +183,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
                          {"CPU", 5000, 1},
                          {"RAM", 5000, 1}}});
 
-  // Parent document: 11
+  // Parent document: 7
   InsertOrder(*writer, {"Dell",
                         "April",
                         {{"Mouse", 10, 1},
@@ -191,7 +191,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
                          {"CPU", 1000, 1},
                          {"RAM", 5000, 1}}});
 
-  // Parent document: 13, missing "customer" field
+  // Parent document: 12, missing "customer" field
   InsertOrder(*writer, {"", "April", {{"Mouse", 10, 1}}});
 
   ASSERT_TRUE(writer->commit());
@@ -227,7 +227,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     auto& opts = *filter.mutable_options();
     opts.child = MakeByTerm("item", "Keyboard");
     opts.parent = MakeByColumnExistence("customer");
-    CheckQuery(filter, Docs{6}, Costs{1}, reader, SOURCE_LOCATION);
+    CheckQuery(filter, Docs{1}, Costs{1}, reader, SOURCE_LOCATION);
   }
 
   {
@@ -235,7 +235,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     auto& opts = *filter.mutable_options();
     opts.child = MakeByTerm("item", "Mouse");
     opts.parent = MakeByColumnExistence("customer");
-    CheckQuery(filter, Docs{6, 11}, Costs{3}, reader, SOURCE_LOCATION);
+    CheckQuery(filter, Docs{1, 7}, Costs{3}, reader, SOURCE_LOCATION);
   }
 
   {
@@ -243,7 +243,7 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     auto& opts = *filter.mutable_options();
     opts.child = MakeByTermAndRange("item", "Mouse", "price", 11);
     opts.parent = MakeByColumnExistence("customer");
-    CheckQuery(filter, Docs{11}, Costs{2}, reader, SOURCE_LOCATION);
+    CheckQuery(filter, Docs{7}, Costs{2}, reader, SOURCE_LOCATION);
   }
 }
 

@@ -1825,7 +1825,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_last_order = irs::Order::Prepare(detail::basic_sort{2});
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 0,
+        irs::sort::MergeType::kMax, 0,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using disjunction = irs::basic_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -1883,7 +1883,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_last_order = irs::Order::Prepare(last_order);
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using disjunction = irs::basic_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -1956,7 +1956,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_last_order = irs::Order::Prepare(last_order);
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using disjunction = irs::basic_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -2024,7 +2024,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     std::vector<irs::doc_id_t> last{1, 5, 6};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using disjunction = irs::basic_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -2092,7 +2092,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     std::vector<irs::doc_id_t> last{1, 5, 6};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using disjunction = irs::basic_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -2160,7 +2160,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_first_order = irs::Order::Prepare(detail::basic_sort{1});
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using disjunction = irs::basic_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -2230,7 +2230,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     std::vector<irs::doc_id_t> last{1, 5, 6};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using disjunction = irs::basic_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -2299,7 +2299,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_last_order = irs::Order::Prepare(detail::basic_sort{1});
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using disjunction = irs::basic_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -2367,7 +2367,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     auto prepared_last_order = irs::Order::Prepare(detail::basic_sort{1});
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using disjunction = irs::basic_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -3006,7 +3006,7 @@ TEST(small_disjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 0,
+        irs::sort::MergeType::kSum, 0,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -3059,7 +3059,7 @@ TEST(small_disjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -3128,7 +3128,7 @@ TEST(small_disjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -3197,7 +3197,7 @@ TEST(small_disjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -3266,7 +3266,7 @@ TEST(small_disjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -3334,7 +3334,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Order{});
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -3402,7 +3402,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Order{});
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::small_disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -4010,8 +4010,7 @@ TEST(block_disjunction_test, next_scored) {
                          irs::Order::Prepare(detail::basic_sort{1})));
 
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE,
-          irs::Order::kUnordered.buckets().size(),
+          irs::sort::MergeType::kSum, irs::Order::kUnordered.buckets().size(),
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -4069,7 +4068,7 @@ TEST(block_disjunction_test, next_scored) {
         irs::Order::Prepare(detail::basic_sort{1})));
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -4129,7 +4128,7 @@ TEST(block_disjunction_test, next_scored) {
                        irs::Order::Prepare(detail::basic_sort{2})));
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -4190,7 +4189,7 @@ TEST(block_disjunction_test, next_scored) {
 
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 0,
+          irs::sort::MergeType::kSum, 0,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -4248,7 +4247,7 @@ TEST(block_disjunction_test, next_scored) {
         std::vector<irs::doc_id_t>{1, 5, 6, 12, 29, 126}, irs::Order{}));
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -4323,7 +4322,7 @@ TEST(block_disjunction_test, next_scored) {
                        irs::Order::Prepare(detail::basic_sort{2})));
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -4398,7 +4397,7 @@ TEST(block_disjunction_test, next_scored) {
                        irs::Order::Prepare(detail::basic_sort{2})));
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::MAX, 1,
+          irs::sort::MergeType::kMax, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -4460,7 +4459,7 @@ TEST(block_disjunction_test, next_scored) {
                       irs::Order::Prepare(detail::basic_sort{1}));
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -4516,7 +4515,7 @@ TEST(block_disjunction_test, next_scored) {
     std::vector<irs::doc_id_t> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -4569,7 +4568,7 @@ TEST(block_disjunction_test, next_scored) {
     std::vector<irs::doc_id_t> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -4621,7 +4620,7 @@ TEST(block_disjunction_test, next_scored) {
                       irs::Order::Prepare(detail::basic_sort{5}));
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -4692,7 +4691,7 @@ TEST(block_disjunction_test, next_scored) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::MAX, 1,
+          irs::sort::MergeType::kMax, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -4755,7 +4754,7 @@ TEST(block_disjunction_test, next_scored) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -4812,7 +4811,7 @@ TEST(block_disjunction_test, next_scored) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -4868,7 +4867,7 @@ TEST(block_disjunction_test, next_scored) {
     std::vector<irs::doc_id_t> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::MAX, 1,
+          irs::sort::MergeType::kMax, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -4923,7 +4922,7 @@ TEST(block_disjunction_test, next_scored) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -4975,7 +4974,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::MAX, 0,
+          irs::sort::MergeType::kMax, 0,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -5032,7 +5031,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -5091,7 +5090,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -5150,7 +5149,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 0,
+          irs::sort::MergeType::kSum, 0,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -5209,7 +5208,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -5284,7 +5283,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -5359,7 +5358,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::MAX, 1,
+          irs::sort::MergeType::kMax, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -5420,7 +5419,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -5475,7 +5474,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     std::vector<irs::doc_id_t> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -5526,7 +5525,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     std::vector<irs::doc_id_t> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -5576,7 +5575,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     docs.emplace_back(std::vector<irs::doc_id_t>{}, order(5));
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -5613,7 +5612,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
   // no iterators provided
   {
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -5657,7 +5656,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::MAX, 1,
+          irs::sort::MergeType::kMax, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -5717,7 +5716,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -5771,7 +5770,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::AGGREGATE, 1,
+          irs::sort::MergeType::kSum, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -5827,7 +5826,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     std::vector<irs::doc_id_t> result;
     {
       auto it_ptr = irs::ResoveMergeType(
-          irs::sort::MergeType::MAX, 1,
+          irs::sort::MergeType::kMax, 1,
           [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
             using disjunction = irs::block_disjunction<
                 irs::doc_iterator::ptr, A,
@@ -5879,7 +5878,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     docs.emplace_back(std::vector<irs::doc_id_t>{}, order(4));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -7606,7 +7605,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
   // no iterators provided
   {
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 0,
+        irs::sort::MergeType::kMax, 0,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -7655,7 +7654,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     };
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 0,
+        irs::sort::MergeType::kSum, 0,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -7716,7 +7715,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     };
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -7784,7 +7783,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     };
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -7842,7 +7841,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     };
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -7890,7 +7889,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0, 0}};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -7945,7 +7944,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         {57, irs::doc_limits::eof(), 0, 0}};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -7998,7 +7997,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         {57, irs::doc_limits::eof(), 0, 4}};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -8056,7 +8055,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         {57, irs::doc_limits::eof(), 0, 4}};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -8118,7 +8117,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         {2001, irs::doc_limits::eof(), 0, 8}};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -8169,7 +8168,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0, 0}};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -8226,7 +8225,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         {57, irs::doc_limits::eof(), 0, 0}};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -8283,7 +8282,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         {1201, irs::doc_limits::eof(), 0, 0}};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 0,
+        irs::sort::MergeType::kSum, 0,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -8368,7 +8367,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     };
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 0,
+        irs::sort::MergeType::kSum, 0,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -8429,7 +8428,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     };
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -8497,7 +8496,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     };
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -8555,7 +8554,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     };
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -8603,7 +8602,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0, 0}};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -8657,7 +8656,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         {57, irs::doc_limits::eof(), 0, 0}};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -8708,7 +8707,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
                                    {57, irs::doc_limits::eof(), 0, 4}};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -8766,7 +8765,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         {57, irs::doc_limits::eof(), 0, 4}};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -8828,7 +8827,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         {2001, irs::doc_limits::eof(), 0, 8}};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -8879,7 +8878,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         {irs::doc_limits::invalid(), irs::doc_limits::eof(), 0, 0}};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -8936,7 +8935,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         {57, irs::doc_limits::eof(), 0, 0}};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -8993,7 +8992,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         {1201, irs::doc_limits::eof(), 0, 0}};
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 0,
+        irs::sort::MergeType::kSum, 0,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -10614,7 +10613,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 0,
+        irs::sort::MergeType::kSum, 0,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -10670,7 +10669,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -10741,7 +10740,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -10812,7 +10811,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -10883,7 +10882,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -10953,7 +10952,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Order{});
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -11023,7 +11022,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Order{});
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
               irs::doc_iterator::ptr, A,
@@ -11664,8 +11663,7 @@ TEST(disjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE,
-        irs::Order::kUnordered.buckets().size(),
+        irs::sort::MergeType::kSum, irs::Order::kUnordered.buckets().size(),
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -11718,7 +11716,7 @@ TEST(disjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -11786,7 +11784,7 @@ TEST(disjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -11854,7 +11852,7 @@ TEST(disjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -11922,7 +11920,7 @@ TEST(disjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -11989,7 +11987,7 @@ TEST(disjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Order{});
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -12056,7 +12054,7 @@ TEST(disjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Order{});
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
           using adapter = typename disjunction::adapter;
@@ -13248,7 +13246,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 0,
+        irs::sort::MergeType::kMax, 0,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using disjunction =
               irs::min_match_disjunction<irs::doc_iterator::ptr, A>;
@@ -13302,7 +13300,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using disjunction =
               irs::min_match_disjunction<irs::doc_iterator::ptr, A>;
@@ -13370,7 +13368,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using disjunction =
               irs::min_match_disjunction<irs::doc_iterator::ptr, A>;
@@ -13438,7 +13436,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using disjunction =
               irs::min_match_disjunction<irs::doc_iterator::ptr, A>;
@@ -13509,7 +13507,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
         detail::basic_sort{std::numeric_limits<size_t>::max()});
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using disjunction =
               irs::min_match_disjunction<irs::doc_iterator::ptr, A>;
@@ -13576,7 +13574,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 9, 29}, irs::Order{});
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using disjunction =
               irs::min_match_disjunction<irs::doc_iterator::ptr, A>;
@@ -13643,7 +13641,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 9, 29}, irs::Order{});
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using disjunction =
               irs::min_match_disjunction<irs::doc_iterator::ptr, A>;
@@ -14110,7 +14108,7 @@ TEST(conjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
@@ -14175,7 +14173,7 @@ TEST(conjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 0,
+        irs::sort::MergeType::kSum, 0,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
@@ -14230,7 +14228,7 @@ TEST(conjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{5}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
@@ -14295,7 +14293,7 @@ TEST(conjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
@@ -14360,7 +14358,7 @@ TEST(conjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
@@ -14425,7 +14423,7 @@ TEST(conjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
@@ -14489,7 +14487,7 @@ TEST(conjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14}, irs::Order{});
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
@@ -14553,7 +14551,7 @@ TEST(conjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14}, irs::Order{});
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
@@ -14618,7 +14616,7 @@ TEST(conjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
@@ -14683,7 +14681,7 @@ TEST(conjunction_test, scored_seek_next) {
                       irs::Order::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
@@ -14747,7 +14745,7 @@ TEST(conjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14}, irs::Order{});
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::AGGREGATE, 1,
+        irs::sort::MergeType::kSum, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
@@ -14811,7 +14809,7 @@ TEST(conjunction_test, scored_seek_next) {
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14}, irs::Order{});
 
     auto it_ptr = irs::ResoveMergeType(
-        irs::sort::MergeType::MAX, 1,
+        irs::sort::MergeType::kMax, 1,
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
 
@@ -15103,7 +15101,7 @@ TEST(exclusion_test, seek) {
 // --SECTION--                                                Boolean test case
 // ----------------------------------------------------------------------------
 
-class boolean_filter_test_case : public FilterTestCaseBase{};
+class boolean_filter_test_case : public FilterTestCaseBase {};
 
 TEST_P(boolean_filter_test_case, or_sequential_multiple_segments) {
   // populate index
@@ -15267,9 +15265,9 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     append<irs::by_term>(root, "same", "invalid_term");
 
     CheckQuery(root, Docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
-                             12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-                             23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-                rdr);
+                          12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                          23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
+               rdr);
   }
 
   // min match count == 0
@@ -15279,9 +15277,9 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     append<irs::by_term>(root, "name", "V");  // 22
 
     CheckQuery(root, Docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
-                             12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-                             23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-                rdr);
+                          12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                          23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
+               rdr);
   }
 
   // min match count == 0
@@ -15290,9 +15288,9 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     root.min_match_count(0);
 
     CheckQuery(root, Docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
-                             12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-                             23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-                rdr);
+                          12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                          23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
+               rdr);
   }
 
   // min match count is geater than a number of conditions
@@ -15325,9 +15323,9 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     root.add<irs::empty>();
 
     CheckQuery(root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-                             13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-                             24, 25, 26, 27, 28, 29, 30, 31, 32},
-                rdr);
+                          13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                          24, 25, 26, 27, 28, 29, 30, 31, 32},
+               rdr);
   }
 
   // Not with impossible name!=A OR same="NOT POSSIBLE"
@@ -15337,9 +15335,9 @@ TEST_P(boolean_filter_test_case, or_sequential) {
         make_filter<irs::by_term>("name", "A");  // 1
     append<irs::by_term>(root, "same", "NOT POSSIBLE");
     CheckQuery(root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-                             13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-                             24, 25, 26, 27, 28, 29, 30, 31, 32},
-                rdr);
+                          13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                          24, 25, 26, 27, 28, 29, 30, 31, 32},
+               rdr);
   }
 
   // optimization should adjust min_match
@@ -15386,15 +15384,15 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     append<irs::by_term>(root, "duplicated", "abcd");
     root.min_match_count(3);
     CheckQuery(root, Docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
-                             12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-                             23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-                rdr);
+                          12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                          23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
+               rdr);
   }
 
   // scored
   {
     irs::Or root;
-    root.merge_type(irs::sort::MergeType::MAX);
+    root.merge_type(irs::sort::MergeType::kMax);
     append<irs::by_term>(root, "name", "A");
     root.add<irs::all>();
     root.add<irs::all>();
@@ -15413,7 +15411,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     CheckQuery(
         root, std::span{&sort, 1},
         Docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
-               17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
+             17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
         rdr);
   }
 }
@@ -15753,10 +15751,10 @@ CheckQuery(root, Docs{5, 11, 21, 27, 31}, rdr);
   root.add<irs::by_term>() = make_filter<irs::by_term>("duplicated", "abcd");
   root.add<irs::Not>().filter<irs::by_term>() =
       make_filter<irs::by_term>("name", "A");
-  CheckQuery(root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-                           13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-                           24, 25, 26, 27, 28, 29, 30, 31, 32},
-              rdr);
+  CheckQuery(
+      root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17,
+                 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
+      rdr);
 }
 // check 'all' filter added for Not nodes does not affects score
 {
@@ -15801,10 +15799,10 @@ CheckQuery(root, Docs{5, 11, 21, 27, 31}, rdr);
       make_filter<irs::by_term>("name", "A");
   root.add<irs::Not>().filter<irs::by_term>() =
       make_filter<irs::by_term>("name", "A");
-  CheckQuery(root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-                           13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-                           24, 25, 26, 27, 28, 29, 30, 31, 32},
-              rdr);
+  CheckQuery(
+      root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17,
+                 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
+      rdr);
 }
 }
 
@@ -15828,9 +15826,9 @@ CheckQuery(root, Docs{5, 11, 21, 27, 31}, rdr);
     root.add<irs::Not>().filter<irs::by_term>() =
         make_filter<irs::by_term>("prefix", "abcd");
     CheckQuery(root, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-                             13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-                             24, 25, 26, 27, 28, 29, 30, 31, 32},
-                rdr);
+                          13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                          24, 25, 26, 27, 28, 29, 30, 31, 32},
+               rdr);
   }
 }
 }
@@ -15863,9 +15861,9 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential) {
         make_filter<irs::by_term>("same", "invalid_term"),
 
     CheckQuery(not_node, Docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
-                                 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-                                 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-                rdr);
+                              12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                              23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
+               rdr);
   }
 
   // (NOT (NOT name=A))
@@ -15886,9 +15884,9 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential) {
         .filter<irs::by_term>() = make_filter<irs::by_term>("name", "A");
 
     CheckQuery(not_node, Docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
-                                 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-                                 24, 25, 26, 27, 28, 29, 30, 31, 32},
-                rdr);
+                              13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                              24, 25, 26, 27, 28, 29, 30, 31, 32},
+               rdr);
   }
 }
 
@@ -15922,7 +15920,7 @@ TEST_P(boolean_filter_test_case, mixed) {
       }
 
       CheckQuery(root, Docs{1, 2, 3, 5, 8, 11, 14, 17, 19, 21, 24, 27, 31},
-                  rdr);
+                 rdr);
     }
 
     // ((same=xyz AND duplicated=abcd) OR (same=xyz AND duplicated=vczc)) AND
@@ -16001,8 +15999,8 @@ TEST_P(boolean_filter_test_case, mixed) {
         }
       }
 
-      CheckQuery(
-          root, Docs{1, 2, 3, 5, 8, 11, 14, 16, 17, 19, 21, 24, 27, 31}, rdr);
+      CheckQuery(root, Docs{1, 2, 3, 5, 8, 11, 14, 16, 17, 19, 21, 24, 27, 31},
+                 rdr);
     }
 
     // (same=xyz AND duplicated=abcd) OR (same=xyz AND duplicated=vczc) AND *
@@ -16027,9 +16025,9 @@ TEST_P(boolean_filter_test_case, mixed) {
       }
 
       CheckQuery(root, Docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
-                               12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-                               23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-                  rdr);
+                            12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                            23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
+                 rdr);
     }
 
     // (same=xyz AND duplicated=abcd) OR (same=xyz AND duplicated=vczc) OR NOT *
