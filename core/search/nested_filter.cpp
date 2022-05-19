@@ -119,7 +119,7 @@ class ChildToParentJoin final : public doc_iterator,
   }
 
   bool next() override {
-    if (IRS_LIKELY(parent_->next())) {
+    if (IRS_LIKELY(!doc_limits::eof(parent_doc_->value))) {
       return !doc_limits::eof(SeekInternal(parent_doc_->value));
     }
 

@@ -274,6 +274,19 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
   {
     irs::ByNestedFilter filter;
     auto& opts = *filter.mutable_options();
+    opts.child = MakeByTerm("item", "Mouse");
+    opts.parent = MakeByColumnExistence("customer");
+
+    const Tests tests = {{Seek{1}, 1, {}},
+                         {Next{}, 9, {}},
+                         {Next{}, irs::doc_limits::eof(), {}}};
+
+    CheckQuery(filter, {}, {tests}, reader, SOURCE_LOCATION);
+  }
+
+  {
+    irs::ByNestedFilter filter;
+    auto& opts = *filter.mutable_options();
     opts.child = MakeByTermAndRange("item", "Mouse", "price", 11);
     opts.parent = MakeByColumnExistence("customer");
     CheckQuery(filter, Docs{9}, Costs{2}, reader, SOURCE_LOCATION);

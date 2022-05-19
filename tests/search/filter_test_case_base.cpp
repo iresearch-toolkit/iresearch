@@ -216,10 +216,6 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
 
     for (auto& test : *test) {
       assert_iterator(test, *random_docs);
-
-      auto stateless_random_docs = q->execute(sub, ord);
-      ASSERT_NE(nullptr, stateless_random_docs);
-      assert_iterator(test, *stateless_random_docs);
     }
 
     ++test;
