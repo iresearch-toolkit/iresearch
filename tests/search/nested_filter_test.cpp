@@ -32,6 +32,41 @@
 
 namespace {
 
+struct DocIdScorer : irs::sort {
+  DocIdScorer() : irs::sort(irs::type<DocIdScorer>::get()) {}
+
+  struct Prepared final : irs::PreparedSortBase<void> {
+    virtual irs::IndexFeatures features() const override {
+      return irs::IndexFeatures::NONE;
+    }
+
+    virtual irs::ScoreFunction prepare_scorer(
+        const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*,
+        const irs::attribute_provider& attrs, irs::score_t) const override {
+      struct ScorerContext final : irs::score_ctx {
+        explicit ScorerContext(const irs::document* doc) noexcept : doc{doc} {}
+
+        const irs::document* doc;
+      };
+
+      auto* doc = irs::get<irs::document>(attrs);
+      EXPECT_NE(nullptr, doc);
+
+      return {std::make_unique<ScorerContext>(doc),
+              [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+                ASSERT_NE(nullptr, res);
+                ASSERT_NE(nullptr, ctx);
+                const auto& state = *reinterpret_cast<ScorerContext*>(ctx);
+                *res = state.doc->value;
+              }};
+    }
+  };
+
+  irs::sort::prepared::ptr prepare() const override {
+    return std::make_unique<Prepared>();
+  }
+};
+
 // exists(name)
 auto MakeByColumnExistence(std::string_view name) {
   auto filter = std::make_unique<irs::by_column_existence>();
@@ -186,9 +221,11 @@ class NestedFilterTestCase : public tests::FilterTestCaseBase {
       InsertItemDocument(trx, item, price, count);
     }
   }
+
+  void InitDataSet();
 };
 
-TEST_P(NestedFilterTestCase, BasicJoin) {
+void NestedFilterTestCase::InitDataSet() {
   irs::index_writer::init_options opts;
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
@@ -203,15 +240,15 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
                          {"RAM", 5000, 1}}});
 
   // Parent document: 7
-  InsertOrder(*writer, {"Quest", "June", {{"CPU", 1000, 1}}});
+  InsertOrder(*writer, {"Quest", "June", {{"CPU", 1000, 3}}});
 
   // Parent document: 9
   InsertOrder(*writer, {"Dell",
                         "April",
                         {{"Mouse", 10, 1},
-                         {"Display", 1000, 1},
+                         {"Display", 1000, 2},
                          {"CPU", 1000, 1},
-                         {"RAM", 5000, 1}}});
+                         {"RAM", 5000, 2}}});
 
   // Parent document: 14, missing "customer" field
   InsertOrder(*writer, {"", "April", {{"Mouse", 10, 1}}});
@@ -221,14 +258,17 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
   auto reader = open_reader();
   ASSERT_NE(nullptr, reader);
   ASSERT_EQ(1, reader.size());
+}
 
-  // Empty filter
+TEST_P(NestedFilterTestCase, EmptyFilter) {
+  InitDataSet();
+  auto reader = open_reader();
+
   {
     irs::ByNestedFilter filter;
     CheckQuery(filter, Docs{}, Costs{0}, reader, SOURCE_LOCATION);
   }
 
-  // Empty parent filter
   {
     irs::ByNestedFilter filter;
     auto& opts = *filter.mutable_options();
@@ -236,61 +276,95 @@ TEST_P(NestedFilterTestCase, BasicJoin) {
     CheckQuery(filter, Docs{}, Costs{0}, reader, SOURCE_LOCATION);
   }
 
-  // Empty child filter
   {
     irs::ByNestedFilter filter;
     auto& opts = *filter.mutable_options();
     opts.parent = std::make_unique<irs::all>();
     CheckQuery(filter, Docs{}, Costs{0}, reader, SOURCE_LOCATION);
   }
+}
+
+TEST_P(NestedFilterTestCase, BasicJoin0) {
+  InitDataSet();
+  auto reader = open_reader();
+
+  irs::ByNestedFilter filter;
+  auto& opts = *filter.mutable_options();
+  opts.child = MakeByTerm("item", "Keyboard");
+  opts.parent = MakeByColumnExistence("customer");
+
+  CheckQuery(filter, Docs{1}, Costs{1}, reader, SOURCE_LOCATION);
+}
+
+TEST_P(NestedFilterTestCase, BasicJoin1) {
+  InitDataSet();
+  auto reader = open_reader();
+
+  irs::ByNestedFilter filter;
+  auto& opts = *filter.mutable_options();
+  opts.child = MakeByTerm("item", "Mouse");
+  opts.parent = MakeByColumnExistence("customer");
+
+  CheckQuery(filter, Docs{1, 9}, Costs{3}, reader, SOURCE_LOCATION);
 
   {
-    irs::ByNestedFilter filter;
-    auto& opts = *filter.mutable_options();
-    opts.child = MakeByTerm("item", "Keyboard");
-    opts.parent = MakeByColumnExistence("customer");
-    CheckQuery(filter, Docs{1}, Costs{1}, reader, SOURCE_LOCATION);
-  }
-
-  {
-    irs::ByNestedFilter filter;
-    auto& opts = *filter.mutable_options();
-    opts.child = MakeByTerm("item", "Mouse");
-    opts.parent = MakeByColumnExistence("customer");
-    CheckQuery(filter, Docs{1, 9}, Costs{3}, reader, SOURCE_LOCATION);
-  }
-
-  {
-    irs::ByNestedFilter filter;
-    auto& opts = *filter.mutable_options();
-    opts.child = MakeByTerm("item", "Mouse");
-    opts.parent = MakeByColumnExistence("customer");
-
     const Tests tests = {{Seek{1}, 1, {}}, {Seek{2}, 9, {}}, {Seek{2}, 9, {}}};
 
     CheckQuery(filter, {}, {tests}, reader, SOURCE_LOCATION);
   }
 
   {
-    irs::ByNestedFilter filter;
-    auto& opts = *filter.mutable_options();
-    opts.child = MakeByTerm("item", "Mouse");
-    opts.parent = MakeByColumnExistence("customer");
+    std::array<irs::sort::ptr, 1> scorers{std::make_unique<DocIdScorer>()};
 
+    const Tests tests = {
+        {Seek{1}, 1, {3.f}},
+        // FIXME(gnusi): should be 10, currently
+        // fails due to the last parent is missing
+        {Seek{2}, 9, {25.f}},
+        // FIXME(gnusi): should be 10, currently
+        // fails due to we don't cache score
+        /*{Seek{2}, 9, {25.f}}*/
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+
+  {
+    const Tests tests = {{Seek{14}, irs::doc_limits::eof(), {}},
+                         {Next{}, irs::doc_limits::eof(), {}},
+                         {Next{}, irs::doc_limits::eof(), {}}};
+    CheckQuery(filter, {}, {tests}, reader, SOURCE_LOCATION);
+  }
+
+  {
+    const Tests tests = {
+        // Seek to doc_limits::invalid() is implementation specific
+        {Seek{irs::doc_limits::invalid()}, irs::doc_limits::invalid(), {}},
+        {Seek{1}, 1, {}},
+        {Next{}, 9, {}},
+        {Next{}, irs::doc_limits::eof(), {}},
+        {Next{}, irs::doc_limits::eof(), {}}};
+    CheckQuery(filter, {}, {tests}, reader, SOURCE_LOCATION);
+  }
+
+  {
     const Tests tests = {{Seek{1}, 1, {}},
                          {Next{}, 9, {}},
                          {Next{}, irs::doc_limits::eof(), {}}};
 
     CheckQuery(filter, {}, {tests}, reader, SOURCE_LOCATION);
   }
+}
 
-  {
-    irs::ByNestedFilter filter;
-    auto& opts = *filter.mutable_options();
-    opts.child = MakeByTermAndRange("item", "Mouse", "price", 11);
-    opts.parent = MakeByColumnExistence("customer");
-    CheckQuery(filter, Docs{9}, Costs{2}, reader, SOURCE_LOCATION);
-  }
+TEST_P(NestedFilterTestCase, BasicJoin2) {
+  InitDataSet();
+  auto reader = open_reader();
+
+  irs::ByNestedFilter filter;
+  auto& opts = *filter.mutable_options();
+  opts.child = MakeByTermAndRange("item", "Mouse", "price", 11);
+  opts.parent = MakeByColumnExistence("customer");
+  CheckQuery(filter, Docs{9}, Costs{2}, reader, SOURCE_LOCATION);
 }
 
 INSTANTIATE_TEST_SUITE_P(
