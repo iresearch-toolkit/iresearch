@@ -115,12 +115,12 @@ class ChildToParentJoin final : public doc_iterator,
       return doc_limits::eof();
     }
 
-    return seek_internal(parent);
+    return SeekInternal(parent);
   }
 
   bool next() override {
     if (IRS_LIKELY(parent_->next())) {
-      return !doc_limits::eof(seek_internal(parent_doc_->value));
+      return !doc_limits::eof(SeekInternal(parent_doc_->value));
     }
 
     std::get<document>(attrs_).value = doc_limits::eof();
@@ -130,7 +130,7 @@ class ChildToParentJoin final : public doc_iterator,
  private:
   using attributes = std::tuple<document, attribute_ptr<cost>, score>;
 
-  doc_id_t seek_internal(doc_id_t parent) {
+  doc_id_t SeekInternal(doc_id_t parent) {
     assert(!doc_limits::eof(parent));
     auto& doc = std::get<document>(attrs_);
 

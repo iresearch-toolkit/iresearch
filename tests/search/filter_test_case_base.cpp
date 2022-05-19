@@ -188,10 +188,24 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
   auto assert_iterator = [&](auto& test, irs::doc_iterator& it) {
     auto* doc = irs::get<irs::document>(it);
     ASSERT_NE(nullptr, doc);
-    ASSERT_EQ(test.expected, it.seek(test.target));
+    std::visit(
+        [&it, expected = test.expected]<typename A>(A action) {
+          if constexpr (std::is_same_v<A, Seek>) {
+            ASSERT_EQ(expected, it.seek(action.target));
+          } else if constexpr (std::is_same_v<A, Next>) {
+            ASSERT_EQ(!irs::doc_limits::eof(expected), it.next());
+          } else if constexpr (std::is_same_v<A, Skip>) {
+            for (auto count = action.count; count; --count) {
+              it.next();
+            }
+          }
+        },
+        test.action);
     ASSERT_EQ(test.expected, it.value());
     ASSERT_EQ(test.expected, doc->value);
-    assert_equal_scores(test.score, it);
+    if (!irs::doc_limits::eof(test.expected)) {
+      assert_equal_scores(test.score, it);
+    }
   };
 
   auto test = std::begin(tests);

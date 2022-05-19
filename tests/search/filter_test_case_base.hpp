@@ -359,8 +359,20 @@ class FilterTestCaseBase : public index_test_base {
       std::vector<std::pair<irs::doc_id_t, std::vector<irs::score_t>>>;
   using Costs = std::vector<irs::cost::cost_t>;
 
-  struct Test {
+  struct Seek {
     irs::doc_id_t target;
+  };
+
+  struct Skip {
+    irs::doc_id_t count;
+  };
+
+  struct Next {};
+
+  using Action = std::variant<Seek, Skip, Next>;
+
+  struct Test {
+    Action action;
     irs::doc_id_t expected;
     std::vector<irs::score_t> score;
   };
