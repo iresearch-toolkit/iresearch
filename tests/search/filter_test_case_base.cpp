@@ -167,21 +167,21 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
   auto q = filter.prepare(rdr, ord);
   ASSERT_NE(nullptr, q);
 
-  auto assert_equal_scores = [&](const std::vector<irs::score_t>& lhs,
+  auto assert_equal_scores = [&](const std::vector<irs::score_t>& expected,
                                  irs::doc_iterator& rhs) {
     auto* score = irs::get<irs::score>(rhs);
 
-    if (ord.empty()) {
+    if (expected.empty()) {
       ASSERT_TRUE(nullptr == score || score->IsNoop());
-      ASSERT_TRUE(lhs.empty());
     } else {
       ASSERT_NE(nullptr, score);
+      ASSERT_FALSE(score->IsNoop());
 
-      std::vector<irs::score_t> tmp(ord.buckets().size());
+      std::vector<irs::score_t> actual(ord.buckets().size());
       if (score) {
-        (*score)(tmp.data());
+        (*score)(actual.data());
       }
-      ASSERT_EQ(lhs, tmp);
+      ASSERT_EQ(expected, actual);
     }
   };
 

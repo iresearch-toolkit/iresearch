@@ -374,7 +374,7 @@ class FilterTestCaseBase : public index_test_base {
   struct Test {
     Action action;
     irs::doc_id_t expected;
-    std::vector<irs::score_t> score;
+    std::vector<irs::score_t> score{};
   };
 
   using Tests = std::vector<Test>;

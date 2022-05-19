@@ -82,6 +82,21 @@ auto MakeByTerm(std::string_view name, std::string_view value) {
   return filter;
 }
 
+// name == value
+auto MakeByNumericTerm(std::string_view name, int32_t value) {
+  auto filter = std::make_unique<irs::by_term>();
+  *filter->mutable_field() = name;
+
+  irs::numeric_token_stream stream;
+  irs::term_attribute const* token = irs::get<irs::term_attribute>(stream);
+  stream.reset(value);
+  stream.next();
+
+  irs::assign(filter->mutable_options()->term, token->value);
+
+  return filter;
+}
+
 irs::filter::ptr MakeOr(
     std::span<std::pair<std::string_view, std::string_view>> parts) {
   auto filter = std::make_unique<irs::Or>();
@@ -234,8 +249,8 @@ void NestedFilterTestCase::InitDataSet() {
   InsertOrder(*writer, {"ArangoDB",
                         "May",
                         {{"Keyboard", 100, 1},
-                         {"Mouse", 50, 1},
-                         {"Display", 1000, 1},
+                         {"Mouse", 50, 2},
+                         {"Display", 1000, 2},
                          {"CPU", 5000, 1},
                          {"RAM", 5000, 1}}});
 
@@ -284,7 +299,7 @@ TEST_P(NestedFilterTestCase, EmptyFilter) {
   }
 }
 
-TEST_P(NestedFilterTestCase, BasicJoin0) {
+TEST_P(NestedFilterTestCase, Join0) {
   InitDataSet();
   auto reader = open_reader();
 
@@ -296,7 +311,7 @@ TEST_P(NestedFilterTestCase, BasicJoin0) {
   CheckQuery(filter, Docs{1}, Costs{1}, reader, SOURCE_LOCATION);
 }
 
-TEST_P(NestedFilterTestCase, BasicJoin1) {
+TEST_P(NestedFilterTestCase, Join1) {
   InitDataSet();
   auto reader = open_reader();
 
@@ -308,7 +323,7 @@ TEST_P(NestedFilterTestCase, BasicJoin1) {
   CheckQuery(filter, Docs{1, 9}, Costs{3}, reader, SOURCE_LOCATION);
 
   {
-    const Tests tests = {{Seek{1}, 1, {}}, {Seek{2}, 9, {}}, {Seek{2}, 9, {}}};
+    const Tests tests = {{Seek{1}, 1}, {Seek{2}, 9}, {Seek{2}, 9}};
 
     CheckQuery(filter, {}, {tests}, reader, SOURCE_LOCATION);
   }
@@ -330,33 +345,45 @@ TEST_P(NestedFilterTestCase, BasicJoin1) {
   }
 
   {
-    const Tests tests = {{Seek{14}, irs::doc_limits::eof(), {}},
-                         {Next{}, irs::doc_limits::eof(), {}},
-                         {Next{}, irs::doc_limits::eof(), {}}};
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 1, {3.f, 3.f}},
+        {Next{}, 9, {25.f, 25.f}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+
+  {
+    const Tests tests = {{Seek{14}, irs::doc_limits::eof()},
+                         {Next{}, irs::doc_limits::eof()},
+                         {Next{}, irs::doc_limits::eof()}};
     CheckQuery(filter, {}, {tests}, reader, SOURCE_LOCATION);
   }
 
   {
     const Tests tests = {
         // Seek to doc_limits::invalid() is implementation specific
-        {Seek{irs::doc_limits::invalid()}, irs::doc_limits::invalid(), {}},
-        {Seek{1}, 1, {}},
-        {Next{}, 9, {}},
-        {Next{}, irs::doc_limits::eof(), {}},
-        {Next{}, irs::doc_limits::eof(), {}}};
+        {Seek{irs::doc_limits::invalid()}, irs::doc_limits::invalid()},
+        {Seek{1}, 1},
+        {Next{}, 9},
+        {Next{}, irs::doc_limits::eof()},
+        {Next{}, irs::doc_limits::eof()}};
     CheckQuery(filter, {}, {tests}, reader, SOURCE_LOCATION);
   }
 
   {
-    const Tests tests = {{Seek{1}, 1, {}},
-                         {Next{}, 9, {}},
-                         {Next{}, irs::doc_limits::eof(), {}}};
+    const Tests tests = {
+        {Seek{1}, 1}, {Next{}, 9}, {Next{}, irs::doc_limits::eof()}};
 
     CheckQuery(filter, {}, {tests}, reader, SOURCE_LOCATION);
   }
 }
 
-TEST_P(NestedFilterTestCase, BasicJoin2) {
+TEST_P(NestedFilterTestCase, Join2) {
   InitDataSet();
   auto reader = open_reader();
 
@@ -364,7 +391,65 @@ TEST_P(NestedFilterTestCase, BasicJoin2) {
   auto& opts = *filter.mutable_options();
   opts.child = MakeByTermAndRange("item", "Mouse", "price", 11);
   opts.parent = MakeByColumnExistence("customer");
+
   CheckQuery(filter, Docs{9}, Costs{2}, reader, SOURCE_LOCATION);
+}
+
+TEST_P(NestedFilterTestCase, Join3) {
+  InitDataSet();
+  auto reader = open_reader();
+
+  irs::ByNestedFilter filter;
+  auto& opts = *filter.mutable_options();
+  opts.child = MakeByNumericTerm("count", 2);
+  opts.parent = MakeByColumnExistence("customer");
+
+  CheckQuery(filter, Docs{1, 9}, Costs{4}, reader, SOURCE_LOCATION);
+
+  {
+    opts.merge_type = irs::sort::MergeType::kMax;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 1, {4.f, 4.f}},
+        {Next{}, 9, {13.f, 13.f}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+
+  {
+    opts.merge_type = irs::sort::MergeType::kMin;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 1, {3.f, 3.f}},
+        {Next{}, 9, {11.f, 11.f}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+
+  {
+    opts.merge_type = irs::sort::MergeType::kNoop;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 1, {}},
+        {Next{}, 9, {}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(
