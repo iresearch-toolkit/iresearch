@@ -246,7 +246,9 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
 
 namespace iresearch {
 
-/*static*/ filter::ptr make() { return memory::make_unique<ByNestedFilter>(); }
+/*static*/ filter::ptr ByNestedFilter::make() {
+  return memory::make_unique<ByNestedFilter>();
+}
 
 filter::prepared::ptr ByNestedFilter::prepare(
     const index_reader& rdr, const Order& ord, score_t boost,
