@@ -864,7 +864,7 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
         segment.writer_meta_.meta.name.c_str()
       );
 
-      segment.reset();
+      segment.reset(true);
 
       throw;
     }
@@ -1177,12 +1177,15 @@ void index_writer::segment_context::remove(filter::ptr&& filter) {
     std::move(filter), uncomitted_generation_offset_++, false);
 }
 
-void index_writer::segment_context::reset() noexcept {
+void index_writer::segment_context::reset(bool store_flushed) noexcept {
   active_count_.store(0);
   buffered_docs_.store(0);
   dirty_ = false;
-  flushed_.clear();
-  flushed_update_contexts_.clear();
+  // in some cases we need to store flushed segments for further commits
+  if (!store_flushed) {
+    flushed_.clear();
+    flushed_update_contexts_.clear();
+  }
   modification_queries_.clear();
   uncomitted_doc_id_begin_ = doc_limits::min();
   uncomitted_generation_offset_ = 0;

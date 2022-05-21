@@ -29,6 +29,7 @@
 #include "index/comparer.hpp"
 #include "store/memory_directory.hpp"
 #include "utils/type_limits.hpp"
+#include "utils/index_utils.hpp"
 #include "utils/lz4compression.hpp"
 
 namespace {
@@ -100,7 +101,7 @@ class test_feature_writer final : public irs::feature_writer {
 
 struct binary_comparer : public irs::comparer {
  protected:
-  bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const override {
+  bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const override {
     if (rhs.null() != lhs.null()) {
       return lhs.null();
     }
@@ -208,7 +209,103 @@ struct merge_writer_test_case : public tests::directory_test_case_base<std::stri
           irs::feature_writer_factory_t{});
     };
   }
+
+  void EnsureDocBlocksNotMixed(bool primary_sort);
 };
+
+void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
+  auto insert_documents = [primary_sort](irs::index_writer::documents_context& ctx, irs::doc_id_t seed, irs::doc_id_t count) {
+    for (; seed < count; ++seed) {
+      auto doc = ctx.insert();
+      if (const tests::string_field field{"foo", "bar"}; primary_sort) {
+        doc.insert<irs::Action::STORE_SORTED | irs::Action::INDEX>(field);
+      } else {
+        doc.insert<irs::Action::INDEX>(field);
+      }
+      doc.insert<irs::Action::STORE>(tests::string_field{"seq", std::to_string(seed)});
+    }
+  };
+
+  auto codec_ptr = codec();
+  ASSERT_NE(nullptr, codec_ptr);
+  irs::memory_directory dir;
+  binary_comparer test_comparer;
+
+  irs::index_writer::init_options opts;
+  if (primary_sort) {
+    opts.comparator = &test_comparer;
+  }
+  opts.column_info = default_column_info();
+
+  auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE, opts);
+  ASSERT_NE(nullptr, writer);
+
+  {
+    auto segment0 = writer->documents();
+    insert_documents(segment0, 0, 10);
+    auto segment1 = writer->documents();
+    insert_documents(segment1, 10, 20);
+    auto segment2 = writer->documents();
+    insert_documents(segment2, 20, 30);
+  }
+
+  ASSERT_TRUE(writer->commit());
+
+  auto reader = irs::directory_reader::open(dir, codec_ptr);
+  ASSERT_NE(nullptr, reader);
+
+  ASSERT_EQ(3, reader.size());
+  for (auto& segment : reader) {
+    ASSERT_EQ(10, segment.docs_count());
+    ASSERT_EQ(10, segment.live_docs_count());
+  }
+
+  // Segments:
+  // 0: 1..10
+  // 1: 11..20
+  // 2: 21..30
+  const irs::index_utils::consolidate_count consolidate_all;
+  ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
+  ASSERT_TRUE(writer->commit());
+
+  reader = reader.reopen();
+  ASSERT_NE(nullptr, reader);
+
+  ASSERT_EQ(1, reader.size());
+  auto& segment = reader[0];
+  ASSERT_EQ(30, segment.docs_count());
+  ASSERT_EQ(30, segment.live_docs_count());
+
+  const auto docs_count = segment.docs_count();
+  auto* col = segment.column("seq");
+  ASSERT_NE(nullptr, col);
+  auto seq = col->iterator(false);
+  ASSERT_NE(nullptr, seq);
+  auto* payload = irs::get<irs::payload>(*seq);
+  ASSERT_NE(nullptr, payload);
+
+  ptrdiff_t prev = -1;
+  for (irs::doc_id_t doc = 0; doc < docs_count; ++doc) {
+    ASSERT_TRUE(seq->next());
+    ASSERT_EQ(doc + irs::doc_limits::min(), seq->value());
+
+    auto* p = payload->value.c_str();
+    auto len = irs::vread<uint32_t>(p);
+
+    const auto str_seq = static_cast<std::string>(irs::ref_cast<char>(irs::bytes_ref{p, len}));
+    const auto seq = atoi(str_seq.c_str());
+
+    if (0 == (doc % 10)) {
+      ASSERT_EQ(0, seq % 10);
+    } else {
+      ASSERT_LT(prev, seq);
+      ASSERT_NE(0, seq % 10);
+    }
+
+    prev = seq;
+  }
+  ASSERT_FALSE(seq->next());
+}
 
 TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
   std::string string1;
@@ -375,7 +472,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
       ASSERT_EQ(nullptr, segment.column("invalid_column"));
     }
   }
-  
+
   // check for columns segment 1
   {
     auto& segment = reader[1];
@@ -501,7 +598,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
       ASSERT_EQ(expected_values.size(), calls_count);
     }
 
-    // check invalid column 
+    // check invalid column
     {
       ASSERT_EQ(nullptr, segment.column("invalid_column"));
       ASSERT_EQ(nullptr, segment.column("invalid_column"));
@@ -633,7 +730,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
   tests::document doc3; // doc_string, doc_int
   tests::document doc4; // doc_string
 
-  doc1.insert(std::make_shared<tests::int_field>()); 
+  doc1.insert(std::make_shared<tests::int_field>());
   {
     auto& field = doc1.indexed.back<tests::int_field>();
     field.name("doc_int");
@@ -647,9 +744,9 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
     field.name("doc_int");
     field.value(42 * 2);
   }
-  
+
   doc3.insert(std::make_shared<tests::string_field>("doc_string", string3));
-  doc3.insert(std::make_shared<tests::int_field>()); 
+  doc3.insert(std::make_shared<tests::int_field>());
   {
     auto& field = doc3.indexed.back<tests::int_field>();
     field.name("doc_int");
@@ -2667,6 +2764,14 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
     index_segment.meta.codec = codec_ptr;
     ASSERT_FALSE(writer.flush(index_segment));
   }
+}
+
+TEST_P(merge_writer_test_case, EnsureDocBlocksNotMixedPrimarySort) {
+  EnsureDocBlocksNotMixed(true);
+}
+
+TEST_P(merge_writer_test_case, EnsureDocBlocksNotMixed) {
+  EnsureDocBlocksNotMixed(false);
 }
 
 TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
