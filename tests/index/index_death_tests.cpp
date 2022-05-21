@@ -25,8 +25,6 @@
 #include "index_tests.hpp"
 #include "formats/formats.hpp"
 #include "store/memory_directory.hpp"
-#include "store/mmap_directory.hpp"
-#include "store/fs_directory.hpp"
 #include "utils/index_utils.hpp"
 #include "iql/query_builder.hpp"
 
@@ -2732,11 +2730,8 @@ TEST(index_death_test_formats_14, columnstore_creation_fail_implicit_segment_flu
     dir.length(length, "_3.csd");
     ASSERT_GT(length, 0);
 
-//    ASSERT_FALSE(writer->commit());
-
     ASSERT_TRUE(writer->begin());
     ASSERT_FALSE(writer->commit());
-
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -3542,7 +3537,7 @@ TEST(index_death_test_formats_14, columnstore_reopen_fail) {
   ASSERT_EQ(irs::doc_limits::eof(), live_docs->value());
 }
 
-TEST(index_death_test_formats_14, playground) {
+TEST(index_death_test_formats_14, fails_in_dup) {
   constexpr irs::IndexFeatures all_features =
     irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
     irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
@@ -3606,22 +3601,21 @@ TEST(index_death_test_formats_14, playground) {
   expected_index.emplace_back(::default_feature_info());
   expected_index.back().insert(*doc1);
   expected_index.back().insert(*doc2);
-  expected_index.emplace_back(::default_feature_info());
   expected_index.back().insert(*doc3);
   expected_index.back().insert(*doc4);
   tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
                       expected_index, all_features);
 
   dir.register_failure(failing_directory::Failure::DUP, "_1.csd"); // regiseter dup failure in columnstore
-  dir.register_failure(failing_directory::Failure::DUP, "_1.csi"); // regiseter dup failure in columnstore
   dir.register_failure(failing_directory::Failure::DUP_NULL, "_1.csd"); // regiseter dup failure in columnstore
-  dir.register_failure(failing_directory::Failure::DUP_NULL, "_1.csi"); // regiseter dup failure in columnstore
 
   auto& segment = reader[0]; // assume 0 is id of first/only segment
   const auto* column = segment.column("name");
   ASSERT_NE(nullptr, column);
   ASSERT_THROW(column->iterator(false), irs::io_error); // failed to reopen csd
   ASSERT_THROW(column->iterator(false), irs::io_error); // failed to reopen csd (nullptr)
+  ASSERT_TRUE(dir.no_failures());
+
   auto values = column->iterator(false);
   ASSERT_NE(nullptr, values);
   auto* actual_value = irs::get<irs::payload>(*values);
@@ -3634,11 +3628,22 @@ TEST(index_death_test_formats_14, playground) {
   ASSERT_TRUE(termItr->next());
   auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
   ASSERT_TRUE(docsItr->next());
-  ASSERT_EQ(docsItr->value(), values->seek(docsItr->value())); // successful attempt
+
+  ASSERT_EQ(docsItr->value(), values->seek(docsItr->value())); // '1' and '1'
   ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc1
   ASSERT_TRUE(docsItr->next());
-  ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-  ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in ...
+
+  ASSERT_EQ(docsItr->value(), 2);
+  ASSERT_EQ(values->seek(docsItr->value()), 3); // because 2nd document is not stored
+  ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3. because 2nd document is not stored
+  ASSERT_TRUE(docsItr->next());
+
+  ASSERT_EQ(docsItr->value(), values->seek(docsItr->value())); // '3' and '3'
+  ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+  ASSERT_TRUE(docsItr->next());
+
+  ASSERT_EQ(docsItr->value(), 4);
+  ASSERT_NE(values->seek(docsItr->value()), 4); // because 4th document is not stored
   ASSERT_FALSE(docsItr->next());
 }
 
