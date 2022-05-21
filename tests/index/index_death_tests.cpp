@@ -2692,6 +2692,7 @@ TEST(index_death_test_formats_14, columnstore_creation_fail_implicit_segment_flu
     // write index
     irs::index_writer::init_options opts;
     opts.segment_docs_max = 1; // flush every 2nd document
+
     auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
@@ -2705,6 +2706,7 @@ TEST(index_death_test_formats_14, columnstore_creation_fail_implicit_segment_flu
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()));
 
+    // basic length check
     dir.length(length, "_1.csd");
     ASSERT_EQ(length, 0);
 
@@ -2981,6 +2983,8 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
     irs::directory_cleaner::clean(dir);
     ASSERT_FALSE(writer->commit());
 
+    ASSERT_TRUE(dir.no_failures());
+
     // check data
     auto reader = irs::directory_reader::open(dir);
     ASSERT_TRUE(reader);
@@ -3084,6 +3088,8 @@ TEST(index_death_test_formats_14, fails_in_exists) {
     ASSERT_THROW(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)), irs::io_error);
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
     ASSERT_TRUE(writer->commit());
+
+    ASSERT_TRUE(dir.no_failures());
 
     // check data
     auto reader = irs::directory_reader::open(dir);

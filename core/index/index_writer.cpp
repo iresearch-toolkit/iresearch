@@ -1181,6 +1181,7 @@ void index_writer::segment_context::reset(bool store_flushed) noexcept {
   active_count_.store(0);
   buffered_docs_.store(0);
   dirty_ = false;
+  // in some cases we need to store flushed segments for further commits
   if (!store_flushed) {
     flushed_.clear();
     flushed_update_contexts_.clear();

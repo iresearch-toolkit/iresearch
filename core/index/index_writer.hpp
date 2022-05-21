@@ -908,7 +908,7 @@ class index_writer : private util::noncopyable {
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief reset segment state to the initial state
-    /// @param store_flushed store info about flushed segments?
+    /// @param store_flushed should store info about flushed segments?
     /// @note should be true if something went wrong during segment flush
     ////////////////////////////////////////////////////////////////////////////
     void reset(bool store_flushed = false) noexcept;
