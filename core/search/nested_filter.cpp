@@ -69,6 +69,31 @@ namespace {
 
 using namespace irs;
 
+struct NoneMatcher {};
+struct AnyMatcher {};
+struct AllMatcher {};
+struct MinMatcher {
+  doc_id_t count;
+};
+struct RangeMatcher {
+  Match match;
+};
+
+template<typename Visitor>
+auto ResolveMatchType(Match match, Visitor&& visitor) {
+  if (match == kMatchNone) {
+    return visitor(NoneMatcher{});
+  } else if (match == kMatchAny) {
+    return visitor(AnyMatcher{});
+  } else if (match == kMatchAll) {
+    return visitor(AllMatcher{});
+  } else if (match.Min == match.Max) {
+    return visitor(MinMatcher{match.Max});
+  } else {
+    return visitor(RangeMatcher{match});
+  }
+}
+
 template<typename Merger>
 class ChildToParentJoin final : public doc_iterator,
                                 private Merger,
@@ -199,12 +224,14 @@ void ChildToParentJoin<Merger>::PrepareScore() {
 class ByNesterQuery final : public filter::prepared {
  public:
   ByNesterQuery(prepared::ptr&& parent, prepared::ptr&& child,
-                sort::MergeType merge_type) noexcept
+                sort::MergeType merge_type, Match match) noexcept
       : parent_{std::move(parent)},
         child_{std::move(child)},
+        match_{match},
         merge_type_{merge_type} {
     assert(parent_);
     assert(child_);
+    assert(match_.Min <= match_.Max);
   }
 
   doc_iterator::ptr execute(const sub_reader& rdr, const Order& ord,
@@ -214,6 +241,7 @@ class ByNesterQuery final : public filter::prepared {
  private:
   prepared::ptr parent_;
   prepared::ptr child_;
+  Match match_;
   sort::MergeType merge_type_;
 };
 
@@ -234,12 +262,14 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
     return doc_iterator::empty();
   }
 
-  return ResoveMergeType(
-      merge_type_, ord.buckets().size(),
-      [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        return memory::make_managed<ChildToParentJoin<A>>(
-            std::move(parent), std::move(child), std::move(aggregator));
-      });
+  return ResolveMatchType(match_, [&]<typename M>(M&& matcher) {
+    return ResoveMergeType(
+        merge_type_, ord.buckets().size(),
+        [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          return memory::make_managed<ChildToParentJoin<A>>(
+              std::move(parent), std::move(child), std::move(aggregator));
+        });
+  });
 }
 
 }  // namespace
@@ -253,23 +283,21 @@ namespace iresearch {
 filter::prepared::ptr ByNestedFilter::prepare(
     const index_reader& rdr, const Order& ord, score_t boost,
     const attribute_provider* ctx) const {
-  const auto* parent = options().parent.get();
-  const auto* child = options().child.get();
+  auto& [parent, child, match, merge_type] = options();
 
-  if (!parent || !child) {
-    return filter::prepared::empty();
+  if (match.Max < match.Min || !parent || !child) {
+    return prepared::empty();
   }
 
   auto prepared_parent = parent->prepare(rdr, Order::kUnordered, kNoBoost, ctx);
   auto prepared_child = child->prepare(rdr, ord, boost, ctx);
 
   if (!prepared_parent || !prepared_child) {
-    return filter::prepared::empty();
+    return prepared::empty();
   }
 
-  return memory::make_managed<ByNesterQuery>(std::move(prepared_parent),
-                                             std::move(prepared_child),
-                                             options().merge_type);
+  return memory::make_managed<ByNesterQuery>(
+      std::move(prepared_parent), std::move(prepared_child), merge_type, match);
 }
 
 }  // namespace iresearch

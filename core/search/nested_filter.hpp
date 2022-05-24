@@ -24,10 +24,26 @@
 #define IRESEARCH_NESTED_FILTER_H
 
 #include "search/filter.hpp"
+#include "utils/type_limits.hpp"
 
 namespace iresearch {
 
 class ByNestedFilter;
+
+struct Match {
+  constexpr explicit Match(doc_id_t value) noexcept : Match{value, value} {}
+
+  constexpr Match(doc_id_t min, doc_id_t max) noexcept : Min(min), Max(max) {}
+
+  auto operator<=>(const Match&) const noexcept = default;
+
+  doc_id_t Min;
+  doc_id_t Max;
+};
+
+static constexpr Match kMatchNone{0};
+static constexpr Match kMatchAny{1};
+static constexpr Match kMatchAll{doc_limits::eof()};
 
 struct ByNestedOptions {
   using filter_type = ByNestedFilter;
@@ -38,6 +54,9 @@ struct ByNestedOptions {
   // Child filter.
   filter::ptr child;
 
+  // match type
+  Match match{kMatchAny};
+
   // Score merge type.
   sort::MergeType merge_type{sort::MergeType::kSum};
 
@@ -46,13 +65,17 @@ struct ByNestedOptions {
       return ((!lhs && !rhs) || (lhs && rhs && *lhs == *rhs));
     };
 
-    return merge_type == rhs.merge_type &&
+    return match == rhs.match && merge_type == rhs.merge_type &&
            equal(parent.get(), rhs.parent.get()) &&
            equal(child.get(), rhs.child.get());
   }
 
   size_t hash() const noexcept {
-    size_t hash = parent ? parent->hash() : 0;
+    size_t hash = std::hash<doc_id_t>{}(match.Min);
+    hash = hash_combine(hash, std::hash<doc_id_t>{}(match.Max));
+    if (parent) {
+      hash = hash_combine(hash, parent->hash());
+    }
     if (child) {
       hash = hash_combine(hash, child->hash());
     }

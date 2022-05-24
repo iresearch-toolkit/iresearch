@@ -1474,7 +1474,8 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
       return false;
     }
 
-    auto it = segment.mask(segment.sort()->iterator(true));
+    auto it =
+        segment.mask(segment.sort()->iterator(irs::ColumnHint::kConsolidation));
 
     if (!it) {
       return false;
