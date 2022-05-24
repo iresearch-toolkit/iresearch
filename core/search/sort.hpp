@@ -391,9 +391,13 @@ struct Aggregator<Merger, std::numeric_limits<size_t>::max()> : Merger {
 };
 
 template<typename Aggregator>
-constexpr bool HasScore() noexcept {
-  return !std::is_same_v<Aggregator, NoopAggregator>;
-}
+struct HasScoreHelper : std::true_type {};
+
+template<>
+struct HasScoreHelper<NoopAggregator> : std::false_type {};
+
+template<typename Aggregator>
+inline constexpr bool HasScore_v = HasScoreHelper<Aggregator>::value;
 
 struct SumMerger {
   void operator()(size_t idx, score_t* RESTRICT dst,

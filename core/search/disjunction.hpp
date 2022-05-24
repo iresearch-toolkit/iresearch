@@ -252,7 +252,7 @@ class basic_disjunction final : public compound_doc_iterator<Adapter>,
       : Merger{std::move(merger)}, lhs_(std::move(lhs)), rhs_(std::move(rhs)) {
     std::get<cost>(attrs_).reset(std::forward<Estimation>(estimation));
 
-    if constexpr (HasScore<Merger>()) {
+    if constexpr (HasScore_v<Merger>()) {
       prepare_score();
     }
   }
@@ -495,7 +495,7 @@ class small_disjunction final : public compound_doc_iterator<Adapter>,
       }
     }
 
-    if constexpr (HasScore<Merger>()) {
+    if constexpr (HasScore_v<Merger>()) {
       prepare_score();
     }
   }
@@ -719,7 +719,7 @@ class disjunction final : public compound_doc_iterator<Adapter>,
     heap_.resize(itrs_.size());
     std::iota(heap_.begin(), heap_.end(), size_t(0));
 
-    if constexpr (HasScore<Merger>()) {
+    if constexpr (HasScore_v<Merger>()) {
       prepare_score();
     }
   }
@@ -942,7 +942,7 @@ class block_disjunction final : public doc_iterator,
 
         cur_ = *begin_++;
         doc_base_ += bits_required<uint64_t>();
-        if constexpr (traits_type::min_match() || HasScore<Merger>()) {
+        if constexpr (traits_type::min_match() || HasScore_v<Merger>()) {
           buf_offset_ += bits_required<uint64_t>();
         }
       }
@@ -961,7 +961,7 @@ class block_disjunction final : public doc_iterator,
       }
 
       doc.value = doc_base_ + doc_id_t(offset);
-      if constexpr (HasScore<Merger>()) {
+      if constexpr (HasScore_v<Merger>()) {
         score_value_ = score_buf_.get(buf_offset);
       }
 
@@ -1050,7 +1050,7 @@ class block_disjunction final : public doc_iterator,
           }
         }
 
-        if constexpr (HasScore<Merger>()) {
+        if constexpr (HasScore_v<Merger>()) {
           std::memset(score_buf_.data(), 0, score_buf_.bucket_size());
           for (auto& it : itrs_) {
             assert(it.score);
@@ -1089,7 +1089,7 @@ class block_disjunction final : public doc_iterator,
 
   // FIXME(gnusi): stack based score_buffer for constant cases
   using score_buffer_type =
-      std::conditional_t<HasScore<Merger>(), detail::score_buffer,
+      std::conditional_t<HasScore_v<Merger>(), detail::score_buffer,
                          detail::empty_score_buffer>;
 
   using min_match_buffer_type =
@@ -1116,7 +1116,7 @@ class block_disjunction final : public doc_iterator,
       std::get<document>(attrs_).value = doc_limits::eof();
     }
 
-    if constexpr (HasScore<Merger>()) {
+    if constexpr (HasScore_v<Merger>()) {
       assert(Merger::size());
       auto& score = std::get<irs::score>(attrs_);
 
@@ -1174,7 +1174,7 @@ class block_disjunction final : public doc_iterator,
 
   void reset() noexcept {
     std::memset(mask_, 0, sizeof mask_);
-    if constexpr (HasScore<Merger>()) {
+    if constexpr (HasScore_v<Merger>()) {
       score_value_ = score_buf_.data();
       std::memset(score_buf_.data(), 0, score_buf_.size());
     }
@@ -1217,7 +1217,7 @@ class block_disjunction final : public doc_iterator,
         //  }
         //}
 
-        if constexpr (HasScore<Merger>()) {
+        if constexpr (HasScore_v<Merger>()) {
           assert(Merger::size());
           if (it.score->Func() != irs::ScoreFunction::kDefault) {
             return this->refill<true>(it, empty);
@@ -1236,13 +1236,13 @@ class block_disjunction final : public doc_iterator,
 
     cur_ = *mask_;
     begin_ = mask_ + 1;
-    if constexpr (traits_type::min_match() || HasScore<Merger>()) {
+    if constexpr (traits_type::min_match() || HasScore_v<Merger>()) {
       buf_offset_ = 0;
     }
     while (!cur_) {
       cur_ = *begin_++;
       doc_base_ += bits_required<uint64_t>();
-      if constexpr (traits_type::min_match() || HasScore<Merger>()) {
+      if constexpr (traits_type::min_match() || HasScore_v<Merger>()) {
         buf_offset_ += bits_required<uint64_t>();
       }
     }

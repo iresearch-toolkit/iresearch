@@ -114,7 +114,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
         const_cast<document*>(front_doc_);
     std::get<attribute_ptr<cost>>(attrs_) = irs::get_mutable<cost>(front_);
 
-    if constexpr (HasScore<Merger>()) {
+    if constexpr (HasScore_v<Merger>()) {
       prepare_score();
     }
   }
