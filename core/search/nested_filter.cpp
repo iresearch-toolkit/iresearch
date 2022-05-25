@@ -453,8 +453,6 @@ auto ResolveMatchType(Match match, A&& aggregator, Visitor&& visitor) {
   } else if (match.IsMinMatch()) {
     assert(doc_limits::eof(match.Max));
     return visitor(MinMatcher<A>{match.Min, std::forward<A>(aggregator)});
-  } else if (match.Min == match.Max && match.Min == 0) {
-    return visitor(NoneMatcher<A>{std::forward<A>(aggregator)});
   } else {
     return visitor(RangeMatcher<A>{match, std::forward<A>(aggregator)});
   }
