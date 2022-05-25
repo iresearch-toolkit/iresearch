@@ -645,6 +645,64 @@ TEST_P(NestedFilterTestCase, JoinRange0) {
   }
 }
 
+TEST_P(NestedFilterTestCase, JoinNone0) {
+  InitDataSet();
+  auto reader = open_reader();
+
+  irs::ByNestedFilter filter;
+  auto& opts = *filter.mutable_options();
+  opts.child = MakeByTerm("item", "Mouse");
+  opts.parent = MakeByColumnExistence("customer");
+  opts.match = irs::kMatchNone;
+
+  CheckQuery(filter, Docs{7, 16}, Costs{11}, reader, SOURCE_LOCATION);
+
+  {
+    opts.merge_type = irs::sort::MergeType::kMax;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 9, {15.f, 15.f}},
+        {Next{}, 16, {20.f, 20.f}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+
+  {
+    opts.merge_type = irs::sort::MergeType::kMin;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 9, {10.f, 10.f}},
+        {Next{}, 16, {17.f, 17.f}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+
+  {
+    opts.merge_type = irs::sort::MergeType::kNoop;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 9, {}},
+        {Next{}, 16, {}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(
     NestedFilterTest, NestedFilterTestCase,
     ::testing::Combine(

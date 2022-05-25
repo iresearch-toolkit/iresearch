@@ -541,18 +541,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
 
       // if there is no frequency then all the scores
       // will be the same (e.g. filter irs::all)
-      uintptr_t ctx;
-      std::memcpy(&ctx, &boost, sizeof boost);
-
-      return {reinterpret_cast<score_ctx*>(ctx),
-              [](score_ctx* ctx, score_t* res) noexcept {
-                assert(res);
-                assert(ctx);
-
-                // FIXME(gnusi): use std::bit_cast when avaiable
-                const auto boost = reinterpret_cast<uintptr_t>(ctx);
-                std::memcpy(res, &boost, sizeof(score_t));
-              }};
+      return ScoreFunction::Constant(boost);
     }
 
     auto& stats = stats_cast(query_stats);
