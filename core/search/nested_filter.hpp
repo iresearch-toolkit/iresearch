@@ -31,17 +31,22 @@ namespace iresearch {
 class ByNestedFilter;
 
 struct Match {
-  constexpr explicit Match(doc_id_t value) noexcept : Match{value, value} {}
+  constexpr explicit Match(doc_id_t value) noexcept
+      : Match{value, doc_limits::eof()} {}
 
   constexpr Match(doc_id_t min, doc_id_t max) noexcept : Min(min), Max(max) {}
 
-  auto operator<=>(const Match&) const noexcept = default;
+  constexpr auto operator<=>(const Match&) const noexcept = default;
+
+  constexpr bool IsMinMatch() const noexcept {
+    return !doc_limits::eof(Min) && doc_limits::eof(Max);
+  }
 
   doc_id_t Min;
   doc_id_t Max;
 };
 
-static constexpr Match kMatchNone{0};
+static constexpr Match kMatchNone{0, 0};
 static constexpr Match kMatchAny{1};
 static constexpr Match kMatchAll{doc_limits::eof()};
 

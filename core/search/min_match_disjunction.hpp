@@ -90,7 +90,7 @@ class min_match_disjunction : public doc_iterator,
     heap_.resize(itrs_.size());
     std::iota(heap_.begin(), heap_.end(), size_t(0));
 
-    if constexpr (HasScore<Merger>()) {
+    if constexpr (HasScore_v<Merger>) {
       prepare_score();
     }
   }

@@ -142,8 +142,10 @@ auto MakeByTermAndRange(std::string_view name, std::string_view value,
 
 auto MakeOptions(std::string_view parent, std::string_view parent_value,
                  std::string_view child, std::string_view child_value,
-                 irs::sort::MergeType merge_type = irs::sort::MergeType::kSum) {
+                 irs::sort::MergeType merge_type = irs::sort::MergeType::kSum,
+                 irs::Match match = irs::kMatchAny) {
   irs::ByNestedOptions opts;
+  opts.match = match;
   opts.merge_type = merge_type;
   opts.parent = std::make_unique<irs::by_term>();
   auto& parent_filter = static_cast<irs::by_term&>(*opts.parent);
@@ -159,12 +161,22 @@ auto MakeOptions(std::string_view parent, std::string_view parent_value,
   return opts;
 }
 
+TEST(NestedFilterTest, CheckMatch) {
+  static_assert(irs::Match{0, 0} == irs::kMatchNone);
+  static_assert(irs::Match{1, irs::doc_limits::eof()} == irs::kMatchAny &&
+                irs::kMatchAny.IsMinMatch());
+  static_assert(irs::Match{irs::doc_limits::eof(), irs::doc_limits::eof()} ==
+                    irs::kMatchAll &&
+                !irs::kMatchAll.IsMinMatch());
+}
+
 TEST(NestedFilterTest, CheckOptions) {
   {
     irs::ByNestedOptions opts;
     ASSERT_EQ(nullptr, opts.parent);
     ASSERT_EQ(nullptr, opts.child);
     ASSERT_EQ(irs::sort::MergeType::kSum, opts.merge_type);
+    ASSERT_EQ(irs::kMatchAny, opts.match);
     ASSERT_EQ(opts, irs::ByNestedOptions{});
     ASSERT_EQ(opts.hash(), irs::ByNestedOptions{}.hash());
   }
@@ -179,6 +191,8 @@ TEST(NestedFilterTest, CheckOptions) {
     ASSERT_NE(opts0, MakeOptions("parent", "42", "child", "443"));
     ASSERT_NE(opts0, MakeOptions("parent", "42", "child", "442",
                                  irs::sort::MergeType::kMax));
+    ASSERT_NE(opts0, MakeOptions("parent", "42", "child", "442",
+                                 irs::sort::MergeType::kSum, irs::kMatchAll));
   }
 }
 
@@ -260,13 +274,21 @@ void NestedFilterTestCase::InitDataSet() {
   // Parent document: 9
   InsertOrder(*writer, {"Dell",
                         "April",
-                        {{"Mouse", 10, 1},
+                        {{"Mouse", 10, 2},
                          {"Display", 1000, 2},
-                         {"CPU", 1000, 1},
+                         {"CPU", 1000, 2},
                          {"RAM", 5000, 2}}});
 
   // Parent document: 14, missing "customer" field
-  InsertOrder(*writer, {"", "April", {{"Mouse", 10, 1}}});
+  InsertOrder(*writer, {"", "April", {{"Mouse", 10, 2}}});
+
+  // Parent document: 16
+  InsertOrder(*writer, {"BAE",
+                        "March",
+                        {{"Stand", 10, 2},
+                         {"Display", 1000, 2},
+                         {"CPU", 1000, 2},
+                         {"RAM", 5000, 2}}});
 
   ASSERT_TRUE(writer->commit());
 
@@ -299,7 +321,7 @@ TEST_P(NestedFilterTestCase, EmptyFilter) {
   }
 }
 
-TEST_P(NestedFilterTestCase, Join0) {
+TEST_P(NestedFilterTestCase, JoinAny0) {
   InitDataSet();
   auto reader = open_reader();
 
@@ -311,7 +333,7 @@ TEST_P(NestedFilterTestCase, Join0) {
   CheckQuery(filter, Docs{1}, Costs{1}, reader, SOURCE_LOCATION);
 }
 
-TEST_P(NestedFilterTestCase, Join1) {
+TEST_P(NestedFilterTestCase, JoinAny1) {
   InitDataSet();
   auto reader = open_reader();
 
@@ -383,7 +405,7 @@ TEST_P(NestedFilterTestCase, Join1) {
   }
 }
 
-TEST_P(NestedFilterTestCase, Join2) {
+TEST_P(NestedFilterTestCase, JoinAny2) {
   InitDataSet();
   auto reader = open_reader();
 
@@ -395,7 +417,7 @@ TEST_P(NestedFilterTestCase, Join2) {
   CheckQuery(filter, Docs{9}, Costs{2}, reader, SOURCE_LOCATION);
 }
 
-TEST_P(NestedFilterTestCase, Join3) {
+TEST_P(NestedFilterTestCase, JoinAny3) {
   InitDataSet();
   auto reader = open_reader();
 
@@ -404,7 +426,7 @@ TEST_P(NestedFilterTestCase, Join3) {
   opts.child = MakeByNumericTerm("count", 2);
   opts.parent = MakeByColumnExistence("customer");
 
-  CheckQuery(filter, Docs{1, 9}, Costs{4}, reader, SOURCE_LOCATION);
+  CheckQuery(filter, Docs{1, 9}, Costs{11}, reader, SOURCE_LOCATION);
 
   {
     opts.merge_type = irs::sort::MergeType::kMax;
@@ -414,7 +436,7 @@ TEST_P(NestedFilterTestCase, Join3) {
 
     const Tests tests = {
         {Next{}, 1, {4.f, 4.f}},
-        {Next{}, 9, {13.f, 13.f}},
+        {Next{}, 9, {15.f, 15.f}},
         {Next{}, irs::doc_limits::eof()},
     };
 
@@ -429,7 +451,7 @@ TEST_P(NestedFilterTestCase, Join3) {
 
     const Tests tests = {
         {Next{}, 1, {3.f, 3.f}},
-        {Next{}, 9, {11.f, 11.f}},
+        {Next{}, 9, {10.f, 10.f}},
         {Next{}, irs::doc_limits::eof()},
     };
 
@@ -445,6 +467,61 @@ TEST_P(NestedFilterTestCase, Join3) {
     const Tests tests = {
         {Next{}, 1, {}},
         {Next{}, 9, {}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+}
+
+TEST_P(NestedFilterTestCase, JoinAll0) {
+  InitDataSet();
+  auto reader = open_reader();
+
+  irs::ByNestedFilter filter;
+  auto& opts = *filter.mutable_options();
+  opts.child = MakeByNumericTerm("count", 2);
+  opts.parent = MakeByColumnExistence("customer");
+  opts.match = irs::kMatchAll;
+
+  CheckQuery(filter, Docs{16}, Costs{11}, reader, SOURCE_LOCATION);
+
+  {
+    opts.merge_type = irs::sort::MergeType::kMax;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 16, {20.f, 20.f}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+
+  {
+    opts.merge_type = irs::sort::MergeType::kMin;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 16, {17.f, 17.f}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+
+  {
+    opts.merge_type = irs::sort::MergeType::kNoop;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 16, {}},
         {Next{}, irs::doc_limits::eof()},
     };
 
