@@ -75,7 +75,6 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
 
 void DefaultScore(score_ctx* ctx, score_t* res) noexcept {
   assert(res);
-  // FIXME(gnusi): use std::bit_cast when available
   std::memset(res, 0, reinterpret_cast<size_t>(ctx));
 }
 
