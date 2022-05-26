@@ -146,10 +146,11 @@ class ChildToParentJoin final : public doc_iterator, private Matcher {
         return doc_limits::eof();
       }
 
-      while (parent_doc_->value < child) {
+      do {
         doc.value = parent_doc_->value;
         parent_->next();
-      }
+      } while (parent_doc_->value < child);
+
     } while (!Matcher::Accept());
 
     return doc.value;
