@@ -648,7 +648,6 @@ TEST_P(NestedFilterTestCase, JoinRange0) {
   }
 }
 
-/*
 TEST_P(NestedFilterTestCase, JoinNone0) {
   InitDataSet();
   auto reader = open_reader();
@@ -659,7 +658,7 @@ TEST_P(NestedFilterTestCase, JoinNone0) {
   opts.parent = MakeByColumnExistence("customer");
   opts.match = irs::kMatchNone;
 
-  CheckQuery(filter, Docs{7, 16}, Costs{11}, reader, SOURCE_LOCATION);
+  CheckQuery(filter, Docs{7, 16}, Costs{3}, reader, SOURCE_LOCATION);
 
   {
     opts.merge_type = irs::sort::MergeType::kMax;
@@ -668,8 +667,8 @@ TEST_P(NestedFilterTestCase, JoinNone0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 9, {15.f, 15.f}},
-        {Next{}, 16, {20.f, 20.f}},
+        {Next{}, 7, {1.f, 1.f}},
+        {Next{}, 16, {1.f, 1.f}},
         {Next{}, irs::doc_limits::eof()},
     };
 
@@ -683,8 +682,8 @@ TEST_P(NestedFilterTestCase, JoinNone0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 9, {10.f, 10.f}},
-        {Next{}, 16, {17.f, 17.f}},
+        {Next{}, 7, {1.f, 1.f}},
+        {Next{}, 16, {1.f, 1.f}},
         {Next{}, irs::doc_limits::eof()},
     };
 
@@ -698,7 +697,7 @@ TEST_P(NestedFilterTestCase, JoinNone0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 9, {}},
+        {Next{}, 7, {}},
         {Next{}, 16, {}},
         {Next{}, irs::doc_limits::eof()},
     };
@@ -706,7 +705,6 @@ TEST_P(NestedFilterTestCase, JoinNone0) {
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
   }
 }
-*/
 
 INSTANTIATE_TEST_SUITE_P(
     NestedFilterTest, NestedFilterTestCase,
