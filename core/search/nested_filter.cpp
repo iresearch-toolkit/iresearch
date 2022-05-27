@@ -31,6 +31,11 @@
 #include "utils/frozen_attributes.hpp"
 #include "utils/type_limits.hpp"
 
+namespace iresearch {
+template<template<typename> typename M>
+struct HasScoreHelper<M<NoopAggregator>> : std::false_type {};
+}  // namespace iresearch
+
 namespace {
 
 // 1 2 3 4 5 6 7
@@ -547,9 +552,6 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
 }  // namespace
 
 namespace iresearch {
-
-template<template<typename> typename M>
-struct HasScoreHelper<M<NoopAggregator>> : std::false_type {};
 
 /*static*/ filter::ptr ByNestedFilter::make() {
   return memory::make_unique<ByNestedFilter>();
