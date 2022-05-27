@@ -205,7 +205,8 @@ struct ScoreBuffer<Aggregator<Merger, Size>> {
   using BufferType =
       std::conditional_t<IsDynamic, bstring, std::array<score_t, Size>>;
 
-  explicit ScoreBuffer(const auto& merger) noexcept(!IsDynamic) {
+  explicit ScoreBuffer(const Aggregator<Merger, Size>& merger) noexcept(
+      !IsDynamic) {
     if constexpr (IsDynamic) {
       buf.resize(merger.byte_size());
     }

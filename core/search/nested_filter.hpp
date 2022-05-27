@@ -23,6 +23,8 @@
 #ifndef IRESEARCH_NESTED_FILTER_H
 #define IRESEARCH_NESTED_FILTER_H
 
+#include <compare>
+
 #include "search/filter.hpp"
 #include "utils/type_limits.hpp"
 
