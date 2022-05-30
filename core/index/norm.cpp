@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "norm.hpp"
+
 #include "store/store_utils.hpp"
 #include "utils/bytes_utils.hpp"
 
@@ -30,11 +31,9 @@ using namespace irs;
 
 class NormWriter final : public feature_writer {
  public:
-  virtual void write(
-      const field_stats& stats,
-      doc_id_t doc,
-      // cppcheck-suppress constParameter
-      columnstore_writer::values_writer_f& writer) final {
+  virtual void write(const field_stats& stats, doc_id_t doc,
+                     // cppcheck-suppress constParameter
+                     columnstore_writer::values_writer_f& writer) final {
     if (stats.len > 0) {
       const float_t value = 1.f / float_t(std::sqrt(double_t(stats.len)));
       if (value != Norm::DEFAULT()) {
@@ -44,31 +43,27 @@ class NormWriter final : public feature_writer {
     }
   }
 
-  virtual void write(
-      data_output& out,
-      bytes_ref payload) {
+  virtual void write(data_output& out, bytes_ref payload) final {
     if (!payload.empty()) {
       out.write_bytes(payload.c_str(), payload.size());
     }
   }
 
-  virtual void finish(bstring& /*out*/) final { }
+  virtual void finish(bstring& /*out*/) final {}
 };
 
 NormWriter kNormWriter;
 
-}
+}  // namespace
 
 namespace iresearch {
 
-bool NormReaderContext::Reset(
-    const sub_reader& reader,
-    field_id column_id,
-    const document& doc) {
+bool NormReaderContext::Reset(const sub_reader& reader, field_id column_id,
+                              const document& doc) {
   const auto* column = reader.column(column_id);
 
   if (column) {
-    auto it = column->iterator(false);
+    auto it = column->iterator(ColumnHint::kNormal);
     if (IRS_LIKELY(it)) {
       auto* payload = irs::get<irs::payload>(*it);
       if (IRS_LIKELY(payload)) {
@@ -84,10 +79,8 @@ bool NormReaderContext::Reset(
   return false;
 }
 
-bool Norm2ReaderContext::Reset(
-    const sub_reader& reader,
-    field_id column_id,
-    const document& doc) {
+bool Norm2ReaderContext::Reset(const sub_reader& reader, field_id column_id,
+                               const document& doc) {
   if (NormReaderContext::Reset(reader, column_id, doc)) {
     const auto hdr = Norm2Header::Read(header);
     if (hdr.has_value()) {
@@ -101,8 +94,8 @@ bool Norm2ReaderContext::Reset(
   return false;
 }
 
-
-/*static*/ feature_writer::ptr Norm::MakeWriter(std::span<const bytes_ref> /*payload*/) {
+/*static*/ feature_writer::ptr Norm::MakeWriter(
+    std::span<const bytes_ref> /*payload*/) {
   return memory::to_managed<feature_writer, false>(&kNormWriter);
 }
 
@@ -122,7 +115,8 @@ void Norm2Header::Reset(const Norm2Header& hdr) noexcept {
   irs::write(p, hdr.max_);
 }
 
-/*static*/ std::optional<Norm2Header> Norm2Header::Read(bytes_ref payload) noexcept {
+/*static*/ std::optional<Norm2Header> Norm2Header::Read(
+    bytes_ref payload) noexcept {
   if (IRS_UNLIKELY(payload.size() != ByteSize())) {
     IR_FRMT_ERROR("Invalid 'norm2' header size " IR_SIZE_T_SPECIFIER "",
                   payload.size());
@@ -153,7 +147,8 @@ void Norm2Header::Reset(const Norm2Header& hdr) noexcept {
   return hdr;
 }
 
-/*static*/ feature_writer::ptr Norm2::MakeWriter(std::span<const bytes_ref> headers) {
+/*static*/ feature_writer::ptr Norm2::MakeWriter(
+    std::span<const bytes_ref> headers) {
   size_t max_bytes{sizeof(ValueType)};
 
   if (!headers.empty()) {
@@ -184,4 +179,4 @@ void Norm2Header::Reset(const Norm2Header& hdr) noexcept {
 REGISTER_ATTRIBUTE(Norm);
 REGISTER_ATTRIBUTE(Norm2);
 
-} // iresearch
+}  // namespace iresearch

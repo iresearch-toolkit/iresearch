@@ -167,7 +167,7 @@ TEST(ngram_similarity_base_test, equal) {
 // --SECTION--                         by_ngram_similarity filter matcher tests
 // ----------------------------------------------------------------------------
 
-class ngram_similarity_filter_test_case : public tests::filter_test_case_base {
+class ngram_similarity_filter_test_case : public tests::FilterTestCaseBase {
  protected:
   static irs::feature_info_provider_t features_with_norms() {
     return [](irs::type_info::type_id id) {
@@ -626,7 +626,7 @@ TEST_P(ngram_similarity_filter_test_case, one_match_case) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"ee", "ss", "qq", "rr", "ff", "never_match"}, 0.1f);
 
-  docs_t expected{ 1, 3, 5, 6, 7, 8, 9, 10, 12};
+  Docs expected{ 1, 3, 5, 6, 7, 8, 9, 10, 12};
   const size_t expected_size = expected.size();
   auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
   size_t count = 0;
@@ -657,7 +657,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_test) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"at", "tl", "la", "as", "ll", "never_match"}, 0.5f);
 
-  docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
+  Docs expected{ 1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
   auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
   size_t count = 0;
@@ -688,7 +688,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_test) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
 
-  docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
+  Docs expected{ 1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
   auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
   size_t count = 0;
@@ -719,7 +719,7 @@ TEST_P(ngram_similarity_filter_test_case, not_miss_match_for_tail) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"at", "tl", "la", "as", "ll", "never_match"}, 0.33f);
 
-  docs_t expected{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
+  Docs expected{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
   auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
   size_t count = 0;
@@ -751,7 +751,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle_test) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"at", "never_match", "la", "as", "ll"}, 0.333f);
 
-  docs_t expected{ 1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14};
+  Docs expected{ 1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
 
   auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
@@ -783,7 +783,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle2_test) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"at", "never_match", "never_match2", "la", "as", "ll"}, 0.5f);
 
-  docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
+  Docs expected{ 1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
 
   auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
@@ -815,7 +815,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"at", "never_match", "tl", "never_match2", "la", "as", "ll"}, 0.28f);
 
-  docs_t expected{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
+  Docs expected{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
 
   auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
@@ -865,7 +865,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"at", "tl", "la", "as", "ll", "never_match"}, 0.5f);
 
-  docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
+  Docs expected{ 1, 2, 5, 8, 11, 12, 13};
   size_t collect_field_count = 0;
   size_t collect_term_count = 0;
   size_t finish_count = 0;
@@ -917,7 +917,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   };
   std::vector<size_t> expectedFrequency{1, 1, 2, 1, 1, 1, 1};
   std::vector<irs::score_t> expected_filter_boost{4.f/6.f, 4.f/6.f, 4.f/6.f, 4.f/6.f, 0.5, 0.5, 0.5};
-  check_query(filter, std::span{&order, 1}, expected, rdr);
+  CheckQuery(filter, std::span{&order, 1}, expected, rdr);
   ASSERT_EQ(expectedFrequency, frequency);
   ASSERT_EQ(expected_filter_boost.size(), filter_boost.size());
   for (size_t i = 0; i < expected_filter_boost.size(); ++i) {
@@ -941,7 +941,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
 
-  docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
+  Docs expected{ 1, 2, 5, 8, 11, 12, 13};
   size_t collect_field_count = 0;
   size_t collect_term_count = 0;
   size_t finish_count = 0;
@@ -993,7 +993,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   };
   std::vector<size_t> expected_frequency{1, 1, 2, 1, 1, 1, 1};
   std::vector<irs::score_t> expected_filter_boost{4.f/6.f, 4.f/6.f, 4.f/6.f, 4.f/6.f, 0.5, 0.5, 0.5};
-  check_query(filter, std::span{&order, 1}, expected, rdr);
+  CheckQuery(filter, std::span{&order, 1}, expected, rdr);
   ASSERT_EQ(expected_frequency, frequency);
   ASSERT_EQ(expected_filter_boost.size(), filter_boost.size());
   for (size_t i = 0; i < expected_filter_boost.size(); ++i) {
@@ -1023,11 +1023,11 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
 
-  docs_t expected{ 11, 12, 8, 13, 5, 1, 2};
+  Docs expected{ 11, 12, 8, 13, 5, 1, 2};
 
   irs::sort::ptr scorer{std::make_unique<irs::tfidf_sort>(true)};
 
-  check_query(filter, std::span{&scorer, 1}, expected, rdr);
+  CheckQuery(filter, std::span{&scorer, 1}, expected, rdr);
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
@@ -1046,11 +1046,11 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
 
-  docs_t expected{ 11, 12, 13, 1, 2, 8, 5};
+  Docs expected{ 11, 12, 13, 1, 2, 8, 5};
 
   irs::sort::ptr scorer{std::make_unique<irs::tfidf_sort>(false)};
 
-  check_query(filter, std::span{&scorer, 1}, expected, rdr);
+  CheckQuery(filter, std::span{&scorer, 1}, expected, rdr);
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
@@ -1069,11 +1069,11 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
 
-  docs_t expected{ 11, 12, 13, 8, 1, 5, 2};
+  Docs expected{ 11, 12, 13, 8, 1, 5, 2};
 
   irs::sort::ptr scorer{std::make_unique<irs::bm25_sort>()};
 
-  check_query(filter, std::span{&scorer, 1}, expected, rdr);
+  CheckQuery(filter, std::span{&scorer, 1}, expected, rdr);
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
@@ -1092,11 +1092,11 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
 
-  docs_t expected{ 11, 12, 13, 1, 2, 8, 5};
+  Docs expected{ 11, 12, 13, 1, 2, 8, 5};
 
   irs::sort::ptr bm15{std::make_unique<irs::bm25_sort>(irs::bm25_sort::K(), 0.f)};
 
-  check_query(filter, std::span{&bm15, 1}, expected, rdr);
+  CheckQuery(filter, std::span{&bm15, 1}, expected, rdr);
 }
 
 TEST_P(ngram_similarity_filter_test_case, seek_next) {
@@ -1110,7 +1110,7 @@ TEST_P(ngram_similarity_filter_test_case, seek_next) {
   auto rdr = open_reader();
 
   irs::by_ngram_similarity filter = make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
-  docs_t expected{1, 2, 5, 8, 11, 12, 13};
+  Docs expected{1, 2, 5, 8, 11, 12, 13};
   auto expected_it = std::begin(expected);
   auto prepared_filter = filter.prepare(rdr, irs::Order::kUnordered);
   for (const auto& sub : rdr) {
@@ -1150,7 +1150,7 @@ TEST_P(ngram_similarity_filter_test_case, seek) {
   auto rdr = open_reader();
 
   irs::by_ngram_similarity filter = make_filter("field", { "never_match", "at", "tl", "la", "as", "ll" }, 0.5f);
-  docs_t seek_tagrets{ 2, 5, 8, 13 };
+  Docs seek_tagrets{ 2, 5, 8, 13 };
   auto seek_it = std::begin(seek_tagrets);
   auto& prepared_order = irs::Order::kUnordered;
   auto prepared_filter = filter.prepare(rdr, prepared_order);

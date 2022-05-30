@@ -23,11 +23,18 @@
 #include "index_tests.hpp"
 
 #include "index/norm.hpp"
-#include "iql/query_builder.hpp"
+#include "search/term_filter.hpp"
 #include "search/cost.hpp"
 #include "utils/index_utils.hpp"
 
 namespace  {
+
+auto MakeByTerm(std::string_view name, std::string_view value) {
+  auto filter = std::make_unique<irs::by_term>();
+  *filter->mutable_field() = name;
+  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  return filter;
+}
 
 class Analyzer : public irs::analysis::analyzer {
  public:
@@ -369,7 +376,7 @@ void Norm2TestCase::AssertNormColumn(
   AssertNorm2Header(column->payload(), sizeof(T),
                     min->second, max->second);
 
-  auto values = column->iterator(false);
+  auto values = column->iterator(irs::ColumnHint::kNormal);
   auto* cost = irs::get<irs::cost>(*values);
   ASSERT_NE(nullptr, cost);
   ASSERT_EQ(cost->estimate(), expected_docs.size());
@@ -1016,8 +1023,8 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
 
   // Remove document
   {
-    auto query_doc3 = irs::iql::query_builder().build("name==D", "C");
-    writer->documents().remove(*query_doc3.filter);
+    auto query_doc3 = MakeByTerm("name", "D");
+    writer->documents().remove(*query_doc3);
     writer->commit();
   }
 

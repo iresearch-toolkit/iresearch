@@ -7,7 +7,6 @@ SOURCE_GROUP("store" ./store/*)
 SOURCE_GROUP("index" ./index/*)
 SOURCE_GROUP("formats" ./formats/*)
 SOURCE_GROUP("search" ./search/*)
-SOURCE_GROUP("iql" ./iql/*)
 SOURCE_GROUP("utils" ./utils/*)
 
 set(IReSearch_generated_INCLUDE_DIR
@@ -60,6 +59,7 @@ set(IReSearch_tests_sources
   ./index/segment_writer_tests.cpp
   ./index/consolidation_policy_tests.cpp
   ./search/empty_filter_tests.cpp
+  ./search/nested_filter_test.cpp
   ./search/granular_range_filter_tests.cpp
   ./search/wildcard_filter_test.cpp
   ./search/levenshtein_filter_test.cpp
@@ -84,8 +84,6 @@ set(IReSearch_tests_sources
   ./search/ngram_similarity_filter_tests.cpp
   ./search/top_terms_collector_test.cpp
   ./search/proxy_filter_test.cpp
-  ./iql/parser_common_test.cpp
-  ./iql/query_builder_test.cpp
   ./utils/async_utils_tests.cpp
   ./utils/automaton_test.cpp
   ./utils/bitvector_tests.cpp
@@ -158,7 +156,6 @@ add_executable(iresearch-tests-static
   ./formats/formats_13_tests.cpp
   ./formats/formats_14_tests.cpp
   ./formats/formats_15_tests.cpp
-  ./iql/parser_test.cpp
 )
 
 set_ipo(iresearch-tests-static)

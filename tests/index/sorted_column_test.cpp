@@ -253,7 +253,7 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
       ASSERT_TRUE(header_payload.null());
     }
 
-    auto it = column->iterator(false);
+    auto it = column->iterator(irs::ColumnHint::kNormal);
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_TRUE(!payload || payload->value.null());
 
@@ -395,7 +395,7 @@ TEST_P(sorted_column_test_case, sort) {
       ASSERT_TRUE(header_payload.null());
     }
 
-    auto it = column->iterator(false);
+    auto it = column->iterator(irs::ColumnHint::kNormal);
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_TRUE(payload);
 

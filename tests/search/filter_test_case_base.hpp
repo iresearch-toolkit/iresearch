@@ -24,8 +24,6 @@
 #ifndef IRESEARCH_FILTER_TEST_CASE_BASE
 #define IRESEARCH_FILTER_TEST_CASE_BASE
 
-#include <compare>
-
 #include "analysis/token_attributes.hpp"
 #include "index/index_tests.hpp"
 #include "search/cost.hpp"
@@ -354,136 +352,77 @@ struct frequency_sort : public irs::sort {
 
 }  // namespace sort
 
-class filter_test_case_base : public index_test_base {
+class FilterTestCaseBase : public index_test_base {
  protected:
-  typedef std::vector<irs::doc_id_t> docs_t;
-  typedef std::vector<irs::cost::cost_t> costs_t;
+  using Docs = std::vector<irs::doc_id_t>;
+  using ScoredDocs =
+      std::vector<std::pair<irs::doc_id_t, std::vector<irs::score_t>>>;
+  using Costs = std::vector<irs::cost::cost_t>;
 
-  void check_query(const irs::filter& filter,
-                   const std::vector<irs::doc_id_t>& expected,
-                   const std::vector<irs::cost::cost_t>& expected_costs,
-                   const irs::index_reader& rdr) {
-    std::vector<irs::doc_id_t> result;
-    std::vector<irs::cost::cost_t> result_costs;
-    irs::score_t tmp;
-    get_query_result(filter.prepare(rdr, irs::Order::kUnordered), rdr, &tmp,
-                     result, result_costs);
-    ASSERT_EQ(expected, result);
-    ASSERT_EQ(expected_costs, result_costs);
-  }
+  struct Seek {
+    irs::doc_id_t target;
+  };
 
-  void check_query(const irs::filter& filter,
-                   const std::vector<irs::doc_id_t>& expected,
-                   const irs::index_reader& rdr) {
-    std::vector<irs::doc_id_t> result;
-    std::vector<irs::cost::cost_t> result_costs;
-    irs::score_t tmp;
-    get_query_result(filter.prepare(rdr, irs::Order::kUnordered), rdr, &tmp,
-                     result, result_costs);
-    ASSERT_EQ(expected, result);
-  }
+  struct Skip {
+    irs::doc_id_t count;
+  };
 
-  void check_query(const irs::filter& filter,
-                   std::span<const irs::sort::ptr> order,
-                   const std::vector<irs::doc_id_t>& expected,
-                   const irs::index_reader& rdr,
-                   bool score_must_be_present = true, bool reverse = false) {
-    auto prepared_order = irs::Order::Prepare(order);
-    auto prepared_filter = filter.prepare(rdr, prepared_order);
-    auto score_less =
-        [reverse, size = prepared_order.buckets().size()](
-            const std::pair<irs::bstring, irs::doc_id_t>& lhs,
-            const std::pair<irs::bstring, irs::doc_id_t>& rhs) -> bool {
-      const auto& [lhs_buf, lhs_doc] = lhs;
-      const auto& [rhs_buf, rhs_doc] = rhs;
+  struct Next {};
 
-      const auto* lhs_score = reinterpret_cast<const float*>(lhs_buf.c_str());
-      const auto* rhs_score = reinterpret_cast<const float*>(rhs_buf.c_str());
+  using Action = std::variant<Seek, Skip, Next>;
 
-      for (size_t i = 0; i < size; ++i) {
-        const auto r = (lhs_score[i] <=> rhs_score[i]);
+  struct Test {
+    Action action;
+    irs::doc_id_t expected;
+    std::vector<irs::score_t> score{};
+  };
 
-        if (r < 0) {
-          return !reverse;
-        }
+  using Tests = std::vector<Test>;
 
-        if (r > 0) {
-          return reverse;
-        }
-      }
+  // Validate matched documents and query cost
+  static void CheckQuery(const irs::filter& filter, const Docs& expected,
+                         const Costs& expected_costs,
+                         const irs::index_reader& index,
+                         std::string_view source_location = {});
 
-      return lhs_doc < rhs_doc;
-    };
-    std::multiset<std::pair<irs::bstring, irs::doc_id_t>, decltype(score_less)>
-        scored_result(score_less);
+  // Validate matched documents
+  static void CheckQuery(const irs::filter& filter, const Docs& expected,
+                         const irs::index_reader& index,
+                         std::string_view source_location = {});
 
-    for (const auto& sub : rdr) {
-      auto docs = prepared_filter->execute(sub, prepared_order);
+  // Validate documents and its scores
+  static void CheckQuery(const irs::filter& filter,
+                         std::span<const irs::sort::ptr> order,
+                         const ScoredDocs& expected,
+                         const irs::index_reader& index,
+                         std::string_view source_location = {});
 
-      auto* doc = irs::get<irs::document>(*docs);
-      ASSERT_TRUE(
-          bool(doc));  // ensure all iterators contain "document" attribute
+  // Validate documents and its scores with test cases
+  static void CheckQuery(const irs::filter& filter,
+                         std::span<const irs::sort::ptr> order,
+                         const std::vector<Tests>& tests,
+                         const irs::index_reader& index,
+                         std::string_view source_location = {});
 
-      const auto* score = irs::get<irs::score>(*docs);
-
-      if (!score) {
-        ASSERT_FALSE(score_must_be_present);
-      }
-
-      irs::bstring score_value(prepared_order.score_size(), 0);
-
-      while (docs->next()) {
-        ASSERT_EQ(docs->value(), doc->value);
-
-        if (score && score->Func() != irs::ScoreFunction::kDefault) {
-          (*score)(reinterpret_cast<irs::score_t*>(score_value.data()));
-
-          scored_result.emplace(score_value, docs->value());
-        } else {
-          scored_result.emplace(irs::bstring(prepared_order.score_size(), 0),
-                                docs->value());
-        }
-      }
-      ASSERT_FALSE(docs->next());
-    }
-
-    std::vector<irs::doc_id_t> result;
-
-    for (auto& entry : scored_result) {
-      result.emplace_back(entry.second);
-    }
-
-    ASSERT_EQ(expected, result);
-  }
+  // Validate document order
+  static void CheckQuery(const irs::filter& filter,
+                         std::span<const irs::sort::ptr> order,
+                         const std::vector<irs::doc_id_t>& expected,
+                         const irs::index_reader& index,
+                         bool score_must_be_present = true,
+                         bool reverse = false);
 
  private:
-  void get_query_result(const irs::filter::prepared::ptr& q,
-                        const irs::index_reader& rdr, irs::score_t* score_value,
-                        std::vector<irs::doc_id_t>& result,
-                        std::vector<irs::cost::cost_t>& result_costs) {
-    for (const auto& sub : rdr) {
-      auto docs = q->execute(sub);
+  static void GetQueryResult(const irs::filter::prepared::ptr& q,
+                             const irs::index_reader& index, Docs& result,
+                             Costs& result_costs,
+                             std::string_view source_location);
 
-      auto* doc = irs::get<irs::document>(*docs);
-      ASSERT_TRUE(
-          bool(doc));  // ensure all iterators contain "document" attribute
-
-      auto* score = irs::get<irs::score>(*docs);
-
-      result_costs.push_back(irs::cost::extract(*docs));
-
-      while (docs->next()) {
-        ASSERT_EQ(docs->value(), doc->value);
-
-        if (score) {
-          (*score)(score_value);
-        }
-        // put score attributes to iterator
-        result.push_back(docs->value());
-      }
-      ASSERT_FALSE(docs->next());
-    }
-  }
+  static void GetQueryResult(const irs::filter::prepared::ptr& q,
+                             const irs::index_reader& index,
+                             const irs::Order& ord, ScoredDocs& result,
+                             Costs& result_costs,
+                             std::string_view source_location);
 };
 
 struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {

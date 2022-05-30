@@ -170,7 +170,7 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
 
 #endif // IRESEARCH_DLL
 
-class wildcard_filter_test_case : public tests::filter_test_case_base { };
+class wildcard_filter_test_case : public tests::FilterTestCaseBase { };
 
 TEST_P(wildcard_filter_test_case, simple_sequential_order) {
   // add segment
@@ -184,12 +184,12 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
   auto rdr = open_reader();
 
   // empty query
-  check_query(irs::by_wildcard(), docs_t{}, costs_t{0}, rdr);
+  CheckQuery(irs::by_wildcard(), Docs{}, Costs{0}, rdr);
 
   // empty prefix test collector call count for field/term/finish
   {
-    docs_t docs{ 1, 4, 9, 16, 21, 24, 26, 29, 31, 32 };
-    costs_t costs{ docs.size() };
+    Docs docs{ 1, 4, 9, 16, 21, 24, 26, 29, 31, 32 };
+    Costs costs{ docs.size() };
 
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
@@ -214,7 +214,7 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
     scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
       return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
-    check_query(make_filter("prefix", "%"), order, docs, rdr);
+    CheckQuery(make_filter("prefix", "%"), order, docs, rdr);
     ASSERT_EQ(9, collect_field_count); // 9 fields (1 per term since treated as a disjunction) in 1 segment
     ASSERT_EQ(9, collect_term_count); // 9 different terms
     ASSERT_EQ(9, finish_count); // 9 unque terms
@@ -222,24 +222,24 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
 
   // match all
   {
-    docs_t docs{ 31, 32, 1, 4, 9, 16, 21, 24, 26, 29 };
-    costs_t costs{ docs.size() };
+    Docs docs{ 31, 32, 1, 4, 9, 16, 21, 24, 26, 29 };
+    Costs costs{ docs.size() };
 
     std::array<irs::sort::ptr, 1> order{
         std::make_unique<tests::sort::frequency_sort>()};
 
-    check_query(make_filter("prefix", "%"), order, docs, rdr);
+    CheckQuery(make_filter("prefix", "%"), order, docs, rdr);
   }
 
   // prefix
   {
-    docs_t docs{ 31, 32, 1, 4, 16, 21, 26, 29 };
-    costs_t costs{ docs.size() };
+    Docs docs{ 31, 32, 1, 4, 16, 21, 26, 29 };
+    Costs costs{ docs.size() };
 
     std::array<irs::sort::ptr, 1> order{
         std::make_unique<tests::sort::frequency_sort>()};
 
-    check_query(make_filter("prefix", "a%"), order, docs, rdr);
+    CheckQuery(make_filter("prefix", "a%"), order, docs, rdr);
   }
 }
 
@@ -255,179 +255,179 @@ TEST_P(wildcard_filter_test_case, simple_sequential) {
   auto rdr = open_reader();
 
   // empty query
-  check_query(irs::by_wildcard(), docs_t{}, costs_t{0}, rdr);
+  CheckQuery(irs::by_wildcard(), Docs{}, Costs{0}, rdr);
 
   // empty field
-  check_query(make_filter("", "xyz%"), docs_t{}, costs_t{0}, rdr);
+  CheckQuery(make_filter("", "xyz%"), Docs{}, Costs{0}, rdr);
 
   // invalid field
-  check_query(make_filter("same1", "xyz%"), docs_t{}, costs_t{0}, rdr);
+  CheckQuery(make_filter("same1", "xyz%"), Docs{}, Costs{0}, rdr);
 
   // invalid prefix
-  check_query(make_filter("same", "xyz_invalid%"), docs_t{}, costs_t{0}, rdr);
+  CheckQuery(make_filter("same", "xyz_invalid%"), Docs{}, Costs{0}, rdr);
 
   // empty pattern - no match
-  check_query(make_filter("duplicated", ""), docs_t{}, costs_t{0}, rdr);
+  CheckQuery(make_filter("duplicated", ""), Docs{}, Costs{0}, rdr);
 
   // match all
   {
-    docs_t result;
+    Docs result;
     for(size_t i = 0; i < 32; ++i) {
       result.push_back(irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i));
     }
 
-    costs_t costs{ result.size() };
+    Costs costs{ result.size() };
 
-    check_query(make_filter("same", "%"), result, costs, rdr);
-    check_query(make_filter("same", "___"), result, costs, rdr);
-    check_query(make_filter("same", "%_"), result, costs, rdr);
-    check_query(make_filter("same", "_%"), result, costs, rdr);
-    check_query(make_filter("same", "x_%"), result, costs, rdr);
-    check_query(make_filter("same", "__z"), result, costs, rdr);
-    check_query(make_filter("same", "%_z"), result, costs, rdr);
-    check_query(make_filter("same", "x%_"), result, costs, rdr);
-    check_query(make_filter("same", "x_%"), result, costs, rdr);
-    check_query(make_filter("same", "x_z"), result, costs, rdr);
-    check_query(make_filter("same", "x%z"), result, costs, rdr);
-    check_query(make_filter("same", "_yz"), result, costs, rdr);
-    check_query(make_filter("same", "%yz"), result, costs, rdr);
-    check_query(make_filter("same", "xyz"), result, costs, rdr);
+    CheckQuery(make_filter("same", "%"), result, costs, rdr);
+    CheckQuery(make_filter("same", "___"), result, costs, rdr);
+    CheckQuery(make_filter("same", "%_"), result, costs, rdr);
+    CheckQuery(make_filter("same", "_%"), result, costs, rdr);
+    CheckQuery(make_filter("same", "x_%"), result, costs, rdr);
+    CheckQuery(make_filter("same", "__z"), result, costs, rdr);
+    CheckQuery(make_filter("same", "%_z"), result, costs, rdr);
+    CheckQuery(make_filter("same", "x%_"), result, costs, rdr);
+    CheckQuery(make_filter("same", "x_%"), result, costs, rdr);
+    CheckQuery(make_filter("same", "x_z"), result, costs, rdr);
+    CheckQuery(make_filter("same", "x%z"), result, costs, rdr);
+    CheckQuery(make_filter("same", "_yz"), result, costs, rdr);
+    CheckQuery(make_filter("same", "%yz"), result, costs, rdr);
+    CheckQuery(make_filter("same", "xyz"), result, costs, rdr);
   }
 
   // match nothing
-  check_query(make_filter("prefix", "ab\\%"), docs_t{}, costs_t{0}, rdr);
-  check_query(make_filter("same", "x\\_z"), docs_t{}, costs_t{0}, rdr);
-  check_query(make_filter("same", "x\\%z"), docs_t{}, costs_t{0}, rdr);
-  check_query(make_filter("same", "_"), docs_t{}, costs_t{0}, rdr);
+  CheckQuery(make_filter("prefix", "ab\\%"), Docs{}, Costs{0}, rdr);
+  CheckQuery(make_filter("same", "x\\_z"), Docs{}, Costs{0}, rdr);
+  CheckQuery(make_filter("same", "x\\%z"), Docs{}, Costs{0}, rdr);
+  CheckQuery(make_filter("same", "_"), Docs{}, Costs{0}, rdr);
 
   // escaped prefix
   {
-    docs_t result{10, 11};
-    costs_t costs{ result.size() };
+    Docs result{10, 11};
+    Costs costs{ result.size() };
 
-    check_query(make_filter("prefix", "ab\\\\%"), result, costs, rdr);
+    CheckQuery(make_filter("prefix", "ab\\\\%"), result, costs, rdr);
   }
 
   // escaped term
   {
-    docs_t result{10};
-    costs_t costs{ result.size() };
+    Docs result{10};
+    Costs costs{ result.size() };
 
-    check_query(make_filter("prefix", "ab\\\\\\%"), result, costs, rdr);
+    CheckQuery(make_filter("prefix", "ab\\\\\\%"), result, costs, rdr);
   }
 
   // escaped term
   {
-    docs_t result{11};
-    costs_t costs{ result.size() };
+    Docs result{11};
+    Costs costs{ result.size() };
 
-    check_query(make_filter("prefix", "ab\\\\\\\\%"), result, costs, rdr);
+    CheckQuery(make_filter("prefix", "ab\\\\\\\\%"), result, costs, rdr);
   }
 
   // valid prefix
   {
-    docs_t result;
+    Docs result;
     for(size_t i = 0; i < 32; ++i) {
       result.push_back(irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i));
     }
 
-    costs_t costs{ result.size() };
+    Costs costs{ result.size() };
 
-    check_query(make_filter("same", "xyz%"), result, costs, rdr);
+    CheckQuery(make_filter("same", "xyz%"), result, costs, rdr);
   }
 
   // pattern
   {
-    docs_t docs{ 2, 3, 8, 14, 17, 19, 24 };
-    costs_t costs{ docs.size() };
+    Docs docs{ 2, 3, 8, 14, 17, 19, 24 };
+    Costs costs{ docs.size() };
 
-    check_query(make_filter("duplicated", "v_z%"), docs, costs, rdr);
-    check_query(make_filter("duplicated", "v%c"), docs, costs, rdr);
-    check_query(make_filter("duplicated", "v%%%%%c"), docs, costs, rdr);
-    check_query(make_filter("duplicated", "%c"), docs, costs, rdr);
-    check_query(make_filter("duplicated", "%_c"), docs, costs, rdr);
+    CheckQuery(make_filter("duplicated", "v_z%"), docs, costs, rdr);
+    CheckQuery(make_filter("duplicated", "v%c"), docs, costs, rdr);
+    CheckQuery(make_filter("duplicated", "v%%%%%c"), docs, costs, rdr);
+    CheckQuery(make_filter("duplicated", "%c"), docs, costs, rdr);
+    CheckQuery(make_filter("duplicated", "%_c"), docs, costs, rdr);
   }
 
   // pattern
   {
-    docs_t docs{ 1, 4, 9, 21, 26, 31, 32 };
-    costs_t costs{ docs.size() };
+    Docs docs{ 1, 4, 9, 21, 26, 31, 32 };
+    Costs costs{ docs.size() };
 
-    check_query(make_filter("prefix", "%c%"), docs, costs, rdr);
-    check_query(make_filter("prefix", "%c%%"), docs, costs, rdr);
-    check_query(make_filter("prefix", "%%%%c%%"), docs, costs, rdr);
-    check_query(make_filter("prefix", "%%c%"), docs, costs, rdr);
-    check_query(make_filter("prefix", "%%c%%"), docs, costs, rdr);
+    CheckQuery(make_filter("prefix", "%c%"), docs, costs, rdr);
+    CheckQuery(make_filter("prefix", "%c%%"), docs, costs, rdr);
+    CheckQuery(make_filter("prefix", "%%%%c%%"), docs, costs, rdr);
+    CheckQuery(make_filter("prefix", "%%c%"), docs, costs, rdr);
+    CheckQuery(make_filter("prefix", "%%c%%"), docs, costs, rdr);
   }
 
   // single digit prefix
   {
-    docs_t docs{ 1, 5, 11, 21, 27, 31 };
-    costs_t costs{ docs.size() };
+    Docs docs{ 1, 5, 11, 21, 27, 31 };
+    Costs costs{ docs.size() };
 
-    check_query(make_filter("duplicated", "a%"), docs, costs, rdr);
+    CheckQuery(make_filter("duplicated", "a%"), docs, costs, rdr);
   }
 
-  check_query(make_filter("name", "!%"), docs_t{28}, costs_t{1}, rdr);
-  check_query(make_filter("prefix", "b%"), docs_t{9, 24}, costs_t{2}, rdr);
+  CheckQuery(make_filter("name", "!%"), Docs{28}, Costs{1}, rdr);
+  CheckQuery(make_filter("prefix", "b%"), Docs{9, 24}, Costs{2}, rdr);
 
   // multiple digit prefix
   {
-    docs_t docs{ 2, 3, 8, 14, 17, 19, 24 };
-    costs_t costs{ docs.size() };
+    Docs docs{ 2, 3, 8, 14, 17, 19, 24 };
+    Costs costs{ docs.size() };
 
-    check_query(make_filter("duplicated", "vcz%"), docs, costs, rdr);
-    check_query(make_filter("duplicated", "vcz%%%%%"), docs, costs, rdr);
+    CheckQuery(make_filter("duplicated", "vcz%"), docs, costs, rdr);
+    CheckQuery(make_filter("duplicated", "vcz%%%%%"), docs, costs, rdr);
   }
 
   {
-    docs_t docs{ 1, 4, 21, 26, 31, 32 };
-    costs_t costs{ docs.size() };
-    check_query(make_filter("prefix", "abc%"), docs, costs, rdr);
+    Docs docs{ 1, 4, 21, 26, 31, 32 };
+    Costs costs{ docs.size() };
+    CheckQuery(make_filter("prefix", "abc%"), docs, costs, rdr);
   }
 
   {
-    docs_t docs{ 1, 4, 21, 26, 31, 32 };
-    costs_t costs{ docs.size() };
+    Docs docs{ 1, 4, 21, 26, 31, 32 };
+    Costs costs{ docs.size() };
 
-    check_query(make_filter("prefix", "abc%"), docs, costs, rdr);
-    check_query(make_filter("prefix", "abc%%"), docs, costs, rdr);
+    CheckQuery(make_filter("prefix", "abc%"), docs, costs, rdr);
+    CheckQuery(make_filter("prefix", "abc%%"), docs, costs, rdr);
   }
 
   {
-    docs_t docs{ 1, 4, 16, 26 };
-    costs_t costs{ docs.size() };
+    Docs docs{ 1, 4, 16, 26 };
+    Costs costs{ docs.size() };
 
-    check_query(make_filter("prefix", "a%d%"), docs, costs, rdr);
-    check_query(make_filter("prefix", "a%d%%"), docs, costs, rdr);
+    CheckQuery(make_filter("prefix", "a%d%"), docs, costs, rdr);
+    CheckQuery(make_filter("prefix", "a%d%%"), docs, costs, rdr);
   }
 
   {
-    docs_t docs{ 1, 26 };
-    costs_t costs{ docs.size() };
+    Docs docs{ 1, 26 };
+    Costs costs{ docs.size() };
 
-    check_query(make_filter("utf8", "\x25\xD0\xB9"), docs, costs, rdr);
-    check_query(make_filter("utf8", "\x25\x25\xD0\xB9"), docs, costs, rdr);
+    CheckQuery(make_filter("utf8", "\x25\xD0\xB9"), docs, costs, rdr);
+    CheckQuery(make_filter("utf8", "\x25\x25\xD0\xB9"), docs, costs, rdr);
   }
 
   {
-    docs_t docs{ 26 };
-    costs_t costs{ docs.size() };
+    Docs docs{ 26 };
+    Costs costs{ docs.size() };
 
-    check_query(make_filter("utf8", "\xD0\xB2\x25\xD0\xB9"), docs, costs, rdr);
-    check_query(make_filter("utf8", "\xD0\xB2\x25\x25\xD0\xB9"), docs, costs, rdr);
+    CheckQuery(make_filter("utf8", "\xD0\xB2\x25\xD0\xB9"), docs, costs, rdr);
+    CheckQuery(make_filter("utf8", "\xD0\xB2\x25\x25\xD0\xB9"), docs, costs, rdr);
   }
 
   {
-    docs_t docs{ 1, 3 };
-    costs_t costs{ docs.size() };
+    Docs docs{ 1, 3 };
+    Costs costs{ docs.size() };
 
-    check_query(make_filter("utf8", "\xD0\xBF\x25"), docs, costs, rdr);
-    check_query(make_filter("utf8", "\xD0\xBF\x25\x25"), docs, costs, rdr);
+    CheckQuery(make_filter("utf8", "\xD0\xBF\x25"), docs, costs, rdr);
+    CheckQuery(make_filter("utf8", "\xD0\xBF\x25\x25"), docs, costs, rdr);
   }
 
   // whole word
-  check_query(make_filter("prefix", "bateradsfsfasdf"), docs_t{24}, costs_t{1}, rdr);
+  CheckQuery(make_filter("prefix", "bateradsfsfasdf"), Docs{24}, Costs{1}, rdr);
 }
 
 TEST_P(wildcard_filter_test_case, visit) {

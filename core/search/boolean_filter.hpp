@@ -79,7 +79,7 @@ class boolean_filter : public filter, private util::noncopyable {
                      std::vector<const filter*>& excl) const;
 
   std::vector<filter::ptr> filters_;
-  sort::MergeType merge_type_{sort::MergeType::AGGREGATE};
+  sort::MergeType merge_type_{sort::MergeType::kSum};
 };
 
 // Represents conjunction
@@ -99,7 +99,7 @@ class And final : public boolean_filter {
 };
 
 // Represents disjunction
-class Or : public boolean_filter {  // FIXME: remove iql and make final
+class Or final : public boolean_filter {
  public:
   static ptr make();
 

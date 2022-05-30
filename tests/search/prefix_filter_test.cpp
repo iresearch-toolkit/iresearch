@@ -39,7 +39,7 @@ irs::by_prefix make_filter(
   return q;
 }
 
-class prefix_filter_test_case : public tests::filter_test_case_base {
+class prefix_filter_test_case : public tests::FilterTestCaseBase {
  protected:
   void by_prefix_order() {
     // add segment
@@ -53,12 +53,12 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
     auto rdr = open_reader();
 
     // empty query
-    check_query(irs::by_prefix(), docs_t{}, costs_t{0}, rdr);
+    CheckQuery(irs::by_prefix(), Docs{}, Costs{0}, rdr);
 
     // empty prefix test collector call count for field/term/finish
     {
-      docs_t docs{ 1, 4, 9, 16, 21, 24, 26, 29, 31, 32 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 1, 4, 9, 16, 21, 24, 26, 29, 31, 32 };
+      Costs costs{ docs.size() };
 
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
@@ -92,7 +92,7 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
       scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
         return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
-      check_query(make_filter("prefix", ""), order, docs, rdr);
+      CheckQuery(make_filter("prefix", ""), order, docs, rdr);
       ASSERT_EQ(9, collect_field_count); // 9 fields (1 per term since treated as a disjunction) in 1 segment
       ASSERT_EQ(9, collect_term_count); // 9 different terms
       ASSERT_EQ(9, finish_count); // 9 unque terms
@@ -100,12 +100,12 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
 
     // empty prefix
     {
-      docs_t docs{ 31, 32, 1, 4, 9, 16, 21, 24, 26, 29 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 31, 32, 1, 4, 9, 16, 21, 24, 26, 29 };
+      Costs costs{ docs.size() };
 
       irs::sort::ptr scorer{std::make_unique<tests::sort::frequency_sort>()};
 
-      check_query(make_filter("prefix", ""), std::span{&scorer, 1}, docs, rdr);
+      CheckQuery(make_filter("prefix", ""), std::span{&scorer, 1}, docs, rdr);
     }
 
     //FIXME
@@ -116,30 +116,30 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
 //      irs::order order;
 //
 //      order.add<sort::frequency_sort>(false);
-//      check_query(irs::by_prefix().field("prefix").scored_terms_limit(1), order, docs, rdr);
+//      CheckQuery(irs::by_prefix().field("prefix").scored_terms_limit(1), order, docs, rdr);
 //    }
 //
     // prefix
     {
-      docs_t docs{ 31, 32, 1, 4, 16, 21, 26, 29 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 31, 32, 1, 4, 16, 21, 26, 29 };
+      Costs costs{ docs.size() };
 
       std::array<irs::sort::ptr, 1> order{
         std::make_unique<tests::sort::frequency_sort>() };
 
-      check_query(make_filter("prefix", "a"), order, docs, rdr);
+      CheckQuery(make_filter("prefix", "a"), order, docs, rdr);
     }
 
     // prefix
     {
-      docs_t docs{ 31, 32, 1, 4, 16, 21, 26, 29 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 31, 32, 1, 4, 16, 21, 26, 29 };
+      Costs costs{ docs.size() };
 
       std::array<irs::sort::ptr, 2> order{
         std::make_unique<tests::sort::frequency_sort>(),
         std::make_unique<tests::sort::frequency_sort>() };
 
-      check_query(make_filter("prefix", "a"), order, docs, rdr);
+      CheckQuery(make_filter("prefix", "a"), order, docs, rdr);
     }
   }
 
@@ -155,71 +155,71 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
     auto rdr = open_reader();
 
     // empty query
-    check_query(irs::by_prefix(), docs_t{}, costs_t{0}, rdr);
+    CheckQuery(irs::by_prefix(), Docs{}, Costs{0}, rdr);
 
     // empty field
-    check_query(make_filter("", "xyz"), docs_t{}, costs_t{0}, rdr);
+    CheckQuery(make_filter("", "xyz"), Docs{}, Costs{0}, rdr);
 
     // invalid field
-    check_query(make_filter("same1", "xyz"), docs_t{}, costs_t{0}, rdr);
+    CheckQuery(make_filter("same1", "xyz"), Docs{}, Costs{0}, rdr);
 
     // invalid prefix
-    check_query(make_filter("same", "xyz_invalid"), docs_t{}, costs_t{0}, rdr);
+    CheckQuery(make_filter("same", "xyz_invalid"), Docs{}, Costs{0}, rdr);
 
     // valid prefix
     {
-      docs_t result;
+      Docs result;
       for(size_t i = 0; i < 32; ++i) {
         result.push_back(irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i));
       }
 
-      costs_t costs{ result.size() };
+      Costs costs{ result.size() };
 
-      check_query(make_filter("same", "xyz"), result, costs, rdr);
+      CheckQuery(make_filter("same", "xyz"), result, costs, rdr);
     }
 
     // empty prefix : get all fields
     {
-      docs_t docs{ 1, 2, 3, 5, 8, 11, 14, 17, 19, 21, 24, 27, 31 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 1, 2, 3, 5, 8, 11, 14, 17, 19, 21, 24, 27, 31 };
+      Costs costs{ docs.size() };
 
-      check_query(make_filter("duplicated", ""), docs, costs, rdr);
+      CheckQuery(make_filter("duplicated", ""), docs, costs, rdr);
     }
 
     // single digit prefix
     {
-      docs_t docs{ 1, 5, 11, 21, 27, 31 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 1, 5, 11, 21, 27, 31 };
+      Costs costs{ docs.size() };
 
-      check_query(make_filter("duplicated", "a"), docs, costs, rdr);
+      CheckQuery(make_filter("duplicated", "a"), docs, costs, rdr);
     }
 
-    check_query(make_filter("name", "!"), docs_t{28}, costs_t{1}, rdr);
-    check_query(make_filter("prefix", "b"), docs_t{9, 24}, costs_t{2}, rdr);
+    CheckQuery(make_filter("name", "!"), Docs{28}, Costs{1}, rdr);
+    CheckQuery(make_filter("prefix", "b"), Docs{9, 24}, Costs{2}, rdr);
 
     // multiple digit prefix
     {
-      docs_t docs{ 2, 3, 8, 14, 17, 19, 24 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 2, 3, 8, 14, 17, 19, 24 };
+      Costs costs{ docs.size() };
 
-      check_query(make_filter("duplicated", "vcz"), docs, costs, rdr);
+      CheckQuery(make_filter("duplicated", "vcz"), docs, costs, rdr);
     }
 
     {
-      docs_t docs{ 1, 4, 21, 26, 31, 32 };
-      costs_t costs{ docs.size() };
-      check_query(make_filter("prefix", "abc"), docs, costs, rdr);
+      Docs docs{ 1, 4, 21, 26, 31, 32 };
+      Costs costs{ docs.size() };
+      CheckQuery(make_filter("prefix", "abc"), docs, costs, rdr);
     }
 
     {
-      docs_t docs{ 1, 4, 21, 26, 31, 32 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 1, 4, 21, 26, 31, 32 };
+      Costs costs{ docs.size() };
 
-      check_query(make_filter("prefix", "abc"), docs, costs, rdr);
+      CheckQuery(make_filter("prefix", "abc"), docs, costs, rdr);
     }
 
     // whole word
-    check_query(make_filter("prefix", "bateradsfsfasdf"), docs_t{24}, costs_t{1}, rdr);
+    CheckQuery(make_filter("prefix", "bateradsfsfasdf"), Docs{24}, Costs{1}, rdr);
   }
 
   void by_prefix_schemas() { 
@@ -249,7 +249,7 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
 
     auto rdr = open_reader();
 
-    check_query(make_filter("Name", "Addr"), docs_t{1, 2, 77, 78}, rdr);
+    CheckQuery(make_filter("Name", "Addr"), Docs{1, 2, 77, 78}, rdr);
   }
 }; // prefix_filter_test_case
 

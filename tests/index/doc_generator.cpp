@@ -552,7 +552,7 @@ bool token_stream_payload::next() {
 }
 
 string_field::string_field(
-    const std::string& name,
+    std::string_view name,
     irs::IndexFeatures index_features,
     const std::vector<irs::type_info::type_id>& extra_features) {
   index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | index_features;
@@ -561,8 +561,8 @@ string_field::string_field(
 }
 
 string_field::string_field(
-    const std::string& name,
-    const irs::string_ref& value,
+    std::string_view name,
+    irs::string_ref value,
     irs::IndexFeatures index_features,
     const std::vector<irs::type_info::type_id>& extra_features)
   : value_(value) {

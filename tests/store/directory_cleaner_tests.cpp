@@ -26,9 +26,9 @@
 #include "index/doc_generator.hpp"
 #include "index/index_tests.hpp"
 #include "index/index_writer.hpp"
-#include "iql/query_builder.hpp"
 #include "store/directory_cleaner.hpp"
 #include "store/memory_directory.hpp"
+#include "search/term_filter.hpp"
 #include "utils/directory_utils.hpp"
 
 using namespace std::chrono_literals;
@@ -36,6 +36,13 @@ using namespace std::chrono_literals;
 namespace {
 
 using namespace irs;
+
+auto MakeByTerm(std::string_view name, std::string_view value) {
+  auto filter = std::make_unique<irs::by_term>();
+  *filter->mutable_field() = name;
+  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  return filter;
+}
 
 directory_cleaner::removal_acceptor_t remove_except_current_segments(
     const directory& dir, const format& codec) {
@@ -262,7 +269,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     &tests::generic_json_field_factory);
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
-  auto query_doc1 = irs::iql::query_builder().build("name==A", "C");
+  filter::ptr query_doc1 = MakeByTerm("name", "A");
   irs::memory_directory dir;
   auto codec_ptr = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec_ptr);
@@ -286,7 +293,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     ASSERT_FALSE(files.empty());
     file_set.insert(files.begin(), files.end());
 
-    writer->documents().remove(std::move(query_doc1.filter));
+    writer->documents().remove(std::move(query_doc1));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()));

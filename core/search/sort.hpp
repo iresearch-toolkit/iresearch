@@ -76,6 +76,12 @@ class ScoreFunction : util::noncopyable {
     return {reinterpret_cast<score_ctx*>(sizeof(score_t) * size), kDefault};
   }
 
+  // Returns scoring function setting `size` score buckets to `value`.
+  static ScoreFunction Constant(score_t value, uint32_t size) noexcept;
+
+  // Returns scoring function setting a single score bucket to `value`.
+  static ScoreFunction Constant(score_t value) noexcept;
+
   // Returns invalid scoring function.
   static ScoreFunction Invalid() noexcept { return {nullptr, nullptr}; }
 
@@ -210,11 +216,17 @@ class sort {
 
   // Possible variants of merging multiple scores
   enum class MergeType {
-    // Aggregate multiple scores
-    AGGREGATE = 0,
+    // Do nothing
+    kNoop = 0,
 
-    // Find max among multiple scores
-    MAX
+    // Sum multiple scores
+    kSum,
+
+    // Find max amongst multiple scores
+    kMax,
+
+    // Find min amongst multiple scores
+    kMin
   };
 
   // Base class for all prepared(compiled) sort entries.
@@ -385,9 +397,13 @@ struct Aggregator<Merger, std::numeric_limits<size_t>::max()> : Merger {
 };
 
 template<typename Aggregator>
-constexpr bool HasScore() noexcept {
-  return !std::is_same_v<Aggregator, NoopAggregator>;
-}
+struct HasScoreHelper : std::true_type {};
+
+template<>
+struct HasScoreHelper<NoopAggregator> : std::false_type {};
+
+template<typename Aggregator>
+inline constexpr bool HasScore_v = HasScoreHelper<Aggregator>::value;
 
 struct SumMerger {
   void operator()(size_t idx, score_t* RESTRICT dst,
@@ -403,6 +419,18 @@ struct MaxMerger {
     auto& casted_src = src[idx];
 
     if (casted_dst < casted_src) {
+      casted_dst = casted_src;
+    }
+  }
+};
+
+struct MinMerger {
+  void operator()(size_t idx, score_t* RESTRICT dst,
+                  const score_t* RESTRICT src) const noexcept {
+    auto& casted_dst = dst[idx];
+    auto& casted_src = src[idx];
+
+    if (casted_src < casted_dst) {
       casted_dst = casted_src;
     }
   }
@@ -431,10 +459,14 @@ auto ResoveMergeType(sort::MergeType type, size_t num_buckets,
   };
 
   switch (type) {
-    case sort::MergeType::AGGREGATE:
+    case sort::MergeType::kNoop:
+      return visitor(NoopAggregator{});
+    case sort::MergeType::kSum:
       return impl.template operator()<SumMerger>();
-    case sort::MergeType::MAX:
+    case sort::MergeType::kMax:
       return impl.template operator()<MaxMerger>();
+    case sort::MergeType::kMin:
+      return impl.template operator()<MinMerger>();
     default:
       assert(false);
       return visitor(NoopAggregator{});

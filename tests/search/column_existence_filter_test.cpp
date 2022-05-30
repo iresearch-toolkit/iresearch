@@ -36,7 +36,7 @@ irs::by_column_existence make_filter(const irs::string_ref& field,
   return filter;
 }
 
-class column_existence_filter_test_case : public tests::filter_test_case_base {
+class column_existence_filter_test_case : public tests::FilterTestCaseBase {
  protected:
   void simple_sequential_mask() {
     // add segment
@@ -89,7 +89,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto column_it = column->iterator(false);
+      auto column_it = column->iterator(irs::ColumnHint::kNormal);
       auto filter_it = prepared->execute(segment);
 
       auto* doc = irs::get<irs::document>(*filter_it);
@@ -120,7 +120,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto column_it = column->iterator(false);
+      auto column_it = column->iterator(irs::ColumnHint::kNormal);
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(*filter_it));
 
@@ -154,7 +154,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto column_it = column->iterator(false);
+      auto column_it = column->iterator(irs::ColumnHint::kNormal);
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(*filter_it));
 
@@ -184,7 +184,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto column_it = column->iterator(false);
+      auto column_it = column->iterator(irs::ColumnHint::kNormal);
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(*filter_it));
 
@@ -217,7 +217,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto column_it = column->iterator(false);
+      auto column_it = column->iterator(irs::ColumnHint::kNormal);
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(*filter_it));
 
@@ -246,7 +246,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto column_it = column->iterator(false);
+      auto column_it = column->iterator(irs::ColumnHint::kNormal);
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(*filter_it));
 
@@ -310,7 +310,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto column_it = column->iterator(false);
+      auto column_it = column->iterator(irs::ColumnHint::kNormal);
       auto filter_it = prepared->execute(segment);
 
       auto* doc = irs::get<irs::document>(*filter_it);
@@ -341,7 +341,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto column_it = column->iterator(false);
+      auto column_it = column->iterator(irs::ColumnHint::kNormal);
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(*filter_it));
 
@@ -375,7 +375,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto column_it = column->iterator(false);
+      auto column_it = column->iterator(irs::ColumnHint::kNormal);
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(*filter_it));
 
@@ -405,7 +405,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto column_it = column->iterator(false);
+      auto column_it = column->iterator(irs::ColumnHint::kNormal);
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(*filter_it));
 
@@ -438,7 +438,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto column_it = column->iterator(false);
+      auto column_it = column->iterator(irs::ColumnHint::kNormal);
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(*filter_it));
 
@@ -467,7 +467,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto column_it = column->iterator(false);
+      auto column_it = column->iterator(irs::ColumnHint::kNormal);
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(*filter_it));
 
@@ -530,7 +530,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       auto& segment = (*rdr)[0];
       auto column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, value);
@@ -599,7 +599,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       auto& segment = (*rdr)[0];
       auto column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, value);
@@ -644,7 +644,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       auto& segment = (*rdr)[0];
       auto column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, value);
@@ -689,7 +689,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       auto& segment = (*rdr)[0];
       auto column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, value);
@@ -796,7 +796,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto column_itr = column->iterator(false);
+      auto column_itr = column->iterator(irs::ColumnHint::kNormal);
       auto filter_itr = prepared_filter->execute(segment, prepared_order);
       ASSERT_EQ(column->size(), irs::cost::extract(*filter_itr));
 
@@ -881,7 +881,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto column_itr = column->iterator(false);
+      auto column_itr = column->iterator(irs::ColumnHint::kNormal);
       auto filter_itr = prepared_filter->execute(segment, prepared_order);
       ASSERT_EQ(column->size(), irs::cost::extract(*filter_itr));
 
@@ -965,7 +965,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       auto column = segment.column(column_name_full);
       ASSERT_NE(nullptr, column);
-      auto column_itr = column->iterator(false);
+      auto column_itr = column->iterator(irs::ColumnHint::kNormal);
       auto filter_itr = prepared_filter->execute(segment, prepared_order);
       ASSERT_EQ(column->size() * 2, irs::cost::extract(*filter_itr)); // 2 columns matched
 

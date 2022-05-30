@@ -38,7 +38,7 @@ irs::by_term make_filter(
   return q;
 }
 
-class term_filter_test_case : public tests::filter_test_case_base {
+class term_filter_test_case : public tests::FilterTestCaseBase {
  protected:
   void by_term_sequential_cost() {
     // add segment
@@ -52,19 +52,19 @@ class term_filter_test_case : public tests::filter_test_case_base {
     // read segment
     auto rdr = open_reader();
 
-    check_query(irs::by_term(), docs_t{ }, costs_t{0}, rdr);
+    CheckQuery(irs::by_term(), Docs{ }, Costs{0}, rdr);
 
     // empty term
-    check_query(make_filter("name", ""), docs_t{}, costs_t{0}, rdr);
+    CheckQuery(make_filter("name", ""), Docs{}, Costs{0}, rdr);
 
     // empty field
-    check_query(make_filter("", "xyz"), docs_t{}, costs_t{0}, rdr);
+    CheckQuery(make_filter("", "xyz"), Docs{}, Costs{0}, rdr);
 
     // search : invalid field
-    check_query(make_filter("invalid_field", "A"), docs_t{}, costs_t{0}, rdr);
+    CheckQuery(make_filter("invalid_field", "A"), Docs{}, Costs{0}, rdr);
 
     // search : single term
-    check_query(make_filter("name", "A"), docs_t{1}, costs_t{1}, rdr);
+    CheckQuery(make_filter("name", "A"), Docs{1}, Costs{1}, rdr);
 
     { 
       irs::by_term q = make_filter("name", "A");
@@ -81,15 +81,15 @@ class term_filter_test_case : public tests::filter_test_case_base {
     }
 
     // search : all terms
-    check_query(
+    CheckQuery(
       make_filter("same" , "xyz"),
-      docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
-      costs_t{ 32 },
+      Docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
+      Costs{ 32 },
       rdr
     );
 
     // search : empty result
-    check_query(make_filter("same", "invalid_term"), docs_t{}, costs_t{0}, rdr);
+    CheckQuery(make_filter("same", "invalid_term"), Docs{}, Costs{0}, rdr);
   }
 
   void by_term_sequential_boost() {
@@ -520,29 +520,29 @@ class term_filter_test_case : public tests::filter_test_case_base {
     auto rdr = open_reader();
 
     // empty query
-    check_query(irs::by_term(), docs_t{ }, rdr);
+    CheckQuery(irs::by_term(), Docs{ }, rdr);
 
     // empty term
-    check_query(make_filter("name", ""), docs_t{ }, rdr);
+    CheckQuery(make_filter("name", ""), Docs{ }, rdr);
 
     // empty field
-    check_query(make_filter("", "xyz"), docs_t{ }, rdr);
+    CheckQuery(make_filter("", "xyz"), Docs{ }, rdr);
 
     // search : invalid field
-    check_query(make_filter("invalid_field",  "A"), docs_t{ }, rdr );
+    CheckQuery(make_filter("invalid_field",  "A"), Docs{ }, rdr );
 
     // search : single term
-    check_query(make_filter("name", "A"), docs_t{ 1 }, rdr);
+    CheckQuery(make_filter("name", "A"), Docs{ 1 }, rdr);
 
     // search : all terms
-    check_query(
+    CheckQuery(
       make_filter("same" , "xyz"),
-      docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
+      Docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
       rdr
     );
 
     // search : empty result
-    check_query(make_filter("same", "invalid_term"), docs_t{}, rdr);
+    CheckQuery(make_filter("same", "invalid_term"), Docs{}, rdr);
   }
 
   void by_term_schemas() {
@@ -579,10 +579,10 @@ class term_filter_test_case : public tests::filter_test_case_base {
     }
 
     auto rdr = open_reader();
-    check_query(make_filter("Fields", "FirstName"), docs_t{ 28, 167, 194 }, rdr);
+    CheckQuery(make_filter("Fields", "FirstName"), Docs{ 28, 167, 194 }, rdr);
 
     // address to the [SDD-179]
-    check_query(make_filter("Name", "Product"), docs_t{ 32 }, rdr);
+    CheckQuery(make_filter("Name", "Product"), Docs{ 32 }, rdr);
   }
 }; // term_filter_test_case
 

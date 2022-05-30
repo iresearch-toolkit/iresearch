@@ -23,6 +23,8 @@
 
 #include "sort.hpp"
 
+#include <absl/base/casts.h>
+
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "shared.hpp"
@@ -73,7 +75,6 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
 
 void DefaultScore(score_ctx* ctx, score_t* res) noexcept {
   assert(res);
-  // FIXME(gnusi): use std::bit_cast when available
   std::memset(res, 0, reinterpret_cast<size_t>(ctx));
 }
 
@@ -84,6 +85,44 @@ namespace iresearch {
 REGISTER_ATTRIBUTE(filter_boost);
 
 /*static*/ const score_f ScoreFunction::kDefault{&::DefaultScore};
+
+/*static*/ ScoreFunction ScoreFunction::Constant(score_t value) noexcept {
+  uintptr_t ctx;
+  std::memcpy(&ctx, &value, sizeof value);
+
+  return {reinterpret_cast<score_ctx*>(ctx),
+          [](score_ctx* ctx, score_t* res) noexcept {
+            assert(res);
+            assert(ctx);
+
+            const auto boost = reinterpret_cast<uintptr_t>(ctx);
+            std::memcpy(res, &boost, sizeof(score_t));
+          }};
+}
+
+/*static*/ ScoreFunction ScoreFunction::Constant(score_t value,
+                                                 uint32_t size) noexcept {
+  if (0 == size) {
+    return {};
+  } else if (1 == size) {
+    return Constant(value);
+  } else {
+    struct ScoreCtx {
+      score_t value;
+      uint32_t size;
+    };
+    static_assert(sizeof(ScoreCtx) == sizeof(uintptr_t));
+
+    return {absl::bit_cast<score_ctx*>(ScoreCtx{value, size}),
+            [](score_ctx* ctx, score_t* res) noexcept {
+              assert(res);
+              assert(ctx);
+
+              const auto score_ctx = absl::bit_cast<ScoreCtx>(ctx);
+              std::fill_n(res, score_ctx.size, score_ctx.value);
+            }};
+  }
+}
 
 ScoreFunction::ScoreFunction() noexcept : func_{kDefault} {}
 

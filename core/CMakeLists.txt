@@ -74,7 +74,6 @@ source_group("document" ./document/*)
 source_group("error" ./error/*)
 source_group("formats" ./formats/*)
 source_group("index" ./index/*)
-source_group("iql" ./iql/*)
 source_group("search" ./search/*)
 source_group("store" ./store/*)
 source_group("utils" ./utils/*)
@@ -106,10 +105,6 @@ set(IResearch_core_sources
   ./index/segment_reader.cpp
   ./index/segment_writer.cpp
   ./index/sorted_column.cpp
-  ./iql/parser.cc
-  ./iql/parser_common.cpp
-  ./iql/parser_context.cpp
-  ./iql/query_builder.cpp
   ./search/all_filter.cpp
   ./search/all_iterator.cpp
   ./search/boost_sort.cpp
@@ -122,6 +117,7 @@ set(IResearch_core_sources
   ./search/bitset_doc_iterator.cpp
   ./search/filter.cpp
   ./search/term_filter.cpp
+  ./search/nested_filter.cpp
   ./search/terms_filter.cpp
   ./search/prefix_filter.cpp
   ./search/range_filter.cpp
@@ -197,9 +193,6 @@ set(IResearch_core_headers
   ./index/segment_reader.hpp
   ./index/segment_writer.hpp
   ./index/index_writer.hpp
-  ./iql/parser_common.hpp
-  ./iql/parser_context.hpp
-  ./iql/query_builder.hpp
   ./search/all_filter.hpp
   ./search/all_iterator.hpp
   ./search/boost_sort.hpp
@@ -209,6 +202,7 @@ set(IResearch_core_headers
   ./search/cost.hpp
   ./search/filter.hpp
   ./search/term_filter.hpp
+  ./search/nested_filter.hpp
   ./search/phrase_filter.hpp
   ./search/same_position_filter.hpp
   ./search/prefix_filter.hpp
@@ -306,26 +300,6 @@ add_library(iresearch-static
 
 set_ipo(iresearch-static)
 add_sanitizers(iresearch-static)
-
-# generate IQL grammar
-# force dependency modification validation by comparing with local copy of the
-# source file to suppress file regeneration by scripts generated for MSVC and to
-# suppress file regeneration by scripts generated for 'make' due to equal
-# dependency and generated file timestamp
-add_custom_command(
-  OUTPUT iql/parser.cc
-  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
-  COMMAND ${CMAKE_COMMAND} -E make_directory iql
-  COMMAND ${CMAKE_COMMAND} -E md5sum iql/parser.cc || ${CMAKE_COMMAND} -E remove iql/parser.yy
-  COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy || bison --graph --report=all -Wnone -o iql/parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different iql/location.hh ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql/location.hh
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different iql/parser.hh ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql/parser.hh
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different iql/parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql/parser.cc
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different iql/parser.yy ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql/parser.yy
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different iql/position.hh ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql/position.hh
-)
 
 # trigger generation of BUILD_IDENTIFIER if needed
 add_custom_command(

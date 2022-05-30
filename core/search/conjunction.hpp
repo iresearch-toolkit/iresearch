@@ -95,8 +95,8 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
           // sort subnodes in ascending order by their cost
           std::sort(std::begin(itrs), std::end(itrs),
                     [](const auto& lhs, const auto& rhs) {
-                      return cost::extract(lhs, cost::MAX) <
-                             cost::extract(rhs, cost::MAX);
+                      return cost::extract(lhs, cost::kMax) <
+                             cost::extract(rhs, cost::kMax);
                     });
 #if defined(__GNUC__) && (__GNUC__ < 11)
           // Circumvent GCC10 compilation issue.
@@ -114,7 +114,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
         const_cast<document*>(front_doc_);
     std::get<attribute_ptr<cost>>(attrs_) = irs::get_mutable<cost>(front_);
 
-    if constexpr (HasScore<Merger>()) {
+    if constexpr (HasScore_v<Merger>) {
       prepare_score();
     }
   }

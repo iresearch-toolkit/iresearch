@@ -851,7 +851,77 @@ TEST(sort_tests, prepare_order) {
   }
 }
 
-TEST(ScoreFunction_test, construct) {
+TEST(ScoreFunctionTest, Invalid) {
+  auto func = irs::ScoreFunction::Invalid();
+  ASSERT_FALSE(func);
+  ASSERT_FALSE(func.IsNoop());
+}
+
+TEST(ScoreFunctionTest, Noop) {
+  irs::score_t value{42.f};
+
+  {
+    auto func = irs::ScoreFunction::Default(0);
+    ASSERT_TRUE(func);
+    ASSERT_TRUE(func.IsNoop());
+    func(&value);
+    ASSERT_EQ(42.f, value);
+  }
+
+  {
+    auto func = irs::ScoreFunction::Constant(0.f, 0);
+    ASSERT_TRUE(func);
+    ASSERT_TRUE(func.IsNoop());
+    func(&value);
+    ASSERT_EQ(42.f, value);
+  }
+}
+
+TEST(ScoreFunctionTest, Default) {
+  std::array<irs::score_t, 7> values;
+  std::fill_n(std::begin(values), values.size(), 42.f);
+  auto func = irs::ScoreFunction::Default(values.size());
+  ASSERT_TRUE(func);
+  ASSERT_FALSE(func.IsNoop());
+  func(values.data());
+  ASSERT_TRUE(std::all_of(std::begin(values), std::end(values),
+                          [](auto v) { return 0.f == v; }));
+}
+
+TEST(ScoreFunctionTest, Constant) {
+  std::array<irs::score_t, 7> values;
+  std::fill_n(std::begin(values), values.size(), 42.f);
+
+  {
+    auto func = irs::ScoreFunction::Constant(43.f, values.size());
+    ASSERT_TRUE(func);
+    ASSERT_FALSE(func.IsNoop());
+    func(values.data());
+    ASSERT_TRUE(std::all_of(std::begin(values), std::end(values),
+                            [](auto v) { return 43.f == v; }));
+  }
+
+  {
+    auto func = irs::ScoreFunction::Constant(42.f, 1);
+    ASSERT_TRUE(func);
+    ASSERT_FALSE(func.IsNoop());
+    func(values.data());
+    ASSERT_EQ(42.f, values.front());
+    ASSERT_TRUE(std::all_of(std::begin(values) + 1, std::end(values),
+                            [](auto v) { return 43.f == v; }));
+  }
+
+  {
+    auto func = irs::ScoreFunction::Constant(43.f);
+    ASSERT_TRUE(func);
+    ASSERT_FALSE(func.IsNoop());
+    func(values.data());
+    ASSERT_TRUE(std::all_of(std::begin(values), std::end(values),
+                            [](auto v) { return 43.f == v; }));
+  }
+}
+
+TEST(ScoreFunctionTest, construct) {
   struct ctx : irs::score_ctx {
     irs::score_t buf[1]{};
   };
@@ -861,7 +931,9 @@ TEST(ScoreFunction_test, construct) {
     ASSERT_TRUE(func);
     ASSERT_NE(nullptr, func.Func());
     ASSERT_EQ(nullptr, func.Ctx());
-    func(nullptr);  // noop by default
+    irs::score_t tmp{1};
+    func(&tmp);  // noop by default
+    ASSERT_EQ(1.f, tmp);
   }
 
   {
@@ -934,7 +1006,7 @@ TEST(ScoreFunction_test, construct) {
   }
 }
 
-TEST(ScoreFunction_test, reset) {
+TEST(ScoreFunctionTest, reset) {
   struct ctx : irs::score_ctx {
     irs::score_t buf[1]{};
   };
@@ -944,7 +1016,11 @@ TEST(ScoreFunction_test, reset) {
   ASSERT_TRUE(func);
   ASSERT_NE(nullptr, func.Func());
   ASSERT_EQ(nullptr, func.Ctx());
-  func(nullptr);  // noop bu default
+  {
+    irs::score_t tmp{42.f};
+    func(&tmp);
+    ASSERT_EQ(42.f, tmp);
+  }
 
   {
     struct ctx ctx;
@@ -1015,7 +1091,7 @@ TEST(ScoreFunction_test, reset) {
   }
 }
 
-TEST(ScoreFunction_test, move) {
+TEST(ScoreFunctionTest, move) {
   struct ctx : irs::score_ctx {
     irs::score_t buf[1]{};
   };
@@ -1087,7 +1163,7 @@ TEST(ScoreFunction_test, move) {
   }
 }
 
-TEST(ScoreFunction_test, equality) {
+TEST(ScoreFunctionTest, equality) {
   struct score_ctx : irs::score_ctx {
     irs::score_t buf[1]{};
     irs::score_t* ptr{};
