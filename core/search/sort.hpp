@@ -54,12 +54,6 @@ struct filter_boost final : attribute {
   score_t value{kNoBoost};
 };
 
-  // Returns scoring function setting `size` score buckets to `value`.
-  static ScoreFunction Constant(score_t value, uint32_t size) noexcept;
-
-  // Returns scoring function setting a single score bucket to `value`.
-  static ScoreFunction Constant(score_t value) noexcept;
-
 // Base class for all user-side sort entries.
 // Stats are meant to be trivially constructible and will be
 // zero initialized before usage.

@@ -51,6 +51,12 @@ class ScoreFunction : util::noncopyable {
     return {reinterpret_cast<score_ctx*>(sizeof(score_t) * size), kDefault};
   }
 
+  // Returns scoring function setting `size` score buckets to `value`.
+  static ScoreFunction Constant(score_t value, uint32_t size) noexcept;
+
+  // Returns scoring function setting a single score bucket to `value`.
+  static ScoreFunction Constant(score_t value) noexcept;
+
   // Returns invalid scoring function.
   static ScoreFunction Invalid() noexcept { return {nullptr, nullptr}; }
 
