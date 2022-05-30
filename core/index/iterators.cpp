@@ -135,7 +135,7 @@ struct empty_column_reader final : irs::column_reader {
   // Returns the corresponding column iterator.
   // If the column implementation supports document payloads then it
   // can be accessed via the 'payload' attribute.
-  virtual irs::doc_iterator::ptr iterator(irs::ColumnHint /*consolidtaion*/) const override {
+  virtual irs::doc_iterator::ptr iterator(irs::ColumnHint /*hint*/) const override {
     return irs::doc_iterator::empty();
   }
 
