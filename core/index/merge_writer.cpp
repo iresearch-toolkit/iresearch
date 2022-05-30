@@ -1131,7 +1131,7 @@ bool write_columns(columnstore& cs, Iterator& columns,
     auto add_iterators = [&itrs](const sub_reader& /*segment*/,
                                  const doc_map_f& doc_map,
                                  const irs::column_reader& column) {
-      auto it = column.iterator(true);
+      auto it = column.iterator(ColumnHint::kConsolidation);
       assert(it);
 
       if (IRS_LIKELY(it)) {
@@ -1201,7 +1201,7 @@ bool write_fields(columnstore& cs, Iterator& feature_itr,
 
       // Tail columns can be removed if empty.
       if (reader) {
-        auto it = reader->iterator(true);
+        auto it = reader->iterator(ColumnHint::kConsolidation);
         assert(it);
 
         if (IRS_LIKELY(it)) {
@@ -1474,7 +1474,8 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
       return false;
     }
 
-    auto it = segment.mask(segment.sort()->iterator(true));
+    auto it =
+        segment.mask(segment.sort()->iterator(irs::ColumnHint::kConsolidation));
 
     if (!it) {
       return false;

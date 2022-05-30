@@ -26,7 +26,7 @@
 
 namespace {
 
-class empty_filter_test_case : public tests::filter_test_case_base { };
+class empty_filter_test_case : public tests::FilterTestCaseBase { };
 
 TEST_P(empty_filter_test_case, empty) {
    // add segment
@@ -41,7 +41,7 @@ TEST_P(empty_filter_test_case, empty) {
 
    std::vector<irs::cost::cost_t> cost{ 0 };
 
-   check_query(irs::empty(), docs_t{}, cost, rdr);
+   CheckQuery(irs::empty(), Docs{}, cost, rdr);
 }
 
 INSTANTIATE_TEST_SUITE_P(

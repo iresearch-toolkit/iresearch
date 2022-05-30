@@ -25,8 +25,7 @@
 
 #include <absl/container/flat_hash_set.h>
 
-#include "shared.hpp"
-
+#include "index/column_info.hpp"
 #include "index/column_info.hpp"
 #include "index/index_features.hpp"
 #include "index/index_meta.hpp"
@@ -201,6 +200,7 @@ struct term_reader : public attribute_provider {
   // Returns an intersection of a specified automaton and term reader.
   virtual seek_term_iterator::ptr iterator(
       automaton_table_matcher& matcher) const = 0;
+      automaton_table_matcher& matcher) const = 0;
 
   // Evaluates a union of all docs denoted by cookies supplied via a
   // speciified 'provider'. Each doc is represented by a bit in a
@@ -271,9 +271,19 @@ struct columnstore_writer {
   virtual column_t push_column(const column_info& info,
                                column_finalizer_f header_writer) = 0;
   virtual void rollback() noexcept = 0;
+      const flush_state& state) = 0;  // @return was anything actually flushed
 
   // Return was anything actually flushed.
   virtual bool commit(const flush_state& state) = 0;
+};
+
+enum class ColumnHint : uint32_t {
+  // Nothing special
+  kNormal = 0,
+  // Open iterator for conosolidation
+  kConsolidation,
+  // Reading payload isn't necessary
+  kMask
 };
 
 struct column_reader {
@@ -288,10 +298,11 @@ struct column_reader {
   // Returns column header.
   virtual bytes_ref payload() const = 0;
 
-  // Returns the corresponding column iterator.
-  // If the column implementation supports document payloads then it
-  // can be accessed via the 'payload' attribute.
-  virtual doc_iterator::ptr iterator(bool consolidation) const = 0;
+  // FIXME(gnusi): implement mode
+  //  Returns the corresponding column iterator.
+  //  If the column implementation supports document payloads then it
+  //  can be accessed via the 'payload' attribute.
+  virtual doc_iterator::ptr iterator(ColumnHint hint) const = 0;
 
   // Returns total number of columns.
   virtual doc_id_t size() const = 0;

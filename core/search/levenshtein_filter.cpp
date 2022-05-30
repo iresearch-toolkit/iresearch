@@ -249,7 +249,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
 
   return memory::make_managed<multiterm_query>(
     std::move(states), std::move(stats),
-    boost, sort::MergeType::MAX);
+    boost, sort::MergeType::kMax);
 }
 
 }

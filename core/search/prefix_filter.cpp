@@ -97,7 +97,7 @@ DEFINE_FACTORY_DEFAULT(by_prefix) // cppcheck-suppress unknownMacro
 
   return memory::make_managed<multiterm_query>(
     std::move(states), std::move(stats),
-    boost, sort::MergeType::AGGREGATE);
+    boost, sort::MergeType::kSum);
 }
 
 /*static*/ void by_prefix::visit(

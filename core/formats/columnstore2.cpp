@@ -168,6 +168,7 @@ class range_column_iterator final
  private:
   using payload_reader = PayloadReader;
 
+  // FIXME(gnusi): don't expose payload for noop_value_reader?
   using attributes = std::tuple<document, cost, score, irs::payload>;
 
  public:
@@ -361,14 +362,14 @@ class column_base : public column_reader,
     return opts_;
   }
 
- protected:
-  template<typename Factory>
-  doc_iterator::ptr make_iterator(Factory&& f) const;
-
   const index_input& stream() const noexcept {
     assert(stream_);
     return *stream_;
   }
+
+ protected:
+  template<typename Factory>
+  doc_iterator::ptr make_iterator(Factory&& f) const;
 
  private:
   template<typename ValueReader>
@@ -445,9 +446,12 @@ doc_iterator::ptr column_base::make_iterator(Factory&& f) const {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class value_direct_reader
-////////////////////////////////////////////////////////////////////////////////
+struct noop_value_reader {
+  constexpr bytes_ref payload(doc_id_t) const noexcept {
+    return {};
+  }
+};
+
 class value_direct_reader {
  protected:
   explicit value_direct_reader(const byte_type* data) noexcept
@@ -460,11 +464,8 @@ class value_direct_reader {
   }
 
   const byte_type* data_;
-}; // value_direct_reader
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class value_reader
-////////////////////////////////////////////////////////////////////////////////
 template<bool Resize>
 class value_reader {
  protected:
@@ -488,11 +489,8 @@ class value_reader {
 
   bstring buf_;
   index_input::ptr data_in_;
-}; // value_reader
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class encrypted_value_reader
-////////////////////////////////////////////////////////////////////////////////
 template<bool Resize>
 class encrypted_value_reader {
  protected:
@@ -521,18 +519,38 @@ class encrypted_value_reader {
   bstring buf_;
   index_input::ptr data_in_;
   encryption::stream* cipher_;
-}; // encrypted_value_reader
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct mask_column
-////////////////////////////////////////////////////////////////////////////////
+doc_iterator::ptr make_mask_iterator(const column_base& column) {
+  const auto& header = column.header();
+
+  if (0 == header.docs_count) {
+    // only mask column can be empty
+    return doc_iterator::empty();
+  }
+
+  if (0 == header.docs_index) {
+    return memory::make_managed<range_column_iterator<noop_value_reader>>(header);
+  }
+
+  auto dup = column.stream().reopen();
+
+  if (!dup) {
+    // implementation returned wrong pointer
+    IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
+
+    throw io_error{"failed to reopen input"};
+  }
+
+  dup->seek(header.docs_index);
+
+  return memory::make_managed<sparse_bitmap_iterator>(
+    std::move(dup),
+    column.bitmap_iterator_options(),
+    header.docs_count);
+}
+
 struct mask_column final : public column_base {
-  struct payload_reader {
-    bytes_ref payload(doc_id_t) noexcept {
-      return bytes_ref::NIL;
-    }
-  }; // payload_reader
-
   static column_ptr read(
       std::optional<std::string>&& name,
       bstring&& payload,
@@ -561,39 +579,13 @@ struct mask_column final : public column_base {
     assert(ColumnType::kMask == header().type);
   }
 
-  virtual doc_iterator::ptr iterator(bool /*consolidation*/) const override;
-}; // mask_column
+  virtual doc_iterator::ptr iterator(ColumnHint /*hint*/) const override;
+};
 
-doc_iterator::ptr mask_column::iterator(bool /*consolidation*/) const {
-  if (0 == header().docs_count) {
-    // only mask column can be empty
-    return doc_iterator::empty();
-  }
-
-  if (0 == header().docs_index) {
-    return memory::make_managed<range_column_iterator<payload_reader>>(header());
-  }
-
-  auto dup = stream().reopen();
-
-  if (!dup) {
-    // implementation returned wrong pointer
-    IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
-
-    throw io_error{"failed to reopen input"};
-  }
-
-  dup->seek(header().docs_index);
-
-  return memory::make_managed<sparse_bitmap_iterator>(
-    std::move(dup),
-    bitmap_iterator_options(),
-    header().docs_count);
+doc_iterator::ptr mask_column::iterator(ColumnHint /*hint*/) const {
+  return make_mask_iterator(*this);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class dense_fixed_length_column
-////////////////////////////////////////////////////////////////////////////////
 class dense_fixed_length_column final : public column_base {
  public:
   static column_ptr read(
@@ -626,7 +618,7 @@ class dense_fixed_length_column final : public column_base {
     assert(ColumnType::kDenseFixed == header().type);
   }
 
-  virtual doc_iterator::ptr iterator(bool /*consolidation*/) const override;
+  virtual doc_iterator::ptr iterator(ColumnHint hint) const override;
 
  private:
   template<typename ValueReader>
@@ -650,7 +642,7 @@ class dense_fixed_length_column final : public column_base {
    private:
     uint64_t data_; // where data starts
     uint64_t len_;  // data entry length
-  }; // payload_reader
+  };
 
   compression::decompressor::ptr inflater_;
   uint64_t data_;
@@ -676,7 +668,11 @@ class dense_fixed_length_column final : public column_base {
     data, len);
 }
 
-doc_iterator::ptr dense_fixed_length_column::iterator(bool /*consolidation*/) const {
+doc_iterator::ptr dense_fixed_length_column::iterator(ColumnHint hint) const {
+  if (ColumnHint::kMask == hint) {
+    return make_mask_iterator(*this);
+  }
+
   struct factory {
     payload_reader<encrypted_value_reader<false>> operator()(
         index_input::ptr&& stream, encryption::stream& cipher) const {
@@ -697,9 +693,6 @@ doc_iterator::ptr dense_fixed_length_column::iterator(bool /*consolidation*/) co
   return make_iterator(factory{this});
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct fixed_length_column
-////////////////////////////////////////////////////////////////////////////////
 class fixed_length_column final : public column_base {
  public:
   static column_ptr read(
@@ -741,7 +734,7 @@ class fixed_length_column final : public column_base {
     assert(ColumnType::kFixed == header().type);
   }
 
-  virtual doc_iterator::ptr iterator(bool /*consolidation*/) const override;
+  virtual doc_iterator::ptr iterator(ColumnHint hint) const override;
 
  private:
   using column_block = uint64_t;
@@ -776,9 +769,13 @@ class fixed_length_column final : public column_base {
   std::vector<uint64_t> blocks_;
   compression::decompressor::ptr inflater_;
   uint64_t len_;
-}; // fixed_length_column
+};
 
-doc_iterator::ptr fixed_length_column::iterator(bool /*consolidation*/) const {
+doc_iterator::ptr fixed_length_column::iterator(ColumnHint hint) const {
+  if (ColumnHint::kMask == hint) {
+    return make_mask_iterator(*this);
+  }
+
   struct factory {
     payload_reader<encrypted_value_reader<false>> operator()(
         index_input::ptr&& stream,
@@ -800,9 +797,6 @@ doc_iterator::ptr fixed_length_column::iterator(bool /*consolidation*/) const {
   return make_iterator(factory{this});
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct sparse_column
-////////////////////////////////////////////////////////////////////////////////
 class sparse_column final : public column_base {
  public:
   struct column_block : column::column_block {
@@ -845,7 +839,7 @@ class sparse_column final : public column_base {
     assert(ColumnType::kSparse == header().type);
   }
 
-  virtual doc_iterator::ptr iterator(bool /*consolidation*/) const override;
+  virtual doc_iterator::ptr iterator(ColumnHint hint) const override;
 
  private:
   template<typename ValueReader>
@@ -863,14 +857,14 @@ class sparse_column final : public column_base {
 
    private:
     const column_block* blocks_;
-  }; // payload_reader
+  };
 
   static std::vector<column_block> read_blocks_sparse(
     const column_header& hdr, index_input& in);
 
   std::vector<column_block> blocks_;
   compression::decompressor::ptr inflater_;
-}; // sparse_column
+};
 
 template<typename ValueReader>
 bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
@@ -951,7 +945,11 @@ bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
   return blocks;
 }
 
-doc_iterator::ptr sparse_column::iterator(bool /*consolidation*/) const {
+doc_iterator::ptr sparse_column::iterator(ColumnHint hint) const {
+  if (ColumnHint::kMask == hint) {
+    return make_mask_iterator(*this);
+  }
+
   struct factory {
     payload_reader<encrypted_value_reader<true>> operator()(
         index_input::ptr&& stream,
@@ -1002,10 +1000,6 @@ bool less(string_ref lhs, string_ref rhs) noexcept {
 
 namespace iresearch {
 namespace columnstore2 {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                             column implementation
-// -----------------------------------------------------------------------------
 
 void column::prepare(doc_id_t key) {
 #ifdef IRESEARCH_DEBUG
@@ -1214,10 +1208,6 @@ void column::finish(index_output& index_out) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             writer implementation
-// -----------------------------------------------------------------------------
-
 writer::writer(bool consolidation)
   : dir_{nullptr},
     alloc_{&memory_allocator::global()},
@@ -1384,10 +1374,6 @@ void writer::rollback() noexcept {
   columns_.clear();
   sorted_columns_.clear();
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                             reader implementation
-// -----------------------------------------------------------------------------
 
 const column_header* reader::header(field_id field) const {
   auto* column = field >= columns_.size()

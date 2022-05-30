@@ -51,7 +51,7 @@ class column_existence_query : public irs::filter::prepared {
   doc_iterator::ptr iterator(const sub_reader& segment,
                              const column_reader& column,
                              const Order& ord) const {
-    auto it = column.iterator(false);
+    auto it = column.iterator(ColumnHint::kMask);
 
     if (IRS_UNLIKELY(!it)) {
       return doc_iterator::empty();
@@ -110,7 +110,7 @@ class column_prefix_existence_query final : public column_existence_query {
     }
 
     return ResoveMergeType(
-        sort::MergeType::AGGREGATE, ord.buckets().size(),
+        sort::MergeType::kSum, ord.buckets().size(),
         [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
           using disjunction_t =
               irs::disjunction_iterator<irs::doc_iterator::ptr, A>;

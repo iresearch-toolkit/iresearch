@@ -286,7 +286,6 @@ configure_file(
 )
 
 # copy pre-built files over to the build directory
-# this is required to avoid triggering file generation via bison
 set(IRESEARCH_PREBUILT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt)
 file(GLOB_RECURSE IRESEARCH_PREBUILT_LIST RELATIVE "${IRESEARCH_PREBUILT_DIR}" FOLLOW_SYMLINKS "${IRESEARCH_PREBUILT_DIR}/*")
 foreach(ELEMENT ${IRESEARCH_PREBUILT_LIST})

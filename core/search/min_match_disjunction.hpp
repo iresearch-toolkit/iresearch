@@ -47,7 +47,7 @@ class min_match_disjunction : public doc_iterator,
   struct cost_iterator_adapter : score_iterator_adapter<DocIterator> {
     cost_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
         : score_iterator_adapter<DocIterator>(std::move(it)) {
-      est = cost::extract(*this->it, cost::MAX);
+      est = cost::extract(*this->it, cost::kMax);
     }
 
     cost_iterator_adapter(cost_iterator_adapter&&) = default;
@@ -90,7 +90,7 @@ class min_match_disjunction : public doc_iterator,
     heap_.resize(itrs_.size());
     std::iota(heap_.begin(), heap_.end(), size_t(0));
 
-    if constexpr (HasScore<Merger>()) {
+    if constexpr (HasScore_v<Merger>) {
       prepare_score();
     }
   }

@@ -53,17 +53,7 @@ struct prepared final : PreparedSortBase<void> {
     auto* volatile_boost = irs::get<irs::filter_boost>(attrs);
 
     if (!volatile_boost) {
-      uintptr_t ctx{};
-      std::memcpy(&ctx, &boost, sizeof boost);
-
-      return {irs::bit_cast<score_ctx*>(ctx),
-              [](score_ctx* ctx, score_t* res) noexcept {
-                assert(res);
-                assert(ctx);
-
-                const auto boost = irs::bit_cast<uintptr_t>(ctx);
-                std::memcpy(res, &boost, sizeof(score_t));
-              }};
+      return ScoreFunction::Constant(boost);
     }
 
     return {

@@ -435,7 +435,7 @@ filter::prepared::ptr prepare_automaton_filter(
 
   return memory::make_managed<multiterm_query>(
     std::move(states), std::move(stats),
-    boost, sort::MergeType::AGGREGATE);
+    boost, sort::MergeType::kSum);
 }
 
 }
