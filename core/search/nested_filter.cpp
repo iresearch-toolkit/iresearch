@@ -146,7 +146,7 @@ class ChildToParentJoin final : public doc_iterator, private Matcher {
 
     do {
       const auto child = child_doc_->value;
-      assert(child > parent_doc_->value);
+      assert(child >= parent_doc_->value);
 
       if constexpr (std::is_same_v<Matcher, NoneMatcher>) {
         doc.value = parent_doc_->value;
