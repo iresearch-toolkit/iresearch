@@ -30,36 +30,31 @@
 namespace iresearch {
 
 struct attributes {
-  static bool exists(
-    string_ref name,
-    bool load_library = true);
+  static bool exists(string_ref name, bool load_library = true);
 
-  static type_info get(
-    string_ref name,
-    bool load_library = true) noexcept;
+  static type_info get(string_ref name, bool load_library = true) noexcept;
 
   attributes() = delete;
 };
 
-// Base struct for all attribute types that can be used with attribute_provider
-struct attribute { };
-
 class attribute_registrar {
  public:
-  explicit attribute_registrar(
-    const type_info& type,
-    const char* source = nullptr);
+  explicit attribute_registrar(const type_info& type,
+                               const char* source = nullptr);
   operator bool() const noexcept;
 
  private:
   bool registered_;
 };
 
-#define REGISTER_ATTRIBUTE__(attribute_name, line, source) \
-  static ::iresearch::attribute_registrar attribute_registrar ## _ ## line(::iresearch::type<attribute_name>::get(), source)
-#define REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, file, line) REGISTER_ATTRIBUTE__(attribute_name, line, file ":" TOSTRING(line))
-#define REGISTER_ATTRIBUTE(attribute_name) REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, __FILE__, __LINE__)
+#define REGISTER_ATTRIBUTE__(attribute_name, line, source)              \
+  static ::iresearch::attribute_registrar attribute_registrar##_##line( \
+      ::iresearch::type<attribute_name>::get(), source)
+#define REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, file, line) \
+  REGISTER_ATTRIBUTE__(attribute_name, line, file ":" TOSTRING(line))
+#define REGISTER_ATTRIBUTE(attribute_name) \
+  REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, __FILE__, __LINE__)
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_ATTRIBUTES_H
+#endif  // IRESEARCH_ATTRIBUTES_H
