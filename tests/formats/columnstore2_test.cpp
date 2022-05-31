@@ -29,24 +29,32 @@
 using namespace irs::columnstore2;
 
 class columnstore2_test_case
-    : public virtual tests::directory_test_case_base<irs::ColumnHint> {
+    : public virtual tests::directory_test_case_base<
+          irs::ColumnHint, irs::columnstore2::Version> {
  public:
-  static std::string to_string(
-      const testing::TestParamInfo<
-          std::tuple<tests::dir_param_f, irs::ColumnHint>>& info) {
-    auto [factory, hint] = info.param;
+  static std::string to_string(const testing::TestParamInfo<ParamType>& info) {
+    auto [factory, hint, version] = info.param;
+
+    std::string name = (*factory)(nullptr).second;
 
     switch (hint) {
       case irs::ColumnHint::kNormal:
-        return (*factory)(nullptr).second;
+        break;
       case irs::ColumnHint::kConsolidation:
-        return (*factory)(nullptr).second + "___consolidation";
+        name += "___consolidation";
       case irs::ColumnHint::kMask:
-        return (*factory)(nullptr).second + "___mask";
+        name += "___mask";
       default:
         EXPECT_FALSE(true);
-        return (*factory)(nullptr).second;
+        break;
     }
+
+    return name + "___" + std::to_string(static_cast<uint32_t>(version));
+  }
+
+  irs::columnstore2::Version version() const noexcept {
+    auto& p = this->GetParam();
+    return std::get<irs::columnstore2::Version>(p);
   }
 
   irs::ColumnHint hint() const noexcept {
@@ -76,8 +84,8 @@ TEST_P(columnstore2_test_case, empty_columnstore) {
     return irs::string_ref::NIL;
   };
 
-  irs::columnstore2::writer writer(this->hint() ==
-                                   irs::ColumnHint::kConsolidation);
+  irs::columnstore2::writer writer(
+      version(), this->hint() == irs::ColumnHint::kConsolidation);
   writer.prepare(dir(), meta);
   writer.push_column({irs::type<irs::compression::none>::get(), {}, false},
                      finalizer);
@@ -101,8 +109,8 @@ TEST_P(columnstore2_test_case, empty_column) {
   const irs::column_info info{
       irs::type<irs::compression::none>::get(), {}, has_encryption};
 
-  irs::columnstore2::writer writer(this->hint() ==
-                                   irs::ColumnHint::kConsolidation);
+  irs::columnstore2::writer writer(
+      version(), this->hint() == irs::ColumnHint::kConsolidation);
   writer.prepare(dir(), meta);
   [[maybe_unused]] auto [id0, handle0] =
       writer.push_column(info, [](irs::bstring& out) {
@@ -204,8 +212,8 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
   state.name = meta.name;
 
   {
-    irs::columnstore2::writer writer(this->hint() ==
-                                     irs::ColumnHint::kConsolidation);
+    irs::columnstore2::writer writer(
+        version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column(
@@ -344,8 +352,8 @@ TEST_P(columnstore2_test_case, sparse_column) {
   state.name = meta.name;
 
   {
-    irs::columnstore2::writer writer(this->hint() ==
-                                     irs::ColumnHint::kConsolidation);
+    irs::columnstore2::writer writer(
+        version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column(
@@ -556,8 +564,8 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
   state.name = meta.name;
 
   {
-    irs::columnstore2::writer writer(this->hint() ==
-                                     irs::ColumnHint::kConsolidation);
+    irs::columnstore2::writer writer(
+        version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column(
@@ -740,8 +748,8 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
       }
     };
 
-    irs::columnstore2::writer writer(this->hint() ==
-                                     irs::ColumnHint::kConsolidation);
+    irs::columnstore2::writer writer(
+        version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column(
@@ -914,8 +922,8 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
       }
     };
 
-    irs::columnstore2::writer writer(this->hint() ==
-                                     irs::ColumnHint::kConsolidation);
+    irs::columnstore2::writer writer(
+        version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column(
@@ -1078,8 +1086,8 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
   state.name = meta.name;
 
   {
-    irs::columnstore2::writer writer(this->hint() ==
-                                     irs::ColumnHint::kConsolidation);
+    irs::columnstore2::writer writer(
+        version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column(
@@ -1228,8 +1236,8 @@ TEST_P(columnstore2_test_case, dense_column) {
   state.name = meta.name;
 
   {
-    irs::columnstore2::writer writer(this->hint() ==
-                                     irs::ColumnHint::kConsolidation);
+    irs::columnstore2::writer writer(
+        version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column(
@@ -1428,8 +1436,8 @@ TEST_P(columnstore2_test_case, dense_column_range) {
   state.name = meta.name;
 
   {
-    irs::columnstore2::writer writer(this->hint() ==
-                                     irs::ColumnHint::kConsolidation);
+    irs::columnstore2::writer writer(
+        version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column(
@@ -1596,8 +1604,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
   state.name = meta.name;
 
   {
-    irs::columnstore2::writer writer(this->hint() ==
-                                     irs::ColumnHint::kConsolidation);
+    irs::columnstore2::writer writer(
+        version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     {
@@ -1916,8 +1924,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
   state.name = meta.name;
 
   {
-    irs::columnstore2::writer writer(this->hint() ==
-                                     irs::ColumnHint::kConsolidation);
+    irs::columnstore2::writer writer(
+        version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     {
@@ -2103,8 +2111,8 @@ TEST_P(columnstore2_test_case, empty_columns) {
   state.name = meta.name;
 
   {
-    irs::columnstore2::writer writer(this->hint() ==
-                                     irs::ColumnHint::kConsolidation);
+    irs::columnstore2::writer writer(
+        version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     {
@@ -2141,6 +2149,9 @@ TEST_P(columnstore2_test_case, empty_columns) {
   ASSERT_EQ(0, count);
 }
 
+static_assert(irs::columnstore2::Version::kMax ==
+              irs::columnstore2::Version::kPrevSeek);
+
 INSTANTIATE_TEST_SUITE_P(
     columnstore2_test, columnstore2_test_case,
     ::testing::Combine(
@@ -2151,5 +2162,7 @@ INSTANTIATE_TEST_SUITE_P(
                           &tests::rot13_directory<&tests::fs_directory, 16>,
                           &tests::rot13_directory<&tests::mmap_directory, 16>),
         ::testing::Values(irs::ColumnHint::kNormal,
-                          irs::ColumnHint::kConsolidation)),
+                          irs::ColumnHint::kConsolidation),
+        ::testing::Values(irs::columnstore2::Version::kMin,
+                          irs::columnstore2::Version::kPrevSeek)),
     &columnstore2_test_case::to_string);

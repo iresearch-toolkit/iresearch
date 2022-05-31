@@ -115,9 +115,11 @@ void sparse_bitmap_writer::do_flush(uint32_t popcnt) {
   out_->write_short(static_cast<uint16_t>(block_));
   out_->write_short(static_cast<uint16_t>(popcnt - 1));  // -1 to fit uint16_t
 
-  // write last value in the previous block
-  out_->write_int(last_in_flushed_block_);
-  last_in_flushed_block_ = prev_value_;
+  if (opts_.track_prev_doc) {
+    // write last value in the previous block
+    out_->write_int(last_in_flushed_block_);
+    last_in_flushed_block_ = prev_value_;
+  }
 
   if (popcnt > kBitSetThreshold) {
     if (popcnt != kBlockSize) {
@@ -432,7 +434,7 @@ sparse_bitmap_iterator::sparse_bitmap_iterator(
       use_block_index_{opts.use_block_index} {
   assert(in_);
 
-  if (opts.track_previous) {
+  if (opts.track_prev_doc) {
     // Don't expose attribute if not necessary
     std::get<attribute_ptr<seek_prev>>(attrs_) = &seek_prev_;
   }

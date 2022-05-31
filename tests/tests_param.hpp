@@ -143,10 +143,6 @@ std::pair<std::shared_ptr<irs::directory>, std::string> rot13_directory(
                                  "_cipher_rot13_" + std::to_string(BlockSize));
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          directory_test_case_base
-// -----------------------------------------------------------------------------
-
 using dir_param_f = std::pair<std::shared_ptr<irs::directory>, std::string> (*)(
     const test_base*);
 
@@ -154,9 +150,9 @@ template<typename... Args>
 class directory_test_case_base
     : public virtual test_param_base<std::tuple<tests::dir_param_f, Args...>> {
  public:
-  static std::string to_string(
-      const testing::TestParamInfo<std::tuple<tests::dir_param_f, Args...>>&
-          info) {
+  using ParamType = std::tuple<tests::dir_param_f, Args...>;
+
+  static std::string to_string(const testing::TestParamInfo<ParamType>& info) {
     auto& p = info.param;
     return (*std::get<0>(p))(nullptr).second;
   }

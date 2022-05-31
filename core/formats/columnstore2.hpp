@@ -36,6 +36,16 @@
 namespace iresearch {
 namespace columnstore2 {
 
+enum class Version : int32_t {
+  kMin = 0,
+
+  // Version support accessing to previous document
+  kPrevSeek = 1,
+
+  // Max supported version
+  kMax = kPrevSeek
+};
+
 class column final : public irs::column_output {
  public:
   static constexpr size_t kBlockSize = sparse_bitmap_writer::kBlockSize;
@@ -50,6 +60,7 @@ class column final : public irs::column_output {
       uint64_t* u64buf;
     };
     bool consolidation;
+    bool track_prev;
   };
 
   struct column_block {
@@ -163,7 +174,7 @@ class column final : public irs::column_output {
   std::vector<column_block> blocks_;  // at most 65536 blocks
   memory_output data_{*ctx_.alloc};
   memory_output docs_{*ctx_.alloc};
-  sparse_bitmap_writer docs_writer_{docs_.stream};
+  sparse_bitmap_writer docs_writer_{docs_.stream, {ctx_.track_prev}};
   address_table addr_table_;
   bstring payload_;
   string_ref name_;
@@ -186,7 +197,7 @@ class writer final : public columnstore_writer {
   static constexpr string_ref kDataFormatExt = "csd";
   static constexpr string_ref kIndexFormatExt = "csi";
 
-  explicit writer(bool consolidation);
+  writer(Version version, bool consolidation);
 
   virtual void prepare(directory& dir, const segment_meta& meta) override;
   virtual column_t push_column(const column_info& info,
@@ -203,7 +214,9 @@ class writer final : public columnstore_writer {
   index_output::ptr data_out_;
   encryption::stream::ptr data_cipher_;
   std::unique_ptr<byte_type[]> buf_;
+  Version ver_;
   bool consolidation_;
+  bool track_prev_;
 };
 
 enum class ColumnType : uint16_t {
@@ -282,16 +295,6 @@ class reader final : public columnstore_reader {
   std::vector<const column_ptr::element_type*> columns_;
   encryption::stream::ptr data_cipher_;
   index_input::ptr data_in_;
-};
-
-enum class Version : int32_t {
-  kMin = 0,
-
-  // Version support accessing to previous document
-  kPrevSeek = 1,
-
-  // Max supported version
-  kMax = kPrevSeek
 };
 
 irs::columnstore_writer::ptr make_writer(Version version, bool consolidation);

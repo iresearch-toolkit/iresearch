@@ -38,6 +38,11 @@ namespace iresearch {
 
 class sparse_bitmap_writer {
  public:
+  struct options {
+    // Track previous document
+    bool track_prev_doc{true};
+  };
+
   using value_type = doc_id_t;  // for compatibility with back_inserter
 
   static constexpr uint32_t kBlockSize = 1 << 16;
@@ -50,9 +55,10 @@ class sparse_bitmap_writer {
     uint32_t offset;
   };
 
-  explicit sparse_bitmap_writer(index_output& out) noexcept(
-      noexcept(out.file_pointer()))
-      : out_{&out}, origin_{out.file_pointer()} {}
+  explicit sparse_bitmap_writer(
+      index_output& out,
+      const options& opts) noexcept(noexcept(out.file_pointer()))
+      : out_{&out}, origin_{out.file_pointer()}, opts_{opts} {}
 
   void push_back(doc_id_t value) {
     static_assert(math::is_power2(kBlockSize));
@@ -132,6 +138,7 @@ class sparse_bitmap_writer {
   uint32_t block_{};  // last flushed block
   doc_id_t prev_value_{};
   doc_id_t last_in_flushed_block_{};
+  options opts_;
 };
 
 // Denotes a position of a value associated with a document.
@@ -168,21 +175,18 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
  public:
   using block_index_t = std::span<const sparse_bitmap_writer::block>;
 
-  struct options {
-    // Blocks index
-    block_index_t blocks;
-
+  struct options : sparse_bitmap_writer::options {
     // Use per block index
     bool use_block_index{true};
 
-    // Track previous document
-    bool track_previous{true};
+    // Blocks index
+    block_index_t blocks;
   };
 
-  explicit sparse_bitmap_iterator(index_input::ptr&& in, const options& opts)
+  sparse_bitmap_iterator(index_input::ptr&& in, const options& opts)
       : sparse_bitmap_iterator{memory::to_managed<index_input>(std::move(in)),
                                opts} {}
-  explicit sparse_bitmap_iterator(index_input* in, const options& opts)
+  sparse_bitmap_iterator(index_input* in, const options& opts)
       : sparse_bitmap_iterator{memory::to_managed<index_input, false>(in),
                                opts} {}
 
