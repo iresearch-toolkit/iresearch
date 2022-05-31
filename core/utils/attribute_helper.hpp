@@ -20,8 +20,8 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FROZEN_ATTRIBUTES_H
-#define IRESEARCH_FROZEN_ATTRIBUTES_H
+#ifndef IRESEARCH_ATTRIBUTE_HELPER_H
+#define IRESEARCH_ATTRIBUTE_HELPER_H
 
 #include "attribute_provider.hpp"
 
@@ -31,16 +31,16 @@ template<typename T>
 struct attribute_ptr {
   T* ptr{};
 
-  attribute_ptr() noexcept = default;
+  constexpr attribute_ptr() noexcept = default;
 
   // Intentionally implicit
-  attribute_ptr(T& v) noexcept : ptr{&v} {}
+  constexpr attribute_ptr(T& v) noexcept : ptr{&v} {}
 
   // Intentionally implicit
-  attribute_ptr(T* v) noexcept : ptr{v} {}
+  constexpr attribute_ptr(T* v) noexcept : ptr{v} {}
 
   // Intentionally implicit
-  operator attribute_ptr<attribute>() const noexcept {
+  constexpr operator attribute_ptr<attribute>() const noexcept {
     return attribute_ptr<attribute>{ptr};
   }
 };
@@ -75,4 +75,4 @@ constexpr attribute* get_mutable(std::tuple<T...>& t,
 
 }  // namespace iresearch
 
-#endif  // IRESEARCH_FROZEN_ATTRIBUTES_H
+#endif  // IRESEARCH_ATTRIBUTE_HELPER_H
