@@ -151,10 +151,7 @@ std::vector<uint64_t> read_blocks_dense(const column_header& hdr,
   return blocks;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class range_column_iterator
-/// @brief iterates over a specified contiguous range of documents
-////////////////////////////////////////////////////////////////////////////////
+// Iterator over a specified contiguous range of documents
 template<typename PayloadReader>
 class range_column_iterator final : public resettable_doc_iterator,
                                     private PayloadReader {
@@ -162,7 +159,7 @@ class range_column_iterator final : public resettable_doc_iterator,
   using payload_reader = PayloadReader;
 
   // FIXME(gnusi): don't expose payload for noop_value_reader?
-  using attributes = std::tuple<document, cost, score, irs::payload>;
+  using attributes = std::tuple<document, cost, score, seek_prev, irs::payload>;
 
  public:
   template<typename... Args>
@@ -173,7 +170,13 @@ class range_column_iterator final : public resettable_doc_iterator,
         max_doc_{min_base_ + header.docs_count - 1} {
     assert(min_doc_ <= max_doc_);
     assert(!doc_limits::eof(max_doc_));
-    std::get<irs::cost>(attrs_).reset(header.docs_count);
+    std::get<cost>(attrs_).reset(header.docs_count);
+    std::get<seek_prev>(attrs_).reset(
+        [](const void* ctx) {
+          auto* self = reinterpret_cast<const range_column_iterator*>(ctx);
+          return self->value() - 1;
+        },
+        this);
   }
 
   virtual attribute* get_mutable(
@@ -224,8 +227,8 @@ class range_column_iterator final : public resettable_doc_iterator,
 
   virtual void reset() noexcept override {
     min_doc_ = min_base_;
-    max_doc_ = min_doc_ + std::get<irs::cost>(attrs_).estimate() - 1;
-    std::get<document>(attrs_).value = irs::doc_limits::invalid();
+    max_doc_ = min_doc_ + std::get<cost>(attrs_).estimate() - 1;
+    std::get<document>(attrs_).value = doc_limits::invalid();
   }
 
  private:
@@ -235,10 +238,7 @@ class range_column_iterator final : public resettable_doc_iterator,
   attributes attrs_;
 };  // range_column_iterator
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class bitmap_column_iterator
-/// @brief iterates over a specified bitmap of documents
-////////////////////////////////////////////////////////////////////////////////
+// Iterator over a specified bitmap of documents
 template<typename PayloadReader>
 class bitmap_column_iterator final : public resettable_doc_iterator,
                                      private PayloadReader {
@@ -298,11 +298,8 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
  private:
   sparse_bitmap_iterator bitmap_;
   attributes attrs_;
-};  // bitmap_column_iterator
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct column_base
-////////////////////////////////////////////////////////////////////////////////
 class column_base : public column_reader, private util::noncopyable {
  public:
   column_base(std::optional<std::string>&& name, bstring&& payload,
@@ -1053,7 +1050,7 @@ void column::finish(index_output& index_out) {
     hdr.min = it.value();
   }
 
-  // FIXME how to deal with rollback() and docs_writer_.back()?
+  // FIXME(gnusi): how to deal with rollback() and docs_writer_.back()?
   if (docs_count_ && (hdr.min + docs_count_ - doc_limits::min() != pend_)) {
     auto& data_out = *ctx_.data_out;
 

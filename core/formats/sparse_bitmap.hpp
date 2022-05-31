@@ -147,6 +147,7 @@ struct value_index : document {
 };
 
 // Provides an access to previous document before the current one.
+// Undefined after iterator reached EOF.
 class seek_prev : public attribute {
  public:
   using seek_prev_f = doc_id_t (*)(const void*);
