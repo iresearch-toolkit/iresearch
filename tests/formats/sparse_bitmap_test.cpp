@@ -1092,8 +1092,8 @@ TEST_P(sparse_bitmap_test_case, insert_erase) {
     writer.push_back(42);
     ASSERT_TRUE(writer.erase(42));
     writer.push_back(70000);  // trigger block flush
-    ASSERT_FALSE(
-        writer.erase(42));  // can't erase an element in already flushed block
+    // can't erase an element in already flushed block
+    ASSERT_FALSE(writer.erase(42));
     writer.finish();
   }
 
@@ -1101,7 +1101,8 @@ TEST_P(sparse_bitmap_test_case, insert_erase) {
     auto stream = dir().open("tmp", irs::IOAdvice::NORMAL);
     ASSERT_NE(nullptr, stream);
 
-    irs::sparse_bitmap_iterator it{stream.get(), {}};
+    irs::sparse_bitmap_iterator it{stream.get(),
+                                   {{writer_options()}, false, {}}};
     ASSERT_TRUE(it.next());
     ASSERT_EQ(70000, it.value());
     ASSERT_FALSE(it.next());
