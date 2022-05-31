@@ -25,7 +25,7 @@
 
 #include "analyzer.hpp"
 #include "token_attributes.hpp"
-#include "utils/frozen_attributes.hpp"
+#include "utils/attribute_helper.hpp"
 #include "utils/numeric_utils.hpp"
 
 namespace iresearch {
@@ -94,10 +94,10 @@ class boolean_token_stream final
 }; // boolean_token_stream
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class string_token_stream 
+/// @class string_token_stream
 /// @brief basic implementation of token_stream for simple string field.
 ///        it does not tokenize or analyze field, just set attributes based
-///        on initial string length 
+///        on initial string length
 //////////////////////////////////////////////////////////////////////////////
 class string_token_stream final
     : public analysis::analyzer,
@@ -113,7 +113,7 @@ class string_token_stream final
 
   void reset(bytes_ref value) noexcept {
     value_ = value;
-    in_use_ = false; 
+    in_use_ = false;
   }
 
   bool reset(string_ref value) noexcept override {
@@ -130,12 +130,12 @@ class string_token_stream final
   std::tuple<offset, increment, term_attribute> attrs_;
   bytes_ref value_;
   bool in_use_;
-}; // string_token_stream 
+}; // string_token_stream
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class numeric_token_stream
 /// @brief token_stream implementation for numeric field. based on precision
-///        step it produces several terms representing ranges of the input 
+///        step it produces several terms representing ranges of the input
 ///        term
 //////////////////////////////////////////////////////////////////////////////
 class numeric_token_stream final
@@ -273,7 +273,7 @@ class numeric_token_stream final
   }; // numeric_term
 
   numeric_term num_;
-}; // numeric_token_stream 
+}; // numeric_token_stream
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class null_token_stream
@@ -295,7 +295,7 @@ class null_token_stream final
   virtual bool next() noexcept override;
 
   void reset() noexcept {
-    in_use_ = false; 
+    in_use_ = false;
   }
 
   static constexpr irs::string_ref type_name() noexcept {

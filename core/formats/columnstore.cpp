@@ -42,7 +42,7 @@
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/encryption.hpp"
-#include "utils/frozen_attributes.hpp"
+#include "utils/attribute_helper.hpp"
 #include "utils/iterator.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
