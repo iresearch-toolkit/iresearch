@@ -30,7 +30,7 @@
 #include "shared.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
-#include "utils/frozen_attributes.hpp"
+#include "utils/attribute_helper.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/type_limits.hpp"
 

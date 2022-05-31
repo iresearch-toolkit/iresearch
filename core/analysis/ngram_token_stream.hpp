@@ -25,11 +25,10 @@
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
-#include "utils/frozen_attributes.hpp"
+#include "utils/attribute_helper.hpp"
 
 namespace iresearch {
 namespace analysis {
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class ngram_token_stream
