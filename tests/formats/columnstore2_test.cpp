@@ -191,11 +191,17 @@ TEST_P(columnstore2_test_case, empty_column) {
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_NE(nullptr, payload);
     auto* cost = irs::get<irs::cost>(*it);
+    auto* prev = irs::get<irs::seek_prev>(*it);
+    ASSERT_EQ(version() >= irs::columnstore2::Version::kPrevSeek,
+              nullptr != prev);
     ASSERT_NE(nullptr, cost);
     ASSERT_EQ(column->size(), cost->estimate());
     ASSERT_NE(nullptr, it);
     ASSERT_FALSE(irs::doc_limits::valid(it->value()));
     ASSERT_TRUE(it->next());
+    if (prev) {
+      ASSERT_EQ(0, (*prev)());
+    }
     ASSERT_EQ(42, it->value());
     ASSERT_EQ(1, payload->value.size());
     ASSERT_EQ(42, payload->value[0]);
