@@ -31,14 +31,19 @@ template<typename T>
 struct attribute_ptr {
   T* ptr{};
 
-  attribute_ptr() = default;
-  attribute_ptr(T& v) noexcept : ptr(&v) {}
-  attribute_ptr(T* v) noexcept : ptr(v) {}
+  attribute_ptr() noexcept = default;
 
+  // Intentionally implicit
+  attribute_ptr(T& v) noexcept : ptr{&v} {}
+
+  // Intentionally implicit
+  attribute_ptr(T* v) noexcept : ptr{v} {}
+
+  // Intentionally implicit
   operator attribute_ptr<attribute>() const noexcept {
     return attribute_ptr<attribute>{ptr};
   }
-};  // attribute_ptr
+};
 
 template<typename T>
 struct type<attribute_ptr<T>> : type<T> {};
