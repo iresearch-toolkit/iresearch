@@ -26,6 +26,12 @@
 #include "tests_shared.hpp"
 
 class sparse_bitmap_test_case : public tests::directory_test_case_base<bool> {
+ public:
+  static std::string to_string(const testing::TestParamInfo<ParamType>& info) {
+    auto& [factory, track_prev] = info.param;
+    return (*factory)(nullptr).second + "___" + std::to_string(track_prev);
+  }
+
  protected:
   // min, max
   using range_type = std::pair<irs::doc_id_t, irs::doc_id_t>;

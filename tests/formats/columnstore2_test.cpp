@@ -42,8 +42,10 @@ class columnstore2_test_case
         break;
       case irs::ColumnHint::kConsolidation:
         name += "___consolidation";
+        break;
       case irs::ColumnHint::kMask:
         name += "___mask";
+        break;
       default:
         EXPECT_FALSE(true);
         break;
