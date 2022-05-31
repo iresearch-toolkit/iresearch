@@ -23,14 +23,11 @@
 #ifndef IRESEARCH_SPARSE_BITMAP_H
 #define IRESEARCH_SPARSE_BITMAP_H
 
-#include "shared.hpp"
-
 #include "analysis/token_attributes.hpp"
-
+#include "index/iterators.hpp"
 #include "search/cost.hpp"
 #include "search/score.hpp"
-#include "index/iterators.hpp"
-
+#include "shared.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
 #include "utils/frozen_attributes.hpp"
@@ -52,7 +49,7 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 class sparse_bitmap_writer {
  public:
-  using value_type = doc_id_t; // for compatibility with back_inserter
+  using value_type = doc_id_t;  // for compatibility with back_inserter
 
   static constexpr uint32_t kBlockSize = 1 << 16;
   static constexpr uint32_t kNumBlocks = kBlockSize / bits_required<size_t>();
@@ -64,10 +61,9 @@ class sparse_bitmap_writer {
     uint32_t offset;
   };
 
-  explicit sparse_bitmap_writer(index_output& out) noexcept(noexcept(out.file_pointer()))
-    : out_{&out},
-      origin_{out.file_pointer()} {
-  }
+  explicit sparse_bitmap_writer(index_output& out) noexcept(
+      noexcept(out.file_pointer()))
+      : out_{&out}, origin_{out.file_pointer()} {}
 
   void push_back(doc_id_t value) {
     static_assert(math::is_power2(kBlockSize));
@@ -96,14 +92,12 @@ class sparse_bitmap_writer {
 
   void finish();
 
-  std::span<const block> index() const noexcept {
-    return block_index_;
-  }
+  std::span<const block> index() const noexcept { return block_index_; }
 
  private:
   void flush(uint32_t next_block) {
     const uint32_t popcnt = static_cast<uint32_t>(
-      math::popcount(std::begin(bits_), std::end(bits_)));
+        math::popcount(std::begin(bits_), std::end(bits_)));
     if (popcnt) {
       add_block(next_block);
       do_flush(popcnt);
@@ -145,18 +139,16 @@ class sparse_bitmap_writer {
   size_t bits_[kNumBlocks]{};
   std::vector<block> block_index_;
   uint32_t popcnt_{};
-  uint32_t block_{}; // last flushed block
-}; // sparse_bitmap_writer
+  uint32_t block_{};  // last flushed block
+};                    // sparse_bitmap_writer
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct value_index
 /// @brief denotes a position of a value associated with a document
 ////////////////////////////////////////////////////////////////////////////////
 struct value_index : document {
-  static constexpr string_ref type_name() noexcept {
-    return "value_index";
-  }
-}; // value_index
+  static constexpr string_ref type_name() noexcept { return "value_index"; }
+};  // value_index
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sparse_bitmap_iterator
@@ -175,28 +167,29 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
     /// @brief use per block index
     ////////////////////////////////////////////////////////////////////////////
     bool use_block_index{true};
-  }; // options
+  };  // options
 
   explicit sparse_bitmap_iterator(index_input::ptr&& in, const options& opts)
-    : sparse_bitmap_iterator{memory::to_managed<index_input>(std::move(in)), opts} {
-  }
+      : sparse_bitmap_iterator{memory::to_managed<index_input>(std::move(in)),
+                               opts} {}
   explicit sparse_bitmap_iterator(index_input* in, const options& opts)
-    : sparse_bitmap_iterator{memory::to_managed<index_input, false>(in), opts} {
-  }
+      : sparse_bitmap_iterator{memory::to_managed<index_input, false>(in),
+                               opts} {}
 
   template<typename Cost>
   sparse_bitmap_iterator(index_input::ptr&& in, const options& opts, Cost&& est)
-    : sparse_bitmap_iterator{std::move(in), opts} {
+      : sparse_bitmap_iterator{std::move(in), opts} {
     std::get<cost>(attrs_).reset(std::forward<Cost>(est));
   }
 
   template<typename Cost>
   sparse_bitmap_iterator(index_input* in, const options& opts, Cost&& est)
-    : sparse_bitmap_iterator{in, opts} {
+      : sparse_bitmap_iterator{in, opts} {
     std::get<cost>(attrs_).reset(std::forward<Cost>(est));
   }
 
-  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
+  virtual attribute* get_mutable(
+      irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
 
@@ -221,7 +214,7 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
   }
 
  private:
-  using block_seek_f = bool(*)(sparse_bitmap_iterator*, doc_id_t);
+  using block_seek_f = bool (*)(sparse_bitmap_iterator*, doc_id_t);
 
   template<uint32_t>
   friend struct container_iterator;
@@ -255,9 +248,8 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
     };
   };
 
-  explicit sparse_bitmap_iterator(
-    memory::managed_ptr<index_input>&& in,
-    const options& opts);
+  explicit sparse_bitmap_iterator(memory::managed_ptr<index_input>&& in,
+                                  const options& opts);
 
   void seek_to_block(doc_id_t block);
   void read_block_header();
@@ -274,8 +266,8 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
   doc_id_t index_max_{};
   doc_id_t block_{};
   bool use_block_index_;
-}; // sparse_bitmap_iterator
+};  // sparse_bitmap_iterator
 
-} // iresearch
+}  // namespace iresearch
 
-#endif // IRESEARCH_SPARSE_BITMAP_H
+#endif  // IRESEARCH_SPARSE_BITMAP_H
