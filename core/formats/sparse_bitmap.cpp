@@ -41,7 +41,10 @@ enum BlockType : uint32_t {
   BT_DENSE = 0,
 
   // Sprase block is represented as an array of values
-  BT_SPARSE
+  BT_SPARSE,
+
+  // Range block is represented as a [Min,Max] pair
+  BT_RANGE
 };
 
 enum AccessType : uint32_t {
@@ -138,20 +141,40 @@ void sparse_bitmap_writer::do_flush(uint32_t popcnt) {
   }
 }
 
-template<uint32_t>
+template<uint32_t Type, bool TrackPrev>
 struct container_iterator;
 
-template<>
-struct container_iterator<BT_SPARSE> {
+template<bool TrackPrev>
+struct container_iterator<BT_RANGE, TrackPrev> {
+  static bool seek(sparse_bitmap_iterator* self, doc_id_t target) noexcept {
+    std::get<document>(self->attrs_).value = target;
+
+    auto& index = std::get<value_index>(self->attrs_).value;
+    index = target - self->ctx_.all.missing;
+
+    if constexpr (TrackPrev) {
+      if (index != self->index_) {
+        self->prev_ = target - 1;
+      }
+    }
+
+    return true;
+  }
+};
+
+template<bool TrackPrev>
+struct container_iterator<BT_SPARSE, TrackPrev> {
   template<AccessType Access>
-  static bool seek(sparse_bitmap_iterator* self, doc_id_t target) {
+  static bool seek(sparse_bitmap_iterator* self,
+                   doc_id_t target) noexcept(AT_STREAM != Access) {
     target &= 0x0000FFFF;
 
     auto& ctx = self->ctx_.sparse;
     const doc_id_t index_max = self->index_max_;
 
-    for (doc_id_t prev = std::get<document>(self->attrs_).value;
-         ctx.index < index_max; ++ctx.index) {
+    [[maybe_unused]] doc_id_t prev = std::get<document>(self->attrs_).value;
+
+    for (; ctx.index < index_max; ++ctx.index) {
       doc_id_t doc;
       if constexpr (AT_STREAM == Access) {
         doc = self->in_->read_short();
@@ -171,8 +194,10 @@ struct container_iterator<BT_SPARSE> {
         std::get<document>(self->attrs_).value = self->block_ | doc;
         std::get<value_index>(self->attrs_).value = ctx.index;
 
-        if (ctx.index != self->index_) {
-          self->prev_ = self->block_ | prev;
+        if constexpr (TrackPrev) {
+          if (ctx.index != self->index_) {
+            self->prev_ = self->block_ | prev;
+          }
         }
 
         ++ctx.index;
@@ -180,7 +205,9 @@ struct container_iterator<BT_SPARSE> {
         return true;
       }
 
-      prev = doc;
+      if constexpr (TrackPrev) {
+        prev = doc;
+      }
     }
 
     return false;
@@ -188,53 +215,10 @@ struct container_iterator<BT_SPARSE> {
 };
 
 template<>
-struct container_iterator<BT_DENSE> {
+struct container_iterator<BT_DENSE, false> {
   template<AccessType Access>
-  static doc_id_t seek_prev_internal(const void* arg) noexcept(Access !=
-                                                               AT_STREAM) {
-    const auto* self = reinterpret_cast<const sparse_bitmap_iterator*>(arg);
-    const auto& ctx = self->ctx_.dense;
-
-    const size_t offs = self->value() % bits_required<size_t>();
-    const size_t mask = (size_t{1} << offs) - 1;
-    size_t word = ctx.word & mask;
-    size_t word_idx = ctx.word_idx;
-
-    if (!word) {
-      // FIXME(gnusi): we can use block
-      // index to perform huge skips
-
-      if constexpr (AT_STREAM == Access) {
-        auto& in = *self->in_;
-        // original position
-        const auto pos = in.file_pointer();
-
-        auto prev = pos - 2 * sizeof(size_t);
-        do {
-          in.seek(prev);
-          word = in.read_long();
-          assert(word_idx);
-          --word_idx;
-          prev -= sizeof(size_t);
-        } while (!word);
-        self->in_->seek(pos);
-      } else {
-        for (auto* prev_word = ctx.u64data - 1; !word; --word_idx) {
-          word = *--prev_word;
-          assert(word_idx);
-        }
-        if constexpr (!is_big_endian()) {
-          word = numeric_utils::numeric_traits<size_t>::ntoh(word);
-        }
-      }
-    }
-
-    return self->block_ + (word_idx + 1) * bits_required<size_t>() -
-           std::countl_zero(word) - 1;
-  }
-
-  template<AccessType Access>
-  static bool seek_internal(sparse_bitmap_iterator* self, doc_id_t target) {
+  static bool seek(sparse_bitmap_iterator* self,
+                   doc_id_t target) noexcept(AT_STREAM != Access) {
     auto& ctx = self->ctx_.dense;
 
     const doc_id_t target_block{target & 0x0000FFFF};
@@ -344,21 +328,86 @@ struct container_iterator<BT_DENSE> {
 
     return false;
   }
+};
 
+template<>
+struct container_iterator<BT_DENSE, true> {
   template<AccessType Access>
-  static bool seek(sparse_bitmap_iterator* self, doc_id_t target) {
-    const auto res = seek_internal<Access>(self, target);
+  static bool seek(sparse_bitmap_iterator* self,
+                   doc_id_t target) noexcept(AT_STREAM != Access) {
+    const auto res =
+        container_iterator<BT_DENSE, false>::seek<Access>(self, target);
 
     if (std::get<value_index>(self->attrs_).value != self->index_) {
-      self->seek_func_ = &seek_internal<Access>;
-
-      std::get<irs::seek_prev>(self->attrs_)
-          .reset(&container_iterator::seek_prev_internal<Access>, self);
+      self->seek_func_ = &container_iterator<BT_DENSE, false>::seek<Access>;
+      self->seek_prev_.reset(&seek_prev<Access>, self);
     }
 
     return res;
   }
+
+ private:
+  template<AccessType Access>
+  static doc_id_t seek_prev(const void* arg) noexcept(Access != AT_STREAM) {
+    const auto* self = reinterpret_cast<const sparse_bitmap_iterator*>(arg);
+    const auto& ctx = self->ctx_.dense;
+
+    const size_t offs = self->value() % bits_required<size_t>();
+    const size_t mask = (size_t{1} << offs) - 1;
+    size_t word = ctx.word & mask;
+    size_t word_idx = ctx.word_idx;
+
+    if (!word) {
+      // FIXME(gnusi): we can use block
+      // index to perform huge skips
+
+      if constexpr (AT_STREAM == Access) {
+        auto& in = *self->in_;
+        // original position
+        const auto pos = in.file_pointer();
+
+        auto prev = pos - 2 * sizeof(size_t);
+        do {
+          in.seek(prev);
+          word = in.read_long();
+          assert(word_idx);
+          --word_idx;
+          prev -= sizeof(size_t);
+        } while (!word);
+        self->in_->seek(pos);
+      } else {
+        for (auto* prev_word = ctx.u64data - 1; !word; --word_idx) {
+          word = *--prev_word;
+          assert(word_idx);
+        }
+        if constexpr (!is_big_endian()) {
+          word = numeric_utils::numeric_traits<size_t>::ntoh(word);
+        }
+      }
+    }
+
+    return self->block_ + (word_idx + 1) * bits_required<size_t>() -
+           std::countl_zero(word) - 1;
+  }
 };
+
+template<typename Visitor>
+auto ResolveType(Visitor&& visitor, bool direct, bool track_prev) {
+  auto impl = [&]<AccessType A>(bool track_prev) {
+    if (track_prev) {
+      return visitor.template operator()<A, true>();
+    } else {
+      return visitor.template operator()<A, false>();
+    }
+  };
+
+  // FIXME(gnusi): check alignment
+  if (direct) {
+    return impl.template operator()<AT_DIRECT>(track_prev);
+  } else {
+    return impl.template operator()<AT_STREAM>(track_prev);
+  }
+}
 
 /*static*/ bool sparse_bitmap_iterator::initial_seek(
     sparse_bitmap_iterator* self, doc_id_t target) {
@@ -382,6 +431,11 @@ sparse_bitmap_iterator::sparse_bitmap_iterator(
       origin_{cont_begin_},
       use_block_index_{opts.use_block_index} {
   assert(in_);
+
+  if (opts.track_previous) {
+    // Don't expose attribute if not necessary
+    std::get<attribute_ptr<seek_prev>>(attrs_) = &seek_prev_;
+  }
 }
 
 void sparse_bitmap_iterator::reset() {
@@ -393,45 +447,45 @@ void sparse_bitmap_iterator::reset() {
 }
 
 void sparse_bitmap_iterator::read_block_header() {
+  const bool track_prev = track_previous();
+
   block_ = doc_id_t{uint16_t(in_->read_short())} << 16;
   const uint32_t popcnt = 1 + static_cast<uint16_t>(in_->read_short());
-  prev_ = in_->read_int();  // last doc in a previously filled block
   index_ = index_max_;
   index_max_ += popcnt;
 
-  std::get<seek_prev>(attrs_).reset(
-      [](const void* ctx) noexcept {
-        return *reinterpret_cast<const doc_id_t*>(ctx);
-      },
-      &prev_);
+  if (track_prev) {
+    prev_ = in_->read_int();  // last doc in a previously filled block
+
+    seek_prev_.reset(
+        [](const void* ctx) noexcept {
+          return *reinterpret_cast<const doc_id_t*>(ctx);
+        },
+        &prev_);
+  }
 
   if (popcnt == sparse_bitmap_writer::kBlockSize) {
     ctx_.all.missing = block_ - index_;
     cont_begin_ = in_->file_pointer();
 
-    seek_func_ = [](sparse_bitmap_iterator* self, doc_id_t target) {
-      std::get<document>(self->attrs_).value = target;
-
-      auto& index = std::get<value_index>(self->attrs_).value;
-      index = target - self->ctx_.all.missing;
-
-      if (index != self->index_) {
-        self->prev_ = target - 1;
-      }
-      return true;
-    };
+    if (track_prev) {
+      seek_func_ = &container_iterator<BT_RANGE, true>::seek;
+    } else {
+      seek_func_ = &container_iterator<BT_RANGE, false>::seek;
+    }
   } else if (popcnt <= kBitSetThreshold) {
-    constexpr BlockType type = BT_SPARSE;
     const size_t block_size = 2 * popcnt;
     cont_begin_ = in_->file_pointer() + block_size;
     ctx_.u8data = in_->read_buffer(block_size, BufferHint::NORMAL);
     ctx_.sparse.index = index_;
 
-    // FIXME(gnusi): check alignment
-    seek_func_ = ctx_.u8data ? &container_iterator<type>::seek<AT_DIRECT>
-                             : &container_iterator<type>::seek<AT_STREAM>;
+    ResolveType(
+        [this]<AccessType A, bool TrackPrev>() noexcept {
+          seek_func_ =
+              &container_iterator<BT_SPARSE, TrackPrev>::template seek<A>;
+        },
+        ctx_.u8data, track_prev);
   } else {
-    constexpr BlockType type = BT_DENSE;
     constexpr size_t block_size =
         sparse_bitmap_writer::kBlockSize / bits_required<byte_type>();
 
@@ -459,9 +513,12 @@ void sparse_bitmap_iterator::read_block_header() {
     cont_begin_ = in_->file_pointer() + block_size;
     ctx_.u8data = in_->read_buffer(block_size, BufferHint::NORMAL);
 
-    // FIXME(gnusi): check alignment
-    seek_func_ = ctx_.u8data ? &container_iterator<type>::seek<AT_DIRECT>
-                             : &container_iterator<type>::seek<AT_STREAM>;
+    ResolveType(
+        [this]<AccessType A, bool TrackPrev>() noexcept {
+          seek_func_ =
+              &container_iterator<BT_DENSE, TrackPrev>::template seek<A>;
+        },
+        ctx_.u8data, track_prev);
   }
 }
 

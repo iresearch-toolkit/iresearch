@@ -174,7 +174,10 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
 
     // Use per block index
     bool use_block_index{true};
-  };  // options
+
+    // Track previous document
+    bool track_previous{true};
+  };
 
   explicit sparse_bitmap_iterator(index_input::ptr&& in, const options& opts)
       : sparse_bitmap_iterator{memory::to_managed<index_input>(std::move(in)),
@@ -221,7 +224,7 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
  private:
   using block_seek_f = bool (*)(sparse_bitmap_iterator*, doc_id_t);
 
-  template<uint32_t>
+  template<uint32_t, bool>
   friend struct container_iterator;
 
   static bool initial_seek(sparse_bitmap_iterator* self, doc_id_t target);
@@ -253,20 +256,28 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
     };
   };
 
+  using attributes =
+      std::tuple<document, value_index, attribute_ptr<seek_prev>, cost, score>;
+
   explicit sparse_bitmap_iterator(memory::managed_ptr<index_input>&& in,
                                   const options& opts);
 
   void seek_to_block(doc_id_t block);
   void read_block_header();
 
+  bool track_previous() const noexcept {
+    return nullptr != std::get<attribute_ptr<seek_prev>>(attrs_).ptr;
+  }
+
   container_iterator_context ctx_;
-  std::tuple<document, value_index, seek_prev, cost, score> attrs_;
+  attributes attrs_;
   memory::managed_ptr<index_input> in_;
   std::unique_ptr<byte_type[]> block_index_data_;
   block_seek_f seek_func_;
   block_index_t block_index_;
   uint64_t cont_begin_;
   uint64_t origin_;
+  seek_prev seek_prev_;
   doc_id_t index_{};  // beginning of the block
   doc_id_t index_max_{};
   doc_id_t block_{};
