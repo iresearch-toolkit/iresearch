@@ -36,17 +36,6 @@
 
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class sparse_bitmap_writer
-/// @note
-/// union {
-///   doc_id_t doc;
-///   struct {
-///     uint16_t block;
-///     uint16_t block_offset
-///   }
-/// };
-////////////////////////////////////////////////////////////////////////////////
 class sparse_bitmap_writer {
  public:
   using value_type = doc_id_t;  // for compatibility with back_inserter
@@ -78,6 +67,7 @@ class sparse_bitmap_writer {
     }
 
     set(value % kBlockSize);
+    prev_value_ = value;
   }
 
   bool erase(doc_id_t value) noexcept {
@@ -140,32 +130,49 @@ class sparse_bitmap_writer {
   std::vector<block> block_index_;
   uint32_t popcnt_{};
   uint32_t block_{};  // last flushed block
-};                    // sparse_bitmap_writer
+  doc_id_t prev_value_{};
+  doc_id_t last_in_flushed_block_{};
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct value_index
-/// @brief denotes a position of a value associated with a document
-////////////////////////////////////////////////////////////////////////////////
+// Denotes a position of a value associated with a document.
 struct value_index : document {
   static constexpr string_ref type_name() noexcept { return "value_index"; }
-};  // value_index
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class sparse_bitmap_iterator
-////////////////////////////////////////////////////////////////////////////////
+// Provides an access to previous document before the current one.
+class seek_prev : public attribute {
+ public:
+  using seek_prev_f = doc_id_t (*)(const void*);
+
+  static constexpr string_ref type_name() noexcept { return "prev_doc"; }
+
+  seek_prev() noexcept;
+
+  doc_id_t operator()() const {
+    assert(func_);
+    return func_(ctx_);
+  }
+
+  void reset(seek_prev_f func, void* ctx) noexcept {
+    assert(func);
+    func_ = func;
+    ctx_ = ctx;
+  }
+
+ private:
+  seek_prev_f func_;
+  void* ctx_;
+};
+
 class sparse_bitmap_iterator final : public resettable_doc_iterator {
  public:
   using block_index_t = std::span<const sparse_bitmap_writer::block>;
 
   struct options {
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief blocks index
-    ////////////////////////////////////////////////////////////////////////////
+    // Blocks index
     block_index_t blocks;
 
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief use per block index
-    ////////////////////////////////////////////////////////////////////////////
+    // Use per block index
     bool use_block_index{true};
   };  // options
 
@@ -205,10 +212,8 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
 
   virtual void reset() override final;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @note the value is undefined for
-  ///       doc_limits::invalid() and doc_limits::eof()
-  //////////////////////////////////////////////////////////////////////////////
+  // The value is undefined for
+  // doc_limits::invalid() and doc_limits::eof()
   doc_id_t index() const noexcept {
     return std::get<value_index>(attrs_).value;
   }
@@ -228,12 +233,12 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
       // stored as an array.
       struct {
         const uint16_t* u16data;
+        doc_id_t index;
       } sparse;
       struct {
         const size_t* u64data;
         doc_id_t popcnt;
         int32_t word_idx;
-        uint32_t index_base;
         size_t word;
         union {
           const uint16_t* u16data;
@@ -255,18 +260,19 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
   void read_block_header();
 
   container_iterator_context ctx_;
-  std::tuple<document, value_index, cost, score> attrs_;
+  std::tuple<document, value_index, seek_prev, cost, score> attrs_;
   memory::managed_ptr<index_input> in_;
   std::unique_ptr<byte_type[]> block_index_data_;
   block_seek_f seek_func_;
   block_index_t block_index_;
   uint64_t cont_begin_;
   uint64_t origin_;
-  doc_id_t index_{};
+  doc_id_t index_{};  // beginning of the block
   doc_id_t index_max_{};
   doc_id_t block_{};
+  doc_id_t prev_{};  // previous doc
   bool use_block_index_;
-};  // sparse_bitmap_iterator
+};
 
 }  // namespace iresearch
 

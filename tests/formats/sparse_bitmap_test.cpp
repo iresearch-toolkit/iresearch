@@ -32,39 +32,35 @@ class sparse_bitmap_test_case : public tests::directory_test_case_base<> {
   // position, expected, index
   using seek_type = std::tuple<irs::doc_id_t, irs::doc_id_t, irs::doc_id_t>;
 
-  static constexpr range_type MIXED[]{{1, 32},
-                                      {
-                                          160,
-                                          1184,
-                                      },
-                                      {1201, 1734},
-                                      {60000, 64500},
-                                      {196608, 262144},
-                                      {328007, 328284},
-                                      {328412, 329489},
-                                      {329490, 333586},
-                                      {458757, 458758},
-                                      {458777, 460563}};
+  // clang-format off
+  static constexpr range_type MIXED[]{
+      {1, 32},
+      {160, 1184},
+      {1201, 1734},
+      {60000, 64500},
+      {196608, 262144},
+      {328007, 328284},
+      {328412, 329489},
+      {329490, 333586},
+      {458757, 458758},
+      {458777, 460563}};
 
-  static constexpr range_type DENSE[]{{1, 32},
-                                      {
-                                          160,
-                                          1184,
-                                      },
-                                      {1201, 1734},
-                                      {60000, 64500},
-                                      {328007, 328284},
-                                      {328412, 329489},
-                                      {329490, 333586}};
+  static constexpr range_type DENSE[]{
+      {1, 32},
+      {160, 1184},
+      {1201, 1734},
+      {60000, 64500},
+      {328007, 328284},
+      {328412, 329489},
+      {329490, 333586}};
 
-  static constexpr range_type SPARSE[]{{1, 32},
-                                       {
-                                           160,
-                                           1184,
-                                       },
-                                       {1201, 1734},
-                                       {328007, 328284},
-                                       {328412, 329489}};
+  static constexpr range_type SPARSE[]{
+      {1, 32},
+      {160, 1184},
+      {1201, 1734},
+      {328007, 328284},
+      {328412, 329489}};
+  // clang-format on
 
   static constexpr std::pair<irs::doc_id_t, irs::doc_id_t> ALL[]{
       {65536, 131072}, {196608, 262144}};
@@ -330,6 +326,8 @@ void sparse_bitmap_test_case::test_rw_next(const range_type (&ranges)[N]) {
         std::move(stream),
         {{bitmap_index.data(), bitmap_index.size()}, true},
         count};
+    auto* prev = irs::get<irs::seek_prev>(it);
+    ASSERT_NE(nullptr, prev);
     auto* index = irs::get<irs::value_index>(it);
     ASSERT_NE(nullptr, index);  // index value is unspecified for invalid docs
     auto* doc = irs::get<irs::document>(it);
@@ -340,6 +338,7 @@ void sparse_bitmap_test_case::test_rw_next(const range_type (&ranges)[N]) {
     ASSERT_EQ(count, cost->estimate());
 
     irs::doc_id_t expected_index = 0;
+    irs::doc_id_t expected_prev = 0;
 
     for (const auto range : ranges) {
       irs::doc_id_t expected_doc = range.first;
@@ -351,6 +350,8 @@ void sparse_bitmap_test_case::test_rw_next(const range_type (&ranges)[N]) {
         ASSERT_EQ(expected_doc, doc->value);
         ASSERT_EQ(expected_index, it.index());
         ASSERT_EQ(expected_index, index->value);
+        ASSERT_EQ(expected_prev, (*prev)());
+        expected_prev = expected_doc;
         ++expected_doc;
         ++expected_index;
       }
