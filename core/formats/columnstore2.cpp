@@ -172,9 +172,20 @@ class range_column_iterator final : public resettable_doc_iterator,
     assert(!doc_limits::eof(max_doc_));
     std::get<cost>(attrs_).reset(header.docs_count);
     std::get<seek_prev>(attrs_).reset(
-        [](const void* ctx) {
+        [](const void* ctx) noexcept {
           auto* self = reinterpret_cast<const range_column_iterator*>(ctx);
-          return self->value() - 1;
+          const auto value = self->value();
+          const auto max_doc = self->max_doc_;
+
+          if (IRS_LIKELY(self->min_base_ < value && value <= max_doc)) {
+            return value - 1;
+          }
+
+          if (value > max_doc) {
+            return max_doc;
+          }
+
+          return doc_limits::invalid();
         },
         this);
   }
@@ -232,6 +243,7 @@ class range_column_iterator final : public resettable_doc_iterator,
   }
 
  private:
+  doc_id_t prev_;
   doc_id_t min_base_;
   doc_id_t min_doc_;
   doc_id_t max_doc_;
@@ -245,8 +257,9 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
  private:
   using payload_reader = PayloadReader;
 
-  using attributes = std::tuple<attribute_ptr<document>, cost,
-                                attribute_ptr<score>, irs::payload>;
+  using attributes =
+      std::tuple<attribute_ptr<document>, cost, attribute_ptr<score>,
+                 attribute_ptr<seek_prev>, irs::payload>;
 
  public:
   template<typename... Args>
@@ -259,6 +272,8 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
     std::get<attribute_ptr<document>>(attrs_) =
         irs::get_mutable<document>(&bitmap_);
     std::get<attribute_ptr<score>>(attrs_) = irs::get_mutable<score>(&bitmap_);
+    std::get<attribute_ptr<seek_prev>>(attrs_) =
+        irs::get_mutable<seek_prev>(&bitmap_);
   }
 
   virtual attribute* get_mutable(
@@ -312,11 +327,12 @@ class column_base : public column_reader, private util::noncopyable {
         index_{std::move(index)},
         payload_{std::move(payload)},
         name_{std::move(name)},
-        opts_{{version >= Version::kPrevSeek},
-              true,
-              index_.empty() ? sparse_bitmap_iterator::block_index_t{}
-                             : sparse_bitmap_iterator::block_index_t{
-                                   index_.data(), index_.size()}} {
+        opts_{.format = {.track_prev_doc = (version >= Version::kPrevSeek)},
+              .track_prev_doc = version >= Version::kPrevSeek,
+              .use_block_index = true,
+              .blocks = index_.empty() ? sparse_bitmap_iterator::block_index_t{}
+                                       : sparse_bitmap_iterator::block_index_t{
+                                             index_.data(), index_.size()}} {
     assert(!is_encrypted(hdr_) || cipher_);
   }
 
@@ -1045,7 +1061,11 @@ void column::finish(index_output& index_out) {
   hdr.id = id_;
 
   memory_index_input in{docs_.file};
-  sparse_bitmap_iterator it{&in, {{false}, false, {}}};
+  sparse_bitmap_iterator it{&in,
+                            {.format = ctx_.format,
+                             .track_prev_doc = false,
+                             .use_block_index = false,
+                             .blocks = {}}};
   if (it.next()) {
     hdr.min = it.value();
   }
@@ -1131,8 +1151,8 @@ writer::writer(Version version, bool consolidation)
       buf_{memory::make_unique<byte_type[]>(column::kBlockSize *
                                             sizeof(uint64_t))},
       ver_{version},
-      consolidation_{consolidation},
-      track_prev_{version >= Version::kPrevSeek} {}
+      format_{.track_prev_doc = version >= Version::kPrevSeek},
+      consolidation_{consolidation} {}
 
 void writer::prepare(directory& dir, const segment_meta& meta) {
   columns_.clear();
@@ -1201,7 +1221,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info,
                                             .cipher = cipher,
                                             .u8buf = buf_.get(),
                                             .consolidation = consolidation_,
-                                            .track_prev = track_prev_},
+                                            .format = format_},
                             static_cast<field_id>(id), compression,
                             std::move(finalizer), std::move(compressor));
 

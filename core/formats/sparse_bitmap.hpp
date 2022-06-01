@@ -28,9 +28,9 @@
 #include "search/cost.hpp"
 #include "search/score.hpp"
 #include "shared.hpp"
+#include "utils/attribute_helper.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
-#include "utils/attribute_helper.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/type_limits.hpp"
 
@@ -177,6 +177,12 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
   using block_index_t = std::span<const sparse_bitmap_writer::block>;
 
   struct options : sparse_bitmap_writer::options {
+    // Format options the bitmap is written with
+    sparse_bitmap_writer::options format{};
+
+    // Use previous doc tracking
+    bool track_prev_doc{true};
+
     // Use per block index
     bool use_block_index{true};
 
@@ -271,7 +277,7 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
   void read_block_header();
 
   bool track_previous() const noexcept {
-    return nullptr != std::get<attribute_ptr<seek_prev>>(attrs_).ptr;
+    return track_prev_doc_ && format_.track_prev_doc;
   }
 
   container_iterator_context ctx_;
@@ -287,7 +293,9 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
   doc_id_t index_max_{};
   doc_id_t block_{};
   doc_id_t prev_{};  // previous doc
+  sparse_bitmap_writer::options format_;
   bool use_block_index_;
+  bool track_prev_doc_;
 };
 
 }  // namespace iresearch

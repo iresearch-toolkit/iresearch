@@ -97,7 +97,10 @@ class sparse_bitmap_test_case : public tests::directory_test_case_base<bool> {
   irs::sparse_bitmap_iterator::options iterator_options(
       std::span<const irs::sparse_bitmap_writer::block> index,
       bool use_index) const noexcept {
-    return {{track_previous()}, use_index, index};
+    return {.format = writer_options(),
+            .track_prev_doc = writer_options().track_prev_doc,
+            .use_block_index = use_index,
+            .blocks = index};
   }
 };
 
@@ -1102,7 +1105,10 @@ TEST_P(sparse_bitmap_test_case, insert_erase) {
     ASSERT_NE(nullptr, stream);
 
     irs::sparse_bitmap_iterator it{stream.get(),
-                                   {{writer_options()}, false, {}}};
+                                   {.format = writer_options(),
+                                    .track_prev_doc = false,
+                                    .use_block_index = false,
+                                    .blocks = {}}};
     ASSERT_TRUE(it.next());
     ASSERT_EQ(70000, it.value());
     ASSERT_FALSE(it.next());

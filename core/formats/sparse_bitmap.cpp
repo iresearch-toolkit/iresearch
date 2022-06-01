@@ -431,10 +431,12 @@ sparse_bitmap_iterator::sparse_bitmap_iterator(
       block_index_{opts.blocks},
       cont_begin_{in_->file_pointer()},
       origin_{cont_begin_},
-      use_block_index_{opts.use_block_index} {
+      format_{opts.format},
+      use_block_index_{opts.use_block_index},
+      track_prev_doc_{opts.track_prev_doc} {
   assert(in_);
 
-  if (opts.track_prev_doc) {
+  if (track_previous()) {
     // Don't expose attribute if not necessary
     std::get<attribute_ptr<seek_prev>>(attrs_) = &seek_prev_;
   }
@@ -449,16 +451,17 @@ void sparse_bitmap_iterator::reset() {
 }
 
 void sparse_bitmap_iterator::read_block_header() {
-  const bool track_prev = track_previous();
-
   block_ = doc_id_t{uint16_t(in_->read_short())} << 16;
   const uint32_t popcnt = 1 + static_cast<uint16_t>(in_->read_short());
   index_ = index_max_;
   index_max_ += popcnt;
+  if (format_.track_prev_doc) {
+    prev_ = in_->read_int();  // last doc in a previously filled block
+  }
+
+  const auto track_prev = track_previous();
 
   if (track_prev) {
-    prev_ = in_->read_int();  // last doc in a previously filled block
-
     seek_prev_.reset(
         [](const void* ctx) noexcept {
           return *reinterpret_cast<const doc_id_t*>(ctx);
