@@ -60,7 +60,7 @@ class column final : public irs::column_output {
       uint64_t* u64buf;
     };
     bool consolidation;
-    sparse_bitmap_writer::options format;
+    SparseBitmapVersion version;
   };
 
   struct column_block {
@@ -174,7 +174,7 @@ class column final : public irs::column_output {
   std::vector<column_block> blocks_;  // at most 65536 blocks
   memory_output data_{*ctx_.alloc};
   memory_output docs_{*ctx_.alloc};
-  sparse_bitmap_writer docs_writer_{docs_.stream, ctx_.format};
+  sparse_bitmap_writer docs_writer_{docs_.stream, ctx_.version};
   address_table addr_table_;
   bstring payload_;
   string_ref name_;
@@ -215,7 +215,6 @@ class writer final : public columnstore_writer {
   encryption::stream::ptr data_cipher_;
   std::unique_ptr<byte_type[]> buf_;
   Version ver_;
-  sparse_bitmap_writer::options format_;
   bool consolidation_;
 };
 

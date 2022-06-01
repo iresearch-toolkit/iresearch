@@ -39,6 +39,18 @@ using namespace irs::columnstore2;
 using column_ptr = std::unique_ptr<column_reader>;
 using column_index = std::vector<sparse_bitmap_writer::block>;
 
+constexpr SparseBitmapVersion ToSparseBitmapVersion(
+    columnstore2::Version version) noexcept {
+  static_assert(static_cast<uint32_t>(SparseBitmapVersion::kMin) ==
+                static_cast<uint32_t>(columnstore2::Version::kMin));
+  static_assert(static_cast<uint32_t>(SparseBitmapVersion::kPrevSeek) ==
+                static_cast<uint32_t>(columnstore2::Version::kPrevSeek));
+  static_assert(static_cast<uint32_t>(SparseBitmapVersion::kMax) ==
+                static_cast<uint32_t>(columnstore2::Version::kMax));
+
+  return SparseBitmapVersion{version};
+}
+
 std::string data_file_name(string_ref prefix) {
   return file_name(prefix, writer::kDataFormatExt);
 }
@@ -327,7 +339,7 @@ class column_base : public column_reader, private util::noncopyable {
         index_{std::move(index)},
         payload_{std::move(payload)},
         name_{std::move(name)},
-        opts_{.format = {.track_prev_doc = (version >= Version::kPrevSeek)},
+        opts_{.version = ToSparseBitmapVersion(version),
               .track_prev_doc = version >= Version::kPrevSeek,
               .use_block_index = true,
               .blocks = index_.empty() ? sparse_bitmap_iterator::block_index_t{}
@@ -1062,7 +1074,7 @@ void column::finish(index_output& index_out) {
 
   memory_index_input in{docs_.file};
   sparse_bitmap_iterator it{&in,
-                            {.format = ctx_.format,
+                            {.version = ctx_.version,
                              .track_prev_doc = false,
                              .use_block_index = false,
                              .blocks = {}}};
@@ -1151,7 +1163,6 @@ writer::writer(Version version, bool consolidation)
       buf_{memory::make_unique<byte_type[]>(column::kBlockSize *
                                             sizeof(uint64_t))},
       ver_{version},
-      format_{.track_prev_doc = version >= Version::kPrevSeek},
       consolidation_{consolidation} {}
 
 void writer::prepare(directory& dir, const segment_meta& meta) {
@@ -1215,15 +1226,15 @@ columnstore_writer::column_t writer::push_column(const column_info& info,
     columns_.back().flush();
   }
 
-  auto& column =
-      columns_.emplace_back(column::context{.alloc = alloc_,
-                                            .data_out = data_out_.get(),
-                                            .cipher = cipher,
-                                            .u8buf = buf_.get(),
-                                            .consolidation = consolidation_,
-                                            .format = format_},
-                            static_cast<field_id>(id), compression,
-                            std::move(finalizer), std::move(compressor));
+  auto& column = columns_.emplace_back(
+      column::context{.alloc = alloc_,
+                      .data_out = data_out_.get(),
+                      .cipher = cipher,
+                      .u8buf = buf_.get(),
+                      .consolidation = consolidation_,
+                      .version = ToSparseBitmapVersion(ver_)},
+      static_cast<field_id>(id), compression, std::move(finalizer),
+      std::move(compressor));
 
   return std::make_pair(id, [&column](doc_id_t doc) -> column_output& {
     // to avoid extra (and useless in our case) check for block index

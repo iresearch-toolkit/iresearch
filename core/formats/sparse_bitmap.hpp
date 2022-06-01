@@ -36,13 +36,18 @@
 
 namespace iresearch {
 
+enum class SparseBitmapVersion {
+  kMin = 0,
+
+  // Version support accessing to previous document
+  kPrevSeek = 1,
+
+  // Max supported version
+  kMax = kPrevSeek
+};
+
 class sparse_bitmap_writer {
  public:
-  struct options {
-    // Track previous document
-    bool track_prev_doc{true};
-  };
-
   using value_type = doc_id_t;  // for compatibility with back_inserter
 
   static constexpr uint32_t kBlockSize = 1 << 16;
@@ -57,8 +62,8 @@ class sparse_bitmap_writer {
 
   explicit sparse_bitmap_writer(
       index_output& out,
-      const options& opts) noexcept(noexcept(out.file_pointer()))
-      : out_{&out}, origin_{out.file_pointer()}, opts_{opts} {}
+      SparseBitmapVersion version) noexcept(noexcept(out.file_pointer()))
+      : out_{&out}, origin_{out.file_pointer()}, opts_{version} {}
 
   void push_back(doc_id_t value) {
     static_assert(math::is_power2(kBlockSize));
@@ -91,6 +96,14 @@ class sparse_bitmap_writer {
   std::span<const block> index() const noexcept { return block_index_; }
 
  private:
+  struct options {
+    explicit options(SparseBitmapVersion version) noexcept
+        : track_prev_doc{version >= SparseBitmapVersion::kPrevSeek} {}
+
+    // Track previous document
+    bool track_prev_doc{true};
+  };
+
   void flush(uint32_t next_block) {
     const uint32_t popcnt = static_cast<uint32_t>(
         math::popcount(std::begin(bits_), std::end(bits_)));
@@ -176,14 +189,14 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
  public:
   using block_index_t = std::span<const sparse_bitmap_writer::block>;
 
-  struct options : sparse_bitmap_writer::options {
-    // Format options the bitmap is written with
-    sparse_bitmap_writer::options format{};
+  struct options {
+    // Format version
+    SparseBitmapVersion version{SparseBitmapVersion::kMax};
 
     // Use previous doc tracking
     bool track_prev_doc{true};
 
-    // Use per block index
+    // Use per block index (for dense blocks)
     bool use_block_index{true};
 
     // Blocks index
@@ -276,10 +289,6 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
   void seek_to_block(doc_id_t block);
   void read_block_header();
 
-  bool track_previous() const noexcept {
-    return track_prev_doc_ && format_.track_prev_doc;
-  }
-
   container_iterator_context ctx_;
   attributes attrs_;
   memory::managed_ptr<index_input> in_;
@@ -293,9 +302,9 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
   doc_id_t index_max_{};
   doc_id_t block_{};
   doc_id_t prev_{};  // previous doc
-  sparse_bitmap_writer::options format_;
-  bool use_block_index_;
-  bool track_prev_doc_;
+  const bool use_block_index_;
+  const bool prev_doc_written_;
+  const bool track_prev_doc_;
 };
 
 }  // namespace iresearch

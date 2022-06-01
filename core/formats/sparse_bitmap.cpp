@@ -431,12 +431,12 @@ sparse_bitmap_iterator::sparse_bitmap_iterator(
       block_index_{opts.blocks},
       cont_begin_{in_->file_pointer()},
       origin_{cont_begin_},
-      format_{opts.format},
       use_block_index_{opts.use_block_index},
-      track_prev_doc_{opts.track_prev_doc} {
+      prev_doc_written_{opts.version >= SparseBitmapVersion::kPrevSeek},
+      track_prev_doc_{prev_doc_written_ && opts.track_prev_doc} {
   assert(in_);
 
-  if (track_previous()) {
+  if (track_prev_doc_) {
     // Don't expose attribute if not necessary
     std::get<attribute_ptr<seek_prev>>(attrs_) = &seek_prev_;
   }
@@ -455,13 +455,11 @@ void sparse_bitmap_iterator::read_block_header() {
   const uint32_t popcnt = 1 + static_cast<uint16_t>(in_->read_short());
   index_ = index_max_;
   index_max_ += popcnt;
-  if (format_.track_prev_doc) {
+  if (prev_doc_written_) {
     prev_ = in_->read_int();  // last doc in a previously filled block
   }
 
-  const auto track_prev = track_previous();
-
-  if (track_prev) {
+  if (track_prev_doc_) {
     seek_prev_.reset(
         [](const void* ctx) noexcept {
           return *reinterpret_cast<const doc_id_t*>(ctx);
@@ -473,11 +471,8 @@ void sparse_bitmap_iterator::read_block_header() {
     ctx_.all.missing = block_ - index_;
     cont_begin_ = in_->file_pointer();
 
-    if (track_prev) {
-      seek_func_ = &container_iterator<BT_RANGE, true>::seek;
-    } else {
-      seek_func_ = &container_iterator<BT_RANGE, false>::seek;
-    }
+    seek_func_ = track_prev_doc_ ? &container_iterator<BT_RANGE, true>::seek
+                                 : &container_iterator<BT_RANGE, false>::seek;
   } else if (popcnt <= kBitSetThreshold) {
     const size_t block_size = 2 * popcnt;
     cont_begin_ = in_->file_pointer() + block_size;
@@ -489,7 +484,7 @@ void sparse_bitmap_iterator::read_block_header() {
           seek_func_ =
               &container_iterator<BT_SPARSE, TrackPrev>::template seek<A>;
         },
-        ctx_.u8data, track_prev);
+        ctx_.u8data, track_prev_doc_);
   } else {
     constexpr size_t block_size =
         sparse_bitmap_writer::kBlockSize / bits_required<byte_type>();
@@ -523,7 +518,7 @@ void sparse_bitmap_iterator::read_block_header() {
           seek_func_ =
               &container_iterator<BT_DENSE, TrackPrev>::template seek<A>;
         },
-        ctx_.u8data, track_prev);
+        ctx_.u8data, track_prev_doc_);
   }
 }
 

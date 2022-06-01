@@ -25,11 +25,13 @@
 #include "tests_param.hpp"
 #include "tests_shared.hpp"
 
-class sparse_bitmap_test_case : public tests::directory_test_case_base<bool> {
+class sparse_bitmap_test_case
+    : public tests::directory_test_case_base<irs::SparseBitmapVersion> {
  public:
   static std::string to_string(const testing::TestParamInfo<ParamType>& info) {
-    auto& [factory, track_prev] = info.param;
-    return (*factory)(nullptr).second + "___" + std::to_string(track_prev);
+    auto& [factory, version] = info.param;
+    return (*factory)(nullptr).second + "___" +
+           std::to_string(static_cast<uint32_t>(version));
   }
 
  protected:
@@ -88,17 +90,19 @@ class sparse_bitmap_test_case : public tests::directory_test_case_base<bool> {
   void test_rw_seek_random_stateless(const range_type (&ranges)[N],
                                      const seek_type (&seeks)[K]);
 
-  bool track_previous() const noexcept { return std::get<bool>(GetParam()); }
+  bool track_previous() const noexcept {
+    return version() >= irs::SparseBitmapVersion::kPrevSeek;
+  }
 
-  irs::sparse_bitmap_writer::options writer_options() const noexcept {
-    return {.track_prev_doc = track_previous()};
+  irs::SparseBitmapVersion version() const noexcept {
+    return std::get<irs::SparseBitmapVersion>(GetParam());
   }
 
   irs::sparse_bitmap_iterator::options iterator_options(
       std::span<const irs::sparse_bitmap_writer::block> index,
       bool use_index) const noexcept {
-    return {.format = writer_options(),
-            .track_prev_doc = writer_options().track_prev_doc,
+    return {.version = version(),
+            .track_prev_doc = version() >= irs::SparseBitmapVersion::kPrevSeek,
             .use_block_index = use_index,
             .blocks = index};
   }
@@ -114,7 +118,7 @@ void sparse_bitmap_test_case::test_rw_seek_random_stateless(
     auto stream = dir().create("tmp");
     ASSERT_NE(nullptr, stream);
 
-    irs::sparse_bitmap_writer writer(*stream, writer_options());
+    irs::sparse_bitmap_writer writer(*stream, version());
 
     for (const auto& range : ranges) {
       irs::doc_id_t doc = range.first;
@@ -246,7 +250,7 @@ void sparse_bitmap_test_case::test_rw_seek_random(const range_type (&ranges)[N],
     auto stream = dir().create("tmp");
     ASSERT_NE(nullptr, stream);
 
-    irs::sparse_bitmap_writer writer(*stream, writer_options());
+    irs::sparse_bitmap_writer writer(*stream, version());
 
     for (const auto& range : ranges) {
       irs::doc_id_t doc = range.first;
@@ -321,7 +325,7 @@ void sparse_bitmap_test_case::test_rw_next(const range_type (&ranges)[N]) {
     auto stream = dir().create("tmp");
     ASSERT_NE(nullptr, stream);
 
-    irs::sparse_bitmap_writer writer(*stream, writer_options());
+    irs::sparse_bitmap_writer writer(*stream, version());
 
     for (const auto& range : ranges) {
       irs::doc_id_t doc = range.first;
@@ -439,7 +443,7 @@ void sparse_bitmap_test_case::test_rw_seek(const range_type (&ranges)[N]) {
     auto stream = dir().create("tmp");
     ASSERT_NE(nullptr, stream);
 
-    irs::sparse_bitmap_writer writer(*stream, writer_options());
+    irs::sparse_bitmap_writer writer(*stream, version());
 
     for (const auto& range : ranges) {
       irs::doc_id_t doc = range.first;
@@ -543,7 +547,7 @@ void sparse_bitmap_test_case::test_rw_seek_next(const range_type (&ranges)[N]) {
     auto stream = dir().create("tmp");
     ASSERT_NE(nullptr, stream);
 
-    irs::sparse_bitmap_writer writer(*stream, writer_options());
+    irs::sparse_bitmap_writer writer(*stream, version());
 
     for (const auto& range : ranges) {
       irs::doc_id_t doc = range.first;
@@ -711,7 +715,7 @@ TEST_P(sparse_bitmap_test_case, read_write_empty) {
     auto stream = dir().create("tmp");
     ASSERT_NE(nullptr, stream);
 
-    irs::sparse_bitmap_writer writer(*stream, writer_options());
+    irs::sparse_bitmap_writer writer(*stream, version());
     ASSERT_TRUE(writer.index().empty());
     writer.finish();
 
@@ -753,7 +757,7 @@ TEST_P(sparse_bitmap_test_case, rw_sparse_blocks) {
     auto stream = dir().create("tmp");
     ASSERT_NE(nullptr, stream);
 
-    irs::sparse_bitmap_writer writer(*stream, writer_options());
+    irs::sparse_bitmap_writer writer(*stream, version());
 
     for (irs::doc_id_t doc = irs::doc_limits::min() + 1;;) {
       writer.push_back(doc);
@@ -1090,7 +1094,7 @@ TEST_P(sparse_bitmap_test_case, insert_erase) {
     auto stream = dir().create("tmp");
     ASSERT_NE(nullptr, stream);
 
-    irs::sparse_bitmap_writer writer(*stream, writer_options());
+    irs::sparse_bitmap_writer writer(*stream, version());
     ASSERT_TRUE(writer.erase(42));
     writer.push_back(42);
     ASSERT_TRUE(writer.erase(42));
@@ -1105,7 +1109,7 @@ TEST_P(sparse_bitmap_test_case, insert_erase) {
     ASSERT_NE(nullptr, stream);
 
     irs::sparse_bitmap_iterator it{stream.get(),
-                                   {.format = writer_options(),
+                                   {.version = version(),
                                     .track_prev_doc = false,
                                     .use_block_index = false,
                                     .blocks = {}}};
@@ -1121,5 +1125,6 @@ INSTANTIATE_TEST_SUITE_P(
         ::testing::Values(&tests::directory<&tests::memory_directory>,
                           &tests::directory<&tests::fs_directory>,
                           &tests::directory<&tests::mmap_directory>),
-        ::testing::Values(false, true)),
+        ::testing::Values(irs::SparseBitmapVersion::kMin,
+                          irs::SparseBitmapVersion::kPrevSeek)),
     sparse_bitmap_test_case::to_string);
