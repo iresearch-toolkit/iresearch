@@ -255,12 +255,11 @@ class range_column_iterator final : public resettable_doc_iterator,
   }
 
  private:
-  doc_id_t prev_;
   doc_id_t min_base_;
   doc_id_t min_doc_;
   doc_id_t max_doc_;
   attributes attrs_;
-};  // range_column_iterator
+};
 
 // Iterator over a specified bitmap of documents
 template<typename PayloadReader>
@@ -340,11 +339,10 @@ class column_base : public column_reader, private util::noncopyable {
         payload_{std::move(payload)},
         name_{std::move(name)},
         opts_{.version = ToSparseBitmapVersion(version),
+              // FIXME(gnusi): make it configurable via hints
               .track_prev_doc = version >= Version::kPrevSeek,
               .use_block_index = true,
-              .blocks = index_.empty() ? sparse_bitmap_iterator::block_index_t{}
-                                       : sparse_bitmap_iterator::block_index_t{
-                                             index_.data(), index_.size()}} {
+              .blocks = index_} {
     assert(!is_encrypted(hdr_) || cipher_);
   }
 
@@ -622,7 +620,7 @@ class dense_fixed_length_column final : public column_base {
   compression::decompressor::ptr inflater_;
   uint64_t data_;
   uint64_t len_;
-};  // dense_fixed_length_column
+};
 
 /*static*/ column_ptr dense_fixed_length_column::read(
     std::optional<std::string>&& name, bstring&& payload, column_header&& hdr,
