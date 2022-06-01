@@ -1939,7 +1939,6 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
       }
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
-        auto prev_it = column->iterator(hint());
         auto it = column->iterator(hint());
         auto* document = irs::get<irs::document>(*it);
         ASSERT_NE(nullptr, document);
@@ -1956,7 +1955,6 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
         ASSERT_EQ(doc, it->seek(doc));
         ASSERT_EQ(1, payload->value.size());
         EXPECT_EQ(static_cast<irs::byte_type>(doc & 0xFF), payload->value[0]);
-        assert_prev_doc(*it, *prev_it);
       }
 
       // seek + next
