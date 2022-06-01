@@ -1119,6 +1119,9 @@ TEST_P(sparse_bitmap_test_case, insert_erase) {
   }
 }
 
+static_assert(irs::SparseBitmapVersion::kMax ==
+              irs::SparseBitmapVersion::kPrevSeek);
+
 INSTANTIATE_TEST_SUITE_P(
     sparse_bitmap_test, sparse_bitmap_test_case,
     ::testing::Combine(

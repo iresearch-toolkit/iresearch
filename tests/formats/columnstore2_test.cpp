@@ -2282,7 +2282,9 @@ INSTANTIATE_TEST_SUITE_P(
                           &tests::rot13_directory<&tests::fs_directory, 16>,
                           &tests::rot13_directory<&tests::mmap_directory, 16>),
         ::testing::Values(irs::ColumnHint::kNormal,
-                          irs::ColumnHint::kConsolidation),
+                          irs::ColumnHint::kConsolidation,
+                          irs::ColumnHint::kMask,
+                          irs::ColumnHint::kPrevDoc),
         ::testing::Values(irs::columnstore2::Version::kMin,
                           irs::columnstore2::Version::kPrevSeek)),
     &columnstore2_test_case::to_string);

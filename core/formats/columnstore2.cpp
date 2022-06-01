@@ -338,11 +338,7 @@ class column_base : public column_reader, private util::noncopyable {
         index_{std::move(index)},
         payload_{std::move(payload)},
         name_{std::move(name)},
-        opts_{.version = ToSparseBitmapVersion(version),
-              // FIXME(gnusi): make it configurable via hints
-              .track_prev_doc = version >= Version::kPrevSeek,
-              .use_block_index = true,
-              .blocks = index_} {
+        version_{ToSparseBitmapVersion(version)} {
     assert(!is_encrypted(hdr_) || cipher_);
   }
 
@@ -358,8 +354,11 @@ class column_base : public column_reader, private util::noncopyable {
 
   const column_header& header() const noexcept { return hdr_; }
 
-  sparse_bitmap_iterator::options bitmap_iterator_options() const noexcept {
-    return opts_;
+  sparse_bitmap_iterator::options bitmap_iterator_options(ColumnHint hint) const noexcept {
+    return {.version = version_,
+            .track_prev_doc = ColumnHint::kPrevDoc == (hint & ColumnHint::kPrevDoc),
+            .use_block_index = true,
+            .blocks = index_};
   }
 
   const index_input& stream() const noexcept {
@@ -369,11 +368,11 @@ class column_base : public column_reader, private util::noncopyable {
 
  protected:
   template<typename Factory>
-  doc_iterator::ptr make_iterator(Factory&& f) const;
+  doc_iterator::ptr make_iterator(Factory&& f, ColumnHint hint) const;
 
  private:
   template<typename ValueReader>
-  doc_iterator::ptr make_iterator(ValueReader&& f, index_input::ptr&& in) const;
+  doc_iterator::ptr make_iterator(ValueReader&& f, index_input::ptr&& in, ColumnHint hint) const;
 
   const index_input* stream_;
   encryption::stream* cipher_;
@@ -381,12 +380,12 @@ class column_base : public column_reader, private util::noncopyable {
   column_index index_;
   bstring payload_;
   std::optional<std::string> name_;
-  sparse_bitmap_iterator::options opts_;
+  SparseBitmapVersion version_;
 };
 
 template<typename ValueReader>
 doc_iterator::ptr column_base::make_iterator(
-    ValueReader&& rdr, index_input::ptr&& index_in) const {
+    ValueReader&& rdr, index_input::ptr&& index_in, ColumnHint hint) const {
   if (!index_in) {
     using iterator_type = range_column_iterator<ValueReader>;
 
@@ -397,13 +396,13 @@ doc_iterator::ptr column_base::make_iterator(
     using iterator_type = bitmap_column_iterator<ValueReader>;
 
     return memory::make_managed<iterator_type>(
-        std::move(index_in), bitmap_iterator_options(), header().docs_count,
+        std::move(index_in), bitmap_iterator_options(hint), header().docs_count,
         std::move(rdr));
   }
 }
 
 template<typename Factory>
-doc_iterator::ptr column_base::make_iterator(Factory&& f) const {
+doc_iterator::ptr column_base::make_iterator(Factory&& f, ColumnHint hint) const {
   assert(header().docs_count);
 
   index_input::ptr value_in = stream().reopen();
@@ -430,17 +429,17 @@ doc_iterator::ptr column_base::make_iterator(Factory&& f) const {
 
   if (is_encrypted(header())) {
     assert(cipher_);
-    return make_iterator(f(std::move(value_in), *cipher_), std::move(index_in));
+    return make_iterator(f(std::move(value_in), *cipher_), std::move(index_in), hint);
   } else {
     const byte_type* data =
         value_in->read_buffer(0, value_in->length(), BufferHint::PERSISTENT);
 
     if (data) {
       // direct buffer access
-      return make_iterator(f(data), std::move(index_in));
+      return make_iterator(f(data), std::move(index_in), hint);
     }
 
-    return make_iterator(f(std::move(value_in)), std::move(index_in));
+    return make_iterator(f(std::move(value_in)), std::move(index_in), hint);
   }
 }
 
@@ -514,7 +513,7 @@ class encrypted_value_reader {
   encryption::stream* cipher_;
 };
 
-doc_iterator::ptr make_mask_iterator(const column_base& column) {
+doc_iterator::ptr make_mask_iterator(const column_base& column, ColumnHint hint) {
   const auto& header = column.header();
 
   if (0 == header.docs_count) {
@@ -539,7 +538,7 @@ doc_iterator::ptr make_mask_iterator(const column_base& column) {
   dup->seek(header.docs_index);
 
   return memory::make_managed<sparse_bitmap_iterator>(
-      std::move(dup), column.bitmap_iterator_options(), header.docs_count);
+      std::move(dup), column.bitmap_iterator_options(hint), header.docs_count);
 }
 
 struct mask_column final : public column_base {
@@ -564,11 +563,11 @@ struct mask_column final : public column_base {
     assert(ColumnType::kMask == header().type);
   }
 
-  virtual doc_iterator::ptr iterator(ColumnHint /*hint*/) const override;
+  virtual doc_iterator::ptr iterator(ColumnHint hint) const override;
 };
 
-doc_iterator::ptr mask_column::iterator(ColumnHint /*hint*/) const {
-  return make_mask_iterator(*this);
+doc_iterator::ptr mask_column::iterator(ColumnHint hint) const {
+  return make_mask_iterator(*this, hint);
 }
 
 class dense_fixed_length_column final : public column_base {
@@ -636,8 +635,8 @@ class dense_fixed_length_column final : public column_base {
 }
 
 doc_iterator::ptr dense_fixed_length_column::iterator(ColumnHint hint) const {
-  if (ColumnHint::kMask == hint) {
-    return make_mask_iterator(*this);
+  if (ColumnHint::kMask == (ColumnHint::kMask & hint)) {
+    return make_mask_iterator(*this, hint);
   }
 
   struct factory {
@@ -659,7 +658,7 @@ doc_iterator::ptr dense_fixed_length_column::iterator(ColumnHint hint) const {
     const dense_fixed_length_column* ctx;
   };
 
-  return make_iterator(factory{this});
+  return make_iterator(factory{this}, hint);
 }
 
 class fixed_length_column final : public column_base {
@@ -728,8 +727,8 @@ class fixed_length_column final : public column_base {
 };
 
 doc_iterator::ptr fixed_length_column::iterator(ColumnHint hint) const {
-  if (ColumnHint::kMask == hint) {
-    return make_mask_iterator(*this);
+  if (ColumnHint::kMask == (ColumnHint::kMask & hint)) {
+    return make_mask_iterator(*this, hint);
   }
 
   struct factory {
@@ -752,7 +751,7 @@ doc_iterator::ptr fixed_length_column::iterator(ColumnHint hint) const {
     const fixed_length_column* ctx;
   };
 
-  return make_iterator(factory{this});
+  return make_iterator(factory{this}, hint);
 }
 
 class sparse_column final : public column_base {
@@ -890,8 +889,8 @@ sparse_column::read_blocks_sparse(const column_header& hdr, index_input& in) {
 }
 
 doc_iterator::ptr sparse_column::iterator(ColumnHint hint) const {
-  if (ColumnHint::kMask == hint) {
-    return make_mask_iterator(*this);
+  if (ColumnHint::kMask == (ColumnHint::kMask & hint)) {
+    return make_mask_iterator(*this, hint);
   }
 
   struct factory {
@@ -913,7 +912,7 @@ doc_iterator::ptr sparse_column::iterator(ColumnHint hint) const {
     const sparse_column* ctx;
   };
 
-  return make_iterator(factory{this});
+  return make_iterator(factory{this}, hint);
 }
 
 using column_factory_f = column_ptr (*)(std::optional<std::string>&&, bstring&&,
