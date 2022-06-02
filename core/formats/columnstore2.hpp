@@ -39,11 +39,11 @@ namespace columnstore2 {
 enum class Version : int32_t {
   kMin = 0,
 
-  // Version support accessing to previous document
-  kPrevSeek = 1,
+  // Version support accessing previous document
+  kPrevDoc = 1,
 
   // Max supported version
-  kMax = kPrevSeek
+  kMax = kPrevDoc
 };
 
 class column final : public irs::column_output {

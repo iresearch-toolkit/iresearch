@@ -360,7 +360,7 @@ class column_base : public column_reader, private util::noncopyable {
   const column_header& header() const noexcept { return hdr_; }
 
   bool support_prev_doc(ColumnHint hint) const noexcept {
-    return version_ >= SparseBitmapVersion::kPrevSeek &&
+    return version_ >= SparseBitmapVersion::kPrevDoc &&
            ColumnHint::kPrevDoc == (hint & ColumnHint::kPrevDoc);
   }
 

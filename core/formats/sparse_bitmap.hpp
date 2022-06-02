@@ -40,10 +40,10 @@ enum class SparseBitmapVersion {
   kMin = 0,
 
   // Version support accessing to previous document
-  kPrevSeek = 1,
+  kPrevDoc = 1,
 
   // Max supported version
-  kMax = kPrevSeek
+  kMax = kPrevDoc
 };
 
 class sparse_bitmap_writer {

@@ -428,7 +428,7 @@ sparse_bitmap_iterator::sparse_bitmap_iterator(
       cont_begin_{in_->file_pointer()},
       origin_{cont_begin_},
       use_block_index_{opts.use_block_index},
-      prev_doc_written_{opts.version >= SparseBitmapVersion::kPrevSeek},
+      prev_doc_written_{opts.version >= SparseBitmapVersion::kPrevDoc},
       track_prev_doc_{prev_doc_written_ && opts.track_prev_doc} {
   assert(in_);
 

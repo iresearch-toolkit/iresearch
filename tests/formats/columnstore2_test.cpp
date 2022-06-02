@@ -62,7 +62,7 @@ class columnstore2_test_case
   }
 
   bool allow_prev_doc() const noexcept {
-    return version() >= irs::columnstore2::Version::kPrevSeek &&
+    return version() >= irs::columnstore2::Version::kPrevDoc &&
            irs::ColumnHint::kPrevDoc == (hint() & irs::ColumnHint::kPrevDoc);
   }
 
@@ -2289,7 +2289,7 @@ TEST_P(columnstore2_test_case, empty_columns) {
 }
 
 static_assert(irs::columnstore2::Version::kMax ==
-              irs::columnstore2::Version::kPrevSeek);
+              irs::columnstore2::Version::kPrevDoc);
 
 INSTANTIATE_TEST_SUITE_P(
     columnstore2_test, columnstore2_test_case,
@@ -2304,5 +2304,5 @@ INSTANTIATE_TEST_SUITE_P(
                           irs::ColumnHint::kConsolidation,
                           irs::ColumnHint::kMask, irs::ColumnHint::kPrevDoc),
         ::testing::Values(irs::columnstore2::Version::kMin,
-                          irs::columnstore2::Version::kPrevSeek)),
+                          irs::columnstore2::Version::kPrevDoc)),
     &columnstore2_test_case::to_string);

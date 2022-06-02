@@ -91,7 +91,7 @@ class sparse_bitmap_test_case
                                      const seek_type (&seeks)[K]);
 
   bool track_previous() const noexcept {
-    return version() >= irs::SparseBitmapVersion::kPrevSeek;
+    return version() >= irs::SparseBitmapVersion::kPrevDoc;
   }
 
   irs::SparseBitmapVersion version() const noexcept {
@@ -102,7 +102,7 @@ class sparse_bitmap_test_case
       std::span<const irs::sparse_bitmap_writer::block> index,
       bool use_index) const noexcept {
     return {.version = version(),
-            .track_prev_doc = version() >= irs::SparseBitmapVersion::kPrevSeek,
+            .track_prev_doc = version() >= irs::SparseBitmapVersion::kPrevDoc,
             .use_block_index = use_index,
             .blocks = index};
   }
@@ -1120,7 +1120,7 @@ TEST_P(sparse_bitmap_test_case, insert_erase) {
 }
 
 static_assert(irs::SparseBitmapVersion::kMax ==
-              irs::SparseBitmapVersion::kPrevSeek);
+              irs::SparseBitmapVersion::kPrevDoc);
 
 INSTANTIATE_TEST_SUITE_P(
     sparse_bitmap_test, sparse_bitmap_test_case,
@@ -1129,5 +1129,5 @@ INSTANTIATE_TEST_SUITE_P(
                           &tests::directory<&tests::fs_directory>,
                           &tests::directory<&tests::mmap_directory>),
         ::testing::Values(irs::SparseBitmapVersion::kMin,
-                          irs::SparseBitmapVersion::kPrevSeek)),
+                          irs::SparseBitmapVersion::kPrevDoc)),
     sparse_bitmap_test_case::to_string);
