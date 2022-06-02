@@ -240,7 +240,10 @@ enum class ColumnProperty : uint16_t {
   kEncrypt = 1,
 
   // Annonymous column
-  kNoName = 2
+  kNoName = 2,
+
+  // Support accessing previous document
+  kPrevDoc = 4
 };
 
 ENABLE_BITMASK_ENUM(ColumnProperty);

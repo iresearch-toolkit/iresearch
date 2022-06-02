@@ -43,8 +43,8 @@ constexpr SparseBitmapVersion ToSparseBitmapVersion(
     columnstore2::Version version) noexcept {
   static_assert(static_cast<uint32_t>(SparseBitmapVersion::kMin) ==
                 static_cast<uint32_t>(columnstore2::Version::kMin));
-  static_assert(static_cast<uint32_t>(SparseBitmapVersion::kPrevSeek) ==
-                static_cast<uint32_t>(columnstore2::Version::kPrevSeek));
+  static_assert(static_cast<uint32_t>(SparseBitmapVersion::kPrevDoc) ==
+                static_cast<uint32_t>(columnstore2::Version::kPrevDoc));
   static_assert(static_cast<uint32_t>(SparseBitmapVersion::kMax) ==
                 static_cast<uint32_t>(columnstore2::Version::kMax));
 
@@ -1220,9 +1220,9 @@ columnstore_writer::column_t writer::push_column(const column_info& info,
   auto compression =
       irs::type<compression::none>::get(); /* info.compression(); */
 
-  encryption::stream* cipher = info.encryption() ? data_cipher_.get() : nullptr;
+  encryption::stream* cipher = info.encryption ? data_cipher_.get() : nullptr;
 
-  auto compressor = compression::get_compressor(compression, info.options());
+  auto compressor = compression::get_compressor(compression, info.options);
 
   if (!compressor) {
     compressor = compression::compressor::identity();

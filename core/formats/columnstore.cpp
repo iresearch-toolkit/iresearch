@@ -892,8 +892,8 @@ columnstore_writer::column_t writer::push_column(
   irs::type_info compression;
 
   if (version_ > Version::MIN) {
-    compression = info.compression();
-    cipher = info.encryption() ? data_out_cipher_.get() : nullptr;
+    compression = info.compression;
+    cipher = info.encryption ? data_out_cipher_.get() : nullptr;
   } else {
     // we don't support encryption and custom
     // compression for 'FORMAT_MIN' version
@@ -901,14 +901,14 @@ columnstore_writer::column_t writer::push_column(
     cipher = nullptr;
   }
 
-  auto compressor = compression::get_compressor(compression, info.options());
+  auto compressor = compression::get_compressor(compression, info.options);
 
   if (!compressor) {
     compressor = compression::compressor::identity();
   }
 
   const auto id = columns_.size();
-  columns_.emplace_back(*this, id, info.compression(), std::move(finalizer),
+  columns_.emplace_back(*this, id, info.compression, std::move(finalizer),
                         std::move(compressor), cipher);
   auto& column = columns_.back();
 

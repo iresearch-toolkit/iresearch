@@ -98,7 +98,7 @@ class sparse_bitmap_writer {
  private:
   struct options {
     explicit options(SparseBitmapVersion version) noexcept
-        : track_prev_doc{version >= SparseBitmapVersion::kPrevSeek} {}
+        : track_prev_doc{version >= SparseBitmapVersion::kPrevDoc} {}
 
     // Track previous document
     bool track_prev_doc{true};

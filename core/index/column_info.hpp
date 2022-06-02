@@ -23,49 +23,30 @@
 #ifndef IRESEARCH_COLUMN_INFO_H
 #define IRESEARCH_COLUMN_INFO_H
 
-#include "utils/string.hpp"
-#include "utils/compression.hpp"
-
 #include <functional>
+
+#include "utils/compression.hpp"
+#include "utils/string.hpp"
 
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class column_info
-////////////////////////////////////////////////////////////////////////////////
-class column_info {
- public:
-  column_info(const type_info& compression,
-              const compression::options& options,
-              bool encryption) noexcept
-    : compression_(compression),
-      options_(options),
-      encryption_(encryption) {
-  }
-
-  const type_info& compression() const noexcept { return compression_; }
-  const compression::options& options() const noexcept { return options_; }
-  bool encryption() const noexcept { return encryption_; }
+struct column_info {
+  type_info compression;
+  compression::options options;
+  bool encryption;
 
   bool operator==(const column_info& rhs) const noexcept {
-    return compression_ == rhs.compression_ &&
-           options_ == rhs.options_ &&
-           encryption_ == rhs.encryption_;
+    return compression == rhs.compression && options == rhs.options &&
+           encryption == rhs.encryption;
   }
 
   bool operator!=(const column_info& rhs) const noexcept {
     return !(*this == rhs);
   }
-
- private:
-  type_info compression_;
-  compression::options options_;
-  bool encryption_;
-}; // column_info
+};
 
 using column_info_provider_t = std::function<column_info(const string_ref)>;
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_COLUMN_INFO_H
-
+#endif  // IRESEARCH_COLUMN_INFO_H
