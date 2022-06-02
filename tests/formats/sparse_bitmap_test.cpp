@@ -349,7 +349,7 @@ void sparse_bitmap_test_case::test_rw_next(const range_type (&ranges)[N]) {
     irs::sparse_bitmap_iterator it{std::move(stream),
                                    iterator_options(bitmap_index, true), count};
     auto* prev = irs::get<irs::seek_prev>(it);
-    ASSERT_EQ(track_previous(), nullptr != prev);
+    ASSERT_EQ(track_previous(), prev && *prev);
     auto* index = irs::get<irs::value_index>(it);
     ASSERT_NE(nullptr, index);  // index value is unspecified for invalid docs
     auto* doc = irs::get<irs::document>(it);
@@ -395,7 +395,7 @@ void sparse_bitmap_test_case::test_rw_next(const range_type (&ranges)[N]) {
     irs::sparse_bitmap_iterator it{std::move(stream),
                                    iterator_options({}, false), count};
     auto* prev = irs::get<irs::seek_prev>(it);
-    ASSERT_EQ(track_previous(), nullptr != prev);
+    ASSERT_EQ(track_previous(), prev && *prev);
     auto* index = irs::get<irs::value_index>(it);
     ASSERT_NE(nullptr, index);  // index value is unspecified for invalid docs
     auto* doc = irs::get<irs::document>(it);

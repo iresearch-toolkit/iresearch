@@ -167,22 +167,29 @@ class seek_prev : public attribute {
 
   static constexpr string_ref type_name() noexcept { return "prev_doc"; }
 
-  seek_prev() noexcept;
+  constexpr explicit operator bool() const noexcept { return nullptr != func_; }
+
+  constexpr bool operator==(std::nullptr_t) const noexcept {
+    return !static_cast<bool>(*this);
+  }
+
+  constexpr bool operator!=(std::nullptr_t) const noexcept {
+    return !(*this == nullptr);
+  }
 
   doc_id_t operator()() const {
-    assert(func_);
+    assert(static_cast<bool>(*this));
     return func_(ctx_);
   }
 
   void reset(seek_prev_f func, void* ctx) noexcept {
-    assert(func);
     func_ = func;
     ctx_ = ctx;
   }
 
  private:
-  seek_prev_f func_;
-  void* ctx_;
+  seek_prev_f func_{};
+  void* ctx_{};
 };
 
 class sparse_bitmap_iterator final : public resettable_doc_iterator {
@@ -280,8 +287,7 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
     };
   };
 
-  using attributes =
-      std::tuple<document, value_index, attribute_ptr<seek_prev>, cost, score>;
+  using attributes = std::tuple<document, value_index, seek_prev, cost, score>;
 
   explicit sparse_bitmap_iterator(memory::managed_ptr<index_input>&& in,
                                   const options& opts);
@@ -297,7 +303,6 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
   block_index_t block_index_;
   uint64_t cont_begin_;
   uint64_t origin_;
-  seek_prev seek_prev_;
   doc_id_t index_{};  // beginning of the block
   doc_id_t index_max_{};
   doc_id_t block_{};

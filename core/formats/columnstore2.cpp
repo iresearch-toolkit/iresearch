@@ -170,12 +170,15 @@ class range_column_iterator final : public resettable_doc_iterator,
  private:
   using payload_reader = PayloadReader;
 
-  // FIXME(gnusi): don't expose payload for noop_value_reader?
+  // FIXME(gnusi):
+  //  * don't expose payload for noop_value_reader?
+  //  * don't expose seek_prev if not requested?
   using attributes = std::tuple<document, cost, score, seek_prev, irs::payload>;
 
  public:
   template<typename... Args>
-  range_column_iterator(const column_header& header, Args&&... args)
+  range_column_iterator(const column_header& header, bool track_prev,
+                        Args&&... args)
       : payload_reader{std::forward<Args>(args)...},
         min_base_{header.min},
         min_doc_{min_base_},
@@ -183,23 +186,25 @@ class range_column_iterator final : public resettable_doc_iterator,
     assert(min_doc_ <= max_doc_);
     assert(!doc_limits::eof(max_doc_));
     std::get<cost>(attrs_).reset(header.docs_count);
-    std::get<seek_prev>(attrs_).reset(
-        [](const void* ctx) noexcept {
-          auto* self = reinterpret_cast<const range_column_iterator*>(ctx);
-          const auto value = self->value();
-          const auto max_doc = self->max_doc_;
+    if (track_prev) {
+      std::get<seek_prev>(attrs_).reset(
+          [](const void* ctx) noexcept {
+            auto* self = reinterpret_cast<const range_column_iterator*>(ctx);
+            const auto value = self->value();
+            const auto max_doc = self->max_doc_;
 
-          if (IRS_LIKELY(self->min_base_ < value && value <= max_doc)) {
-            return value - 1;
-          }
+            if (IRS_LIKELY(self->min_base_ < value && value <= max_doc)) {
+              return value - 1;
+            }
 
-          if (value > max_doc) {
-            return max_doc;
-          }
+            if (value > max_doc) {
+              return max_doc;
+            }
 
-          return doc_limits::invalid();
-        },
-        this);
+            return doc_limits::invalid();
+          },
+          this);
+    }
   }
 
   virtual attribute* get_mutable(
@@ -354,9 +359,15 @@ class column_base : public column_reader, private util::noncopyable {
 
   const column_header& header() const noexcept { return hdr_; }
 
-  sparse_bitmap_iterator::options bitmap_iterator_options(ColumnHint hint) const noexcept {
+  bool support_prev_doc(ColumnHint hint) const noexcept {
+    return version_ >= SparseBitmapVersion::kPrevSeek &&
+           ColumnHint::kPrevDoc == (hint & ColumnHint::kPrevDoc);
+  }
+
+  sparse_bitmap_iterator::options bitmap_iterator_options(
+      ColumnHint hint) const noexcept {
     return {.version = version_,
-            .track_prev_doc = ColumnHint::kPrevDoc == (hint & ColumnHint::kPrevDoc),
+            .track_prev_doc = support_prev_doc(hint),
             .use_block_index = true,
             .blocks = index_};
   }
@@ -372,7 +383,8 @@ class column_base : public column_reader, private util::noncopyable {
 
  private:
   template<typename ValueReader>
-  doc_iterator::ptr make_iterator(ValueReader&& f, index_input::ptr&& in, ColumnHint hint) const;
+  doc_iterator::ptr make_iterator(ValueReader&& f, index_input::ptr&& in,
+                                  ColumnHint hint) const;
 
   const index_input* stream_;
   encryption::stream* cipher_;
@@ -384,12 +396,14 @@ class column_base : public column_reader, private util::noncopyable {
 };
 
 template<typename ValueReader>
-doc_iterator::ptr column_base::make_iterator(
-    ValueReader&& rdr, index_input::ptr&& index_in, ColumnHint hint) const {
+doc_iterator::ptr column_base::make_iterator(ValueReader&& rdr,
+                                             index_input::ptr&& index_in,
+                                             ColumnHint hint) const {
   if (!index_in) {
     using iterator_type = range_column_iterator<ValueReader>;
 
-    return memory::make_managed<iterator_type>(header(), std::move(rdr));
+    return memory::make_managed<iterator_type>(header(), support_prev_doc(hint),
+                                               std::move(rdr));
   } else {
     index_in->seek(header().docs_index);
 
@@ -402,7 +416,8 @@ doc_iterator::ptr column_base::make_iterator(
 }
 
 template<typename Factory>
-doc_iterator::ptr column_base::make_iterator(Factory&& f, ColumnHint hint) const {
+doc_iterator::ptr column_base::make_iterator(Factory&& f,
+                                             ColumnHint hint) const {
   assert(header().docs_count);
 
   index_input::ptr value_in = stream().reopen();
@@ -429,7 +444,8 @@ doc_iterator::ptr column_base::make_iterator(Factory&& f, ColumnHint hint) const
 
   if (is_encrypted(header())) {
     assert(cipher_);
-    return make_iterator(f(std::move(value_in), *cipher_), std::move(index_in), hint);
+    return make_iterator(f(std::move(value_in), *cipher_), std::move(index_in),
+                         hint);
   } else {
     const byte_type* data =
         value_in->read_buffer(0, value_in->length(), BufferHint::PERSISTENT);
@@ -513,7 +529,8 @@ class encrypted_value_reader {
   encryption::stream* cipher_;
 };
 
-doc_iterator::ptr make_mask_iterator(const column_base& column, ColumnHint hint) {
+doc_iterator::ptr make_mask_iterator(const column_base& column,
+                                     ColumnHint hint) {
   const auto& header = column.header();
 
   if (0 == header.docs_count) {
@@ -523,7 +540,7 @@ doc_iterator::ptr make_mask_iterator(const column_base& column, ColumnHint hint)
 
   if (0 == header.docs_index) {
     return memory::make_managed<range_column_iterator<noop_value_reader>>(
-        header);
+        header, column.support_prev_doc(hint));
   }
 
   auto dup = column.stream().reopen();

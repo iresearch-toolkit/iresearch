@@ -90,10 +90,6 @@ void write_block_index(irs::index_output& out, size_t (&bits)[N]) {
 
 namespace iresearch {
 
-seek_prev::seek_prev() noexcept
-    : func_([](const void*) noexcept { return doc_limits::invalid(); }),
-      ctx_{} {}
-
 void sparse_bitmap_writer::finish() {
   flush(block_);
 
@@ -342,7 +338,7 @@ struct container_iterator<BT_DENSE, true> {
 
     if (std::get<value_index>(self->attrs_).value != self->index_) {
       self->seek_func_ = &container_iterator<BT_DENSE, false>::seek<Access>;
-      self->seek_prev_.reset(&seek_prev<Access>, self);
+      std::get<irs::seek_prev>(self->attrs_).reset(&seek_prev<Access>, self);
     }
 
     return res;
@@ -437,8 +433,11 @@ sparse_bitmap_iterator::sparse_bitmap_iterator(
   assert(in_);
 
   if (track_prev_doc_) {
-    // Don't expose attribute if not necessary
-    std::get<attribute_ptr<seek_prev>>(attrs_) = &seek_prev_;
+    std::get<seek_prev>(attrs_).reset(
+        [](const void* ctx) noexcept {
+          return *reinterpret_cast<const doc_id_t*>(ctx);
+        },
+        &prev_);
   }
 }
 
@@ -460,7 +459,7 @@ void sparse_bitmap_iterator::read_block_header() {
   }
 
   if (track_prev_doc_) {
-    seek_prev_.reset(
+    std::get<seek_prev>(attrs_).reset(
         [](const void* ctx) noexcept {
           return *reinterpret_cast<const doc_id_t*>(ctx);
         },
