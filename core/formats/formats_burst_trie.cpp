@@ -98,7 +98,7 @@
 #include "utils/timer_utils.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
-#include "utils/frozen_attributes.hpp"
+#include "utils/attribute_helper.hpp"
 #include "utils/string.hpp"
 #include "utils/log.hpp"
 

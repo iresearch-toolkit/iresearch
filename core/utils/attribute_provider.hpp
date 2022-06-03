@@ -24,54 +24,41 @@
 #define IRESEARCH_ATTRIBUTES_PROVIDER_H
 
 #include "type_id.hpp"
-#include "utils/noncopyable.hpp"
 
 namespace iresearch {
 
-struct attribute;
+// Base struct for all attribute types that can be used with attribute_provider.
+struct attribute {};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class attribute_provider
-/// @brief base class for all objects with externally visible attributes
-////////////////////////////////////////////////////////////////////////////////
+// Base class for all objects with externally visible attributes
 struct attribute_provider {
   virtual ~attribute_provider() = default;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return pointer to attribute of a specified type
-  /// @note external users should prefer using const version
-  /// @note external users should avoid modifying attributes treat that as UB
-  //////////////////////////////////////////////////////////////////////////////
+  // Return pointer to attribute of a specified type.
+  // External users should prefer using const version.
+  // External users should avoid modifying attributes treat that as UB.
   virtual attribute* get_mutable(type_info::type_id type) = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return const pointer to attribute of a specified type
-  //////////////////////////////////////////////////////////////////////////////
+  // Const pointer to attribute of a specified type.
   const attribute* get(type_info::type_id type) const {
     return const_cast<attribute_provider*>(this)->get_mutable(type);
   }
-}; // attribute_provider
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convenient helper for getting immutable attribute of a specific type
-////////////////////////////////////////////////////////////////////////////////
-template<typename T,
-         typename Provider,
+// Convenient helper for getting immutable attribute of a specific type.
+template<typename T, typename Provider,
          typename = std::enable_if_t<std::is_base_of_v<attribute, T>>>
 inline const T* get(const Provider& attrs) {
   return static_cast<const T*>(attrs.get(type<T>::id()));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convenient helper for getting mutable attribute of a specific type
-////////////////////////////////////////////////////////////////////////////////
-template<typename T,
-         typename Provider,
+// Convenient helper for getting mutable attribute of a specific type.
+template<typename T, typename Provider,
          typename = std::enable_if_t<std::is_base_of_v<attribute, T>>>
 inline T* get_mutable(Provider* attrs) {
   return static_cast<T*>(attrs->get_mutable(type<T>::id()));
 }
 
-}
+}  // namespace iresearch
 
 #endif

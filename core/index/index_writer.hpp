@@ -202,11 +202,12 @@ class index_writer : private util::noncopyable {
     /// @brief create a document to filled by the caller
     ///        for insertion into the index index
     ///        applied upon return value deallocation
+    /// @arg disable_flush don't trigger segment flush
     /// @note the changes are not visible until commit()
     ////////////////////////////////////////////////////////////////////////////
-    document insert() {
+    document insert(bool disable_flush = false) {
       // thread-safe to use ctx_/segment_ while have lock since active flush_context will not change
-      auto ctx = update_segment(); // updates 'segment_' and 'ctx_'
+      auto ctx = update_segment(disable_flush); // updates 'segment_' and 'ctx_'
       assert(segment_.ctx());
 
       return document(
@@ -225,7 +226,7 @@ class index_writer : private util::noncopyable {
     void remove(Filter&& filter) {
       // thread-safe to use ctx_/segment_ while have lock since active flush_context will not change
       // cppcheck-suppress unreadVariable
-      auto ctx = update_segment(); // updates 'segment_' and 'ctx_'
+      auto ctx = update_segment(false); // updates 'segment_' and 'ctx_'
       assert(segment_.ctx());
 
       segment_.ctx()->remove(std::forward<Filter>(filter)); // guarded by flush_context::flush_mutex_
@@ -243,7 +244,7 @@ class index_writer : private util::noncopyable {
     template<typename Filter>
     document replace(Filter&& filter) {
       // thread-safe to use ctx_/segment_ while have lock since active flush_context will not change
-      auto ctx = update_segment(); // updates 'segment_' and 'ctx_'
+      auto ctx = update_segment(false); // updates 'segment_' and 'ctx_'
       assert(segment_.ctx());
 
       return document(
@@ -272,7 +273,7 @@ class index_writer : private util::noncopyable {
 
       {
         // thread-safe to use ctx_/segment_ while have lock since active flush_context will not change
-        auto ctx_ptr = update_segment(); // updates 'segment_' and 'ctx_'
+        auto ctx_ptr = update_segment(false); // updates 'segment_' and 'ctx_'
 
         assert(ctx_ptr);
         assert(segment_.ctx());
@@ -373,7 +374,7 @@ class index_writer : private util::noncopyable {
     // refresh segment if required (guarded by flush_context::flush_mutex_)
     // is is thread-safe to use ctx_/segment_ while holding 'flush_context_ptr'
     // since active 'flush_context' will not change and hence no reload required
-    flush_context_ptr update_segment();
+    flush_context_ptr update_segment(bool disable_flush);
   };
 
   //////////////////////////////////////////////////////////////////////////////

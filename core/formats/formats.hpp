@@ -338,10 +338,14 @@ enum class ColumnHint : uint32_t {
   // Nothing special
   kNormal = 0,
   // Open iterator for conosolidation
-  kConsolidation,
+  kConsolidation = 1,
   // Reading payload isn't necessary
-  kMask
+  kMask = 2,
+  // Allow accessing prev document
+  kPrevDoc = 4
 };
+
+ENABLE_BITMASK_ENUM(ColumnHint);
 
 struct column_reader {
   virtual ~column_reader() = default;
