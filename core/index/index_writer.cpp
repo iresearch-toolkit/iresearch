@@ -812,7 +812,7 @@ void index_writer::documents_context::reset() noexcept {
 }
 
 index_writer::flush_context_ptr index_writer::documents_context::update_segment(
-    bool no_flush) {
+    bool disable_flush) {
   auto ctx = writer_.get_flush_context();
 
   // ...........................................................................
@@ -838,7 +838,7 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
   auto& segment = *(segment_.ctx());
   auto& writer = *segment.writer_;
 
-  if (writer.initialized() && !no_flush) {
+  if (writer.initialized() && !disable_flush) {
     auto segment_docs_max = writer_.segment_limits_.segment_docs_max.load();
     auto segment_memory_max = writer_.segment_limits_.segment_memory_max.load();
 
