@@ -79,8 +79,6 @@ struct by_range_options : by_range_filter_options {
 //////////////////////////////////////////////////////////////////////////////
 class by_range : public filter_base<by_range_options> {
  public:
-  static ptr make();
-
   static prepared::ptr prepare(
     const index_reader& index,
     const Order& ord,

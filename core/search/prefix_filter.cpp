@@ -67,7 +67,6 @@ void visit(
 }
 
 namespace iresearch {
-DEFINE_FACTORY_DEFAULT(by_prefix) // cppcheck-suppress unknownMacro
 
 /*static*/ filter::prepared::ptr by_prefix::prepare(
     const index_reader& index,

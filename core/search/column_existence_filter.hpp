@@ -48,8 +48,6 @@ struct by_column_existence_options {
 class by_column_existence final
     : public filter_base<by_column_existence_options> {
  public:
-  static ptr make();
-
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(

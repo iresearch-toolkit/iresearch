@@ -47,12 +47,12 @@ class boolean_filter : public filter, private util::noncopyable {
     merge_type_ = merge_type;
   }
 
-  template<typename T>
-  T& add() {
+  template<typename T, typename... Args>
+  T& add(Args&&... args) {
     using type = typename std::enable_if_t<std::is_base_of_v<filter, T>, T>;
 
-    filters_.emplace_back(type::make());
-    return static_cast<type&>(*filters_.back());
+    return static_cast<type&>(*filters_.emplace_back(
+        memory::make_unique<type>(std::forward<Args>(args)...)));
   }
 
   virtual size_t hash() const noexcept override;
@@ -85,8 +85,6 @@ class boolean_filter : public filter, private util::noncopyable {
 // Represents conjunction
 class And final : public boolean_filter {
  public:
-  static ptr make();
-
   And() noexcept;
 
   using filter::prepare;
@@ -101,8 +99,6 @@ class And final : public boolean_filter {
 // Represents disjunction
 class Or final : public boolean_filter {
  public:
-  static ptr make();
-
   Or() noexcept;
 
   using filter::prepare;
@@ -129,8 +125,6 @@ class Or final : public boolean_filter {
 // Represents negation
 class Not : public filter {
  public:
-  static ptr make();
-
   Not() noexcept;
 
   const irs::filter* filter() const { return filter_.get(); }
@@ -143,12 +137,12 @@ class Not : public filter {
     return static_cast<const type*>(filter_.get());
   }
 
-  template<typename T>
-  T& filter() {
+  template<typename T, typename... Args>
+  T& filter(Args&&... args) {
     using type =
         typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
 
-    filter_ = type::make();
+    filter_ = memory::make_unique<type>(std::forward<Args>(args)...);
     return static_cast<type&>(*filter_);
   }
 

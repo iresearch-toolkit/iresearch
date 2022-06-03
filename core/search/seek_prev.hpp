@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,25 +20,39 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ALL_FILTER_H
-#define IRESEARCH_ALL_FILTER_H
+#pragma once
 
-#include "filter.hpp"
+#include "utils/attribute_provider.hpp"
 
 namespace iresearch {
 
-// Filter returning all documents
-class all : public filter {
+// Provides an access to previous document before the current one.
+// Undefined after iterator reached EOF.
+class seek_prev : public attribute {
  public:
-  all() noexcept;
+  using seek_prev_f = doc_id_t (*)(const void*);
 
-  using filter::prepare;
+  static constexpr string_ref type_name() noexcept { return "prev_doc"; }
 
-  virtual filter::prepared::ptr prepare(
-      const index_reader& reader, const Order& order, score_t filter_boost,
-      const attribute_provider* ctx) const override;
+  constexpr explicit operator bool() const noexcept { return nullptr != func_; }
+
+  constexpr bool operator==(std::nullptr_t) const noexcept {
+    return !static_cast<bool>(*this);
+  }
+
+  doc_id_t operator()() const {
+    assert(static_cast<bool>(*this));
+    return func_(ctx_);
+  }
+
+  void reset(seek_prev_f func, void* ctx) noexcept {
+    func_ = func;
+    ctx_ = ctx;
+  }
+
+ private:
+  seek_prev_f func_{};
+  void* ctx_{};
 };
 
 }  // namespace iresearch
-
-#endif

@@ -27,6 +27,7 @@
 #include "analysis/token_attributes.hpp"
 #include "search/cost.hpp"
 #include "search/score.hpp"
+#include "search/seek_prev.hpp"
 #include "search/sort.hpp"
 #include "utils/attribute_helper.hpp"
 #include "utils/type_limits.hpp"
@@ -494,7 +495,7 @@ auto ResolveMatchType(Match match, score_t none_boost, A&& aggregator,
 
 class ByNesterQuery final : public filter::prepared {
  public:
-  ByNesterQuery(prepared::ptr&& parent, prepared::ptr&& child,
+  ByNesterQuery(DocIteratorProvider parent, prepared::ptr&& child,
                 sort::MergeType merge_type, Match match,
                 score_t none_boost) noexcept
       : parent_{std::move(parent)},
@@ -512,7 +513,7 @@ class ByNesterQuery final : public filter::prepared {
                             const attribute_provider* ctx) const override;
 
  private:
-  prepared::ptr parent_;
+  DocIteratorProvider parent_;
   prepared::ptr child_;
   Match match_;
   sort::MergeType merge_type_;
@@ -523,10 +524,10 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
                                          const Order& ord,
                                          ExecutionMode /*mode*/,
                                          const attribute_provider* ctx) const {
-  auto parent =
-      parent_->execute(rdr, Order::kUnordered, ExecutionMode::kAll, ctx);
+  auto parent = parent_(rdr);
 
-  if (IRS_UNLIKELY(!parent || doc_limits::eof(parent->value()))) {
+  if (IRS_UNLIKELY(!parent || doc_limits::eof(parent->value()) ||
+                   nullptr == irs::get<irs::seek_prev>(*parent))) {
     return doc_iterator::empty();
   }
 
@@ -553,10 +554,6 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
 
 namespace iresearch {
 
-/*static*/ filter::ptr ByNestedFilter::make() {
-  return memory::make_unique<ByNestedFilter>();
-}
-
 filter::prepared::ptr ByNestedFilter::prepare(
     const index_reader& rdr, const Order& ord, score_t boost,
     const attribute_provider* ctx) const {
@@ -569,16 +566,15 @@ filter::prepared::ptr ByNestedFilter::prepare(
   boost *= this->boost();
   const auto& order = kMatchNone == match ? ord : Order::kUnordered;
 
-  auto prepared_parent = parent->prepare(rdr, Order::kUnordered, kNoBoost, ctx);
   auto prepared_child = child->prepare(rdr, order, boost, ctx);
 
-  if (!prepared_parent || !prepared_child) {
+  if (!prepared_child) {
     return prepared::empty();
   }
 
-  return memory::make_managed<ByNesterQuery>(
-      std::move(prepared_parent), std::move(prepared_child), merge_type, match,
-      /*none_boost*/ boost);
+  return memory::make_managed<ByNesterQuery>(parent, std::move(prepared_child),
+                                             merge_type, match,
+                                             /*none_boost*/ boost);
 }
 
 }  // namespace iresearch

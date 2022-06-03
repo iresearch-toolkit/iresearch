@@ -95,12 +95,6 @@ auto executeWildcard(
 
 namespace iresearch {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        by_wildcard implementation
-// -----------------------------------------------------------------------------
-
-DEFINE_FACTORY_DEFAULT(by_wildcard) // cppcheck-suppress unknownMacro
-
 field_visitor by_wildcard::visitor(bytes_ref term) {
   bstring buf;
   return executeWildcard(

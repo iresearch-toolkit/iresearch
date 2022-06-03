@@ -68,10 +68,14 @@ struct DocIdScorer : irs::sort {
 };
 
 // exists(name)
-auto MakeByColumnExistence(std::string_view name) {
-  auto filter = std::make_unique<irs::by_column_existence>();
-  *filter->mutable_field() = name;
-  return filter;
+auto MakeParentProvider(std::string_view name) {
+  return [name](const irs::sub_reader& segment) {
+    const auto* col = segment.column(name);
+
+    return col ? col->iterator(irs::ColumnHint::kMask |
+                               irs::ColumnHint::kPrevDoc)
+               : nullptr;
+  };
 }
 
 // name == value
@@ -147,11 +151,13 @@ auto MakeOptions(std::string_view parent, std::string_view parent_value,
   irs::ByNestedOptions opts;
   opts.match = match;
   opts.merge_type = merge_type;
-  opts.parent = std::make_unique<irs::by_term>();
-  auto& parent_filter = static_cast<irs::by_term&>(*opts.parent);
-  *parent_filter.mutable_field() = parent;
-  parent_filter.mutable_options()->term =
-      irs::ref_cast<irs::byte_type>(parent_value);
+  opts.parent = [parent](const irs::sub_reader& segment) {
+    const auto* col = segment.column(parent);
+
+    return col ? col->iterator(irs::ColumnHint::kMask |
+                               irs::ColumnHint::kPrevDoc)
+               : nullptr;
+  };
   opts.child = std::make_unique<irs::by_term>();
   auto& child_filter = static_cast<irs::by_term&>(*opts.child);
   *child_filter.mutable_field() = child;
@@ -316,7 +322,7 @@ TEST_P(NestedFilterTestCase, EmptyFilter) {
   {
     irs::ByNestedFilter filter;
     auto& opts = *filter.mutable_options();
-    opts.parent = std::make_unique<irs::all>();
+    opts.parent = MakeParentProvider("customer");
     CheckQuery(filter, Docs{}, Costs{0}, reader, SOURCE_LOCATION);
   }
 }
@@ -328,7 +334,7 @@ TEST_P(NestedFilterTestCase, JoinAny0) {
   irs::ByNestedFilter filter;
   auto& opts = *filter.mutable_options();
   opts.child = MakeByTerm("item", "Keyboard");
-  opts.parent = MakeByColumnExistence("customer");
+  opts.parent = MakeParentProvider("customer");
 
   CheckQuery(filter, Docs{1}, Costs{1}, reader, SOURCE_LOCATION);
 }
@@ -340,7 +346,7 @@ TEST_P(NestedFilterTestCase, JoinAny1) {
   irs::ByNestedFilter filter;
   auto& opts = *filter.mutable_options();
   opts.child = MakeByTerm("item", "Mouse");
-  opts.parent = MakeByColumnExistence("customer");
+  opts.parent = MakeParentProvider("customer");
 
   CheckQuery(filter, Docs{1, 9}, Costs{3}, reader, SOURCE_LOCATION);
 
@@ -412,7 +418,7 @@ TEST_P(NestedFilterTestCase, JoinAny2) {
   irs::ByNestedFilter filter;
   auto& opts = *filter.mutable_options();
   opts.child = MakeByTermAndRange("item", "Mouse", "price", 11);
-  opts.parent = MakeByColumnExistence("customer");
+  opts.parent = MakeParentProvider("customer");
 
   CheckQuery(filter, Docs{9}, Costs{3}, reader, SOURCE_LOCATION);
 }
@@ -424,7 +430,7 @@ TEST_P(NestedFilterTestCase, JoinAny3) {
   irs::ByNestedFilter filter;
   auto& opts = *filter.mutable_options();
   opts.child = MakeByNumericTerm("count", 2);
-  opts.parent = MakeByColumnExistence("customer");
+  opts.parent = MakeParentProvider("customer");
 
   CheckQuery(filter, Docs{1, 9, 16}, Costs{11}, reader, SOURCE_LOCATION);
 
@@ -484,7 +490,7 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
   irs::ByNestedFilter filter;
   auto& opts = *filter.mutable_options();
   opts.child = MakeByNumericTerm("count", 2);
-  opts.parent = MakeByColumnExistence("customer");
+  opts.parent = MakeParentProvider("customer");
   opts.match = irs::kMatchAll;
 
   CheckQuery(filter, Docs{16}, Costs{11}, reader, SOURCE_LOCATION);
@@ -539,7 +545,7 @@ TEST_P(NestedFilterTestCase, JoinMin0) {
   irs::ByNestedFilter filter;
   auto& opts = *filter.mutable_options();
   opts.child = MakeByNumericTerm("count", 2);
-  opts.parent = MakeByColumnExistence("customer");
+  opts.parent = MakeParentProvider("customer");
   opts.match = irs::Match{3};
 
   CheckQuery(filter, Docs{9, 16}, Costs{11}, reader, SOURCE_LOCATION);
@@ -597,7 +603,7 @@ TEST_P(NestedFilterTestCase, JoinRange0) {
   irs::ByNestedFilter filter;
   auto& opts = *filter.mutable_options();
   opts.child = MakeByNumericTerm("count", 2);
-  opts.parent = MakeByColumnExistence("customer");
+  opts.parent = MakeParentProvider("customer");
   opts.match = irs::Match{3, 5};
 
   CheckQuery(filter, Docs{9, 16}, Costs{11}, reader, SOURCE_LOCATION);
@@ -655,7 +661,7 @@ TEST_P(NestedFilterTestCase, JoinNone0) {
   irs::ByNestedFilter filter;
   auto& opts = *filter.mutable_options();
   opts.child = MakeByTerm("item", "Mouse");
-  opts.parent = MakeByColumnExistence("customer");
+  opts.parent = MakeParentProvider("customer");
   opts.match = irs::kMatchNone;
 
   CheckQuery(filter, Docs{7, 16}, Costs{3}, reader, SOURCE_LOCATION);

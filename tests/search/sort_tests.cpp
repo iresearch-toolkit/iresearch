@@ -115,7 +115,6 @@ struct aligned_scorer : public irs::sort {
 };
 
 struct dummy_scorer0 : public irs::sort {
-  static ptr make() { return std::make_unique<dummy_scorer0>(); }
   dummy_scorer0() : irs::sort(irs::type<dummy_scorer0>::get()) {}
   virtual prepared::ptr prepare() const override { return nullptr; }
 };
