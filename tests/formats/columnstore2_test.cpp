@@ -57,13 +57,33 @@ class columnstore2_test_case
     return name + "___" + std::to_string(static_cast<uint32_t>(version));
   }
 
+  irs::column_info column_info() const noexcept {
+    return {.compression = irs::type<irs::compression::none>::get(),
+            .options = {},
+            .encryption = has_encryption(),
+            .track_prev_doc = has_prev_doc()};
+  }
+
+  bool has_encryption() const noexcept {
+    return nullptr != dir().attributes().encryption();
+  }
+
   bool has_payload() const noexcept {
     return irs::ColumnHint::kNormal == (hint() & irs::ColumnHint::kMask);
   }
 
-  bool allow_prev_doc() const noexcept {
-    return version() >= irs::columnstore2::Version::kPrevDoc &&
-           irs::ColumnHint::kPrevDoc == (hint() & irs::ColumnHint::kPrevDoc);
+  bool has_prev_doc() const noexcept {
+    return irs::ColumnHint::kPrevDoc == (hint() & irs::ColumnHint::kPrevDoc);
+  }
+
+  ColumnProperty column_property(ColumnProperty base_props) const noexcept {
+    if (has_encryption()) {
+      base_props |= ColumnProperty::kEncrypt;
+    }
+    if (has_prev_doc()) {
+      base_props |= ColumnProperty::kPrevDoc;
+    }
+    return base_props;
   }
 
   irs::columnstore2::Version version() const noexcept {
@@ -88,7 +108,7 @@ class columnstore2_test_case
     };
 
     auto* prev = irs::get<irs::seek_prev>(it);
-    ASSERT_EQ(allow_prev_doc(), nullptr != prev && nullptr != *prev);
+    ASSERT_EQ(has_prev_doc(), nullptr != prev && nullptr != *prev);
     if (prev && *prev) {
       ASSERT_EQ(prev_doc(prev_it, it.value()), (*prev)());
     }
@@ -132,35 +152,32 @@ TEST_P(columnstore2_test_case, empty_columnstore) {
 TEST_P(columnstore2_test_case, empty_column) {
   constexpr irs::doc_id_t kMax = 1;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = kMax;
   state.name = meta.name;
 
-  const irs::column_info info{
-      irs::type<irs::compression::none>::get(), {}, has_encryption};
-
   irs::columnstore2::writer writer(
       version(), this->hint() == irs::ColumnHint::kConsolidation);
   writer.prepare(dir(), meta);
   [[maybe_unused]] auto [id0, handle0] =
-      writer.push_column(info, [](irs::bstring& out) {
+      writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
         out += 1;
         return "foobar";
       });
   [[maybe_unused]] auto [id1, handle1] =
-      writer.push_column(info, [](irs::bstring& out) {
+      writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
         out += 2;
         return irs::string_ref::NIL;
       });
-  [[maybe_unused]] auto [id2, handle2] = writer.push_column(info, [](auto&) {
-    // Must no be called
-    EXPECT_TRUE(false);
-    return irs::string_ref::NIL;
-  });
+  [[maybe_unused]] auto [id2, handle2] =
+      writer.push_column(column_info(), [](auto&) {
+        // Must no be called
+        EXPECT_TRUE(false);
+        return irs::string_ref::NIL;
+      });
   handle1(42).write_byte(42);
   ASSERT_TRUE(writer.commit(state));
 
@@ -176,9 +193,7 @@ TEST_P(columnstore2_test_case, empty_column) {
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::invalid(), header->min);
     ASSERT_EQ(ColumnType::kMask, header->type);
-    ASSERT_EQ(
-        has_encryption ? ColumnProperty::kEncrypt : ColumnProperty::kNormal,
-        header->props);
+    ASSERT_EQ(column_property(ColumnProperty::kNormal), header->props);
 
     auto column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -202,10 +217,7 @@ TEST_P(columnstore2_test_case, empty_column) {
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(42, header->min);
     ASSERT_EQ(ColumnType::kSparse, header->type);  // FIXME why sparse?
-    ASSERT_EQ(has_encryption
-                  ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
-                  : ColumnProperty::kNoName,
-              header->props);
+    ASSERT_EQ(column_property(ColumnProperty::kNoName), header->props);
 
     auto column = reader.column(1);
     ASSERT_NE(nullptr, column);
@@ -222,7 +234,7 @@ TEST_P(columnstore2_test_case, empty_column) {
     ASSERT_NE(nullptr, payload);
     auto* cost = irs::get<irs::cost>(*it);
     auto* prev = irs::get<irs::seek_prev>(*it);
-    ASSERT_EQ(allow_prev_doc(), prev && *prev);
+    ASSERT_EQ(has_prev_doc(), prev && *prev);
     ASSERT_NE(nullptr, cost);
     ASSERT_EQ(column->size(), cost->estimate());
     ASSERT_NE(nullptr, it);
@@ -246,7 +258,6 @@ TEST_P(columnstore2_test_case, empty_column) {
 TEST_P(columnstore2_test_case, sparse_mask_column) {
   constexpr irs::doc_id_t kMax = 1000000;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -257,9 +268,8 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
         version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
-    auto [id, column] = writer.push_column(
-        {irs::type<irs::compression::none>::get(), {}, has_encryption},
-        [](irs::bstring& out) {
+    auto [id, column] =
+        writer.push_column(column_info(), [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
           out += 42;
           return irs::string_ref::NIL;
@@ -283,10 +293,7 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
     ASSERT_NE(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
     ASSERT_EQ(ColumnType::kMask, header->type);
-    ASSERT_EQ(has_encryption
-                  ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
-                  : ColumnProperty::kNoName,
-              header->props);
+    ASSERT_EQ(column_property(ColumnProperty::kNoName), header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -322,7 +329,7 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; doc += 2) {
       auto it = column->iterator(hint());
       auto* prev = irs::get<irs::seek_prev>(*it);
-      ASSERT_EQ(allow_prev_doc(), prev && *prev);
+      ASSERT_EQ(has_prev_doc(), prev && *prev);
       auto* document = irs::get<irs::document>(*it);
       ASSERT_NE(nullptr, document);
       auto* payload = irs::get<irs::payload>(*it);
@@ -361,7 +368,7 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
 
       auto next_it = column->iterator(hint());
       auto* prev = irs::get<irs::seek_prev>(*next_it);
-      ASSERT_EQ(allow_prev_doc(), nullptr != prev && nullptr != *prev);
+      ASSERT_EQ(has_prev_doc(), nullptr != prev && nullptr != *prev);
       ASSERT_EQ(doc, next_it->seek(doc));
       for (auto next_doc = doc + 2; next_doc <= kMax; next_doc += 2) {
         ASSERT_TRUE(next_it->next());
@@ -397,7 +404,6 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
 TEST_P(columnstore2_test_case, sparse_column) {
   constexpr irs::doc_id_t kMax = 1000000;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -408,9 +414,8 @@ TEST_P(columnstore2_test_case, sparse_column) {
         version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
-    auto [id, column] = writer.push_column(
-        {irs::type<irs::compression::none>::get(), {}, has_encryption},
-        [](irs::bstring& out) {
+    auto [id, column] =
+        writer.push_column(column_info(), [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
           out += 42;
           return "foobaz";
@@ -437,9 +442,7 @@ TEST_P(columnstore2_test_case, sparse_column) {
     ASSERT_NE(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
     ASSERT_EQ(ColumnType::kSparse, header->type);
-    ASSERT_EQ(
-        has_encryption ? ColumnProperty::kEncrypt : ColumnProperty::kNormal,
-        header->props);
+    ASSERT_EQ(column_property(ColumnProperty::kNormal), header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -618,7 +621,6 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
   static constexpr auto kBlockSize = irs::sparse_bitmap_writer::kBlockSize;
   static constexpr auto kGapBegin = ((kMax / kBlockSize) - 4) * kBlockSize;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -629,9 +631,8 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
         version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
-    auto [id, column] = writer.push_column(
-        {irs::type<irs::compression::none>::get(), {}, has_encryption},
-        [](irs::bstring& out) {
+    auto [id, column] =
+        writer.push_column(column_info(), [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
           out += 42;
           return "foobarbaz";
@@ -675,9 +676,7 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
     ASSERT_EQ(ColumnType::kSparse, header->type);
-    ASSERT_EQ(
-        has_encryption ? ColumnProperty::kEncrypt : ColumnProperty::kNormal,
-        header->props);
+    ASSERT_EQ(column_property(ColumnProperty::kNormal), header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -802,7 +801,6 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
   static constexpr auto kBlockSize = irs::sparse_bitmap_writer::kBlockSize;
   static constexpr auto kTailBegin = (kMax / kBlockSize) * kBlockSize;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -822,9 +820,8 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
         version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
-    auto [id, column] = writer.push_column(
-        {irs::type<irs::compression::none>::get(), {}, has_encryption},
-        [](irs::bstring& out) {
+    auto [id, column] =
+        writer.push_column(column_info(), [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
           out += 42;
           return irs::string_ref::NIL;
@@ -848,10 +845,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
     ASSERT_EQ(ColumnType::kSparse, header->type);
-    ASSERT_EQ(has_encryption
-                  ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
-                  : ColumnProperty::kNoName,
-              header->props);
+    ASSERT_EQ(column_property(ColumnProperty::kNoName), header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -991,7 +985,6 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
   // last value has different length
   static constexpr auto kTailBegin = kMax - 1;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -1010,9 +1003,8 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
         version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
-    auto [id, column] = writer.push_column(
-        {irs::type<irs::compression::none>::get(), {}, has_encryption},
-        [](irs::bstring& out) {
+    auto [id, column] =
+        writer.push_column(column_info(), [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
           out += 42;
           return irs::string_ref::NIL;
@@ -1036,10 +1028,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
     ASSERT_EQ(ColumnType::kSparse, header->type);
-    ASSERT_EQ(has_encryption
-                  ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
-                  : ColumnProperty::kNoName,
-              header->props);
+    ASSERT_EQ(column_property(ColumnProperty::kNoName), header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -1178,7 +1167,6 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
 TEST_P(columnstore2_test_case, dense_mask_column) {
   constexpr irs::doc_id_t kMax = 1000000;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -1189,9 +1177,8 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
         version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
-    auto [id, column] = writer.push_column(
-        {irs::type<irs::compression::none>::get(), {}, has_encryption},
-        [](irs::bstring& out) {
+    auto [id, column] =
+        writer.push_column(column_info(), [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
           out += 42;
           return "foobar";
@@ -1215,9 +1202,7 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
     ASSERT_EQ(ColumnType::kMask, header->type);
-    ASSERT_EQ(
-        has_encryption ? ColumnProperty::kEncrypt : ColumnProperty::kNormal,
-        header->props);
+    ASSERT_EQ(column_property(ColumnProperty::kNormal), header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -1338,7 +1323,6 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
 TEST_P(columnstore2_test_case, dense_column) {
   constexpr irs::doc_id_t kMax = 1000000;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -1349,9 +1333,8 @@ TEST_P(columnstore2_test_case, dense_column) {
         version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
-    auto [id, column] = writer.push_column(
-        {irs::type<irs::compression::none>::get(), {}, has_encryption},
-        [](irs::bstring& out) {
+    auto [id, column] =
+        writer.push_column(column_info(), [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
           out += 42;
           return "foobar";
@@ -1378,9 +1361,7 @@ TEST_P(columnstore2_test_case, dense_column) {
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(irs::doc_limits::min(), header->min);
     ASSERT_EQ(ColumnType::kSparse, header->type);
-    ASSERT_EQ(
-        has_encryption ? ColumnProperty::kEncrypt : ColumnProperty::kNormal,
-        header->props);
+    ASSERT_EQ(column_property(ColumnProperty::kNormal), header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -1545,7 +1526,6 @@ TEST_P(columnstore2_test_case, dense_column_range) {
   constexpr irs::doc_id_t kMin = 500000;
   constexpr irs::doc_id_t kMax = 1000000;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -1556,9 +1536,8 @@ TEST_P(columnstore2_test_case, dense_column_range) {
         version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
-    auto [id, column] = writer.push_column(
-        {irs::type<irs::compression::none>::get(), {}, has_encryption},
-        [](irs::bstring& out) {
+    auto [id, column] =
+        writer.push_column(column_info(), [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
           out += 42;
           return irs::string_ref::NIL;
@@ -1585,10 +1564,7 @@ TEST_P(columnstore2_test_case, dense_column_range) {
     ASSERT_EQ(0, header->docs_index);
     ASSERT_EQ(kMin, header->min);
     ASSERT_EQ(ColumnType::kSparse, header->type);
-    ASSERT_EQ(has_encryption
-                  ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
-                  : ColumnProperty::kNoName,
-              header->props);
+    ASSERT_EQ(column_property(ColumnProperty::kNoName), header->props);
 
     auto* column = reader.column(0);
     ASSERT_NE(nullptr, column);
@@ -1727,7 +1703,6 @@ TEST_P(columnstore2_test_case, dense_column_range) {
 TEST_P(columnstore2_test_case, dense_fixed_length_column) {
   constexpr irs::doc_id_t kMax = 1000000;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -1739,9 +1714,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
     writer.prepare(dir(), meta);
 
     {
-      auto [id, column] = writer.push_column(
-          {irs::type<irs::compression::none>::get(), {}, has_encryption},
-          [](irs::bstring& out) {
+      auto [id, column] =
+          writer.push_column(column_info(), [](irs::bstring& out) {
             EXPECT_TRUE(out.empty());
             out += 42;
             return irs::string_ref::NIL;
@@ -1755,9 +1729,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
     }
 
     {
-      auto [id, column] = writer.push_column(
-          {irs::type<irs::compression::none>::get(), {}, has_encryption},
-          [](irs::bstring& out) {
+      auto [id, column] =
+          writer.push_column(column_info(), [](irs::bstring& out) {
             EXPECT_TRUE(out.empty());
             out += 43;
             return irs::string_ref::NIL;
@@ -1801,10 +1774,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
                     ? ColumnType::kDenseFixed
                     : ColumnType::kFixed,
                 header->type);
-      ASSERT_EQ(has_encryption
-                    ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
-                    : ColumnProperty::kNoName,
-                header->props);
+      ASSERT_EQ(column_property(ColumnProperty::kNoName), header->props);
 
       auto* column = reader.column(kColumnId);
       ASSERT_NE(nullptr, column);
@@ -1935,10 +1905,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
                     ? ColumnType::kDenseFixed
                     : ColumnType::kFixed,
                 header->type);
-      ASSERT_EQ(has_encryption
-                    ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
-                    : ColumnProperty::kNoName,
-                header->props);
+      ASSERT_EQ(column_property(ColumnProperty::kNoName), header->props);
 
       auto* column = reader.column(kColumnId);
       ASSERT_NE(nullptr, column);
@@ -2054,7 +2021,6 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
 TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
   constexpr irs::doc_id_t kMax = 1000000;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -2066,9 +2032,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
     writer.prepare(dir(), meta);
 
     {
-      auto [id, column] = writer.push_column(
-          {irs::type<irs::compression::none>::get(), {}, has_encryption},
-          [](irs::bstring& out) {
+      auto [id, column] =
+          writer.push_column(column_info(), [](irs::bstring& out) {
             EXPECT_TRUE(out.empty());
             out += 42;
             return irs::string_ref::NIL;
@@ -2083,9 +2048,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
 
     {
       // empty column has to be removed
-      auto [id, column] = writer.push_column(
-          {irs::type<irs::compression::none>::get(), {}, has_encryption},
-          [](auto&) {
+      [[maybe_unused]] auto [id, column] =
+          writer.push_column(column_info(), [](auto&) {
             // Must not be called
             EXPECT_FALSE(true);
             return irs::string_ref::NIL;
@@ -2124,10 +2088,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
                     ? ColumnType::kDenseFixed
                     : ColumnType::kFixed,
                 header->type);
-      ASSERT_EQ(has_encryption
-                    ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
-                    : ColumnProperty::kNoName,
-                header->props);
+      ASSERT_EQ(column_property(ColumnProperty::kNoName), header->props);
 
       auto* column = reader.column(kColumnId);
       ASSERT_NE(nullptr, column);
@@ -2243,7 +2204,6 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
 TEST_P(columnstore2_test_case, empty_columns) {
   constexpr irs::doc_id_t kMax = 1000000;
   const irs::segment_meta meta("test", nullptr);
-  const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -2256,9 +2216,8 @@ TEST_P(columnstore2_test_case, empty_columns) {
 
     {
       // empty column must be removed
-      auto [id, column] = writer.push_column(
-          {irs::type<irs::compression::none>::get(), {}, has_encryption},
-          [](auto&) {
+      [[maybe_unused]] auto [id, column] =
+          writer.push_column(column_info(), [](auto&) {
             // Must not be called
             EXPECT_FALSE(true);
             return irs::string_ref::NIL;
@@ -2267,9 +2226,8 @@ TEST_P(columnstore2_test_case, empty_columns) {
 
     {
       // empty column must be removed
-      auto [id, column] = writer.push_column(
-          {irs::type<irs::compression::none>::get(), {}, has_encryption},
-          [](auto&) {
+      [[maybe_unused]] auto [id, column] =
+          writer.push_column(column_info(), [](auto&) {
             // Must not be called
             EXPECT_FALSE(true);
             return irs::string_ref::NIL;
@@ -2288,9 +2246,6 @@ TEST_P(columnstore2_test_case, empty_columns) {
   ASSERT_EQ(0, count);
 }
 
-static_assert(irs::columnstore2::Version::kMax ==
-              irs::columnstore2::Version::kPrevDoc);
-
 INSTANTIATE_TEST_SUITE_P(
     columnstore2_test, columnstore2_test_case,
     ::testing::Combine(
@@ -2303,6 +2258,5 @@ INSTANTIATE_TEST_SUITE_P(
         ::testing::Values(irs::ColumnHint::kNormal,
                           irs::ColumnHint::kConsolidation,
                           irs::ColumnHint::kMask, irs::ColumnHint::kPrevDoc),
-        ::testing::Values(irs::columnstore2::Version::kMin,
-                          irs::columnstore2::Version::kPrevDoc)),
+        ::testing::Values(irs::columnstore2::Version::kMin)),
     &columnstore2_test_case::to_string);

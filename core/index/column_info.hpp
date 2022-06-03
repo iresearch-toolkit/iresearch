@@ -31,18 +31,10 @@
 namespace iresearch {
 
 struct column_info {
-  type_info compression;
-  compression::options options;
-  bool encryption;
-
-  bool operator==(const column_info& rhs) const noexcept {
-    return compression == rhs.compression && options == rhs.options &&
-           encryption == rhs.encryption;
-  }
-
-  bool operator!=(const column_info& rhs) const noexcept {
-    return !(*this == rhs);
-  }
+  type_info compression{irs::type<irs::compression::none>::get()};
+  compression::options options{};
+  bool encryption{};
+  bool track_prev_doc{};
 };
 
 using column_info_provider_t = std::function<column_info(const string_ref)>;

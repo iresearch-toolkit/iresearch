@@ -39,11 +39,19 @@ namespace iresearch {
 enum class SparseBitmapVersion {
   kMin = 0,
 
-  // Version support accessing to previous document
+  // Version supporting access to previous document
   kPrevDoc = 1,
 
   // Max supported version
   kMax = kPrevDoc
+};
+
+struct SparseBitmapWriterOptions {
+  explicit SparseBitmapWriterOptions(SparseBitmapVersion version) noexcept
+      : track_prev_doc{version >= SparseBitmapVersion::kPrevDoc} {}
+
+  // Track previous document
+  bool track_prev_doc;
 };
 
 class sparse_bitmap_writer {
@@ -95,15 +103,13 @@ class sparse_bitmap_writer {
 
   std::span<const block> index() const noexcept { return block_index_; }
 
+  SparseBitmapVersion version() const noexcept {
+    static_assert(SparseBitmapVersion::kMin == SparseBitmapVersion{false});
+    static_assert(SparseBitmapVersion::kPrevDoc == SparseBitmapVersion{true});
+    return SparseBitmapVersion{opts_.track_prev_doc};
+  }
+
  private:
-  struct options {
-    explicit options(SparseBitmapVersion version) noexcept
-        : track_prev_doc{version >= SparseBitmapVersion::kPrevDoc} {}
-
-    // Track previous document
-    bool track_prev_doc{true};
-  };
-
   void flush(uint32_t next_block) {
     const uint32_t popcnt = static_cast<uint32_t>(
         math::popcount(std::begin(bits_), std::end(bits_)));
@@ -151,7 +157,7 @@ class sparse_bitmap_writer {
   uint32_t block_{};  // last flushed block
   doc_id_t prev_value_{};
   doc_id_t last_in_flushed_block_{};
-  options opts_;
+  SparseBitmapWriterOptions opts_;
 };
 
 // Denotes a position of a value associated with a document.

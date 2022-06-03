@@ -119,6 +119,7 @@ void sparse_bitmap_test_case::test_rw_seek_random_stateless(
     ASSERT_NE(nullptr, stream);
 
     irs::sparse_bitmap_writer writer(*stream, version());
+    ASSERT_EQ(version(), writer.version());
 
     for (const auto& range : ranges) {
       irs::doc_id_t doc = range.first;
@@ -251,6 +252,7 @@ void sparse_bitmap_test_case::test_rw_seek_random(const range_type (&ranges)[N],
     ASSERT_NE(nullptr, stream);
 
     irs::sparse_bitmap_writer writer(*stream, version());
+    ASSERT_EQ(version(), writer.version());
 
     for (const auto& range : ranges) {
       irs::doc_id_t doc = range.first;
@@ -326,6 +328,7 @@ void sparse_bitmap_test_case::test_rw_next(const range_type (&ranges)[N]) {
     ASSERT_NE(nullptr, stream);
 
     irs::sparse_bitmap_writer writer(*stream, version());
+    ASSERT_EQ(version(), writer.version());
 
     for (const auto& range : ranges) {
       irs::doc_id_t doc = range.first;
@@ -444,6 +447,7 @@ void sparse_bitmap_test_case::test_rw_seek(const range_type (&ranges)[N]) {
     ASSERT_NE(nullptr, stream);
 
     irs::sparse_bitmap_writer writer(*stream, version());
+    ASSERT_EQ(version(), writer.version());
 
     for (const auto& range : ranges) {
       irs::doc_id_t doc = range.first;
@@ -548,6 +552,7 @@ void sparse_bitmap_test_case::test_rw_seek_next(const range_type (&ranges)[N]) {
     ASSERT_NE(nullptr, stream);
 
     irs::sparse_bitmap_writer writer(*stream, version());
+    ASSERT_EQ(version(), writer.version());
 
     for (const auto& range : ranges) {
       irs::doc_id_t doc = range.first;
@@ -716,6 +721,7 @@ TEST_P(sparse_bitmap_test_case, read_write_empty) {
     ASSERT_NE(nullptr, stream);
 
     irs::sparse_bitmap_writer writer(*stream, version());
+    ASSERT_EQ(version(), writer.version());
     ASSERT_TRUE(writer.index().empty());
     writer.finish();
 
@@ -758,6 +764,7 @@ TEST_P(sparse_bitmap_test_case, rw_sparse_blocks) {
     ASSERT_NE(nullptr, stream);
 
     irs::sparse_bitmap_writer writer(*stream, version());
+    ASSERT_EQ(version(), writer.version());
 
     for (irs::doc_id_t doc = irs::doc_limits::min() + 1;;) {
       writer.push_back(doc);
@@ -1095,6 +1102,7 @@ TEST_P(sparse_bitmap_test_case, insert_erase) {
     ASSERT_NE(nullptr, stream);
 
     irs::sparse_bitmap_writer writer(*stream, version());
+    ASSERT_EQ(version(), writer.version());
     ASSERT_TRUE(writer.erase(42));
     writer.push_back(42);
     ASSERT_TRUE(writer.erase(42));

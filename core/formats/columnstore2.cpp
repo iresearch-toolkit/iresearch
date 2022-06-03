@@ -40,15 +40,18 @@ using column_ptr = std::unique_ptr<column_reader>;
 using column_index = std::vector<sparse_bitmap_writer::block>;
 
 constexpr SparseBitmapVersion ToSparseBitmapVersion(
-    columnstore2::Version version) noexcept {
-  static_assert(static_cast<uint32_t>(SparseBitmapVersion::kMin) ==
-                static_cast<uint32_t>(columnstore2::Version::kMin));
-  static_assert(static_cast<uint32_t>(SparseBitmapVersion::kPrevDoc) ==
-                static_cast<uint32_t>(columnstore2::Version::kPrevDoc));
-  static_assert(static_cast<uint32_t>(SparseBitmapVersion::kMax) ==
-                static_cast<uint32_t>(columnstore2::Version::kMax));
+    const column_info& info) noexcept {
+  static_assert(SparseBitmapVersion::kPrevDoc == SparseBitmapVersion{1});
 
-  return SparseBitmapVersion{version};
+  return SparseBitmapVersion{info.track_prev_doc};
+}
+
+constexpr SparseBitmapVersion ToSparseBitmapVersion(
+    ColumnProperty prop) noexcept {
+  static_assert(SparseBitmapVersion::kPrevDoc == SparseBitmapVersion{1});
+
+  return SparseBitmapVersion{ColumnProperty::kPrevDoc ==
+                             (prop & ColumnProperty::kPrevDoc)};
 }
 
 std::string data_file_name(string_ref prefix) {
@@ -335,15 +338,13 @@ class column_base : public column_reader, private util::noncopyable {
  public:
   column_base(std::optional<std::string>&& name, bstring&& payload,
               column_header&& hdr, column_index&& index,
-              const index_input& stream, encryption::stream* cipher,
-              Version version)
+              const index_input& stream, encryption::stream* cipher)
       : stream_{&stream},
         cipher_{cipher},
         hdr_{std::move(hdr)},
         index_{std::move(index)},
         payload_{std::move(payload)},
-        name_{std::move(name)},
-        version_{ToSparseBitmapVersion(version)} {
+        name_{std::move(name)} {
     assert(!is_encrypted(hdr_) || cipher_);
   }
 
@@ -359,15 +360,14 @@ class column_base : public column_reader, private util::noncopyable {
 
   const column_header& header() const noexcept { return hdr_; }
 
-  bool support_prev_doc(ColumnHint hint) const noexcept {
-    return version_ >= SparseBitmapVersion::kPrevDoc &&
-           ColumnHint::kPrevDoc == (hint & ColumnHint::kPrevDoc);
+  bool track_prev_doc(ColumnHint hint) const noexcept {
+    return ColumnHint::kPrevDoc == (hint & ColumnHint::kPrevDoc);
   }
 
   sparse_bitmap_iterator::options bitmap_iterator_options(
       ColumnHint hint) const noexcept {
-    return {.version = version_,
-            .track_prev_doc = support_prev_doc(hint),
+    return {.version = ToSparseBitmapVersion(header().props),
+            .track_prev_doc = track_prev_doc(hint),
             .use_block_index = true,
             .blocks = index_};
   }
@@ -392,7 +392,6 @@ class column_base : public column_reader, private util::noncopyable {
   column_index index_;
   bstring payload_;
   std::optional<std::string> name_;
-  SparseBitmapVersion version_;
 };
 
 template<typename ValueReader>
@@ -402,7 +401,7 @@ doc_iterator::ptr column_base::make_iterator(ValueReader&& rdr,
   if (!index_in) {
     using iterator_type = range_column_iterator<ValueReader>;
 
-    return memory::make_managed<iterator_type>(header(), support_prev_doc(hint),
+    return memory::make_managed<iterator_type>(header(), track_prev_doc(hint),
                                                std::move(rdr));
   } else {
     index_in->seek(header().docs_index);
@@ -540,7 +539,7 @@ doc_iterator::ptr make_mask_iterator(const column_base& column,
 
   if (0 == header.docs_index) {
     return memory::make_managed<range_column_iterator<noop_value_reader>>(
-        header, column.support_prev_doc(hint));
+        header, column.track_prev_doc(hint));
   }
 
   auto dup = column.stream().reopen();
@@ -563,20 +562,18 @@ struct mask_column final : public column_base {
                          column_header&& hdr, column_index&& index,
                          index_input& /*index_in*/, const index_input& data_in,
                          compression::decompressor::ptr&& /*inflater*/,
-                         encryption::stream* cipher, Version version) {
+                         encryption::stream* cipher) {
     return memory::make_unique<mask_column>(std::move(name), std::move(payload),
                                             std::move(hdr), std::move(index),
-                                            data_in, cipher, version);
+                                            data_in, cipher);
   }
 
   mask_column(std::optional<std::string>&& name, bstring&& payload,
               column_header&& hdr, column_index&& index,
-              const index_input& data_in, encryption::stream* cipher,
-              Version version)
+              const index_input& data_in, encryption::stream* cipher)
       : column_base{std::move(name), std::move(payload),
                     std::move(hdr),  std::move(index),
-                    data_in,         cipher,
-                    version} {
+                    data_in,         cipher} {
     assert(ColumnType::kMask == header().type);
   }
 
@@ -593,18 +590,17 @@ class dense_fixed_length_column final : public column_base {
                          column_header&& hdr, column_index&& index,
                          index_input& index_in, const index_input& data_in,
                          compression::decompressor::ptr&& inflater,
-                         encryption::stream* cipher, Version version);
+                         encryption::stream* cipher);
 
   dense_fixed_length_column(std::optional<std::string>&& name,
                             bstring&& payload, column_header&& hdr,
                             column_index&& index, const index_input& data_in,
                             compression::decompressor::ptr&& inflater,
-                            encryption::stream* cipher, Version version,
-                            uint64_t data, uint64_t len)
+                            encryption::stream* cipher, uint64_t data,
+                            uint64_t len)
       : column_base{std::move(name), std::move(payload),
                     std::move(hdr),  std::move(index),
-                    data_in,         cipher,
-                    version},
+                    data_in,         cipher},
         inflater_{std::move(inflater)},
         data_{data},
         len_{len} {
@@ -641,14 +637,13 @@ class dense_fixed_length_column final : public column_base {
 /*static*/ column_ptr dense_fixed_length_column::read(
     std::optional<std::string>&& name, bstring&& payload, column_header&& hdr,
     column_index&& index, index_input& index_in, const index_input& data_in,
-    compression::decompressor::ptr&& inflater, encryption::stream* cipher,
-    Version version) {
+    compression::decompressor::ptr&& inflater, encryption::stream* cipher) {
   const uint64_t data = index_in.read_long();
   const uint64_t len = index_in.read_long();
 
   return memory::make_unique<dense_fixed_length_column>(
       std::move(name), std::move(payload), std::move(hdr), std::move(index),
-      data_in, std::move(inflater), cipher, version, data, len);
+      data_in, std::move(inflater), cipher, data, len);
 }
 
 doc_iterator::ptr dense_fixed_length_column::iterator(ColumnHint hint) const {
@@ -684,25 +679,24 @@ class fixed_length_column final : public column_base {
                          column_header&& hdr, column_index&& index,
                          index_input& index_in, const index_input& data_in,
                          compression::decompressor::ptr&& inflater,
-                         encryption::stream* cipher, Version version) {
+                         encryption::stream* cipher) {
     const uint64_t len = index_in.read_long();
     auto blocks = read_blocks_dense(hdr, index_in);
 
     return memory::make_unique<fixed_length_column>(
         std::move(name), std::move(payload), std::move(hdr), std::move(index),
-        data_in, std::move(inflater), cipher, version, std::move(blocks), len);
+        data_in, std::move(inflater), cipher, std::move(blocks), len);
   }
 
   fixed_length_column(std::optional<std::string>&& name, bstring&& payload,
                       column_header&& hdr, column_index&& index,
                       const index_input& data_in,
                       compression::decompressor::ptr&& inflater,
-                      encryption::stream* cipher, Version version,
+                      encryption::stream* cipher,
                       std::vector<uint64_t>&& blocks, uint64_t len)
       : column_base{std::move(name), std::move(payload),
                     std::move(hdr),  std::move(index),
-                    data_in,         cipher,
-                    version},
+                    data_in,         cipher},
         blocks_{blocks},
         inflater_{std::move(inflater)},
         len_{len} {
@@ -781,24 +775,22 @@ class sparse_column final : public column_base {
                          column_header&& hdr, column_index&& index,
                          index_input& index_in, const index_input& data_in,
                          compression::decompressor::ptr&& inflater,
-                         encryption::stream* cipher, Version version) {
+                         encryption::stream* cipher) {
     auto blocks = read_blocks_sparse(hdr, index_in);
 
     return memory::make_unique<sparse_column>(
         std::move(name), std::move(payload), std::move(hdr), std::move(index),
-        data_in, std::move(inflater), cipher, version, std::move(blocks));
+        data_in, std::move(inflater), cipher, std::move(blocks));
   }
 
   sparse_column(std::optional<std::string>&& name, bstring&& payload,
                 column_header&& hdr, column_index&& index,
                 const index_input& data_in,
                 compression::decompressor::ptr&& inflater,
-                encryption::stream* cipher, Version version,
-                std::vector<column_block>&& blocks)
+                encryption::stream* cipher, std::vector<column_block>&& blocks)
       : column_base{std::move(name), std::move(payload),
                     std::move(hdr),  std::move(index),
-                    data_in,         cipher,
-                    version},
+                    data_in,         cipher},
         blocks_{std::move(blocks)},
         inflater_{std::move(inflater)} {
     assert(header().docs_count);
@@ -936,7 +928,7 @@ using column_factory_f = column_ptr (*)(std::optional<std::string>&&, bstring&&,
                                         column_header&&, column_index&&,
                                         index_input&, const index_input&,
                                         compression::decompressor::ptr&&,
-                                        encryption::stream*, Version);
+                                        encryption::stream*);
 
 constexpr column_factory_f kFactories[]{
     &sparse_column::read, &mask_column::read, &fixed_length_column::read,
@@ -1114,6 +1106,10 @@ void column::finish(index_output& index_out) {
     hdr.props |= ColumnProperty::kEncrypt;
   }
 
+  if (docs_writer_.version() == SparseBitmapVersion::kPrevDoc) {
+    hdr.props |= ColumnProperty::kPrevDoc;
+  }
+
   if (fixed_length_) {
     if (0 == prev_avg_) {
       hdr.type = ColumnType::kMask;
@@ -1246,7 +1242,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info,
                       .cipher = cipher,
                       .u8buf = buf_.get(),
                       .consolidation = consolidation_,
-                      .version = ToSparseBitmapVersion(ver_)},
+                      .version = ToSparseBitmapVersion(info)},
       static_cast<field_id>(id), compression, std::move(finalizer),
       std::move(compressor));
 
@@ -1387,9 +1383,9 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
 
   const auto checksum = format_utils::checksum(*index_in);
 
-  const Version version{format_utils::check_header(
+  [[maybe_unused]] const auto version = format_utils::check_header(
       *index_in, writer::kIndexFormatName, static_cast<int32_t>(Version::kMin),
-      static_cast<int32_t>(Version::kMax))};
+      static_cast<int32_t>(Version::kMax));
 
   const field_id count = index_in->read_vint();
 
@@ -1460,10 +1456,9 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
 
     if (const size_t idx = static_cast<size_t>(hdr.type);
         IRS_LIKELY(idx < std::size(kFactories))) {
-      auto column =
-          kFactories[idx](std::move(name), std::move(payload), std::move(hdr),
-                          std::move(index), *index_in, *data_in_,
-                          std::move(inflater), data_cipher_.get(), version);
+      auto column = kFactories[idx](
+          std::move(name), std::move(payload), std::move(hdr), std::move(index),
+          *index_in, *data_in_, std::move(inflater), data_cipher_.get());
       assert(column);
 
       if (!sorted_columns.empty() &&
