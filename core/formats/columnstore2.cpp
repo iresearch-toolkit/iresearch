@@ -192,7 +192,7 @@ class range_column_iterator final : public resettable_doc_iterator,
     if (track_prev) {
       std::get<seek_prev>(attrs_).reset(
           [](const void* ctx) noexcept {
-            auto* self = reinterpret_cast<const range_column_iterator*>(ctx);
+            auto* self = static_cast<const range_column_iterator*>(ctx);
             const auto value = self->value();
             const auto max_doc = self->max_doc_;
 

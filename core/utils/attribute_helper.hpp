@@ -50,15 +50,14 @@ struct type<attribute_ptr<T>> : type<T> {};
 
 namespace detail {
 
-template<size_t I, typename... T>
+template<size_t I, typename Tuple>
 constexpr attribute_ptr<attribute> get_mutable_helper(
-    std::tuple<T...>& t, type_info::type_id id) noexcept {
-  auto& v = std::get<I>(t);
-  if (type<std::remove_reference_t<decltype(v)>>::id() == id) {
-    return v;
+    Tuple& t, type_info::type_id id) noexcept {
+  if (type<std::tuple_element_t<I, Tuple>>::id() == id) {
+    return std::get<I>(t);
   }
 
-  if constexpr (I < std::tuple_size<std::tuple<T...>>::value - 1) {
+  if constexpr (I + 1 < std::tuple_size_v<Tuple>) {
     return get_mutable_helper<I + 1>(t, id);
   } else {
     return {};
