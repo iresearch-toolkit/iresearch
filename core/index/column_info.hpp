@@ -33,8 +33,8 @@ namespace iresearch {
 struct column_info {
   type_info compression{irs::type<irs::compression::none>::get()};
   compression::options options{};
-  bool encryption{};
-  bool track_prev_doc{};
+  bool encryption{false};
+  bool track_prev_doc{false};
 };
 
 using column_info_provider_t = std::function<column_info(const string_ref)>;

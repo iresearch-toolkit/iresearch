@@ -40,7 +40,7 @@ enum BlockType : uint32_t {
   // Dense block is represented as a bitset container
   BT_DENSE = 0,
 
-  // Sprase block is represented as an array of values
+  // Sparse block is represented as an array of values
   BT_SPARSE,
 
   // Range block is represented as a [Min,Max] pair
@@ -347,7 +347,7 @@ struct container_iterator<BT_DENSE, true> {
  private:
   template<AccessType Access>
   static doc_id_t seek_prev(const void* arg) noexcept(Access != AT_STREAM) {
-    const auto* self = reinterpret_cast<const sparse_bitmap_iterator*>(arg);
+    const auto* self = static_cast<const sparse_bitmap_iterator*>(arg);
     const auto& ctx = self->ctx_.dense;
 
     const size_t offs = self->value() % bits_required<size_t>();
@@ -435,7 +435,7 @@ sparse_bitmap_iterator::sparse_bitmap_iterator(
   if (track_prev_doc_) {
     std::get<seek_prev>(attrs_).reset(
         [](const void* ctx) noexcept {
-          return *reinterpret_cast<const doc_id_t*>(ctx);
+          return *static_cast<const doc_id_t*>(ctx);
         },
         &prev_);
   }
@@ -461,7 +461,7 @@ void sparse_bitmap_iterator::read_block_header() {
   if (track_prev_doc_) {
     std::get<seek_prev>(attrs_).reset(
         [](const void* ctx) noexcept {
-          return *reinterpret_cast<const doc_id_t*>(ctx);
+          return *static_cast<const doc_id_t*>(ctx);
         },
         &prev_);
   }

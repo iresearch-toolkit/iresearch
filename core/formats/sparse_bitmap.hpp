@@ -179,10 +179,6 @@ class seek_prev : public attribute {
     return !static_cast<bool>(*this);
   }
 
-  constexpr bool operator!=(std::nullptr_t) const noexcept {
-    return !(*this == nullptr);
-  }
-
   doc_id_t operator()() const {
     assert(static_cast<bool>(*this));
     return func_(ctx_);

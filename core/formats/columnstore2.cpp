@@ -1246,15 +1246,15 @@ columnstore_writer::column_t writer::push_column(const column_info& info,
       static_cast<field_id>(id), compression, std::move(finalizer),
       std::move(compressor));
 
-  return std::make_pair(id, [&column](doc_id_t doc) -> column_output& {
-    // to avoid extra (and useless in our case) check for block index
-    // emptiness in 'writer::column::prepare', we disallow passing
-    // doc <= doc_limits::invalid() || doc >= doc_limits::eof()
-    assert(doc > doc_limits::invalid() && doc < doc_limits::eof());
+  return {id, [&column](doc_id_t doc) -> column_output& {
+            // to avoid extra (and useless in our case) check for block index
+            // emptiness in 'writer::column::prepare', we disallow passing
+            // doc <= doc_limits::invalid() || doc >= doc_limits::eof()
+            assert(doc > doc_limits::invalid() && doc < doc_limits::eof());
 
-    column.prepare(doc);
-    return column;
-  });
+            column.prepare(doc);
+            return column;
+          }};
 }
 
 bool writer::commit(const flush_state& /*state*/) {

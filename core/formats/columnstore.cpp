@@ -2012,7 +2012,7 @@ class sparse_column final : public column {
         *this,
         refs_.data(),
         refs_.data() + refs_.size() - 1, // -1 for upper bound
-        ColumnHint::kNormal == (hint & ColumnHint::kConsolidation));
+        ColumnHint::kConsolidation != (hint & ColumnHint::kConsolidation));
   }
 
  private:
@@ -2158,7 +2158,7 @@ class dense_fixed_offset_column final : public column {
 
     return memory::make_managed<iterator_t>(
         *this, refs_.data(), refs_.data() + refs_.size(),
-        ColumnHint::kNormal == (hint & ColumnHint::kConsolidation));
+        ColumnHint::kConsolidation != (hint & ColumnHint::kConsolidation));
   }
 
  private:
