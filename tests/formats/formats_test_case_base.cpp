@@ -70,16 +70,18 @@ irs::columnstore_writer::column_finalizer_f column_finalizer(
 
 irs::column_info format_test_case::lz4_column_info() const noexcept {
   return {
-      irs::type<irs::compression::lz4>::get(),
-      irs::compression::options{},
-      bool(dir().attributes().encryption()) };
+      .compression = irs::type<irs::compression::lz4>::get(),
+      .options = irs::compression::options{},
+      .encryption = bool(dir().attributes().encryption()),
+      .track_prev_doc = false };
 }
 
 irs::column_info format_test_case::none_column_info() const noexcept {
   return {
-      irs::type<irs::compression::lz4>::get(),
-      irs::compression::options{},
-      bool(dir().attributes().encryption()) };
+      .compression = irs::type<irs::compression::lz4>::get(),
+      .options = irs::compression::options{},
+      .encryption = bool(dir().attributes().encryption()),
+      .track_prev_doc = false };
 }
 
 void format_test_case::assert_frequency_and_positions(

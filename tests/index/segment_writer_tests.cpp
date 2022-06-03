@@ -37,14 +37,22 @@ class segment_writer_tests : public test_base {
  protected:
   static irs::column_info_provider_t default_column_info() {
     return [](const irs::string_ref&) {
-      return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
+      return irs::column_info{
+        .compression = irs::type<irs::compression::lz4>::get(),
+        .options = {},
+        .encryption = true,
+        .track_prev_doc = false };
     };
   }
 
   static irs::feature_info_provider_t default_feature_info() {
     return [](irs::type_info::type_id) {
       return std::make_pair(
-          irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true ),
+          irs::column_info{
+            .compression = irs::type<irs::compression::lz4>::get(),
+            .options = {},
+            .encryption = true,
+            .track_prev_doc = false },
           irs::feature_writer_factory_t{});
     };
   }
