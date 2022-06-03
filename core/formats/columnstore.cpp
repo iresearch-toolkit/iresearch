@@ -42,7 +42,7 @@
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/encryption.hpp"
-#include "utils/frozen_attributes.hpp"
+#include "utils/attribute_helper.hpp"
 #include "utils/iterator.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
@@ -892,8 +892,8 @@ columnstore_writer::column_t writer::push_column(
   irs::type_info compression;
 
   if (version_ > Version::MIN) {
-    compression = info.compression();
-    cipher = info.encryption() ? data_out_cipher_.get() : nullptr;
+    compression = info.compression;
+    cipher = info.encryption ? data_out_cipher_.get() : nullptr;
   } else {
     // we don't support encryption and custom
     // compression for 'FORMAT_MIN' version
@@ -901,14 +901,14 @@ columnstore_writer::column_t writer::push_column(
     cipher = nullptr;
   }
 
-  auto compressor = compression::get_compressor(compression, info.options());
+  auto compressor = compression::get_compressor(compression, info.options);
 
   if (!compressor) {
     compressor = compression::compressor::identity();
   }
 
   const auto id = columns_.size();
-  columns_.emplace_back(*this, id, info.compression(), std::move(finalizer),
+  columns_.emplace_back(*this, id, info.compression, std::move(finalizer),
                         std::move(compressor), cipher);
   auto& column = columns_.back();
 
@@ -2011,8 +2011,8 @@ class sparse_column final : public column {
     return memory::make_managed<iterator_t>(
         *this,
         refs_.data(),
-        refs_.data() + refs_.size() - 1,
-        hint == ColumnHint::kNormal); // -1 for upper bound
+        refs_.data() + refs_.size() - 1, // -1 for upper bound
+        ColumnHint::kConsolidation != (hint & ColumnHint::kConsolidation));
   }
 
  private:
@@ -2158,7 +2158,7 @@ class dense_fixed_offset_column final : public column {
 
     return memory::make_managed<iterator_t>(
         *this, refs_.data(), refs_.data() + refs_.size(),
-        hint == ColumnHint::kNormal);
+        ColumnHint::kConsolidation != (hint & ColumnHint::kConsolidation));
   }
 
  private:

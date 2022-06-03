@@ -27,7 +27,7 @@
 #include "analyzers.hpp"
 #include "token_stream.hpp"
 #include "token_attributes.hpp"
-#include "utils/frozen_attributes.hpp"
+#include "utils/attribute_helper.hpp"
 
 namespace iresearch {
 namespace analysis {
@@ -37,7 +37,7 @@ class segmentation_token_stream final
  public:
   static constexpr string_ref type_name() noexcept { return "segmentation"; }
   static void init(); // for triggering registration in a static build
-  
+
   struct options_t {
     enum class case_convert_t { LOWER, NONE, UPPER };
     enum class word_break_t { ALL, // All UAX29 words are reported

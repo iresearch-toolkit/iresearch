@@ -13998,8 +13998,8 @@ TEST_P(index_test_case, segment_options) {
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
-      ASSERT_EQ(expectedName.size(),
-                segment.docs_count());  // total count of documents
+      // total count of documents
+      ASSERT_EQ(expectedName.size(), segment.docs_count());
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator(irs::SeekMode::NORMAL);
@@ -14025,8 +14025,65 @@ TEST_P(index_test_case, segment_options) {
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
-      ASSERT_EQ(expectedName.size(),
-                segment.docs_count());  // total count of documents
+      // total count of documents
+      ASSERT_EQ(expectedName.size(), segment.docs_count());
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
+      ASSERT_TRUE(termItr->next());
+
+      for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
+           docsItr->next();) {
+        ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+                         actual_value->value.c_str())));
+      }
+
+      ASSERT_TRUE(expectedName.empty());
+    }
+  }
+
+  // no_flush
+  {
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
+                       doc1->stored.begin(), doc1->stored.end()));
+
+    irs::index_writer::segment_options options;
+    options.segment_docs_max = 1;
+    writer->options(options);
+
+    // prevent segment from being flushed
+    {
+      auto ctx = writer->documents();
+      auto doc = ctx.insert(true);
+
+      ASSERT_TRUE(
+        doc.insert<irs::Action::INDEX>(std::begin(doc2->indexed),
+                                       std::end(doc2->indexed)) &&
+        doc.insert<irs::Action::STORE>(std::begin(doc2->stored),
+                                       std::end(doc2->stored)));
+    }
+
+    ASSERT_TRUE(writer->commit());
+
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_NE(nullptr, reader);
+    ASSERT_EQ(1, reader.size());
+
+    // check 1st segment
+    {
+      std::unordered_set<irs::string_ref> expectedName = {"A", "B"};
+      auto& segment = reader[0];
+      const auto* column = segment.column("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
+      // total count of documents
+      ASSERT_EQ(expectedName.size(), segment.docs_count());
       auto terms = segment.field("same");
       ASSERT_NE(nullptr, terms);
       auto termItr = terms->iterator(irs::SeekMode::NORMAL);

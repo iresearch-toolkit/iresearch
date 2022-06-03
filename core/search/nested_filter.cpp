@@ -28,7 +28,7 @@
 #include "search/cost.hpp"
 #include "search/score.hpp"
 #include "search/sort.hpp"
-#include "utils/frozen_attributes.hpp"
+#include "utils/attribute_helper.hpp"
 #include "utils/type_limits.hpp"
 
 namespace iresearch {

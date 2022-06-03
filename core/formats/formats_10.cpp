@@ -52,7 +52,7 @@ extern "C" {
 
 #include "utils/bitpack.hpp"
 #include "utils/encryption.hpp"
-#include "utils/frozen_attributes.hpp"
+#include "utils/attribute_helper.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/memory.hpp"

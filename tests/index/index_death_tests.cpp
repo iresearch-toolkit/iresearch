@@ -244,7 +244,11 @@ class failing_directory : public tests::directory_mock {
 irs::feature_info_provider_t default_feature_info() {
   return [](irs::type_info::type_id) {
     return std::make_pair(
-        irs::column_info(irs::type<irs::compression::none>::get(), {}, true),
+        irs::column_info{
+          .compression = irs::type<irs::compression::none>::get(),
+          .options = {},
+          .encryption = true,
+          .track_prev_doc = false},
         irs::feature_writer_factory_t{});
   };
 }

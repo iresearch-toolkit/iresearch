@@ -28,7 +28,7 @@
 
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
-#include "utils/frozen_attributes.hpp"
+#include "utils/attribute_helper.hpp"
 #include "utils/snowball_stemmer.hpp"
 
 namespace iresearch {
