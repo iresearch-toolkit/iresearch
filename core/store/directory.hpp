@@ -44,7 +44,7 @@ struct index_lock : private util::noncopyable {
   DECLARE_IO_PTR(index_lock, unlock);
   DEFINE_FACTORY_INLINE(index_lock);
 
-  static const size_t LOCK_WAIT_FOREVER = std::numeric_limits<size_t>::max();
+  static constexpr size_t kLockWaitForever = std::numeric_limits<size_t>::max();
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief destructor 
