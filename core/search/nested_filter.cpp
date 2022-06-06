@@ -39,40 +39,6 @@ struct HasScoreHelper<M<NoopAggregator>> : std::false_type {};
 
 namespace {
 
-// 1 2 3 4 5 6 7
-//
-// c c c p c c p
-// const auto prev = parent->seek_previous(target - 1);
-// const auto firstChild = child->seek(prev + 1); // first target's child
-// return parent->seek(firstChild + 1)
-//
-//
-// p p c c c
-// p c c c p c c
-//
-
-// do {
-//   const auto parent = parent->seek(target)
-//   const auto firstChild = child->seek(parent + 1);
-//   return parent->seek_prev(firstChild - 1)
-//
-//   while (parent->next() && parent->value() < firstChild);
-//
-//   const auto next = parent->value();
-//   child->seek(parent + 1);
-//   if (child < next) {
-//     break;
-//   }
-//   target = next;
-// while (true);
-
-// FIXME(gnusi): need to figure out the previous parent before target
-
-// FIXME(gnusi):
-// - tests for MinMatcher
-// - add AvgMatcher
-// - implement backwards seek for columnstore
-
 using namespace irs;
 
 class NoneMatcher;
