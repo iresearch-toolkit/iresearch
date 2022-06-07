@@ -32,6 +32,47 @@
 
 namespace {
 
+struct ChildIterator : irs::doc_iterator {
+ public:
+  ChildIterator(irs::doc_iterator::ptr&& it, std::set<irs::doc_id_t> parents)
+      : it_{std::move(it)}, parents_{std::move(parents)} {
+    EXPECT_NE(nullptr, it_);
+  }
+
+  irs::doc_id_t value() const { return it_->value(); }
+
+  bool next() {
+    while (1) {
+      if (!it_->next()) {
+        return false;
+      }
+
+      if (!parents_.contains(it_->value())) {
+        return true;
+      }
+    }
+  }
+
+  irs::doc_id_t seek(irs::doc_id_t target) {
+    const auto doc = it_->seek(target);
+
+    if (!parents_.contains(doc)) {
+      return doc;
+    }
+
+    next();
+    return value();
+  }
+
+  irs::attribute* get_mutable(irs::type_info::type_id id) noexcept {
+    return it_->get_mutable(id);
+  }
+
+ private:
+  irs::doc_iterator::ptr it_;
+  std::set<irs::doc_id_t> parents_;
+};
+
 struct DocIdScorer : irs::sort {
   DocIdScorer() : irs::sort(irs::type<DocIdScorer>::get()) {}
 
@@ -504,10 +545,12 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
   opts.child = MakeByNumericTerm("count", 2);
   opts.parent = MakeParentProvider("customer");
   opts.match = [](const irs::sub_reader& segment) -> irs::doc_iterator::ptr {
-    return irs::all().prepare(segment)->execute(segment);
+    return irs::memory::make_managed<ChildIterator>(
+        irs::all().prepare(segment)->execute(segment),
+        std::set{6U, 13U, 15U, 20U});
   };
 
-  CheckQuery(filter, Docs{20}, Costs{11}, reader, SOURCE_LOCATION);
+  CheckQuery(filter, Docs{13, 20}, Costs{11}, reader, SOURCE_LOCATION);
 
   {
     opts.merge_type = irs::sort::MergeType::kMax;
@@ -516,7 +559,8 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 20, {20.f, 20.f}},
+        {Next{}, 13, {12.f, 12.f}},
+        {Next{}, 20, {19.f, 19.f}},
         {Next{}, irs::doc_limits::eof()},
     };
 
@@ -530,7 +574,8 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 20, {17.f, 17.f}},
+        {Next{}, 13, {9.f, 9.f}},
+        {Next{}, 20, {14.f, 14.f}},
         {Next{}, irs::doc_limits::eof()},
     };
 
@@ -544,6 +589,7 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
+        {Next{}, 13, {}},
         {Next{}, 20, {}},
         {Next{}, irs::doc_limits::eof()},
     };

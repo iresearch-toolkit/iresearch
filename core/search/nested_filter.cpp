@@ -290,15 +290,18 @@ class PredMatcher : public Merger,
   }
 
   bool Accept(doc_id_t first_child, doc_id_t parent_doc) {
-    if (first_child >= parent_doc || first_child != pred_->seek(first_child)) {
+    auto& self = static_cast<JoinType&>(*this);
+    auto& child = *self.child_;
+
+    if (first_child >= parent_doc ||
+        first_child != pred_->seek(self.FirstChild())) {
+      child.seek(parent_doc);
       return false;
     }
 
-    auto& self = static_cast<JoinType&>(*this);
     auto& merger = static_cast<Merger&>(*this);
     auto& buf = static_cast<BufferType&>(*this);
 
-    auto& child = *self.child_;
     const auto* child_doc = self.child_doc_;
     const auto& child_score = *self.child_score_;
 
