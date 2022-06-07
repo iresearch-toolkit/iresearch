@@ -175,7 +175,7 @@ class range_column_iterator final : public resettable_doc_iterator,
 
   // FIXME(gnusi):
   //  * don't expose payload for noop_value_reader?
-  //  * don't expose seek_prev if not requested?
+  //  * don't expose prev_doc if not requested?
   using attributes = std::tuple<document, cost, score, prev_doc, irs::payload>;
 
  public:
