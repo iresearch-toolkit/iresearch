@@ -148,7 +148,7 @@ class ChildToParentJoin final : public doc_iterator, private Matcher {
     assert(!doc_limits::eof(parent));
 
     for (doc_id_t first_child = child_->seek(FirstChild());
-         !Matcher::Accept(first_child, parent);
+         (first_child = Matcher::Accept(first_child, parent));
          first_child = child_->seek(FirstChild())) {
       parent = parent_->seek(first_child);
 
@@ -222,14 +222,10 @@ class NoneMatcher : public NoopAggregator {
   NoneMatcher(Merger&& merger, score_t none_boost) noexcept
       : boost_{none_boost}, size_{merger.size()} {}
 
-  bool Accept(doc_id_t& child, doc_id_t parent) const noexcept {
+  constexpr doc_id_t Accept(const doc_id_t child,
+                            const doc_id_t parent) const noexcept {
     assert(!doc_limits::eof(parent));
-    if (child < parent) {
-      child = parent + 1;
-      return false;
-    }
-
-    return true;
+    return child < parent ? parent + 1 : 0;
   }
 
   ScoreFunction PrepareScore() const {
@@ -248,8 +244,10 @@ class AnyMatcher : public Merger, private score_ctx {
 
   explicit AnyMatcher(Merger&& merger) noexcept : Merger{std::move(merger)} {}
 
-  constexpr bool Accept(doc_id_t child, doc_id_t parent) const noexcept {
-    return child < parent;
+  constexpr doc_id_t Accept(const doc_id_t child,
+                            const doc_id_t parent) const noexcept {
+    assert(!doc_limits::eof(parent));
+    return child < parent ? 0 : child;
   }
 
   ScoreFunction PrepareScore() {
@@ -295,18 +293,20 @@ class PredMatcher : public Merger,
     assert(pred_doc_);
   }
 
-  bool Accept(doc_id_t& first_child, doc_id_t parent_doc) {
-    assert(!doc_limits::eof(parent_doc));
+  doc_id_t Accept(const doc_id_t first_child, const doc_id_t parent) {
+    assert(!doc_limits::eof(parent));
 
-    auto& self = static_cast<JoinType&>(*this);
-    auto& child = *self.child_;
-
-    if (first_child >= parent_doc ||
-        first_child != pred_->seek(self.FirstChild())) {
-      first_child = parent_doc + 1;
-      return false;
+    if (first_child > parent) {
+      return first_child;
     }
 
+    auto& self = static_cast<JoinType&>(*this);
+
+    if (first_child != pred_->seek(self.FirstChild())) {
+      return parent + 1;
+    }
+
+    auto& child = *self.child_;
     auto& merger = static_cast<Merger&>(*this);
     auto& buf = static_cast<BufferType&>(*this);
 
@@ -316,10 +316,9 @@ class PredMatcher : public Merger,
     if constexpr (HasScore_v<Merger>) {
       child_score(buf.data());
     }
-    while (child.next() && child_doc->value < parent_doc) {
+    while (child.next() && child_doc->value < parent) {
       if (!pred_->next() || pred_doc_->value != child_doc->value) {
-        first_child = parent_doc + 1;
-        return false;
+        return parent + 1;
       }
 
       if constexpr (HasScore_v<Merger>) {
@@ -328,7 +327,7 @@ class PredMatcher : public Merger,
       }
     }
 
-    return true;
+    return 0;
   }
 
   ScoreFunction PrepareScore() noexcept {
@@ -362,11 +361,11 @@ class RangeMatcher : public Merger,
         BufferType{static_cast<const Merger&>(*this)},
         match_{match} {}
 
-  bool Accept(doc_id_t& first_child, doc_id_t parent_doc) {
-    assert(!doc_limits::eof(parent_doc));
+  doc_id_t Accept(const doc_id_t first_child, const doc_id_t parent) {
+    assert(!doc_limits::eof(parent));
 
-    if (first_child >= parent_doc) {
-      return false;
+    if (first_child > parent) {
+      return first_child;
     }
 
     auto& self = static_cast<JoinType&>(*this);
@@ -385,10 +384,9 @@ class RangeMatcher : public Merger,
     if constexpr (HasScore_v<Merger>) {
       child_score(buf.data());
     }
-    while (child.next() && child_doc->value < parent_doc) {
+    while (child.next() && child_doc->value < parent) {
       if (++count > max) {
-        first_child = parent_doc + 1;
-        return false;
+        return parent + 1;
       }
 
       if constexpr (HasScore_v<Merger>) {
@@ -397,7 +395,7 @@ class RangeMatcher : public Merger,
       }
     }
 
-    return min <= count;
+    return min <= count ? 0 : parent + 1;
   }
 
   ScoreFunction PrepareScore() noexcept {
@@ -430,9 +428,11 @@ class MinMatcher : public Merger,
         BufferType{static_cast<const Merger&>(*this)},
         min_{min} {}
 
-  bool Accept(doc_id_t& first_child, doc_id_t parent_doc) {
-    if (first_child >= parent_doc) {
-      return false;
+  doc_id_t Accept(const doc_id_t first_child, const doc_id_t parent) {
+    assert(!doc_limits::eof(parent));
+
+    if (first_child > parent) {
+      return first_child;
     }
 
     auto& self = static_cast<JoinType&>(*this);
@@ -448,25 +448,20 @@ class MinMatcher : public Merger,
     if constexpr (HasScore_v<Merger>) {
       child_score(buf.data());
     }
-    while (child.next() && child_doc->value < parent_doc) {
+    while (child.next() && child_doc->value < parent) {
       if constexpr (HasScore_v<Merger>) {
         child_score(merger.temp());
         merger(buf.data(), merger.temp());
       }
 
       if (!count) {
-        return true;
+        return 0;
       }
 
       --count;
     }
 
-    if (count) {
-      first_child = parent_doc + 1;
-      return false;
-    }
-
-    return true;
+    return count ? parent + 1 : 0;
   }
 
   ScoreFunction PrepareScore() noexcept {
