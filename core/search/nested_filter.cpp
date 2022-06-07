@@ -430,7 +430,7 @@ class MinMatcher : public Merger,
         BufferType{static_cast<const Merger&>(*this)},
         min_{min} {}
 
-  bool Accept(doc_id_t first_child, doc_id_t parent_doc) {
+  bool Accept(doc_id_t& first_child, doc_id_t parent_doc) {
     if (first_child >= parent_doc) {
       return false;
     }
@@ -461,7 +461,12 @@ class MinMatcher : public Merger,
       --count;
     }
 
-    return 0 == count;
+    if (count) {
+      first_child = parent_doc + 1;
+      return false;
+    }
+
+    return true;
   }
 
   ScoreFunction PrepareScore() noexcept {
@@ -479,9 +484,12 @@ class MinMatcher : public Merger,
               const auto* child_doc = self.child_doc_;
               const auto& child_score = *self.child_score_;
 
-              while (child.next() && child_doc->value < parent_doc) {
+              while (child_doc->value < parent_doc) {
                 child_score(merger.temp());
                 merger(buf.data(), merger.temp());
+                if (!child.next()) {
+                  break;
+                }
               }
 
               std::memcpy(res, buf.data(), merger.byte_size());
