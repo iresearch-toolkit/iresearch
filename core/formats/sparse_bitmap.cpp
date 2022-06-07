@@ -335,7 +335,7 @@ struct container_iterator<BT_DENSE, true> {
 
     if (std::get<value_index>(self->attrs_).value != self->index_) {
       self->seek_func_ = &container_iterator<BT_DENSE, false>::seek<Access>;
-      std::get<irs::seek_prev>(self->attrs_).reset(&seek_prev<Access>, self);
+      std::get<irs::prev_doc>(self->attrs_).reset(&seek_prev<Access>, self);
     }
 
     return res;
@@ -430,7 +430,7 @@ sparse_bitmap_iterator::sparse_bitmap_iterator(
   assert(in_);
 
   if (track_prev_doc_) {
-    std::get<seek_prev>(attrs_).reset(
+    std::get<prev_doc>(attrs_).reset(
         [](const void* ctx) noexcept {
           return *static_cast<const doc_id_t*>(ctx);
         },
@@ -456,7 +456,7 @@ void sparse_bitmap_iterator::read_block_header() {
   }
 
   if (track_prev_doc_) {
-    std::get<seek_prev>(attrs_).reset(
+    std::get<prev_doc>(attrs_).reset(
         [](const void* ctx) noexcept {
           return *static_cast<const doc_id_t*>(ctx);
         },

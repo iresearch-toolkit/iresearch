@@ -176,7 +176,7 @@ class range_column_iterator final : public resettable_doc_iterator,
   // FIXME(gnusi):
   //  * don't expose payload for noop_value_reader?
   //  * don't expose seek_prev if not requested?
-  using attributes = std::tuple<document, cost, score, seek_prev, irs::payload>;
+  using attributes = std::tuple<document, cost, score, prev_doc, irs::payload>;
 
  public:
   template<typename... Args>
@@ -190,7 +190,7 @@ class range_column_iterator final : public resettable_doc_iterator,
     assert(!doc_limits::eof(max_doc_));
     std::get<cost>(attrs_).reset(header.docs_count);
     if (track_prev) {
-      std::get<seek_prev>(attrs_).reset(
+      std::get<prev_doc>(attrs_).reset(
           [](const void* ctx) noexcept {
             auto* self = static_cast<const range_column_iterator*>(ctx);
             const auto value = self->value();
@@ -278,7 +278,7 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
 
   using attributes =
       std::tuple<attribute_ptr<document>, cost, attribute_ptr<score>,
-                 attribute_ptr<seek_prev>, irs::payload>;
+                 attribute_ptr<prev_doc>, irs::payload>;
 
  public:
   template<typename... Args>
@@ -291,8 +291,8 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
     std::get<attribute_ptr<document>>(attrs_) =
         irs::get_mutable<document>(&bitmap_);
     std::get<attribute_ptr<score>>(attrs_) = irs::get_mutable<score>(&bitmap_);
-    std::get<attribute_ptr<seek_prev>>(attrs_) =
-        irs::get_mutable<seek_prev>(&bitmap_);
+    std::get<attribute_ptr<prev_doc>>(attrs_) =
+        irs::get_mutable<prev_doc>(&bitmap_);
   }
 
   virtual attribute* get_mutable(

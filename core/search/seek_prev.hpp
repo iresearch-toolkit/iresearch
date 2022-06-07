@@ -28,9 +28,9 @@ namespace iresearch {
 
 // Provides an access to previous document before the current one.
 // Undefined after iterator reached EOF.
-class seek_prev : public attribute {
+class prev_doc : public attribute {
  public:
-  using seek_prev_f = doc_id_t (*)(const void*);
+  using prev_doc_f = doc_id_t (*)(const void*);
 
   static constexpr string_ref type_name() noexcept { return "prev_doc"; }
 
@@ -45,13 +45,13 @@ class seek_prev : public attribute {
     return func_(ctx_);
   }
 
-  void reset(seek_prev_f func, void* ctx) noexcept {
+  void reset(prev_doc_f func, void* ctx) noexcept {
     func_ = func;
     ctx_ = ctx;
   }
 
  private:
-  seek_prev_f func_{};
+  prev_doc_f func_{};
   void* ctx_{};
 };
 

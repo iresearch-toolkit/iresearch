@@ -261,7 +261,7 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
     };
   };
 
-  using attributes = std::tuple<document, value_index, seek_prev, cost, score>;
+  using attributes = std::tuple<document, value_index, prev_doc, cost, score>;
 
   explicit sparse_bitmap_iterator(memory::managed_ptr<index_input>&& in,
                                   const options& opts);

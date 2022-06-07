@@ -54,8 +54,11 @@ static constexpr Match kMatchAny{1};
 using DocIteratorProvider =
     std::function<doc_iterator::ptr(const irs::sub_reader&)>;
 
+// Options for ByNestedFilter filter
 struct ByNestedOptions {
   using filter_type = ByNestedFilter;
+
+  using MatchType = std::variant<Match, DocIteratorProvider>;
 
   // Parent filter.
   DocIteratorProvider parent;
@@ -64,7 +67,7 @@ struct ByNestedOptions {
   filter::ptr child;
 
   // Match type: range or predicate
-  std::variant<Match, DocIteratorProvider> match{kMatchAny};
+  MatchType match{kMatchAny};
 
   // Score merge type.
   sort::MergeType merge_type{sort::MergeType::kSum};
@@ -103,6 +106,7 @@ struct ByNestedOptions {
   }
 };
 
+// Filter is capable of finding parents by the corresponding child filter.
 class ByNestedFilter final : public filter_with_options<ByNestedOptions> {
  public:
   using filter::prepare;

@@ -41,7 +41,8 @@ namespace {
 
 using namespace irs;
 
-const Order& GetOrder(const auto& match, const Order& ord) noexcept {
+const Order& GetOrder(const ByNestedOptions::MatchType& match,
+                      const Order& ord) noexcept {
   return std::visit(
       [&]<typename T>(const T& v) noexcept -> const Order& {
         static_assert(std::is_same_v<T, Match> ||
@@ -55,7 +56,7 @@ const Order& GetOrder(const auto& match, const Order& ord) noexcept {
       match);
 }
 
-bool IsValid(const auto& match) noexcept {
+bool IsValid(const ByNestedOptions::MatchType& match) noexcept {
   return std::visit(
       []<typename T>(const T& v) {
         static_assert(std::is_same_v<T, Match> ||
@@ -77,7 +78,7 @@ class NoneMatcher;
 template<typename Matcher>
 class ChildToParentJoin final : public doc_iterator, private Matcher {
  public:
-  ChildToParentJoin(doc_iterator::ptr&& parent, const seek_prev& prev_parent,
+  ChildToParentJoin(doc_iterator::ptr&& parent, const prev_doc& prev_parent,
                     doc_iterator::ptr&& child, Matcher&& matcher) noexcept
       : Matcher{std::move(matcher)},
         parent_{std::move(parent)},
@@ -165,7 +166,7 @@ class ChildToParentJoin final : public doc_iterator, private Matcher {
   doc_iterator::ptr parent_;
   doc_iterator::ptr child_;
   Attributes attrs_;
-  const seek_prev* prev_parent_;
+  const prev_doc* prev_parent_;
   const score* child_score_;
   const document* child_doc_;
 };
@@ -497,7 +498,7 @@ class MinMatcher : public Merger,
 
 template<typename A, typename Visitor>
 auto ResolveMatchType(const sub_reader& segment,
-                      const std::variant<Match, DocIteratorProvider>& match,
+                      const ByNestedOptions::MatchType& match,
                       score_t none_boost, A&& aggregator, Visitor&& visitor) {
   return std::visit(
       [&]<typename T>(const T& v) {
@@ -527,8 +528,7 @@ auto ResolveMatchType(const sub_reader& segment,
 class ByNesterQuery final : public filter::prepared {
  public:
   ByNesterQuery(DocIteratorProvider parent, prepared::ptr&& child,
-                sort::MergeType merge_type,
-                std::variant<Match, DocIteratorProvider> match,
+                sort::MergeType merge_type, ByNestedOptions::MatchType match,
                 score_t none_boost) noexcept
       : parent_{std::move(parent)},
         child_{std::move(child)},
@@ -547,7 +547,7 @@ class ByNesterQuery final : public filter::prepared {
  private:
   DocIteratorProvider parent_;
   prepared::ptr child_;
-  std::variant<Match, DocIteratorProvider> match_;
+  ByNestedOptions::MatchType match_;
   sort::MergeType merge_type_;
   score_t none_boost_;
 };
@@ -562,7 +562,7 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
     return doc_iterator::empty();
   }
 
-  const auto* prev = irs::get<irs::seek_prev>(*parent);
+  const auto* prev = irs::get<irs::prev_doc>(*parent);
 
   if (IRS_UNLIKELY(!prev || !*prev)) {
     return doc_iterator::empty();
