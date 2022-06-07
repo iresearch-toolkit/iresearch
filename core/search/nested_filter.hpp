@@ -50,7 +50,6 @@ struct Match {
 
 static constexpr Match kMatchNone{0, 0};
 static constexpr Match kMatchAny{1};
-static constexpr Match kMatchAll{doc_limits::eof()};
 
 using DocIteratorProvider =
     std::function<doc_iterator::ptr(const irs::sub_reader&)>;
@@ -64,8 +63,8 @@ struct ByNestedOptions {
   // Child filter.
   filter::ptr child;
 
-  // match type
-  Match match{kMatchAny};
+  // Match type: range or predicate
+  std::variant<Match, DocIteratorProvider> match{kMatchAny};
 
   // Score merge type.
   sort::MergeType merge_type{sort::MergeType::kSum};
@@ -75,13 +74,28 @@ struct ByNestedOptions {
       return ((!lhs && !rhs) || (lhs && rhs && *lhs == *rhs));
     };
 
-    return match == rhs.match && merge_type == rhs.merge_type &&
-           equal(child.get(), rhs.child.get());
+    return match.index() == rhs.match.index() &&
+           std::visit(
+               [&]<typename T>(const T& v) noexcept -> bool {
+                 if constexpr (std::is_same_v<T, Match>) {
+                   return v == std::get<T>(rhs.match);
+                 }
+                 return true;
+               },
+               match) &&
+           merge_type == rhs.merge_type && equal(child.get(), rhs.child.get());
   }
 
   size_t hash() const noexcept {
-    size_t hash = std::hash<doc_id_t>{}(match.Min);
-    hash = hash_combine(hash, std::hash<doc_id_t>{}(match.Max));
+    size_t hash = std::visit(
+        []<typename T>(const T& v) noexcept -> size_t {
+          if constexpr (std::is_same_v<T, Match>) {
+            return hash_combine(std::hash<doc_id_t>{}(v.Min),
+                                std::hash<doc_id_t>{}(v.Max));
+          }
+          return 0;
+        },
+        match);
     if (child) {
       hash = hash_combine(hash, child->hash());
     }

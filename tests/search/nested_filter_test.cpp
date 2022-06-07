@@ -171,9 +171,6 @@ TEST(NestedFilterTest, CheckMatch) {
   static_assert(irs::Match{0, 0} == irs::kMatchNone);
   static_assert(irs::Match{1, irs::doc_limits::eof()} == irs::kMatchAny &&
                 irs::kMatchAny.IsMinMatch());
-  static_assert(irs::Match{irs::doc_limits::eof(), irs::doc_limits::eof()} ==
-                    irs::kMatchAll &&
-                !irs::kMatchAll.IsMinMatch());
 }
 
 TEST(NestedFilterTest, CheckOptions) {
@@ -182,7 +179,8 @@ TEST(NestedFilterTest, CheckOptions) {
     ASSERT_EQ(nullptr, opts.parent);
     ASSERT_EQ(nullptr, opts.child);
     ASSERT_EQ(irs::sort::MergeType::kSum, opts.merge_type);
-    ASSERT_EQ(irs::kMatchAny, opts.match);
+    ASSERT_NE(nullptr, std::get_if<irs::Match>(&opts.match));
+    ASSERT_EQ(irs::kMatchAny, std::get<irs::Match>(opts.match));
     ASSERT_EQ(opts, irs::ByNestedOptions{});
     ASSERT_EQ(opts.hash(), irs::ByNestedOptions{}.hash());
   }
@@ -202,7 +200,7 @@ TEST(NestedFilterTest, CheckOptions) {
     ASSERT_NE(opts0, MakeOptions("parent", "child", "442",
                                  irs::sort::MergeType::kMax));
     ASSERT_NE(opts0, MakeOptions("parent", "child", "442",
-                                 irs::sort::MergeType::kSum, irs::kMatchAll));
+                                 irs::sort::MergeType::kSum, irs::kMatchNone));
   }
 }
 
@@ -505,7 +503,9 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
   auto& opts = *filter.mutable_options();
   opts.child = MakeByNumericTerm("count", 2);
   opts.parent = MakeParentProvider("customer");
-  opts.match = irs::kMatchAll;
+  opts.match = [](const irs::sub_reader& segment) -> irs::doc_iterator::ptr {
+    return irs::all().prepare(segment)->execute(segment);
+  };
 
   CheckQuery(filter, Docs{20}, Costs{11}, reader, SOURCE_LOCATION);
 

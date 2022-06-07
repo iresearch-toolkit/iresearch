@@ -41,6 +41,37 @@ namespace {
 
 using namespace irs;
 
+const Order& GetOrder(const auto& match, const Order& ord) noexcept {
+  return std::visit(
+      [&]<typename T>(const T& v) noexcept -> const Order& {
+        static_assert(std::is_same_v<T, Match> ||
+                      std::is_same_v<T, DocIteratorProvider>);
+
+        if constexpr (std::is_same_v<T, Match>) {
+          return kMatchNone == v ? Order::kUnordered : ord;
+        }
+        return ord;
+      },
+      match);
+}
+
+bool IsValid(const auto& match) noexcept {
+  return std::visit(
+      []<typename T>(const T& v) {
+        static_assert(std::is_same_v<T, Match> ||
+                      std::is_same_v<T, DocIteratorProvider>);
+
+        if constexpr (std::is_same_v<T, Match>) {
+          return v.Min <= v.Max;
+        } else if constexpr (std::is_same_v<T, DocIteratorProvider>) {
+          return nullptr != v;
+        } else {
+          return false;
+        }
+      },
+      match);
+}
+
 class NoneMatcher;
 
 template<typename Matcher>
@@ -239,19 +270,27 @@ class AnyMatcher : public Merger, private score_ctx {
 };
 
 template<typename Merger>
-class AllMatcher : public Merger,
-                   private ScoreBuffer<Merger>,
-                   private score_ctx {
+class PredMatcher : public Merger,
+                    private ScoreBuffer<Merger>,
+                    private score_ctx {
  public:
   using BufferType = ScoreBuffer<Merger>;
-  using JoinType = ChildToParentJoin<AllMatcher<Merger>>;
+  using JoinType = ChildToParentJoin<PredMatcher<Merger>>;
 
-  explicit AllMatcher(Merger&& merger) noexcept
+  PredMatcher(Merger&& merger, doc_iterator::ptr&& pred) noexcept
       : Merger{std::move(merger)},
-        BufferType{static_cast<const Merger&>(*this)} {}
+        BufferType{static_cast<const Merger&>(*this)},
+        pred_{std::move(pred)} {
+    if (IRS_UNLIKELY(!pred_)) {
+      pred_ = doc_iterator::empty();
+    }
+
+    pred_doc_ = irs::get<document>(*pred_);
+    assert(pred_doc_);
+  }
 
   bool Accept(doc_id_t first_child, doc_id_t parent_doc) {
-    if (first_child >= parent_doc) {
+    if (first_child >= parent_doc || first_child != pred_->seek(first_child)) {
       return false;
     }
 
@@ -262,13 +301,12 @@ class AllMatcher : public Merger,
     auto& child = *self.child_;
     const auto* child_doc = self.child_doc_;
     const auto& child_score = *self.child_score_;
-    auto prev = first_child;
 
     if constexpr (HasScore_v<Merger>) {
       child_score(buf.data());
     }
-    for (; child.next() && prev < parent_doc; prev = child_doc->value) {
-      if (child_doc->value - prev != 1) {
+    while (child.next() && child_doc->value < parent_doc) {
+      if (!pred_->next() || pred_doc_->value != child_doc->value) {
         child.seek(parent_doc);
         return false;
       }
@@ -279,8 +317,7 @@ class AllMatcher : public Merger,
       }
     }
 
-    return doc_limits::eof(parent_doc) ||
-           (prev < parent_doc && parent_doc - prev == 1);
+    return true;
   }
 
   ScoreFunction PrepareScore() noexcept {
@@ -289,12 +326,16 @@ class AllMatcher : public Merger,
     return {this, [](score_ctx* ctx, score_t* res) {
               assert(ctx);
               assert(res);
-              auto& self = static_cast<AllMatcher&>(*ctx);
+              auto& self = static_cast<PredMatcher&>(*ctx);
               auto& merger = static_cast<Merger&>(self);
               auto& buf = static_cast<ScoreBuffer<Merger>&>(self);
               std::memcpy(res, buf.data(), merger.byte_size());
             }};
   }
+
+ private:
+  doc_iterator::ptr pred_;
+  const document* pred_doc_;
 };
 
 template<typename Merger>
@@ -439,26 +480,39 @@ class MinMatcher : public Merger,
 };
 
 template<typename A, typename Visitor>
-auto ResolveMatchType(Match match, score_t none_boost, A&& aggregator,
-                      Visitor&& visitor) {
-  if (match == kMatchNone) {
-    return visitor(NoneMatcher{std::forward<A>(aggregator), none_boost});
-  } else if (match == kMatchAny) {
-    return visitor(AnyMatcher<A>{std::forward<A>(aggregator)});
-  } else if (match == kMatchAll) {
-    return visitor(AllMatcher<A>{std::forward<A>(aggregator)});
-  } else if (match.IsMinMatch()) {
-    assert(doc_limits::eof(match.Max));
-    return visitor(MinMatcher<A>{match.Min, std::forward<A>(aggregator)});
-  } else {
-    return visitor(RangeMatcher<A>{match, std::forward<A>(aggregator)});
-  }
+auto ResolveMatchType(const sub_reader& segment,
+                      const std::variant<Match, DocIteratorProvider>& match,
+                      score_t none_boost, A&& aggregator, Visitor&& visitor) {
+  return std::visit(
+      [&]<typename T>(const T& v) {
+        static_assert(std::is_same_v<T, Match> ||
+                      std::is_same_v<T, DocIteratorProvider>);
+
+        if constexpr (std::is_same_v<T, Match>) {
+          if (v == kMatchNone) {
+            return visitor(
+                NoneMatcher{std::forward<A>(aggregator), none_boost});
+          } else if (v == kMatchAny) {
+            return visitor(AnyMatcher<A>{std::forward<A>(aggregator)});
+          } else if (v.IsMinMatch()) {
+            assert(doc_limits::eof(v.Max));
+            return visitor(MinMatcher<A>{v.Min, std::forward<A>(aggregator)});
+          } else {
+            return visitor(RangeMatcher<A>{v, std::forward<A>(aggregator)});
+          }
+        } else if constexpr (std::is_same_v<T, DocIteratorProvider>) {
+          return visitor(
+              PredMatcher<A>{std::forward<A>(aggregator), v(segment)});
+        }
+      },
+      match);
 }
 
 class ByNesterQuery final : public filter::prepared {
  public:
   ByNesterQuery(DocIteratorProvider parent, prepared::ptr&& child,
-                sort::MergeType merge_type, Match match,
+                sort::MergeType merge_type,
+                std::variant<Match, DocIteratorProvider> match,
                 score_t none_boost) noexcept
       : parent_{std::move(parent)},
         child_{std::move(child)},
@@ -467,7 +521,7 @@ class ByNesterQuery final : public filter::prepared {
         none_boost_{none_boost} {
     assert(parent_);
     assert(child_);
-    assert(match_.Min <= match_.Max);
+    assert(IsValid(match_));
   }
 
   doc_iterator::ptr execute(const sub_reader& rdr, const Order& ord,
@@ -477,7 +531,7 @@ class ByNesterQuery final : public filter::prepared {
  private:
   DocIteratorProvider parent_;
   prepared::ptr child_;
-  Match match_;
+  std::variant<Match, DocIteratorProvider> match_;
   sort::MergeType merge_type_;
   score_t none_boost_;
 };
@@ -498,8 +552,8 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
     return doc_iterator::empty();
   }
 
-  const auto& order = kMatchNone == match_ ? Order::kUnordered : ord;
-  auto child = child_->execute(rdr, order, ExecutionMode::kAll, ctx);
+  auto child =
+      child_->execute(rdr, GetOrder(match_, ord), ExecutionMode::kAll, ctx);
 
   if (IRS_UNLIKELY(!child || doc_limits::eof(child->value()))) {
     return doc_iterator::empty();
@@ -509,7 +563,7 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
       merge_type_, ord.buckets().size(),
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
         return ResolveMatchType(
-            match_, none_boost_, std::forward<A>(aggregator),
+            rdr, match_, none_boost_, std::forward<A>(aggregator),
             [&]<typename M>(M&& matcher) -> irs::doc_iterator::ptr {
               return memory::make_managed<ChildToParentJoin<M>>(
                   std::move(parent), *prev, std::move(child),
@@ -527,14 +581,17 @@ filter::prepared::ptr ByNestedFilter::prepare(
     const attribute_provider* ctx) const {
   auto& [parent, child, match, merge_type] = options();
 
-  if (match.Max < match.Min || !parent || !child) {
+  if (!parent || !child) {
+    return prepared::empty();
+  }
+
+  if (!IsValid(match)) {
     return prepared::empty();
   }
 
   boost *= this->boost();
-  const auto& order = kMatchNone == match ? ord : Order::kUnordered;
 
-  auto prepared_child = child->prepare(rdr, order, boost, ctx);
+  auto prepared_child = child->prepare(rdr, GetOrder(match, ord), boost, ctx);
 
   if (!prepared_child) {
     return prepared::empty();
