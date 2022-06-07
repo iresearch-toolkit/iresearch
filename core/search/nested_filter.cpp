@@ -222,8 +222,14 @@ class NoneMatcher : public NoopAggregator {
   NoneMatcher(Merger&& merger, score_t none_boost) noexcept
       : boost_{none_boost}, size_{merger.size()} {}
 
-  bool Accept(doc_id_t child, doc_id_t parent) const noexcept {
-    return child >= parent;
+  bool Accept(doc_id_t& child, doc_id_t parent) const noexcept {
+    assert(!doc_limits::eof(parent));
+    if (child < parent) {
+      child = parent + 1;
+      return false;
+    }
+
+    return true;
   }
 
   ScoreFunction PrepareScore() const {
@@ -289,13 +295,15 @@ class PredMatcher : public Merger,
     assert(pred_doc_);
   }
 
-  bool Accept(doc_id_t first_child, doc_id_t parent_doc) {
+  bool Accept(doc_id_t& first_child, doc_id_t parent_doc) {
+    assert(!doc_limits::eof(parent_doc));
+
     auto& self = static_cast<JoinType&>(*this);
     auto& child = *self.child_;
 
     if (first_child >= parent_doc ||
         first_child != pred_->seek(self.FirstChild())) {
-      child.seek(parent_doc);
+      first_child = parent_doc + 1;
       return false;
     }
 
@@ -310,7 +318,7 @@ class PredMatcher : public Merger,
     }
     while (child.next() && child_doc->value < parent_doc) {
       if (!pred_->next() || pred_doc_->value != child_doc->value) {
-        child.seek(parent_doc);
+        first_child = parent_doc + 1;
         return false;
       }
 
@@ -354,7 +362,9 @@ class RangeMatcher : public Merger,
         BufferType{static_cast<const Merger&>(*this)},
         match_{match} {}
 
-  bool Accept(doc_id_t first_child, doc_id_t parent_doc) {
+  bool Accept(doc_id_t& first_child, doc_id_t parent_doc) {
+    assert(!doc_limits::eof(parent_doc));
+
     if (first_child >= parent_doc) {
       return false;
     }
@@ -377,7 +387,7 @@ class RangeMatcher : public Merger,
     }
     while (child.next() && child_doc->value < parent_doc) {
       if (++count > max) {
-        child.seek(parent_doc);
+        first_child = parent_doc + 1;
         return false;
       }
 
