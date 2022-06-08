@@ -49,10 +49,10 @@ class boolean_filter : public filter, private util::noncopyable {
 
   template<typename T, typename... Args>
   T& add(Args&&... args) {
-    using type = typename std::enable_if_t<std::is_base_of_v<filter, T>, T>;
+    static_assert(std::is_base_of_v<filter, T>);
 
-    return static_cast<type&>(*filters_.emplace_back(
-        memory::make_unique<type>(std::forward<Args>(args)...)));
+    return static_cast<T&>(*filters_.emplace_back(
+        memory::make_unique<T>(std::forward<Args>(args)...)));
   }
 
   virtual size_t hash() const noexcept override;

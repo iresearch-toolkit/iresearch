@@ -140,7 +140,8 @@ class ChildToParentJoin final : public doc_iterator, private Matcher {
   using Attributes =
       std::tuple<attribute_ptr<document>, attribute_ptr<cost>, score>;
 
-  doc_id_t FirstChild() const {
+  // Returns min possible first child given the current parent.
+  doc_id_t FirstChildApprox() const {
     assert(!doc_limits::eof((*prev_parent_)()));
     return (*prev_parent_)() + 1;
   }
@@ -148,9 +149,9 @@ class ChildToParentJoin final : public doc_iterator, private Matcher {
   doc_id_t SeekInternal(doc_id_t parent) {
     assert(!doc_limits::eof(parent));
 
-    for (doc_id_t first_child = child_->seek(FirstChild());
+    for (doc_id_t first_child = child_->seek(FirstChildApprox());
          (first_child = Matcher::Accept(first_child, parent));
-         first_child = child_->seek(FirstChild())) {
+         first_child = child_->seek(FirstChildApprox())) {
       parent = parent_->seek(first_child);
 
       if (doc_limits::eof(parent)) {
@@ -303,7 +304,7 @@ class PredMatcher : public Merger,
 
     auto& self = static_cast<JoinType&>(*this);
 
-    if (first_child != pred_->seek(self.FirstChild())) {
+    if (first_child != pred_->seek(self.FirstChildApprox())) {
       return parent + 1;
     }
 

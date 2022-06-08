@@ -52,9 +52,10 @@ class proxy_filter final : public filter {
 
   template<typename T, typename... Args>
   std::pair<T&, cache_ptr> set_filter(Args&&... args) {
-    using type = typename std::enable_if_t<std::is_base_of_v<filter, T>, T>;
-    auto& ptr = cache_filter(memory::make_unique<type>(std::forward<Args>(args)...));
-    return {static_cast<type&>(ptr), cache_};
+    static_assert(std::is_base_of_v<filter, T>);
+    auto& ptr =
+        cache_filter(memory::make_unique<T>(std::forward<Args>(args)...));
+    return {static_cast<T&>(ptr), cache_};
   }
 
   proxy_filter& set_cache(const cache_ptr& cache) {
