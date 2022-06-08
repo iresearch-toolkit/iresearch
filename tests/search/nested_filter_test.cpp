@@ -192,13 +192,7 @@ auto MakeOptions(std::string_view parent, std::string_view child,
   irs::ByNestedOptions opts;
   opts.match = match;
   opts.merge_type = merge_type;
-  opts.parent = [parent](const irs::sub_reader& segment) {
-    const auto* col = segment.column(parent);
-
-    return col ? col->iterator(irs::ColumnHint::kMask |
-                               irs::ColumnHint::kPrevDoc)
-               : nullptr;
-  };
+  opts.parent = MakeParentProvider(parent);
   opts.child = std::make_unique<irs::by_term>();
   auto& child_filter = static_cast<irs::by_term&>(*opts.child);
   *child_filter.mutable_field() = child;
