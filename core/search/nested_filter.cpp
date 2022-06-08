@@ -23,6 +23,7 @@
 #include "nested_filter.hpp"
 
 #include <tuple>
+#include <variant>
 
 #include "analysis/token_attributes.hpp"
 #include "search/cost.hpp"
@@ -598,11 +599,7 @@ filter::prepared::ptr ByNestedFilter::prepare(
     const attribute_provider* ctx) const {
   auto& [parent, child, match, merge_type] = options();
 
-  if (!parent || !child) {
-    return prepared::empty();
-  }
-
-  if (!IsValid(match)) {
+  if (!parent || !child || !IsValid(match)) {
     return prepared::empty();
   }
 

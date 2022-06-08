@@ -444,6 +444,7 @@ TEST_P(NestedFilterTestCase, JoinAny1) {
         {Next{}, 13},
         {Next{}, 20},
         {Next{}, irs::doc_limits::eof()},
+        {Seek{2}, irs::doc_limits::eof()},
         {Next{}, irs::doc_limits::eof()}};
     CheckQuery(filter, {}, {tests}, reader, SOURCE_LOCATION);
   }
