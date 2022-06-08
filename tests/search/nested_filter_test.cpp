@@ -764,18 +764,57 @@ TEST_P(NestedFilterTestCase, JoinNone0) {
   }
 }
 
+const auto kDirectories =
+    ::testing::Values(&tests::directory<&tests::memory_directory>,
+                      &tests::directory<&tests::fs_directory>,
+                      &tests::directory<&tests::mmap_directory>);
+
 INSTANTIATE_TEST_SUITE_P(
     NestedFilterTest, NestedFilterTestCase,
-    ::testing::Combine(
-        ::testing::Values(&tests::directory<&tests::memory_directory>,
-                          &tests::directory<&tests::fs_directory>,
-                          &tests::directory<&tests::mmap_directory>),
-        ::testing::Values(/*tests::format_info{"1_0"},
-                          tests::format_info{"1_1", "1_0"},
-                          tests::format_info{"1_2", "1_0"},
-                          tests::format_info{"1_3", "1_0"},*/
-                          tests::format_info{"1_4", "1_0"},
-                          tests::format_info{"1_5", "1_0"})),
+    ::testing::Combine(kDirectories,
+                       ::testing::Values(/*tests::format_info{"1_0"},
+                           tests::format_info{"1_1", "1_0"},
+                           tests::format_info{"1_2", "1_0"},
+                           tests::format_info{"1_3", "1_0"},*/
+                                         tests::format_info{"1_4", "1_0"},
+                                         tests::format_info{"1_5", "1_0"})),
     NestedFilterTestCase::to_string);
+
+class NestedFilterFormatsTestCase : public NestedFilterTestCase {
+ protected:
+  bool HasPrevDocSupport() noexcept {
+    // old formats don't support columnstore headers
+    constexpr irs::string_ref kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
+                                            "1_3simd"};
+
+    return std::end(kOldFormats) == std::find(std::begin(kOldFormats),
+                                              std::end(kOldFormats),
+                                              codec()->type().name());
+  }
+};
+
+TEST_P(NestedFilterFormatsTestCase, JoinAny0) {
+  InitDataSet();
+  auto reader = open_reader();
+
+  irs::ByNestedFilter filter;
+  auto& opts = *filter.mutable_options();
+  opts.child = MakeByTerm("item", "Mouse");
+  opts.parent = MakeParentProvider("customer");
+
+  const auto expected = HasPrevDocSupport() ? Docs{6, 13, 20} : Docs{};
+  CheckQuery(filter, expected, Costs{expected.size()}, reader, SOURCE_LOCATION);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    NestedFilterFormatsTest, NestedFilterFormatsTestCase,
+    ::testing::Combine(kDirectories,
+                       ::testing::Values(tests::format_info{"1_0"},
+                                         tests::format_info{"1_1", "1_0"},
+                                         tests::format_info{"1_2", "1_0"},
+                                         tests::format_info{"1_3", "1_0"},
+                                         tests::format_info{"1_4", "1_0"},
+                                         tests::format_info{"1_5", "1_0"})),
+    NestedFilterFormatsTestCase::to_string);
 
 }  // namespace
