@@ -31,9 +31,14 @@
 namespace iresearch {
 
 struct column_info {
+  // Column compression
   type_info compression{irs::type<irs::compression::none>::get()};
+  // Column compression options
   compression::options options{};
+  // Encrypt column
   bool encryption{false};
+  // Allow iterator accessing previous document
+  // (currently supported by columnstore2 only)
   bool track_prev_doc{false};
 };
 
