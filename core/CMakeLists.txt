@@ -355,6 +355,7 @@ add_dependencies(iresearch-static
   iresearch-analyzer-segmentation-static
   iresearch-analyzer-nearest-neighbors-static
   iresearch-analyzer-classification-static
+  iresearch-analyzer-minhash-static
   iresearch-format-1_0-static
   iresearch-scorer-tfidf-static
   iresearch-scorer-bm25-static
@@ -511,6 +512,33 @@ set_target_properties(iresearch-analyzer-collation-static
 )
 
 target_link_libraries(iresearch-analyzer-collation-static
+  iresearch-static
+)
+
+################################################################################
+### analysis plugin : minhash
+################################################################################
+
+add_library(iresearch-analyzer-minhash-static
+  STATIC
+  ./analysis/minhash_token_stream.cpp
+)
+
+set_ipo(iresearch-analyzer-minhash-static)
+
+target_include_directories(iresearch-analyzer-minhash-static
+  PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
+)
+
+set_target_properties(iresearch-analyzer-minhash-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-minhash-s
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+)
+
+target_link_libraries(iresearch-analyzer-minhash-static
   iresearch-static
 )
 

@@ -43,7 +43,7 @@ class analyzer : public token_stream {
   type_info::type_id type_;
 };
 
-} // analysis
-} // ROOT
+}  // namespace analysis
+}  // namespace iresearch
 
 #endif
