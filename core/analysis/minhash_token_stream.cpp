@@ -26,7 +26,9 @@
 #include <velocypack/Slice.h>
 
 #include "analysis/analyzers.hpp"
+#include "analysis/token_streams.hpp"
 #include "utils/log.hpp"
+#include "utils/vpack_utils.hpp"
 
 namespace {
 
@@ -34,7 +36,53 @@ using namespace arangodb;
 using namespace irs;
 using namespace irs::analysis;
 
-bool ParseVPack(velocypack::Slice slice, analyzer::ptr* a) { return false; }
+constexpr std::string_view kTypeParam{"type"};
+constexpr std::string_view kPropertiesParam{"properties"};
+constexpr std::string_view kAnalyzerParam{"analyzer"};
+
+bool ParseVPack(velocypack::Slice slice, analyzer::ptr* out) {
+  auto analyzerSlice = slice.get(kAnalyzerParam);
+  if (analyzerSlice.isNone() || analyzerSlice.isNull()) {
+    *out = nullptr;
+    return true;
+  } else if (analyzerSlice.isObject()) {
+    const auto typeSlice = analyzerSlice.get(kTypeParam);
+
+    if (!typeSlice.isString()) {
+      IR_FRMT_ERROR(
+          "Failed to read '%s' attribute of '%s' member as string while "
+          "constructing MinHashTokenStream from VPack arguments",
+          kTypeParam.data(), kAnalyzerParam.data());
+      return false;
+    }
+
+    const string_ref type{typeSlice.stringView()};
+    const auto propSlice = analyzerSlice.get(kPropertiesParam);
+
+    auto analyzer =
+        analyzers::get(type, irs::type<irs::text_format::vpack>::get(),
+                       {propSlice.startAs<char>(), propSlice.byteSize()});
+
+    if (!analyzer) {
+      // fallback to json format if vpack isn't available
+      analyzer = irs::analysis::analyzers::get(
+          type, irs::type<irs::text_format::json>::get(),
+          irs::slice_to_string(propSlice));
+    }
+
+    if (analyzer) {
+      *out = std::move(analyzer);
+    } else {
+      IR_FRMT_ERROR(
+          "Failed to create analyzer of type '%s' with properties '%s' while "
+          "constructing "
+          "MinHashTokenStream pipeline_token_stream from VPack arguments",
+          type.c_str(), irs::slice_to_string(propSlice).c_str());
+    }
+  }
+
+  return false;
+}
 
 analyzer::ptr MakeVPack(velocypack::Slice slice) {
   analyzer::ptr a;
@@ -49,6 +97,8 @@ irs::analysis::analyzer::ptr MakeVPack(irs::string_ref args) {
   return MakeVPack(slice);
 }
 
+// `args` is a JSON encoded object with the following attributes:
+// "analyzer"(object): the analyzer definition to use for pre-processing
 analyzer::ptr MakeJson(irs::string_ref args) {
   try {
     if (args.null()) {
@@ -124,7 +174,10 @@ namespace iresearch::analysis {
 MinHashTokenStream::MinHashTokenStream(analyzer::ptr&& analyzer)
     : analysis::analyzer{irs::type<MinHashTokenStream>::get()},
       a_{std::move(analyzer)} {
-  assert(a_);
+  if (!a_) {
+    // Fallback to default implementation
+    a_ = std::make_unique<string_token_stream>();
+  }
 }
 
 bool next() { return false; }
