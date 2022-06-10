@@ -426,6 +426,7 @@ the first whitespace is ignored), in the directory corresponding to its language
 |iresearch::by_term|for filtering of exact values
 |iresearch::by_terms|for filtering of exact values by a set of specified terms 
 |iresearch::by_wildcard|for filtering of values based on matching pattern
+|iresearch::ByNestedFilter|for filtering of documents based on matching pattern on its sub-documents
 |iresearch::And|boolean conjunction of multiple filters, influencing document ranks/scores as appropriate
 |iresearch::Or|boolean disjunction of multiple filters, influencing document ranks/scores as appropriate (including "minimum match" functionality)
 |iresearch::Not|boolean negation of multiple filters

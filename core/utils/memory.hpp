@@ -624,11 +624,4 @@ static ptr make(Args&&... args) { \
   return maker_t::template make(std::forward<Args>(args)...); \
 }
 
-// Default implementation of a factory method, instantiation on heap
-// NOTE: make(...) MUST be defined in CPP to ensire proper code scope
-#define DEFINE_FACTORY_DEFAULT(class_type) \
-/*static*/ class_type::ptr class_type::make() { \
-  return irs::memory::maker<class_type>::make(); \
-}
-
 #endif

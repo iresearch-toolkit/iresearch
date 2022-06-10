@@ -219,8 +219,6 @@ class filter_base : public filter_with_options<Options> {
 ////////////////////////////////////////////////////////////////////////////////
 class empty final : public filter {
  public:
-  static ptr make();
-
   empty();
 
   virtual filter::prepared::ptr prepare(

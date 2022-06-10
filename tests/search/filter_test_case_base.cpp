@@ -26,15 +26,6 @@
 #include <compare>
 
 namespace tests {
-namespace sort {
-
-DEFINE_FACTORY_DEFAULT(boost)
-
-DEFINE_FACTORY_DEFAULT(custom_sort)
-
-DEFINE_FACTORY_DEFAULT(frequency_sort)
-
-}  // namespace sort
 
 void FilterTestCaseBase::GetQueryResult(const irs::filter::prepared::ptr& q,
                                         const irs::index_reader& rdr,

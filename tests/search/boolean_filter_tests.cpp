@@ -267,8 +267,6 @@ struct boosted : public irs::filter {
     irs::bstring stats;
   };  // prepared
 
-  static ptr make();
-
   virtual irs::filter::prepared::ptr prepare(
       const irs::index_reader&, const irs::Order&, irs::score_t boost,
       const irs::attribute_provider* /*ctx*/) const override {
@@ -281,8 +279,6 @@ struct boosted : public irs::filter {
   basic_doc_iterator::docids_t docs;
   static unsigned execute_count;
 };  // boosted
-
-DEFINE_FACTORY_DEFAULT(boosted)
 
 unsigned boosted::execute_count{0};
 
@@ -1166,12 +1162,8 @@ struct unestimated : public irs::filter {
     return irs::memory::make_managed<unestimated::prepared>();
   }
 
-  static ptr make();
-
   unestimated() : filter(irs::type<unestimated>::get()) {}
 };  // unestimated
-
-DEFINE_FACTORY_DEFAULT(unestimated)
 
 struct estimated : public irs::filter {
   struct doc_iterator : irs::doc_iterator {
@@ -1223,15 +1215,11 @@ struct estimated : public irs::filter {
     return irs::memory::make_managed<estimated::prepared>(est, &evaluated);
   }
 
-  static ptr make();
-
   explicit estimated() : filter(irs::type<estimated>::get()) {}
 
   mutable bool evaluated = false;
   irs::cost::cost_t est{};
 };  // estimated
-
-DEFINE_FACTORY_DEFAULT(estimated)
 
 }  // namespace detail
 

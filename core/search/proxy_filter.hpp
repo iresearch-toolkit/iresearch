@@ -40,8 +40,6 @@ struct proxy_query_cache;
 // Scoring cache is not supported yet.
 class proxy_filter final : public filter {
  public:
-  static ptr make();
-
   using cache_ptr = std::shared_ptr<proxy_query_cache>;
 
   proxy_filter() noexcept;
@@ -52,11 +50,12 @@ class proxy_filter final : public filter {
                                 score_t boost,
                                 const attribute_provider*) const override;
 
-  template<typename T>
-  std::pair<T&, cache_ptr> set_filter() {
-    using type = typename std::enable_if_t<std::is_base_of_v<filter, T>, T>;
-    auto& ptr = cache_filter(type::make());
-    return {static_cast<type&>(ptr), cache_};
+  template<typename T, typename... Args>
+  std::pair<T&, cache_ptr> set_filter(Args&&... args) {
+    static_assert(std::is_base_of_v<filter, T>);
+    auto& ptr =
+        cache_filter(memory::make_unique<T>(std::forward<Args>(args)...));
+    return {static_cast<T&>(ptr), cache_};
   }
 
   proxy_filter& set_cache(const cache_ptr& cache) {

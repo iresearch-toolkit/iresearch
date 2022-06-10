@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "all_filter.hpp"
+
 #include "all_iterator.hpp"
 
 namespace iresearch {
@@ -29,35 +30,24 @@ namespace iresearch {
 class all_query final : public filter::prepared {
  public:
   explicit all_query(bstring&& stats, score_t boost)
-    : filter::prepared(boost),
-      stats_(std::move(stats)) {
-  }
+      : filter::prepared(boost), stats_(std::move(stats)) {}
 
   virtual doc_iterator::ptr execute(
-      const sub_reader& rdr,
-      const Order& order,
-      ExecutionMode /*mode*/,
+      const sub_reader& rdr, const Order& order, ExecutionMode /*mode*/,
       const attribute_provider* /*ctx*/) const override {
-    return memory::make_managed<all_iterator>(
-      rdr, stats_.c_str(), order,
-      rdr.docs_count(), boost());
+    return memory::make_managed<all_iterator>(rdr, stats_.c_str(), order,
+                                              rdr.docs_count(), boost());
   }
 
  private:
   bstring stats_;
 };
 
-DEFINE_FACTORY_DEFAULT(irs::all) // cppcheck-suppress unknownMacro
+all::all() noexcept : filter(irs::type<all>::get()) {}
 
-all::all() noexcept
-  : filter(irs::type<all>::get()) {
-}
-
-filter::prepared::ptr all::prepare(
-    const index_reader& reader,
-    const Order& order,
-    score_t filter_boost,
-    const attribute_provider* /*ctx*/) const {
+filter::prepared::ptr all::prepare(const index_reader& reader,
+                                   const Order& order, score_t filter_boost,
+                                   const attribute_provider* /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
@@ -66,7 +56,8 @@ filter::prepared::ptr all::prepare(
 
   PrepareCollectors(order.buckets(), stats_buf, reader);
 
-  return memory::make_managed<all_query>(std::move(stats), this->boost()*filter_boost);
+  return memory::make_managed<all_query>(std::move(stats),
+                                         this->boost() * filter_boost);
 }
 
-}
+}  // namespace iresearch

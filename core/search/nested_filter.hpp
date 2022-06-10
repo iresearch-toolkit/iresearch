@@ -50,19 +50,24 @@ struct Match {
 
 static constexpr Match kMatchNone{0, 0};
 static constexpr Match kMatchAny{1};
-static constexpr Match kMatchAll{doc_limits::eof()};
 
+using DocIteratorProvider =
+    std::function<doc_iterator::ptr(const irs::sub_reader&)>;
+
+// Options for ByNestedFilter filter
 struct ByNestedOptions {
   using filter_type = ByNestedFilter;
 
+  using MatchType = std::variant<Match, DocIteratorProvider>;
+
   // Parent filter.
-  filter::ptr parent;
+  DocIteratorProvider parent;
 
   // Child filter.
   filter::ptr child;
 
-  // match type
-  Match match{kMatchAny};
+  // Match type: range or predicate
+  MatchType match{kMatchAny};
 
   // Score merge type.
   sort::MergeType merge_type{sort::MergeType::kSum};
@@ -72,17 +77,28 @@ struct ByNestedOptions {
       return ((!lhs && !rhs) || (lhs && rhs && *lhs == *rhs));
     };
 
-    return match == rhs.match && merge_type == rhs.merge_type &&
-           equal(parent.get(), rhs.parent.get()) &&
-           equal(child.get(), rhs.child.get());
+    return match.index() == rhs.match.index() &&
+           std::visit(
+               [&]<typename T>(const T& v) noexcept -> bool {
+                 if constexpr (std::is_same_v<T, Match>) {
+                   return v == std::get<T>(rhs.match);
+                 }
+                 return true;
+               },
+               match) &&
+           merge_type == rhs.merge_type && equal(child.get(), rhs.child.get());
   }
 
   size_t hash() const noexcept {
-    size_t hash = std::hash<doc_id_t>{}(match.Min);
-    hash = hash_combine(hash, std::hash<doc_id_t>{}(match.Max));
-    if (parent) {
-      hash = hash_combine(hash, parent->hash());
-    }
+    size_t hash = std::visit(
+        []<typename T>(const T& v) noexcept -> size_t {
+          if constexpr (std::is_same_v<T, Match>) {
+            return hash_combine(std::hash<doc_id_t>{}(v.Min),
+                                std::hash<doc_id_t>{}(v.Max));
+          }
+          return 0;
+        },
+        match);
     if (child) {
       hash = hash_combine(hash, child->hash());
     }
@@ -90,10 +106,9 @@ struct ByNestedOptions {
   }
 };
 
+// Filter is capable of finding parents by the corresponding child filter.
 class ByNestedFilter final : public filter_with_options<ByNestedOptions> {
  public:
-  static ptr make();
-
   using filter::prepare;
 
   prepared::ptr prepare(const index_reader& rdr, const Order& ord,

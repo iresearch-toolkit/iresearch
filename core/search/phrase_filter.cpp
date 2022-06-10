@@ -456,9 +456,6 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
   }
 };
 
-// cppcheck-suppress unknownMacro
-DEFINE_FACTORY_DEFAULT(by_phrase) 
-
 filter::prepared::ptr by_phrase::prepare(
     const index_reader& index,
     const Order& ord,

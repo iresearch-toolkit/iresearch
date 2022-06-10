@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,30 +20,39 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_COLUMN_INFO_H
-#define IRESEARCH_COLUMN_INFO_H
+#pragma once
 
-#include <functional>
-
-#include "utils/compression.hpp"
-#include "utils/string.hpp"
+#include "utils/attribute_provider.hpp"
 
 namespace iresearch {
 
-struct column_info {
-  // Column compression
-  type_info compression{irs::type<irs::compression::none>::get()};
-  // Column compression options
-  compression::options options{};
-  // Encrypt column
-  bool encryption{false};
-  // Allow iterator accessing previous document
-  // (currently supported by columnstore2 only)
-  bool track_prev_doc{false};
+// Provides an access to previous document before the current one.
+// Undefined after iterator reached EOF.
+class prev_doc : public attribute {
+ public:
+  using prev_doc_f = doc_id_t (*)(const void*);
+
+  static constexpr string_ref type_name() noexcept { return "prev_doc"; }
+
+  constexpr explicit operator bool() const noexcept { return nullptr != func_; }
+
+  constexpr bool operator==(std::nullptr_t) const noexcept {
+    return !static_cast<bool>(*this);
+  }
+
+  doc_id_t operator()() const {
+    assert(static_cast<bool>(*this));
+    return func_(ctx_);
+  }
+
+  void reset(prev_doc_f func, void* ctx) noexcept {
+    func_ = func;
+    ctx_ = ctx;
+  }
+
+ private:
+  prev_doc_f func_{};
+  void* ctx_{};
 };
 
-using column_info_provider_t = std::function<column_info(const string_ref)>;
-
 }  // namespace iresearch
-
-#endif  // IRESEARCH_COLUMN_INFO_H
