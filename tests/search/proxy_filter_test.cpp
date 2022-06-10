@@ -119,8 +119,6 @@ size_t doclist_test_query::executes_{0};
 
 class doclist_test_filter final : public filter {
  public:
-  static ptr make() { return irs::memory::maker<doclist_test_filter>::make(); }
-
   doclist_test_filter() noexcept
       : filter(irs::type<doclist_test_filter>::get()) {}
 

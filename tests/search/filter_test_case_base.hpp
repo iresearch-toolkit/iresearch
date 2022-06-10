@@ -72,7 +72,6 @@ struct boost : public irs::sort {
     }
   };  // sort::boost::prepared
 
-  static ptr make();
   typedef irs::score_t score_t;
   boost() : sort(irs::type<boost>::get()) {}
   virtual sort::prepared::ptr prepare() const {
@@ -244,7 +243,6 @@ struct custom_sort : public irs::sort {
   std::function<void()> term_reset_;
   std::function<void()> field_reset_;
 
-  static ptr make();
   custom_sort() : sort(irs::type<custom_sort>::get()) {}
   virtual prepared::ptr prepare() const {
     return irs::memory::make_unique<custom_sort::prepared>(*this);
@@ -343,7 +341,6 @@ struct frequency_sort : public irs::sort {
     }
   };
 
-  static ptr make();
   frequency_sort() : sort(irs::type<frequency_sort>::get()) {}
   virtual prepared::ptr prepare() const {
     return irs::memory::make_unique<frequency_sort::prepared>();

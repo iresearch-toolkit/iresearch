@@ -197,8 +197,6 @@ class proxy_query final : public filter::prepared {
   mutable proxy_filter::cache_ptr cache_;
 };
 
-DEFINE_FACTORY_DEFAULT(proxy_filter);
-
 proxy_filter::proxy_filter() noexcept : filter(irs::type<proxy_filter>::get()) {}
 
 filter::prepared::ptr proxy_filter::prepare(

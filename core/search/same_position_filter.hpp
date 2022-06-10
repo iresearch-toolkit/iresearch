@@ -55,8 +55,6 @@ struct by_same_position_options {
 
 class by_same_position : public filter_with_options<by_same_position_options> {
  public:
-  static ptr make();
-
   // Returns features required for the filter
   static constexpr IndexFeatures kRequiredFeatures =
       IndexFeatures::FREQ | IndexFeatures::POS;

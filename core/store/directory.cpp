@@ -47,7 +47,7 @@ bool index_lock::try_lock(size_t wait_timeout /* = 1000 */) noexcept {
     const size_t max_sleep_count = wait_timeout / LOCK_POLL_INTERVAL;
 
     for (size_t sleep_count = 0;
-         !locked && (wait_timeout == LOCK_WAIT_FOREVER || sleep_count < max_sleep_count);
+         !locked && (wait_timeout == kLockWaitForever || sleep_count < max_sleep_count);
          ++sleep_count) {
       std::this_thread::sleep_for(std::chrono::milliseconds(LOCK_POLL_INTERVAL));
       locked = lock();

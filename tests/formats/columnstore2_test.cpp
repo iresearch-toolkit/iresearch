@@ -107,7 +107,7 @@ class columnstore2_test_case
       return prev;
     };
 
-    auto* prev = irs::get<irs::seek_prev>(it);
+    auto* prev = irs::get<irs::prev_doc>(it);
     ASSERT_EQ(has_prev_doc(), nullptr != prev && nullptr != *prev);
     if (prev && *prev) {
       ASSERT_EQ(prev_doc(prev_it, it.value()), (*prev)());
@@ -233,7 +233,7 @@ TEST_P(columnstore2_test_case, empty_column) {
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_NE(nullptr, payload);
     auto* cost = irs::get<irs::cost>(*it);
-    auto* prev = irs::get<irs::seek_prev>(*it);
+    auto* prev = irs::get<irs::prev_doc>(*it);
     ASSERT_EQ(has_prev_doc(), prev && *prev);
     ASSERT_NE(nullptr, cost);
     ASSERT_EQ(column->size(), cost->estimate());
@@ -328,7 +328,7 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
     // seek stateless
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; doc += 2) {
       auto it = column->iterator(hint());
-      auto* prev = irs::get<irs::seek_prev>(*it);
+      auto* prev = irs::get<irs::prev_doc>(*it);
       ASSERT_EQ(has_prev_doc(), prev && *prev);
       auto* document = irs::get<irs::document>(*it);
       ASSERT_NE(nullptr, document);
@@ -367,7 +367,7 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
       assert_prev_doc(*it, *prev_it);
 
       auto next_it = column->iterator(hint());
-      auto* prev = irs::get<irs::seek_prev>(*next_it);
+      auto* prev = irs::get<irs::prev_doc>(*next_it);
       ASSERT_EQ(has_prev_doc(), nullptr != prev && nullptr != *prev);
       ASSERT_EQ(doc, next_it->seek(doc));
       for (auto next_doc = doc + 2; next_doc <= kMax; next_doc += 2) {

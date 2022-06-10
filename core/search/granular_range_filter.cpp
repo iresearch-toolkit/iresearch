@@ -542,8 +542,6 @@ void set_granular_term(by_granular_range_options::terms& boundary,
   }
 }
 
-DEFINE_FACTORY_DEFAULT(by_granular_range) // cppcheck-suppress unknownMacro
-
 /*static*/ filter::prepared::ptr by_granular_range::prepare(
     const index_reader& index,
     const Order& ord,
@@ -624,8 +622,6 @@ DEFINE_FACTORY_DEFAULT(by_granular_range) // cppcheck-suppress unknownMacro
   // dummy class for returning the stored prepared query on a call to prepare(...)
   class multiterm_filter_proxy: public filter {
    public:
-    static ptr make() { return memory::make_unique<multiterm_filter_proxy>(); }
-
     multiterm_filter_proxy()
       : filter(irs::type<by_range>::get()) {
     }

@@ -418,8 +418,6 @@ void boolean_filter::group_filters(std::vector<const filter*>& incl,
   }
 }
 
-DEFINE_FACTORY_DEFAULT(And)  // cppcheck-suppress unknownMacro
-
 And::And() noexcept : boolean_filter(irs::type<And>::get()) {}
 
 filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
@@ -487,8 +485,6 @@ filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
   q->prepare(rdr, ord, boost, merge_type(), ctx, incl, excl);
   return q;
 }
-
-DEFINE_FACTORY_DEFAULT(Or)
 
 Or::Or() noexcept : boolean_filter(irs::type<Or>::get()), min_match_count_(1) {}
 
@@ -583,8 +579,6 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
   q->prepare(rdr, ord, boost, merge_type(), ctx, incl, excl);
   return q;
 }
-
-DEFINE_FACTORY_DEFAULT(Not)
 
 Not::Not() noexcept : irs::filter(irs::type<Not>::get()) {}
 

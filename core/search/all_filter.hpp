@@ -28,21 +28,17 @@
 namespace iresearch {
 
 // Filter returning all documents
-class all: public filter {
+class all : public filter {
  public:
-  static ptr make();
-
   all() noexcept;
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& reader,
-    const Order& order,
-    score_t filter_boost,
-    const attribute_provider* ctx) const override;
+      const index_reader& reader, const Order& order, score_t filter_boost,
+      const attribute_provider* ctx) const override;
 };
 
-}
+}  // namespace iresearch
 
 #endif

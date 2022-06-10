@@ -106,8 +106,6 @@ void collect_terms(
 
 namespace iresearch {
 
-DEFINE_FACTORY_DEFAULT(by_terms)
-
 /*static*/ void by_terms::visit(
     const sub_reader& segment,
     const term_reader& field,

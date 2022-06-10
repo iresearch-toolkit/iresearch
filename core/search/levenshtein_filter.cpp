@@ -260,8 +260,6 @@ namespace iresearch {
 // --SECTION--                                   by_edit_distance implementation
 // -----------------------------------------------------------------------------
 
-DEFINE_FACTORY_DEFAULT(by_edit_distance) // cppcheck-suppress unknownMacro
-
 /*static*/ field_visitor by_edit_distance::visitor(const options_type::filter_options& opts) {
   return executeLevenshtein(
     opts.max_distance, opts.provider, opts.with_transpositions, opts.prefix, opts.term, 
