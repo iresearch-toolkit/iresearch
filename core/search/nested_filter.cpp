@@ -42,35 +42,26 @@ namespace {
 
 using namespace irs;
 
+static_assert(std::variant_size_v<ByNestedOptions::MatchType> == 2);
+
 const Order& GetOrder(const ByNestedOptions::MatchType& match,
                       const Order& ord) noexcept {
   return std::visit(
-      [&]<typename T>(const T& v) noexcept -> const Order& {
-        static_assert(std::is_same_v<T, Match> ||
-                      std::is_same_v<T, DocIteratorProvider>);
-
-        if constexpr (std::is_same_v<T, Match>) {
-          return kMatchNone == v ? Order::kUnordered : ord;
-        }
-        return ord;
-      },
+      irs::Visitor{[&](Match v) noexcept -> const Order& {
+                     return kMatchNone == v ? Order::kUnordered : ord;
+                   },
+                   [&ord](const DocIteratorProvider&) noexcept -> const Order& {
+                     return ord;
+                   }},
       match);
 }
 
 bool IsValid(const ByNestedOptions::MatchType& match) noexcept {
   return std::visit(
-      []<typename T>(const T& v) {
-        static_assert(std::is_same_v<T, Match> ||
-                      std::is_same_v<T, DocIteratorProvider>);
-
-        if constexpr (std::is_same_v<T, Match>) {
-          return v.Min <= v.Max;
-        } else if constexpr (std::is_same_v<T, DocIteratorProvider>) {
-          return nullptr != v;
-        } else {
-          return false;
-        }
-      },
+      irs::Visitor{[](Match v) noexcept { return v.Min <= v.Max; },
+                   [](const DocIteratorProvider& v) {
+                     { return nullptr != v; }
+                   }},
       match);
 }
 
@@ -503,27 +494,24 @@ auto ResolveMatchType(const sub_reader& segment,
                       const ByNestedOptions::MatchType& match,
                       score_t none_boost, A&& aggregator, Visitor&& visitor) {
   return std::visit(
-      [&]<typename T>(const T& v) {
-        static_assert(std::is_same_v<T, Match> ||
-                      std::is_same_v<T, DocIteratorProvider>);
-
-        if constexpr (std::is_same_v<T, Match>) {
-          if (v == kMatchNone) {
+      irs::Visitor{
+          [&](Match v) {
+            if (v == kMatchNone) {
+              return visitor(
+                  NoneMatcher{std::forward<A>(aggregator), none_boost});
+            } else if (v == kMatchAny) {
+              return visitor(AnyMatcher<A>{std::forward<A>(aggregator)});
+            } else if (v.IsMinMatch()) {
+              assert(doc_limits::eof(v.Max));
+              return visitor(MinMatcher<A>{v.Min, std::forward<A>(aggregator)});
+            } else {
+              return visitor(RangeMatcher<A>{v, std::forward<A>(aggregator)});
+            }
+          },
+          [&](const DocIteratorProvider& v) {
             return visitor(
-                NoneMatcher{std::forward<A>(aggregator), none_boost});
-          } else if (v == kMatchAny) {
-            return visitor(AnyMatcher<A>{std::forward<A>(aggregator)});
-          } else if (v.IsMinMatch()) {
-            assert(doc_limits::eof(v.Max));
-            return visitor(MinMatcher<A>{v.Min, std::forward<A>(aggregator)});
-          } else {
-            return visitor(RangeMatcher<A>{v, std::forward<A>(aggregator)});
-          }
-        } else if constexpr (std::is_same_v<T, DocIteratorProvider>) {
-          return visitor(
-              PredMatcher<A>{std::forward<A>(aggregator), v(segment)});
-        }
-      },
+                PredMatcher<A>{std::forward<A>(aggregator), v(segment)});
+          }},
       match);
 }
 
