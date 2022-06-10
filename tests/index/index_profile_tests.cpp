@@ -296,7 +296,7 @@ class index_profile_test_case : public tests::index_test_base {
             }
 
             {
-              auto filter = irs::by_term::make();
+              irs::filter::ptr filter = std::make_unique<irs::by_term>();
               auto key_field = csv_doc_template.indexed.begin()->name();
               auto key_term =
                   csv_doc_template.indexed.get<tests::string_field>(key_field)

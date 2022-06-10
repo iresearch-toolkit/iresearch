@@ -1,7 +1,26 @@
 master
 -------------------------
 
-* Added proxy_filter for caching search results
+* Add `ByNestedFilter` capable of matching documents by nested query.
+
+* Add ability to access previous document for columnstore2 iterators.
+
+* Remove outdated `DECLARE_FACTORY_INLINE` macros.
+
+* Add `MergeType::kMin` allowing to evaluate minimum sub-iterator score.
+
+* Fix issue with loosing already flushed segment in case of failure during
+  document insertion into the same segment.
+
+* Force scorers to return scores as floating point numbers.
+
+* Deprecate and remove `iql`.
+
+* Use abseil as a submodule.
+
+* Added proxy_filter for caching search results.
+
+* Add ARM support.
 
 * Speedup BM25 scorer.
 

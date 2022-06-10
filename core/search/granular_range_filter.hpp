@@ -100,8 +100,6 @@ void set_granular_term(
 class by_granular_range
     : public filter_base<by_granular_range_options> {
  public:
-  static ptr make();
-
   static filter::prepared::ptr prepare(
     const index_reader& index,
     const Order& ord,

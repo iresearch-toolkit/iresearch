@@ -24,30 +24,26 @@
 #define IRESEARCH_MATH_UTILS_H
 
 #ifdef _MSC_VER
-  #include <intrin.h>
+#include <intrin.h>
 
-  #pragma intrinsic(_BitScanReverse)
-  #pragma intrinsic(_BitScanForward)
+#pragma intrinsic(_BitScanReverse)
+#pragma intrinsic(_BitScanForward)
 #endif
 
-#include "shared.hpp"
-
-#include <numeric>
 #include <cassert>
 #include <climits>
 #include <cmath>
+#include <numeric>
 
-#include "cpuinfo.hpp"
+#include "shared.hpp"
 
 namespace iresearch {
 namespace math {
 
-/// @brief sum two unsigned integral values with overflow check
-/// @returns false if sum is overflowed, true - otherwise
-template<
-  typename T,
-  typename = typename std::enable_if_t<
-    std::is_integral_v<T> && std::is_unsigned_v<T>>>
+// Sum two unsigned integral values with overflow check
+// Returns false if sum is overflowed, true - otherwise
+template<typename T, typename = typename std::enable_if_t<
+                         std::is_integral_v<T> && std::is_unsigned_v<T>>>
 inline bool sum_check_overflow(T lhs, T rhs, T& sum) noexcept {
   sum = lhs + rhs;
   return sum >= lhs && sum >= rhs;
@@ -65,15 +61,14 @@ inline constexpr size_t roundup_power2(size_t v) noexcept {
 }
 
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
-#define is_power2(v) (std::is_integral<decltype(v)>::value && !(v & (v-1)))
+#define is_power2(v) (std::is_integral<decltype(v)>::value && !(v & (v - 1)))
 #else
 // undefined for 0
 template<typename T>
 constexpr inline bool is_power2(T v) noexcept {
-  static_assert(std::is_integral_v<T>,
-                "T must be an integral type");
+  static_assert(std::is_integral_v<T>, "T must be an integral type");
 
-  return !(v & (v-1));
+  return !(v & (v - 1));
 }
 #endif
 
@@ -81,32 +76,32 @@ inline bool approx_equals(double_t lhs, double_t rhs) noexcept {
   return std::fabs(rhs - lhs) < std::numeric_limits<double_t>::epsilon();
 }
 
-/// @brief rounds the result of division (num/den) to
-///        the next greater integer value
+// Rounds the result of division (num/den) to
+// the next greater integer value.
 constexpr inline uint64_t div_ceil64(uint64_t num, uint64_t den) noexcept {
   // ensure no overflow
   return IRS_ASSERT(den != 0 && (num + den) >= num && (num + den >= den)),
-         (num + den - 1)/den;
+         (num + den - 1) / den;
 }
 
-/// @brief rounds the result of division (num/den) to
-///        the next greater integer value
+// Rounds the result of division (num/den) to
+// the next greater integer value.
 constexpr inline uint32_t div_ceil32(uint32_t num, uint32_t den) noexcept {
   // ensure no overflow
   return IRS_ASSERT(den != 0 && (num + den) >= num && (num + den >= den)),
-         (num + den - 1)/den;
+         (num + den - 1) / den;
 }
 
-/// @brief rounds the specified 'value' to the next greater
-/// value that is multiple of the specified 'step'
+// Rounds the specified 'value' to the next greater
+// value that is multiple of the specified 'step'.
 constexpr inline uint64_t ceil64(uint64_t value, uint64_t step) noexcept {
-  return div_ceil64(value,step)*step;
+  return div_ceil64(value, step) * step;
 }
 
-/// @brief rounds the specified 'value' to the next greater
-/// value that is multiple of the specified 'step'
+// Rounds the specified 'value' to the next greater
+// value that is multiple of the specified 'step'.
 constexpr inline uint32_t ceil32(uint32_t value, uint32_t step) noexcept {
-  return div_ceil32(value, step)*step;
+  return div_ceil32(value, step) * step;
 }
 
 uint32_t log2_64(uint64_t value) noexcept;
@@ -151,14 +146,13 @@ template<typename T, size_t N = sizeof(T)>
 struct math_traits {
   static size_t ceil(T value, T step);
   static uint32_t bits_required(T val) noexcept;
-}; // math_traits
+};
 
 template<typename Iterator>
 constexpr size_t popcount(Iterator begin, Iterator end) noexcept {
-  return std::accumulate(begin, end, size_t{0},
-                         [](size_t acc, auto word) {
-                             return acc + std::popcount(word);
-                         });
+  return std::accumulate(begin, end, size_t{0}, [](size_t acc, auto word) {
+    return acc + std::popcount(word);
+  });
 }
 
 template<typename T>
@@ -174,7 +168,7 @@ struct math_traits<T, sizeof(uint32_t)> {
   static uint32_t bits_required(type val) noexcept {
     return 0 == val ? 0 : 32 - static_cast<uint32_t>(std::countl_zero(val));
   }
-}; // math_traits
+};
 
 template<typename T>
 struct math_traits<T, sizeof(uint64_t)> {
@@ -189,9 +183,9 @@ struct math_traits<T, sizeof(uint64_t)> {
   static uint32_t bits_required(type val) noexcept {
     return 0 == val ? 0 : 64 - static_cast<uint32_t>(std::countl_zero(val));
   }
-}; // math_traits
+};  // math_traits
 
-} // math
-} // root
+}  // namespace math
+}  // namespace iresearch
 
 #endif

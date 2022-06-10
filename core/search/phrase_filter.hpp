@@ -154,8 +154,6 @@ class by_phrase : public filter_base<by_phrase_options> {
   static constexpr IndexFeatures kRequiredFeatures = IndexFeatures::FREQ |
                                                      IndexFeatures::POS;
 
-  static ptr make();
-
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(

@@ -51,8 +51,6 @@ filter::prepared::ptr filter::prepared::empty() {
   return memory::to_managed<filter::prepared, false>(&empty_query::instance());
 }
 
-DEFINE_FACTORY_DEFAULT(irs::empty) // cppcheck-suppress unknownMacro
-
 empty::empty() : filter(irs::type<empty>::get()) { }
 
 filter::prepared::ptr empty::prepare(

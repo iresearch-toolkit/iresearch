@@ -75,8 +75,6 @@ struct by_prefix_options : by_prefix_filter_options {
 ////////////////////////////////////////////////////////////////////////////////
 class by_prefix : public filter_base<by_prefix_options> {
  public:
-  static ptr make();
-
   static prepared::ptr prepare(
     const index_reader& index,
     const Order& ord,

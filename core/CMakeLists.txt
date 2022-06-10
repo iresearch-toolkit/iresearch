@@ -167,7 +167,6 @@ set(IResearch_core_sources
   ./utils/so_utils.cpp
   ./utils/process_utils.cpp
   ./utils/network_utils.cpp
-  ./utils/cpuinfo.cpp
   ./utils/numeric_utils.cpp
   ${IResearch_core_os_specific_sources}
   ${IResearch_core_optimized_sources}
@@ -255,7 +254,6 @@ set(IResearch_core_headers
   ./utils/so_utils.hpp
   ./utils/process_utils.hpp
   ./utils/network_utils.hpp
-  ./utils/cpuinfo.hpp
   ./utils/numeric_utils.hpp
   ./utils/version_utils.hpp
   ./utils/bitset.hpp

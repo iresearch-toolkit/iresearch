@@ -54,10 +54,6 @@ struct type<::term_meta> : type<irs::term_meta> { };
 namespace {
 
 struct sort : irs::sort {
-  static irs::sort::ptr make() {
-    return std::make_unique<sort>();
-  }
-
   sort() noexcept : irs::sort(irs::type<sort>::get()) { }
 
   struct prepared final : irs::sort::prepared {

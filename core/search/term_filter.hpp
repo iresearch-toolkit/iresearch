@@ -55,8 +55,6 @@ struct by_term_options {
 //////////////////////////////////////////////////////////////////////////////
 class by_term : public filter_base<by_term_options> {
  public:
-  static ptr make();
-
   static prepared::ptr prepare(
     const index_reader& rdr,
     const Order& ord,

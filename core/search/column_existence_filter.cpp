@@ -125,8 +125,6 @@ class column_prefix_existence_query final : public column_existence_query {
 
 namespace iresearch {
 
-DEFINE_FACTORY_DEFAULT(by_column_existence)  // cppcheck-suppress unknownMacro
-
 filter::prepared::ptr by_column_existence::prepare(
     const index_reader& reader, const Order& order, score_t filter_boost,
     const attribute_provider* /*ctx*/) const {

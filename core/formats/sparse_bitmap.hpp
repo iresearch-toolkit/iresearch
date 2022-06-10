@@ -26,6 +26,7 @@
 #include "analysis/token_attributes.hpp"
 #include "index/iterators.hpp"
 #include "search/cost.hpp"
+#include "search/prev_doc.hpp"
 #include "search/score.hpp"
 #include "shared.hpp"
 #include "utils/attribute_helper.hpp"
@@ -165,35 +166,6 @@ struct value_index : document {
   static constexpr string_ref type_name() noexcept { return "value_index"; }
 };
 
-// Provides an access to previous document before the current one.
-// Undefined after iterator reached EOF.
-class seek_prev : public attribute {
- public:
-  using seek_prev_f = doc_id_t (*)(const void*);
-
-  static constexpr string_ref type_name() noexcept { return "prev_doc"; }
-
-  constexpr explicit operator bool() const noexcept { return nullptr != func_; }
-
-  constexpr bool operator==(std::nullptr_t) const noexcept {
-    return !static_cast<bool>(*this);
-  }
-
-  doc_id_t operator()() const {
-    assert(static_cast<bool>(*this));
-    return func_(ctx_);
-  }
-
-  void reset(seek_prev_f func, void* ctx) noexcept {
-    func_ = func;
-    ctx_ = ctx;
-  }
-
- private:
-  seek_prev_f func_{};
-  void* ctx_{};
-};
-
 class sparse_bitmap_iterator final : public resettable_doc_iterator {
  public:
   using block_index_t = std::span<const sparse_bitmap_writer::block>;
@@ -289,7 +261,7 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
     };
   };
 
-  using attributes = std::tuple<document, value_index, seek_prev, cost, score>;
+  using attributes = std::tuple<document, value_index, prev_doc, cost, score>;
 
   explicit sparse_bitmap_iterator(memory::managed_ptr<index_input>&& in,
                                   const options& opts);
