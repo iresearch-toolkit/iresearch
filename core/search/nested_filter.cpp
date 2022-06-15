@@ -310,8 +310,9 @@ class PredMatcher : public Merger,
     if constexpr (HasScore_v<Merger>) {
       child_score(buf.data());
     }
-    while (child.next() && child_doc->value < parent) {
-      if (!pred_->next() || pred_doc_->value != child_doc->value) {
+
+    while (pred_->next() && pred_doc_->value < parent) {
+      if (!child.next() || pred_doc_->value != child_doc->value) {
         return parent + 1;
       }
 
@@ -427,7 +428,7 @@ class MinMatcher : public Merger,
     assert(!doc_limits::eof(parent));
 
     if (0 == min_) {
-      // FIXME(gnusi): ???
+      // FIXME(gnusi): return all parents, write a test???
       return 0;
     }
 
@@ -570,7 +571,7 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
   auto child =
       child_->execute(rdr, GetOrder(match_, ord), ExecutionMode::kAll, ctx);
 
-  if (IRS_UNLIKELY(!child || doc_limits::eof(child->value()))) {
+  if (IRS_UNLIKELY(!child)) {
     return doc_iterator::empty();
   }
 
@@ -580,6 +581,19 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
         return ResolveMatchType(
             rdr, match_, none_boost_, std::forward<A>(aggregator),
             [&]<typename M>(M&& matcher) -> irs::doc_iterator::ptr {
+              if constexpr (std::is_same_v<NoneMatcher, M>) {
+                // FIXME(gnusi): scoring? write a test
+                if (doc_limits::eof(child->value())) {
+                  // Match all parents
+                  return std::move(parent);
+                }
+              } else {
+                // FIXME(gnusi): incorrect for Match(0..eof), fix, test
+                if (doc_limits::eof(child->value())) {
+                  return doc_iterator::empty();
+                }
+              }
+
               return memory::make_managed<ChildToParentJoin<M>>(
                   std::move(parent), *prev, std::move(child),
                   std::move(matcher));
