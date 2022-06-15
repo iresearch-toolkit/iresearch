@@ -7338,9 +7338,9 @@ constexpr std::array<unsigned char, 130672> compressed = {{
 }};
 }
 
-iresearch_absl::flat_hash_map<uint32_t, line_property> make_line_prop_map()
+absl::flat_hash_map<uint32_t, line_property> make_line_prop_map()
 {
-iresearch_absl::flat_hash_map<uint32_t, line_property> retval;
+absl::flat_hash_map<uint32_t, line_property> retval;
 retval.reserve(32668);
 
 container::small_vector<unsigned char, 256> buf;

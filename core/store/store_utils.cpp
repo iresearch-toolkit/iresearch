@@ -119,10 +119,6 @@ double_t read_zvdouble(data_input& in) {
 // --SECTION--                                   bytes_ref_input implementation
 // ----------------------------------------------------------------------------
 
-bytes_ref_input::bytes_ref_input(bytes_ref ref)
-  : data_(ref), pos_(data_.begin()) {
-}
-
 size_t bytes_ref_input::read_bytes(byte_type* b, size_t size) noexcept {
   size = std::min(size, size_t(std::distance(pos_, data_.end())));
   std::memcpy(b, pos_, sizeof(byte_type) * size);

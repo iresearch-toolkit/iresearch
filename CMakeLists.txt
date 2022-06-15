@@ -62,8 +62,7 @@ endif()
 
 message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
 
-set(IResearch_TARGET_NAME "iresearch" CACHE INTERNAL "")
-project(${IResearch_TARGET_NAME})
+project(iresearch)
 
 # attach additional cmake modules
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
@@ -111,6 +110,7 @@ if (MSVC)
 
   add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+  add_definitions(/bigobj)
 
   # min/max macros interferes with our codebase
   add_definitions(-DNOMINMAX)
@@ -290,7 +290,6 @@ configure_file(
 )
 
 # copy pre-built files over to the build directory
-# this is required to avoid triggering file generation via bison
 set(IRESEARCH_PREBUILT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt)
 file(GLOB_RECURSE IRESEARCH_PREBUILT_LIST RELATIVE "${IRESEARCH_PREBUILT_DIR}" FOLLOW_SYMLINKS "${IRESEARCH_PREBUILT_DIR}/*")
 foreach(ELEMENT ${IRESEARCH_PREBUILT_LIST})
@@ -306,53 +305,52 @@ if (USE_PYRESEARCH)
 endif()
 
 if (USE_PVS_STUDIO)
-  set(PVS_STUDIO_TARGET_NAME "iresearch-pvs-check")
-  set(PVS_STUDIO_ANALYZE ${IResearch_TARGET_NAME}-static
+  set(PVS_STUDIO_ANALYZE iresearch-static
                          ${IResearchUtil_TARGET_NAME}
                          ${IResearchBenchmarks_TARGET_NAME}
                          ${IResearchPython_TARGET_NAME})
 
   pvs_studio_add_target(
-    TARGET ${PVS_STUDIO_TARGET_NAME} ALL
+    TARGET iresearch-pvs-check ALL
     OUTPUT FORMAT errorfile
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
-    LOG ${IResearch_TARGET_NAME}.err
+    LOG iresearch.err
     CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
   )
 
   set_target_properties(
-    ${PVS_STUDIO_TARGET_NAME}
+    iresearch-pvs-check
     PROPERTIES
     COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
   pvs_studio_add_target(
-    TARGET ${PVS_STUDIO_TARGET_NAME}-html ALL
+    TARGET iresearch-pvs-check-html ALL
     FORMAT fullhtml
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
-    LOG ${IResearch_TARGET_NAME}-html.err
+    LOG iresearch-html.err
     CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
   )
 
   set_target_properties(
-    ${PVS_STUDIO_TARGET_NAME}-html
+    iresearch-pvs-check-html
     PROPERTIES
     COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
   pvs_studio_add_target(
-    TARGET ${PVS_STUDIO_TARGET_NAME}-xml ALL
+    TARGET iresearch-pvs-check-xml ALL
     FORMAT xml
     ANALYZE ${PVS_STUDIO_ANALYZE}
     MODE GA:1,2 OP
-    LOG ${IResearch_TARGET_NAME}-xml.err
+    LOG iresearch-xml.err
     CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
   )
 
   set_target_properties(
-    ${PVS_STUDIO_TARGET_NAME}-xml
+    iresearch-pvs-check-xml
     PROPERTIES
     COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
@@ -373,13 +371,13 @@ if (USE_TESTS)
     SET(LCOV_EXCLUDE "external/*;boost/*;${LCOV_EXCLUDE}")
 
     setup_target_for_coverage(
-      ${IResearch_TARGET_NAME}-coverage 
-      $<TARGET_FILE:${IResearchTests_TARGET_NAME}-static>
+      iresearch-coverage
+      $<TARGET_FILE:iresearch-tests-static>
       coverage
       "--ires_output"
     )
-    add_dependencies(${IResearch_TARGET_NAME}-coverage
-      ${IResearchTests_TARGET_NAME}-static
+    add_dependencies(iresearch-coverage
+      iresearch-tests-static
     )
 
     if (PYTHON_EXECUTABLE AND GCOVR_PATH)   
@@ -387,17 +385,17 @@ if (USE_TESTS)
       SET(GCOVR_EXTRA_ARGS "-e;${PROJECT_SOURCE_DIR}/external/;${GCOVR_EXTRA_ARGS}")
 
       setup_target_for_coverage_cobertura(
-        ${IResearch_TARGET_NAME}-coverage-cobertura
-        $<TARGET_FILE:${IResearchTests_TARGET_NAME}-static>
+        iresearch-coverage-cobertura
+        $<TARGET_FILE:iresearch-tests-static>
         coverage
         "--ires_output"
       )
       setup_target_for_collecting_coverage_cobertura(
-        ${IResearch_TARGET_NAME}-coverage-cobertura-collect
+        iresearch-coverage-cobertura-collect
         coverage
       )
-      add_dependencies(${IResearch_TARGET_NAME}-coverage-cobertura-collect
-        ${IResearchTests_TARGET_NAME}-static
+      add_dependencies(iresearch-coverage-cobertura-collect
+        iresearch-tests-static
       )
     endif()
   endif()

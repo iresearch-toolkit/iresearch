@@ -29,7 +29,7 @@
 
 TEST(cost_attribute_test, consts) {
   static_assert("iresearch::cost" == irs::type<irs::cost>::name());
-  static_assert((std::numeric_limits<irs::cost::cost_t>::max)() == irs::cost::MAX);
+  static_assert((std::numeric_limits<irs::cost::cost_t>::max)() == irs::cost::kMax);
 }
 
 TEST(cost_attribute_test, ctor) {
@@ -126,7 +126,7 @@ TEST(cost_attribute_test, extract) {
   } attrs;
 
   ASSERT_EQ(
-    irs::cost::cost_t(irs::cost::MAX),
+    irs::cost::cost_t(irs::cost::kMax),
     irs::cost::extract(attrs)
   );
 

@@ -46,20 +46,11 @@ inline constexpr size_t align_up(size_t size, size_t alignment) noexcept {
 #endif
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                    is_shared_ptr
-// ----------------------------------------------------------------------------
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief dump memory statistics and stack trace to stderr
-///////////////////////////////////////////////////////////////////////////////
+/// Dump memory statistics and stack trace to stderr
 void dump_mem_stats_trace() noexcept;
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class aligned_storage
-/// @brief same as 'std::aligned_storage' but MSVC doesn't honor alignment on
-/// MSVC2013, 2017 (prior 15.8)
-///////////////////////////////////////////////////////////////////////////////
+// Same as 'std::aligned_storage' but MSVC doesn't honor alignment on
+// MSVC2013, 2017 (prior 15.8)
 template<size_t Size, size_t Alignment>
 class aligned_storage {
  private:
@@ -97,12 +88,9 @@ class aligned_storage {
   };
 }; // aligned_storage
 
-///////////////////////////////////////////////////////////////////////////////
-/// @struct aligned_union
-/// @brief Provides the member typedef type, which is a POD type of a size and
-///        alignment suitable for use as uninitialized storage for an object of
-///        any of the specified Types
-///////////////////////////////////////////////////////////////////////////////
+// Provides the member typedef type, which is a POD type of a size and
+// alignment suitable for use as uninitialized storage for an object of
+// any of the specified Types
 template<typename... Types>
 struct aligned_union {
 #if defined(_MSC_VER)
@@ -120,11 +108,8 @@ struct aligned_union {
   static const size_t size_value =  sizeof(type);
 }; // aligned_union 
 
-///////////////////////////////////////////////////////////////////////////////
-/// @struct aligned_type
-/// @brief Provides the storage (POD type) that is suitable for use as
-///        uninitialized storage for an object of  any of the specified Types
-///////////////////////////////////////////////////////////////////////////////
+// Provides the storage (POD type) that is suitable for use as
+// uninitialized storage for an object of  any of the specified Types
 template<typename... Types>
 struct aligned_type {
   template<typename T>
@@ -179,10 +164,6 @@ struct aligned_type {
 
   typename aligned_union<Types...>::type storage;
 }; // aligned_type
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                         Deleters
-// ----------------------------------------------------------------------------
 
 template<typename Alloc>
 struct allocator_deallocator : public compact<0, Alloc> {
@@ -284,10 +265,6 @@ struct noop_deleter {
   void operator()(T*) { }
 };
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                   managed unique
-// ----------------------------------------------------------------------------
-
 template<typename T>
 struct managed_deleter : util::noncopyable {
  public:
@@ -349,27 +326,27 @@ template<typename T>
 using managed_ptr = std::unique_ptr<T, memory::managed_deleter<T>>;
 
 template <typename T, bool Manage = true>
-inline typename std::enable_if<
+inline typename std::enable_if_t<
   !std::is_array<T>::value,
-  managed_ptr<T>
->::type to_managed(T* ptr) noexcept {
+  managed_ptr<T>>
+to_managed(T* ptr) noexcept {
   return managed_ptr<T>(ptr, Manage ? managed_deleter<T>(ptr) : managed_deleter<T>(nullptr));
 }
 
 template <typename T>
-inline typename std::enable_if<
+inline typename std::enable_if_t<
   !std::is_array<T>::value,
-  managed_ptr<T>
->::type to_managed(std::unique_ptr<T>&& ptr) noexcept {
+  managed_ptr<T>>
+to_managed(std::unique_ptr<T>&& ptr) noexcept {
   auto* p = ptr.release();
   return managed_ptr<T>(p, managed_deleter<T>(p));
 }
 
 template<typename T, typename... Types>
-inline typename std::enable_if<
+inline typename std::enable_if_t<
   !std::is_array<T>::value,
-  managed_ptr<T>
->::type make_managed(Types&&... Args) {
+  managed_ptr<T>>
+make_managed(Types&&... Args) {
   try {
     return to_managed<T, true>(new T(std::forward<Types>(Args)...));
   } catch (std::bad_alloc&) {
@@ -384,10 +361,6 @@ inline typename std::enable_if<
 }
 
 #define DECLARE_MANAGED_PTR(class_name) typedef irs::memory::managed_ptr<class_name> ptr
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                      make_shared
-// ----------------------------------------------------------------------------
 
 template<typename T, typename... Args>
 inline std::shared_ptr<T> make_shared(Args&&... args) {
@@ -404,15 +377,11 @@ inline std::shared_ptr<T> make_shared(Args&&... args) {
   }
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                      make_unique
-// ----------------------------------------------------------------------------
-
 template<typename T, typename... Types>
-inline typename std::enable_if<
+inline typename std::enable_if_t<
   !std::is_array<T>::value,
-  std::unique_ptr<T>
->::type make_unique(Types&&... Args) {
+  std::unique_ptr<T>>
+make_unique(Types&&... Args) {
   try {
     return std::unique_ptr<T>(new T(std::forward<Types>(Args)...));
   } catch (std::bad_alloc&) {
@@ -427,10 +396,10 @@ inline typename std::enable_if<
 }
 
 template<typename T>
-inline typename std::enable_if<
+inline typename std::enable_if_t<
   std::is_array<T>::value && std::extent<T>::value == 0,
-  std::unique_ptr<T>
->::type make_unique(size_t size) {
+  std::unique_ptr<T>>
+make_unique(size_t size) {
   typedef typename std::remove_extent<T>::type value_type;
 
   try {
@@ -447,20 +416,15 @@ inline typename std::enable_if<
 }
 
 template<typename T, typename... Types>
-typename std::enable_if<
+typename std::enable_if_t<
   std::extent<T>::value != 0,
-  void
->::type make_unique(Types&&...) = delete;
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                  allocate_unique
-// ----------------------------------------------------------------------------
+  void> make_unique(Types&&...) = delete;
 
 template<typename T, typename Alloc, typename... Types>
-inline typename std::enable_if<
+inline typename std::enable_if_t<
   !std::is_array<T>::value,
-  std::unique_ptr<T, allocator_deleter<Alloc>>
->::type allocate_unique(Alloc& alloc, Types&&... Args) {
+  std::unique_ptr<T, allocator_deleter<Alloc>>>
+allocate_unique(Alloc& alloc, Types&&... Args) {
   typedef std::allocator_traits<
     typename std::remove_cv<Alloc>::type
   > traits_t;
@@ -495,10 +459,10 @@ inline typename std::enable_if<
 template<
   typename T,
   typename Alloc
-> typename std::enable_if<
+> typename std::enable_if_t<
   std::is_array<T>::value && std::extent<T>::value == 0,
-  std::unique_ptr<T, allocator_array_deleter<Alloc>>
->::type allocate_unique(Alloc& alloc, size_t size) {
+  std::unique_ptr<T, allocator_array_deleter<Alloc>>>
+allocate_unique(Alloc& alloc, size_t size) {
   typedef std::allocator_traits<
     typename std::remove_cv<Alloc>::type
   > traits_t;
@@ -551,10 +515,10 @@ static const auto allocate_only = allocate_only_tag();
 template<
   typename T,
   typename Alloc
-> typename std::enable_if<
+> typename std::enable_if_t<
   std::is_array<T>::value && std::extent<T>::value == 0,
-  std::unique_ptr<T, allocator_array_deallocator<Alloc>>
->::type allocate_unique(Alloc& alloc, size_t size, allocate_only_tag) {
+  std::unique_ptr<T, allocator_array_deallocator<Alloc>>>
+allocate_unique(Alloc& alloc, size_t size, allocate_only_tag) {
   typedef std::allocator_traits<
     typename std::remove_cv<Alloc>::type
   > traits_t;
@@ -585,14 +549,10 @@ template<
 
 // Decline wrong syntax
 template<typename T, typename Alloc, typename... Types>
-typename std::enable_if<
+typename std::enable_if_t<
   std::extent<T>::value != 0,
-  void
->::type allocate_unique(Alloc&, Types&&...) = delete;
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                            maker
-// ----------------------------------------------------------------------------
+  void>
+allocate_unique(Alloc&, Types&&...) = delete;
 
 template<typename Class, bool = is_shared_ptr_v<typename Class::ptr>>
 struct maker {
@@ -653,10 +613,8 @@ struct maker<Class, false> {
   friend struct irs::memory::maker<class_name, false>; \
   typedef std::unique_ptr<class_name> ptr
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief default inline implementation of a factory method, instantiation on
-///        heap
-//////////////////////////////////////////////////////////////////////////////
+// Default inline implementation of a factory method, instantiation on
+// heap
 #define DEFINE_FACTORY_INLINE(class_name) \
 template<typename Class, bool> friend struct irs::memory::maker; \
 template<typename _T, typename... Args> \
@@ -664,15 +622,6 @@ static ptr make(Args&&... args) { \
   typedef typename std::enable_if<std::is_base_of<class_name, _T>::value, _T>::type type; \
   typedef irs::memory::maker<type> maker_t; \
   return maker_t::template make(std::forward<Args>(args)...); \
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief default implementation of a factory method, instantiation on heap
-///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
-//////////////////////////////////////////////////////////////////////////////
-#define DEFINE_FACTORY_DEFAULT(class_type) \
-/*static*/ class_type::ptr class_type::make() { \
-  return irs::memory::maker<class_type>::make(); \
 }
 
 #endif

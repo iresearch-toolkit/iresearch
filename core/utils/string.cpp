@@ -22,13 +22,12 @@
 
 #include "string.hpp"
 
-#include <absl/hash/internal/city.h>
+#include <absl/hash/hash.h>
 
-namespace iresearch {
-namespace hash_utils {
+namespace iresearch::hash_utils {
 
 size_t hash(const char* value, size_t size) noexcept {
-  return irs::absl::hash_internal::CityHash64(value, size);
+  return absl::Hash<std::string_view>{}({value, size});
 }
 
 size_t hash(const byte_type* value, size_t size) noexcept {
@@ -36,5 +35,4 @@ size_t hash(const byte_type* value, size_t size) noexcept {
   return hash(reinterpret_cast<const char*>(value), size);
 }
 
-}
-}
+}  // namespace iresearch::hash_utils

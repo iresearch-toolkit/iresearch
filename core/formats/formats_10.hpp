@@ -30,9 +30,6 @@ namespace version10 {
 
 void init();
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class format
-//////////////////////////////////////////////////////////////////////////////
 class format : public irs::format {
  public:
   virtual postings_writer::ptr get_postings_writer(bool consolidation) const = 0;
@@ -40,9 +37,9 @@ class format : public irs::format {
 
  protected:
   explicit format(const type_info& type) noexcept;
-}; // format
+};
 
-} // version10
-} // ROOT
+}
+}
 
 #endif

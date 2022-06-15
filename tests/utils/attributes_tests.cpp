@@ -22,29 +22,33 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
-
+#include "utils/attribute_provider.hpp"
 #include "utils/attributes.hpp"
 
 using namespace iresearch;
 
 TEST(attributes_tests, duplicate_register) {
-  struct dummy_attribute: public irs::attribute { };
+  struct dummy_attribute : public irs::attribute {};
 
   static bool initial_expected = true;
 
-  // check required for tests with repeat (static maps are not cleared between runs)
+  // check required for tests with repeat (static maps are not cleared between
+  // runs)
   if (initial_expected) {
     ASSERT_FALSE(irs::attributes::exists(irs::type<dummy_attribute>::name()));
-    ASSERT_FALSE(irs::attributes::get(irs::type<dummy_attribute>::get().name()));
+    ASSERT_FALSE(
+        irs::attributes::get(irs::type<dummy_attribute>::get().name()));
 
     irs::attribute_registrar initial(irs::type<dummy_attribute>::get());
     ASSERT_EQ(!initial_expected, !initial);
   }
 
-  initial_expected = false; // next test iteration will not be able to register the same attribute
+  // next test iteration will not be able to register the same attribute
+  initial_expected = false;
   irs::attribute_registrar duplicate(irs::type<dummy_attribute>::get());
   ASSERT_TRUE(!duplicate);
 
-  ASSERT_TRUE(irs::attributes::exists(irs::type<dummy_attribute>::get().name()));
+  ASSERT_TRUE(
+      irs::attributes::exists(irs::type<dummy_attribute>::get().name()));
   ASSERT_TRUE(irs::attributes::get(irs::type<dummy_attribute>::name()));
 }

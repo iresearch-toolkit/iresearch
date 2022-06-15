@@ -25,52 +25,40 @@
 
 namespace {
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class emtpy_query
-/// @brief represent a query returns empty result set 
-//////////////////////////////////////////////////////////////////////////////
+// Represent a query returning an empty result set
 struct empty_query final
     : public irs::filter::prepared,
       public irs::singleton<empty_query> {
  public:
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader&,
-      const irs::order::prepared&,
+      const irs::Order&,
+      irs::ExecutionMode,
       const irs::attribute_provider*) const override {
     return irs::doc_iterator::empty();
   }
-}; // empty_query
+};
 
-} // LOCAL
+}
 
 namespace iresearch {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            filter
-// -----------------------------------------------------------------------------
-
 filter::filter(const type_info& type) noexcept
-  : boost_(irs::no_boost()), type_(type.id()) {
+  : boost_(irs::kNoBoost), type_(type.id()) {
 }
 
 filter::prepared::ptr filter::prepared::empty() {
   return memory::to_managed<filter::prepared, false>(&empty_query::instance());
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                             empty
-// -----------------------------------------------------------------------------
-
-DEFINE_FACTORY_DEFAULT(irs::empty) // cppcheck-suppress unknownMacro
-
 empty::empty() : filter(irs::type<empty>::get()) { }
 
 filter::prepared::ptr empty::prepare(
     const index_reader&,
-    const order::prepared&,
-    boost_t,
+    const Order&,
+    score_t,
     const attribute_provider*) const {
   return memory::to_managed<filter::prepared, false>(&empty_query::instance());
 }
 
-} // ROOT
+}

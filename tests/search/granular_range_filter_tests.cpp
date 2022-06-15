@@ -55,7 +55,7 @@ class granular_long_field: public tests::long_field {
   }
 };
 
-class granular_range_filter_test_case : public tests::filter_test_case_base {
+class granular_range_filter_test_case : public tests::FilterTestCaseBase {
  protected:
   static void by_range_json_field_factory(
     tests::document& doc,
@@ -142,12 +142,12 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
     // with boost
     {
-      irs::boost_t boost = 1.5f;
+      irs::score_t boost = 1.5f;
       irs::by_granular_range q;
       *q.mutable_field() = "name";
       irs::set_granular_term(q.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
@@ -1250,20 +1250,20 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
     auto rdr = open_reader();
 
     // empty query
-    check_query(irs::by_granular_range(), docs_t{}, rdr);
+    CheckQuery(irs::by_granular_range(), Docs{}, rdr);
 
     // name = (..;..)
     {
-      docs_t docs{
+      Docs docs{
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
         17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
       };
-      costs_t costs{ docs.size() };
+      Costs costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
 
-      check_query(query, docs, costs, rdr);
+      CheckQuery(query, docs, costs, rdr);
     }
 
     // invalid_name = (..;..)
@@ -1271,77 +1271,77 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       irs::by_granular_range query;
       *query.mutable_field() = "invalid_name";
 
-      check_query(query, docs_t{}, rdr);
+      CheckQuery(query, Docs{}, rdr);
     }
 
     // name = [A;..)
     // result: A .. Z, ~
     {
-      docs_t docs{
+      Docs docs{
         2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
         18, 19, 20, 21, 22, 23, 24, 25, 26, 27
       }; 
-      costs_t costs{ docs.size() };
+      Costs costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
       irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
 
-      check_query(query, docs, costs, rdr);
+      CheckQuery(query, docs, costs, rdr);
     }
 
     // name = (A;..)
     // result: A .. Z, ~
     {
-      docs_t docs{
+      Docs docs{
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
         17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27
       };
-      costs_t costs{ docs.size() };
+      Costs costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
       irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
 
-      check_query(query, docs, costs, rdr);
+      CheckQuery(query, docs, costs, rdr);
     }
 
     // name = (..;C)
     // result: A, B, !, @, #, $, %
     {
 
-      docs_t docs{ 1, 2, 28, 29, 30, 31, 32 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 1, 2, 28, 29, 30, 31, 32 };
+      Costs costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
       irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("C")));
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      check_query(query, docs, costs, rdr);
+      CheckQuery(query, docs, costs, rdr);
     }
 
     // name = (..;C]
     // result: A, B, C, !, @, #, $, %
     {
-      docs_t docs{ 1, 2, 3, 28, 29, 30, 31, 32 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 1, 2, 3, 28, 29, 30, 31, 32 };
+      Costs costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
       irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("C")));
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      check_query(query, docs, costs, rdr);
+      CheckQuery(query, docs, costs, rdr);
     }
 
     // name = [A;C]
     // result: A, B, C
     {
-      docs_t docs{ 1, 2, 3 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 1, 2, 3 };
+      Costs costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
@@ -1350,14 +1350,14 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      check_query(query, docs, costs, rdr);
+      CheckQuery(query, docs, costs, rdr);
     }
 
     // name = [A;B]
     // result: A, B
     {
-      docs_t docs{ 1, 2 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 1, 2 };
+      Costs costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
@@ -1366,14 +1366,14 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      check_query(query, docs, costs, rdr);
+      CheckQuery(query, docs, costs, rdr);
     }
 
     // name = [A;B)
     // result: A
     {
-      docs_t docs{ 1 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 1 };
+      Costs costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
@@ -1382,14 +1382,14 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      check_query(query, docs, costs, rdr);
+      CheckQuery(query, docs, costs, rdr);
     }
 
     // name = (A;B]
     // result: A
     {
-      docs_t docs{ 2 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 2 };
+      Costs costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
@@ -1398,7 +1398,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      check_query(query, docs, costs, rdr);
+      CheckQuery(query, docs, costs, rdr);
     }
 
     // name = (A;B)
@@ -1411,14 +1411,14 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      check_query(query, docs_t{}, costs_t{0}, rdr);
+      CheckQuery(query, Docs{}, Costs{0}, rdr);
     }
 
     // name = [A;C)
     // result: A, B
     {
-      docs_t docs{ 1, 2 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 1, 2 };
+      Costs costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
@@ -1427,14 +1427,14 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      check_query(query, docs, costs, rdr);
+      CheckQuery(query, docs, costs, rdr);
     }
 
     // name = (A;C]
     // result: B, C
     {
-      docs_t docs{ 2, 3 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 2, 3 };
+      Costs costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
@@ -1443,14 +1443,14 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      check_query(query, docs, costs, rdr);
+      CheckQuery(query, docs, costs, rdr);
     }
 
     // name = (A;C)
     // result: B
     {
-      docs_t docs{ 2 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 2 };
+      Costs costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
@@ -1459,7 +1459,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      check_query(query, docs, costs, rdr);
+      CheckQuery(query, docs, costs, rdr);
     }
 
     // name = [C;A]
@@ -1472,21 +1472,21 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      check_query(query, docs_t{}, costs_t{0}, rdr);
+      CheckQuery(query, Docs{}, Costs{0}, rdr);
     }
 
     // name = [~;..]
     // result: ~
     {
-      docs_t docs{ 27 };
-      costs_t costs{ docs.size() };
+      Docs docs{ 27 };
+      Costs costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
       irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("~")));
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
 
-      check_query(query, docs, costs, rdr);
+      CheckQuery(query, docs, costs, rdr);
     }
 
     // name = (~;..]
@@ -1497,55 +1497,55 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("~")));
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
 
-      check_query(query, docs_t{}, costs_t{0}, rdr);
+      CheckQuery(query, Docs{}, Costs{0}, rdr);
     }
 
     // name = (a;..]
     // result: ~
     {
-      docs_t docs{ 27 };
-      costs_t costs{ 1 };
+      Docs docs{ 27 };
+      Costs costs{ 1 };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
       irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("a")));
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
 
-      check_query(query, docs, costs, rdr);
+      CheckQuery(query, docs, costs, rdr);
     }
 
     // name = [..;a]
     // result: !, @, #, $, %, A..Z
     {
-      docs_t docs{
+      Docs docs{
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
         17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 28, 29, 30, 31, 32
       };
-      costs_t costs{ docs.size() };
+      Costs costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
       irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("a")));
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      check_query(query, docs, costs, rdr);
+      CheckQuery(query, docs, costs, rdr);
     }
 
     // name = [..;a)
     // result: !, @, #, $, %, A..Z
     {
-      docs_t docs{
+      Docs docs{
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
         17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 28, 29, 30, 31, 32
       };
-      costs_t costs{ docs.size() };
+      Costs costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
       irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("a")));
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      check_query(query, docs, costs, rdr);
+      CheckQuery(query, docs, costs, rdr);
     }
 
     // name = [DEL;..]
@@ -1556,7 +1556,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("\x7f")));
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
 
-      check_query(query, docs_t{}, costs_t{0}, rdr);
+      CheckQuery(query, Docs{}, Costs{0}, rdr);
     }
   }
 }; // granular_range_filter_test_case
@@ -1574,7 +1574,7 @@ TEST(by_granular_range_test, ctor) {
   irs::by_granular_range q;
   ASSERT_EQ(irs::type<irs::by_granular_range>::id(), q.type());
   ASSERT_EQ(irs::by_granular_range_options{}, q.options());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 }
 
 TEST(by_granular_range_test, equal) {
@@ -1665,12 +1665,12 @@ TEST(by_granular_range_test, boost) {
     q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::no_boost(), prepared->boost());
+    ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
   // with boost, empty query
   {
-    irs::boost_t boost = 1.5f;
+    irs::score_t boost = 1.5f;
     irs::by_granular_range q;
     *q.mutable_field() = "field";
     irs::set_granular_term(q.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
@@ -1680,7 +1680,7 @@ TEST(by_granular_range_test, boost) {
     q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::no_boost(), prepared->boost());
+    ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 }
 
@@ -1713,18 +1713,20 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
   auto rdr = open_reader();
 
   // empty query
-  check_query(irs::by_granular_range(), docs_t{}, rdr);
+  CheckQuery(irs::by_granular_range(), Docs{}, rdr);
 
   // name = (..;..) test collector call count for field/term/finish
   {
-    docs_t docs{ };
-    costs_t costs{ docs.size() };
-    irs::order order;
+    Docs docs{ };
+    Costs costs{ docs.size() };
 
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
     size_t finish_count = 0;
-    auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+    std::array<irs::sort::ptr, 1> scorers{
+        std::make_unique<tests::sort::custom_sort>() };
+    auto& scorer = static_cast<tests::sort::custom_sort&>(*scorers.front());
 
     scorer.collector_collect_field = [&collect_field_count](
         const irs::sub_reader&, const irs::term_reader&)->void{
@@ -1757,7 +1759,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     q.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     q.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-    check_query(q, order, docs, rdr, false);
+    CheckQuery(q, scorers, docs, rdr, false);
     ASSERT_EQ(0, collect_field_count);
     ASSERT_EQ(0, collect_term_count);
     ASSERT_EQ(0, finish_count);
@@ -1765,14 +1767,16 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
 
   // value = (..;..) test collector call count for field/term/finish
   {
-    docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
-    costs_t costs{ docs.size() };
-    irs::order order;
+    Docs docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
+    Costs costs{ docs.size() };
 
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
     size_t finish_count = 0;
-    auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+    std::array<irs::sort::ptr, 1> order{
+        std::make_unique<tests::sort::custom_sort>() };
+    auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](
         const irs::sub_reader&, const irs::term_reader&)->void{
@@ -1805,7 +1809,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     q.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     q.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-    check_query(q, order, docs, rdr);
+    CheckQuery(q, order, docs, rdr);
     ASSERT_EQ(11, collect_field_count); // 11 fields (1 per term since treated as a disjunction) in 1 segment
     ASSERT_EQ(11, collect_term_count); // 11 different terms
     ASSERT_EQ(11, finish_count); // 11 different terms
@@ -1813,10 +1817,10 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
 
   // value = (..;..)
   {
-    docs_t docs{ 1, 5, 7, 9, 10, 3, 4, 8, 11, 2, 6, 12, 13, 14, 15, 16, 17 };
-    costs_t costs{ docs.size() };
-    irs::order order;
-    order.add<tests::sort::frequency_sort>(false);
+    Docs docs{ 1, 5, 7, 9, 10, 3, 4, 8, 11, 2, 6, 12, 13, 14, 15, 16, 17 };
+    Costs costs{ docs.size() };
+    std::array<irs::sort::ptr, 1> order {
+        std::make_unique<tests::sort::frequency_sort>() };
 
     irs::by_granular_range q;
     *q.mutable_field() = "value";
@@ -1825,15 +1829,15 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     q.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     q.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-    check_query(q, order, docs, rdr);
+    CheckQuery(q, order, docs, rdr);
   }
 
   // value = (..;..) + scored_terms_limit
   {
-    docs_t docs{ 1, 5, 7, 9, 10, 3, 8, 2, 4, 6, 11, 12, 13, 14, 15, 16, 17 };
-    costs_t costs{ docs.size() };
-    irs::order order;
-    order.add<tests::sort::frequency_sort>(false);
+    Docs docs{ 2, 4, 6, 11, 12, 13, 14, 15, 16, 17, 1, 5, 7, 9, 10, 3, 8 };
+    Costs costs{ docs.size() };
+    std::array<irs::sort::ptr, 1> order {
+        std::make_unique<tests::sort::frequency_sort>() };
 
     irs::by_granular_range q;
     *q.mutable_field() = "value";
@@ -1843,20 +1847,21 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     q.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
     q.mutable_options()->scored_terms_limit = 2;
 
-    check_query(q, order, docs, rdr);
+    CheckQuery(q, order, docs, rdr);
   }
 
   // value = (..;100)
   {
-    docs_t docs{ 4, 11, 12, 13, 14, 15, 16, 17 };
-    costs_t costs{ docs.size() };
-    irs::order order;
+    Docs docs{ 4, 11, 12, 13, 14, 15, 16, 17 };
+    Costs costs{ docs.size() };
     irs::numeric_token_stream max_stream;
     max_stream.reset((double_t)100.);
     auto* max_term = irs::get<irs::term_attribute>(max_stream);
 
     ASSERT_TRUE(max_stream.next());
-    order.add<tests::sort::frequency_sort>(false);
+
+    std::array<irs::sort::ptr, 1> order {
+        std::make_unique<tests::sort::frequency_sort>() };
 
     irs::by_granular_range q;
     *q.mutable_field() = "value";
@@ -1865,7 +1870,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     q.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     q.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-    check_query(q , order, docs, rdr);
+    CheckQuery(q , order, docs, rdr);
   }
 }
 
@@ -1909,23 +1914,22 @@ TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
   // value = [...;...)
   const int seed = -6;
   for (int begin = seed, end = begin + int(rdr->docs_count()); begin != end; ++begin) {
-    docs_t docs;
+    Docs docs;
     docs.resize(size_t(end - begin));
     std::iota(docs.begin(), docs.end(), size_t(begin - seed + irs::doc_limits::min()));
-    costs_t costs{ docs.size() };
-    irs::order order;
+    Costs costs{ docs.size() };
     irs::numeric_token_stream min_stream;
     min_stream.reset((double_t)begin);
 
-    order.add<tests::sort::frequency_sort>(false);
-    order.add<tests::sort::frequency_sort>(true);
+    std::array<irs::sort::ptr, 1> order {
+        std::make_unique<tests::sort::frequency_sort>() };
 
     irs::by_granular_range q;
     *q.mutable_field() = "seq";
     irs::set_granular_term(q.mutable_options()->range.min, min_stream);
     q.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
 
-    check_query(q, order, docs, rdr);
+    CheckQuery(q, order, docs, rdr);
   }
 }
 
@@ -2012,7 +2016,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2062,7 +2066,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2114,7 +2118,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2164,7 +2168,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(false);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2213,9 +2217,9 @@ TEST_P(granular_range_filter_test_case, visit) {
   ASSERT_EQ(2, visitor.prepare_calls_counter());
   ASSERT_EQ(2, visitor.visit_calls_counter());
   ASSERT_EQ(
-    (std::vector<std::pair<irs::string_ref, irs::boost_t>>{
-      {"abc", irs::no_boost()},
-      {"abcd", irs::no_boost()}
+    (std::vector<std::pair<irs::string_ref, irs::score_t>>{
+      {"abc", irs::kNoBoost},
+      {"abcd", irs::kNoBoost}
     }),
     visitor.term_refs<char>());
 

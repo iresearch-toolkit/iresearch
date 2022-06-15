@@ -224,11 +224,9 @@ class parametric_states {
       size_t value = parametric_state_hash::seed();
       for (auto& pos: state) {
         // cppcheck-suppress unreadVariable
-        const size_t hash = absl::hash_internal::CityHashState::hash(
-          size_t(pos.offset) << 33  |
-          size_t(pos.distance) << 1 |
-          size_t(pos.transpose));
-
+        const auto hash = absl::Hash<size_t>{}(size_t(pos.offset) << 33U |
+                                               size_t(pos.distance) << 1U |
+                                               size_t(pos.transpose));
         value = irs::hash_combine(value, hash);
       }
       return value;
@@ -333,7 +331,7 @@ size_t predict_num_states(byte_type max_distance, bool with_transpositions) noex
   };
 
   const size_t idx = size_t(2)*max_distance + size_t(with_transpositions);
-  return idx < IRESEARCH_COUNTOF(NUM_STATES) ? NUM_STATES[idx] : 0;
+  return idx < std::size(NUM_STATES) ? NUM_STATES[idx] : 0;
 }
 
 uint32_t normalize(parametric_state& state) noexcept {

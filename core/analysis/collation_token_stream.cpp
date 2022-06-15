@@ -296,7 +296,8 @@ bool collation_token_stream::reset(string_ref data) {
     assert(buf == raw_term_buf);
     termBufIdx = 0;
     for (decltype(term_size) i{}; i < term_size; ++i) {
-      assert(raw_term_buf[i] < kRecalcMap.size());
+      static_assert(sizeof(raw_term_buf[i]) * (1 << CHAR_BIT) <=
+                    kRecalcMap.size());
       const auto [offset, size] = kRecalcMap[raw_term_buf[i]];
       if ((termBufIdx + size) > sizeof state_->term_buf) {
         IR_FRMT_ERROR(

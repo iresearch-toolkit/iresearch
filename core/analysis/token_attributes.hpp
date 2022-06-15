@@ -36,10 +36,7 @@
 
 namespace iresearch {
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class offset 
-/// @brief represents token offset in a stream 
-//////////////////////////////////////////////////////////////////////////////
+// Represents token offset in a stream
 struct offset final : attribute {
   static constexpr string_ref type_name() noexcept { return "offset"; }
 
@@ -52,31 +49,22 @@ struct offset final : attribute {
   uint32_t end{0};
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class increment 
-/// @brief represents token increment in a stream 
-//////////////////////////////////////////////////////////////////////////////
+// Represents token increment in a stream
 struct increment final : attribute {
   static constexpr string_ref type_name() noexcept { return "increment"; }
 
   uint32_t value{1};
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class term_attribute 
-/// @brief represents term value in a stream 
-//////////////////////////////////////////////////////////////////////////////
+// Represents term value in a stream
 struct term_attribute final : attribute {
   static constexpr string_ref type_name() noexcept { return "term_attribute"; }
 
   bytes_ref value;
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class payload
-/// @brief represents an arbitrary byte sequence associated with
-///        the particular term position in a field
-//////////////////////////////////////////////////////////////////////////////
+// Represents an arbitrary byte sequence associated with
+// the particular term position in a field
 struct payload final : attribute {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "payload"; }
@@ -84,10 +72,7 @@ struct payload final : attribute {
   bytes_ref value;
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class document 
-/// @brief contains a document identifier
-//////////////////////////////////////////////////////////////////////////////
+// Contains a document identifier
 struct document : attribute {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "document"; }
@@ -99,35 +84,26 @@ struct document : attribute {
   doc_id_t value;
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class frequency 
-/// @brief how many times term appears in a document
-//////////////////////////////////////////////////////////////////////////////
+// Number of occurences of a term in a document
 struct frequency final : attribute {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "frequency"; }
 
   uint32_t value{0};
-}; // frequency
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class granularity_prefix
-/// @brief indexed tokens are prefixed with one byte indicating granularity
-///        this is marker attribute only used in field::features and by_range
-///        exact values are prefixed with 0
-///        the less precise the token the greater its granularity prefix value
-//////////////////////////////////////////////////////////////////////////////
+// Indexed tokens are prefixed with one byte indicating granularity
+// this is marker attribute only used in field::features and by_range
+// exact values are prefixed with 0
+// the less precise the token the greater its granularity prefix value
 struct granularity_prefix final {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept {
     return "iresearch::granularity_prefix";
   }
-}; // granularity_prefix
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class position 
-/// @brief iterator represents term positions in a document
-//////////////////////////////////////////////////////////////////////////////
+// Iterator representing term positions in a document
 class position
   : public attribute,
     public attribute_provider {
@@ -161,12 +137,9 @@ class position
 
  protected:
   value_t value_{ pos_limits::invalid() };
-}; // position
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class attribute_provider_change
-/// @brief subscription for attribute provider change
-//////////////////////////////////////////////////////////////////////////////
+// Subscription for attribute provider change
 class attribute_provider_change final : public attribute {
  public:
   using callback_f = std::function<void(attribute_provider&)>;
@@ -192,7 +165,20 @@ class attribute_provider_change final : public attribute {
   static void noop(attribute_provider&) noexcept { }
 
   mutable callback_f callback_{&noop};
-}; // attribute_provider_change
+};
+
+// Score threshold can be set by document consumers
+struct score_threshold final : public attribute {
+  using value_type = uint32_t;
+
+  // DO NOT CHANGE NAME
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::score_threshold";
+  }
+
+  value_type value;
+  std::span<const value_type> skip_scores;
+};
 
 } // ROOT
 

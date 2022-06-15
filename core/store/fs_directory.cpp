@@ -351,7 +351,10 @@ class fs_index_input : public buffered_index_input {
   * position */
   struct file_handle {
     using ptr = std::shared_ptr<file_handle>;
-    static ptr make();
+
+    static ptr make() {
+      return std::make_shared<file_handle>();
+    }
 
     operator void*() const { return handle.get(); }
 
@@ -385,8 +388,6 @@ class fs_index_input : public buffered_index_input {
   size_t pool_size_; // size of pool for instances of pooled_fs_index_input
   size_t pos_; // current input stream position
 }; // fs_index_input
-
-DEFINE_FACTORY_DEFAULT(fs_index_input::file_handle)
 
 class pooled_fs_index_input final : public fs_index_input {
  public:

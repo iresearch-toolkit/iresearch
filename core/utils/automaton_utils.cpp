@@ -283,7 +283,7 @@ void utf8_transitions_builder::minimize(automaton& a, size_t prefix) {
       // here we deal with rho transition only for
       // intermediate states, i.e. char range is [128;191]
       const size_t rho_idx = last_.size() - i - 1;
-      assert(rho_idx < IRESEARCH_COUNTOF(rho_states_));
+      assert(rho_idx < std::size(rho_states_));
       s.add_rho_arc(128, 192, rho_states_[rho_idx]);
     }
 
@@ -403,8 +403,8 @@ filter::prepared::ptr prepare_automaton_filter(
     const automaton& acceptor,
     size_t scored_terms_limit,
     const index_reader& index,
-    const order::prepared& order,
-    boost_t boost) {
+    const Order& order,
+    score_t boost) {
   auto matcher = make_automaton_matcher(acceptor);
 
   if (fst::kError == matcher.Properties(0)) {
@@ -435,7 +435,7 @@ filter::prepared::ptr prepare_automaton_filter(
 
   return memory::make_managed<multiterm_query>(
     std::move(states), std::move(stats),
-    boost, sort::MergeType::AGGREGATE);
+    boost, sort::MergeType::kSum);
 }
 
 }

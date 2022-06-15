@@ -26,7 +26,7 @@
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
-#include "utils/frozen_attributes.hpp"
+#include "utils/attribute_helper.hpp"
 
 namespace fasttext {
 class FastText;

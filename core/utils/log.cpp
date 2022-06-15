@@ -83,7 +83,7 @@ void fd_log_appender(void* context, char const* function, char const* file, int 
                      irs::logger::level_t level, char const* message, size_t /* message_len */) {
   FILE* fd = reinterpret_cast<FILE*>(context);
   if (fd != nullptr) {
-    const auto* prefix = level < IRESEARCH_COUNTOF(LOG_LEVELS) ? LOG_LEVELS[level] : "UNKNOWN";
+    const auto* prefix = level < std::size(LOG_LEVELS) ? LOG_LEVELS[level] : "UNKNOWN";
     std::fprintf(fd, "%s: %s:%d %s\n", prefix, (file ? file : "<no file provided>"), line, (message ? message : "<no message provided>"));
     if (irs::logger::IRL_FATAL == level) {
       std::fflush(fd);
@@ -114,7 +114,7 @@ class logger_ctx: public irs::singleton<logger_ctx> {
   }
 
   logger_ctx& output_le(irs::logger::level_t level, irs::logger::log_appender_callback_t appender, void* context) {
-    for (size_t i = 0, count = IRESEARCH_COUNTOF(out_); i < count; ++i) {
+    for (size_t i = 0, count = std::size(out_); i < count; ++i) {
       output(static_cast<irs::logger::level_t>(i), i > level ? nullptr : appender, context);
     }
     return *this;
@@ -287,7 +287,7 @@ bool stack_trace_libunwind(irs::logger::level_t level, int output_pipe); // pred
       if (!pid) {
         constexpr const size_t pid_size = sizeof(pid_t)*3 + 1; // aproximately 3 chars per byte +1 for \0
         constexpr const char PROC_EXE[] = { "/proc//exe" };
-        constexpr const size_t name_size = IRESEARCH_COUNTOF(PROC_EXE) + pid_size + 1; // +1 for \0
+        constexpr const size_t name_size = std::size(PROC_EXE) + pid_size + 1; // +1 for \0
         char pid_buf[pid_size];
         char name_buf[name_size];
         auto ppid = getppid();
@@ -358,7 +358,7 @@ bool stack_trace_libunwind(irs::logger::level_t level, int output_pipe); // pred
       if (!pid) {
         constexpr const size_t pid_size = sizeof(pid_t)*3 + 1; // approximately 3 chars per byte +1 for \0
         constexpr const char PROC_EXE[] = { "/proc//exe" };
-        constexpr const size_t name_size = IRESEARCH_COUNTOF(PROC_EXE) + pid_size + 1; // +1 for \0
+        constexpr const size_t name_size = std::size(PROC_EXE) + pid_size + 1; // +1 for \0
         char pid_buf[pid_size];
         char name_buf[name_size];
         auto ppid = getppid();

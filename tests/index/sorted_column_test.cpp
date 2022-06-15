@@ -73,7 +73,7 @@ TEST_P(sorted_column_test_case, flush_empty) {
   ASSERT_NE(nullptr, codec);
 
   struct comparator final : irs::comparer {
-    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
+    virtual bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const noexcept override {
       const auto* plhs = lhs.c_str();
       const auto* prhs = rhs.c_str();
 
@@ -146,7 +146,7 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
   };
 
   struct comparator final : irs::comparer {
-    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
+    virtual bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const noexcept override {
       const auto* plhs = lhs.c_str();
       const auto* prhs = rhs.c_str();
 
@@ -218,7 +218,7 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
           out += 42;
           return irs::string_ref::NIL;
         },
-        IRESEARCH_COUNTOF(values), less);
+        std::size(values), less);
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
     ASSERT_TRUE(col.empty());
@@ -229,7 +229,7 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
 
     irs::flush_state state;
     state.dir = &dir;
-    state.doc_count = IRESEARCH_COUNTOF(values);
+    state.doc_count = std::size(values);
     state.name = segment.name;
 
     ASSERT_TRUE(writer->commit(state));
@@ -253,7 +253,7 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
       ASSERT_TRUE(header_payload.null());
     }
 
-    auto it = column->iterator(false);
+    auto it = column->iterator(irs::ColumnHint::kNormal);
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_TRUE(!payload || payload->value.null());
 
@@ -277,7 +277,7 @@ TEST_P(sorted_column_test_case, sort) {
   };
 
   struct comparator final : irs::comparer {
-    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
+    virtual bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const noexcept override {
       const auto* plhs = lhs.c_str();
       const auto* prhs = rhs.c_str();
 
@@ -334,7 +334,7 @@ TEST_P(sorted_column_test_case, sort) {
       col.write_vint(value);
       col.reset();
     }
-    ASSERT_EQ(IRESEARCH_COUNTOF(values), col.size());
+    ASSERT_EQ(std::size(values), col.size());
     ASSERT_FALSE(col.empty());
 
     ASSERT_GE(col.memory_active(), 0);
@@ -347,30 +347,30 @@ TEST_P(sorted_column_test_case, sort) {
           out += 42;
           return irs::string_ref::NIL;
         },
-        IRESEARCH_COUNTOF(values), less);
+        std::size(values), less);
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.memory_active());
     ASSERT_GE(col.memory_reserved(), 0);
-    ASSERT_EQ(1+IRESEARCH_COUNTOF(values), order.size());
+    ASSERT_EQ(1+std::size(values), order.size());
     ASSERT_TRUE(irs::type_limits<irs::type_t::field_id_t>::valid(column_id));
 
     irs::flush_state state;
     state.dir = &dir;
-    state.doc_count = IRESEARCH_COUNTOF(values);
+    state.doc_count = std::size(values);
     state.name = segment.name;
 
     ASSERT_TRUE(writer->commit(state));
   }
 
-  std::vector<uint32_t> sorted_values(values, values + IRESEARCH_COUNTOF(values));
+  std::vector<uint32_t> sorted_values(values, values + std::size(values));
   std::sort(sorted_values.begin(), sorted_values.end());
 
   // check order
   {
-    uint32_t values_by_order[IRESEARCH_COUNTOF(values)];
-    for (size_t i = 0; i < IRESEARCH_COUNTOF(values); ++i) {
+    uint32_t values_by_order[std::size(values)];
+    for (size_t i = 0; i < std::size(values); ++i) {
       values_by_order[order[irs::doc_limits::min() + i] - irs::doc_limits::min()] = values[i];
     }
 
@@ -395,7 +395,7 @@ TEST_P(sorted_column_test_case, sort) {
       ASSERT_TRUE(header_payload.null());
     }
 
-    auto it = column->iterator(false);
+    auto it = column->iterator(irs::ColumnHint::kNormal);
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_TRUE(payload);
 

@@ -42,7 +42,7 @@
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/encryption.hpp"
-#include "utils/frozen_attributes.hpp"
+#include "utils/attribute_helper.hpp"
 #include "utils/iterator.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
@@ -892,8 +892,8 @@ columnstore_writer::column_t writer::push_column(
   irs::type_info compression;
 
   if (version_ > Version::MIN) {
-    compression = info.compression();
-    cipher = info.encryption() ? data_out_cipher_.get() : nullptr;
+    compression = info.compression;
+    cipher = info.encryption ? data_out_cipher_.get() : nullptr;
   } else {
     // we don't support encryption and custom
     // compression for 'FORMAT_MIN' version
@@ -901,14 +901,14 @@ columnstore_writer::column_t writer::push_column(
     cipher = nullptr;
   }
 
-  auto compressor = compression::get_compressor(compression, info.options());
+  auto compressor = compression::get_compressor(compression, info.options);
 
   if (!compressor) {
     compressor = compression::compressor::identity();
   }
 
   const auto id = columns_.size();
-  columns_.emplace_back(*this, id, info.compression(), std::move(finalizer),
+  columns_.emplace_back(*this, id, info.compression, std::move(finalizer),
                         std::move(compressor), cipher);
   auto& column = columns_.back();
 
@@ -2001,7 +2001,7 @@ class sparse_column final : public column {
     refs_ = std::move(refs);
   }
 
-  virtual irs::doc_iterator::ptr iterator(bool consolidation) const override {
+  virtual irs::doc_iterator::ptr iterator(ColumnHint hint) const override {
     typedef column_iterator<column_t> iterator_t;
 
     if (empty()) {
@@ -2011,8 +2011,8 @@ class sparse_column final : public column {
     return memory::make_managed<iterator_t>(
         *this,
         refs_.data(),
-        refs_.data() + refs_.size() - 1,
-        !consolidation); // -1 for upper bound
+        refs_.data() + refs_.size() - 1, // -1 for upper bound
+        ColumnHint::kConsolidation != (hint & ColumnHint::kConsolidation));
   }
 
  private:
@@ -2149,7 +2149,7 @@ class dense_fixed_offset_column final : public column {
     min_ = this->max() - this->count() + 1;
   }
 
-  virtual irs::doc_iterator::ptr iterator(bool consolidation) const override {
+  virtual irs::doc_iterator::ptr iterator(ColumnHint hint) const override {
     typedef column_iterator<column_t> iterator_t;
 
     if (empty()) {
@@ -2157,7 +2157,8 @@ class dense_fixed_offset_column final : public column {
     }
 
     return memory::make_managed<iterator_t>(
-        *this, refs_.data(), refs_.data() + refs_.size(), !consolidation);
+        *this, refs_.data(), refs_.data() + refs_.size(),
+        ColumnHint::kConsolidation != (hint & ColumnHint::kConsolidation));
   }
 
  private:
@@ -2274,7 +2275,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     min_ = this->max() - this->count();
   }
 
-  virtual irs::doc_iterator::ptr iterator(bool consolidation) const override;
+  virtual irs::doc_iterator::ptr iterator(ColumnHint hint) const override;
 
  private:
   class column_iterator final : public irs::doc_iterator {
@@ -2341,7 +2342,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   doc_id_t min_{}; // min key (less than any key in column)
 }; // dense_fixed_offset_column
 
-irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator(bool) const {
+irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator(ColumnHint) const {
   return empty()
     ? irs::doc_iterator::empty()
     : memory::make_managed<column_iterator>(*this);
@@ -2515,7 +2516,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     const auto props = read_enum<ColumnProperty>(*stream);
     const auto factory_id = (props & (~CP_COLUMN_ENCRYPT));
 
-    if (factory_id >= IRESEARCH_COUNTOF(COLUMN_FACTORIES)) {
+    if (factory_id >= std::size(COLUMN_FACTORIES)) {
       throw index_error(string_utils::to_string(
         "Failed to load column id=" IR_SIZE_T_SPECIFIER ", got invalid properties=%d",
         i, static_cast<uint32_t>(props)));

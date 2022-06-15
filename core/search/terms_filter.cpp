@@ -73,7 +73,7 @@ class terms_visitor {
     collector_.stat_index(0);
   }
 
-  void visit(boost_t boost) {
+  void visit(score_t boost) {
     size_t stat_index = collector_.stat_index();
     collector_.visit(boost);
     collector_.stat_index(++stat_index);
@@ -106,8 +106,6 @@ void collect_terms(
 
 namespace iresearch {
 
-DEFINE_FACTORY_DEFAULT(by_terms)
-
 /*static*/ void by_terms::visit(
     const sub_reader& segment,
     const term_reader& field,
@@ -118,8 +116,8 @@ DEFINE_FACTORY_DEFAULT(by_terms)
 
 filter::prepared::ptr by_terms::prepare(
     const index_reader& index,
-    const order::prepared& order,
-    boost_t boost,
+    const Order& order,
+    score_t boost,
     const attribute_provider* /*ctx*/) const {
   boost *= this->boost();
   const auto& terms = options().terms;
@@ -151,7 +149,7 @@ filter::prepared::ptr by_terms::prepare(
 
   return memory::make_managed<multiterm_query>(
     std::move(states), std::move(stats),
-    boost, sort::MergeType::AGGREGATE);
+    boost, options().merge_type);
 }
 
 }

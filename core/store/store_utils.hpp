@@ -388,7 +388,9 @@ class bytes_output : public data_output {
 class bytes_ref_input : public index_input {
  public:
   bytes_ref_input() = default;
-  explicit bytes_ref_input(bytes_ref data);
+  explicit bytes_ref_input(bytes_ref data) noexcept
+      : data_(data), pos_(data_.begin()) {
+  }
 
   void skip(size_t size) noexcept {
     assert(pos_ + size <= data_.end());

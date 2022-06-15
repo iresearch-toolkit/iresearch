@@ -30,7 +30,7 @@
 #include "search/same_position_filter.hpp"
 #include "search/term_filter.hpp" 
 
-class same_position_filter_test_case : public tests::filter_test_case_base {
+class same_position_filter_test_case : public tests::FilterTestCaseBase {
  protected:
   void sub_objects_ordered() {
     // add segment
@@ -60,8 +60,8 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
       size_t finish_count = 0;
-      irs::order order;
-      auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+      tests::sort::custom_sort scorer;
 
       scorer.collector_collect_field = [&collect_field_count](
           const irs::sub_reader&, const irs::term_reader&)->void{
@@ -87,7 +87,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
 
-      auto pord = order.prepare();
+      auto pord = irs::Order::Prepare(scorer);
       auto prepared = filter.prepare(index, pord);
       ASSERT_EQ(0, collect_field_count); // should not be executed
       ASSERT_EQ(0, collect_term_count); // should not be executed
@@ -102,8 +102,8 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
       size_t finish_count = 0;
-      irs::order order;
-      auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+      tests::sort::custom_sort scorer;
 
       scorer.collector_collect_field = [&collect_field_count](
           const irs::sub_reader&, const irs::term_reader&)->void{
@@ -129,7 +129,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
 
-      auto pord = order.prepare();
+      auto pord = irs::Order::Prepare(scorer);
       auto prepared = filter.prepare(index, pord);
       ASSERT_EQ(2, collect_field_count); // 1 field in 2 segments
       ASSERT_EQ(2, collect_term_count); // 1 term in 2 segments
@@ -145,8 +145,8 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
       size_t finish_count = 0;
-      irs::order order;
-      auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+      tests::sort::custom_sort scorer;
 
       scorer.collector_collect_field = [&collect_field_count](
           const irs::sub_reader&, const irs::term_reader&)->void{
@@ -172,7 +172,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
 
-      auto pord = order.prepare();
+      auto pord = irs::Order::Prepare(scorer);
       auto prepared = filter.prepare(index, pord);
       ASSERT_EQ(4, collect_field_count); // 2 fields (1 per term since treated as a disjunction) in 2 segments
       ASSERT_EQ(4, collect_term_count); // 2 term in 2 segments
@@ -279,7 +279,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // next
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -303,7 +303,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // seek
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -339,7 +339,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // next
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -363,7 +363,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // seek
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -394,7 +394,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // next
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -449,7 +449,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // seek + next
       {
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -517,11 +517,11 @@ TEST(by_same_position_test, ctor) {
   irs::by_same_position q;
   ASSERT_EQ(irs::type<irs::by_same_position>::id(), q.type());
   ASSERT_EQ(irs::by_same_position_options{}, q.options());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 
   static_assert(
     (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) ==
-    irs::by_same_position::required());
+    irs::by_same_position::kRequiredFeatures);
 }
 
 TEST(by_same_position_test, boost) {
@@ -532,7 +532,7 @@ TEST(by_same_position_test, boost) {
       irs::by_same_position q;
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
     // single term
@@ -541,7 +541,7 @@ TEST(by_same_position_test, boost) {
       q.mutable_options()->terms.emplace_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
     // multiple terms
@@ -551,13 +551,13 @@ TEST(by_same_position_test, boost) {
       q.mutable_options()->terms.emplace_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
   }
 
   // with boost
   {
-    irs::boost_t boost = 1.5f;
+    irs::score_t boost = 1.5f;
     
     // no terms, return empty query
     {
@@ -565,7 +565,7 @@ TEST(by_same_position_test, boost) {
       q.boost(boost);
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::no_boost(), prepared->boost());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
     // single term

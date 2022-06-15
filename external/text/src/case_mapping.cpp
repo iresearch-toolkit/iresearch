@@ -21411,31 +21411,31 @@ return {{
         return std::vector<uint32_t>(cps.begin(), cps.end());
     }
 
-    iresearch_absl::flat_hash_set<uint32_t> make_cased_cps()
+    absl::flat_hash_set<uint32_t> make_cased_cps()
     {
         auto const cps = cased_cps();
         return { cps.begin(), cps.end() };
     }
 
-    iresearch_absl::flat_hash_set<uint32_t> make_case_ignorable_cps()
+    absl::flat_hash_set<uint32_t> make_case_ignorable_cps()
     {
         auto const cps = case_ignorable_cps();
         return { cps.begin(), cps.end() };
     }
 
-    iresearch_absl::flat_hash_set<uint32_t> make_changes_when_uppered_cps()
+    absl::flat_hash_set<uint32_t> make_changes_when_uppered_cps()
     {
         auto const cps = changes_when_uppered();
         return { cps.begin(), cps.end() };
     }
 
-    iresearch_absl::flat_hash_set<uint32_t> make_changes_when_lowered_cps()
+    absl::flat_hash_set<uint32_t> make_changes_when_lowered_cps()
     {
         auto const cps = changes_when_lowered();
         return { cps.begin(), cps.end() };
     }
 
-    iresearch_absl::flat_hash_set<uint32_t> make_changes_when_titled_cps()
+    absl::flat_hash_set<uint32_t> make_changes_when_titled_cps()
     {
         auto const cps = changes_when_titled();
         return { cps.begin(), cps.end() };

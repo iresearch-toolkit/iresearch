@@ -27,9 +27,7 @@
 #include <cfloat>
 #include <cstdlib>
 #include <iostream>
-#include <cstddef>
-#include <stdint.h>
-#include <math.h>
+#include <cmath>
 #include <string>
 #include <bit>
 
@@ -299,16 +297,10 @@
 
 #define UNUSED(par) (void)(par)
 
-namespace iresearch_absl { }
 namespace iresearch {
 consteval bool is_big_endian() noexcept {
   return std::endian::native == std::endian::big;
 }
-// we are using custom absl namespace (and also prefixed macros names)
-// as absl does not support side-by-side compiling in single project
-// with another target also using another version of absl. So with this custom
-// namespace/macros we have isolated our absl copy.
-namespace absl = ::iresearch_absl; 
 }
 namespace irs = ::iresearch;
 

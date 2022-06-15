@@ -25,231 +25,244 @@
 
 #include "store/memory_directory.hpp"
 #include "utils/type_limits.hpp"
-#include <functional>
 
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class skip_writer
-/// @brief writer for storing skip-list in a directory
-///
-/// Example (skip_0 = skip_n = 3):
-///
-///                                                        c         (skip level 2)
-///                    c                 c                 c         (skip level 1)
-///        x     x     x     x     x     x     x     x     x     x   (skip level 0)
-///  d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d (posting list)
-///        3     6     9     12    15    18    21    24    27    30  (doc_count)
-///
-/// d - document
-/// x - skip data
-/// c - skip data with child pointer
-////////////////////////////////////////////////////////////////////////////////
-class skip_writer: util::noncopyable {
+// Writer for storing skip-list in a directory
+// Example (skip_0 = skip_n = 3):
+//
+//                                                        c         (skip level 2)
+//                    c                 c                 c         (skip level 1)
+//        x     x     x     x     x     x     x     x     x     x   (skip level 0)
+//  d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d (posting list)
+//        3     6     9     12    15    18    21    24    27    30  (doc_count)
+//
+// d - document
+// x - skip data
+// c - skip data with child pointer
+class SkipWriter : util::noncopyable {
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief this function will be called every skip allowing users to store
-  /// arbitrary data for a given level in corresponding output stream
-  //////////////////////////////////////////////////////////////////////////////
-  typedef std::function<void(size_t, index_output&)> write_f;
+  // skip_0: skip interval for level 0
+  // skip_n: skip interval for levels 1..n
+  SkipWriter(doc_id_t skip_0, doc_id_t skip_n) noexcept
+    : max_levels_{0}, skip_0_{skip_0}, skip_n_{skip_n} {
+    assert(skip_0_);
+  }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  /// @param skip_0 skip interval for level 0
-  /// @param skip_n skip interval for levels 1..n
-  //////////////////////////////////////////////////////////////////////////////
-  skip_writer(
-    size_t skip_0,
-    size_t skip_n
-  ) noexcept;
+  // Return number of elements to skip at the 0 level
+  doc_id_t Skip0() const noexcept { return skip_0_; }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns number of elements to skip at the 0 level
-  //////////////////////////////////////////////////////////////////////////////
-  size_t skip_0() const noexcept { return skip_0_; }
+  // Return number of elements to skip at the levels from 1 to max_levels()
+  doc_id_t SkipN() const noexcept { return skip_n_; }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns number of elements to skip at the levels from 1 to num_levels()
-  //////////////////////////////////////////////////////////////////////////////
-  size_t skip_n() const noexcept { return skip_n_; }
+  // Returns number of elements in a skip-list
+  size_t MaxLevels() const noexcept { return max_levels_; }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns number of elements in a skip-list
-  //////////////////////////////////////////////////////////////////////////////
-  size_t num_levels() const noexcept { return levels_.size(); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief prepares skip_writer
-  /// @param max_levels maximum number of levels in a skip-list
-  /// @param count total number of elements to store in a skip-list
-  /// @param write write function
-  /// @param alloc memory file allocator
-  //////////////////////////////////////////////////////////////////////////////
-  void prepare(
+  // Prepares skip_writer capable of writing up to `max_levels` skip levels and
+  // `count` elements.
+  void Prepare(
     size_t max_levels,
     size_t count,
-    const write_f& write = nop,
-    const memory_allocator& alloc = memory_allocator::global()
-  );
+    const memory_allocator& alloc = memory_allocator::global());
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief adds skip at the specified number of elements
-  /// @param count number of elements to skip
-  //////////////////////////////////////////////////////////////////////////////
-  void skip(size_t count);
+  // Flushes all internal data into the specified output stream
+  void Flush(index_output& out);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief flushes all internal data into the specified output stream
-  /// @param out output stream
-  //////////////////////////////////////////////////////////////////////////////
-  void flush(index_output& out);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief resets skip reader internal state
-  //////////////////////////////////////////////////////////////////////////////
-  void reset() noexcept;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns true if skip_writer was succesfully prepared
-  //////////////////////////////////////////////////////////////////////////////
-  explicit operator bool() const noexcept {
-    return static_cast<bool>(write_);
+  // Resets skip writer internal state
+  void Reset() noexcept {
+    for (auto& level : levels_) {
+      level.stream.reset();
+    }
   }
 
- private:
-  static void nop(size_t, index_output&) { }
+  // Adds skip at the specified number of elements.
+  // `Write` is a functional object is called for every skip allowing users to
+  // store arbitrary data for a given level in corresponding output stream
+  template<typename Writer>
+  void Skip(doc_id_t count, Writer&& write);
 
+ protected:
   std::vector<memory_output> levels_;
-  size_t skip_0_; // skip interval for 0 level
-  size_t skip_n_; // skip interval for 1..n levels
-  write_f write_; // write function
-}; // skip_writer
+  size_t max_levels_;
+  doc_id_t skip_0_; // skip interval for 0 level
+  doc_id_t skip_n_; // skip interval for 1..n levels
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class skip_reader
-/// @brief base write for searching in skip-lists in a directory 
-////////////////////////////////////////////////////////////////////////////////
-class skip_reader: util::noncopyable {
- public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief function will be called when reading of next skip 
-  /// @param index of the level in a skip-list
-  /// @param stream where level data resides 
-  /// @returns readed key if stream is not exhausted, NO_MORE_DOCS otherwise
-  //////////////////////////////////////////////////////////////////////////////
-  typedef std::function<doc_id_t(size_t, data_input&)> read_f;
+template<typename Writer>
+void SkipWriter::Skip(doc_id_t count, Writer&& write) {
+  if (0 == (count % skip_0_)) {
+    assert(!levels_.empty());
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  /// @param skip_0 skip interval for level 0
-  /// @param skip_n skip interval for levels 1..n
-  //////////////////////////////////////////////////////////////////////////////
-  skip_reader(size_t skip_0, size_t skip_n) noexcept;
+    uint64_t child = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns number of elements to skip at the 0 level
-  //////////////////////////////////////////////////////////////////////////////
-  size_t skip_0() const noexcept { return skip_0_; }
+    // write 0 level
+    {
+      auto& stream = levels_.front().stream;
+      write(0, stream);
+      count /= skip_0_;
+      child = stream.file_pointer();
+    }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns number of elements to skip at the levels from 1 to num_levels()
-  //////////////////////////////////////////////////////////////////////////////
-  size_t skip_n() const noexcept { return skip_n_; }
+    // write levels from 1 to n
+    for (size_t i = 1;
+         0 == count % skip_n_ && i < max_levels_;
+         ++i, count /= skip_n_) {
+      auto& stream = levels_[i].stream;
+      write(i, stream);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns number of elements in a skip-list
-  //////////////////////////////////////////////////////////////////////////////
-  size_t num_levels() const noexcept { return levels_.size(); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief prepares skip_reader
-  /// @param in source data stream
-  /// @param max_levels maximum number of levels in a skip-list
-  /// @param count total number of elements to store in a skip-list
-  /// @param read read function
-  //////////////////////////////////////////////////////////////////////////////
-  void prepare(
-    index_input::ptr&& in,
-    const read_f& read = nop);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief seeks to the specified target
-  /// @param target target to find
-  /// @returns number of elements skipped
-  //////////////////////////////////////////////////////////////////////////////
-  size_t seek(doc_id_t target);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief resets skip reader internal state
-  //////////////////////////////////////////////////////////////////////////////
-  void reset();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns true if skip_reader was succesfully prepared
-  //////////////////////////////////////////////////////////////////////////////
-  explicit operator bool() const noexcept  {
-    return static_cast<bool>(read_);
+      uint64_t next_child = stream.file_pointer();
+      stream.write_vlong(child);
+      child = next_child;
+    }
   }
+}
 
- private:
-  struct level final : public data_input {
-    level(
+// Base object for searching in skip-lists
+class SkipReaderBase : util::noncopyable {
+ public:
+  // Returns number of elements to skip at the 0 level
+  doc_id_t Skip0() const noexcept { return skip_0_; }
+
+  // Return number of elements to skip at the levels from 1 to num_levels()
+  doc_id_t SkipN() const noexcept { return skip_n_; }
+
+  // Return number of elements in a skip-list
+  size_t NumLevels() const noexcept { return std::size(levels_); }
+
+  // Prepare skip_reader using a specified data stream
+  void Prepare(index_input::ptr&& in, doc_id_t left);
+
+  // Reset skip reader internal state
+  void Reset();
+
+ protected:
+  static constexpr size_t kUndefined = std::numeric_limits<size_t>::max();
+
+  struct Level final {
+    Level(
       index_input::ptr&& stream,
-      size_t step,
-      uint64_t begin,
-      uint64_t end,
-      uint64_t child = 0,
-      size_t skipped = 0,
-      doc_id_t doc = doc_limits::invalid()) noexcept;
-    level(level&&) = default;
-    level& operator=(level&&) = delete;
+      doc_id_t step,
+      doc_id_t left,
+      uint64_t begin) noexcept;
+    Level(Level&&) = default;
+    Level& operator=(Level&&) = delete;
 
-    virtual uint8_t read_byte() override {
-      return stream->read_byte();
-    }
-    virtual size_t read_bytes(byte_type* b, size_t count) override {
-      static_assert(sizeof(size_t) >= sizeof(uint64_t));
-      return stream->read_bytes(b, std::min(size_t(end) - file_pointer(), count));
-    }
-    virtual const byte_type* read_buffer(size_t size, BufferHint hint) override {
-      return stream->read_buffer(size, hint);
-    }
-    virtual size_t file_pointer() const override {
-      return stream->file_pointer() - begin;
-    }
-    virtual size_t length() const override {
-      return end - begin;
-    }
-    virtual bool eof() const override {
-      return stream->file_pointer() >= end;
-    }
-
-    index_input::ptr stream; // level data stream
-    uint64_t begin; // where current level starts
-    uint64_t end; // where current level ends
-    uint64_t child{}; // pointer to current child level
-    size_t step{}; // how many docs we jump over with a single skip
-    size_t skipped{}; // number of sipped documents
-    doc_id_t doc{ doc_limits::invalid() }; // current key
+    // Level data stream.
+    index_input::ptr stream;
+    // Where level starts.
+    uint64_t begin;
+    // Pointer to child level.
+    uint64_t child{};
+    // Number of documents left at a level.
+    // ptrdiff_t to be able to go below 0.
+    ptrdiff_t left;
+    // How many docs we jump over with a single skip
+    const doc_id_t step;
   };
 
-  static_assert(std::is_nothrow_move_constructible_v<level>);
+  static_assert(std::is_nothrow_move_constructible_v<Level>);
 
-  typedef std::vector<level> levels_t;
+  static void SeekToChild(Level& lvl, uint64_t ptr, const Level& prev) {
+    assert(lvl.stream);
+    auto& stream = *lvl.stream;
 
-  static void load_level(levels_t& levels, index_input::ptr&& stream, size_t step);
-  static doc_id_t nop(size_t, data_input&) { return doc_limits::invalid(); }
-  static void seek_skip(skip_reader::level& level, uint64_t ptr, size_t skipped);
+    if (const auto absolute_ptr = lvl.begin + ptr;
+        absolute_ptr > stream.file_pointer()) {
+      stream.seek(absolute_ptr);
+      lvl.left = prev.left + prev.step;
+      if (lvl.child != kUndefined) {
+        lvl.child = stream.read_vlong();
+      }
+    }
+  }
 
-  void read_skip(skip_reader::level& level);
-  levels_t::iterator find_level(doc_id_t);
+  SkipReaderBase(doc_id_t skip_0, doc_id_t skip_n) noexcept
+    : skip_0_{skip_0},
+      skip_n_{skip_n} {
+  }
 
-  read_f read_;
-  levels_t levels_; // input streams for skip-list levels
-  size_t skip_0_; // skip interval for 0 level
-  size_t skip_n_; // skip interval for 1..n levels
-}; // skip_reader
+  std::vector<Level> levels_; // input streams for skip-list levels
+  const doc_id_t skip_0_; // skip interval for 0 level
+  const doc_id_t skip_n_; // skip interval for 1..n levels
+  doc_id_t docs_count_{};
+};
 
+// The reader for searching in skip-lists written by `SkipWriter`.
+// `Read` is a function object is called when reading of next skip. Accepts
+// the following parameters: index of the level in a skip-list, where a data
+// stream ends, stream where level data resides and  readed key if stream is
+// not exhausted, doc_limits::eof() otherwise
+template<typename ReaderType>
+class SkipReader final : public SkipReaderBase {
+ public:
+  // skip_0: skip interval for level 0
+  // skip_n: skip interval for levels 1..n
+  template<typename T>
+  SkipReader(doc_id_t skip_0, doc_id_t skip_n, T&& reader)
+    : SkipReaderBase{skip_0, skip_n},
+      reader_{std::forward<T>(reader)} {
+  }
+
+  // Seeks to the specified target.
+  // Returns Number of elements skipped from upper bound
+  // to the next lower bound.
+  doc_id_t Seek(doc_id_t target);
+
+  ReaderType& Reader() noexcept {
+    return reader_;
+  }
+
+ private:
+  ReaderType reader_;
+};
+
+template<typename Read>
+doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
+  assert(!levels_.empty());
+  size_t size = std::size(levels_);
+  size_t id = 0;
+
+  // returns the highest level with the value not less than a target
+  for (; id != size; ++id) {
+    if (reader_.IsLess(id, target)) {
+      break;
+    }
+  }
+
+  auto& level_0 = levels_.back();
+  const doc_id_t step_0{level_0.step};
+
+  if (id != size) {
+    --size;
+    for (uint64_t child_ptr{0}; id != size; ++id) {
+      auto& level = levels_[id];
+      const doc_id_t step{level.step};
+      auto& stream{*level.stream};
+
+      do {
+        child_ptr = level.child;
+        reader_.Read(id, level.left -= step, stream);
+        if (level.left > 0) {
+          level.child = stream.read_vlong();
+        }
+      } while (reader_.IsLess(id, target));
+
+      const auto next_id = id + 1;
+      SeekToChild(levels_[next_id], child_ptr, level);
+      reader_.MoveDown(next_id);
+    }
+
+    assert(&level_0 == &levels_[id]);
+    auto& stream{*level_0.stream};
+
+    do {
+      reader_.Read(id, level_0.left -= step_0, stream);
+    } while (reader_.IsLess(id, target));
+  }
+
+  return level_0.left + step_0;
 }
+
+} // iresearch
 
 #endif

@@ -182,7 +182,7 @@ template<
     auto end = start_labels_.end();
     size_t i = 0;
     size_t offset = 0;
-    for (; i < IRESEARCH_COUNTOF(cached_label_offsets_); ++i) {
+    for (; i < std::size(cached_label_offsets_); ++i) {
       if (begin != end && size_t(*begin) == i) {
         ++offset;
         ++begin;
@@ -228,7 +228,7 @@ template<
     if constexpr (ByteLabel && CacheSize > std::numeric_limits<irs::byte_type>::max()) {
       label_offset = cached_label_offsets_[size_t(label)];
     } else {
-      label_offset = (size_t(label) < IRESEARCH_COUNTOF(cached_label_offsets_)
+      label_offset = (size_t(label) < std::size(cached_label_offsets_)
                         ? cached_label_offsets_[size_t(label)]
                         : find_label_offset(label));
     }
@@ -252,7 +252,7 @@ template<
     if constexpr (ByteLabel && CacheSize > std::numeric_limits<irs::byte_type>::max()) {
       label_offset = cached_label_offsets_[size_t(label)];
     } else {
-      label_offset = (size_t(label) < IRESEARCH_COUNTOF(cached_label_offsets_)
+      label_offset = (size_t(label) < std::size(cached_label_offsets_)
                         ? cached_label_offsets_[size_t(label)]
                         : find_label_offset(label));
     }

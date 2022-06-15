@@ -26,7 +26,7 @@
   #pragma warning(disable: 4267)
 #endif
 
-  #include <cmdline.h>
+#include <cmdline.h>
 
 #if defined(_MSC_VER)
   #pragma warning(default: 4267)
@@ -48,6 +48,8 @@
   #pragma warning(default: 4229)
 #endif
 
+#include <frozen/map.h>
+
 #include "common.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
@@ -64,6 +66,7 @@
 #include "store/fs_directory.hpp"
 #include "utils/memory_pool.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
+#include "utils/timer_utils.hpp"
 
 #include "index-search.hpp"
 
@@ -85,6 +88,7 @@ const std::string SCORER_ARG = "scorer-arg";
 const std::string SCORER_ARG_FMT = "scorer-arg-format";
 const std::string DIR_TYPE = "dir-type";
 const std::string FORMAT = "format";
+const std::string SEARCH_MODE = "search-mode";
 
 }
 
@@ -209,7 +213,7 @@ irs::string_ref splitFreq(const std::string& text) {
 
 irs::filter::prepared::ptr prepareFilter(
     const irs::directory_reader& reader,
-    const irs::order::prepared& order,
+    const irs::Order& order,
     category_t category,
     const std::string& text,
     const irs::analysis::analyzer::ptr& analyzer,
@@ -407,10 +411,20 @@ void prepareTasks(std::vector<task_t>& buf, std::istream& in, size_t tasks_per_c
   }
 }
 
+static constexpr frozen::map<std::string_view, irs::ExecutionMode, 2> kSearchModes = {
+  { "all", irs::ExecutionMode::kAll },
+  { "wand", irs::ExecutionMode::kTop }
+};
+
+static constexpr frozen::map<std::string_view, irs::type_info, 2> kTextFormats = {
+  { "json", irs::type<irs::text_format::json>::get() },
+  { "text", irs::type<irs::text_format::text>::get() },
+};
+
 int search(
-    const std::string& path,
-    const std::string& dir_type,
-    const std::string& format,
+    std::string_view path,
+    std::string_view dir_type,
+    std::string_view format,
     std::istream& in,
     std::ostream& out,
     size_t tasks_max,
@@ -420,20 +434,27 @@ int search(
     bool shuffle,
     bool csv,
     size_t scored_terms_limit,
-    const std::string& scorer,
-    const std::string& scorer_arg_format,
-    const irs::string_ref& scorer_arg) {
+    std::string_view scorer,
+    std::string_view scorer_arg_format,
+    irs::string_ref scorer_arg,
+    std::string_view mode_arg) {
   // build parametric descriptions for distances 1 and 2
   irs::default_pdp(1, false); irs::default_pdp(1, true);
   irs::default_pdp(2, false); irs::default_pdp(2, true);
 
-  static const std::map<std::string, irs::type_info> text_formats = {
-    { "json", irs::type<irs::text_format::json>::get() },
-    { "text", irs::type<irs::text_format::text>::get() },
-  };
-  auto arg_format_itr = text_formats.find(scorer_arg_format);
+  irs::ExecutionMode mode{irs::ExecutionMode::kAll};
 
-  if (arg_format_itr == text_formats.end()) {
+  if (auto it = kSearchModes.find(mode_arg);
+      it == kSearchModes.end()) {
+    std::cerr << "Unknown search mode '" << mode_arg << "'" << std::endl;
+    return 1;
+  } else {
+    mode = it->second;
+  }
+
+  auto arg_format_itr = kTextFormats.find(scorer_arg_format);
+
+  if (arg_format_itr == kTextFormats.end()) {
     std::cerr << "Unknown scorer argument format '" << scorer_arg_format << "'" << std::endl;
     return 1;
   }
@@ -484,7 +505,7 @@ int search(
   SCOPED_TIMER("Total Time");
 
   irs::directory_reader reader;
-  irs::order::prepared order;
+  irs::Order order;
   irs::async_utils::thread_pool thread_pool(search_threads);
 
   {
@@ -498,10 +519,8 @@ int search(
 
   {
     SCOPED_TIMER("Order build time");
-    irs::order sort;
 
-    sort.add(true, std::move(scr));
-    order = sort.prepare();
+    order = irs::Order::Prepare(std::span{&scr, 1});
   }
 
   struct task_provider_t {
@@ -577,7 +596,7 @@ int search(
 
   // indexer threads
   for (size_t i = search_threads; i; --i) {
-    thread_pool.run([&task_provider, &reader, &order, limit, &out, csv, scored_terms_limit]()->void {
+    thread_pool.run([&task_provider, &reader, &order, limit, &out, csv, scored_terms_limit, mode]()->void {
       static const std::string analyzer_name("text");
       static const std::string analyzer_args("{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", \"ghi\"]}"); // from index-put
       auto analyzer = irs::analysis::analyzers::get(analyzer_name, irs::type<irs::text_format::json>::get(), analyzer_args);
@@ -615,57 +634,76 @@ int search(
         {
           irs::timer_utils::scoped_timer timer(*(execution_timers.stat[size_t(task->category)]));
 
-          for (auto& segment: reader) {
-            auto docs = filter->execute(segment, order); // query segment
-            const irs::score* score = irs::get<irs::score>(*docs);
-            assert(score);
+          irs::score_threshold tmp;
+          for (auto left = limit; auto& segment: reader) {
+            auto docs = filter->execute(segment, order, mode);
+            assert(docs);
+
             const irs::document* doc = irs::get<irs::document>(*docs);
-            assert(doc);
+            const irs::score* score = irs::get<irs::score>(*docs);
 
-            while (docs->next()) {
+            auto* threshold = irs::get_mutable<irs::score_threshold>(docs.get());
+            if (!threshold) {
+              threshold = &tmp;
+            }
+
+            if (!left) {
+              assert(!sorted.empty());
+              assert(std::is_heap(std::begin(sorted), std::end(sorted),
+                     [](const std::pair<float_t, irs::doc_id_t>& lhs,
+                        const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
+                       return lhs.first > rhs.first; }));
+              threshold->value = sorted.front().first;
+            }
+
+            for (float_t score_value; docs->next(); ) {
               ++doc_count;
-              const float_t score_value = *reinterpret_cast<const float_t*>(score->evaluate());
 
-              if (sorted.size() < limit) {
+              (*score)(&score_value);
+
+              if (left) {
                 sorted.emplace_back(score_value, doc->value);
 
-                std::push_heap(
-                  sorted.begin(), sorted.end(),
-                  [](const std::pair<float_t, irs::doc_id_t>& lhs,
-                     const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
-                    return lhs.first < rhs.first;
-                });
+                if (0 == --left) {
+                  std::make_heap(
+                    std::begin(sorted), std::end(sorted),
+                    [](const std::pair<float_t, irs::doc_id_t>& lhs,
+                       const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
+                      return lhs.first > rhs.first;
+                  });
+
+                  threshold->value = sorted.front().first;
+                }
               } else if (sorted.front().first < score_value) {
                 std::pop_heap(
-                  sorted.begin(), sorted.end(),
+                  std::begin(sorted), std::end(sorted),
                   [](const std::pair<float_t, irs::doc_id_t>& lhs,
                      const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
-                    return lhs.first < rhs.first;
+                    return lhs.first > rhs.first;
                 });
 
-                auto& back = sorted.back();
-                back.first = score_value;
-                back.second = doc->value;
+                auto& [score, doc_id] = sorted.back();
+                score = score_value;
+                doc_id = doc->value;
 
                 std::push_heap(
-                  sorted.begin(), sorted.end(),
+                  std::begin(sorted), std::end(sorted),
                   [](const std::pair<float_t, irs::doc_id_t>& lhs,
                      const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
-                    return lhs.first < rhs.first;
+                    return lhs.first > rhs.first;
                 });
+
+                threshold->value = sorted.front().first;
               }
             }
           }
 
-          auto end = sorted.end();
-          for (auto begin = sorted.begin(); begin != end; --end) {
-            std::pop_heap(
-              begin, end,
-              [](const std::pair<float_t, irs::doc_id_t>& lhs,
-                 const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
-                return lhs.first < rhs.first;
-            });
-          }
+          std::sort(std::begin(sorted), std::end(sorted),
+                    [](const std::pair<float_t, irs::doc_id_t>& lhs,
+                       const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
+                      return lhs.first > rhs.first;
+                    });
+
         }
 
         const auto tdiff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
@@ -723,6 +761,7 @@ int search(const cmdline::parser& args) {
   const auto scorer_arg_format = args.get<std::string>(SCORER_ARG_FMT);
   const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("mmap");
   const auto format = args.exist(FORMAT) ? args.get<std::string>(FORMAT) : std::string("1_0");
+  const auto mode = args.exist(SEARCH_MODE) ? args.get<std::string>(SEARCH_MODE) : std::string("all");
 
   std::cout << "Max tasks in category="                      << maxtasks           << '\n'
             << "Task repeat count="                          << repeat             << '\n'
@@ -733,6 +772,7 @@ int search(const cmdline::parser& args) {
             << "Scorer used for ranking query results="      << scorer             << '\n'
             << "Configuration argument format for query scorer=" << scorer_arg_format << '\n'
             << "Configuration argument for query scorer="    << scorer_arg         << '\n'
+            << "Search mode="                                << mode               << '\n'
             << "Output CSV="                                 << csv                << std::endl;
 
   std::fstream in(args.get<std::string>(INPUT), std::fstream::in);
@@ -751,10 +791,10 @@ int search(const cmdline::parser& args) {
       return 1;
     }
 
-    return search(path, dir_type, format, in, out, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit, scorer, scorer_arg_format, scorer_arg);
+    return search(path, dir_type, format, in, out, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit, scorer, scorer_arg_format, scorer_arg, mode);
   }
 
-  return search(path, dir_type, format, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit, scorer, scorer_arg_format, scorer_arg);
+  return search(path, dir_type, format, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit, scorer, scorer_arg_format, scorer_arg, mode);
 }
 
 int search(int argc, char* argv[]) {
@@ -774,6 +814,7 @@ int search(int argc, char* argv[]) {
   cmdsearch.add<std::string>(SCORER, 0, "Scorer used for ranking query results", false, "bm25");
   cmdsearch.add<std::string>(SCORER_ARG, 0, "Configuration argument for query scorer", false);
   cmdsearch.add<std::string>(SCORER_ARG_FMT, 0, "Configuration argument format for query scorer", false, "json"); // 'json' is the argument format for 'bm25'
+  cmdsearch.add<std::string>(SEARCH_MODE, 0, "Search mode (all|wand)", false, "all");
   cmdsearch.add(RND, 0, "Shuffle tasks");
   cmdsearch.add(CSV, 0, "CSV output");
 

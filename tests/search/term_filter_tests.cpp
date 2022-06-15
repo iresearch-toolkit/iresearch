@@ -38,7 +38,7 @@ irs::by_term make_filter(
   return q;
 }
 
-class term_filter_test_case : public tests::filter_test_case_base {
+class term_filter_test_case : public tests::FilterTestCaseBase {
  protected:
   void by_term_sequential_cost() {
     // add segment
@@ -52,19 +52,19 @@ class term_filter_test_case : public tests::filter_test_case_base {
     // read segment
     auto rdr = open_reader();
 
-    check_query(irs::by_term(), docs_t{ }, costs_t{0}, rdr);
+    CheckQuery(irs::by_term(), Docs{ }, Costs{0}, rdr);
 
     // empty term
-    check_query(make_filter("name", ""), docs_t{}, costs_t{0}, rdr);
+    CheckQuery(make_filter("name", ""), Docs{}, Costs{0}, rdr);
 
     // empty field
-    check_query(make_filter("", "xyz"), docs_t{}, costs_t{0}, rdr);
+    CheckQuery(make_filter("", "xyz"), Docs{}, Costs{0}, rdr);
 
     // search : invalid field
-    check_query(make_filter("invalid_field", "A"), docs_t{}, costs_t{0}, rdr);
+    CheckQuery(make_filter("invalid_field", "A"), Docs{}, Costs{0}, rdr);
 
     // search : single term
-    check_query(make_filter("name", "A"), docs_t{1}, costs_t{1}, rdr);
+    CheckQuery(make_filter("name", "A"), Docs{1}, Costs{1}, rdr);
 
     { 
       irs::by_term q = make_filter("name", "A");
@@ -81,15 +81,15 @@ class term_filter_test_case : public tests::filter_test_case_base {
     }
 
     // search : all terms
-    check_query(
+    CheckQuery(
       make_filter("same" , "xyz"),
-      docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
-      costs_t{ 32 },
+      Docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
+      Costs{ 32 },
       rdr
     );
 
     // search : empty result
-    check_query(make_filter("same", "invalid_term"), docs_t{}, costs_t{0}, rdr);
+    CheckQuery(make_filter("same", "invalid_term"), Docs{}, Costs{0}, rdr);
   }
 
   void by_term_sequential_boost() {
@@ -109,9 +109,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
     filter.boost(0.f);
 
     // create order
-    irs::order ord;
-    ord.add<tests::sort::boost>(false);
-    auto pord = ord.prepare();
+    auto pord = irs::Order::Prepare(tests::sort::boost{});
 
     // without boost
     {
@@ -127,8 +125,9 @@ class term_filter_test_case : public tests::filter_test_case_base {
       // first hit
       {
         ASSERT_TRUE(docs->next());
-        auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
-        ASSERT_EQ(irs::boost_t(0), doc_boost);
+        irs::score_t score_value;
+        (*scr)(&score_value);
+        ASSERT_EQ(irs::score_t(0), score_value);
         ASSERT_EQ(docs->value(), doc->value);
       }
 
@@ -138,7 +137,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
     // with boost
     {
-      const irs::boost_t value = 5;
+      const irs::score_t value = 5;
       filter.boost(value);
 
       auto prep = filter.prepare(rdr, pord);
@@ -150,8 +149,9 @@ class term_filter_test_case : public tests::filter_test_case_base {
       // first hit
       {
         ASSERT_TRUE(docs->next());
-        auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
-        ASSERT_EQ(irs::boost_t(value), doc_boost);
+        irs::score_t score_value;
+        (*scr)(&score_value);
+        ASSERT_EQ(irs::score_t(value), score_value);
       }
 
       ASSERT_FALSE(docs->next());
@@ -459,8 +459,8 @@ class term_filter_test_case : public tests::filter_test_case_base {
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
       size_t finish_count = 0;
-      irs::order ord;
-      auto& scorer = ord.add<tests::sort::custom_sort>(false);
+
+      tests::sort::custom_sort scorer;
 
       scorer.collector_collect_field = [&collect_field_count](
           const irs::sub_reader&, const irs::term_reader&)->void{
@@ -487,7 +487,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
       };
 
       std::set<irs::doc_id_t> expected{ 31, 32 };
-      auto pord = ord.prepare();
+      auto pord = irs::Order::Prepare(scorer);
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
 
@@ -495,7 +495,8 @@ class term_filter_test_case : public tests::filter_test_case_base {
       ASSERT_FALSE(!scr);
 
       while (docs->next()) {
-        const auto* score_value = scr->evaluate();
+        irs::score_t score_value;
+        (*scr)(&score_value);
         UNUSED(score_value);
         ASSERT_EQ(1, expected.erase(docs->value()));
       }
@@ -519,29 +520,29 @@ class term_filter_test_case : public tests::filter_test_case_base {
     auto rdr = open_reader();
 
     // empty query
-    check_query(irs::by_term(), docs_t{ }, rdr);
+    CheckQuery(irs::by_term(), Docs{ }, rdr);
 
     // empty term
-    check_query(make_filter("name", ""), docs_t{ }, rdr);
+    CheckQuery(make_filter("name", ""), Docs{ }, rdr);
 
     // empty field
-    check_query(make_filter("", "xyz"), docs_t{ }, rdr);
+    CheckQuery(make_filter("", "xyz"), Docs{ }, rdr);
 
     // search : invalid field
-    check_query(make_filter("invalid_field",  "A"), docs_t{ }, rdr );
+    CheckQuery(make_filter("invalid_field",  "A"), Docs{ }, rdr );
 
     // search : single term
-    check_query(make_filter("name", "A"), docs_t{ 1 }, rdr);
+    CheckQuery(make_filter("name", "A"), Docs{ 1 }, rdr);
 
     // search : all terms
-    check_query(
+    CheckQuery(
       make_filter("same" , "xyz"),
-      docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
+      Docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
       rdr
     );
 
     // search : empty result
-    check_query(make_filter("same", "invalid_term"), docs_t{}, rdr);
+    CheckQuery(make_filter("same", "invalid_term"), Docs{}, rdr);
   }
 
   void by_term_schemas() {
@@ -578,10 +579,10 @@ class term_filter_test_case : public tests::filter_test_case_base {
     }
 
     auto rdr = open_reader();
-    check_query(make_filter("Fields", "FirstName"), docs_t{ 28, 167, 194 }, rdr);
+    CheckQuery(make_filter("Fields", "FirstName"), Docs{ 28, 167, 194 }, rdr);
 
     // address to the [SDD-179]
-    check_query(make_filter("Name", "Product"), docs_t{ 32 }, rdr);
+    CheckQuery(make_filter("Name", "Product"), Docs{ 32 }, rdr);
   }
 }; // term_filter_test_case
 
@@ -631,7 +632,7 @@ TEST_P(term_filter_test_case, visit) {
   irs::by_term::visit(segment, *reader, term, visitor);
   ASSERT_EQ(1, visitor.prepare_calls_counter());
   ASSERT_EQ(1, visitor.visit_calls_counter());
-  ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"abc", irs::no_boost()}}),
+  ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{{"abc", irs::kNoBoost}}),
             visitor.term_refs<char>());
   visitor.reset();
 }
@@ -646,7 +647,7 @@ TEST(by_term_test, ctor) {
   ASSERT_EQ(irs::type<irs::by_term>::id(), q.type());
   ASSERT_EQ(irs::by_term_options{}, q.options());
   ASSERT_EQ("", q.field());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 }
 
 TEST(by_term_test, equal) { 
@@ -661,12 +662,12 @@ TEST(by_term_test, boost) {
     irs::by_term q = make_filter("field", "term");
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::no_boost(), prepared->boost());
+    ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
   // with boost
   {
-    irs::boost_t boost = 1.5f;
+    irs::score_t boost = 1.5f;
     irs::by_term q = make_filter("field", "term");
     q.boost(boost);
 

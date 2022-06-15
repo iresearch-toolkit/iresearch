@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
-#include "iql/query_builder.hpp"
 #include "utils/lz4compression.hpp"
 #include "store/memory_directory.hpp"
 
@@ -31,7 +30,7 @@
 namespace {
 bool visit1(const irs::column_reader& reader,
            const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
-  auto it = reader.iterator(false);
+  auto it = reader.iterator(irs::ColumnHint::kNormal);
 
   irs::payload dummy;
   auto* doc = irs::get<irs::document>(*it);
@@ -53,7 +52,7 @@ bool visit1(const irs::column_reader& reader,
 }
 bool visit(const irs::column_reader& reader,
            const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
-  auto it = reader.iterator(true);
+  auto it = reader.iterator(irs::ColumnHint::kConsolidation);
 
   irs::payload dummy;
   auto* doc = irs::get<irs::document>(*it);
@@ -212,7 +211,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -296,7 +295,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       // iterate over column (not cached)
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -364,7 +363,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(true);
+      auto it = column->iterator(irs::ColumnHint::kConsolidation);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -448,7 +447,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -496,7 +495,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -544,7 +543,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -596,7 +595,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -648,7 +647,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -677,7 +676,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -705,7 +704,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(true);
+      auto it = column->iterator(irs::ColumnHint::kConsolidation);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -731,7 +730,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -806,7 +805,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS;) {
-        auto it = column->iterator(true);
+        auto it = column->iterator(irs::ColumnHint::kConsolidation);
         ASSERT_NE(nullptr, it);
 
         auto* payload = irs::get<irs::payload>(*it);
@@ -850,7 +849,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
       ASSERT_EQ(inserted, docs);
 
       // seek before the first document
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -896,7 +895,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -942,7 +941,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1017,7 +1016,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_va
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1180,7 +1179,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1258,7 +1257,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       // iterate over column (not cached)
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1320,7 +1319,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1397,7 +1396,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1431,7 +1430,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1465,7 +1464,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1499,7 +1498,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1517,7 +1516,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1541,7 +1540,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1562,7 +1561,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1593,7 +1592,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1660,7 +1659,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS+1;) {
-        auto it = column->iterator(false);
+        auto it = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, it);
 
         auto* payload = irs::get<irs::payload>(*it);
@@ -1696,7 +1695,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
       ASSERT_EQ(MAX_DOCS, docs_count);
 
       // seek before the first document
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1725,7 +1724,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1782,7 +1781,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_mas
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1963,7 +1962,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -2058,7 +2057,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       // iterate over column (not cached)
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -2137,7 +2136,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -2232,7 +2231,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -2284,7 +2283,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -2341,7 +2340,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -2398,7 +2397,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -2428,7 +2427,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -2469,7 +2468,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -2495,7 +2494,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -2585,7 +2584,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS+1;) {
-        auto it = column->iterator(false);
+        auto it = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, it);
 
         auto* payload = irs::get<irs::payload>(*it);
@@ -2639,7 +2638,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
       ASSERT_EQ(MAX_DOCS, docs_count);
 
       // seek before the first document
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -2685,7 +2684,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -2773,7 +2772,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_var
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -2983,7 +2982,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3169,7 +3168,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3346,7 +3345,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3430,7 +3429,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       // iterate over column (not cached)
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3498,7 +3497,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3582,7 +3581,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3625,7 +3624,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3668,7 +3667,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3710,7 +3709,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3734,7 +3733,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3765,7 +3764,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3790,7 +3789,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3824,7 +3823,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3899,7 +3898,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS;) {
-        auto it = column->iterator(false);
+        auto it = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, it);
 
         auto* payload = irs::get<irs::payload>(*it);
@@ -3954,7 +3953,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
       ASSERT_EQ(MAX_DOCS-1, docs_count);
 
       // seek before the first document
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3989,7 +3988,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4067,7 +4066,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_dense_fix
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4210,7 +4209,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4279,7 +4278,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4332,7 +4331,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4401,7 +4400,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4437,7 +4436,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4476,7 +4475,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4515,7 +4514,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4550,7 +4549,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4584,7 +4583,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4604,7 +4603,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4624,7 +4623,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4650,7 +4649,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4707,7 +4706,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       ASSERT_NE(nullptr, column);
 
       for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS;) {
-        auto it = column->iterator(false);
+        auto it = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, it);
 
         auto* payload = irs::get<irs::payload>(*it);
@@ -4733,7 +4732,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
       ASSERT_EQ(MAX_DOCS/2, docs_count);
 
       // seek before the first document
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4762,7 +4761,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4792,7 +4791,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4853,7 +4852,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -4988,7 +4987,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       ASSERT_TRUE(!irs::get<irs::payload>(*it)); // dense_mask does not have a payload
@@ -5052,7 +5051,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       // iterate over column (not cached)
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       ASSERT_TRUE(!irs::get<irs::payload>(*it)); // dense_mask does not have a payload
@@ -5100,7 +5099,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       ASSERT_TRUE(!irs::get<irs::payload>(*it)); // dense_mask does not have a payload
@@ -5164,7 +5163,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       ASSERT_TRUE(!irs::get<irs::payload>(*it)); // dense_mask does not have a payload
@@ -5191,7 +5190,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       ASSERT_TRUE(!irs::get<irs::payload>(*it)); // dense_mask does not have a payload
@@ -5219,7 +5218,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       ASSERT_TRUE(!irs::get<irs::payload>(*it)); // dense_mask does not have a payload
@@ -5247,7 +5246,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       ASSERT_TRUE(!irs::get<irs::payload>(*it)); // dense_mask does not have a payload
@@ -5263,7 +5262,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       ASSERT_TRUE(!irs::get<irs::payload>(*it)); // dense_mask does not have a payload
@@ -5282,7 +5281,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       ASSERT_TRUE(!irs::get<irs::payload>(*it)); // dense_mask does not have a payload
@@ -5304,7 +5303,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       ASSERT_TRUE(!irs::get<irs::payload>(*it)); // dense_mask does not have a payload
@@ -5353,7 +5352,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS;) {
-        auto it = column->iterator(false);
+        auto it = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, it);
 
         ASSERT_TRUE(!irs::get<irs::payload>(*it)); // dense_mask does not have a payload
@@ -5373,7 +5372,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
       ASSERT_EQ(MAX_DOCS, docs_count);
 
       // seek before the first document
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       ASSERT_TRUE(!irs::get<irs::payload>(*it)); // dense_mask does not have a payload
@@ -5397,7 +5396,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       ASSERT_TRUE(!irs::get<irs::payload>(*it)); // dense_mask does not have a payload
@@ -5446,7 +5445,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       ASSERT_TRUE(!irs::get<irs::payload>(*it)); // dense_mask does not have a payload
@@ -5582,7 +5581,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -5653,7 +5652,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       // iterate over column (not cached)
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -5708,7 +5707,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -5779,7 +5778,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -5816,7 +5815,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -5854,7 +5853,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -5891,7 +5890,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -5915,7 +5914,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -5946,7 +5945,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -5972,7 +5971,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -6032,7 +6031,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS;) {
-        auto it = column->iterator(false);
+        auto it = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, it);
 
         auto* payload = irs::get<irs::payload>(*it);
@@ -6065,7 +6064,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
       ASSERT_EQ(MAX_DOCS, docs_count);
 
       // seek before the first document
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -6100,7 +6099,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -6160,7 +6159,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_fixe
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -6317,7 +6316,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -6399,7 +6398,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       // iterate over column (not cached)
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -6465,7 +6464,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -6547,7 +6546,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -6590,7 +6589,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -6639,7 +6638,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -6688,7 +6687,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -6718,7 +6717,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -6759,7 +6758,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -6785,7 +6784,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -6856,7 +6855,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
       for (; expected_doc >= min_doc && expected_doc <= MAX_DOCS;) {
-        auto it = column->iterator(false);
+        auto it = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, it);
 
         auto* payload = irs::get<irs::payload>(*it);
@@ -6899,7 +6898,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
       ASSERT_EQ(MAX_DOCS, docs_count);
 
       // seek before the first document
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -6945,7 +6944,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
 
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -7022,7 +7021,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_vari
     {
       auto column = segment.column(column_name);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -7187,7 +7186,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
-        auto it = column->iterator(false);
+        auto it = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, it);
 
         auto* payload = irs::get<irs::payload>(*it);
@@ -7286,7 +7285,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
-        auto it = column->iterator(false);
+        auto it = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, it);
 
         auto* payload = irs::get<irs::payload>(*it);
@@ -7377,7 +7376,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
-        auto it = column->iterator(false);
+        auto it = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, it);
 
         auto* payload = irs::get<irs::payload>(*it);
@@ -7440,7 +7439,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
-        auto it = column->iterator(false);
+        auto it = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, it);
 
         auto* payload = irs::get<irs::payload>(*it);
@@ -7509,7 +7508,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
-        auto it = column->iterator(false);
+        auto it = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, it);
 
         auto* payload = irs::get<irs::payload>(*it);
@@ -7571,7 +7570,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         auto column = segment.column(column_name);
         ASSERT_NE(nullptr, column);
-        auto it = column->iterator(false);
+        auto it = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, it);
 
         auto* payload = irs::get<irs::payload>(*it);
@@ -7650,7 +7649,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
     {
       auto column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -7681,7 +7680,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
     {
       auto column = segment.column("prefix");
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -7726,7 +7725,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       // iterate over 'name' column (not cached)
       auto column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -7757,7 +7756,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
     {
       auto column = segment.column("name");
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -7788,7 +7787,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       // iterate over 'prefix' column (not cached)
       auto column = segment.column("prefix");
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -7819,7 +7818,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
     {
       auto column = segment.column("prefix");
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator(false);
+      auto it = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);

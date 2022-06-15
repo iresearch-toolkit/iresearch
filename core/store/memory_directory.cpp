@@ -88,7 +88,7 @@ class single_instance_lock : public index_lock {
 }; // single_instance_lock
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                 memory_index_imput implementation
+// --SECTION--                                 memory_index_input implementation
 // -----------------------------------------------------------------------------
 
 memory_index_input::memory_index_input(const memory_file& file) noexcept

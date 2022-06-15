@@ -23,44 +23,39 @@
 #ifndef IRESEARCH_PQ_ITERATOR_H
 #define IRESEARCH_PQ_ITERATOR_H
 
-#include "shared.hpp"
-#include "iterators.hpp"
-#include "utils/ebo.hpp"
-
 #include <algorithm>
 #include <vector>
 
+#include "iterators.hpp"
+#include "shared.hpp"
+#include "utils/ebo.hpp"
+
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class external_heap_iterator
-///-----------------------------------------------------------------------------
-///      [0] <-- begin
-///      [1]      |
-///      [2]      | head (heap)
-///      [3]      |
-///      [4] <-- lead_
-///      [5]      |
-///      [6]      | lead (list of accepted iterators)
-///      ...      |
-///      [n] <-- end
-///-----------------------------------------------------------------------------
-////////////////////////////////////////////////////////////////////////////////
+// External heap iterator
+// ----------------------------------------------------------------------------
+//      [0] <-- begin
+//      [1]      |
+//      [2]      | head (heap)
+//      [3]      |
+//      [4] <-- lead_
+//      [5]      |
+//      [6]      | lead (list of accepted iterators)
+//      ...      |
+//      [n] <-- end
+// ----------------------------------------------------------------------------
 template<typename Context>
-class external_heap_iterator : private compact<0, Context> {
+class ExternalHeapIterator : private compact<0, Context> {
  private:
-  typedef compact<0, Context> context_store_t;
+  using context_store_t = compact<0, Context>;
 
  public:
-  typedef Context context_t;
+  explicit ExternalHeapIterator(Context&& ctx = {})
+      : context_store_t(std::move(ctx)) {}
 
-  explicit external_heap_iterator(context_t ctx = {})
-    : context_store_t(ctx) {
-  }
-
-  void reset(size_t size = 0) {
+  void reset(size_t size) {
     heap_.resize(size);
-    std::iota(heap_.begin(), heap_.end(), size_t(0));
+    std::iota(heap_.begin(), heap_.end(), size_t{0});
     lead_ = size;
   }
 
@@ -74,7 +69,7 @@ class external_heap_iterator : private compact<0, Context> {
     while (lead_) {
       auto it = std::end(heap_) - lead_--;
 
-      if (!context()(*it)) { // advance iterator
+      if (!context()(*it)) {  // advance iterator
         if (!remove_lead(it)) {
           assert(heap_.empty());
           return false;
@@ -98,9 +93,10 @@ class external_heap_iterator : private compact<0, Context> {
     return heap_.back();
   }
 
-  size_t size() const noexcept {
-    return heap_.size();
-  }
+  size_t size() const noexcept { return heap_.size(); }
+
+  const Context& context() const noexcept { return context_store_t::get(); }
+  Context& context() noexcept { return context_store_t::get(); }
 
  private:
   bool remove_lead(std::vector<size_t>::iterator it) {
@@ -111,16 +107,10 @@ class external_heap_iterator : private compact<0, Context> {
     return !heap_.empty();
   }
 
-  const context_t& context() const noexcept {
-    return context_store_t::get();
-  }
-
   std::vector<size_t> heap_;
   size_t lead_{};
-}; // external_heap_iterator
+};
 
-} // ROOT
+}  // namespace iresearch
 
-#endif // IRESEARCH_PQ_ITERATOR_H
-
-
+#endif  // IRESEARCH_PQ_ITERATOR_H

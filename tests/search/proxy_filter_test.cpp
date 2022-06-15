@@ -95,11 +95,13 @@ class doclist_test_iterator final : public doc_iterator,
 
 class doclist_test_query final : public filter::prepared {
  public:
-  doclist_test_query(const std::vector<doc_id_t>& documents, boost_t)
+  doclist_test_query(const std::vector<doc_id_t>& documents, score_t)
       : documents_(documents){};
 
-  doc_iterator::ptr execute(const sub_reader& rdr, const order::prepared& order,
-                            const attribute_provider* ctx) const override {
+  doc_iterator::ptr execute(const sub_reader& /*rdr*/,
+                            const Order& /*order*/,
+                            ExecutionMode /*mode*/,
+                            const attribute_provider* /*ctx*/) const override {
     ++executes_;
     return memory::make_managed<doclist_test_iterator>(documents_);
   }
@@ -117,13 +119,11 @@ size_t doclist_test_query::executes_{0};
 
 class doclist_test_filter final : public filter {
  public:
-  static ptr make() { return irs::memory::maker<doclist_test_filter>::make(); }
-
   doclist_test_filter() noexcept
       : filter(irs::type<doclist_test_filter>::get()) {}
 
-  filter::prepared::ptr prepare(const index_reader&, const order::prepared&,
-                                boost_t boost,
+  filter::prepared::ptr prepare(const index_reader&, const Order&,
+                                score_t boost,
                                 const attribute_provider*) const override {
     ++prepares_;
     return memory::make_managed<doclist_test_query>(documents_, boost);
@@ -245,7 +245,7 @@ TEST_P(proxy_filter_test_case, test_full_dense) {
 INSTANTIATE_TEST_SUITE_P(proxy_filter_test_case, proxy_filter_test_case,
                          ::testing::Values(10, 15, 64, 100, 128));
 
-class proxy_filter_real_filter : public tests::filter_test_case_base {
+class proxy_filter_real_filter : public tests::FilterTestCaseBase {
  public:
   void init_index() {
     auto writer = open_writer(irs::OM_CREATE);
@@ -269,7 +269,7 @@ TEST_P(proxy_filter_real_filter, with_terms_filter) {
   *q.mutable_field() = "name";
   q.mutable_options()->term =
       irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
-  check_query(proxy, docs_t{1, 33}, rdr);
+  CheckQuery(proxy, Docs{1, 33}, rdr);
 }
 
 TEST_P(proxy_filter_real_filter, with_disjunction_filter) {
@@ -285,7 +285,7 @@ TEST_P(proxy_filter_real_filter, with_disjunction_filter) {
   *q1.mutable_field() = "name";
   q1.mutable_options()->term =
       irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
-  check_query(proxy, docs_t{1, 2, 33, 34}, rdr);
+  CheckQuery(proxy, Docs{1, 2, 33, 34}, rdr);
 }
 
 INSTANTIATE_TEST_SUITE_P(

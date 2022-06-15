@@ -30,10 +30,7 @@ namespace iresearch {
 
 class by_ngram_similarity;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct by_ngram_similarity_options
-/// @brief options for ngram similarity filter
-////////////////////////////////////////////////////////////////////////////////
+// Options for ngram similarity filter
 struct by_ngram_similarity_options {
   using filter_type = by_ngram_similarity;
 
@@ -51,30 +48,21 @@ struct by_ngram_similarity_options {
     }
     return hash;
   }
-}; // by_ngram_similarity_options
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class by_ngram_similarity
-//////////////////////////////////////////////////////////////////////////////
-class by_ngram_similarity
-    : public filter_base<by_ngram_similarity_options> {
+class by_ngram_similarity : public filter_base<by_ngram_similarity_options> {
  public:
-  static ptr make();
-
   // returns set of features required for filter
-  static constexpr IndexFeatures required() noexcept {
-    return IndexFeatures::FREQ | IndexFeatures::POS;
-  }
+  static constexpr IndexFeatures kRequiredFeatures =
+      IndexFeatures::FREQ | IndexFeatures::POS;
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_provider* ctx) const override;
-}; // by_ngram_similarity
+      const index_reader& rdr, const Order& ord, score_t boost,
+      const attribute_provider* ctx) const override;
+};
 
-} // ROOT
+}  // namespace iresearch
 
-#endif // IRESEARCH_NGRAM_SIMILARITY_FILTER_H
+#endif  // IRESEARCH_NGRAM_SIMILARITY_FILTER_H

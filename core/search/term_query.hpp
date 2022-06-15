@@ -28,36 +28,28 @@
 
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class range_query
-/// @brief compiled query suitable for filters with a single term like "by_term"
-////////////////////////////////////////////////////////////////////////////////
+// Compiled query suitable for filters with a single term like "by_term"
 class term_query final : public filter::prepared {
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @class term_state
-  /// @brief cached per reader term state
-  //////////////////////////////////////////////////////////////////////////////
+  // Cached per reader term state
   struct term_state {
     const term_reader* reader{};
     seek_term_iterator::cookie_ptr cookie;
-  }; // term_state
+  };  // term_state
 
   typedef states_cache<term_state> states_t;
 
-  explicit term_query(states_t&& states, bstring&& stats, boost_t boost);
+  explicit term_query(states_t&& states, bstring&& stats, score_t boost);
 
   virtual doc_iterator::ptr execute(
-    const sub_reader& rdr,
-    const order::prepared& ord,
-    const attribute_provider* /*ctx*/
-  ) const override;
+      const sub_reader& rdr, const Order& ord, ExecutionMode mode,
+      const attribute_provider* /*ctx*/) const override;
 
  private:
   states_cache<term_state> states_;
   bstring stats_;
-}; // term_query
+};
 
-} // ROOT
+}  // namespace iresearch
 
 #endif

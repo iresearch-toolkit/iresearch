@@ -23,49 +23,27 @@
 #ifndef IRESEARCH_COLUMN_INFO_H
 #define IRESEARCH_COLUMN_INFO_H
 
-#include "utils/string.hpp"
-#include "utils/compression.hpp"
-
 #include <functional>
+
+#include "utils/compression.hpp"
+#include "utils/string.hpp"
 
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class column_info
-////////////////////////////////////////////////////////////////////////////////
-class column_info {
- public:
-  column_info(const type_info& compression,
-              const compression::options& options,
-              bool encryption) noexcept
-    : compression_(compression),
-      options_(options),
-      encryption_(encryption) {
-  }
-
-  const type_info& compression() const noexcept { return compression_; }
-  const compression::options& options() const noexcept { return options_; }
-  bool encryption() const noexcept { return encryption_; }
-
-  bool operator==(const column_info& rhs) const noexcept {
-    return compression_ == rhs.compression_ &&
-           options_ == rhs.options_ &&
-           encryption_ == rhs.encryption_;
-  }
-
-  bool operator!=(const column_info& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
- private:
-  type_info compression_;
-  compression::options options_;
-  bool encryption_;
-}; // column_info
+struct column_info {
+  // Column compression
+  type_info compression{irs::type<irs::compression::none>::get()};
+  // Column compression options
+  compression::options options{};
+  // Encrypt column
+  bool encryption{false};
+  // Allow iterator accessing previous document
+  // (currently supported by columnstore2 only)
+  bool track_prev_doc{false};
+};
 
 using column_info_provider_t = std::function<column_info(const string_ref)>;
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_COLUMN_INFO_H
-
+#endif  // IRESEARCH_COLUMN_INFO_H

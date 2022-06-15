@@ -53,7 +53,7 @@ namespace {
 
 bool visit(const irs::column_reader& reader,
            const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
-  auto it = reader.iterator(true);
+  auto it = reader.iterator(irs::ColumnHint::kConsolidation);
 
   irs::payload dummy;
   auto* doc = irs::get<irs::document>(*it);
@@ -378,7 +378,7 @@ void index_segment::insert_indexed(const ifield& f) {
     empty = false;
   }
 
-  if (!empty) { 
+  if (!empty) {
     field.docs.emplace(doc_id);
   }
 
@@ -510,7 +510,7 @@ class doc_iterator : public irs::doc_iterator {
     }
 
    private:
-    std::set<tests::position>::const_iterator next_;
+    std::set<posting::position>::const_iterator next_;
     irs::offset offs_;
     irs::payload pay_;
     irs::offset* poffs_{};
@@ -628,13 +628,6 @@ class term_iterator final : public irs::seek_term_iterator {
     return irs::memory::make_managed<doc_iterator>(data_.index_features & features, *prev_);
   }
 
-  virtual bool seek(
-      const irs::bytes_ref& /*term*/,
-      const irs::seek_cookie& cookie) override {
-    auto& state = dynamic_cast<const term_cookie&>(cookie);
-    return seek(state.term);
-  }
-
   virtual irs::seek_cookie::ptr cookie() const override {
     return irs::memory::make_unique<term_cookie>(value_);
   }
@@ -650,26 +643,35 @@ irs::seek_term_iterator::ptr field::iterator() const {
   return irs::memory::make_managed<term_iterator>(*this);
 }
 
-void assert_term(
-    const irs::term_iterator& expected_term,
-    const irs::term_iterator& actual_term,
-    irs::IndexFeatures requested_features) {
-  ASSERT_EQ(expected_term.value(), actual_term.value());
+template<typename IteratorFactory>
+void assert_docs(
+    irs::doc_iterator::ptr expected_docs,
+    IteratorFactory&& factory) {
+  ASSERT_NE(nullptr, expected_docs);
 
-  const irs::doc_iterator::ptr expected_docs = expected_term.postings(requested_features);
-  const irs::doc_iterator::ptr actual_docs = actual_term.postings(requested_features);
+  auto seek_docs = factory();
+  ASSERT_NE(nullptr, seek_docs);
+
+  auto seq_docs = factory();
+  ASSERT_NE(nullptr, seq_docs);
 
   ASSERT_TRUE(!irs::doc_limits::valid(expected_docs->value()));
-  ASSERT_TRUE(!irs::doc_limits::valid(actual_docs->value()));
-  // check docs
-  for (; expected_docs->next();) {
-    ASSERT_TRUE(actual_docs->next());
-    ASSERT_EQ(expected_docs->value(), actual_docs->value());
+  ASSERT_TRUE(!irs::doc_limits::valid(seq_docs->value()));
+  ASSERT_TRUE(!irs::doc_limits::valid(seek_docs->value()));
+
+  while(expected_docs->next()) {
+    const auto expected_doc = expected_docs->value();
+
+    ASSERT_TRUE(seq_docs->next());
+    ASSERT_EQ(expected_doc, seq_docs->value());
+
+    ASSERT_EQ(expected_doc, seek_docs->seek(expected_doc));
+    ASSERT_EQ(expected_doc, seek_docs->value());
 
     // check document attributes
     {
       auto* expected_freq = irs::get<irs::frequency>(*expected_docs);
-      auto* actual_freq = irs::get<irs::frequency>(*actual_docs);
+      auto* actual_freq = irs::get<irs::frequency>(*seq_docs);
 
       if (expected_freq) {
         ASSERT_FALSE(!actual_freq);
@@ -677,7 +679,7 @@ void assert_term(
       }
 
       auto* expected_pos = irs::get_mutable<irs::position>(expected_docs.get());
-      auto* actual_pos = irs::get_mutable<irs::position>(actual_docs.get());
+      auto* actual_pos = irs::get_mutable<irs::position>(seq_docs.get());
 
       if (expected_pos) {
         ASSERT_FALSE(!actual_pos);
@@ -710,9 +712,39 @@ void assert_term(
       }
     }
   }
-  ASSERT_FALSE(actual_docs->next());
+
   ASSERT_TRUE(irs::doc_limits::eof(expected_docs->value()));
-  ASSERT_TRUE(irs::doc_limits::eof(actual_docs->value()));
+  ASSERT_FALSE(seq_docs->next());
+  ASSERT_TRUE(irs::doc_limits::eof(seq_docs->value()));
+  ASSERT_FALSE(seek_docs->next());
+  ASSERT_TRUE(irs::doc_limits::eof(seek_docs->value()));
+}
+
+void assert_docs(
+    const irs::term_iterator& expected_term,
+    const irs::term_reader& actual_terms,
+    irs::seek_cookie::ptr actual_cookie,
+    irs::IndexFeatures requested_features) {
+  assert_docs(
+    expected_term.postings(requested_features),
+    [&]() { return actual_terms.postings(*actual_cookie, requested_features); });
+
+  assert_docs(
+    expected_term.postings(requested_features),
+    [&]() { return actual_terms.wanderator(*actual_cookie, requested_features); });
+
+  // FIXME(gnusi): check bit_union
+}
+
+void assert_term(
+    const irs::term_iterator& expected_term,
+    const irs::term_iterator& actual_term,
+    irs::IndexFeatures requested_features) {
+  ASSERT_EQ(expected_term.value(), actual_term.value());
+
+  assert_docs(
+    expected_term.postings(requested_features),
+    [&]() { return actual_term.postings(requested_features); });
 }
 
 void assert_terms_next(
@@ -739,6 +771,7 @@ void assert_terms_next(
     ASSERT_TRUE(actual_term->next());
 
     assert_term(*expected_term, *actual_term, features);
+    assert_docs(*expected_term, actual_field, actual_term->cookie(), features);
 
     if (actual_min.null()) {
       actual_min_buf = actual_term->value();
@@ -829,7 +862,7 @@ void assert_terms_seek(
           assert_term(*copy_expected_term, *actual_term, features);
         }
       }
-      
+
       // seek back to initial term
       ASSERT_TRUE(actual_term->seek(expected_term->value()));
       assert_term(*expected_term, *actual_term, features);
@@ -856,7 +889,7 @@ void assert_terms_seek(
           assert_term(*copy_expected_term, *actual_term, features);
         }
       }
-      
+
       // seek back to initial term
       ASSERT_TRUE(actual_term->seek(expected_term->value()));
       assert_term(*expected_term, *actual_term, features);
@@ -865,25 +898,6 @@ void assert_terms_seek(
     // seek to cookie without state, iterate to the end
     {
       auto actual_term = actual_field.iterator(irs::SeekMode::NORMAL);
-      ASSERT_TRUE(actual_term->seek(expected_term->value(), *cookie));
-      ASSERT_EQ(expected_term->value(), actual_term->value());
-      assert_term(*expected_term, *actual_term, features);
-
-      // iterate forward
-      {
-        auto copy_expected_term = irs::memory::make_managed<term_iterator>(expected_field);
-        ASSERT_TRUE(copy_expected_term->seek(expected_term->value()));
-        ASSERT_EQ(expected_term->value(), copy_expected_term->value());
-        for(size_t i = 0; i < lookahead; ++i) {
-          const bool copy_expected_next = copy_expected_term->next();
-          const bool actual_next = actual_term->next();
-          ASSERT_EQ(copy_expected_next, actual_next);
-          if (!copy_expected_next) {
-            break;
-          }
-          assert_term(*copy_expected_term, *actual_term, features);
-        }
-      }
 
       // seek to the same term
       ASSERT_TRUE(actual_term->seek(expected_term->value()));
@@ -907,10 +921,10 @@ void assert_pk(
 
   // check iterators & values
   {
-    auto actual_it = actual_reader.iterator(false);
+    auto actual_it = actual_reader.iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, actual_it);
 
-    auto actual_seek_it = actual_reader.iterator(false);
+    auto actual_seek_it = actual_reader.iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, actual_seek_it);
 
     auto* actual_key = irs::get<irs::document>(*actual_it);
@@ -923,7 +937,7 @@ void assert_pk(
       auto& expected_value = expected.first;
       ASSERT_TRUE(actual_it->next());
 
-      auto actual_stateless_seek_it = actual_reader.iterator(false);
+      auto actual_stateless_seek_it = actual_reader.iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, actual_stateless_seek_it);
 
       ASSERT_EQ(expected_key, actual_it->value());
@@ -979,10 +993,10 @@ void assert_column(
 
   // check iterators & values
   {
-    auto actual_it = actual_reader->iterator(false);
+    auto actual_it = actual_reader->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, actual_it);
 
-    auto actual_seek_it = actual_reader->iterator(false);
+    auto actual_seek_it = actual_reader->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, actual_seek_it);
 
     auto* actual_key = irs::get<irs::document>(*actual_it);
@@ -993,7 +1007,7 @@ void assert_column(
     for (auto& [expected_key, expected_value] : expected_values) {
       ASSERT_TRUE(actual_it->next());
 
-      auto actual_stateless_seek_it = actual_reader->iterator(false);
+      auto actual_stateless_seek_it = actual_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, actual_stateless_seek_it);
 
       ASSERT_EQ(expected_key, actual_it->value());
@@ -1177,7 +1191,6 @@ void assert_index(
         ASSERT_EQ(nullptr, actual_freq);
       }
 
-      // check terms
       assert_terms_next(expected_field->second, *actual_terms, features, matcher);
       assert_terms_seek(expected_field->second, *actual_terms, features, matcher);
     }

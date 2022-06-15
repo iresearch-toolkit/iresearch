@@ -100,12 +100,10 @@ void set_granular_term(
 class by_granular_range
     : public filter_base<by_granular_range_options> {
  public:
-  static ptr make();
-
   static filter::prepared::ptr prepare(
     const index_reader& index,
-    const order::prepared& ord,
-    boost_t boost,
+    const Order& ord,
+    score_t boost,
     string_ref field,
     const options_type::range_type& rng,
     size_t scored_terms_limit);
@@ -120,8 +118,8 @@ class by_granular_range
 
   virtual filter::prepared::ptr prepare(
       const index_reader& index,
-      const order::prepared& ord,
-      boost_t boost,
+      const Order& ord,
+      score_t boost,
       const attribute_provider* /*ctx*/) const override {
     return prepare(index, ord, this->boost()*boost,
                    field(), options().range,

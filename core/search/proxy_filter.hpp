@@ -33,32 +33,29 @@ namespace iresearch {
 
 struct proxy_query_cache;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief proxy filter designed to cache results of underlying real filter and
-/// provide fast replaying same filter on consequent calls.
-/// It is up to caller to control validity of the supplied cache. If the index
-/// was changed caller must discard cache and request a new one via make_cache.
-/// Scoring cache is not supported yet.
-//////////////////////////////////////////////////////////////////////////////
+// Proxy filter designed to cache results of underlying real filter and
+// provide fast replaying same filter on consequent calls.
+// It is up to caller to control validity of the supplied cache. If the index
+// was changed caller must discard cache and request a new one via make_cache.
+// Scoring cache is not supported yet.
 class proxy_filter final : public filter {
  public:
-  static ptr make();
-
   using cache_ptr = std::shared_ptr<proxy_query_cache>;
 
   proxy_filter() noexcept;
 
   using filter::prepare;
 
-  filter::prepared::ptr prepare(const index_reader& rdr, const order::prepared&,
-                                boost_t boost,
+  filter::prepared::ptr prepare(const index_reader& rdr, const Order&,
+                                score_t boost,
                                 const attribute_provider*) const override;
 
-  template<typename T>
-  std::pair<T&, cache_ptr> set_filter() {
-    using type = typename std::enable_if_t<std::is_base_of_v<filter, T>, T>;
-    auto& ptr = cache_filter(type::make());
-    return {static_cast<type&>(ptr), cache_};
+  template<typename T, typename... Args>
+  std::pair<T&, cache_ptr> set_filter(Args&&... args) {
+    static_assert(std::is_base_of_v<filter, T>);
+    auto& ptr =
+        cache_filter(memory::make_unique<T>(std::forward<Args>(args)...));
+    return {static_cast<T&>(ptr), cache_};
   }
 
   proxy_filter& set_cache(const cache_ptr& cache) {

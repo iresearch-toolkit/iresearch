@@ -58,8 +58,14 @@ class empty_term_reader final : public irs::term_reader {
     return doc_iterator::empty();
   }
 
+  virtual doc_iterator::ptr wanderator(
+      const seek_cookie&,
+      IndexFeatures) const noexcept override {
+    return doc_iterator::empty();
+  }
+
   virtual const irs::field_meta& meta() const noexcept override {
-    return irs::field_meta::EMPTY;
+    return irs::field_meta::kEmpty;
   }
 
   virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {

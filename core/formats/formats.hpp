@@ -25,20 +25,18 @@
 
 #include <absl/container/flat_hash_set.h>
 
+#include "index/column_info.hpp"
+#include "index/index_features.hpp"
+#include "index/index_meta.hpp"
+#include "index/iterators.hpp"
 #include "shared.hpp"
 #include "store/data_output.hpp"
 #include "store/directory.hpp"
-
-#include "index/index_features.hpp"
-#include "index/index_meta.hpp"
-#include "index/column_info.hpp"
-#include "index/iterators.hpp"
-
+#include "utils/attribute_provider.hpp"
+#include "utils/automaton_decl.hpp"
 #include "utils/io_utils.hpp"
 #include "utils/string.hpp"
 #include "utils/type_info.hpp"
-#include "utils/attribute_provider.hpp"
-#include "utils/automaton_decl.hpp"
 
 namespace iresearch {
 
@@ -51,7 +49,7 @@ struct data_input;
 struct index_input;
 struct postings_writer;
 
-using document_mask = absl::flat_hash_set<doc_id_t> ;
+using document_mask = absl::flat_hash_set<doc_id_t>;
 using doc_map = std::vector<doc_id_t>;
 using callback_f = std::function<bool(doc_iterator&)>;
 
@@ -78,7 +76,7 @@ struct term_meta : attribute {
   /// @brief how many times a particular term occur in documents
   //////////////////////////////////////////////////////////////////////////////
   uint32_t freq = 0;
-}; // term_meta
+};  // term_meta
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct postings_writer
@@ -89,20 +87,19 @@ struct postings_writer : attribute_provider {
   class releaser {
    public:
     explicit releaser(postings_writer* owner = nullptr) noexcept
-      : owner_(owner) {
-    }
+        : owner_(owner) {}
 
     inline void operator()(term_meta* meta) const noexcept;
 
    private:
     postings_writer* owner_;
-  }; // releaser
+  };  // releaser
 
   typedef std::unique_ptr<term_meta, releaser> state;
 
   virtual ~postings_writer() = default;
   /* out - corresponding terms utils/utstream */
-  virtual void prepare( index_output& out, const flush_state& state ) = 0;  
+  virtual void prepare(index_output& out, const flush_state& state) = 0;
   virtual void begin_field(IndexFeatures features) = 0;
   virtual state write(doc_iterator& docs) = 0;
   virtual void begin_block() = 0;
@@ -117,7 +114,7 @@ struct postings_writer : attribute_provider {
   }
 
   virtual void release(term_meta* meta) noexcept = 0;
-}; // postings_writer
+};  // postings_writer
 
 void postings_writer::releaser::operator()(term_meta* meta) const noexcept {
   assert(owner_ && meta);
@@ -132,13 +129,11 @@ struct field_writer {
 
   virtual ~field_writer() = default;
   virtual void prepare(const flush_state& state) = 0;
-  virtual void write(
-    std::string_view name,
-    IndexFeatures index_features,
-    const std::map<type_info::type_id, field_id>& features,
-    term_iterator& data) = 0;
+  virtual void write(std::string_view name, IndexFeatures index_features,
+                     const std::map<type_info::type_id, field_id>& features,
+                     term_iterator& data) = 0;
   virtual void end() = 0;
-}; // field_writer
+};  // field_writer
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct postings_reader
@@ -148,32 +143,32 @@ struct postings_reader {
   using term_provider_f = std::function<const term_meta*()>;
 
   virtual ~postings_reader() = default;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @arg in - corresponding stream
   /// @arg features - the set of features available for segment
   //////////////////////////////////////////////////////////////////////////////
-  virtual void prepare(
-    index_input& in, 
-    const reader_state& state,
-    IndexFeatures features) = 0;
+  virtual void prepare(index_input& in, const reader_state& state,
+                       IndexFeatures features) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief parses input block "in" and populate "attrs" collection with attributes
+  /// @brief parses input block "in" and populate "attrs" collection with
+  /// attributes
   /// @returns number of bytes read from in
   //////////////////////////////////////////////////////////////////////////////
-  virtual size_t decode(
-    const byte_type* in,
-    IndexFeatures features,
-    term_meta& state) = 0;
+  virtual size_t decode(const byte_type* in, IndexFeatures features,
+                        term_meta& state) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns a document iterator for a specified 'cookie' and 'features'
   //////////////////////////////////////////////////////////////////////////////
-  virtual doc_iterator::ptr iterator(
-    IndexFeatures field_features,
-    IndexFeatures required_features,
-    const term_meta& meta) = 0;
+  virtual doc_iterator::ptr iterator(IndexFeatures field_features,
+                                     IndexFeatures required_features,
+                                     const term_meta& meta) = 0;
+
+  virtual doc_iterator::ptr wanderator(IndexFeatures field_features,
+                                       IndexFeatures required_features,
+                                       const term_meta& meta) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief evaluates a union of all docs denoted by attribute supplied via a
@@ -183,11 +178,9 @@ struct postings_reader {
   /// @note it's up to the caller to allocate enough space for a bitset
   /// @note this API is experimental
   //////////////////////////////////////////////////////////////////////////////
-  virtual size_t bit_union(
-    IndexFeatures field_features,
-    const term_provider_f& provider,
-    size_t* set) = 0;
-}; // postings_reader
+  virtual size_t bit_union(IndexFeatures field_features,
+                           const term_provider_f& provider, size_t* set) = 0;
+};  // postings_reader
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct basic_term_reader
@@ -201,11 +194,11 @@ struct basic_term_reader : public attribute_provider {
   virtual const field_meta& meta() const = 0;
 
   // least significant term
-  virtual const bytes_ref& (min)() const = 0;
+  virtual const bytes_ref&(min)() const = 0;
 
   // most significant term
-  virtual const bytes_ref& (max)() const = 0;
-}; // basic_term_reader
+  virtual const bytes_ref&(max)() const = 0;
+};  // basic_term_reader
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @enum SeekMode
@@ -221,12 +214,12 @@ enum class SeekMode : uint32_t {
   /// @brief only random exact seeks are supported
   //////////////////////////////////////////////////////////////////////////////
   RANDOM_ONLY
-}; // SeekMode
+};  // SeekMode
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct term_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct term_reader: public attribute_provider {
+struct term_reader : public attribute_provider {
   using ptr = std::unique_ptr<term_reader>;
   using cookie_provider = std::function<const seek_cookie*()>;
 
@@ -241,7 +234,8 @@ struct term_reader: public attribute_provider {
   //////////////////////////////////////////////////////////////////////////////
   /// @returns an intersection of a specified automaton and term reader
   //////////////////////////////////////////////////////////////////////////////
-  virtual seek_term_iterator::ptr iterator(automaton_table_matcher& matcher) const = 0;
+  virtual seek_term_iterator::ptr iterator(
+      automaton_table_matcher& matcher) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief evaluates a union of all docs denoted by cookies supplied via a
@@ -254,9 +248,11 @@ struct term_reader: public attribute_provider {
   virtual size_t bit_union(const cookie_provider& provider,
                            size_t* bitset) const = 0;
 
-  virtual doc_iterator::ptr postings(
-    const seek_cookie& cookie,
-    IndexFeatures features) const = 0;
+  virtual doc_iterator::ptr postings(const seek_cookie& cookie,
+                                     IndexFeatures features) const = 0;
+
+  virtual doc_iterator::ptr wanderator(const seek_cookie& cookie,
+                                       IndexFeatures features) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns field metadata
@@ -276,12 +272,12 @@ struct term_reader: public attribute_provider {
   //////////////////////////////////////////////////////////////////////////////
   /// @returns the least significant term
   //////////////////////////////////////////////////////////////////////////////
-  virtual const bytes_ref& (min)() const = 0;
+  virtual const bytes_ref&(min)() const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns the most significant term
   //////////////////////////////////////////////////////////////////////////////
-  virtual const bytes_ref& (max)() const = 0;
+  virtual const bytes_ref&(max)() const = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -292,15 +288,13 @@ struct field_reader {
 
   virtual ~field_reader() = default;
 
-  virtual void prepare(
-    const directory& dir,
-    const segment_meta& meta,
-    const document_mask& mask) = 0;
+  virtual void prepare(const directory& dir, const segment_meta& meta,
+                       const document_mask& mask) = 0;
 
   virtual const term_reader* field(string_ref field) const = 0;
   virtual field_iterator::ptr iterator() const = 0;
   virtual size_t size() const = 0;
-}; // field_reader
+};  // field_reader
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct column_output
@@ -308,7 +302,7 @@ struct field_reader {
 struct column_output : data_output {
   // resets stream to previous persisted state
   virtual void reset() = 0;
-}; // column_output
+};  // column_output
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct columnstore_writer
@@ -316,7 +310,8 @@ struct column_output : data_output {
 struct columnstore_writer {
   using ptr = std::unique_ptr<columnstore_writer>;
 
-  // NOTE: doc > type_limits<type_t::doc_id_t>::invalid() && doc < type_limits<type_t::doc_id_t>::eof()
+  // NOTE: doc > type_limits<type_t::doc_id_t>::invalid() && doc <
+  // type_limits<type_t::doc_id_t>::eof()
   using values_writer_f = std::function<column_output&(doc_id_t doc)>;
 
   // Finalizer can be used to assign name and payload to a column.
@@ -331,12 +326,26 @@ struct columnstore_writer {
   virtual column_t push_column(const column_info& info,
                                column_finalizer_f header_writer) = 0;
   virtual void rollback() noexcept = 0;
-  virtual bool commit(const flush_state& state) = 0; // @return was anything actually flushed
-}; // columnstore_writer
+  virtual bool commit(
+      const flush_state& state) = 0;  // @return was anything actually flushed
+};                                    // columnstore_writer
 
-}
+}  // namespace iresearch
 
 namespace iresearch {
+
+enum class ColumnHint : uint32_t {
+  // Nothing special
+  kNormal = 0,
+  // Open iterator for conosolidation
+  kConsolidation = 1,
+  // Reading payload isn't necessary
+  kMask = 2,
+  // Allow accessing prev document
+  kPrevDoc = 4
+};
+
+ENABLE_BITMASK_ENUM(ColumnHint);
 
 struct column_reader {
   virtual ~column_reader() = default;
@@ -350,10 +359,11 @@ struct column_reader {
   // Returns column header.
   virtual bytes_ref payload() const = 0;
 
-  // Returns the corresponding column iterator.
-  // If the column implementation supports document payloads then it
-  // can be accessed via the 'payload' attribute.
-  virtual doc_iterator::ptr iterator(bool consolidation) const = 0;
+  // FIXME(gnusi): implement mode
+  //  Returns the corresponding column iterator.
+  //  If the column implementation supports document payloads then it
+  //  can be accessed via the 'payload' attribute.
+  virtual doc_iterator::ptr iterator(ColumnHint hint) const = 0;
 
   // Returns total number of columns.
   virtual doc_id_t size() const = 0;
@@ -371,9 +381,7 @@ struct columnstore_reader {
 
   // Returns true if conlumnstore is present in a segment, false - otherwise.
   // May throw `io_error` or `index_error`.
-  virtual bool prepare(
-    const directory& dir,
-    const segment_meta& meta) = 0;
+  virtual bool prepare(const directory& dir, const segment_meta& meta) = 0;
 
   virtual bool visit(const column_visitor_f& visitor) const = 0;
 
@@ -381,9 +389,9 @@ struct columnstore_reader {
 
   // Returns total number of columns.
   virtual size_t size() const = 0;
-}; // columnstore_reader
+};  // columnstore_reader
 
-}
+}  // namespace iresearch
 
 namespace iresearch {
 
@@ -397,11 +405,9 @@ struct document_mask_writer {
 
   virtual std::string filename(const segment_meta& meta) const = 0;
 
-  virtual void write(
-    directory& dir,
-    const segment_meta& meta,
-    const document_mask& docs_mask) = 0;
-}; // document_mask_writer
+  virtual void write(directory& dir, const segment_meta& meta,
+                     const document_mask& docs_mask) = 0;
+};  // document_mask_writer
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct document_mask_reader
@@ -415,10 +421,8 @@ struct document_mask_reader {
   ///          false - otherwise
   /// @throws io_error
   /// @throws index_error
-  virtual bool read(
-    const directory& dir,
-    const segment_meta& meta,
-    document_mask& docs_mask) = 0;
+  virtual bool read(const directory& dir, const segment_meta& meta,
+                    document_mask& docs_mask) = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -429,11 +433,9 @@ struct segment_meta_writer {
 
   virtual ~segment_meta_writer() = default;
 
-  virtual void write(
-    directory& dir,
-    std::string& filename,
-    const segment_meta& meta) = 0;
-}; // segment_meta_writer
+  virtual void write(directory& dir, std::string& filename,
+                     const segment_meta& meta) = 0;
+};  // segment_meta_writer
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct segment_meta_reader
@@ -444,10 +446,9 @@ struct segment_meta_reader {
   virtual ~segment_meta_reader() = default;
 
   virtual void read(
-    const directory& dir,
-    segment_meta& meta,
-    string_ref filename = string_ref::NIL) = 0; // null == use meta
-}; // segment_meta_reader
+      const directory& dir, segment_meta& meta,
+      string_ref filename = string_ref::NIL) = 0;  // null == use meta
+};                                                 // segment_meta_reader
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct index_meta_writer
@@ -460,10 +461,11 @@ struct index_meta_writer {
   virtual bool prepare(directory& dir, index_meta& meta) = 0;
   virtual bool commit() = 0;
   virtual void rollback() noexcept = 0;
+
  protected:
   static void complete(index_meta& meta) noexcept;
   static void prepare(index_meta& meta) noexcept;
-}; // index_meta_writer
+};  // index_meta_writer
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct index_meta_reader
@@ -473,22 +475,18 @@ struct index_meta_reader {
 
   virtual ~index_meta_reader() = default;
 
-  virtual bool last_segments_file(
-    const directory& dir, std::string& name) const = 0;
+  virtual bool last_segments_file(const directory& dir,
+                                  std::string& name) const = 0;
 
   virtual void read(
-    const directory& dir, 
-    index_meta& meta,
-    string_ref filename = string_ref::NIL) = 0; // null == use meta
+      const directory& dir, index_meta& meta,
+      string_ref filename = string_ref::NIL) = 0;  // null == use meta
 
  protected:
-  static void complete(
-    index_meta& meta,
-    uint64_t generation,
-    uint64_t counter,
-    index_meta::index_segments_t&& segments,
-    bstring* payload_buf);
-}; // index_meta_reader
+  static void complete(index_meta& meta, uint64_t generation, uint64_t counter,
+                       index_meta::index_segments_t&& segments,
+                       bstring* payload_buf);
+};  // index_meta_reader
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct format
@@ -512,26 +510,27 @@ class format {
   virtual field_writer::ptr get_field_writer(bool consolidation) const = 0;
   virtual field_reader::ptr get_field_reader() const = 0;
 
-  virtual columnstore_writer::ptr get_columnstore_writer(bool consolidation) const = 0;
+  virtual columnstore_writer::ptr get_columnstore_writer(
+      bool consolidation) const = 0;
   virtual columnstore_reader::ptr get_columnstore_reader() const = 0;
 
   const type_info& type() const { return type_; }
 
  private:
   type_info type_;
-}; // format
+};  // format
 
-}
+}  // namespace iresearch
 
 namespace iresearch {
 
 struct flush_state {
   directory* dir{};
   const doc_map* docmap{};
-  const std::set<type_info::type_id>* features{}; // segment features
-  string_ref name; // segment name
+  const std::set<type_info::type_id>* features{};  // segment features
+  string_ref name;                                 // segment name
   size_t doc_count;
-  IndexFeatures index_features{IndexFeatures::NONE}; // segment index features
+  IndexFeatures index_features{IndexFeatures::NONE};  // segment index features
 };
 
 struct reader_state {
@@ -555,10 +554,8 @@ class formats {
   ///        indirect call to <class>::make(...)
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   //////////////////////////////////////////////////////////////////////////////
-  static format::ptr get(
-    string_ref name,
-    string_ref module = string_ref::NIL,
-    bool load_library = true) noexcept;
+  static format::ptr get(string_ref name, string_ref module = string_ref::NIL,
+                         bool load_library = true) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief for static lib reference all known formats in lib
@@ -587,26 +584,26 @@ class formats {
 
 class format_registrar {
  public:
-  format_registrar(
-    const type_info& type,
-    string_ref module,
-    format::ptr(*factory)(),
-    const char* source = nullptr);
+  format_registrar(const type_info& type, string_ref module,
+                   format::ptr (*factory)(), const char* source = nullptr);
 
-  operator bool() const noexcept {
-    return registered_;
-  }
+  operator bool() const noexcept { return registered_; }
 
  private:
   bool registered_;
 };
 
-#define REGISTER_FORMAT__(format_name, mudule_name, line, source) \
-  static ::iresearch::format_registrar format_registrar ## _ ## line(::iresearch::type<format_name>::get(), mudule_name, &format_name::make, source)
-#define REGISTER_FORMAT_EXPANDER__(format_name, mudule_name, file, line) REGISTER_FORMAT__(format_name, mudule_name, line, file ":" TOSTRING(line))
-#define REGISTER_FORMAT_MODULE(format_name, module_name) REGISTER_FORMAT_EXPANDER__(format_name, module_name, __FILE__, __LINE__)
-#define REGISTER_FORMAT(format_name) REGISTER_FORMAT_MODULE(format_name, irs::string_ref::NIL)
+#define REGISTER_FORMAT__(format_name, mudule_name, line, source)             \
+  static ::iresearch::format_registrar format_registrar##_##line(             \
+      ::iresearch::type<format_name>::get(), mudule_name, &format_name::make, \
+      source)
+#define REGISTER_FORMAT_EXPANDER__(format_name, mudule_name, file, line) \
+  REGISTER_FORMAT__(format_name, mudule_name, line, file ":" TOSTRING(line))
+#define REGISTER_FORMAT_MODULE(format_name, module_name) \
+  REGISTER_FORMAT_EXPANDER__(format_name, module_name, __FILE__, __LINE__)
+#define REGISTER_FORMAT(format_name) \
+  REGISTER_FORMAT_MODULE(format_name, irs::string_ref::NIL)
 
-}
+}  // namespace iresearch
 
 #endif

@@ -20,7 +20,6 @@
 - [Included 3rd party dependencies](#included-3rd-party-dependencies)
 - [External 3rd party dependencies](#external-3rd-party-dependencies)
 - [Query filter building blocks](#query-filter-building-blocks)
-- [Index Query Language](#index-query-language)
 - [Supported compilers](#supported-compilers)
 - [License](#license)
 
@@ -136,9 +135,6 @@ point LZ4_ROOT at the source directory to build together with IResearch
 ```bash
 LZ4_ROOT=<install-path>
 ```
-
-### [Bison](https://www.gnu.org/software/bison)
-v2.4 or later
 
 win32 binaries also available in:
 - https://git-scm.com/download/win
@@ -392,10 +388,6 @@ used for functionality not available in the STL (excluding functionality availab
 ### [Lz4](https://code.google.com/p/lz4)
 used for compression/decompression of byte/string data
 
-### [Bison](https://www.gnu.org/software/bison)
-v2.4 or later
-used for compilation of the IQL (index query language) grammar
-
 ### [ICU](http://site.icu-project.org/download)
 used by analyzers for parsing, transforming and tokenising string data
 
@@ -422,7 +414,7 @@ the first whitespace is ignored), in the directory corresponding to its language
 
 
 ## Query filter building blocks
-| Filter    |       Description    |          
+| Filter    |       Description    |
 |-----------|----------------------|
 |iresearch::by_edit_distance|for filtering of values based on Levenshtein distance
 |iresearch::by_granular_range|for faster filtering of numeric values within a given range, with the possibility of specifying open/closed ranges
@@ -434,117 +426,11 @@ the first whitespace is ignored), in the directory corresponding to its language
 |iresearch::by_term|for filtering of exact values
 |iresearch::by_terms|for filtering of exact values by a set of specified terms 
 |iresearch::by_wildcard|for filtering of values based on matching pattern
+|iresearch::ByNestedFilter|for filtering of documents based on matching pattern on its sub-documents
 |iresearch::And|boolean conjunction of multiple filters, influencing document ranks/scores as appropriate
 |iresearch::Or|boolean disjunction of multiple filters, influencing document ranks/scores as appropriate (including "minimum match" functionality)
 |iresearch::Not|boolean negation of multiple filters
 
-## Index Query Language
-The IResearch index may be queries either via query trees built directly using the query building blocks available
-in the API or via the IQL query builder that generates a comparable query from a string representation of the query
-expressed using the IQL syntax.
-
-#### API
-The IQL parser is defined via Bison grammar and is accessible via <b>iresearch::iql::parser</b>
-and <b>iresearch::iql::parser_context</b> classes. The latter class is intended to be extended to expose at least the
-following methods as required:
-- query_state current_state() const;
-- query_node const& find_node(parser::semantic_type const& value) const;
-
-The <b>iresearch::iql::parser_context::query_state</b> object provides access to the results of the query parsing as well
-as any parse errors reported by Bison.
-- nOffset  - next offset position to be parsed (size_t)
-- pnFilter - the filter portion (nodeID) of the query, or nullptr if unset (size_t const*)
-- order    - the order portion (nodeID, ascending) of the query (std::vector<std::pair<size_t, bool>> const&)
-- pnLimit  - the limit value of the query, or nullptr if unset (size_t const*)
-- pError   - the last encountered error, or nullptr if no errors seen (iresearch::iql::query_position const*)
-
-
-#### Grammar
-The following grammar is currently defined via Bison (the root is <query>):
-```
-	<query> ::= <sep>? <union> <order> <limit> <sep>?
-
-	<sep> ::= [[:space:]]+
-	        | <sep> "/*" ... "*/"
-
-	<list_sep> ::= <sep>? "," <sep>?
-
-	<union> ::= intersection
-	          | <union> <sep> "OR" <sep> <intersection>
-	          | <union> <sep>? "||" <sep>? <intersection>
-
-	<intersection> ::= <expression>
-	                 | <intersection> <sep> "AND" <sep> <expression>
-	                 | <intersection> <sep>? "&&" <sep> <expression>
-
-	<expression> ::= <boost>
-	               | <compare>
-	               | <negation>
-	               | <subexpression>
-
-	<boost> ::= <{float value}> <sep>? "*" <sep>? <subexpression>
-	          | <subexpression> <sep>? "*" <sep>? <{float value}>
-
-	<negation> ::= "NOT" <sep>? <subexpression>
-	             | "!" <sep>? <subexpression>
-
-	<subexpression> ::= "(" <sep>? <union> <sep>? ")"
-	                  | <sequence> "(" <sep>? ")"
-	                  | <sequence> "(" <sep>? <term_list> <sep>? ")"
-
-	<compare> ::= <term> <sep>? "~=" <sep>? <term>
-	            | <term> <sep>? "!=" <sep>? <term>
-	            | <term> <sep>? "<"  <sep>? <term>
-	            | <term> <sep>? "<=" <sep>? <term>
-	            | <term> <sep>? "==" <sep>? <term>
-	            | <term> <sep>? ">=" <sep>? <term>
-	            | <term> <sep>? ">"  <sep>? <term>
-	            | <term> <sep>? "!=" <sep>? <range>
-	            | <term> <sep>? "==" <sep>? <range>
-
-	<range> ::= "[" <sep>? <term> <list_sep> <term> <sep>? "]"
-	          | "[" <sep>? <term> <list_sep> <term> <sep>? ")"
-	          | "(" <sep>? <term> <list_sep> <term> <sep>? ")"
-	          | "(" <sep>? <term> <list_sep> <term> <sep>? "]"
-
-	<term> ::= <function>
-	         | <sequence>
-
-	<function> ::= <sequence> "(" <sep>? ")"
-	             | <sequence> "(" <sep>? <term_list> <sep>? ")"
-
-	<term_list> ::= <term>
-	              | <term_list> <list_sep> <term>
-
-	<sequence> ::= <plain_literal>
-	             | <dquoted_literal>
-	             | <squoted_literal>
-
-	<plain_literal> ::= <sequence>
-	                  | <plain_literal> <sequence>
-
-	<sequence> ::= [^[:space:][:punct:]]+
-	             | [[:punct:]][^[:space:][:punct:]]*
-
-	<dquoted_literal> ::= """ [^"]* """
-	                    | <dquoted_literal> """ [^"]* """
-
-	<squoted_literal> ::= "'" [^']* "'"
-	                    | <squoted_literal> "'" [^']* "'"
-
-	<limit> ::= ""
-	          | <sep> "LIMIT" <sep> <{term expanding to an unsigned int value}>
-
-	<order> ::= ""
-	          | <sep> "ORDER" <sep> <order_list>
-
-	<order_list> ::= <order_term>
-	               | <order_list> <list_sep> <order_term>
-
-	<order_term> ::= <term>
-	               | <term> <sep> "ASC"
-	               | <term> <sep> "DESC"
-```
 
 ## Supported compilers
 

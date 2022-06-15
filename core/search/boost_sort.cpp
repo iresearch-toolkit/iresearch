@@ -31,75 +31,53 @@ sort::ptr make_json(string_ref /*args*/) {
 }
 
 struct volatile_boost_score_ctx : score_ctx {
-  volatile_boost_score_ctx(
-      byte_type* score_buf,
-      const filter_boost* volatile_boost,
-      boost_t boost) noexcept
-    : score_buf(score_buf),
-      boost(boost),
-      volatile_boost(volatile_boost) {
+  volatile_boost_score_ctx(const filter_boost* volatile_boost,
+                           score_t boost) noexcept
+      : boost{boost}, volatile_boost{volatile_boost} {
     assert(volatile_boost);
   }
 
-  byte_type* score_buf;
-  boost_t boost;
+  score_t boost;
   const filter_boost* volatile_boost;
 };
 
-struct prepared final : prepared_sort_basic<boost_t> {
+struct prepared final : PreparedSortBase<void> {
   IndexFeatures features() const noexcept override {
     return IndexFeatures::NONE;
   }
 
-  score_function prepare_scorer(
-      const sub_reader&,
-      const term_reader&,
-      const byte_type*,
-      byte_type* score_buf,
-      const irs::attribute_provider& attrs,
-      irs::boost_t boost) const override {
+  ScoreFunction prepare_scorer(const sub_reader&, const term_reader&,
+                               const byte_type*,
+                               const irs::attribute_provider& attrs,
+                               irs::score_t boost) const override {
     auto* volatile_boost = irs::get<irs::filter_boost>(attrs);
 
     if (!volatile_boost) {
-      sort::score_cast<boost_t>(score_buf) = boost;
-
-      return {
-        reinterpret_cast<score_ctx*>(score_buf),
-        [](irs::score_ctx* ctx) noexcept -> const byte_type* {
-          return reinterpret_cast<byte_type*>(ctx);
-        }
-      };
+      return ScoreFunction::Constant(boost);
     }
 
     return {
-      memory::make_unique<volatile_boost_score_ctx>(score_buf, volatile_boost, boost),
-      [](irs::score_ctx* ctx) noexcept -> const byte_type* {
-        auto& state = *reinterpret_cast<volatile_boost_score_ctx*>(ctx);
-        sort::score_cast<boost_t>(state.score_buf) = state.volatile_boost->value*state.boost;
-
-        return state.score_buf;
-      }
-    };
+        memory::make_unique<volatile_boost_score_ctx>(volatile_boost, boost),
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          auto& state = *reinterpret_cast<volatile_boost_score_ctx*>(ctx);
+          *res = state.volatile_boost->value * state.boost;
+        }};
   }
 };
 
-}
+}  // namespace
 
 namespace iresearch {
-
-DEFINE_FACTORY_DEFAULT(irs::boost_sort);
 
 /*static*/ void boost_sort::init() {
   REGISTER_SCORER_JSON(boost_sort, make_json);
 }
 
-boost_sort::boost_sort() noexcept
-  : sort(irs::type<boost_sort>::get()) {
-}
+boost_sort::boost_sort() noexcept : sort(irs::type<boost_sort>::get()) {}
 
 sort::prepared::ptr boost_sort::prepare() const {
   // FIXME can avoid allocation
   return memory::make_unique<::prepared>();
 }
 
-}
+}  // namespace iresearch

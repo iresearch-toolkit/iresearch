@@ -30,45 +30,31 @@ namespace iresearch {
 
 class by_column_existence;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct by_column_existence_options
-/// @brief options for column existence filter
-////////////////////////////////////////////////////////////////////////////////
+// Options for column existence filter
 struct by_column_existence_options {
   using filter_type = by_column_existence;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief match field prefix
-  //////////////////////////////////////////////////////////////////////////////
+  // Match field prefix
   bool prefix_match{};
 
   bool operator==(const by_column_existence_options& rhs) const noexcept {
     return prefix_match == rhs.prefix_match;
   }
 
-  size_t hash() const noexcept {
-    return std::hash<bool>()(prefix_match);
-  }
-}; // by_column_existence_options
+  size_t hash() const noexcept { return std::hash<bool>()(prefix_match); }
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class by_column_existence
-/// @brief user-side column existence filter
-//////////////////////////////////////////////////////////////////////////////
+// User-side column existence filter
 class by_column_existence final
     : public filter_base<by_column_existence_options> {
  public:
-  static ptr make();
-
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_provider* ctx) const override;
-}; // by_column_existence
+      const index_reader& rdr, const Order& ord, score_t boost,
+      const attribute_provider* ctx) const override;
+};
 
-} // ROOT
+}  // namespace iresearch
 
-#endif // IRESEARCH_COLUMN_EXISTENCE_FILTER_H
+#endif  // IRESEARCH_COLUMN_EXISTENCE_FILTER_H
