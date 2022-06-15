@@ -373,7 +373,8 @@ class RangeMatcher : public Merger,
     const auto [min, max] = match_;
     assert(min <= max);
 
-    doc_id_t count = 0;
+    // Already matched the first child
+    doc_id_t count = 1;
 
     if constexpr (HasScore_v<Merger>) {
       child_score(buf.data());
@@ -425,8 +426,19 @@ class MinMatcher : public Merger,
   doc_id_t Accept(const doc_id_t first_child, const doc_id_t parent) {
     assert(!doc_limits::eof(parent));
 
+    if (0 == min_) {
+      // FIXME(gnusi): ???
+      return 0;
+    }
+
     if (first_child > parent) {
       return first_child;
+    }
+
+    doc_id_t count = min_ - 1;
+
+    if (!count) {
+      return 0;
     }
 
     auto& self = static_cast<JoinType&>(*this);
@@ -437,22 +449,19 @@ class MinMatcher : public Merger,
     const auto* child_doc = self.child_doc_;
     const auto& child_score = *self.child_score_;
 
-    doc_id_t count = min_;
-
     if constexpr (HasScore_v<Merger>) {
       child_score(buf.data());
     }
+
     while (child.next() && child_doc->value < parent) {
+      if (!--count) {
+        return 0;
+      }
+
       if constexpr (HasScore_v<Merger>) {
         child_score(merger.temp());
         merger(buf.data(), merger.temp());
       }
-
-      if (!count) {
-        return 0;
-      }
-
-      --count;
     }
 
     return count ? parent + 1 : 0;
