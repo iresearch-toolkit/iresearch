@@ -633,17 +633,15 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
             rdr, match_, none_boost_, std::forward<A>(aggregator),
             [&]<typename M>(M&& matcher) -> irs::doc_iterator::ptr {
               if constexpr (std::is_same_v<NoneMatcher, M>) {
-                // FIXME(gnusi): scoring? write a test
-                if (doc_limits::eof(child->value())) {
+                if (doc_limits::eof(child->value())) {  // Match all parents
                   if constexpr (std::is_same_v<NoopAggregator, A>) {
-                    // Match all parents
                     return std::move(parent);
                   } else {
                     auto func = ScoreFunction::Constant(none_boost_,
                                                         ord.buckets().size());
 
                     if (auto* scr = irs::get_mutable<score>(parent.get());
-                        !scr) {
+                        scr) {
                       *scr = std::move(func);
                       return std::move(parent);
                     } else {
