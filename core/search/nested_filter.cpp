@@ -354,7 +354,10 @@ class RangeMatcher : public Merger,
   RangeMatcher(Match match, Merger&& merger) noexcept
       : Merger{std::move(merger)},
         BufferType{static_cast<const Merger&>(*this)},
-        match_{match} {}
+        match_{match} {
+    // This case is handled by MinMatcher
+    assert(match_ != Match{0});
+  }
 
   doc_id_t Accept(const doc_id_t first_child, const doc_id_t parent) {
     assert(!doc_limits::eof(parent));
@@ -407,6 +410,8 @@ class RangeMatcher : public Merger,
             }};
   }
 
+  const Match& range() const noexcept { return match_; }
+
  private:
   const Match match_;
 };
@@ -428,7 +433,13 @@ class MinMatcher : public Merger,
     assert(!doc_limits::eof(parent));
 
     if (0 == min_) {
-      // FIXME(gnusi): return all parents, write a test???
+      if constexpr (HasScore_v<Merger>) {
+        // Reset score value as we might not be able
+        // to find any childs
+        auto& merger = static_cast<Merger&>(*this);
+        auto& buf = static_cast<BufferType&>(*this);
+        std::memset(buf.data(), 0, merger.byte_size());
+      }
       return 0;
     }
 
@@ -494,6 +505,8 @@ class MinMatcher : public Merger,
               std::memcpy(res, buf.data(), merger.byte_size());
             }};
   }
+
+  Match range() const noexcept { return Match{min_}; }
 
  private:
   const doc_id_t min_;
@@ -587,8 +600,17 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
                   // Match all parents
                   return std::move(parent);
                 }
+              } else if constexpr (std::is_same_v<MinMatcher<A>, M> ||
+                                   std::is_same_v<RangeMatcher<A>, M>) {
+                // Unordered case for the range [0..EOF] is the equivalent to
+                // matching all parents
+                if constexpr (std::is_same_v<NoopAggregator, A>) {
+                  if (Match{0} == matcher.range() &&
+                      doc_limits::eof(child->value())) {
+                    return std::move(parent);
+                  }
+                }
               } else {
-                // FIXME(gnusi): incorrect for Match(0..eof), fix, test
                 if (doc_limits::eof(child->value())) {
                   return doc_iterator::empty();
                 }
