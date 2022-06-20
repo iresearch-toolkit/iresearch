@@ -23,6 +23,7 @@
 #include "search/nested_filter.hpp"
 
 #include "search/all_filter.hpp"
+#include "search/bitset_doc_iterator.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/column_existence_filter.hpp"
 #include "search/filter_test_case_base.hpp"
@@ -958,7 +959,7 @@ TEST_P(NestedFilterTestCase, JoinRange2) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {0.f, 0.f}},          {Next{}, 8, {0.f, 0.f}},
+        {Next{}, 6, {3.f, 3.f}},          {Next{}, 8, {0.f, 0.f}},
         {Next{}, 13, {12.f, 12.f}},       {Next{}, 20, {19.f, 19.f}},
         {Next{}, irs::doc_limits::eof()},
     };
@@ -973,7 +974,7 @@ TEST_P(NestedFilterTestCase, JoinRange2) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {0.f, 0.f}},          {Next{}, 8, {0.f, 0.f}},
+        {Next{}, 6, {2.f, 2.f}},          {Next{}, 8, {0.f, 0.f}},
         {Next{}, 13, {9.f, 9.f}},         {Next{}, 20, {14.f, 14.f}},
         {Next{}, irs::doc_limits::eof()},
     };
@@ -988,8 +989,8 @@ TEST_P(NestedFilterTestCase, JoinRange2) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {0.f, 0.f}},
-        {Next{}, 8, {0.f, 0.f}},
+        {Next{}, 6, {}},
+        {Next{}, 8, {}},
         {Next{}, 13, {}},
         {Next{}, 20, {}},
         {Next{}, irs::doc_limits::eof()},
@@ -1054,6 +1055,196 @@ TEST_P(NestedFilterTestCase, JoinNone0) {
   }
 }
 
+TEST_P(NestedFilterTestCase, JoinNone1) {
+  InitDataSet();
+  auto reader = open_reader();
+
+  irs::ByNestedFilter filter;
+  auto& opts = *filter.mutable_options();
+  opts.child = MakeByTerm("item", "Mouse");
+  opts.parent = MakeParentProvider("customer");
+  opts.match = irs::kMatchNone;
+  filter.boost(0.5f);
+
+  CheckQuery(filter, Docs{8}, Costs{3}, reader, SOURCE_LOCATION);
+
+  {
+    opts.merge_type = irs::sort::MergeType::kMax;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 8, {0.5f, 0.5f}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+
+  {
+    opts.merge_type = irs::sort::MergeType::kMin;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 8, {0.5f, 0.5f}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+
+  {
+    opts.merge_type = irs::sort::MergeType::kNoop;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 8, {}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+}
+
+TEST_P(NestedFilterTestCase, JoinNone2) {
+  InitDataSet();
+  auto reader = open_reader();
+
+  irs::ByNestedFilter filter;
+  auto& opts = *filter.mutable_options();
+  opts.child = std::make_unique<irs::empty>();
+  opts.parent = MakeParentProvider("customer");
+  opts.match = irs::kMatchNone;
+  filter.boost(1.f);
+
+  CheckQuery(filter, Docs{6, 8, 13, 20}, Costs{4}, reader, SOURCE_LOCATION);
+
+  {
+    opts.merge_type = irs::sort::MergeType::kMax;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 6, {1.f, 1.f}},          {Next{}, 8, {1.f, 1.f}},
+        {Next{}, 13, {1.f, 1.f}},         {Next{}, 20, {1.f, 1.f}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+
+  {
+    opts.merge_type = irs::sort::MergeType::kMin;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 6, {1.f, 1.f}},          {Next{}, 8, {1.f, 1.f}},
+        {Next{}, 13, {1.f, 1.f}},         {Next{}, 20, {1.f, 1.f}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+
+  {
+    opts.merge_type = irs::sort::MergeType::kNoop;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 6, {}},
+        {Next{}, 8, {}},
+        {Next{}, 13, {}},
+        {Next{}, 20, {}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+}
+
+TEST_P(NestedFilterTestCase, JoinNone3) {
+  InitDataSet();
+  auto reader = open_reader();
+
+  irs::ByNestedFilter filter;
+  auto& opts = *filter.mutable_options();
+  opts.child = std::make_unique<irs::empty>();
+
+  // Bitset iterator doesn't provide score, check that wrapper works correctly
+  opts.parent = [word = irs::bitset::word_t{}](
+                    const irs::sub_reader&) mutable -> irs::doc_iterator::ptr {
+    irs::set_bit<6>(word);
+    irs::set_bit<8>(word);
+    irs::set_bit<13>(word);
+    irs::set_bit<20>(word);
+    return irs::memory::make_managed<irs::bitset_doc_iterator>(&word,
+                                                               &word + 1);
+  };
+
+  MakeParentProvider("customer");
+  opts.match = irs::kMatchNone;
+  filter.boost(0.5f);
+
+  CheckQuery(filter, Docs{6, 8, 13, 20}, Costs{4}, reader, SOURCE_LOCATION);
+
+  {
+    opts.merge_type = irs::sort::MergeType::kMax;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 6, {0.5f, 0.5f}},        {Next{}, 8, {0.5f, 0.5f}},
+        {Next{}, 13, {0.5f, 0.5f}},       {Next{}, 20, {0.5f, 0.5f}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+
+  {
+    opts.merge_type = irs::sort::MergeType::kMin;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 6, {0.5f, 0.5f}},        {Next{}, 8, {0.5f, 0.5f}},
+        {Next{}, 13, {0.5f, 0.5f}},       {Next{}, 20, {0.5f, 0.5f}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+
+  {
+    opts.merge_type = irs::sort::MergeType::kNoop;
+
+    std::array<irs::sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
+                                          std::make_unique<DocIdScorer>()};
+
+    const Tests tests = {
+        {Next{}, 6, {}},
+        {Next{}, 8, {}},
+        {Next{}, 13, {}},
+        {Next{}, 20, {}},
+        {Next{}, irs::doc_limits::eof()},
+    };
+
+    CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
+  }
+}
+
 const auto kDirectories =
     ::testing::Values(&tests::directory<&tests::memory_directory>,
                       &tests::directory<&tests::fs_directory>,
@@ -1062,11 +1253,7 @@ const auto kDirectories =
 INSTANTIATE_TEST_SUITE_P(
     NestedFilterTest, NestedFilterTestCase,
     ::testing::Combine(kDirectories,
-                       ::testing::Values(/*tests::format_info{"1_0"},
-                           tests::format_info{"1_1", "1_0"},
-                           tests::format_info{"1_2", "1_0"},
-                           tests::format_info{"1_3", "1_0"},*/
-                                         tests::format_info{"1_4", "1_0"},
+                       ::testing::Values(tests::format_info{"1_4", "1_0"},
                                          tests::format_info{"1_5", "1_0"})),
     NestedFilterTestCase::to_string);
 

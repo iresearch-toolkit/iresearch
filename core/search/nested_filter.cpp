@@ -65,6 +65,33 @@ bool IsValid(const ByNestedOptions::MatchType& match) noexcept {
       match);
 }
 
+class ScorerWrapper final : public doc_iterator {
+ public:
+  explicit ScorerWrapper(doc_iterator::ptr it, ScoreFunction&& score) noexcept
+      : it_{std::move(it)} {
+    assert(it_);
+    score_ = std::move(score);
+  }
+
+  doc_id_t value() const override { return it_->value(); }
+
+  doc_id_t seek(doc_id_t target) override { return it_->seek(target); }
+
+  bool next() override { return it_->next(); }
+
+  attribute* get_mutable(irs::type_info::type_id id) override {
+    if (irs::type<score>::id() == id) {
+      return &score_;
+    }
+
+    return it_->get_mutable(id);
+  }
+
+ private:
+  doc_iterator::ptr it_;
+  score score_;
+};
+
 class NoneMatcher;
 
 template<typename Matcher>
@@ -362,7 +389,21 @@ class RangeMatcher : public Merger,
   doc_id_t Accept(const doc_id_t first_child, const doc_id_t parent) {
     assert(!doc_limits::eof(parent));
 
+    const auto [min, max] = match_;
+    assert(min <= max);
+
     if (first_child > parent) {
+      if (min == 0) {
+        if constexpr (HasScore_v<Merger>) {
+          // Reset score value as we are not able
+          // to find any childs
+          auto& merger = static_cast<Merger&>(*this);
+          auto& buf = static_cast<BufferType&>(*this);
+          std::memset(buf.data(), 0, merger.byte_size());
+        }
+        return 0;
+      }
+
       return first_child;
     }
 
@@ -373,9 +414,6 @@ class RangeMatcher : public Merger,
     auto& child = *self.child_;
     const auto* child_doc = self.child_doc_;
     const auto& child_score = *self.child_score_;
-
-    const auto [min, max] = match_;
-    assert(min <= max);
 
     // Already matched the first child
     doc_id_t count = 1;
@@ -597,9 +635,24 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
               if constexpr (std::is_same_v<NoneMatcher, M>) {
                 // FIXME(gnusi): scoring? write a test
                 if (doc_limits::eof(child->value())) {
-                  // Match all parents
-                  return std::move(parent);
+                  if constexpr (std::is_same_v<NoopAggregator, A>) {
+                    // Match all parents
+                    return std::move(parent);
+                  } else {
+                    auto func = ScoreFunction::Constant(none_boost_,
+                                                        ord.buckets().size());
+
+                    if (auto* scr = irs::get_mutable<score>(parent.get());
+                        !scr) {
+                      *scr = std::move(func);
+                      return std::move(parent);
+                    } else {
+                      return memory::make_managed<ScorerWrapper>(
+                          std::move(parent), std::move(func));
+                    }
+                  }
                 }
+
               } else if constexpr (std::is_same_v<MinMatcher<A>, M> ||
                                    std::is_same_v<RangeMatcher<A>, M>) {
                 // Unordered case for the range [0..EOF] is the equivalent to
