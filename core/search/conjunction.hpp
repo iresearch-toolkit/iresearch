@@ -76,7 +76,7 @@ struct score_iterator_adapter : public doc_iterator_adapter<DocIterator> {
   score_iterator_adapter(doc_iterator_t&& it) noexcept
       : doc_iterator_adapter<DocIterator>(std::move(it)),
         score{&irs::score::get(*this->it)} {
-    assert(doc);
+    assert(this->doc);
   }
 
   score_iterator_adapter(score_iterator_adapter&&) = default;
