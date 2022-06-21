@@ -73,11 +73,11 @@ class ScorerWrapper final : public doc_iterator {
     score_ = std::move(score);
   }
 
-  doc_id_t value() const override { return it_->value(); }
+  doc_id_t value() const final { return it_->value(); }
 
-  doc_id_t seek(doc_id_t target) override { return it_->seek(target); }
+  doc_id_t seek(doc_id_t target) final { return it_->seek(target); }
 
-  bool next() override { return it_->next(); }
+  bool next() final { return it_->next(); }
 
   attribute* get_mutable(irs::type_info::type_id id) override {
     if (irs::type<score>::id() == id) {
@@ -634,23 +634,18 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
             [&]<typename M>(M&& matcher) -> irs::doc_iterator::ptr {
               if constexpr (std::is_same_v<NoneMatcher, M>) {
                 if (doc_limits::eof(child->value())) {  // Match all parents
-                  if constexpr (std::is_same_v<NoopAggregator, A>) {
-                    return std::move(parent);
-                  } else {
+                  if constexpr (!std::is_same_v<NoopAggregator, A>) {
                     auto func = ScoreFunction::Constant(none_boost_,
                                                         ord.buckets().size());
-
-                    if (auto* scr = irs::get_mutable<score>(parent.get());
-                        scr) {
-                      *scr = std::move(func);
-                      return std::move(parent);
-                    } else {
+                    auto* score = irs::get_mutable<irs::score>(parent.get());
+                    if (IRS_UNLIKELY(!score)) {
                       return memory::make_managed<ScorerWrapper>(
                           std::move(parent), std::move(func));
                     }
+                    *score = std::move(func);
                   }
+                  return std::move(parent);
                 }
-
               } else if constexpr (std::is_same_v<MinMatcher<A>, M> ||
                                    std::is_same_v<RangeMatcher<A>, M>) {
                 // Unordered case for the range [0..EOF] is the equivalent to
