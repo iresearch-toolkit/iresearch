@@ -28,6 +28,7 @@
 #include "search/column_existence_filter.hpp"
 #include "search/filter_test_case_base.hpp"
 #include "search/granular_range_filter.hpp"
+#include "search/prev_doc.hpp"
 #include "search/term_filter.hpp"
 #include "tests_shared.hpp"
 
@@ -72,6 +73,36 @@ struct ChildIterator : irs::doc_iterator {
  private:
   irs::doc_iterator::ptr it_;
   std::set<irs::doc_id_t> parents_;
+};
+
+class PrevDocWrapper : public irs::doc_iterator {
+ public:
+  explicit PrevDocWrapper(doc_iterator::ptr&& it) noexcept
+      : it_{std::move(it)} {
+    // Actual implementation doesn't matter
+    prev_doc_.reset([](const void*) { return irs::doc_limits::eof(); },
+                    nullptr);
+  }
+
+  irs::doc_id_t value() const override { return it_->value(); }
+
+  irs::doc_id_t seek(irs::doc_id_t target) override {
+    return it_->seek(target);
+  }
+
+  bool next() override { return it_->next(); }
+
+  irs::attribute* get_mutable(irs::type_info::type_id id) override {
+    if (irs::type<irs::prev_doc>::id() == id) {
+      return &prev_doc_;
+    }
+
+    return it_->get_mutable(id);
+  }
+
+ private:
+  doc_iterator::ptr it_;
+  irs::prev_doc prev_doc_;
 };
 
 struct DocIdScorer : irs::sort {
@@ -1172,7 +1203,6 @@ TEST_P(NestedFilterTestCase, JoinNone2) {
   }
 }
 
-/* FIXME(gnusi): implement prev_doc for parent filter and uncomment
 TEST_P(NestedFilterTestCase, JoinNone3) {
   InitDataSet();
   auto reader = open_reader();
@@ -1188,8 +1218,8 @@ TEST_P(NestedFilterTestCase, JoinNone3) {
     irs::set_bit<8>(word);
     irs::set_bit<13>(word);
     irs::set_bit<20>(word);
-    return irs::memory::make_managed<irs::bitset_doc_iterator>(&word,
-                                                               &word + 1);
+    return irs::memory::make_managed<PrevDocWrapper>(
+        irs::memory::make_managed<irs::bitset_doc_iterator>(&word, &word + 1));
   };
 
   MakeParentProvider("customer");
@@ -1245,7 +1275,6 @@ TEST_P(NestedFilterTestCase, JoinNone3) {
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
   }
 }
-*/
 
 const auto kDirectories =
     ::testing::Values(&tests::directory<&tests::memory_directory>,
