@@ -32,10 +32,14 @@ namespace iresearch::analysis {
 
 class MinHashTokenStream final : public analyzer, private util::noncopyable {
  public:
+  struct Options {
+    analysis::analyzer::ptr analyzer;
+  };
+
   static constexpr string_ref type_name() noexcept { return "minhash"; }
   static void init();  // for triggering registration in a static build
 
-  explicit MinHashTokenStream(analyzer::ptr&& analyzer);
+  explicit MinHashTokenStream(Options&& opts);
 
   bool next() override;
 
@@ -45,10 +49,12 @@ class MinHashTokenStream final : public analyzer, private util::noncopyable {
     return irs::get_mutable(attrs_, id);
   }
 
+  const Options& options() const noexcept { return opts_; }
+
  private:
   using attributes = std::tuple<term_attribute, increment, offset>;
 
-  analyzer::ptr a_;
+  Options opts_;
   attributes attrs_;
 };
 

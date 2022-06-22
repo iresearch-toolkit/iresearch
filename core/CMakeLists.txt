@@ -401,6 +401,7 @@ target_link_libraries(iresearch-static
   PUBLIC iresearch-analyzer-ngram-static
   PUBLIC iresearch-analyzer-text-static
   PUBLIC iresearch-analyzer-norm-static
+  PUBLIC iresearch-analyzer-minhash-static
   PUBLIC iresearch-analyzer-collation-static
   PUBLIC iresearch-analyzer-stem-static
   PUBLIC iresearch-analyzer-stopwords-static
@@ -523,10 +524,6 @@ add_library(iresearch-analyzer-minhash-static
 )
 
 set_ipo(iresearch-analyzer-minhash-static)
-
-target_include_directories(iresearch-analyzer-minhash-static
-  PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
-)
 
 set_target_properties(iresearch-analyzer-minhash-static
   PROPERTIES

@@ -26,6 +26,7 @@ set(IReSearch_tests_sources
   ./analysis/classification_stream_test.cpp
   ./analysis/nearest_neighbors_stream_test.cpp
   ./analysis/ngram_token_stream_test.cpp
+  ./analysis/minhash_token_stream_test.cpp
   ./analysis/pipeline_stream_tests.cpp
   ./analysis/segmentation_stream_tests.cpp
   ./analysis/text_token_normalizing_stream_tests.cpp
@@ -170,6 +171,7 @@ add_dependencies(iresearch-tests-static
   iresearch-analyzer-stopwords-static
   iresearch-analyzer-pipeline-static
   iresearch-analyzer-segmentation-static
+  iresearch-analyzer-minhash-static
   iresearch-format-1_0-static
   iresearch-scorer-tfidf-static
   iresearch-scorer-bm25-static

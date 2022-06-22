@@ -40,44 +40,56 @@ constexpr std::string_view kTypeParam{"type"};
 constexpr std::string_view kPropertiesParam{"properties"};
 constexpr std::string_view kAnalyzerParam{"analyzer"};
 
-bool ParseVPack(velocypack::Slice slice, analyzer::ptr* out) {
+std::pair<string_ref, velocypack::Slice> ParseAnalyzer(
+    velocypack::Slice slice) {
+  if (!slice.isObject()) {
+    return {};
+  }
+
+  const auto typeSlice = slice.get(kTypeParam);
+
+  if (!typeSlice.isString()) {
+    IR_FRMT_ERROR(
+        "Failed to read '%s' attribute of '%s' member as string while "
+        "constructing MinHashTokenStream from VPack arguments",
+        kTypeParam.data(), kAnalyzerParam.data());
+    return {};
+  }
+
+  return {typeSlice.stringView(), slice.get(kPropertiesParam)};
+}
+
+bool ParseVPack(velocypack::Slice slice, MinHashTokenStream::Options* opts) {
   auto analyzerSlice = slice.get(kAnalyzerParam);
   if (analyzerSlice.isNone() || analyzerSlice.isNull()) {
-    *out = nullptr;
+    *opts = {};
     return true;
-  } else if (analyzerSlice.isObject()) {
-    const auto typeSlice = analyzerSlice.get(kTypeParam);
+  } else {
+    const auto [type, props] = ParseAnalyzer(analyzerSlice);
 
-    if (!typeSlice.isString()) {
-      IR_FRMT_ERROR(
-          "Failed to read '%s' attribute of '%s' member as string while "
-          "constructing MinHashTokenStream from VPack arguments",
-          kTypeParam.data(), kAnalyzerParam.data());
+    if (type.null()) {
       return false;
     }
 
-    const string_ref type{typeSlice.stringView()};
-    const auto propSlice = analyzerSlice.get(kPropertiesParam);
-
     auto analyzer =
         analyzers::get(type, irs::type<irs::text_format::vpack>::get(),
-                       {propSlice.startAs<char>(), propSlice.byteSize()});
+                       {props.startAs<char>(), props.byteSize()});
 
     if (!analyzer) {
       // fallback to json format if vpack isn't available
-      analyzer = irs::analysis::analyzers::get(
-          type, irs::type<irs::text_format::json>::get(),
-          irs::slice_to_string(propSlice));
+      analyzer = analyzers::get(type, irs::type<irs::text_format::json>::get(),
+                                irs::slice_to_string(props));
     }
 
     if (analyzer) {
-      *out = std::move(analyzer);
+      opts->analyzer = std::move(analyzer);
+      return true;
     } else {
       IR_FRMT_ERROR(
           "Failed to create analyzer of type '%s' with properties '%s' while "
           "constructing "
           "MinHashTokenStream pipeline_token_stream from VPack arguments",
-          type.c_str(), irs::slice_to_string(propSlice).c_str());
+          type.c_str(), irs::slice_to_string(props).c_str());
     }
   }
 
@@ -85,9 +97,9 @@ bool ParseVPack(velocypack::Slice slice, analyzer::ptr* out) {
 }
 
 analyzer::ptr MakeVPack(velocypack::Slice slice) {
-  analyzer::ptr a;
-  if (ParseVPack(slice, &a)) {
-    return std::make_unique<MinHashTokenStream>(std::move(a));
+  MinHashTokenStream::Options opts;
+  if (ParseVPack(slice, &opts)) {
+    return std::make_unique<MinHashTokenStream>(std::move(opts));
   }
   return nullptr;
 }
@@ -117,7 +129,49 @@ analyzer::ptr MakeJson(irs::string_ref args) {
   return nullptr;
 }
 
+bool MakeVPackOptions(const MinHashTokenStream::Options& opts, VPackSlice props,
+                      velocypack::Builder* out) {
+  if (props.isNone()) {
+    props = velocypack::Slice::emptyObjectSlice();
+  }
+
+  if (!props.isObject() || !opts.analyzer) {
+    return false;
+  }
+
+  const auto type = opts.analyzer->type()().name();
+  std::string normalized;
+
+  velocypack::ObjectBuilder root_scope{out, kAnalyzerParam};
+  out->add(kTypeParam, velocypack::Value{type});
+
+  if (analyzers::normalize(normalized, type,
+                           irs::type<irs::text_format::vpack>::get(),
+                           {props.startAs<char>(), props.byteSize()})) {
+    out->add(kPropertiesParam,
+             velocypack::Slice{
+                 reinterpret_cast<const uint8_t*>(normalized.c_str())});
+
+    return true;
+  }
+
+  // fallback to json format if vpack isn't available
+  if (analyzers::normalize(normalized, type,
+                           irs::type<irs::text_format::json>::get(),
+                           irs::slice_to_string(props))) {
+    auto vpack = velocypack::Parser::fromJson(normalized);
+    out->add(kPropertiesParam, vpack->slice());
+    return true;
+  }
+
+  return false;
+}
+
 bool NormalizeVPack(velocypack::Slice slice, velocypack::Builder* out) {
+  MinHashTokenStream::Options opts;
+  if (ParseVPack(slice, &opts)) {
+    return MakeVPackOptions(opts, slice.get(kPropertiesParam), out);
+  }
   return false;
 }
 
@@ -162,7 +216,8 @@ auto sRegisterTypes = []() {
 
 }  // namespace
 
-namespace iresearch::analysis {
+namespace iresearch {
+namespace analysis {
 
 /*static*/ void MinHashTokenStream::init() {
   REGISTER_ANALYZER_VPACK(irs::analysis::MinHashTokenStream, MakeVPack,
@@ -171,17 +226,18 @@ namespace iresearch::analysis {
                          NormalizeJson);
 }
 
-MinHashTokenStream::MinHashTokenStream(analyzer::ptr&& analyzer)
+MinHashTokenStream::MinHashTokenStream(Options&& opts)
     : analysis::analyzer{irs::type<MinHashTokenStream>::get()},
-      a_{std::move(analyzer)} {
-  if (!a_) {
+      opts_{std::move(opts)} {
+  if (!opts_.analyzer) {
     // Fallback to default implementation
-    a_ = std::make_unique<string_token_stream>();
+    opts_.analyzer = std::make_unique<string_token_stream>();
   }
 }
 
-bool next() { return false; }
+bool MinHashTokenStream::next() { return false; }
 
 bool MinHashTokenStream::reset(string_ref) { return false; }
 
-}  // namespace iresearch::analysis
+}  // namespace analysis
+}  // namespace iresearch
