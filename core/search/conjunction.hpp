@@ -31,21 +31,18 @@
 
 namespace iresearch {
 
-// Adapter to use doc_iterator with conjunction and disjunction.
 template<typename DocIterator>
-struct score_iterator_adapter {
-  typedef DocIterator doc_iterator_t;
+struct doc_iterator_adapter {
+  using doc_iterator_t = DocIterator;
 
-  score_iterator_adapter() = default;
-  score_iterator_adapter(doc_iterator_t&& it) noexcept
-      : it(std::move(it)),
-        doc(irs::get<irs::document>(*this->it)),
-        score(&irs::score::get(*this->it)) {
+  doc_iterator_adapter() = default;
+  doc_iterator_adapter(doc_iterator_t&& it) noexcept
+      : it(std::move(it)), doc(irs::get<irs::document>(*this->it)) {
     assert(doc);
   }
 
-  score_iterator_adapter(score_iterator_adapter&&) = default;
-  score_iterator_adapter& operator=(score_iterator_adapter&&) = default;
+  doc_iterator_adapter(doc_iterator_adapter&&) = default;
+  doc_iterator_adapter& operator=(doc_iterator_adapter&&) = default;
 
   typename doc_iterator_t::element_type* operator->() const noexcept {
     return it.get();
@@ -59,13 +56,32 @@ struct score_iterator_adapter {
     return it->get_mutable(type);
   }
 
-  operator doc_iterator_t&&() noexcept { return std::move(it); }
+  operator doc_iterator_t&&() && noexcept { return std::move(it); }
+
+  explicit operator bool() const noexcept { return it != nullptr; }
 
   // access iterator value without virtual call
   doc_id_t value() const noexcept { return doc->value; }
 
   doc_iterator_t it;
   const irs::document* doc{};
+};
+
+// Adapter to use doc_iterator with conjunction and disjunction.
+template<typename DocIterator>
+struct score_iterator_adapter : public doc_iterator_adapter<DocIterator> {
+  typedef DocIterator doc_iterator_t;
+
+  score_iterator_adapter() = default;
+  score_iterator_adapter(doc_iterator_t&& it) noexcept
+      : doc_iterator_adapter<DocIterator>(std::move(it)),
+        score{&irs::score::get(*this->it)} {
+    assert(this->doc);
+  }
+
+  score_iterator_adapter(score_iterator_adapter&&) = default;
+  score_iterator_adapter& operator=(score_iterator_adapter&&) = default;
+
   const irs::score* score{};
 };
 
