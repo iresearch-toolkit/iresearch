@@ -27,6 +27,7 @@
 #include <atomic>
 #include <functional>
 #include <vector>
+#include <utility>
 
 #include "memory.hpp"
 #include "shared.hpp"
@@ -100,7 +101,8 @@ class concurrent_stack : private util::noncopyable {
       new_head.node = head.node->next.load(std::memory_order_relaxed);
       new_head.version = head.version + 1;
     } while (!head_.compare_exchange_weak(head, new_head,
-                                          std::memory_order_acquire));
+                                          std::memory_order_acquire,
+                                          std::memory_order_relaxed));
 
     return head.node;
   }
@@ -114,7 +116,8 @@ class concurrent_stack : private util::noncopyable {
 
       new_head.version = head.version + 1;
     } while (!head_.compare_exchange_weak(head, new_head,
-                                          std::memory_order_release));
+                                          std::memory_order_release,
+                                          std::memory_order_relaxed));
   }
 
  private:
@@ -428,7 +431,7 @@ class unbounded_object_pool_base : private util::noncopyable {
 
  private:
   struct slot : util::noncopyable {
-    std::atomic<pointer> value{};
+    pointer value{};
   }; // slot
 
  public:
@@ -454,7 +457,7 @@ class unbounded_object_pool_base : private util::noncopyable {
     auto* head = free_objects_.pop();
 
     if (head) {
-      pointer value = head->value.value.exchange(nullptr, std::memory_order_relaxed);
+      auto value = std::exchange(head->value.value, nullptr);
       assert(value);
       free_slots_.push(*head);
       return value;
@@ -480,9 +483,7 @@ class unbounded_object_pool_base : private util::noncopyable {
       return;
     }
 
-    assert(value);
-    [[maybe_unused]] const pointer old_value = slot->value.value.exchange(
-      value, std::memory_order_relaxed);
+    [[maybe_unused]] const auto old_value = std::exchange(slot->value.value, value);
     assert(!old_value);
     free_objects_.push(*slot);
   }
@@ -606,8 +607,9 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
 
   ~unbounded_object_pool() {
     for (auto& slot : this->pool_) {
-      auto p = slot.value.value.load(std::memory_order_relaxed);
-      typename base_t::deleter_type{}(p);
+      if (auto p = slot.value.value; p != nullptr) {
+        typename base_t::deleter_type{}(p);
+      }
     }
   }
 
@@ -626,7 +628,7 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
 
     // reset all cached instances
     while ((head = this->free_objects_.pop())) {
-      auto p = head->value.value.exchange(nullptr, std::memory_order_relaxed);
+      auto p = std::exchange(head->value.value, nullptr);
       assert(p);
       typename base_t::deleter_type{}(p);
       this->free_slots_.push(*head);
@@ -849,7 +851,7 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
 
     // reset all cached instances
     while ((head = this->free_objects_.pop())) {
-      auto p = head->value.value.exchange(nullptr, std::memory_order_relaxed);
+      auto p = std::exchange(head->value.value, nullptr);
       assert(p);
       deleter_type{}(p);
       this->free_slots_.push(*head);
