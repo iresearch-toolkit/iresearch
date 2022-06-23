@@ -134,9 +134,9 @@ class async_value {
 
   value_type& value() noexcept { return value_; }
 
-  auto lock_read() { return make_shared_lock(lock_); }
+  auto lock_read() { return std::shared_lock{lock_}; }
 
-  auto lock_write() { return make_unique_lock(lock_); }
+  auto lock_write() { return std::unique_lock{lock_}; }
 
  protected:
   value_type value_;
@@ -209,7 +209,7 @@ class bounded_object_pool {
           ptr, [slot](element_type*) mutable noexcept { reset_impl(slot); });
     }
 
-    operator bool() const noexcept { return nullptr != slot_; }
+    explicit operator bool() const noexcept { return nullptr != slot_; }
     element_type& operator*() const noexcept { return *slot_->value.ptr; }
     element_type* operator->() const noexcept { return get(); }
     element_type* get() const noexcept { return ptr_; }
@@ -600,7 +600,7 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
     element_type& operator*() const noexcept { return *value_; }
     pointer operator->() const noexcept { return get(); }
     pointer get() const noexcept { return value_; }
-    operator bool() const noexcept { return static_cast<bool>(gen_); }
+    explicit operator bool() const noexcept { return static_cast<bool>(gen_); }
 
     friend bool operator==(const ptr& lhs, std::nullptr_t) noexcept {
       return !static_cast<bool>(lhs);
