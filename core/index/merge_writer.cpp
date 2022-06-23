@@ -1575,7 +1575,7 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
     if (IRS_UNLIKELY(!it->valid())) {
       assert(false);
       IR_FRMT_ERROR(
-          "Get an invalid iterator during consolidationg of sorted index, "
+          "Got an invalid iterator during consolidationg of sorted index, "
           "skipping it");
       continue;
     }
