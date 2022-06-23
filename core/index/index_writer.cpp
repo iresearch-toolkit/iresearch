@@ -1916,10 +1916,12 @@ index_writer::active_segment_context index_writer::get_segment_context(
   auto meta_generator = [this]()->segment_meta {
     return segment_meta(file_name(meta_.increment()), codec_);
   };
-  auto segment_ctx = segment_writer_pool_.emplace(
+
+  // FIXME(gnusi): why shared_ptr?
+  std::shared_ptr segment_ctx{segment_writer_pool_.emplace(
     dir_, std::move(meta_generator),
     column_info_, feature_info_,
-    comparator_).release();
+    comparator_)};
   auto segment_memory_max = segment_limits_.segment_memory_max.load();
 
   // recreate writer if it reserved more memory than allowed by current limits
