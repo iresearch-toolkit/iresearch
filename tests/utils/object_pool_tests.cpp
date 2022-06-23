@@ -866,7 +866,7 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_1) {
     std::mutex mutex;
     irs::unbounded_object_pool_volatile<test_uobject> pool(1);
     ASSERT_EQ(0, pool.generation_size());
-    std::shared_ptr obj = pool.emplace(1);
+    std::shared_ptr obj = pool.emplace(1).release();
     ASSERT_EQ(1, pool.generation_size());
 
     {
@@ -910,7 +910,7 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_1) {
     ASSERT_FALSE(obj);
     ASSERT_EQ(1, test_uobject_nullptr::MAKE_COUNT);
     obj.reset();
-    std::shared_ptr obj_shared = pool.emplace();
+    std::shared_ptr obj_shared = pool.emplace().release();
     ASSERT_FALSE(obj);
     ASSERT_EQ(2, test_uobject_nullptr::MAKE_COUNT);
     obj.reset();
@@ -929,7 +929,7 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_1) {
     ASSERT_FALSE(obj);
     ASSERT_EQ(nullptr, obj.get());
     ASSERT_EQ(0, pool.generation_size());
-    std::shared_ptr obj_shared{pool.emplace(2)};
+    std::shared_ptr obj_shared{pool.emplace(2).release()};
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_EQ(1, obj_shared->id);
     ASSERT_EQ(obj_ptr, obj_shared.get());
@@ -942,7 +942,7 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_1) {
     auto obj0 = pool.emplace(1);
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_TRUE(obj0);
-    std::shared_ptr obj1 = pool.emplace(2);
+    std::shared_ptr obj1 = pool.emplace(2).release();
     ASSERT_EQ(2, pool.generation_size());
     ASSERT_TRUE(bool(obj1));
     auto* obj0_ptr = obj0.get();
@@ -959,7 +959,7 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_1) {
     ASSERT_FALSE(obj1);
     ASSERT_EQ(nullptr, obj1.get());
 
-    std::shared_ptr obj2 = pool.emplace(3);
+    std::shared_ptr obj2 = pool.emplace(3).release();
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_TRUE(bool(obj2));
     auto obj3 = pool.emplace(4);
@@ -1087,7 +1087,7 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_2) {
     ASSERT_FALSE(obj);
     ASSERT_EQ(1, test_uobject_nullptr::MAKE_COUNT);
     obj.reset();
-    std::shared_ptr obj_shared = pool.emplace();
+    std::shared_ptr obj_shared = pool.emplace().release();
     ASSERT_FALSE(obj);
     ASSERT_EQ(2, test_uobject_nullptr::MAKE_COUNT);
     obj.reset();

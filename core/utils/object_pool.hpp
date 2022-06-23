@@ -548,35 +548,96 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
   using element_type = typename base_t::element_type;
   using pointer = typename base_t::pointer;
 
-  class releaser final {
+  // Represents a control object of unbounded_object_pool with
+  // semantic similar to smart pointers.
+  class ptr : private util::noncopyable {
    public:
-    explicit releaser(generation_ptr_t&& gen) noexcept : gen_{std::move(gen)} {}
+    ptr(pointer value, generation_ptr_t gen) noexcept
+        : value_{value}, gen_{std::move(gen)} {}
 
-    void operator()(pointer p) noexcept {
-      assert(p);  // ensured by std::unique_ptr<...>
+    ptr(ptr&& rhs) noexcept : value_{rhs.value_}, gen_{std::move(rhs.gen_)} {
+      rhs.value_ = nullptr;
+    }
+    ptr& operator=(ptr&& rhs) noexcept {
+      if (this != &rhs) {
+        reset();
+
+        value_ = rhs.value_;
+        rhs.value_ = nullptr;
+        gen_ = std::move(rhs.gen_);
+      }
+      return *this;
+    }
+
+    ~ptr() noexcept { reset(); }
+
+    void reset() noexcept {
+      if (!gen_) {
+        // already destroyed
+        return;
+      }
+
+      reset_impl(value_, *gen_);
+      value_ = nullptr;
+      gen_ = nullptr;  // mark as destroyed
+    }
+
+    std::shared_ptr<element_type> release() {
+      auto raw = value_;
+      auto moved_gen = make_move_on_copy(std::move(gen_));
+      assert(!gen_);  // moved
+
+      // in case if exception occurs
+      // destructor will be called
+      return std::shared_ptr<element_type>(
+          raw, [moved_gen](pointer p) noexcept {
+            if (p) {
+              reset_impl(p, *moved_gen.value());
+            }
+          });
+    }
+
+    element_type& operator*() const noexcept { return *value_; }
+    pointer operator->() const noexcept { return get(); }
+    pointer get() const noexcept { return value_; }
+    operator bool() const noexcept { return static_cast<bool>(gen_); }
+
+    friend bool operator==(const ptr& lhs, std::nullptr_t) noexcept {
+      return !static_cast<bool>(lhs);
+    }
+    friend bool operator!=(const ptr& lhs, std::nullptr_t rhs) noexcept {
+      return !(lhs == rhs);
+    }
+    friend bool operator==(std::nullptr_t lhs, const ptr& rhs) noexcept {
+      return (rhs == lhs);
+    }
+    friend bool operator!=(std::nullptr_t lhs, const ptr& rhs) noexcept {
+      return !(rhs == lhs);
+    }
+
+   private:
+    static void reset_impl(pointer obj, generation_t& gen) noexcept {
+      assert(obj);
 
       // do not remove scope!!!
       // variable 'lock' below must be destroyed before 'gen_'
       {
-        auto lock = gen_->lock_read();
-        auto& value = gen_->value();
+        auto lock = gen.lock_read();
+        auto& value = gen.value();
 
         if (auto* owner = value.owner; owner) {
-          owner->release(p);
+          owner->release(obj);
           return;
         }
       }
 
       // clear object oustide the lock if necessary
-      deleter_type{}(p);
+      deleter_type{}(obj);
     }
 
-   private:
+    pointer value_;
     generation_ptr_t gen_;
-  };
-
-  // Represents a control object of unbounded_object_pool_volatile
-  using ptr = std::unique_ptr<element_type, releaser>;
+  };  // ptr
 
   explicit unbounded_object_pool_volatile(size_t size = 0)
       : base_t{size}, gen_{memory::make_shared<generation_t>(this)} {}
@@ -648,7 +709,11 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
     auto gen = std::atomic_load(&gen_);
     auto value = this->acquire(std::forward<Args>(args)...);
 
-    return ptr{value, releaser{std::move(gen)}};
+    if (value) {
+      return {value, std::move(gen)};
+    }
+
+    return {nullptr, nullptr};
   }
 
   size_t generation_size() const noexcept {
