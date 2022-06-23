@@ -210,7 +210,7 @@ class bounded_object_pool {
     }
 
     explicit operator bool() const noexcept { return nullptr != slot_; }
-    element_type& operator*() const noexcept { return *slot_->value.ptr; }
+    element_type& operator*() const noexcept { return *get(); }
     element_type* operator->() const noexcept { return get(); }
     element_type* get() const noexcept { return ptr_; }
 
