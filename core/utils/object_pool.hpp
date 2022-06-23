@@ -143,7 +143,7 @@ class async_value {
   std::shared_mutex lock_;
 };
 
-// A fixed size pool of objects
+// A fixed size pool of objects.
 // if the pool is empty then a new object is created via make(...)
 // if an object is available in a pool then in is returned but tracked
 // by the pool.
@@ -169,17 +169,14 @@ class bounded_object_pool {
   // Represents a control object of bounded_object_pool with
   // semantic similar to smart pointers
   class ptr : util::noncopyable {
-   private:
-    static node_type EMPTY_SLOT;
-
    public:
-    ptr() noexcept : slot_{&EMPTY_SLOT}, ptr_{nullptr} {}
+    ptr() noexcept : slot_{nullptr}, ptr_{nullptr} {}
 
     explicit ptr(node_type& slot, element_type& ptr) noexcept
         : slot_{&slot}, ptr_{&ptr} {}
 
     ptr(ptr&& rhs) noexcept : slot_{rhs.slot_}, ptr_{rhs.ptr_} {
-      rhs.slot_ = &EMPTY_SLOT;  // take ownership
+      rhs.slot_ = nullptr;  // take ownership
       rhs.ptr_ = nullptr;
     }
 
@@ -187,7 +184,7 @@ class bounded_object_pool {
       if (this != &rhs) {
         slot_ = rhs.slot_;
         ptr_ = rhs.ptr_;
-        rhs.slot_ = &EMPTY_SLOT;  // take ownership
+        rhs.slot_ = nullptr;  // take ownership
         rhs.ptr_ = nullptr;
       }
       return *this;
@@ -203,7 +200,7 @@ class bounded_object_pool {
     std::shared_ptr<element_type> release() {
       auto* slot = slot_;
       auto* ptr = ptr_;
-      slot_ = &EMPTY_SLOT;  // moved
+      slot_ = nullptr;  // moved
       ptr_ = nullptr;
 
       // in case if exception occurs
@@ -212,7 +209,7 @@ class bounded_object_pool {
           ptr, [slot](element_type*) mutable noexcept { reset_impl(slot); });
     }
 
-    operator bool() const noexcept { return &EMPTY_SLOT != slot_; }
+    operator bool() const noexcept { return nullptr != slot_; }
     element_type& operator*() const noexcept { return *slot_->value.ptr; }
     element_type* operator->() const noexcept { return get(); }
     element_type* get() const noexcept { return ptr_; }
@@ -232,21 +229,21 @@ class bounded_object_pool {
 
    private:
     static void reset_impl(node_type*& slot) noexcept {
-      if (slot == &EMPTY_SLOT) {
+      if (slot == nullptr) {
         // nothing to do
         return;
       }
 
       assert(slot->value.owner);
       slot->value.owner->unlock(*slot);
-      slot = &EMPTY_SLOT;  // release ownership
+      slot = nullptr;  // release ownership
     }
 
     node_type* slot_;
     element_type* ptr_;
-  };  // ptr
+  };
 
-  explicit bounded_object_pool(size_t size) : pool_(std::max(size_t(1), size)) {
+  explicit bounded_object_pool(size_t size) : pool_{std::max(size_t(1), size)} {
     // initialize pool
     for (auto& node : pool_) {
       auto& slot = node.value;
@@ -357,10 +354,6 @@ class bounded_object_pool {
   mutable stack free_list_;
 };
 
-template<typename T>
-typename bounded_object_pool<T>::node_type
-    bounded_object_pool<T>::ptr::EMPTY_SLOT;
-
 // Base class for all unbounded object pool implementations
 template<typename T,
          typename =
@@ -467,9 +460,8 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
     explicit releaser(unbounded_object_pool& owner) noexcept : owner_{&owner} {}
 
     void operator()(pointer p) const noexcept {
-      if (p) {
-        owner_->release(p);
-      }
+      assert(p);  // ensured by std::unique_ptr<...>
+      owner_->release(p);
     }
 
    private:
@@ -558,29 +550,25 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
 
   class releaser final {
    public:
-    explicit releaser(generation_ptr_t gen) noexcept : gen_{std::move(gen)} {}
+    explicit releaser(generation_ptr_t&& gen) noexcept : gen_{std::move(gen)} {}
 
     void operator()(pointer p) noexcept {
-      if (p) {
-        assert(p);
+      assert(p);  // ensured by std::unique_ptr<...>
 
-        // do not remove scope!!!
-        // variable 'lock' below must be destroyed before 'gen_'
-        {
-          auto lock = gen_->lock_read();
-          auto& value = gen_->value();
+      // do not remove scope!!!
+      // variable 'lock' below must be destroyed before 'gen_'
+      {
+        auto lock = gen_->lock_read();
+        auto& value = gen_->value();
 
-          if (auto* owner = value.owner; owner) {
-            owner->release(p);
-            return;
-          }
+        if (auto* owner = value.owner; owner) {
+          owner->release(p);
+          return;
         }
-
-        // clear object oustide the lock if necessary
-        deleter_type{}(p);
       }
 
-      gen_ = nullptr;
+      // clear object oustide the lock if necessary
+      deleter_type{}(p);
     }
 
    private:
@@ -657,10 +645,10 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
   template<typename... Args>
   ptr emplace(Args&&... args) {
     // retrieve before seek/instantiate
-    const auto gen = std::atomic_load(&gen_);
+    auto gen = std::atomic_load(&gen_);
     auto value = this->acquire(std::forward<Args>(args)...);
 
-    return value ? ptr{value, releaser{gen}} : ptr{nullptr, releaser{nullptr}};
+    return ptr{value, releaser{std::move(gen)}};
   }
 
   size_t generation_size() const noexcept {
