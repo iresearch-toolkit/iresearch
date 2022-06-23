@@ -1134,7 +1134,7 @@ bool write_columns(columnstore& cs, Iterator& columns,
       } else {
         assert(false);
         IR_FRMT_ERROR(
-            "Get an invalid iterator during consolidationg of the columnstore, "
+            "Got an invalid iterator during consolidationg of the columnstore, "
             "skipping it");
       }
       return true;
