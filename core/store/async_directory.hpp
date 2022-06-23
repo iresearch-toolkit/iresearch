@@ -60,6 +60,8 @@ class IRESEARCH_API async_directory : public mmap_directory {
   virtual index_output::ptr create(std::string_view name) noexcept override;
   virtual bool sync(std::span<std::string_view> names) noexcept override;
 
+  using mmap_directory::sync;
+
  private:
   async_file_pool async_pool_;
   size_t queue_size_;

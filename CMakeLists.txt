@@ -103,10 +103,6 @@ if (USE_VALGRIND)
   add_definitions(-DIRESEARCH_VALGRIND)
 endif()
 
-if (USE_URING)
-  add_definitions(-DIRESEARCH_URING)
-endif()
-
 if (MSVC)
   # FIXME TODO find a workaround or do not use alignas(...)
   # MSVC2017.1 - MSVC2018.7 does not correctly support alignas()
@@ -199,6 +195,15 @@ add_definitions(${Vc_ARCHITECTURE_FLAGS})
 ################################################################################
 ### find 3rd party libraries
 ################################################################################
+
+# find liburing
+if (USE_URING AND NOT MSVC)
+  find_package(Uring)
+
+  if (${uring_FOUND})
+    add_definitions(-DIRESEARCH_URING)
+  endif()
+endif()
 
 # find Boost
 find_package(BoostLocal REQUIRED)
