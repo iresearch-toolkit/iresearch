@@ -263,7 +263,7 @@ set(IResearch_core_headers
   ./types.hpp
 )
 
-if (${uring_FOUND})
+if (uring_FOUND)
   list(APPEND IResearch_core_sources ./store/async_directory.cpp)
 endif()
 
