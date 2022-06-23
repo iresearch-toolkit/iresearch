@@ -1428,7 +1428,7 @@ index_writer::consolidation_result index_writer::consolidate(
   // hold a reference to the last committed state to prevent files from being
   // deleted by a cleaner during the upcoming consolidation
   // use atomic_load(...) since finish() may modify the pointer
-  auto committed_state = committed_state_helper::atomic_load(&committed_state_);
+  auto committed_state = std::atomic_load(&committed_state_);
   assert(committed_state);
   if (IRS_UNLIKELY(!committed_state)) {
     return { 0, ConsolidationError::FAIL };
@@ -2519,11 +2519,10 @@ void index_writer::finish() {
 #ifndef __APPLE__
     // atomic_store may throw
     static_assert(!noexcept
-      (committed_state_helper::atomic_store(&committed_state_,
+      (std::atomic_store(&committed_state_,
         std::move(pending_state_.commit))));
 #endif
-    committed_state_helper::atomic_store(&committed_state_,
-      std::move(pending_state_.commit));
+    std::atomic_store(&committed_state_, std::move(pending_state_.commit));
   } catch (...) {
     abort(); // rollback transaction
 

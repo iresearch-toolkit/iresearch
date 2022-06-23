@@ -21,11 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <array>
+
 #include "gtest/gtest.h"
 #include "utils/object_pool.hpp"
 #include "utils/thread_utils.hpp"
-
-#include <array>
 
 using namespace std::chrono_literals;
 
@@ -33,13 +33,11 @@ namespace tests {
 
 template<bool Shared, bool ReturnNull, size_t SleepSec>
 struct test_object {
-  using ptr = std::conditional_t<
-    Shared,
-    std::shared_ptr<test_object>,
-    std::unique_ptr<test_object>>;
+  using ptr = std::conditional_t<Shared, std::shared_ptr<test_object>,
+                                 std::unique_ptr<test_object>>;
 
-  static std::atomic<size_t> TOTAL_COUNT; // # number of objects created
-  static std::atomic<size_t> MAKE_COUNT; // # number of objects created
+  static std::atomic<size_t> TOTAL_COUNT;  // # number of objects created
+  static std::atomic<size_t> MAKE_COUNT;   // # number of objects created
 
   static ptr make(int i) {
     ++MAKE_COUNT;
@@ -55,18 +53,11 @@ struct test_object {
     return ptr{new test_object{i}};
   }
 
-  static ptr make() {
-    return make(0);
-  }
+  static ptr make() { return make(0); }
 
-  explicit test_object(int i)
-    : id{i} {
-    ++TOTAL_COUNT;
-  }
+  explicit test_object(int i) : id{i} { ++TOTAL_COUNT; }
 
-  ~test_object() {
-    --TOTAL_COUNT;
-  }
+  ~test_object() { --TOTAL_COUNT; }
 
   int id;
 };
@@ -84,7 +75,7 @@ using test_uobject = test_object<false, false, 0>;
 using test_sobject_nullptr = test_object<true, true, 0>;
 using test_uobject_nullptr = test_object<false, true, 0>;
 
-} // namespace tests
+}  // namespace tests
 
 using namespace tests;
 
@@ -103,7 +94,7 @@ TEST(bounded_object_pool_tests, check_total_number_of_instances) {
   std::atomic<size_t> id{};
   test_slow_sobject::TOTAL_COUNT = 0;
 
-  auto job = [&mutex, &ready_cv, &pool, &ready, &id](){
+  auto job = [&mutex, &ready_cv, &pool, &ready, &id]() {
     // wait for all threads to be ready
     {
       auto lock = irs::make_unique_lock(mutex);
@@ -116,7 +107,7 @@ TEST(bounded_object_pool_tests, check_total_number_of_instances) {
     pool.emplace(id++);
   };
 
-  auto job_shared = [&mutex, &ready_cv, &pool, &ready, &id](){
+  auto job_shared = [&mutex, &ready_cv, &pool, &ready, &id]() {
     // wait for all threads to be ready
     {
       auto lock = irs::make_unique_lock(mutex);
@@ -132,7 +123,7 @@ TEST(bounded_object_pool_tests, check_total_number_of_instances) {
   const size_t THREADS_COUNT = 32;
   std::vector<std::thread> threads;
 
-  for (size_t i = 0; i < THREADS_COUNT/2; ++i) {
+  for (size_t i = 0; i < THREADS_COUNT / 2; ++i) {
     threads.emplace_back(job);
     threads.emplace_back(job_shared);
   }
@@ -162,17 +153,20 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
     {
       auto lock = irs::make_unique_lock(mutex);
       std::atomic<bool> emplace(false);
-      std::thread thread([&cond, &mutex, &pool, &emplace]()->void{
+      std::thread thread([&cond, &mutex, &pool, &emplace]() -> void {
         auto obj = pool.emplace(2);
         emplace = true;
         auto lock = irs::make_unique_lock(mutex);
         cond.notify_all();
       });
 
-      auto result = cond.wait_for(lock, 1000ms); // assume thread blocks in 1000ms
+      auto result =
+          cond.wait_for(lock, 1000ms);  // assume thread blocks in 1000ms
 
-      // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-      while (!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, 1000ms);
+      // As declaration for wait_for contains "It may also be unblocked
+      // spuriously." for all platforms
+      while (!emplace && result == std::cv_status::no_timeout)
+        result = cond.wait_for(lock, 1000ms);
 
       ASSERT_EQ(std::cv_status::timeout, result);
       // ^^^ expecting timeout because pool should block indefinitely
@@ -195,7 +189,7 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
     {
       auto lock = irs::make_unique_lock(mutex);
       std::atomic<bool> emplace(false);
-      std::thread thread([&cond, &mutex, &pool, &emplace]()->void {
+      std::thread thread([&cond, &mutex, &pool, &emplace]() -> void {
         auto obj = pool.emplace();
         ASSERT_FALSE(obj);
         ASSERT_EQ(2, test_sobject_nullptr::MAKE_COUNT);
@@ -204,10 +198,11 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
         cond.notify_all();
       });
 
-    ASSERT_TRUE(std::cv_status::no_timeout == cond.wait_for(lock, 100ms) || emplace);
-    obj.reset();
-    lock.unlock();
-    thread.join();
+      ASSERT_TRUE(std::cv_status::no_timeout == cond.wait_for(lock, 100ms) ||
+                  emplace);
+      obj.reset();
+      lock.unlock();
+      thread.join();
     }
   }
 
@@ -235,17 +230,20 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
     std::mutex mutex;
     auto lock = irs::make_unique_lock(mutex);
     std::atomic<bool> visit(false);
-    std::thread thread([&cond, &mutex, &pool, &visit]()->void {
-      auto visitor = [](test_sobject&)->bool { return true; };
+    std::thread thread([&cond, &mutex, &pool, &visit]() -> void {
+      auto visitor = [](test_sobject&) -> bool { return true; };
       pool.visit(visitor);
       visit = true;
       auto lock = irs::make_unique_lock(mutex);
       cond.notify_all();
     });
-    auto result = cond.wait_for(lock, 1000ms); // assume thread finishes in 1000ms
+    auto result =
+        cond.wait_for(lock, 1000ms);  // assume thread finishes in 1000ms
 
-    // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-    while (!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, 1000ms);
+    // As declaration for wait_for contains "It may also be unblocked
+    // spuriously." for all platforms
+    while (!visit && result == std::cv_status::no_timeout)
+      result = cond.wait_for(lock, 1000ms);
 
     obj.reset();
     ASSERT_FALSE(obj);
@@ -255,7 +253,9 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
     }
 
     thread.join();
-    ASSERT_EQ(std::cv_status::timeout, result); // check only after joining with thread to avoid early exit
+    ASSERT_EQ(
+        std::cv_status::timeout,
+        result);  // check only after joining with thread to avoid early exit
     // ^^^ expecting timeout because pool should block indefinitely
   }
 }
@@ -271,17 +271,20 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
     {
       auto lock = irs::make_unique_lock(mutex);
       std::atomic<bool> emplace(false);
-      std::thread thread([&cond, &mutex, &pool, &emplace]()->void{
+      std::thread thread([&cond, &mutex, &pool, &emplace]() -> void {
         auto obj = pool.emplace(2);
         emplace = true;
         auto lock = irs::make_unique_lock(mutex);
         cond.notify_all();
       });
 
-      auto result = cond.wait_for(lock, 1000ms); // assume thread blocks in 1000ms
+      auto result =
+          cond.wait_for(lock, 1000ms);  // assume thread blocks in 1000ms
 
-      // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-      while (!emplace && result == std::cv_status::no_timeout) result = cond.wait_for(lock, 1000ms);
+      // As declaration for wait_for contains "It may also be unblocked
+      // spuriously." for all platforms
+      while (!emplace && result == std::cv_status::no_timeout)
+        result = cond.wait_for(lock, 1000ms);
 
       ASSERT_EQ(std::cv_status::timeout, result);
       // ^^^ expecting timeout because pool should block indefinitely
@@ -304,7 +307,7 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
 
     {
       auto lock = irs::make_unique_lock(mutex);
-      std::thread thread([&cond, &mutex, &pool]()->void {
+      std::thread thread([&cond, &mutex, &pool]() -> void {
         auto lock = irs::make_unique_lock(mutex);
         auto obj = pool.emplace();
         ASSERT_FALSE(obj);
@@ -343,17 +346,20 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
     std::mutex mutex;
     auto lock = irs::make_unique_lock(mutex);
     std::atomic<bool> visit(false);
-    std::thread thread([&cond, &mutex, &pool, &visit]()->void {
-      auto visitor = [](test_uobject&)->bool { return true; };
+    std::thread thread([&cond, &mutex, &pool, &visit]() -> void {
+      auto visitor = [](test_uobject&) -> bool { return true; };
       pool.visit(visitor);
       visit = true;
       auto lock = irs::make_unique_lock(mutex);
       cond.notify_all();
     });
-    auto result = cond.wait_for(lock, 1000ms); // assume thread finishes in 1000ms
+    auto result =
+        cond.wait_for(lock, 1000ms);  // assume thread finishes in 1000ms
 
-    // As declaration for wait_for contains "It may also be unblocked spuriously." for all platforms
-    while (!visit && result == std::cv_status::no_timeout) result = cond.wait_for(lock, 1000ms);
+    // As declaration for wait_for contains "It may also be unblocked
+    // spuriously." for all platforms
+    while (!visit && result == std::cv_status::no_timeout)
+      result = cond.wait_for(lock, 1000ms);
 
     obj.reset();
 
@@ -383,7 +389,7 @@ TEST(unbounded_object_pool_tests, check_total_number_of_cached_instances) {
   std::atomic<size_t> id{};
   test_uobject::TOTAL_COUNT = 0;
 
-  auto job = [&mutex, &ready_cv, &pool, &ready, &id](){
+  auto job = [&mutex, &ready_cv, &pool, &ready, &id]() {
     // wait for all threads to be ready
     {
       auto lock = irs::make_unique_lock(mutex);
@@ -399,7 +405,7 @@ TEST(unbounded_object_pool_tests, check_total_number_of_cached_instances) {
     }
   };
 
-  auto job_shared = [&mutex, &ready_cv, &pool, &ready, &id](){
+  auto job_shared = [&mutex, &ready_cv, &pool, &ready, &id]() {
     // wait for all threads to be ready
     {
       auto lock = irs::make_unique_lock(mutex);
@@ -418,7 +424,7 @@ TEST(unbounded_object_pool_tests, check_total_number_of_cached_instances) {
   constexpr size_t THREADS_COUNT = 32;
   std::vector<std::thread> threads;
 
-  for (size_t i = 0; i < THREADS_COUNT/2; ++i) {
+  for (size_t i = 0; i < THREADS_COUNT / 2; ++i) {
     threads.emplace_back(job);
     threads.emplace_back(job_shared);
   }
@@ -443,16 +449,18 @@ TEST(unbounded_object_pool_tests, test_uobject_pool_1) {
     std::condition_variable cond;
     std::mutex mutex;
     irs::unbounded_object_pool<test_uobject> pool(1);
-    auto obj = pool.emplace(1).release();
+    std::shared_ptr obj = pool.emplace(1);
 
     {
       auto lock = irs::make_unique_lock(mutex);
-      std::thread thread([&cond, &mutex, &pool]()->void{
+      std::thread thread([&cond, &mutex, &pool]() -> void {
         auto obj = pool.emplace(2);
         auto lock = irs::make_unique_lock(mutex);
         cond.notify_all();
       });
-      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 1000ms)); // assume threads start within 1000msec
+      ASSERT_EQ(
+          std::cv_status::no_timeout,
+          cond.wait_for(lock, 1000ms));  // assume threads start within 1000msec
       lock.unlock();
       thread.join();
     }
@@ -482,7 +490,7 @@ TEST(unbounded_object_pool_tests, test_uobject_pool_1) {
     ASSERT_FALSE(obj);
     ASSERT_EQ(1, test_uobject_nullptr::MAKE_COUNT);
     obj.reset();
-    auto obj_shared = pool.emplace().release();
+    std::shared_ptr obj_shared = pool.emplace();
     ASSERT_FALSE(obj);
     ASSERT_EQ(2, test_uobject_nullptr::MAKE_COUNT);
     obj.reset();
@@ -517,10 +525,10 @@ TEST(unbounded_object_pool_tests, test_uobject_pool_1) {
     ASSERT_EQ(1, obj0->id);
     ASSERT_EQ(2, obj1->id);
     ASSERT_NE(obj0_ptr, obj1.get());
-    obj0.reset(); // will be placed back in pool first
+    obj0.reset();  // will be placed back in pool first
     ASSERT_FALSE(obj0);
     ASSERT_EQ(nullptr, obj0.get());
-    obj1.reset(); // will push obj1 out of the pool
+    obj1.reset();  // will push obj1 out of the pool
     ASSERT_FALSE(obj1);
     ASSERT_EQ(nullptr, obj1.get());
 
@@ -532,7 +540,8 @@ TEST(unbounded_object_pool_tests, test_uobject_pool_1) {
     ASSERT_EQ(4, obj3->id);
     ASSERT_EQ(obj0_ptr, obj2.get());
     ASSERT_NE(obj0_ptr, obj3.get());
-    // obj3 may have been allocated in the same addr as obj1, so can't safely validate
+    // obj3 may have been allocated in the same addr as obj1, so can't safely
+    // validate
   }
 
   // test pool clear
@@ -551,20 +560,20 @@ TEST(unbounded_object_pool_tests, test_uobject_pool_1) {
     ASSERT_EQ(1, obj->id);
     ASSERT_EQ(obj_ptr, obj.get());
 
-    pool.clear(); // will clear objects inside the pool only
+    pool.clear();  // will clear objects inside the pool only
     obj.reset();
     ASSERT_FALSE(obj);
     ASSERT_EQ(nullptr, obj.get());
     obj = pool.emplace(2);
     ASSERT_TRUE(obj);
     ASSERT_EQ(1, obj->id);
-    ASSERT_EQ(obj_ptr, obj.get()); // same object
+    ASSERT_EQ(obj_ptr, obj.get());  // same object
 
     obj.reset();
     ASSERT_FALSE(obj);
     ASSERT_EQ(nullptr, obj.get());
-    pool.clear(); // will clear objects inside the pool only
-    obj = pool.emplace(3); // 'obj' should not be reused
+    pool.clear();           // will clear objects inside the pool only
+    obj = pool.emplace(3);  // 'obj' should not be reused
     ASSERT_TRUE(obj);
     ASSERT_EQ(3, obj->id);
   }
@@ -576,16 +585,18 @@ TEST(unbounded_object_pool_tests, test_uobject_pool_2) {
     std::condition_variable cond;
     std::mutex mutex;
     irs::unbounded_object_pool<test_uobject> pool(1);
-    auto obj = pool.emplace(1).release();
+    std::shared_ptr obj = pool.emplace(1);
 
     {
       auto lock = irs::make_unique_lock(mutex);
-      std::thread thread([&cond, &mutex, &pool]()->void{
+      std::thread thread([&cond, &mutex, &pool]() -> void {
         auto obj = pool.emplace(2);
         auto lock = irs::make_unique_lock(mutex);
         cond.notify_all();
       });
-      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 1000ms)); // assume threads start within 1000msec
+      ASSERT_EQ(
+          std::cv_status::no_timeout,
+          cond.wait_for(lock, 1000ms));  // assume threads start within 1000msec
       lock.unlock();
       thread.join();
     }
@@ -599,7 +610,7 @@ TEST(unbounded_object_pool_tests, test_uobject_pool_2) {
     ASSERT_FALSE(obj);
     ASSERT_EQ(1, test_uobject_nullptr::MAKE_COUNT);
     obj.reset();
-    auto obj_shared = pool.emplace().release();
+    std::shared_ptr obj_shared = pool.emplace();
     ASSERT_FALSE(obj);
     ASSERT_EQ(2, test_uobject_nullptr::MAKE_COUNT);
     obj.reset();
@@ -634,10 +645,10 @@ TEST(unbounded_object_pool_tests, test_uobject_pool_2) {
     ASSERT_EQ(1, obj0->id);
     ASSERT_EQ(2, obj1->id);
     ASSERT_NE(obj0_ptr, obj1.get());
-    obj0.reset(); // will be placed back in pool first
+    obj0.reset();  // will be placed back in pool first
     ASSERT_FALSE(obj0);
     ASSERT_EQ(nullptr, obj0.get());
-    obj1.reset(); // will push obj1 out of the pool
+    obj1.reset();  // will push obj1 out of the pool
     ASSERT_FALSE(obj1);
     ASSERT_EQ(nullptr, obj1.get());
 
@@ -649,7 +660,8 @@ TEST(unbounded_object_pool_tests, test_uobject_pool_2) {
     ASSERT_EQ(4, obj3->id);
     ASSERT_EQ(obj0_ptr, obj2.get());
     ASSERT_NE(obj0_ptr, obj3.get());
-    // obj3 may have been allocated in the same addr as obj1, so can't safely validate
+    // obj3 may have been allocated in the same addr as obj1, so can't safely
+    // validate
   }
 
   // test pool clear
@@ -668,20 +680,20 @@ TEST(unbounded_object_pool_tests, test_uobject_pool_2) {
     ASSERT_EQ(1, obj->id);
     ASSERT_EQ(obj_ptr, obj.get());
 
-    pool.clear(); // will clear objects inside the pool only
+    pool.clear();  // will clear objects inside the pool only
     obj.reset();
     ASSERT_FALSE(obj);
     ASSERT_EQ(nullptr, obj.get());
     obj = pool.emplace(2);
     ASSERT_TRUE(obj);
     ASSERT_EQ(1, obj->id);
-    ASSERT_EQ(obj_ptr, obj.get()); // same object
+    ASSERT_EQ(obj_ptr, obj.get());  // same object
 
     obj.reset();
     ASSERT_FALSE(obj);
     ASSERT_EQ(nullptr, obj.get());
-    pool.clear(); // will clear objects inside the pool only
-    obj = pool.emplace(3); // 'obj' should not be reused
+    pool.clear();           // will clear objects inside the pool only
+    obj = pool.emplace(3);  // 'obj' should not be reused
     ASSERT_TRUE(obj);
     ASSERT_EQ(3, obj->id);
   }
@@ -732,18 +744,18 @@ TEST(unbounded_object_pool_tests, control_object_move_pools) {
   irs::unbounded_object_pool<test_uobject> pool(2);
   test_uobject::MAKE_COUNT = 0;
   {
-     irs::unbounded_object_pool<test_uobject> pool_other(2);
-     auto from_other = pool_other.emplace(1);
-     ASSERT_EQ(1, test_uobject::MAKE_COUNT);
-     {
-       auto from_this = pool.emplace(1);
-       ASSERT_EQ(2, test_uobject::MAKE_COUNT);
-       from_other = std::move(from_this);
-     }
-     // from_other should be returned to pool_other now
-     // and no new make should be called
-     auto from_other2 = pool_other.emplace(1);
-     ASSERT_EQ(2, test_uobject::MAKE_COUNT);
+    irs::unbounded_object_pool<test_uobject> pool_other(2);
+    auto from_other = pool_other.emplace(1);
+    ASSERT_EQ(1, test_uobject::MAKE_COUNT);
+    {
+      auto from_this = pool.emplace(1);
+      ASSERT_EQ(2, test_uobject::MAKE_COUNT);
+      from_other = std::move(from_this);
+    }
+    // from_other should be returned to pool_other now
+    // and no new make should be called
+    auto from_other2 = pool_other.emplace(1);
+    ASSERT_EQ(2, test_uobject::MAKE_COUNT);
   }
 }
 
@@ -769,7 +781,7 @@ TEST(unbounded_object_pool_volatile_tests, move) {
   ASSERT_EQ(2, pool.generation_size());
 
   auto obj1 = pool.emplace(2);
-  ASSERT_EQ(3, pool.generation_size()); // +1 for moved
+  ASSERT_EQ(3, pool.generation_size());  // +1 for moved
   ASSERT_EQ(3, moved.generation_size());
   ASSERT_TRUE(obj1);
   ASSERT_NE(nullptr, obj1.get());
@@ -832,16 +844,16 @@ TEST(unbounded_object_pool_volatile_tests, control_object_move) {
 
   // move between two identical pools
   {
-     irs::unbounded_object_pool_volatile<test_uobject> pool_other(2);
-     auto from_other = pool_other.emplace(1);
-     ASSERT_EQ(1, pool_other.generation_size());
-     {
-       auto from_this = pool.emplace(3);
-       ASSERT_EQ(1, pool.generation_size());
-       from_other = std::move(from_this);
-     }
-     // from_other should be returned to pool_other now
-     ASSERT_EQ(0, pool_other.generation_size());
+    irs::unbounded_object_pool_volatile<test_uobject> pool_other(2);
+    auto from_other = pool_other.emplace(1);
+    ASSERT_EQ(1, pool_other.generation_size());
+    {
+      auto from_this = pool.emplace(3);
+      ASSERT_EQ(1, pool.generation_size());
+      from_other = std::move(from_this);
+    }
+    // from_other should be returned to pool_other now
+    ASSERT_EQ(0, pool_other.generation_size());
   }
 
   ASSERT_EQ(0, pool.generation_size());
@@ -854,17 +866,19 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_1) {
     std::mutex mutex;
     irs::unbounded_object_pool_volatile<test_uobject> pool(1);
     ASSERT_EQ(0, pool.generation_size());
-    auto obj = pool.emplace(1).release();
+    std::shared_ptr obj = pool.emplace(1);
     ASSERT_EQ(1, pool.generation_size());
 
     {
       auto lock = irs::make_unique_lock(mutex);
-      std::thread thread([&cond, &mutex, &pool]()->void{
+      std::thread thread([&cond, &mutex, &pool]() -> void {
         auto obj = pool.emplace(2);
         auto lock = irs::make_unique_lock(mutex);
         cond.notify_all();
       });
-      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 1000ms)); // assume threads start within 1000msec
+      ASSERT_EQ(
+          std::cv_status::no_timeout,
+          cond.wait_for(lock, 1000ms));  // assume threads start within 1000msec
       lock.unlock();
       thread.join();
     }
@@ -896,7 +910,7 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_1) {
     ASSERT_FALSE(obj);
     ASSERT_EQ(1, test_uobject_nullptr::MAKE_COUNT);
     obj.reset();
-    auto obj_shared = pool.emplace().release();
+    std::shared_ptr obj_shared = pool.emplace();
     ASSERT_FALSE(obj);
     ASSERT_EQ(2, test_uobject_nullptr::MAKE_COUNT);
     obj.reset();
@@ -915,7 +929,7 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_1) {
     ASSERT_FALSE(obj);
     ASSERT_EQ(nullptr, obj.get());
     ASSERT_EQ(0, pool.generation_size());
-    auto obj_shared = pool.emplace(2).release();
+    std::shared_ptr obj_shared{pool.emplace(2)};
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_EQ(1, obj_shared->id);
     ASSERT_EQ(obj_ptr, obj_shared.get());
@@ -928,7 +942,7 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_1) {
     auto obj0 = pool.emplace(1);
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_TRUE(obj0);
-    auto obj1 = pool.emplace(2).release();
+    std::shared_ptr obj1 = pool.emplace(2);
     ASSERT_EQ(2, pool.generation_size());
     ASSERT_TRUE(bool(obj1));
     auto* obj0_ptr = obj0.get();
@@ -936,16 +950,16 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_1) {
     ASSERT_EQ(1, obj0->id);
     ASSERT_EQ(2, obj1->id);
     ASSERT_NE(obj0_ptr, obj1.get());
-    obj0.reset(); // will be placed back in pool first
+    obj0.reset();  // will be placed back in pool first
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_FALSE(obj0);
     ASSERT_EQ(nullptr, obj0.get());
-    obj1.reset(); // will push obj1 out of the pool
+    obj1.reset();  // will push obj1 out of the pool
     ASSERT_EQ(0, pool.generation_size());
     ASSERT_FALSE(obj1);
     ASSERT_EQ(nullptr, obj1.get());
 
-    auto obj2 = pool.emplace(3).release();
+    std::shared_ptr obj2 = pool.emplace(3);
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_TRUE(bool(obj2));
     auto obj3 = pool.emplace(4);
@@ -955,7 +969,8 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_1) {
     ASSERT_EQ(4, obj3->id);
     ASSERT_EQ(obj0_ptr, obj2.get());
     ASSERT_NE(obj0_ptr, obj3.get());
-    // obj3 may have been allocated in the same addr as obj1, so can't safely validate
+    // obj3 may have been allocated in the same addr as obj1, so can't safely
+    // validate
   }
 
   // test pool clear
@@ -981,41 +996,45 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_1) {
     ASSERT_EQ(1, obj->id);
     ASSERT_EQ(obj_ptr, obj.get());
 
-    pool.clear(); // clear existing in a pool
+    pool.clear();  // clear existing in a pool
     ASSERT_EQ(2, pool.generation_size());
     obj.reset();
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_FALSE(obj);
     ASSERT_EQ(nullptr, obj.get());
-    obj = pool.emplace(2); // may return same memory address as obj_ptr, but constructor would have been called
+    obj = pool.emplace(2);  // may return same memory address as obj_ptr, but
+                            // constructor would have been called
     ASSERT_EQ(2, pool.generation_size());
     ASSERT_TRUE(obj);
     ASSERT_EQ(1, obj->id);
     ASSERT_EQ(obj_ptr, obj.get());
 
-    pool.clear(true); // clear existing in a pool and prevent external object from returning back
+    pool.clear(true);  // clear existing in a pool and prevent external object
+                       // from returning back
     ASSERT_EQ(0, pool.generation_size());
     obj.reset();
     ASSERT_EQ(0, pool.generation_size());
     ASSERT_FALSE(obj);
     ASSERT_EQ(nullptr, obj.get());
-    obj = pool.emplace(2); // may return same memory address as obj_ptr, but constructor would have been called
+    obj = pool.emplace(2);  // may return same memory address as obj_ptr, but
+                            // constructor would have been called
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_TRUE(obj);
     ASSERT_EQ(2, obj->id);
 
-    obj_noreuse.reset(); // reset value from previuos generation
+    obj_noreuse.reset();  // reset value from previuos generation
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_FALSE(obj_noreuse);
     ASSERT_EQ(nullptr, obj_noreuse.get());
-    obj = pool.emplace(3); // 'obj_noreuse' should not be reused
+    obj = pool.emplace(3);  // 'obj_noreuse' should not be reused
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_EQ(3, obj->id);
   }
 }
 
 TEST(unbounded_object_pool_volatile_tests, return_object_after_pool_destroyed) {
-  auto pool = irs::memory::make_unique<irs::unbounded_object_pool_volatile<test_uobject>>(1);
+  auto pool = irs::memory::make_unique<
+      irs::unbounded_object_pool_volatile<test_uobject>>(1);
   ASSERT_EQ(0, pool->generation_size());
   ASSERT_NE(nullptr, pool);
 
@@ -1047,12 +1066,14 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_2) {
 
     {
       auto lock = irs::make_unique_lock(mutex);
-      std::thread thread([&cond, &mutex, &pool]()->void{
+      std::thread thread([&cond, &mutex, &pool]() -> void {
         auto obj = pool.emplace(2);
         auto lock = irs::make_unique_lock(mutex);
         cond.notify_all();
       });
-      ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 1000ms)); // assume threads start within 1000msec
+      ASSERT_EQ(
+          std::cv_status::no_timeout,
+          cond.wait_for(lock, 1000ms));  // assume threads start within 1000msec
       lock.unlock();
       thread.join();
     }
@@ -1066,7 +1087,7 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_2) {
     ASSERT_FALSE(obj);
     ASSERT_EQ(1, test_uobject_nullptr::MAKE_COUNT);
     obj.reset();
-    auto obj_shared = pool.emplace().release();
+    std::shared_ptr obj_shared = pool.emplace();
     ASSERT_FALSE(obj);
     ASSERT_EQ(2, test_uobject_nullptr::MAKE_COUNT);
     obj.reset();
@@ -1098,10 +1119,10 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_2) {
     ASSERT_EQ(1, obj0->id);
     ASSERT_EQ(2, obj1->id);
     ASSERT_NE(obj0_ptr, obj1.get());
-    obj1.reset(); // will be placed back in pool first
+    obj1.reset();  // will be placed back in pool first
     ASSERT_FALSE(obj1);
     ASSERT_EQ(nullptr, obj1.get());
-    obj0.reset(); // will push obj1 out of the pool
+    obj0.reset();  // will push obj1 out of the pool
     ASSERT_FALSE(obj0);
     ASSERT_EQ(nullptr, obj0.get());
 
@@ -1111,7 +1132,8 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_2) {
     ASSERT_EQ(4, obj3->id);
     ASSERT_EQ(obj1_ptr, obj2.get());
     ASSERT_NE(obj1_ptr, obj3.get());
-    // obj3 may have been allocated in the same addr as obj1, so can't safely validate
+    // obj3 may have been allocated in the same addr as obj1, so can't safely
+    // validate
   }
 
   // test pool clear
@@ -1137,40 +1159,44 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_2) {
     ASSERT_EQ(1, obj->id);
     ASSERT_EQ(obj_ptr, obj.get());
 
-    pool.clear(); // clear existing in a pool
+    pool.clear();  // clear existing in a pool
     ASSERT_EQ(2, pool.generation_size());
     obj.reset();
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_FALSE(obj);
     ASSERT_EQ(nullptr, obj.get());
-    obj = pool.emplace(2); // may return same memory address as obj_ptr, but constructor would have been called
+    obj = pool.emplace(2);  // may return same memory address as obj_ptr, but
+                            // constructor would have been called
     ASSERT_EQ(2, pool.generation_size());
     ASSERT_TRUE(obj);
     ASSERT_EQ(1, obj->id);
     ASSERT_EQ(obj_ptr, obj.get());
 
-    pool.clear(true); // clear existing in a pool and prevent external object from returning back
+    pool.clear(true);  // clear existing in a pool and prevent external object
+                       // from returning back
     ASSERT_EQ(0, pool.generation_size());
     obj.reset();
     ASSERT_EQ(0, pool.generation_size());
     ASSERT_FALSE(obj);
     ASSERT_EQ(nullptr, obj.get());
-    obj = pool.emplace(2); // may return same memory address as obj_ptr, but constructor would have been called
+    obj = pool.emplace(2);  // may return same memory address as obj_ptr, but
+                            // constructor would have been called
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_TRUE(obj);
     ASSERT_EQ(2, obj->id);
 
-    obj_noreuse.reset(); // reset value from previuos generation
+    obj_noreuse.reset();  // reset value from previuos generation
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_FALSE(obj_noreuse);
     ASSERT_EQ(nullptr, obj_noreuse.get());
-    obj = pool.emplace(3); // 'obj_noreuse' should not be reused
+    obj = pool.emplace(3);  // 'obj_noreuse' should not be reused
     ASSERT_EQ(1, pool.generation_size());
     ASSERT_EQ(3, obj->id);
   }
 }
 
-TEST(unbounded_object_pool_volatile_tests, check_total_number_of_cached_instances) {
+TEST(unbounded_object_pool_volatile_tests,
+     check_total_number_of_cached_instances) {
   constexpr size_t MAX_COUNT = 2;
   irs::unbounded_object_pool_volatile<test_uobject> pool(MAX_COUNT);
 
@@ -1181,7 +1207,7 @@ TEST(unbounded_object_pool_volatile_tests, check_total_number_of_cached_instance
   std::atomic<size_t> id{};
   test_uobject::TOTAL_COUNT = 0;
 
-  auto job = [&mutex, &ready_cv, &pool, &ready, &id](){
+  auto job = [&mutex, &ready_cv, &pool, &ready, &id]() {
     // wait for all threads to be ready
     {
       auto lock = irs::make_unique_lock(mutex);
@@ -1197,7 +1223,7 @@ TEST(unbounded_object_pool_volatile_tests, check_total_number_of_cached_instance
     }
   };
 
-  auto job_shared = [&mutex, &ready_cv, &pool, &ready, &id](){
+  auto job_shared = [&mutex, &ready_cv, &pool, &ready, &id]() {
     // wait for all threads to be ready
     {
       auto lock = irs::make_unique_lock(mutex);
@@ -1216,7 +1242,7 @@ TEST(unbounded_object_pool_volatile_tests, check_total_number_of_cached_instance
   constexpr size_t THREADS_COUNT = 32;
   std::vector<std::thread> threads;
 
-  for (size_t i = 0; i < THREADS_COUNT/2; ++i) {
+  for (size_t i = 0; i < THREADS_COUNT / 2; ++i) {
     threads.emplace_back(job);
     threads.emplace_back(job_shared);
   }
@@ -1329,7 +1355,7 @@ TEST(concurrent_linked_list_test, move_assignment) {
 
   size_t i = 0;
 
-  for (; i < nodes.size()/2; ++i) {
+  for (; i < nodes.size() / 2; ++i) {
     auto& node = nodes[i];
     node.value = i;
     list0.push(node);
@@ -1492,9 +1518,8 @@ TEST(concurrent_linked_list_test, concurrent_push) {
     ++results[node->value];
   }
 
-  ASSERT_TRUE(
-    results.front() == THREADS
-    && irs::irstd::all_equal(results.begin(), results.end()));
+  ASSERT_TRUE(results.front() == THREADS &&
+              irs::irstd::all_equal(results.begin(), results.end()));
 }
 
 TEST(concurrent_linked_list_test, concurrent_pop_push) {
@@ -1545,7 +1570,7 @@ TEST(concurrent_linked_list_test, concurrent_pop_push) {
 
         while (auto* head = list.pop()) {
           ++processed;
-          EXPECT_LE(processed, 2*NODES);
+          EXPECT_LE(processed, 2 * NODES);
 
           auto& value = head->value;
 
