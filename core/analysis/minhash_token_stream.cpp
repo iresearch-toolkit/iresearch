@@ -60,15 +60,19 @@ std::pair<string_ref, velocypack::Slice> ParseAnalyzer(
 }
 
 bool ParseVPack(velocypack::Slice slice, MinHashTokenStream::Options* opts) {
-  auto analyzerSlice = slice.get(kAnalyzerParam);
-  if (analyzerSlice.isNone() || analyzerSlice.isNull()) {
+  if (const auto analyzerSlice = slice.get(kAnalyzerParam);
+      analyzerSlice.isNone() || analyzerSlice.isNull()) {
     *opts = {};
     return true;
   } else {
-    const auto [type, props] = ParseAnalyzer(analyzerSlice);
+    auto [type, props] = ParseAnalyzer(analyzerSlice);
 
     if (type.null()) {
       return false;
+    }
+
+    if (props.isNone()) {
+      props = velocypack::Slice::emptyObjectSlice();
     }
 
     auto analyzer =
@@ -110,7 +114,8 @@ irs::analysis::analyzer::ptr MakeVPack(irs::string_ref args) {
 }
 
 // `args` is a JSON encoded object with the following attributes:
-// "analyzer"(object): the analyzer definition to use for pre-processing
+// "analyzer"(object) the analyzer definition containing "type"(string) and
+// optional "properties"(object)
 analyzer::ptr MakeJson(irs::string_ref args) {
   try {
     if (args.null()) {
@@ -216,8 +221,7 @@ auto sRegisterTypes = []() {
 
 }  // namespace
 
-namespace iresearch {
-namespace analysis {
+namespace iresearch::analysis {
 
 /*static*/ void MinHashTokenStream::init() {
   REGISTER_ANALYZER_VPACK(irs::analysis::MinHashTokenStream, MakeVPack,
@@ -239,5 +243,4 @@ bool MinHashTokenStream::next() { return false; }
 
 bool MinHashTokenStream::reset(string_ref) { return false; }
 
-}  // namespace analysis
-}  // namespace iresearch
+}  // namespace iresearch::analysis
