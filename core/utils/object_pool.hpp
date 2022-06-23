@@ -47,9 +47,9 @@ class concurrent_stack : private util::noncopyable {
 
   struct node_type {
     element_type value{};
-    std::atomic<node_type*>
-        next{};  // next needs to be atomic because
-                 // nodes are kept in a free-list and reused!
+    // next needs to be atomic because
+    // nodes are kept in a free-list and reused!
+    std::atomic<node_type*> next{};
   };
 
   explicit concurrent_stack(node_type* head = nullptr) noexcept
@@ -160,7 +160,7 @@ class bounded_object_pool {
     bounded_object_pool* owner;
     typename T::ptr ptr;
     std::atomic<element_type*> value{};
-  };  // slot
+  };
 
   using stack = concurrent_stack<slot>;
   using node_type = typename stack::node_type;
