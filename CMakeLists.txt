@@ -89,6 +89,7 @@ option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
 option(USE_CCACHE "Use CCACHE if present" ON)
 option(USE_MICROBENCH "Build micro-benchmark project" OFF)
+option(USE_URING "Build iresearch with uring support" OFF)
 option(SUPPRESS_EXTERNAL_WARNINGS "Suppress warnings originating in 3rd party code" ON)
 
 add_option_gprof(FALSE)
@@ -196,7 +197,7 @@ add_definitions(${Vc_ARCHITECTURE_FLAGS})
 ################################################################################
 
 # find liburing
-if (NOT MSVC)
+if (USE_URING AND NOT MSVC)
   find_package(Uring)
 
   if (${uring_FOUND})
