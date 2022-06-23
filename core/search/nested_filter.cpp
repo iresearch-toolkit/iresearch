@@ -65,6 +65,33 @@ bool IsValid(const ByNestedOptions::MatchType& match) noexcept {
       match);
 }
 
+class ScorerWrapper final : public doc_iterator {
+ public:
+  explicit ScorerWrapper(doc_iterator::ptr it, ScoreFunction&& score) noexcept
+      : it_{std::move(it)} {
+    assert(it_);
+    score_ = std::move(score);
+  }
+
+  doc_id_t value() const final { return it_->value(); }
+
+  doc_id_t seek(doc_id_t target) final { return it_->seek(target); }
+
+  bool next() final { return it_->next(); }
+
+  attribute* get_mutable(irs::type_info::type_id id) override {
+    if (irs::type<score>::id() == id) {
+      return &score_;
+    }
+
+    return it_->get_mutable(id);
+  }
+
+ private:
+  doc_iterator::ptr it_;
+  score score_;
+};
+
 class NoneMatcher;
 
 template<typename Matcher>
@@ -310,8 +337,9 @@ class PredMatcher : public Merger,
     if constexpr (HasScore_v<Merger>) {
       child_score(buf.data());
     }
-    while (child.next() && child_doc->value < parent) {
-      if (!pred_->next() || pred_doc_->value != child_doc->value) {
+
+    while (pred_->next() && pred_doc_->value < parent) {
+      if (!child.next() || pred_doc_->value != child_doc->value) {
         return parent + 1;
       }
 
@@ -353,12 +381,29 @@ class RangeMatcher : public Merger,
   RangeMatcher(Match match, Merger&& merger) noexcept
       : Merger{std::move(merger)},
         BufferType{static_cast<const Merger&>(*this)},
-        match_{match} {}
+        match_{match} {
+    // This case is handled by MinMatcher
+    assert(match_ != Match{0});
+  }
 
   doc_id_t Accept(const doc_id_t first_child, const doc_id_t parent) {
     assert(!doc_limits::eof(parent));
 
+    const auto [min, max] = match_;
+    assert(min <= max);
+
     if (first_child > parent) {
+      if (min == 0) {
+        if constexpr (HasScore_v<Merger>) {
+          // Reset score value as we are not able
+          // to find any childs
+          auto& merger = static_cast<Merger&>(*this);
+          auto& buf = static_cast<BufferType&>(*this);
+          std::memset(buf.data(), 0, merger.byte_size());
+        }
+        return 0;
+      }
+
       return first_child;
     }
 
@@ -370,10 +415,8 @@ class RangeMatcher : public Merger,
     const auto* child_doc = self.child_doc_;
     const auto& child_score = *self.child_score_;
 
-    const auto [min, max] = match_;
-    assert(min <= max);
-
-    doc_id_t count = 0;
+    // Already matched the first child
+    doc_id_t count = 1;
 
     if constexpr (HasScore_v<Merger>) {
       child_score(buf.data());
@@ -405,6 +448,8 @@ class RangeMatcher : public Merger,
             }};
   }
 
+  const Match& range() const noexcept { return match_; }
+
  private:
   const Match match_;
 };
@@ -425,8 +470,25 @@ class MinMatcher : public Merger,
   doc_id_t Accept(const doc_id_t first_child, const doc_id_t parent) {
     assert(!doc_limits::eof(parent));
 
+    if (0 == min_) {
+      if constexpr (HasScore_v<Merger>) {
+        // Reset score value as we might not be able
+        // to find any childs
+        auto& merger = static_cast<Merger&>(*this);
+        auto& buf = static_cast<BufferType&>(*this);
+        std::memset(buf.data(), 0, merger.byte_size());
+      }
+      return 0;
+    }
+
     if (first_child > parent) {
       return first_child;
+    }
+
+    doc_id_t count = min_ - 1;
+
+    if (!count) {
+      return 0;
     }
 
     auto& self = static_cast<JoinType&>(*this);
@@ -437,22 +499,19 @@ class MinMatcher : public Merger,
     const auto* child_doc = self.child_doc_;
     const auto& child_score = *self.child_score_;
 
-    doc_id_t count = min_;
-
     if constexpr (HasScore_v<Merger>) {
       child_score(buf.data());
     }
+
     while (child.next() && child_doc->value < parent) {
+      if (!--count) {
+        return 0;
+      }
+
       if constexpr (HasScore_v<Merger>) {
         child_score(merger.temp());
         merger(buf.data(), merger.temp());
       }
-
-      if (!count) {
-        return 0;
-      }
-
-      --count;
     }
 
     return count ? parent + 1 : 0;
@@ -484,6 +543,8 @@ class MinMatcher : public Merger,
               std::memcpy(res, buf.data(), merger.byte_size());
             }};
   }
+
+  Match range() const noexcept { return Match{min_}; }
 
  private:
   const doc_id_t min_;
@@ -561,7 +622,7 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
   auto child =
       child_->execute(rdr, GetOrder(match_, ord), ExecutionMode::kAll, ctx);
 
-  if (IRS_UNLIKELY(!child || doc_limits::eof(child->value()))) {
+  if (IRS_UNLIKELY(!child)) {
     return doc_iterator::empty();
   }
 
@@ -571,6 +632,36 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
         return ResolveMatchType(
             rdr, match_, none_boost_, std::forward<A>(aggregator),
             [&]<typename M>(M&& matcher) -> irs::doc_iterator::ptr {
+              if constexpr (std::is_same_v<NoneMatcher, M>) {
+                if (doc_limits::eof(child->value())) {  // Match all parents
+                  if constexpr (!std::is_same_v<NoopAggregator, A>) {
+                    auto func = ScoreFunction::Constant(none_boost_,
+                                                        ord.buckets().size());
+                    auto* score = irs::get_mutable<irs::score>(parent.get());
+                    if (IRS_UNLIKELY(!score)) {
+                      return memory::make_managed<ScorerWrapper>(
+                          std::move(parent), std::move(func));
+                    }
+                    *score = std::move(func);
+                  }
+                  return std::move(parent);
+                }
+              } else if constexpr (std::is_same_v<MinMatcher<A>, M> ||
+                                   std::is_same_v<RangeMatcher<A>, M>) {
+                // Unordered case for the range [0..EOF] is the equivalent to
+                // matching all parents
+                if constexpr (std::is_same_v<NoopAggregator, A>) {
+                  if (Match{0} == matcher.range() &&
+                      doc_limits::eof(child->value())) {
+                    return std::move(parent);
+                  }
+                }
+              } else {
+                if (doc_limits::eof(child->value())) {
+                  return doc_iterator::empty();
+                }
+              }
+
               return memory::make_managed<ChildToParentJoin<M>>(
                   std::move(parent), *prev, std::move(child),
                   std::move(matcher));
