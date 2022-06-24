@@ -1917,8 +1917,7 @@ index_writer::active_segment_context index_writer::get_segment_context(
     return segment_meta(file_name(meta_.increment()), codec_);
   };
 
-  // FIXME(gnusi): why shared_ptr?
-  std::shared_ptr segment_ctx{segment_writer_pool_.emplace(
+  segment_context_ptr segment_ctx{segment_writer_pool_.emplace(
     dir_, std::move(meta_generator),
     column_info_, feature_info_,
     comparator_)};

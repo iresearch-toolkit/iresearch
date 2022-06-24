@@ -441,7 +441,8 @@ index_input::ptr pooled_fs_index_input::reopen() const {
 
 fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(const file_handle& src) const {
   // reserve a new handle from the pool
-  std::shared_ptr handle{const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace()};
+  std::shared_ptr<fs_index_input::file_handle> handle{
+    const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace()};
 
   if (!handle->handle) {
     handle->handle = irs::file_utils::open(src, irs::file_utils::OpenMode::Read, src.posix_open_advice); // same permission as in fs_index_input::open(...)
