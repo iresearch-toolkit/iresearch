@@ -143,6 +143,17 @@ class async_value {
   std::shared_mutex lock_;
 };
 
+// Represents a control object of unbounded_object_pool
+template<typename T, typename D>
+class pool_control_ptr final : public std::unique_ptr<T, D> {
+ public:
+  using std::unique_ptr<T, D>::unique_ptr;
+
+  // Intentionally hides std::unique_ptr<...>::reset() as we
+  // disallow changing the owned pointer.
+  void reset() noexcept { std::unique_ptr<T, D>::reset(); }
+};
+
 // A fixed size pool of objects.
 // if the pool is empty then a new object is created via make(...)
 // if an object is available in a pool then in is returned but tracked
@@ -165,83 +176,23 @@ class bounded_object_pool {
   using stack = concurrent_stack<slot>;
   using node_type = typename stack::node_type;
 
- public:
-  // Represents a control object of bounded_object_pool with
-  // semantic similar to smart pointers
-  class ptr : util::noncopyable {
+  // Private because we want to disallow upcasts to std::unique_ptr<...>.
+  class releaser final {
    public:
-    ptr() noexcept : slot_{nullptr}, ptr_{nullptr} {}
+    explicit releaser(node_type* slot) noexcept : slot_{slot} {}
 
-    explicit ptr(node_type& slot, element_type& ptr) noexcept
-        : slot_{&slot}, ptr_{&ptr} {}
-
-    ptr(ptr&& rhs) noexcept : slot_{rhs.slot_}, ptr_{rhs.ptr_} {
-      rhs.slot_ = nullptr;  // take ownership
-      rhs.ptr_ = nullptr;
-    }
-
-    ptr& operator=(ptr&& rhs) noexcept {
-      if (this != &rhs) {
-        slot_ = rhs.slot_;
-        ptr_ = rhs.ptr_;
-        rhs.slot_ = nullptr;  // take ownership
-        rhs.ptr_ = nullptr;
-      }
-      return *this;
-    }
-
-    ~ptr() noexcept { reset(); }
-
-    FORCE_INLINE void reset() noexcept {
-      reset_impl(slot_);
-      ptr_ = nullptr;
-    }
-
-    std::shared_ptr<element_type> release() {
-      auto* slot = slot_;
-      auto* ptr = ptr_;
-      slot_ = nullptr;  // moved
-      ptr_ = nullptr;
-
-      // in case if exception occurs
-      // destructor will be called
-      return std::shared_ptr<element_type>(
-          ptr, [slot](element_type*) mutable noexcept { reset_impl(slot); });
-    }
-
-    explicit operator bool() const noexcept { return nullptr != slot_; }
-    element_type& operator*() const noexcept { return *get(); }
-    element_type* operator->() const noexcept { return get(); }
-    element_type* get() const noexcept { return ptr_; }
-
-    friend bool operator==(const ptr& lhs, std::nullptr_t) noexcept {
-      return !static_cast<bool>(lhs);
-    }
-    friend bool operator!=(const ptr& lhs, std::nullptr_t rhs) noexcept {
-      return !(lhs == rhs);
-    }
-    friend bool operator==(std::nullptr_t lhs, const ptr& rhs) noexcept {
-      return (rhs == lhs);
-    }
-    friend bool operator!=(std::nullptr_t lhs, const ptr& rhs) noexcept {
-      return !(rhs == lhs);
+    void operator()(element_type*) noexcept {
+      assert(slot_ && slot_->value.owner);  // Ensured by emplace(...)
+      slot_->value.owner->unlock(*slot_);
     }
 
    private:
-    static void reset_impl(node_type*& slot) noexcept {
-      if (slot == nullptr) {
-        // nothing to do
-        return;
-      }
-
-      assert(slot->value.owner);
-      slot->value.owner->unlock(*slot);
-      slot = nullptr;  // release ownership
-    }
-
     node_type* slot_;
-    element_type* ptr_;
   };
+
+ public:
+  // Represents a control object of unbounded_object_pool
+  using ptr = pool_control_ptr<element_type, releaser>;
 
   explicit bounded_object_pool(size_t size) : pool_{std::max(size_t(1), size)} {
     // initialize pool
@@ -280,16 +231,16 @@ class bounded_object_pool {
 
       if (p) {
         slot.value.store(p, std::memory_order_release);
-        return ptr(*head, *p);
+        return ptr(p, releaser{head});
       }
 
       free_list_.push(*head);  // put empty slot back into the free list
       cond_.notify_all();
 
-      return ptr();
+      return ptr(nullptr, releaser{nullptr});
     }
 
-    return ptr(*head, *p);
+    return ptr(p, releaser{head});
   }
 
   size_t size() const noexcept { return pool_.size(); }
@@ -433,17 +384,6 @@ class unbounded_object_pool_base : private util::noncopyable {
   std::vector<node> pool_;
   stack free_objects_;  // list of created objects that are ready to be reused
   stack free_slots_;    // list of free slots to be reused
-};
-
-// Represents a control object of unbounded_object_pool
-template<typename T, typename D>
-class pool_control_ptr final : public std::unique_ptr<T, D> {
- public:
-  using std::unique_ptr<T, D>::unique_ptr;
-
-  // Intentionally hides std::unique_ptr<...>::reset() as we
-  // disallow changing the owned pointer.
-  void reset() noexcept { std::unique_ptr<T, D>::reset(); }
 };
 
 // A fixed size pool of objects
