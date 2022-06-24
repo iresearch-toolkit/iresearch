@@ -1428,7 +1428,7 @@ index_writer::consolidation_result index_writer::consolidate(
   // hold a reference to the last committed state to prevent files from being
   // deleted by a cleaner during the upcoming consolidation
   // use atomic_load(...) since finish() may modify the pointer
-  auto committed_state = committed_state_helper::atomic_load(&committed_state_);
+  auto committed_state = std::atomic_load(&committed_state_);
   assert(committed_state);
   if (IRS_UNLIKELY(!committed_state)) {
     return { 0, ConsolidationError::FAIL };
@@ -1916,10 +1916,11 @@ index_writer::active_segment_context index_writer::get_segment_context(
   auto meta_generator = [this]()->segment_meta {
     return segment_meta(file_name(meta_.increment()), codec_);
   };
-  auto segment_ctx = segment_writer_pool_.emplace(
+
+  segment_context_ptr segment_ctx{segment_writer_pool_.emplace(
     dir_, std::move(meta_generator),
     column_info_, feature_info_,
-    comparator_).release();
+    comparator_)};
   auto segment_memory_max = segment_limits_.segment_memory_max.load();
 
   // recreate writer if it reserved more memory than allowed by current limits
@@ -2517,11 +2518,10 @@ void index_writer::finish() {
 #ifndef __APPLE__
     // atomic_store may throw
     static_assert(!noexcept
-      (committed_state_helper::atomic_store(&committed_state_,
+      (std::atomic_store(&committed_state_,
         std::move(pending_state_.commit))));
 #endif
-    committed_state_helper::atomic_store(&committed_state_,
-      std::move(pending_state_.commit));
+    std::atomic_store(&committed_state_, std::move(pending_state_.commit));
   } catch (...) {
     abort(); // rollback transaction
 
