@@ -1428,10 +1428,16 @@ index_writer::consolidation_result index_writer::consolidate(
   // hold a reference to the last committed state to prevent files from being
   // deleted by a cleaner during the upcoming consolidation
   // use atomic_load(...) since finish() may modify the pointer
-  auto committed_state = committed_state_helper::atomic_load(&committed_state_);
+  auto committed_state = std::atomic_load(&committed_state_);
   assert(committed_state);
+  if (IRS_UNLIKELY(!committed_state)) {
+    return { 0, ConsolidationError::FAIL };
+  }
   auto committed_meta = committed_state->first;
   assert(committed_meta);
+  if (IRS_UNLIKELY(!committed_meta )) {
+    return { 0, ConsolidationError::FAIL };
+  }
 
   // collect a list of consolidation candidates
   {
@@ -1461,10 +1467,11 @@ index_writer::consolidation_result index_writer::consolidate(
     // check that candidates are not involved in ongoing merges
     for (const auto* candidate : candidates) {
       // segment has been already chosen for consolidation (or at least was choosen), give up
-      if (consolidating_segments_.contains(candidate)) {
+      if (!candidate || consolidating_segments_.contains(candidate)) {
         return { 0, ConsolidationError::FAIL };
       }
     }
+
     try {
       // register for consolidation
       consolidating_segments_.insert(candidates.begin(), candidates.end());
@@ -1503,10 +1510,10 @@ index_writer::consolidation_result index_writer::consolidate(
   {
     size_t found = 0;
 
-    const auto not_found = candidates.end();
     for (const auto& segment : *committed_meta) {
-      const auto it = std::lower_bound(candidates.begin(), not_found, &segment.meta);
-      found += (it != not_found && *it == &segment.meta);
+      const auto it = std::lower_bound(std::begin(candidates),
+                                       std::end(candidates), &segment.meta);
+      found += (it != std::end(candidates) && *it == &segment.meta);
     }
 
     if (found != candidates.size()) {
@@ -1564,6 +1571,9 @@ index_writer::consolidation_result index_writer::consolidate(
     auto lock = make_unique_lock(commit_lock_);
     const auto current_committed_meta = committed_state_->first;
     assert(current_committed_meta);
+    if (IRS_UNLIKELY(!current_committed_meta)) {
+      return { 0, ConsolidationError::FAIL };
+    }
 
     auto cleanup_cached_readers = [&current_committed_meta, &candidates, this]()noexcept{
       // FIXME make me noexcept as I'm begin called from within ~finally()
@@ -1729,8 +1739,7 @@ index_writer::consolidation_result index_writer::consolidate(
         0, // deletes must be applied to the consolidated segment
         extract_refs(dir), // do not forget to track refs
         std::move(candidates), // consolidation context candidates
-        std::move(committed_meta) // consolidation context meta
-      );
+        std::move(committed_meta)); // consolidation context meta
 
       // filter out merged segments for the next commit
       const auto& pending_segment = ctx->pending_segments_.back();
@@ -1907,10 +1916,11 @@ index_writer::active_segment_context index_writer::get_segment_context(
   auto meta_generator = [this]()->segment_meta {
     return segment_meta(file_name(meta_.increment()), codec_);
   };
-  auto segment_ctx = segment_writer_pool_.emplace(
+
+  segment_context_ptr segment_ctx{segment_writer_pool_.emplace(
     dir_, std::move(meta_generator),
     column_info_, feature_info_,
-    comparator_).release();
+    comparator_)};
   auto segment_memory_max = segment_limits_.segment_memory_max.load();
 
   // recreate writer if it reserved more memory than allowed by current limits
@@ -2508,11 +2518,10 @@ void index_writer::finish() {
 #ifndef __APPLE__
     // atomic_store may throw
     static_assert(!noexcept
-      (committed_state_helper::atomic_store(&committed_state_,
+      (std::atomic_store(&committed_state_,
         std::move(pending_state_.commit))));
 #endif
-    committed_state_helper::atomic_store(&committed_state_,
-      std::move(pending_state_.commit));
+    std::atomic_store(&committed_state_, std::move(pending_state_.commit));
   } catch (...) {
     abort(); // rollback transaction
 

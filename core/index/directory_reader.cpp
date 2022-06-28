@@ -205,16 +205,16 @@ directory_reader& directory_reader::operator=(
     const directory_reader& other) noexcept {
   if (this != &other) {
     // make a copy
-    impl_ptr impl = atomic_utils::atomic_load(&other.impl_);
+    impl_ptr impl = std::atomic_load(&other.impl_);
 
-    atomic_utils::atomic_store(&impl_, impl);
+    std::atomic_store(&impl_, impl);
   }
 
   return *this;
 }
 
 const directory_meta& directory_reader::meta() const {
-  auto impl = atomic_utils::atomic_load(&impl_);  // make a copy
+  auto impl = std::atomic_load(&impl_);  // make a copy
 
   return down_cast<directory_reader_impl>(*impl).meta();
 }
@@ -227,7 +227,7 @@ const directory_meta& directory_reader::meta() const {
 directory_reader directory_reader::reopen(
     format::ptr codec /*= nullptr*/) const {
   // make a copy
-  impl_ptr impl = atomic_utils::atomic_load(&impl_);
+  impl_ptr impl = std::atomic_load(&impl_);
 
   return directory_reader_impl::open(
       down_cast<directory_reader_impl>(*impl).dir(), codec.get(), impl);

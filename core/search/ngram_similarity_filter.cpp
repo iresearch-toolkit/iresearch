@@ -416,7 +416,9 @@ class ngram_similarity_query : public filter::prepared {
       assert(docs);
 
       // add iterator
-      itrs.emplace_back(std::move(docs));
+      if (IRS_UNLIKELY(!itrs.emplace_back(std::move(docs)))) {
+        itrs.pop_back();
+      }
     }
 
     if (itrs.empty()) {
