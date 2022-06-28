@@ -936,9 +936,6 @@ class index_writer : private util::noncopyable {
     std::pair<std::shared_ptr<index_meta>,
     file_refs_t
   >> committed_state_t;
-  typedef atomic_shared_ptr_helper<
-    committed_state_t::element_type
-  > committed_state_helper;
 
   typedef unbounded_object_pool<segment_context> segment_pool_t;
 

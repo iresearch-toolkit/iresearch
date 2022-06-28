@@ -76,7 +76,10 @@ class merge_writer : public util::noncopyable {
 
   void add(const sub_reader_ptr& reader) {
     // add shared pointer
-    readers_.emplace_back(reader);
+    assert(reader);
+    if (reader) {
+      readers_.emplace_back(reader);
+    }
   }
 
   // Flush all of the added readers into a single segment.

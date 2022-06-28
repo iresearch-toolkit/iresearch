@@ -103,10 +103,6 @@ if (USE_VALGRIND)
   add_definitions(-DIRESEARCH_VALGRIND)
 endif()
 
-if (USE_URING)
-  add_definitions(-DIRESEARCH_URING)
-endif()
-
 if (MSVC)
   # FIXME TODO find a workaround or do not use alignas(...)
   # MSVC2017.1 - MSVC2018.7 does not correctly support alignas()
@@ -131,6 +127,12 @@ if (MSVC)
   else()
     set(CMAKE_C_FLAGS "/MP ${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}")
+  endif()
+  
+  if (${MSVC_VERSION} STRGREATER_EQUAL 1930)
+    # see https://docs.microsoft.com/en-us/cpp/overview/cpp-conformance-improvements?view=msvc-170#error-on-a-non-dependent-static_assert
+    set(CMAKE_C_FLAGS "/Zc:static_assert- ${CMAKE_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "/Zc:static_assert- ${CMAKE_CXX_FLAGS}")
   endif()
 elseif (NOT IS_ARM)
   # allow 16 byte compare-exchange
@@ -199,6 +201,15 @@ add_definitions(${Vc_ARCHITECTURE_FLAGS})
 ################################################################################
 ### find 3rd party libraries
 ################################################################################
+
+# find liburing
+if (USE_URING AND NOT MSVC)
+  find_package(Uring)
+
+  if (${uring_FOUND})
+    add_definitions(-DIRESEARCH_URING)
+  endif()
+endif()
 
 # find Boost
 find_package(BoostLocal REQUIRED)

@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -162,10 +162,8 @@ class remapping_doc_iterator final : public doc_iterator {
  public:
   remapping_doc_iterator(doc_iterator::ptr&& it,
                          const doc_map_f& mapper) noexcept
-      : it_{std::move(it)}, mapper_{&mapper} {
-    assert(it_);
-    src_ = irs::get<document>(*it_);
-    assert(src_);
+      : it_{std::move(it)}, mapper_{&mapper}, src_{irs::get<document>(*it_)} {
+    assert(it_ && src_);
   }
 
   bool next() override;
@@ -624,8 +622,8 @@ void compound_term_iterator::add(const term_reader& reader,
   assert(it);
 
   if (IRS_LIKELY(it)) {
-    term_iterator_mask_.emplace_back(
-        term_iterators_.size());  // mark as used to trigger next()
+    // mark as used to trigger next()
+    term_iterator_mask_.emplace_back(term_iterators_.size());
     term_iterators_.emplace_back(std::move(it), &doc_id_map);
   }
 }
@@ -851,10 +849,10 @@ bool compound_field_iterator::next() {
       current_meta_ = &field_meta;
     }
 
-    assert(is_subset_of(field_meta.features,
-                        meta().features));  // validated by caller
-    assert(field_meta.index_features <=
-           meta().index_features);  // validated by caller
+    // validated by caller
+    assert(is_subset_of(field_meta.features, meta().features));
+    assert(field_meta.index_features <= meta().index_features);
+
     field_iterator_mask_.emplace_back(
         term_iterator_t{i, &field_meta, field_terms});
 
@@ -1050,9 +1048,7 @@ struct SortingIteratorAdapter {
         doc{irs::get<irs::document>(*this->it)},
         payload{irs::get<irs::payload>(*this->it)} {}
 
-  [[nodiscard]] explicit operator bool() const noexcept {
-    return doc && payload;
-  }
+  [[nodiscard]] bool valid() const noexcept { return doc && payload; }
 
   doc_iterator::ptr it;
   const irs::document* doc;
@@ -1132,10 +1128,14 @@ bool write_columns(columnstore& cs, Iterator& columns,
                                  const doc_map_f& doc_map,
                                  const irs::column_reader& column) {
       auto it = column.iterator(ColumnHint::kConsolidation);
-      assert(it);
 
-      if (IRS_LIKELY(it)) {
+      if (IRS_LIKELY(it && irs::get<document>(*it))) {
         itrs.emplace_back(std::move(it), doc_map);
+      } else {
+        assert(false);
+        IR_FRMT_ERROR(
+            "Got an invalid iterator during consolidationg of the columnstore, "
+            "skipping it");
       }
       return true;
     };
@@ -1206,7 +1206,15 @@ bool write_fields(columnstore& cs, Iterator& feature_itr,
 
         if (IRS_LIKELY(it)) {
           hdrs.emplace_back(reader->payload());
-          itrs.emplace_back(std::move(it), doc_map);
+
+          if (IRS_LIKELY(irs::get<document>(*it))) {
+            itrs.emplace_back(std::move(it), doc_map);
+          } else {
+            assert(false);
+            IR_FRMT_ERROR(
+                "Failed to get document attribute from the iterator, skipping "
+                "it");
+          }
         }
       }
 
@@ -1325,7 +1333,7 @@ const merge_writer::flush_progress_t kProgressNoop = []() { return true; };
 namespace iresearch {
 
 merge_writer::reader_ctx::reader_ctx(sub_reader::ptr reader) noexcept
-    : reader(reader),
+    : reader{std::move(reader)},
       doc_map([](doc_id_t) noexcept { return doc_limits::eof(); }) {
   assert(reader);
 }
@@ -1363,7 +1371,9 @@ bool merge_writer::flush(tracking_directory& dir,
 
   // collect field meta and field term data
   for (auto& reader_ctx : readers_) {
+    // ensured by merge_writer::add(...)
     assert(reader_ctx.reader);
+
     auto& reader = *reader_ctx.reader;
     const auto docs_count = reader.docs_count();
 
@@ -1481,14 +1491,16 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
       return false;
     }
 
-    return static_cast<bool>(itrs.emplace_back(std::move(it)));
+    return itrs.emplace_back(std::move(it)).valid();
   };
 
   segment.meta.docs_count = 0;
 
   // Init doc map for each reader
   for (auto& reader_ctx : readers_) {
+    // ensured by merge_writer::add(...)
     assert(reader_ctx.reader);
+
     auto& reader = *reader_ctx.reader;
 
     if (reader.docs_count() > doc_limits::eof() - doc_limits::min()) {
@@ -1556,16 +1568,22 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
   const auto info = (*column_info_)(string_ref::NIL);
   auto column = writer->push_column(info, {});
 
-  doc_id_t next_id = doc_limits::min();
-  while (columns_it.next()) {
-    const auto value = columns_it.value();
-    assert(value.second);
-    auto& it = *value.second;
-    assert(it.payload);
-    auto& payload = it.payload->value;
+  for (doc_id_t next_id = doc_limits::min(); columns_it.next();) {
+    const auto [index, it] = columns_it.value();
+    assert(it);
+
+    if (IRS_UNLIKELY(!it->valid())) {
+      assert(false);
+      IR_FRMT_ERROR(
+          "Got an invalid iterator during consolidationg of sorted index, "
+          "skipping it");
+      continue;
+    }
+
+    auto& payload = it->payload->value;
 
     // fill doc id map
-    readers_[value.first].doc_id_map[it.it->value()] = next_id;
+    readers_[index].doc_id_map[it->it->value()] = next_id;
 
     // write value into new column
     auto& stream = column.second(next_id);

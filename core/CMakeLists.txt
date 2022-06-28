@@ -264,7 +264,7 @@ set(IResearch_core_headers
   ./types.hpp
 )
 
-if (USE_URING)
+if (uring_FOUND)
   list(APPEND IResearch_core_sources ./store/async_directory.cpp)
 endif()
 
@@ -287,7 +287,7 @@ set(IRESEARCH_EXTERNAL_INCLUDES
     ${FROZEN_INCLUDE_DIR})
 
 if (SUPPRESS_EXTERNAL_WARNINGS)
-  include_directories(SYSTEM  ${IRESEARCH_EXTERNAL_INCLUDES})
+  include_directories(SYSTEM ${IRESEARCH_EXTERNAL_INCLUDES})
 else ()
   include_directories(${IRESEARCH_EXTERNAL_INCLUDES})
 endif ()
@@ -364,6 +364,7 @@ add_dependencies(iresearch-static
 target_include_directories(iresearch-static
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
+  PRIVATE ${URING_INCLUDE_DIR}
   PRIVATE $<TARGET_PROPERTY:iresearch-ofst,INTERFACE_INCLUDE_DIRECTORIES>
   PUBLIC ${VPACK_INCLUDE_PATH}
   PUBLIC $<TARGET_PROPERTY:hwy,INTERFACE_INCLUDE_DIRECTORIES>
@@ -412,6 +413,7 @@ target_link_libraries(iresearch-static
   PUBLIC iresearch-scorer-bm25-static
   PUBLIC iresearch-scorer-tfidf-static
   PUBLIC ${ICU_STATIC_LIBS}
+  ${URING_LIBRARIES}
   PUBLIC absl::flat_hash_map
   PUBLIC absl::flat_hash_set
   ${GCOV_LIBRARY}

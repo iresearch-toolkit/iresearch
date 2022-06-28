@@ -221,7 +221,7 @@
 
 // define function name used for pretty printing
 // NOTE: the alias points to a compile time finction not a preprocessor macro
-#if defined(__FUNCSIG__)
+#if defined(__FUNCSIG__) || _MSC_FULL_VER >= 193000000
   #define IRESEARCH_CURRENT_FUNCTION __FUNCSIG__
 #elif defined(__PRETTY_FUNCTION__) || defined(__GNUC__) || defined(__clang__)
   #define IRESEARCH_CURRENT_FUNCTION __PRETTY_FUNCTION__

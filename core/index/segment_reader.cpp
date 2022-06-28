@@ -276,9 +276,9 @@ segment_reader& segment_reader::operator=(
     const segment_reader& other) noexcept {
   if (this != &other) {
     // make a copy
-    impl_ptr impl = atomic_utils::atomic_load(&other.impl_);
+    impl_ptr impl = std::atomic_load(&other.impl_);
 
-    atomic_utils::atomic_store(&impl_, impl);
+    std::atomic_store(&impl_, impl);
   }
 
   return *this;
@@ -292,7 +292,7 @@ segment_reader& segment_reader::operator=(
 
 segment_reader segment_reader::reopen(const segment_meta& meta) const {
   // make a copy
-  impl_ptr impl = atomic_utils::atomic_load(&impl_);
+  impl_ptr impl = std::atomic_load(&impl_);
 
   auto& reader_impl = down_cast<segment_reader_impl>(*impl);
 
@@ -301,10 +301,6 @@ segment_reader segment_reader::reopen(const segment_meta& meta) const {
     ? *this
     : segment_reader_impl::open(reader_impl.dir(), meta);
 }
-
-// -------------------------------------------------------------------
-// segment_reader_impl
-// -------------------------------------------------------------------
 
 segment_reader_impl::segment_reader_impl(
     const directory& dir,
