@@ -25,12 +25,11 @@
 #include <absl/container/flat_hash_set.h>
 
 #include <span>
-
-#include "utils/string.hpp"
+#include <vector>
 
 namespace iresearch {
 
-// Implementation of MinHash variant with for a single hash function.
+// Implementation of MinHash variant with a single hash function.
 class MinHash {
  public:
   explicit MinHash(size_t size) : left_{std::max(size, size_t{1})} {
