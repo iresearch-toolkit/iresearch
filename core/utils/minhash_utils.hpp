@@ -77,10 +77,10 @@ class MinHash {
 
   // Return Jaccard coefficient of 2 MinHash signatures.
   double Jaccard(const MinHash& rhs) const noexcept {
-    if (Size() > rhs.Size()) {
-      return rhs.Jaccard(Signature());
-    } else {
+    if (dedup_.size() > rhs.dedup_.size()) {
       return Jaccard(rhs.Signature());
+    } else {
+      return rhs.Jaccard(Signature());
     }
   }
 
