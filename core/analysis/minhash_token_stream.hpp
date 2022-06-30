@@ -40,20 +40,30 @@ class MinHashTokenStream final : public analyzer, private util::noncopyable {
     uint32_t num_hashes{1};
   };
 
+  // Return analyzer type name.
   static constexpr string_ref type_name() noexcept { return "minhash"; }
-  static void init();  // for triggering registration in a static build
+
+  // For triggering registration in a static build.
+  static void init();
 
   explicit MinHashTokenStream(Options&& opts);
 
+  // Advance stream to the next token.
   bool next() override;
 
-  bool reset(string_ref data) override;
+  // Reset stream to a specified value.
+  bool reset(string_ref value) override;
 
+  // Return a stream attribute denoted by `id`.
   attribute* get_mutable(irs::type_info::type_id id) noexcept override {
     return irs::get_mutable(attrs_, id);
   }
 
+  // Return analyzer options.
   const Options& options() const noexcept { return opts_; }
+
+  // Return accumulated MinHash signature.
+  const MinHash& signature() const noexcept { return minhash_; }
 
  private:
   using attributes = std::tuple<term_attribute, increment, offset>;
@@ -69,6 +79,7 @@ class MinHashTokenStream final : public analyzer, private util::noncopyable {
   const offset* offset_{};
   iterator begin_{};
   iterator end_{};
+  std::array<char, 11> buf_{};
 };
 
 }  // namespace iresearch::analysis

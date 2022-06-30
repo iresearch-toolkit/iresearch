@@ -29,6 +29,61 @@
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
+namespace {
+
+class ArrayStream final : public irs::analysis::analyzer {
+ public:
+  explicit ArrayStream(irs::string_ref data, const std::string_view* begin,
+                       const std::string_view* end) noexcept
+      : irs::analysis::analyzer{irs::type<ArrayStream>::get()},
+        data_{data},
+        begin_{begin},
+        it_{end},
+        end_{end} {}
+
+  bool next() override {
+    if (it_ == end_) {
+      return false;
+    }
+
+    auto& offs = std::get<irs::offset>(attrs_);
+    offs.start = offs.end;
+    offs.end += it_->size();
+
+    std::get<irs::term_attribute>(attrs_).value =
+        irs::ref_cast<irs::byte_type>(*it_);
+
+    ++it_;
+    return true;
+  }
+
+  irs::attribute* get_mutable(irs::type_info::type_id id) noexcept override {
+    return irs::get_mutable(attrs_, id);
+  }
+
+  bool reset(irs::string_ref data) override {
+    if (data == data_) {
+      it_ = begin_;
+      return true;
+    }
+
+    it_ = end_;
+    return false;
+  }
+
+ private:
+  using attributes =
+      std::tuple<irs::term_attribute, irs::increment, irs::offset>;
+
+  attributes attrs_;
+  irs::string_ref data_;
+  const std::string_view* begin_;
+  const std::string_view* it_;
+  const std::string_view* end_;
+};
+
+}  // namespace
+
 TEST(MinHashTokenStreamTest, CheckConsts) {
   static_assert("minhash" ==
                 irs::type<irs::analysis::MinHashTokenStream>::name());
@@ -251,4 +306,50 @@ TEST(MinHashTokenStreamTest, ConstructFromOptions) {
     ASSERT_EQ(irs::type<empty_analyzer>::id(), analyzer->type());
     ASSERT_FALSE(stream.reset(""));
   }
+}
+
+TEST(MinHashTokenStreamTest, Next) {
+  using namespace irs::analysis;
+
+  constexpr uint32_t kNumHashes = 4;
+  constexpr std::string_view kData{"Hund"};
+  constexpr std::string_view kValues[]{"quick", "brown", "fox",  "jumps",
+                                       "over",  "the",   "lazy", "dog"};
+
+  MinHashTokenStream stream{{.analyzer = std::make_unique<ArrayStream>(
+                                 kData, std::begin(kValues), std::end(kValues)),
+                             .num_hashes = kNumHashes}};
+  ASSERT_TRUE(stream.reset(kData));
+  auto* term = irs::get<irs::term_attribute>(stream);
+  ASSERT_NE(nullptr, term);
+  auto* offset = irs::get<irs::offset>(stream);
+  ASSERT_NE(nullptr, offset);
+  auto* inc = irs::get<irs::increment>(stream);
+  ASSERT_NE(nullptr, inc);
+
+  ASSERT_TRUE(stream.next());
+  EXPECT_EQ("aq+fPy7QMmE", irs::ref_cast<char>(term->value));
+  ASSERT_EQ(1, inc->value);
+  EXPECT_EQ(0, offset->start);
+  EXPECT_EQ(32, offset->end);
+
+  ASSERT_TRUE(stream.next());
+  EXPECT_EQ("zN55OxHobU0", irs::ref_cast<char>(term->value));
+  ASSERT_EQ(0, inc->value);
+  EXPECT_EQ(0, offset->start);
+  EXPECT_EQ(32, offset->end);
+
+  ASSERT_TRUE(stream.next());
+  EXPECT_EQ("fE1vyfdbgBg", irs::ref_cast<char>(term->value));
+  ASSERT_EQ(0, inc->value);
+  EXPECT_EQ(0, offset->start);
+  EXPECT_EQ(32, offset->end);
+
+  ASSERT_TRUE(stream.next());
+  EXPECT_EQ("g44ma/eW5Rc", irs::ref_cast<char>(term->value));
+  ASSERT_EQ(0, inc->value);
+  EXPECT_EQ(0, offset->start);
+  EXPECT_EQ(32, offset->end);
+
+  ASSERT_FALSE(stream.next());
 }
