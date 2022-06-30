@@ -41,7 +41,7 @@ class MinHash {
 
   explicit MinHash(size_t size) : left_{std::max(size, size_t{1})} {
     min_hashes_.reserve(left_);
-    dedup_.reserve(left_);
+    dedup_.reserve(left_ + 1);
   }
 
   // Update MinHash with the new value.
