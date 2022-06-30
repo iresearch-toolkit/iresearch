@@ -1,0 +1,202 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Andrey Abramov
+////////////////////////////////////////////////////////////////////////////////
+
+#include "analysis/minhash_token_stream.hpp"
+
+#include "analysis/analyzers.hpp"
+#include "analysis/segmentation_token_stream.hpp"
+#include "analysis/token_streams.hpp"
+#include "tests_shared.hpp"
+#include "velocypack/Parser.h"
+#include "velocypack/velocypack-aliases.h"
+
+TEST(MinHashTokenStreamTest, CheckConsts) {
+  static_assert("minhash" ==
+                irs::type<irs::analysis::MinHashTokenStream>::name());
+}
+
+TEST(MinHashTokenStreamTest, NormalizeDefault) {
+  std::string out;
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(
+      out, "minhash", irs::type<irs::text_format::json>::get(),
+      R"({"numHashes": 42})"));
+  const auto expected_out = arangodb::velocypack::Parser::fromJson(
+      R"({"analyzer": {}, "numHashes": 42})");
+  ASSERT_EQ(expected_out->slice().toString(), out);
+
+  // Failing cases
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      out, "minhash", irs::type<irs::text_format::json>::get(),
+      R"({"numHashes": "42"})"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      out, "minhash", irs::type<irs::text_format::json>::get(),
+      R"({"numHashes": null})"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      out, "minhash", irs::type<irs::text_format::json>::get(),
+      R"({"numHashes": 0})"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      out, "minhash", irs::type<irs::text_format::json>::get(),
+      R"({"numHashes": false})"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      out, "minhash", irs::type<irs::text_format::json>::get(),
+      R"({"numHashes": []})"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      out, "minhash", irs::type<irs::text_format::json>::get(),
+      R"({"numHashes": {}})"));
+}
+
+TEST(MinHashTokenStreamTest, ConstructDefault) {
+  auto assert_analyzer = [](const irs::analysis::analyzer::ptr& stream,
+                            size_t expected_num_hashes) {
+    ASSERT_NE(nullptr, stream);
+    ASSERT_EQ(irs::type<irs::analysis::MinHashTokenStream>::id(),
+              stream->type());
+
+    auto* impl =
+        dynamic_cast<const irs::analysis::MinHashTokenStream*>(stream.get());
+    ASSERT_NE(nullptr, impl);
+    const auto& [analyzer, num_hashes] = impl->options();
+    ASSERT_NE(nullptr, analyzer);
+    ASSERT_EQ(irs::type<irs::string_token_stream>::id(), analyzer->type());
+    ASSERT_EQ(expected_num_hashes, num_hashes);
+  };
+
+  assert_analyzer(irs::analysis::analyzers::get(
+                      "minhash", irs::type<irs::text_format::json>::get(),
+                      R"({"numHashes": 42})"),
+                  42);
+
+  // Failing cases
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
+                         "minhash", irs::type<irs::text_format::json>::get(),
+                         R"({"numHashes": 0})"));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
+                         "minhash", irs::type<irs::text_format::json>::get(),
+                         R"({"numHashes": []})"));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
+                         "minhash", irs::type<irs::text_format::json>::get(),
+                         R"({"numHashes": {}})"));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
+                         "minhash", irs::type<irs::text_format::json>::get(),
+                         R"({"numHashes": true})"));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
+                         "minhash", irs::type<irs::text_format::json>::get(),
+                         R"({"numHashes": null})"));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
+                         "minhash", irs::type<irs::text_format::json>::get(),
+                         R"({"numHashes": "42"})"));
+  ASSERT_EQ(nullptr,
+            irs::analysis::analyzers::get(
+                "minhash", irs::type<irs::text_format::json>::get(), R"({})"));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
+                         "minhash", irs::type<irs::text_format::json>::get(),
+                         R"({"analyzer":{}})"));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
+                         "minhash", irs::type<irs::text_format::json>::get(),
+                         R"({"analyzer":""})"));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
+                         "minhash", irs::type<irs::text_format::json>::get(),
+                         R"({"analyzer":null})"));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
+                         "minhash", irs::type<irs::text_format::json>::get(),
+                         R"({"analyzer":[]})"));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
+                         "minhash", irs::type<irs::text_format::json>::get(),
+                         R"({"analyzer":42})"));
+}
+
+TEST(MinHashTokenStreamTest, ConstructCustom) {
+  auto assert_analyzer = [](const irs::analysis::analyzer::ptr& stream,
+                            size_t expected_num_hashes) {
+    ASSERT_NE(nullptr, stream);
+    ASSERT_EQ(irs::type<irs::analysis::MinHashTokenStream>::id(),
+              stream->type());
+
+    auto* impl =
+        dynamic_cast<const irs::analysis::MinHashTokenStream*>(stream.get());
+    ASSERT_NE(nullptr, impl);
+    const auto& [analyzer, num_hashes] = impl->options();
+    ASSERT_EQ(expected_num_hashes, num_hashes);
+    ASSERT_NE(nullptr, analyzer);
+    ASSERT_EQ(irs::type<irs::analysis::segmentation_token_stream>::id(),
+              analyzer->type());
+  };
+
+  assert_analyzer(
+      irs::analysis::analyzers::get(
+          "minhash", irs::type<irs::text_format::json>::get(),
+          R"({ "analyzer":{"type":"segmentation"}, "numHashes": 42 })"),
+      42);
+}
+
+TEST(MinHashTokenStreamTest, NormalizeCustom) {
+  std::string out;
+  const auto expected_out = arangodb::velocypack::Parser::fromJson(
+      R"({ "analyzer": {
+             "type":"segmentation",
+             "properties": {"break":"alpha","case":"lower"} },
+             "numHashes": 42 })");
+
+  out.clear();
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(
+      out, "minhash", irs::type<irs::text_format::json>::get(),
+      R"({ "analyzer":{"type":"segmentation"}, "numHashes": 42 })"));
+  ASSERT_EQ(expected_out->slice().toString(), out);
+
+  out.clear();
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(
+      out, "minhash", irs::type<irs::text_format::json>::get(),
+      R"({ "analyzer":{"type":"segmentation", "properties":{}}, "numHashes": 42 })"));
+  ASSERT_EQ(expected_out->slice().toString(), out);
+
+  out.clear();
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(
+      out, "minhash", irs::type<irs::text_format::json>::get(),
+      R"({ "analyzer":{"type":"segmentation", "properties":{"case":"lower"}}, "numHashes": 42 })"));
+  ASSERT_EQ(expected_out->slice().toString(), out);
+
+  out.clear();
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(
+      out, "minhash", irs::type<irs::text_format::json>::get(),
+      R"({ "analyzer":{"type":"segmentation", "properties":{"case":"upper"}}, "numHashes": 42 })"));
+  ASSERT_NE(expected_out->slice().toString(), out);
+
+  // Failing cases
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      out, "minhash", irs::type<irs::text_format::json>::get(),
+      R"({ "analyzer":{"type":"segmentation", "properties":{}, "numHashes": 0 })"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      out, "minhash", irs::type<irs::text_format::json>::get(),
+      R"({ "analyzer":{"type":"segmentation", "properties":false, "numHashes": 42 })"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      out, "minhash", irs::type<irs::text_format::json>::get(),
+      R"({ "analyzer":{"type":"segmentation", "properties":[], "numHashes": 42 })"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      out, "minhash", irs::type<irs::text_format::json>::get(),
+      R"({ "analyzer":{"type":"segmentation", "properties":false, "numHashes": 42 })"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      out, "minhash", irs::type<irs::text_format::json>::get(),
+      R"({ "analyzer":{"type":"segmentation", "properties":null, "numHashes": 42 })"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      out, "minhash", irs::type<irs::text_format::json>::get(),
+      R"({ "analyzer":{"type":"segmentation", "properties":42, "numHashes": 42 })"));
+}
