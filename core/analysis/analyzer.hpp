@@ -26,8 +26,7 @@
 #include "analysis/token_stream.hpp"
 #include "utils/type_info.hpp"
 
-namespace iresearch {
-namespace analysis {
+namespace iresearch::analysis {
 
 class analyzer : public token_stream {
  public:
@@ -43,7 +42,21 @@ class analyzer : public token_stream {
   type_info::type_id type_;
 };
 
-}  // namespace analysis
-}  // namespace iresearch
+class empty_analyzer final : public analyzer {
+ public:
+  static constexpr string_ref type_name() noexcept { return "empty_analyzer"; }
+
+  empty_analyzer() noexcept;
+
+  virtual attribute* get_mutable(irs::type_info::type_id) override {
+    return nullptr;
+  }
+
+  virtual bool next() override { return false; }
+
+  virtual bool reset(string_ref) override { return false; }
+};
+
+}  // namespace iresearch::analysis
 
 #endif

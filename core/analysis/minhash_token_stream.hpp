@@ -26,6 +26,7 @@
 #include "analysis/analyzer.hpp"
 #include "analysis/token_attributes.hpp"
 #include "utils/attribute_helper.hpp"
+#include "utils/minhash_utils.hpp"
 #include "utils/noncopyable.hpp"
 
 namespace iresearch::analysis {
@@ -33,7 +34,10 @@ namespace iresearch::analysis {
 class MinHashTokenStream final : public analyzer, private util::noncopyable {
  public:
   struct Options {
+    // Analyzer used for hashing set generation
     analysis::analyzer::ptr analyzer;
+    // Number of min hashes to maintain
+    uint32_t numHashes{1};
   };
 
   static constexpr string_ref type_name() noexcept { return "minhash"; }
@@ -53,9 +57,18 @@ class MinHashTokenStream final : public analyzer, private util::noncopyable {
 
  private:
   using attributes = std::tuple<term_attribute, increment, offset>;
+  using iterator = std::span<const size_t>::iterator;
+
+  void ComputeSignature();
 
   Options opts_;
+  MinHash minhash_;
   attributes attrs_;
+  increment next_inc_;
+  const term_attribute* term_{};
+  const offset* offset_{};
+  iterator begin_{};
+  iterator end_{};
 };
 
 }  // namespace iresearch::analysis

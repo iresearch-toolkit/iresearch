@@ -36,9 +36,13 @@ using namespace arangodb;
 using namespace irs;
 using namespace irs::analysis;
 
+constexpr uint32_t kMinHashes = 1;
 constexpr std::string_view kTypeParam{"type"};
 constexpr std::string_view kPropertiesParam{"properties"};
 constexpr std::string_view kAnalyzerParam{"analyzer"};
+constexpr std::string_view kNumHashes{"numHashes"};
+
+const offset kEmptyOffset;
 
 std::pair<string_ref, velocypack::Slice> ParseAnalyzer(
     velocypack::Slice slice) {
@@ -60,6 +64,27 @@ std::pair<string_ref, velocypack::Slice> ParseAnalyzer(
 }
 
 bool ParseVPack(velocypack::Slice slice, MinHashTokenStream::Options* opts) {
+  assert(opts);
+
+  if (const auto numHashesSlice = slice.get(kNumHashes);
+      !numHashesSlice.isNumber()) {
+    IR_FRMT_ERROR(
+        "Failed to read '%s' attribute as number while "
+        "constructing MinHashTokenStream from VPack arguments",
+        kNumHashes.data());
+    return false;
+  } else {
+    opts->numHashes = numHashesSlice.getNumber<decltype(opts->numHashes)>();
+  }
+
+  if (opts->numHashes < kMinHashes) {
+    IR_FRMT_ERROR(
+        "Number of hashes must be at least 1, failed to "
+        "construct MinHashTokenStream from VPack arguments",
+        kNumHashes.data());
+    return false;
+  }
+
   if (const auto analyzerSlice = slice.get(kAnalyzerParam);
       analyzerSlice.isNone() || analyzerSlice.isNull()) {
     *opts = {};
@@ -149,6 +174,7 @@ bool MakeVPackOptions(const MinHashTokenStream::Options& opts, VPackSlice props,
 
   velocypack::ObjectBuilder root_scope{out, kAnalyzerParam};
   out->add(kTypeParam, velocypack::Value{type});
+  out->add(kNumHashes, velocypack::Value{opts.numHashes});
 
   if (analyzers::normalize(normalized, type,
                            irs::type<irs::text_format::vpack>::get(),
@@ -232,15 +258,69 @@ namespace iresearch::analysis {
 
 MinHashTokenStream::MinHashTokenStream(Options&& opts)
     : analysis::analyzer{irs::type<MinHashTokenStream>::get()},
-      opts_{std::move(opts)} {
+      opts_{std::move(opts)},
+      minhash_{opts.numHashes} {
   if (!opts_.analyzer) {
     // Fallback to default implementation
     opts_.analyzer = std::make_unique<string_token_stream>();
   }
+
+  term_ = irs::get<term_attribute>(*opts_.analyzer);
+
+  if (IRS_UNLIKELY(!term_)) {
+    assert(false);
+    opts_.analyzer = std::make_unique<empty_analyzer>();
+  }
+
+  offset_ = irs::get<offset>(*opts_.analyzer);
 }
 
-bool MinHashTokenStream::next() { return false; }
+bool MinHashTokenStream::next() {
+  if (begin_ == end_) {
+    return false;
+  }
 
-bool MinHashTokenStream::reset(string_ref) { return false; }
+  // FIXME(gnusi): token encoding
+  std::get<term_attribute>(attrs_).value = {
+      reinterpret_cast<const byte_type*>(&*begin_), sizeof(size_t)};
+  std::get<increment>(attrs_).value = std::exchange(next_inc_.value, 0);
+  ++begin_;
+
+  return true;
+}
+
+bool MinHashTokenStream::reset(string_ref data) {
+  begin_ = end_ = {};
+  minhash_.Clear();
+  next_inc_.value = 1;
+  if (opts_.analyzer->reset(data)) {
+    ComputeSignature();
+    return true;
+  }
+  return false;
+}
+
+void MinHashTokenStream::ComputeSignature() {
+  if (opts_.analyzer->next()) {
+    assert(term_);
+
+    const offset* offs = offset_ ? offset_ : &kEmptyOffset;
+    auto& [start, end] = std::get<offset>(attrs_);
+    start = offs->start;
+    end = offs->end;
+
+    do {
+      // FIXME(gnusi): fix a hash function
+      const size_t hash_value = std::hash<bytes_ref>{}(term_->value);
+
+      minhash_.Update(hash_value);
+      end = offs->end;
+    } while (opts_.analyzer->next());
+
+    const auto signature = minhash_.Signature();
+    begin_ = signature.begin();
+    end_ = signature.end();
+  }
+}
 
 }  // namespace iresearch::analysis
