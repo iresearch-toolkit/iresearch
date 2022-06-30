@@ -57,7 +57,7 @@ class MinHashTokenStream final : public analyzer, private util::noncopyable {
 
  private:
   using attributes = std::tuple<term_attribute, increment, offset>;
-  using iterator = std::span<const size_t>::iterator;
+  using iterator = std::vector<size_t>::const_iterator;
 
   void ComputeSignature();
 

@@ -313,13 +313,12 @@ void MinHashTokenStream::ComputeSignature() {
       // FIXME(gnusi): fix a hash function
       const size_t hash_value = std::hash<bytes_ref>{}(term_->value);
 
-      minhash_.Update(hash_value);
+      minhash_.Insert(hash_value);
       end = offs->end;
     } while (opts_.analyzer->next());
 
-    const auto signature = minhash_.Signature();
-    begin_ = signature.begin();
-    end_ = signature.end();
+    begin_ = std::begin(minhash_);
+    end_ = std::end(minhash_);
   }
 }
 

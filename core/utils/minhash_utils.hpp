@@ -33,15 +33,14 @@ namespace iresearch {
 // Implementation of MinHash variant with for a single hash function.
 class MinHash {
  public:
-  explicit MinHash(size_t size) {
-    size = std::max(size, size_t{1});
-    min_hashes_.reserve(size);
-    dedup_.reserve(size);
+  explicit MinHash(size_t size) : left_{std::max(size, size_t{1})} {
+    min_hashes_.reserve(left_);
+    dedup_.reserve(left_);
   }
 
   // Update MinHash with the new value.
   // `noexcept` because we reserved enough space in constructor already.
-  void Update(size_t hash_value) {
+  void Insert(size_t hash_value) {
     if (left_ && dedup_.emplace(hash_value).second) {
       min_hashes_.emplace_back(hash_value);
       if (0 == --left_) {
@@ -56,11 +55,18 @@ class MinHash {
     }
   }
 
-  // Return accumulated MinHash signature.
-  std::span<const size_t> Signature() const noexcept { return min_hashes_; }
+  // Provides access to the accumulated MinHash signature.
+  auto begin() const noexcept { return std::begin(min_hashes_); }
+  auto end() const noexcept { return std::end(min_hashes_); }
 
-  // Return size of MinHash signature
-  size_t Size() const noexcept { return min_hashes_.capacity(); }
+  // Return `true` if MinHash signature is empty, false - otherwise
+  size_t Empty() const noexcept { return min_hashes_.empty(); }
+
+  // Return actual size of accumulated MinHash signature.
+  size_t Size() const noexcept { return dedup_.size(); }
+
+  // Return the expected size of MinHash signature
+  size_t MaxSize() const noexcept { return min_hashes_.capacity(); }
 
   // Return Jaccard coefficient of 2 MinHash signatures.
   // `rhs` members are meant to be unique.
@@ -77,10 +83,10 @@ class MinHash {
 
   // Return Jaccard coefficient of 2 MinHash signatures.
   double Jaccard(const MinHash& rhs) const noexcept {
-    if (dedup_.size() > rhs.dedup_.size()) {
-      return Jaccard(rhs.Signature());
+    if (Size() > rhs.Size()) {
+      return Jaccard({std::begin(rhs), std::end(rhs)});
     } else {
-      return rhs.Jaccard(Signature());
+      return rhs.Jaccard({std::begin(*this), std::end(*this)});
     }
   }
 
@@ -88,7 +94,7 @@ class MinHash {
   void Clear() noexcept {
     min_hashes_.clear();
     dedup_.clear();
-    left_ = 0;
+    left_ = MaxSize();
   }
 
  private:
