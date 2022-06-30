@@ -200,3 +200,55 @@ TEST(MinHashTokenStreamTest, NormalizeCustom) {
       out, "minhash", irs::type<irs::text_format::json>::get(),
       R"({ "analyzer":{"type":"segmentation", "properties":42, "numHashes": 42 })"));
 }
+
+TEST(MinHashTokenStreamTest, CheckOptions) {
+  using namespace irs::analysis;
+
+  MinHashTokenStream::Options opts;
+
+  ASSERT_EQ(nullptr, opts.analyzer);
+  ASSERT_EQ(1, opts.num_hashes);
+}
+
+TEST(MinHashTokenStreamTest, ConstructFromOptions) {
+  using namespace irs::analysis;
+
+  {
+    MinHashTokenStream stream{
+        MinHashTokenStream::Options{.analyzer = nullptr, .num_hashes = 0}};
+    ASSERT_NE(nullptr, irs::get<irs::term_attribute>(stream));
+    ASSERT_NE(nullptr, irs::get<irs::offset>(stream));
+    ASSERT_NE(nullptr, irs::get<irs::increment>(stream));
+    const auto& [analyzer, num_hashes] = stream.options();
+    ASSERT_NE(nullptr, analyzer);
+    ASSERT_EQ(0, num_hashes);
+    ASSERT_EQ(irs::type<irs::string_token_stream>::id(), analyzer->type());
+  }
+
+  {
+    MinHashTokenStream stream{MinHashTokenStream::Options{
+        .analyzer = std::make_unique<segmentation_token_stream>(
+            segmentation_token_stream::options_t{}),
+        .num_hashes = 42}};
+    ASSERT_NE(nullptr, irs::get<irs::term_attribute>(stream));
+    ASSERT_NE(nullptr, irs::get<irs::offset>(stream));
+    ASSERT_NE(nullptr, irs::get<irs::increment>(stream));
+    const auto& [analyzer, num_hashes] = stream.options();
+    ASSERT_NE(nullptr, analyzer);
+    ASSERT_EQ(42, num_hashes);
+    ASSERT_EQ(irs::type<segmentation_token_stream>::id(), analyzer->type());
+  }
+
+  {
+    MinHashTokenStream stream{MinHashTokenStream::Options{
+        .analyzer = std::make_unique<empty_analyzer>(), .num_hashes = 42}};
+    ASSERT_NE(nullptr, irs::get<irs::term_attribute>(stream));
+    ASSERT_NE(nullptr, irs::get<irs::offset>(stream));
+    ASSERT_NE(nullptr, irs::get<irs::increment>(stream));
+    const auto& [analyzer, num_hashes] = stream.options();
+    ASSERT_NE(nullptr, analyzer);
+    ASSERT_EQ(42, num_hashes);
+    ASSERT_EQ(irs::type<empty_analyzer>::id(), analyzer->type());
+    ASSERT_FALSE(stream.reset(""));
+  }
+}

@@ -37,7 +37,7 @@ class MinHashTokenStream final : public analyzer, private util::noncopyable {
     // Analyzer used for hashing set generation
     analysis::analyzer::ptr analyzer;
     // Number of min hashes to maintain
-    uint32_t numHashes{1};
+    uint32_t num_hashes{1};
   };
 
   static constexpr string_ref type_name() noexcept { return "minhash"; }

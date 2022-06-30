@@ -66,18 +66,18 @@ std::pair<string_ref, velocypack::Slice> ParseAnalyzer(
 bool ParseVPack(velocypack::Slice slice, MinHashTokenStream::Options* opts) {
   assert(opts);
 
-  if (const auto numHashesSlice = slice.get(kNumHashes);
-      !numHashesSlice.isNumber()) {
+  if (const auto num_hashesSlice = slice.get(kNumHashes);
+      !num_hashesSlice.isNumber()) {
     IR_FRMT_ERROR(
         "Failed to read '%s' attribute as number while "
         "constructing MinHashTokenStream from VPack arguments",
         kNumHashes.data());
     return false;
   } else {
-    opts->numHashes = numHashesSlice.getNumber<decltype(opts->numHashes)>();
+    opts->num_hashes = num_hashesSlice.getNumber<decltype(opts->num_hashes)>();
   }
 
-  if (opts->numHashes < kMinHashes) {
+  if (opts->num_hashes < kMinHashes) {
     IR_FRMT_ERROR(
         "Number of hashes must be at least 1, failed to "
         "construct MinHashTokenStream from VPack arguments",
@@ -176,7 +176,7 @@ bool MakeVPackOptions(const MinHashTokenStream::Options& opts,
   }
 
   velocypack::ObjectBuilder root_scope{out};
-  out->add(kNumHashes, velocypack::Value{opts.numHashes});
+  out->add(kNumHashes, velocypack::Value{opts.num_hashes});
 
   if (props.isObject() && opts.analyzer) {
     const auto type = opts.analyzer->type()().name();
@@ -272,7 +272,7 @@ namespace iresearch::analysis {
 MinHashTokenStream::MinHashTokenStream(Options&& opts)
     : analysis::analyzer{irs::type<MinHashTokenStream>::get()},
       opts_{std::move(opts)},
-      minhash_{opts.numHashes} {
+      minhash_{opts.num_hashes} {
   if (!opts_.analyzer) {
     // Fallback to default implementation
     opts_.analyzer = std::make_unique<string_token_stream>();
@@ -281,7 +281,6 @@ MinHashTokenStream::MinHashTokenStream(Options&& opts)
   term_ = irs::get<term_attribute>(*opts_.analyzer);
 
   if (IRS_UNLIKELY(!term_)) {
-    assert(false);
     opts_.analyzer = std::make_unique<empty_analyzer>();
   }
 
