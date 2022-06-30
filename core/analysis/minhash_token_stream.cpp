@@ -87,7 +87,7 @@ bool ParseVPack(velocypack::Slice slice, MinHashTokenStream::Options* opts) {
 
   if (const auto analyzerSlice = slice.get(kAnalyzerParam);
       analyzerSlice.isNone() || analyzerSlice.isNull()) {
-    *opts = {};
+    opts->analyzer.reset();
     return true;
   } else {
     auto [type, props] = ParseAnalyzer(analyzerSlice);
@@ -159,39 +159,52 @@ analyzer::ptr MakeJson(irs::string_ref args) {
   return nullptr;
 }
 
-bool MakeVPackOptions(const MinHashTokenStream::Options& opts, VPackSlice props,
-                      velocypack::Builder* out) {
-  if (props.isNone()) {
-    props = velocypack::Slice::emptyObjectSlice();
-  }
+bool MakeVPackOptions(const MinHashTokenStream::Options& opts,
+                      VPackSlice analyzerSlice, velocypack::Builder* out) {
+  velocypack::Slice props = velocypack::Slice::emptyObjectSlice();
 
-  if (!props.isObject() || !opts.analyzer) {
+  if (analyzerSlice.isObject()) {
+    props = analyzerSlice.get(kPropertiesParam);
+    if (props.isNone()) {
+      props = velocypack::Slice::emptyObjectSlice();
+    }
+  } else if (!analyzerSlice.isNone()) {
+    IR_FRMT_ERROR(
+        "Failed to normalize definition of MinHashAnalyzer, 'properties' field "
+        "must be object");
     return false;
   }
 
-  const auto type = opts.analyzer->type()().name();
-  std::string normalized;
-
-  velocypack::ObjectBuilder root_scope{out, kAnalyzerParam};
-  out->add(kTypeParam, velocypack::Value{type});
+  velocypack::ObjectBuilder root_scope{out};
   out->add(kNumHashes, velocypack::Value{opts.numHashes});
 
-  if (analyzers::normalize(normalized, type,
-                           irs::type<irs::text_format::vpack>::get(),
-                           {props.startAs<char>(), props.byteSize()})) {
-    out->add(kPropertiesParam,
-             velocypack::Slice{
-                 reinterpret_cast<const uint8_t*>(normalized.c_str())});
+  if (props.isObject() && opts.analyzer) {
+    const auto type = opts.analyzer->type()().name();
+    std::string normalized;
 
-    return true;
-  }
+    velocypack::ObjectBuilder analyzer_scope{out, kAnalyzerParam};
+    out->add(kTypeParam, velocypack::Value{type});
 
-  // fallback to json format if vpack isn't available
-  if (analyzers::normalize(normalized, type,
-                           irs::type<irs::text_format::json>::get(),
-                           irs::slice_to_string(props))) {
-    auto vpack = velocypack::Parser::fromJson(normalized);
-    out->add(kPropertiesParam, vpack->slice());
+    if (analyzers::normalize(normalized, type,
+                             irs::type<irs::text_format::vpack>::get(),
+                             {props.startAs<char>(), props.byteSize()})) {
+      out->add(kPropertiesParam,
+               velocypack::Slice{
+                   reinterpret_cast<const uint8_t*>(normalized.c_str())});
+
+      return true;
+    }
+
+    // fallback to json format if vpack isn't available
+    if (analyzers::normalize(normalized, type,
+                             irs::type<irs::text_format::json>::get(),
+                             irs::slice_to_string(props))) {
+      auto vpack = velocypack::Parser::fromJson(normalized);
+      out->add(kPropertiesParam, vpack->slice());
+      return true;
+    }
+  } else if (!opts.analyzer) {
+    out->add(kAnalyzerParam, velocypack::Slice::emptyObjectSlice());
     return true;
   }
 
@@ -201,7 +214,7 @@ bool MakeVPackOptions(const MinHashTokenStream::Options& opts, VPackSlice props,
 bool NormalizeVPack(velocypack::Slice slice, velocypack::Builder* out) {
   MinHashTokenStream::Options opts;
   if (ParseVPack(slice, &opts)) {
-    return MakeVPackOptions(opts, slice.get(kPropertiesParam), out);
+    return MakeVPackOptions(opts, slice.get(kAnalyzerParam), out);
   }
   return false;
 }
