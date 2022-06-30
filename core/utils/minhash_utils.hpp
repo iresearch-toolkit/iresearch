@@ -62,6 +62,28 @@ class MinHash {
   // Return size of MinHash signature
   size_t Size() const noexcept { return min_hashes_.capacity(); }
 
+  // Return Jaccard coefficient of 2 MinHash signatures.
+  // `rhs` members are meant to be unique.
+  double Jaccard(std::span<const size_t> rhs) const noexcept {
+    const size_t intersect =
+        std::accumulate(std::begin(rhs), std::end(rhs), size_t{0},
+                        [&](size_t acc, size_t hash_value) noexcept {
+                          return acc + size_t{dedup_.contains(hash_value)};
+                        });
+    const size_t cardinality = Size() + rhs.size() - intersect;
+
+    return cardinality ? static_cast<double_t>(intersect) / cardinality : 1.0;
+  }
+
+  // Return Jaccard coefficient of 2 MinHash signatures.
+  double Jaccard(const MinHash& rhs) const noexcept {
+    if (Size() > rhs.Size()) {
+      return rhs.Jaccard(Signature());
+    } else {
+      return Jaccard(rhs.Signature());
+    }
+  }
+
   // Reset MinHash to the initial state.
   void Clear() noexcept {
     min_hashes_.clear();
