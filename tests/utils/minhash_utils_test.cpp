@@ -24,6 +24,14 @@
 
 #include "tests_shared.hpp"
 
+TEST(MinHashTest, Error) {
+  ASSERT_DOUBLE_EQ(std::numeric_limits<double_t>::infinity(),
+                   irs::MinHash::Error(0));
+  ASSERT_DOUBLE_EQ(1., irs::MinHash::Error(1));
+  ASSERT_DOUBLE_EQ(0.05, irs::MinHash::Error(400));
+  ASSERT_DOUBLE_EQ(0.1, irs::MinHash::Error(100));
+}
+
 TEST(MinHashTest, ConstructEmpty) {
   irs::MinHash mh{0};
   ASSERT_EQ(1, mh.MaxSize());

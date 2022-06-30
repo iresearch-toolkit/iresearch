@@ -291,8 +291,6 @@ bool MinHashTokenStream::next() {
 
 bool MinHashTokenStream::reset(string_ref data) {
   begin_ = end_ = {};
-  minhash_.Clear();
-  next_inc_.value = 1;
   if (opts_.analyzer->reset(data)) {
     ComputeSignature();
     return true;
@@ -301,6 +299,9 @@ bool MinHashTokenStream::reset(string_ref data) {
 }
 
 void MinHashTokenStream::ComputeSignature() {
+  minhash_.Clear();
+  next_inc_.value = 1;
+
   if (opts_.analyzer->next()) {
     assert(term_);
 

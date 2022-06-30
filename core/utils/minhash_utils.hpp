@@ -32,6 +32,13 @@ namespace iresearch {
 // Implementation of MinHash variant with a single hash function.
 class MinHash {
  public:
+  // Returns expected probabilistic error according
+  // the size of MinHash signature.
+  static constexpr double_t Error(size_t size) noexcept {
+    return size ? 1. / std::sqrt(size)
+                : std::numeric_limits<double_t>::infinity();
+  }
+
   explicit MinHash(size_t size) : left_{std::max(size, size_t{1})} {
     min_hashes_.reserve(left_);
     dedup_.reserve(left_);
@@ -58,13 +65,13 @@ class MinHash {
   auto begin() const noexcept { return std::begin(min_hashes_); }
   auto end() const noexcept { return std::end(min_hashes_); }
 
-  // Return `true` if MinHash signature is empty, false - otherwise
+  // Return `true` if MinHash signature is empty, false - otherwise.
   size_t Empty() const noexcept { return min_hashes_.empty(); }
 
   // Return actual size of accumulated MinHash signature.
   size_t Size() const noexcept { return dedup_.size(); }
 
-  // Return the expected size of MinHash signature
+  // Return the expected size of MinHash signature.
   size_t MaxSize() const noexcept { return min_hashes_.capacity(); }
 
   // Return Jaccard coefficient of 2 MinHash signatures.
