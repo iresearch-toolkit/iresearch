@@ -62,6 +62,8 @@ class ArrayStream final : public irs::analysis::analyzer {
   }
 
   bool reset(irs::string_ref data) override {
+    std::get<irs::offset>(attrs_) = {};
+
     if (data == data_) {
       it_ = begin_;
       return true;
@@ -308,7 +310,7 @@ TEST(MinHashTokenStreamTest, ConstructFromOptions) {
   }
 }
 
-TEST(MinHashTokenStreamTest, Next) {
+TEST(MinHashTokenStreamTest, NextReset) {
   using namespace irs::analysis;
 
   constexpr uint32_t kNumHashes = 4;
@@ -319,7 +321,7 @@ TEST(MinHashTokenStreamTest, Next) {
   MinHashTokenStream stream{{.analyzer = std::make_unique<ArrayStream>(
                                  kData, std::begin(kValues), std::end(kValues)),
                              .num_hashes = kNumHashes}};
-  ASSERT_TRUE(stream.reset(kData));
+
   auto* term = irs::get<irs::term_attribute>(stream);
   ASSERT_NE(nullptr, term);
   auto* offset = irs::get<irs::offset>(stream);
@@ -327,29 +329,33 @@ TEST(MinHashTokenStreamTest, Next) {
   auto* inc = irs::get<irs::increment>(stream);
   ASSERT_NE(nullptr, inc);
 
-  ASSERT_TRUE(stream.next());
-  EXPECT_EQ("aq+fPy7QMmE", irs::ref_cast<char>(term->value));
-  ASSERT_EQ(1, inc->value);
-  EXPECT_EQ(0, offset->start);
-  EXPECT_EQ(32, offset->end);
+  for (size_t i = 0; i < 2; ++i) {
+    ASSERT_TRUE(stream.reset(kData));
 
-  ASSERT_TRUE(stream.next());
-  EXPECT_EQ("zN55OxHobU0", irs::ref_cast<char>(term->value));
-  ASSERT_EQ(0, inc->value);
-  EXPECT_EQ(0, offset->start);
-  EXPECT_EQ(32, offset->end);
+    ASSERT_TRUE(stream.next());
+    EXPECT_EQ("aq+fPy7QMmE", irs::ref_cast<char>(term->value));
+    ASSERT_EQ(1, inc->value);
+    EXPECT_EQ(0, offset->start);
+    EXPECT_EQ(32, offset->end);
 
-  ASSERT_TRUE(stream.next());
-  EXPECT_EQ("fE1vyfdbgBg", irs::ref_cast<char>(term->value));
-  ASSERT_EQ(0, inc->value);
-  EXPECT_EQ(0, offset->start);
-  EXPECT_EQ(32, offset->end);
+    ASSERT_TRUE(stream.next());
+    EXPECT_EQ("zN55OxHobU0", irs::ref_cast<char>(term->value));
+    ASSERT_EQ(0, inc->value);
+    EXPECT_EQ(0, offset->start);
+    EXPECT_EQ(32, offset->end);
 
-  ASSERT_TRUE(stream.next());
-  EXPECT_EQ("g44ma/eW5Rc", irs::ref_cast<char>(term->value));
-  ASSERT_EQ(0, inc->value);
-  EXPECT_EQ(0, offset->start);
-  EXPECT_EQ(32, offset->end);
+    ASSERT_TRUE(stream.next());
+    EXPECT_EQ("fE1vyfdbgBg", irs::ref_cast<char>(term->value));
+    ASSERT_EQ(0, inc->value);
+    EXPECT_EQ(0, offset->start);
+    EXPECT_EQ(32, offset->end);
 
-  ASSERT_FALSE(stream.next());
+    ASSERT_TRUE(stream.next());
+    EXPECT_EQ("g44ma/eW5Rc", irs::ref_cast<char>(term->value));
+    ASSERT_EQ(0, inc->value);
+    EXPECT_EQ(0, offset->start);
+    EXPECT_EQ(32, offset->end);
+
+    ASSERT_FALSE(stream.next());
+  }
 }
