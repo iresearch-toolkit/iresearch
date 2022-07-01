@@ -94,9 +94,9 @@ class MinHash {
   // Return Jaccard coefficient of 2 MinHash signatures.
   double Jaccard(const MinHash& rhs) const noexcept {
     if (Size() > rhs.Size()) {
-      return Jaccard({std::begin(rhs), std::end(rhs)});
+      return Jaccard(std::span<const size_t>{rhs.min_hashes_});
     } else {
-      return rhs.Jaccard({std::begin(*this), std::end(*this)});
+      return rhs.Jaccard(std::span<const size_t>{min_hashes_});
     }
   }
 
