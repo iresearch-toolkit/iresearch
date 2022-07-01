@@ -1,4 +1,4 @@
-﻿////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -148,6 +148,8 @@ template<typename T, typename D>
 class pool_control_ptr final : public std::unique_ptr<T, D> {
  public:
   using std::unique_ptr<T, D>::unique_ptr;
+  
+  pool_control_ptr() = default;
 
   // Intentionally hides std::unique_ptr<...>::reset() as we
   // disallow changing the owned pointer.
@@ -411,9 +413,12 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
   class releaser final {
    public:
     explicit releaser(unbounded_object_pool& owner) noexcept : owner_{&owner} {}
+    
+    releaser() noexcept : owner_{nullptr} {}
 
     void operator()(pointer p) const noexcept {
       assert(p);  // Ensured by std::unique_ptr<...>
+      assert(owner_);
       owner_->release(p);
     }
 
