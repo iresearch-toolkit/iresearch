@@ -354,6 +354,7 @@ add_dependencies(iresearch-static
   iresearch-analyzer-segmentation-static
   iresearch-analyzer-nearest-neighbors-static
   iresearch-analyzer-classification-static
+  iresearch-analyzer-minhash-static
   iresearch-format-1_0-static
   iresearch-scorer-tfidf-static
   iresearch-scorer-bm25-static
@@ -402,6 +403,7 @@ target_link_libraries(iresearch-static
   PUBLIC iresearch-analyzer-ngram-static
   PUBLIC iresearch-analyzer-text-static
   PUBLIC iresearch-analyzer-norm-static
+  PUBLIC iresearch-analyzer-minhash-static
   PUBLIC iresearch-analyzer-collation-static
   PUBLIC iresearch-analyzer-stem-static
   PUBLIC iresearch-analyzer-stopwords-static
@@ -512,6 +514,29 @@ set_target_properties(iresearch-analyzer-collation-static
 )
 
 target_link_libraries(iresearch-analyzer-collation-static
+  iresearch-static
+)
+
+################################################################################
+### analysis plugin : minhash
+################################################################################
+
+add_library(iresearch-analyzer-minhash-static
+  STATIC
+  ./analysis/minhash_token_stream.cpp
+)
+
+set_ipo(iresearch-analyzer-minhash-static)
+
+set_target_properties(iresearch-analyzer-minhash-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-minhash-s
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+)
+
+target_link_libraries(iresearch-analyzer-minhash-static
   iresearch-static
 )
 

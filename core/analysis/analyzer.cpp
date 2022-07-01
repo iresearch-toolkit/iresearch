@@ -20,15 +20,13 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "analyzer.hpp"
 
-namespace iresearch {
-namespace analysis {
+namespace iresearch::analysis {
 
-analyzer::analyzer(const type_info& type) noexcept
-  : type_(type.id()) {
-}
+analyzer::analyzer(const type_info& type) noexcept : type_(type.id()) {}
 
-} // analysis
-}
+empty_analyzer::empty_analyzer() noexcept
+    : analyzer(irs::type<empty_analyzer>::get()) {}
+
+}  // namespace iresearch::analysis

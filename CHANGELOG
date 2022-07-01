@@ -1,6 +1,9 @@
 master
 -------------------------
 
+* Add `MinHashAnalyzer` capable of producing tokens composing a MinHash
+  signature.
+
 * Add `ByNestedFilter` capable of matching documents by nested query.
 
 * Add ability to access previous document for columnstore2 iterators.
