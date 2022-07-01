@@ -39,8 +39,12 @@ class MinHash {
                 : std::numeric_limits<double_t>::infinity();
   }
 
-  explicit MinHash(size_t size) : left_{std::max(size, size_t{1})} {
+  explicit MinHash(size_t size)
+      : max_size_{std::max(size, size_t{1})}, left_{max_size_} {
     min_hashes_.reserve(left_);
+
+    // +1 because we inserting a new hash
+    // value one before removing an old one.
     dedup_.reserve(left_ + 1);
   }
 
@@ -72,7 +76,7 @@ class MinHash {
   size_t Size() const noexcept { return dedup_.size(); }
 
   // Return the expected size of MinHash signature.
-  size_t MaxSize() const noexcept { return min_hashes_.capacity(); }
+  size_t MaxSize() const noexcept { return max_size_; }
 
   // Return Jaccard coefficient of 2 MinHash signatures.
   // `rhs` members are meant to be unique.
@@ -106,7 +110,8 @@ class MinHash {
  private:
   std::vector<size_t> min_hashes_;
   absl::flat_hash_set<size_t> dedup_;  // guard against duplicated hash values
-  size_t left_{};
+  size_t max_size_;
+  size_t left_;
 };
 
 }  // namespace iresearch
