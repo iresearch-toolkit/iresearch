@@ -122,9 +122,9 @@ TEST(MinHashTest, Jaccard) {
 
   auto assert_jaccard = [](const irs::MinHash& lhs, const irs::MinHash rhs,
                            double expected) {
-    ASSERT_DOUBLE_EQ(expected, lhs.Jaccard(std::span{rhs}));
+    ASSERT_DOUBLE_EQ(expected, lhs.Jaccard(std::span<const size_t>{rhs}));
     ASSERT_DOUBLE_EQ(expected, lhs.Jaccard(rhs));
-    ASSERT_DOUBLE_EQ(expected, rhs.Jaccard(std::span{lhs}));
+    ASSERT_DOUBLE_EQ(expected, rhs.Jaccard(std::span<const size_t>{lhs}));
     ASSERT_DOUBLE_EQ(expected, rhs.Jaccard(lhs));
   };
 
