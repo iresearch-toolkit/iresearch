@@ -39,17 +39,6 @@ constexpr std::string_view TYPE_PARAM_NAME        {"type"};
 constexpr std::string_view PROPERTIES_PARAM_NAME  {"properties"};
 
 const irs::offset NO_OFFSET;
-
-class empty_analyzer final
-  : public irs::analysis::analyzer, private irs::util::noncopyable {
- public:
-  empty_analyzer() : analyzer(irs::type<empty_analyzer>::get()) {}
-  virtual irs::attribute* get_mutable(irs::type_info::type_id) override { return nullptr;  }
-  static constexpr irs::string_ref type_name() noexcept { return "empty_analyzer"; }
-  virtual bool next() override { return false; }
-  virtual bool reset(irs::string_ref) override { return false; }
-};
-
 using options_normalize_t = std::vector<std::pair<std::string, std::string>>;
 
 template<typename T>
