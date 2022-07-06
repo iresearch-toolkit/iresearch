@@ -53,8 +53,8 @@ class MinHash {
       : max_size_{std::max(size, size_t{1})}, left_{max_size_} {
     min_hashes_.reserve(left_);
 
-    // +1 because we inserting a new hash
-    // value one before removing an old one.
+    // +1 because we insert a new hash
+    // value before removing an old one.
     dedup_.reserve(left_ + 1);
   }
 
