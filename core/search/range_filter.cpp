@@ -22,24 +22,20 @@
 
 #include "range_filter.hpp"
 
-#include "shared.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "search/filter_visitor.hpp"
 #include "search/limited_sample_collector.hpp"
 #include "search/term_filter.hpp"
+#include "shared.hpp"
 
 namespace {
 
 using namespace irs;
 
 template<typename Visitor, typename Comparer>
-void collect_terms(
-    const sub_reader& segment,
-    const term_reader& field,
-    seek_term_iterator& terms,
-    Visitor& visitor,
-    Comparer cmp) {
+void collect_terms(const sub_reader& segment, const term_reader& field,
+                   seek_term_iterator& terms, Visitor& visitor, Comparer cmp) {
   auto& value = terms.value();
 
   if (cmp(value)) {
@@ -61,11 +57,8 @@ void collect_terms(
 }
 
 template<typename Visitor>
-void visit(
-    const sub_reader& segment,
-    const term_reader& reader,
-    const by_range_options::range_type& rng,
-    Visitor& visitor) {
+void visit(const sub_reader& segment, const term_reader& reader,
+           const by_range_options::range_type& rng, Visitor& visitor) {
   auto terms = reader.iterator(SeekMode::NORMAL);
 
   if (IRS_UNLIKELY(!terms)) {
@@ -97,47 +90,36 @@ void visit(
 
   switch (rng.max_type) {
     case BoundType::UNBOUNDED:
-      ::collect_terms(
-        segment, reader, *terms, visitor, [](bytes_ref) {
-          return true;
-      });
+      ::collect_terms(segment, reader, *terms, visitor,
+                      [](bytes_ref) { return true; });
       break;
     case BoundType::INCLUSIVE:
-      ::collect_terms(
-        segment, reader, *terms, visitor, [max](bytes_ref term) {
-          return term <= max;
-      });
+      ::collect_terms(segment, reader, *terms, visitor,
+                      [max](bytes_ref term) { return term <= max; });
       break;
     case BoundType::EXCLUSIVE:
-      ::collect_terms(
-        segment, reader, *terms, visitor, [max](bytes_ref term) {
-          return term < max;
-      });
+      ::collect_terms(segment, reader, *terms, visitor,
+                      [max](bytes_ref term) { return term < max; });
       break;
   }
 }
 
-}
+}  // namespace
 
 namespace iresearch {
 
 /*static*/ filter::prepared::ptr by_range::prepare(
-    const index_reader& index,
-    const Order& ord,
-    score_t boost,
-    string_ref field,
-    const options_type::range_type& rng,
+    const index_reader& index, const Order& ord, score_t boost,
+    string_ref field, const options_type::range_type& rng,
     size_t scored_terms_limit) {
-  //TODO: optimize unordered case
-  // - seek to min
-  // - get ordinal position of the term
-  // - seek to max
-  // - get ordinal position of the term
+  // TODO: optimize unordered case
+  //  - seek to min
+  //  - get ordinal position of the term
+  //  - seek to max
+  //  - get ordinal position of the term
 
-  if (rng.min_type != BoundType::UNBOUNDED
-      && rng.max_type != BoundType::UNBOUNDED
-      && rng.min == rng.max) {
-
+  if (rng.min_type != BoundType::UNBOUNDED &&
+      rng.max_type != BoundType::UNBOUNDED && rng.min == rng.max) {
     if (rng.min_type == rng.max_type && rng.min_type == BoundType::INCLUSIVE) {
       // degenerated case
       return by_term::prepare(index, ord, boost, field, rng.min);
@@ -147,7 +129,9 @@ namespace iresearch {
     return prepared::empty();
   }
 
-  limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
+  limited_sample_collector<term_frequency> collector(
+      ord.empty() ? 0
+                  : scored_terms_limit);  // object for collecting order stats
   multiterm_query::states_t states(index);
   multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 
@@ -168,16 +152,14 @@ namespace iresearch {
   collector.score(index, ord, stats);
 
   return memory::make_managed<multiterm_query>(
-    std::move(states), std::move(stats),
-    boost, sort::MergeType::kSum);
+      std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
 }
 
-/*static*/ void by_range::visit(
-    const sub_reader& segment,
-    const term_reader& reader,
-    const options_type::range_type& rng,
-    filter_visitor& visitor) {
+/*static*/ void by_range::visit(const sub_reader& segment,
+                                const term_reader& reader,
+                                const options_type::range_type& rng,
+                                filter_visitor& visitor) {
   ::visit(segment, reader, rng, visitor);
 }
 
-} // ROOT
+}  // namespace iresearch

@@ -590,18 +590,14 @@ class disjunction final : public compound_doc_iterator<Adapter>,
                           private Merger,
                           private score_ctx {
  public:
-  using unary_disjunction_t = unary_disjunction<DocIterator, Adapter>;
-  using basic_disjunction_t = basic_disjunction<DocIterator, Merger, Adapter>;
-  using small_disjunction_t = small_disjunction<DocIterator, Merger, Adapter>;
-
   using adapter = Adapter;
   using merger_type = Merger;
   using doc_iterators_t = std::vector<adapter>;
   using heap_container = std::vector<size_t>;
   using heap_iterator = heap_container::iterator;
 
-  static constexpr bool enable_unary() noexcept { return EnableUnary; };
-  static constexpr size_t small_disjunction_upper_bound() noexcept { return 5; }
+  static constexpr bool kEnableUnary = EnableUnary;
+  static constexpr size_t kSmallDisjunctionUpperBound = 5;
 
   disjunction(doc_iterators_t&& itrs, Merger&& merger, cost::cost_t est)
       : disjunction{std::move(itrs), std::move(merger), est,
@@ -848,21 +844,18 @@ template<MatchType MinMatch, bool SeekReadahead, size_t NumBlocks = 8>
 struct block_disjunction_traits {
   // "false" - iterator is used for min match filtering,
   // "true" - otherwise
-  static constexpr bool min_match() noexcept {
-    return MatchType::MATCH != MinMatch;
-  }
+  static constexpr bool kMinMatch = MatchType::MATCH != MinMatch;
 
   // "false" - iterator is used for min match filtering,
   // "true" - otherwise
-  static constexpr bool min_match_early_pruning() noexcept {
-    return MatchType::MIN_MATCH_FAST == MinMatch;
-  }
+  static constexpr bool kMinMatchEarlyPruning =
+      MatchType::MIN_MATCH_FAST == MinMatch;
 
   // Use readahead buffer for random access
-  static constexpr bool seek_readahead() noexcept { return SeekReadahead; }
+  static constexpr bool kSeekReadahead = SeekReadahead;
 
   // Size of the readhead buffer in blocks
-  static constexpr size_t num_blocks() noexcept { return NumBlocks; };
+  static constexpr size_t kNumBlocks = NumBlocks;
 };
 
 // The implementation reads ahead 64*NumBlocks documents.
@@ -880,14 +873,11 @@ class block_disjunction final : public doc_iterator,
   using merger_type = Merger;
   using doc_iterators_t = std::vector<adapter>;
 
-  using unary_disjunction_t = unary_disjunction<DocIterator, Adapter>;
-  using basic_disjunction_t = basic_disjunction<DocIterator, Merger, Adapter>;
-  using small_disjunction_t = block_disjunction;
-
-  static constexpr bool enable_unary() { return false; }  // FIXME
+  // FIXME(gnusi): do we need this?
+  static constexpr bool kEnableUnary = false;
 
   // Block disjunction is faster than small_disjunction
-  static constexpr size_t small_disjunction_upper_bound() noexcept { return 0; }
+  static constexpr size_t kSmallDisjunctionUpperBound = 0;
 
   block_disjunction(doc_iterators_t&& itrs, Merger&& merger, cost::cost_t est)
       : block_disjunction{std::move(itrs), 1, std::move(merger), est} {}
@@ -942,7 +932,7 @@ class block_disjunction final : public doc_iterator,
 
         cur_ = *begin_++;
         doc_base_ += bits_required<uint64_t>();
-        if constexpr (traits_type::min_match() || HasScore_v<Merger>) {
+        if constexpr (traits_type::kMinMatch || HasScore_v<Merger>) {
           buf_offset_ += bits_required<uint64_t>();
         }
       }
@@ -952,7 +942,7 @@ class block_disjunction final : public doc_iterator,
 
       [[maybe_unused]] const size_t buf_offset = buf_offset_ + offset;
 
-      if constexpr (traits_type::min_match()) {
+      if constexpr (traits_type::kMinMatch) {
         match_count_ = match_buf_.match_count(buf_offset);
 
         if (match_count_ < match_buf_.min_match_count()) {
@@ -966,7 +956,7 @@ class block_disjunction final : public doc_iterator,
       }
 
       return true;
-    } while (traits_type::min_match());
+    } while (traits_type::kMinMatch);
 
     assert(false);
     return true;
@@ -978,22 +968,22 @@ class block_disjunction final : public doc_iterator,
     if (target <= doc.value) {
       return doc.value;
     } else if (target < max_) {
-      const doc_id_t block_base = (max_ - window());
+      const doc_id_t block_base = (max_ - kWindow);
 
       target -= block_base;
-      const doc_id_t block_offset = target / block_size();
+      const doc_id_t block_offset = target / kBlockSize;
 
-      doc_base_ = block_base + block_offset * block_size();
+      doc_base_ = block_base + block_offset * kBlockSize;
       begin_ = mask_ + block_offset + 1;
 
       assert(begin_ > std::begin(mask_) && begin_ <= std::end(mask_));
-      cur_ = begin_[-1] & ((~UINT64_C(0)) << target % block_size());
+      cur_ = begin_[-1] & ((~UINT64_C(0)) << target % kBlockSize);
 
       next();
     } else {
       doc.value = doc_limits::eof();
 
-      if constexpr (traits_type::min_match()) {
+      if constexpr (traits_type::kMinMatch) {
         match_count_ = 0;
       }
 
@@ -1007,7 +997,7 @@ class block_disjunction final : public doc_iterator,
         }
 
         // this is to circumvent bug in GCC 10.1 on ARM64
-        constexpr bool is_min_match = traits_type::min_match();
+        constexpr bool is_min_match = traits_type::kMinMatch;
         if (value < doc.value) {
           doc.value = value;
           if constexpr (is_min_match) {
@@ -1036,14 +1026,14 @@ class block_disjunction final : public doc_iterator,
       begin_ = std::end(mask_);  // enforce "refill()" for upcoming "next()"
       max_ = doc.value;
 
-      if constexpr (traits_type::seek_readahead()) {
+      if constexpr (traits_type::kSeekReadahead) {
         min_ = doc.value;
         next();
       } else {
         min_ = doc.value + 1;
         buf_offset_ = 0;
 
-        if constexpr (traits_type::min_match()) {
+        if constexpr (traits_type::kMinMatch) {
           if (match_count_ < match_buf_.min_match_count()) {
             next();
             return doc.value;
@@ -1071,20 +1061,14 @@ class block_disjunction final : public doc_iterator,
   }
 
  private:
-  static constexpr doc_id_t block_size() noexcept {
-    return bits_required<uint64_t>();
-  }
+  static constexpr doc_id_t kBlockSize = bits_required<uint64_t>();
 
-  static constexpr doc_id_t num_blocks() noexcept {
-    return static_cast<doc_id_t>(
-        std::max(size_t(1), traits_type::num_blocks()));
-  }
+  static constexpr doc_id_t kNumBlocks =
+      static_cast<doc_id_t>(std::max(size_t(1), traits_type::kNumBlocks));
 
-  static constexpr doc_id_t window() noexcept {
-    return block_size() * num_blocks();
-  }
+  static constexpr doc_id_t kWindow = kBlockSize * kNumBlocks;
 
-  static_assert(block_size() * size_t(num_blocks()) <
+  static_assert(kBlockSize * size_t(kNumBlocks) <
                 std::numeric_limits<doc_id_t>::max());
 
   // FIXME(gnusi): stack based score_buffer for constant cases
@@ -1093,7 +1077,7 @@ class block_disjunction final : public doc_iterator,
                          detail::empty_score_buffer>;
 
   using min_match_buffer_type =
-      detail::min_match_buffer<traits_type::min_match() ? window() : 0>;
+      detail::min_match_buffer<traits_type::kMinMatch ? kWindow : 0>;
 
   using attributes = std::tuple<document, score, cost>;
 
@@ -1107,8 +1091,8 @@ class block_disjunction final : public doc_iterator,
         itrs_(std::move(itrs)),
         match_count_(itrs_.empty()
                          ? size_t(0)
-                         : static_cast<size_t>(!traits_type::min_match())),
-        score_buf_(Merger::size(), window()),
+                         : static_cast<size_t>(!traits_type::kMinMatch)),
+        score_buf_(Merger::size(), kWindow),
         match_buf_(min_match_count) {
     std::get<cost>(attrs_).reset(std::forward<Estimation>(estimation));
 
@@ -1128,7 +1112,7 @@ class block_disjunction final : public doc_iterator,
       });
     }
 
-    if (traits_type::min_match() && min_match_count > 1) {
+    if (traits_type::kMinMatch && min_match_count > 1) {
       // sort subnodes in ascending order by their cost
       // FIXME don't use extract
       std::sort(itrs_.begin(), itrs_.end(),
@@ -1148,7 +1132,7 @@ class block_disjunction final : public doc_iterator,
         irstd::swap_remove(itrs_, begin);
         --end;
 
-        if constexpr (traits_type::min_match_early_pruning()) {
+        if constexpr (traits_type::kMinMatchEarlyPruning) {
           // we don't need precise match count
           if (itrs_.size() < match_buf_.min_match_count()) {
             // can't fulfill min match requirement anymore
@@ -1161,8 +1145,8 @@ class block_disjunction final : public doc_iterator,
       }
     }
 
-    if constexpr (traits_type::min_match() &&
-                  !traits_type::min_match_early_pruning()) {
+    if constexpr (traits_type::kMinMatch &&
+                  !traits_type::kMinMatchEarlyPruning) {
       // we need precise match count, so can't break earlier
       if (itrs_.size() < match_buf_.min_match_count()) {
         // can't fulfill min match requirement anymore
@@ -1178,7 +1162,7 @@ class block_disjunction final : public doc_iterator,
       score_value_ = score_buf_.data();
       std::memset(score_buf_.data(), 0, score_buf_.size());
     }
-    if constexpr (traits_type::min_match()) {
+    if constexpr (traits_type::kMinMatch) {
       match_buf_.clear();
     }
   }
@@ -1188,28 +1172,28 @@ class block_disjunction final : public doc_iterator,
       return false;
     }
 
-    if constexpr (!traits_type::min_match()) {
+    if constexpr (!traits_type::kMinMatch) {
       reset();
     }
 
     bool empty = true;
 
     do {
-      if constexpr (traits_type::min_match()) {
+      if constexpr (traits_type::kMinMatch) {
         // in min match case we need to clear
         // internal buffers on every iteration
         reset();
       }
 
       doc_base_ = min_;
-      max_ = min_ + window();
+      max_ = min_ + kWindow;
       min_ = doc_limits::eof();
 
       visit_and_purge([this, &empty](auto& it) mutable {
         // FIXME
         // for min match case we can skip the whole block if
         // we can't satisfy match_buf_.min_match_count() conditions, namely
-        // if constexpr (traits_type::min_match()) {
+        // if constexpr (traits_type::kMinMatch) {
         //  if (empty && (&it + (match_buf_.min_match_count() -
         //  match_buf_.max_match_count()) < (itrs_.data() + itrs_.size()))) {
         //    // skip current block
@@ -1236,13 +1220,13 @@ class block_disjunction final : public doc_iterator,
 
     cur_ = *mask_;
     begin_ = mask_ + 1;
-    if constexpr (traits_type::min_match() || HasScore_v<Merger>) {
+    if constexpr (traits_type::kMinMatch || HasScore_v<Merger>) {
       buf_offset_ = 0;
     }
     while (!cur_) {
       cur_ = *begin_++;
       doc_base_ += bits_required<uint64_t>();
-      if constexpr (traits_type::min_match() || HasScore_v<Merger>) {
+      if constexpr (traits_type::kMinMatch || HasScore_v<Merger>) {
         buf_offset_ += bits_required<uint64_t>();
       }
     }
@@ -1259,7 +1243,7 @@ class block_disjunction final : public doc_iterator,
 
     // disjunction is 1 step next behind, that may happen:
     // - before the very first next()
-    // - after seek() in case of 'seek_readahead() == false'
+    // - after seek() in case of 'kSeekReadahead == false'
     if (*doc < doc_base_ && !it->next()) {
       // exhausted
       return false;
@@ -1273,7 +1257,7 @@ class block_disjunction final : public doc_iterator,
 
       const size_t offset = *doc - doc_base_;
 
-      irs::set_bit(mask_[offset / block_size()], offset % block_size());
+      irs::set_bit(mask_[offset / kBlockSize], offset % kBlockSize);
 
       if constexpr (Score) {
         assert(it.score);
@@ -1282,7 +1266,7 @@ class block_disjunction final : public doc_iterator,
         merger(score_buf_.get(offset), merger.temp());
       }
 
-      if constexpr (traits_type::min_match()) {
+      if constexpr (traits_type::kMinMatch) {
         empty &= match_buf_.inc(offset);
       } else {
         empty = false;
@@ -1295,7 +1279,7 @@ class block_disjunction final : public doc_iterator,
     }
   }
 
-  uint64_t mask_[num_blocks()]{};
+  uint64_t mask_[kNumBlocks]{};
   doc_iterators_t itrs_;
   uint64_t* begin_{std::end(mask_)};
   uint64_t cur_{};
@@ -1324,48 +1308,113 @@ using min_match_iterator =
                       block_disjunction_traits<MatchType::MIN_MATCH, false>,
                       Adapter>;
 
+template<typename T>
+struct RebindIterator;
+
+template<typename DocIterator, typename Merger, typename Adapter,
+         bool EnableUnary>
+struct RebindIterator<disjunction<DocIterator, Merger, Adapter, EnableUnary>> {
+  using Unary = unary_disjunction<DocIterator, Adapter>;
+  using Basic = basic_disjunction<DocIterator, Merger, Adapter>;
+  using Small = small_disjunction<DocIterator, Merger, Adapter>;
+};
+
+template<typename DocIterator, typename Merger, typename Adapter>
+struct RebindIterator<disjunction_iterator<DocIterator, Merger, Adapter>> {
+  using Unary = unary_disjunction<DocIterator, Adapter>;
+  using Basic = basic_disjunction<DocIterator, Merger, Adapter>;
+  using Small = disjunction_iterator<DocIterator, Merger, Adapter>;
+};
+
+template<typename DocIterator, typename Merger, typename Adapter>
+struct RebindIterator<min_match_iterator<DocIterator, Merger, Adapter>> {
+  using Disjunction = disjunction_iterator<DocIterator, Merger, Adapter>;
+  using Conjunction = conjunction<DocIterator, Merger>;
+};
+
 // Returns disjunction iterator created from the specified sub iterators
-template<typename Disjunction, typename... Args>
+template<typename Disjunction, typename Merger, typename... Args>
 doc_iterator::ptr make_disjunction(typename Disjunction::doc_iterators_t&& itrs,
-                                   Args&&... args) {
+                                   Merger&& merger, Args&&... args) {
   const auto size = itrs.size();
 
   switch (size) {
     case 0:
-      // empty or unreachable search criteria
+      // Empty or unreachable search criteria
       return doc_iterator::empty();
     case 1:
-      if constexpr (Disjunction::enable_unary()) {
-        using unary_disjunction_t = typename Disjunction::unary_disjunction_t;
+      if constexpr (Disjunction::kEnableUnary) {
+        using unary_disjunction_t = typename RebindIterator<Disjunction>::Unary;
+
         return memory::make_managed<unary_disjunction_t>(
             std::move(itrs.front()));
       }
 
-      // single sub-query
+      // Single sub-query
       return std::move(itrs.front());
     case 2: {
-      using basic_disjunction_t = typename Disjunction::basic_disjunction_t;
+      using basic_disjunction_t = typename RebindIterator<Disjunction>::Basic;
 
-      // simple disjunction
+      // 2-way disjunction
       return memory::make_managed<basic_disjunction_t>(
           std::move(itrs.front()), std::move(itrs.back()),
+          std::forward<Merger>(merger), std::forward<Args>(args)...);
+    }
+  }
+
+  if constexpr (Disjunction::kSmallDisjunctionUpperBound > 0) {
+    if (size <= Disjunction::kSmallDisjunctionUpperBound) {
+      using small_disjunction_t = typename RebindIterator<Disjunction>::Small;
+
+      // Small disjunction
+      return memory::make_managed<small_disjunction_t>(
+          std::move(itrs), std::forward<Merger>(merger),
           std::forward<Args>(args)...);
     }
   }
 
-  if constexpr (Disjunction::small_disjunction_upper_bound() > 0) {
-    if (size <= Disjunction::small_disjunction_upper_bound()) {
-      using small_disjunction_t = typename Disjunction::small_disjunction_t;
+  return memory::make_managed<Disjunction>(std::move(itrs),
+                                           std::forward<Merger>(merger),
+                                           std::forward<Args>(args)...);
+}
 
-      // small disjunction
-      return memory::make_managed<small_disjunction_t>(
-          std::move(itrs), std::forward<Args>(args)...);
-    }
+// Returns weak conjunction iterator created from the specified sub iterators
+template<typename WeakConjunction, typename Merger, typename... Args>
+doc_iterator::ptr make_weak_conjunction(
+    typename WeakConjunction::doc_iterators_t&& itrs, size_t min_match,
+    Merger&& merger, Args&&... args) {
+  const auto size = itrs.size();
+
+  if (0 == size || min_match > size) {
+    // Empty or unreachable search criteria
+    return doc_iterator::empty();
   }
 
-  // disjunction
-  return memory::make_managed<Disjunction>(std::move(itrs),
+  if (1 == min_match) {
+    // Pure disjunction
+    assert(size >= min_match);
+    using disjunction_t = typename RebindIterator<WeakConjunction>::Disjunction;
+
+    return make_disjunction<disjunction_t>(std::move(itrs),
+                                           std::forward<Merger>(merger),
                                            std::forward<Args>(args)...);
+  }
+
+  if (min_match == size) {
+    // Pure conjunction
+    assert(min_match == size);
+    using conjunction_t = typename RebindIterator<WeakConjunction>::Conjunction;
+
+    return memory::make_managed<conjunction_t>(
+        typename conjunction_t::doc_iterators_t{
+            std::make_move_iterator(std::begin(itrs)),
+            std::make_move_iterator(std::end(itrs))},
+        std::forward<Merger>(merger));
+  }
+
+  return memory::make_managed<WeakConjunction>(std::move(itrs), min_match,
+                                               std::forward<Merger>(merger),
+                                               std::forward<Args>(args)...);
 }
 
 }  // namespace iresearch

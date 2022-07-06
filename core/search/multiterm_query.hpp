@@ -79,23 +79,25 @@ class multiterm_query : public filter::prepared {
 
   explicit multiterm_query(states_t&& states,
                            std::shared_ptr<stats_t> const& stats, score_t boost,
-                           sort::MergeType merge_type)
+                           sort::MergeType merge_type, size_t min_match)
 
-      : prepared(boost),
-        states_(std::move(states)),
-        stats_ptr_(stats),
-        merge_type_(merge_type) {
+      : prepared{boost},
+        states_{std::move(states)},
+        stats_ptr_{stats},
+        merge_type_{merge_type},
+        min_match_{min_match} {
     assert(stats_ptr_);
   }
 
   // multiterm_query will own stats
   explicit multiterm_query(states_t&& states, stats_t&& stats, score_t boost,
-                           sort::MergeType merge_type)
-      : prepared(boost),
-        states_(std::move(states)),
-        stats_(std::move(stats)),
-        stats_ptr_(std::shared_ptr<stats_t>(), &stats_),
-        merge_type_(merge_type) {
+                           sort::MergeType merge_type, size_t min_match)
+      : prepared{boost},
+        states_{std::move(states)},
+        stats_{std::move(stats)},
+        stats_ptr_{std::shared_ptr<stats_t>{}, &stats_},
+        merge_type_{merge_type},
+        min_match_{min_match} {
     assert(stats_ptr_);
   }
 
@@ -113,6 +115,7 @@ class multiterm_query : public filter::prepared {
   stats_t stats_;
   std::shared_ptr<stats_t> stats_ptr_;
   sort::MergeType merge_type_;
+  size_t min_match_;
 };
 
 }  // namespace iresearch

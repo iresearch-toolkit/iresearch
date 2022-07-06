@@ -25,20 +25,18 @@
 #include "index/index_reader.hpp"
 #include "search/all_terms_collector.hpp"
 #include "search/collectors.hpp"
-#include "search/term_filter.hpp"
 #include "search/filter_visitor.hpp"
 #include "search/multiterm_query.hpp"
+#include "search/term_filter.hpp"
 
 namespace {
 
 using namespace irs;
 
 template<typename Visitor>
-void visit(
-    const sub_reader& segment,
-    const term_reader& field,
-    const by_terms_options::search_terms& search_terms,
-    Visitor& visitor) {
+void visit(const sub_reader& segment, const term_reader& field,
+           const by_terms_options::search_terms& search_terms,
+           Visitor& visitor) {
   auto terms = field.iterator(SeekMode::NORMAL);
 
   if (IRS_UNLIKELY(!terms)) {
@@ -62,13 +60,10 @@ template<typename Collector>
 class terms_visitor {
  public:
   explicit terms_visitor(Collector& collector) noexcept
-    : collector_(collector) {
-  }
+      : collector_(collector) {}
 
-  void prepare(
-      const sub_reader& segment,
-      const term_reader& field,
-      const seek_term_iterator& terms) {
+  void prepare(const sub_reader& segment, const term_reader& field,
+               const seek_term_iterator& terms) {
     collector_.prepare(segment, field, terms);
     collector_.stat_index(0);
   }
@@ -81,14 +76,12 @@ class terms_visitor {
 
  private:
   Collector& collector_;
-}; // terms_visitor
+};  // terms_visitor
 
 template<typename Collector>
-void collect_terms(
-    const index_reader& index,
-    string_ref field,
-    const by_terms_options::search_terms& terms,
-    Collector& collector) {
+void collect_terms(const index_reader& index, string_ref field,
+                   const by_terms_options::search_terms& terms,
+                   Collector& collector) {
   terms_visitor<Collector> visitor(collector);
 
   for (auto& segment : index) {
@@ -102,22 +95,19 @@ void collect_terms(
   }
 }
 
-}
+}  // namespace
 
 namespace iresearch {
 
-/*static*/ void by_terms::visit(
-    const sub_reader& segment,
-    const term_reader& field,
-    const by_terms_options::search_terms& terms,
-    filter_visitor& visitor) {
+/*static*/ void by_terms::visit(const sub_reader& segment,
+                                const term_reader& field,
+                                const by_terms_options::search_terms& terms,
+                                filter_visitor& visitor) {
   ::visit(segment, field, terms, visitor);
 }
 
 filter::prepared::ptr by_terms::prepare(
-    const index_reader& index,
-    const Order& order,
-    score_t boost,
+    const index_reader& index, const Order& order, score_t boost,
     const attribute_provider* /*ctx*/) const {
   boost *= this->boost();
   const auto& terms = options().terms;
@@ -129,14 +119,16 @@ filter::prepared::ptr by_terms::prepare(
 
   if (1 == size) {
     const auto term = terms.begin();
-    return by_term::prepare(index, order, boost*term->boost, field(), term->term);
+    return by_term::prepare(index, order, boost * term->boost, field(),
+                            term->term);
   }
 
   field_collectors field_stats(order);
   term_collectors term_stats(order, size);
   multiterm_query::states_t states(index);
 
-  all_terms_collector<decltype(states)> collector(states, field_stats, term_stats);
+  all_terms_collector<decltype(states)> collector(states, field_stats,
+                                                  term_stats);
   collect_terms(index, field(), terms, collector);
 
   std::vector<bstring> stats(size);
@@ -148,8 +140,7 @@ filter::prepared::ptr by_terms::prepare(
   }
 
   return memory::make_managed<multiterm_query>(
-    std::move(states), std::move(stats),
-    boost, options().merge_type);
+      std::move(states), std::move(stats), boost, options().merge_type, 1);
 }
 
-}
+}  // namespace iresearch

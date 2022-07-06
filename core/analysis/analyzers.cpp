@@ -85,7 +85,7 @@ struct value{
   const analysis::factory_f factory;
   const analysis::normalizer_f normalizer;
 };
- 
+
 }
 
 namespace std {
@@ -203,22 +203,6 @@ namespace analysis {
   }
 
   return nullptr;
-}
-
-/*static*/ void analyzers::init() {
-#ifndef IRESEARCH_DLL
-  irs::analysis::delimited_token_stream::init();
-  irs::analysis::collation_token_stream::init();
-  irs::analysis::classification_stream::init();
-  irs::analysis::ngram_token_stream_base::init();
-  irs::analysis::normalizing_token_stream::init();
-  irs::analysis::nearest_neighbors_stream::init();
-  irs::analysis::stemming_token_stream::init();
-  irs::analysis::text_token_stream::init();
-  irs::analysis::token_stopwords_stream::init();
-  irs::analysis::pipeline_token_stream::init();
-  irs::analysis::segmentation_token_stream::init();
-#endif
 }
 
 /*static*/ void analyzers::load_all(std::string_view path) {

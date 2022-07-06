@@ -166,11 +166,21 @@ doc_iterator::ptr multiterm_query::execute(
   return ResoveMergeType(
       merge_type_, ord.buckets().size(),
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using disjunction_t = disjunction_iterator<doc_iterator::ptr, A>;
+        using disjunction_t = min_match_iterator<doc_iterator::ptr, A>;
 
-        return make_disjunction<disjunction_t>(
-            std::move(itrs), std::move(aggregator), state->estimation());
+        return make_weak_conjunction<disjunction_t>(std::move(itrs), min_match_,
+                                                    std::move(aggregator),
+                                                    state->estimation());
       });
+
+  //  return ResoveMergeType(
+  //      merge_type_, ord.buckets().size(),
+  //      [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+  //        using disjunction_t = disjunction_iterator<doc_iterator::ptr, A>;
+  //
+  //        return make_disjunction<disjunction_t>(
+  //            std::move(itrs), std::move(aggregator), state->estimation());
+  //      });
 }
 
 }  // namespace iresearch
