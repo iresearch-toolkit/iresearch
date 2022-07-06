@@ -1334,40 +1334,40 @@ struct RebindIterator<min_match_iterator<DocIterator, Merger, Adapter>> {
 
 // Returns disjunction iterator created from the specified sub iterators
 template<typename Disjunction, typename Merger, typename... Args>
-doc_iterator::ptr make_disjunction(typename Disjunction::doc_iterators_t&& itrs,
-                                   Merger&& merger, Args&&... args) {
+doc_iterator::ptr MakeDisjunction(typename Disjunction::doc_iterators_t&& itrs,
+                                  Merger&& merger, Args&&... args) {
   const auto size = itrs.size();
 
-  switch (size) {
-    case 0:
-      // Empty or unreachable search criteria
-      return doc_iterator::empty();
-    case 1:
-      if constexpr (Disjunction::kEnableUnary) {
-        using unary_disjunction_t = typename RebindIterator<Disjunction>::Unary;
+  if (0 == size) {
+    // Empty or unreachable search criteria
+    return doc_iterator::empty();
+  }
 
-        return memory::make_managed<unary_disjunction_t>(
-            std::move(itrs.front()));
-      }
+  if (1 == size) {
+    // Single sub-query
+    if constexpr (Disjunction::kEnableUnary) {
+      using UnaryDisjunction = typename RebindIterator<Disjunction>::Unary;
 
-      // Single sub-query
-      return std::move(itrs.front());
-    case 2: {
-      using basic_disjunction_t = typename RebindIterator<Disjunction>::Basic;
-
-      // 2-way disjunction
-      return memory::make_managed<basic_disjunction_t>(
-          std::move(itrs.front()), std::move(itrs.back()),
-          std::forward<Merger>(merger), std::forward<Args>(args)...);
+      return memory::make_managed<UnaryDisjunction>(std::move(itrs.front()));
     }
+
+    return std::move(itrs.front());
+  }
+
+  if (2 == size) {
+    // 2-way disjunction
+    using BasicDisjunction = typename RebindIterator<Disjunction>::Basic;
+
+    return memory::make_managed<BasicDisjunction>(
+        std::move(itrs.front()), std::move(itrs.back()),
+        std::forward<Merger>(merger), std::forward<Args>(args)...);
   }
 
   if constexpr (Disjunction::kSmallDisjunctionUpperBound > 0) {
     if (size <= Disjunction::kSmallDisjunctionUpperBound) {
-      using small_disjunction_t = typename RebindIterator<Disjunction>::Small;
+      using SmallDisjunction = typename RebindIterator<Disjunction>::Small;
 
-      // Small disjunction
-      return memory::make_managed<small_disjunction_t>(
+      return memory::make_managed<SmallDisjunction>(
           std::move(itrs), std::forward<Merger>(merger),
           std::forward<Args>(args)...);
     }
@@ -1380,9 +1380,12 @@ doc_iterator::ptr make_disjunction(typename Disjunction::doc_iterators_t&& itrs,
 
 // Returns weak conjunction iterator created from the specified sub iterators
 template<typename WeakConjunction, typename Merger, typename... Args>
-doc_iterator::ptr make_weak_conjunction(
+doc_iterator::ptr MakeWeakDisjunction(
     typename WeakConjunction::doc_iterators_t&& itrs, size_t min_match,
     Merger&& merger, Args&&... args) {
+  // FIXME(gnusi)
+  assert(min_match > 0);
+
   const auto size = itrs.size();
 
   if (0 == size || min_match > size) {
@@ -1393,20 +1396,20 @@ doc_iterator::ptr make_weak_conjunction(
   if (1 == min_match) {
     // Pure disjunction
     assert(size >= min_match);
-    using disjunction_t = typename RebindIterator<WeakConjunction>::Disjunction;
+    using Disjunction = typename RebindIterator<WeakConjunction>::Disjunction;
 
-    return make_disjunction<disjunction_t>(std::move(itrs),
-                                           std::forward<Merger>(merger),
-                                           std::forward<Args>(args)...);
+    return MakeDisjunction<Disjunction>(std::move(itrs),
+                                        std::forward<Merger>(merger),
+                                        std::forward<Args>(args)...);
   }
 
   if (min_match == size) {
     // Pure conjunction
     assert(min_match == size);
-    using conjunction_t = typename RebindIterator<WeakConjunction>::Conjunction;
+    using Conjunction = typename RebindIterator<WeakConjunction>::Conjunction;
 
-    return memory::make_managed<conjunction_t>(
-        typename conjunction_t::doc_iterators_t{
+    return memory::make_managed<Conjunction>(
+        typename Conjunction::doc_iterators_t{
             std::make_move_iterator(std::begin(itrs)),
             std::make_move_iterator(std::end(itrs))},
         std::forward<Merger>(merger));

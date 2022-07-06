@@ -84,7 +84,7 @@ irs::doc_iterator::ptr make_disjunction(
         using disjunction_t =
             irs::disjunction_iterator<irs::doc_iterator::ptr, A>;
 
-        return irs::make_disjunction<disjunction_t>(
+        return irs::MakeDisjunction<disjunction_t>(
             std::move(itrs), std::move(aggregator),
             std::forward<Args>(args)...);
       });
@@ -126,7 +126,7 @@ irs::doc_iterator::ptr make_conjunction(
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
         using conjunction_t = irs::conjunction<irs::doc_iterator::ptr, A>;
 
-        return irs::make_conjunction<conjunction_t>(
+        return irs::MakeConjunction<conjunction_t>(
             std::move(itrs), std::move(aggregator),
             std::forward<Args>(args)...);
       });
@@ -296,7 +296,7 @@ class min_match_query final : public boolean_query {
           // FIXME(gnusi): use FAST version
           using disjunction_t = min_match_iterator<doc_iterator::ptr, A>;
 
-          return make_weak_conjunction<disjunction_t, A>(
+          return MakeWeakDisjunction<disjunction_t, A>(
               std::move(itrs), min_match_count, std::move(aggregator));
         });
   }

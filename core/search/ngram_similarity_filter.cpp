@@ -426,7 +426,7 @@ class ngram_similarity_query : public filter::prepared {
     }
 
     // FIXME(gnusi): why we dishonor order?
-    return make_disjunction<disjunction_t>(std::move(itrs), NoopAggregator{});
+    return MakeDisjunction<disjunction_t>(std::move(itrs), NoopAggregator{});
   }
 
   doc_iterator::ptr execute_ngram_similarity(

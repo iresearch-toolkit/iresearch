@@ -166,7 +166,7 @@ doc_iterator::ptr multiterm_query::execute(
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
         using disjunction_t = min_match_iterator<doc_iterator::ptr, A>;
 
-        return make_weak_conjunction<disjunction_t>(std::move(itrs), min_match_,
+        return MakeWeakDisjunction<disjunction_t>(std::move(itrs), min_match_,
                                                     std::move(aggregator),
                                                     state->estimation());
       });

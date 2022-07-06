@@ -176,7 +176,7 @@ class same_position_query final : public filter::prepared {
             Aggregator&& aggregator) -> irs::doc_iterator::ptr {
           using conjunction_t = conjunction<doc_iterator::ptr, Aggregator>;
 
-          return make_conjunction<same_position_iterator<conjunction_t>>(
+          return MakeConjunction<same_position_iterator<conjunction_t>>(
               std::move(itrs), std::move(aggregator), std::move(positions));
         });
   }
