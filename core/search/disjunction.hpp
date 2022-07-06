@@ -838,18 +838,18 @@ class disjunction final : public compound_doc_iterator<Adapter>,
   attributes attrs_;
 };  // disjunction
 
-enum class MatchType { MATCH, MIN_MATCH_FAST, MIN_MATCH };
+enum class MatchType { kMatch, kMinMatchFast, kMinMatch };
 
 template<MatchType MinMatch, bool SeekReadahead, size_t NumBlocks = 8>
 struct block_disjunction_traits {
   // "false" - iterator is used for min match filtering,
   // "true" - otherwise
-  static constexpr bool kMinMatch = MatchType::MATCH != MinMatch;
+  static constexpr bool kMinMatch = MatchType::kMatch != MinMatch;
 
   // "false" - iterator is used for min match filtering,
   // "true" - otherwise
   static constexpr bool kMinMatchEarlyPruning =
-      MatchType::MIN_MATCH_FAST == MinMatch;
+      MatchType::kMinMatchFast == MinMatch;
 
   // Use readahead buffer for random access
   static constexpr bool kSeekReadahead = SeekReadahead;
@@ -1298,14 +1298,14 @@ template<typename DocIterator, typename Merger,
          typename Adapter = score_iterator_adapter<DocIterator>>
 using disjunction_iterator =
     block_disjunction<DocIterator, Merger,
-                      block_disjunction_traits<MatchType::MATCH, false>,
+                      block_disjunction_traits<MatchType::kMatch, false>,
                       Adapter>;
 
 template<typename DocIterator, typename Merger,
          typename Adapter = score_iterator_adapter<DocIterator>>
 using min_match_iterator =
     block_disjunction<DocIterator, Merger,
-                      block_disjunction_traits<MatchType::MIN_MATCH, false>,
+                      block_disjunction_traits<MatchType::kMinMatch, false>,
                       Adapter>;
 
 template<typename T>
