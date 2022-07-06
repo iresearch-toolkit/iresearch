@@ -124,7 +124,7 @@ doc_iterator::ptr multiterm_query::execute(
 
   std::vector<score_iterator_adapter<doc_iterator::ptr>> itrs(
       state->scored_states.size() + size_t(has_unscored_terms));
-  auto it = itrs.begin();
+  auto it = std::begin(itrs);
 
   // add an iterator for each of the scored states
   const bool no_score = ord.empty();
@@ -159,9 +159,7 @@ doc_iterator::ptr multiterm_query::execute(
     ++it;
   }
 
-  if (IRS_UNLIKELY(it != itrs.end())) {
-    itrs.erase(it, itrs.end());
-  }
+  itrs.erase(it, std::end(itrs));
 
   return ResoveMergeType(
       merge_type_, ord.buckets().size(),

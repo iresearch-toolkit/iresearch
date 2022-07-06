@@ -277,65 +277,33 @@ class min_match_query final : public boolean_query {
     // min_match_count <= size
     min_match_count = std::min(size, min_match_count);
 
-    std::vector<score_iterator_adapter<doc_iterator::ptr>> itrs;
-    itrs.reserve(size);
-
+    std::vector<score_iterator_adapter<doc_iterator::ptr>> itrs(size);
+    auto it = std::begin(itrs);
     for (; begin != end; ++begin) {
       // execute query - get doc iterator
-      auto docs = begin->execute(rdr, ord, mode, ctx);
+      *it = begin->execute(rdr, ord, mode, ctx);
 
       // filter out empty iterators
-      if (!doc_limits::eof(docs->value())) {
-        itrs.emplace_back(std::move(docs));
+      if (IRS_LIKELY(*it && !doc_limits::eof(it->value()))) {
+        ++it;
       }
     }
-
-    return make_min_match_disjunction(std::move(itrs), ord, min_match_count,
-                                      merge_type());
-  }
-
- private:
-  static doc_iterator::ptr make_min_match_disjunction(
-      std::vector<score_iterator_adapter<doc_iterator::ptr>>&& itrs,
-      const Order& ord, size_t min_match_count, sort::MergeType merge_type) {
-    const auto size = min_match_count > itrs.size() ? 0 : itrs.size();
-
-    switch (size) {
-      case 0:
-        // empty or unreachable search criteria
-        return doc_iterator::empty();
-      case 1:
-        // single sub-query
-        return std::move(itrs.front());
-    }
+    itrs.erase(it, std::end(itrs));
 
     return ResoveMergeType(
-        merge_type, ord.buckets().size(),
+        merge_type(), ord.buckets().size(),
         [&]<typename A>(A&& aggregator) -> doc_iterator::ptr {
-          if (min_match_count == size) {
-            using conjunction_t = conjunction<doc_iterator::ptr, A>;
-
-            // pure conjunction
-            return memory::make_managed<conjunction_t>(
-                typename conjunction_t::doc_iterators_t{
-                    std::make_move_iterator(std::begin(itrs)),
-                    std::make_move_iterator(std::end(itrs))},
-                std::move(aggregator));
-          }
-
-          // min match disjunction
-          assert(min_match_count < size);
-
           // FIXME(gnusi): use FAST version
           using disjunction_t = min_match_iterator<doc_iterator::ptr, A>;
 
-          return memory::make_managed<disjunction_t>(
+          return make_weak_conjunction<disjunction_t, A>(
               std::move(itrs), min_match_count, std::move(aggregator));
         });
   }
 
+ private:
   size_t min_match_count_;
-};  // min_match_query
+};
 
 boolean_filter::boolean_filter(const type_info& type) noexcept : filter(type) {}
 
