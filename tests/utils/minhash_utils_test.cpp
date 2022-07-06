@@ -24,9 +24,19 @@
 
 #include "tests_shared.hpp"
 
+TEST(MinHashTest, MaxSize) {
+  static_assert(0 == irs::MinHash::MaxSize(1.1));
+  static_assert(std::numeric_limits<size_t>::max() == irs::MinHash::MaxSize(0));
+  static_assert(100 == irs::MinHash::MaxSize(0.1));
+  static_assert(400 == irs::MinHash::MaxSize(0.05));
+  static_assert(1112 == irs::MinHash::MaxSize(0.03));
+  static_assert(40000 == irs::MinHash::MaxSize(0.005));
+}
+
 TEST(MinHashTest, Error) {
   ASSERT_DOUBLE_EQ(std::numeric_limits<double_t>::infinity(),
                    irs::MinHash::Error(0));
+
   ASSERT_DOUBLE_EQ(1., irs::MinHash::Error(1));
   ASSERT_DOUBLE_EQ(0.05, irs::MinHash::Error(400));
   ASSERT_DOUBLE_EQ(0.1, irs::MinHash::Error(100));
