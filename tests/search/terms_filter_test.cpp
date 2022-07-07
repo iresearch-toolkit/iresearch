@@ -418,10 +418,33 @@ TEST_P(terms_filter_test_case, min_match) {
   }
 
   {
+    const Docs result{21, 57};
+    // FIXME(gnusi): fix estimation, it's not accurate
+    const Costs costs{7, 0, 0, 0};
+    const auto filter = make_filter(
+        "Fields",
+        {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}, {"InvalidValue", 1.f}},
+        2);
+    CheckQuery(filter, result, costs, rdr);
+  }
+
+  {
     const Docs result{};
     const Costs costs{0, 0, 0, 0};
     const auto filter = make_filter(
         "Fields", {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}}, 3);
+    CheckQuery(filter, result, costs, rdr);
+  }
+
+  {
+    const Docs result{};
+    const Costs costs{0, 0, 0, 0};
+    const auto filter = make_filter("Fields",
+                                    {{"BusinessEntityID", 1.f},
+                                     {"StartDate", 1.f},
+                                     {"InvalidValue0", 1.f},
+                                     {"InvalidValue0", 1.f}},
+                                    3);
     CheckQuery(filter, result, costs, rdr);
   }
 }
