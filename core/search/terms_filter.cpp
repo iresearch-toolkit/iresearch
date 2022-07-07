@@ -23,7 +23,9 @@
 #include "terms_filter.hpp"
 
 #include "index/index_reader.hpp"
+#include "search/all_filter.hpp"
 #include "search/all_terms_collector.hpp"
+#include "search/boolean_filter.hpp"
 #include "search/collectors.hpp"
 #include "search/filter_visitor.hpp"
 #include "search/multiterm_query.hpp"
@@ -106,41 +108,61 @@ namespace iresearch {
   ::visit(segment, field, terms, visitor);
 }
 
-filter::prepared::ptr by_terms::prepare(
-    const index_reader& index, const Order& order, score_t boost,
-    const attribute_provider* /*ctx*/) const {
-  boost *= this->boost();
-  const auto& terms = options().terms;
+filter::prepared::ptr by_terms::prepare(const index_reader& index,
+                                        const Order& order, score_t boost,
+                                        const attribute_provider* ctx) const {
+  const auto& [terms, min_match, merge_type] = options();
   const size_t size = terms.size();
+  boost *= this->boost();
 
-  if (0 == size) {
+  if (0 == size || min_match > size) {
+    // Empty or unreachable search criteria
     return prepared::empty();
   }
 
+  if (0 == min_match) {
+    if (order.empty()) {
+      return all().prepare(index);
+    } else {
+      Or disj;
+      disj.add<all>().boost(0.);  // don't contribute to the score
+      disj.add<by_terms>(*this).mutable_options()->min_match = 1;
+      return disj.prepare(index, order, kNoBoost, ctx);
+    }
+  }
+
   if (1 == size) {
-    const auto term = terms.begin();
+    const auto term = std::begin(terms);
     return by_term::prepare(index, order, boost * term->boost, field(),
                             term->term);
   }
 
-  field_collectors field_stats(order);
-  term_collectors term_stats(order, size);
-  multiterm_query::states_t states(index);
-
-  all_terms_collector<decltype(states)> collector(states, field_stats,
-                                                  term_stats);
+  field_collectors field_stats{order};
+  term_collectors term_stats{order, size};
+  multiterm_query::states_t states{index};
+  all_terms_collector collector{states, field_stats, term_stats};
   collect_terms(index, field(), terms, collector);
 
-  std::vector<bstring> stats(size);
-  size_t term_idx = 0;
-  for (auto& stat : stats) {
+  // FIXME(gnusi): Filter out unmatched states during collection
+  if (min_match > 1) {
+    states.erase_if([min = min_match](const auto& state) noexcept {
+      return state.scored_states.size() < min;
+    });
+  }
+
+  if (states.empty()) {
+    return prepared::empty();
+  }
+
+  multiterm_query::stats_t stats{size};
+  for (size_t term_idx = 0; auto& stat : stats) {
     stat.resize(order.stats_size(), 0);
     auto* stats_buf = const_cast<byte_type*>(stat.data());
     term_stats.finish(stats_buf, term_idx++, field_stats, index);
   }
 
   return memory::make_managed<multiterm_query>(
-      std::move(states), std::move(stats), boost, options().merge_type, 1);
+      std::move(states), std::move(stats), boost, merge_type, min_match);
 }
 
 }  // namespace iresearch
