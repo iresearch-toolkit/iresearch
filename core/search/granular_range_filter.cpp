@@ -36,8 +36,7 @@
 
 namespace {
 
-//////////////////////////////////////////////////////////////////////////////
-// example term structure, in order of term iteration/comparison, N = 4:
+// Example term structure, in order of term iteration/comparison, N = 4:
 // all/each token _must_ produce N terms
 // min/max term ranges may have more/less that N terms
 //         V- granularity level, 0 being most precise
@@ -48,26 +47,26 @@ namespace {
 // min_term (with e.g. N=2)----------^-------------------------^
 //                           ^-------------^--------------^
 // max_term (with e.g. N=3)-/
-//////////////////////////////////////////////////////////////////////////////
 
-// return the granularity portion of the term
-irs::bytes_ref mask_granularity(irs::bytes_ref term, size_t prefix_size) {
-  return term.size() > prefix_size ? irs::bytes_ref(term.c_str(), prefix_size)
+// Return the granularity portion of the term
+irs::bytes_ref mask_granularity(irs::bytes_ref term,
+                                size_t prefix_size) noexcept {
+  return term.size() > prefix_size ? irs::bytes_ref{term.c_str(), prefix_size}
                                    : term;
 }
 
-// return the value portion of the term
-irs::bytes_ref mask_value(irs::bytes_ref term, size_t prefix_size) {
+// Return the value portion of the term
+irs::bytes_ref mask_value(irs::bytes_ref term, size_t prefix_size) noexcept {
   if (term.null()) {
     return term;
   }
 
-  return term.size() > prefix_size ? irs::bytes_ref(term.c_str() + prefix_size,
-                                                    term.size() - prefix_size)
-                                   : irs::bytes_ref();
+  return term.size() > prefix_size ? irs::bytes_ref{term.c_str() + prefix_size,
+                                                    term.size() - prefix_size}
+                                   : irs::bytes_ref{};
 }
 
-// collect terms while they are accepted by Comparer
+// Collect terms while they are accepted by Comparer
 template<typename Visitor, typename Comparer>
 void collect_terms(const irs::sub_reader& segment,
                    const irs::term_reader& field,
@@ -87,7 +86,7 @@ void collect_terms(const irs::sub_reader& segment,
   } while (terms.next());
 }
 
-// collect all terms for a granularity range (min .. max), granularity level for
+// Collect all terms for a granularity range (min .. max), granularity level for
 // max is ingored during comparison null min/max are _always_ inclusive, i.e.:
 // [null == current .. max), (min .. null == end of granularity range]
 template<typename Visitor>
@@ -245,7 +244,7 @@ void collect_terms_from(
   }
 }
 
-// collect terms only starting from the current granularity level and ending
+// Collect terms only starting from the current granularity level and ending
 // with granularity range, include/exclude end term
 template<typename Visitor>
 void collect_terms_until(
@@ -330,7 +329,7 @@ void collect_terms_until(
   }
 }
 
-// collect all terms starting from the min_term granularity range and max_term
+// Collect all terms starting from the min_term granularity range and max_term
 // granularity range
 template<typename Visitor>
 void collect_terms_within(
@@ -541,25 +540,11 @@ void visit(const irs::sub_reader& segment, const irs::term_reader& reader,
                        irs::BoundType::INCLUSIVE == rng.max_type, visitor);
 }
 
-struct granular_states {
-  granular_states(size_t size) : states(size) {}
-
-  irs::multiterm_state& insert(const irs::sub_reader& segment) {
-    // create a new range state
-    return states
-        .emplace(std::piecewise_construct, std::forward_as_tuple(&segment),
-                 std::forward_as_tuple())
-        ->second;
-  }
-
-  std::unordered_multimap<const irs::sub_reader*, irs::multiterm_state> states;
-};
-
 }  // namespace
 
 namespace iresearch {
 
-// sequential 'granularity_level' value, cannot use 'iresearch::increment' since
+// Sequential 'granularity_level' value, cannot use 'iresearch::increment' since
 // it can be 0
 void set_granular_term(by_granular_range_options::terms& boundary,
                        numeric_token_stream& term) {
@@ -592,10 +577,10 @@ void set_granular_term(by_granular_range_options::terms& boundary,
   }
 
   // object for collecting order stats
-  limited_sample_collector<term_frequency> collector(
-      ord.empty() ? 0 : scored_terms_limit);
-  granular_states states(index.size());
-  multiterm_visitor<granular_states> mtv(collector, states);
+  limited_sample_collector<term_frequency> collector{
+      ord.empty() ? 0 : scored_terms_limit};
+  multiterm_query::states_t states{index};
+  multiterm_visitor mtv{collector, states};
 
   // iterate over the segments
   for (const auto& segment : index) {
@@ -609,71 +594,15 @@ void set_granular_term(by_granular_range_options::terms& boundary,
     ::visit(segment, *reader, rng, mtv);
   }
 
-  std::vector<bstring> stats;
+  if (states.empty()) {
+    return prepared::empty();
+  }
+
+  multiterm_query::stats_t stats;
   collector.score(index, ord, stats);
 
-  // ...........................................................................
-  // group the range states into a minimal number of groups per sub_reader
-  // ...........................................................................
-
-  std::vector<multiterm_query::states_t> range_states;
-  size_t current_states = 0;
-  const sub_reader* previous_reader = nullptr;
-
-  // build a set of regular range query states
-  for (auto& entry : states.states) {
-    auto& reader = entry.first;
-    auto& state = entry.second;
-
-    if (reader != previous_reader) {
-      current_states = 0;
-      previous_reader = reader;
-    }
-
-    if (state.empty()) {
-      continue;  // skip empty ranges
-    }
-
-    if (current_states >= range_states.size()) {
-      range_states.emplace_back(index);
-    }
-
-    range_states[current_states++].insert(*reader) = std::move(state);
-  }
-
-  // FIXME(gnusi): we can use single multiterm_query
-
-  // ...........................................................................
-  // build up a disjunction of range_queries each of the grouped states
-  // ...........................................................................
-
-  auto shared_stats = std::make_shared<decltype(stats)>(std::move(stats));
-
-  // dummy class for returning the stored prepared query on a call to
-  // prepare(...)
-  class multiterm_filter_proxy : public filter {
-   public:
-    multiterm_filter_proxy() : filter(irs::type<by_range>::get()) {}
-
-    virtual filter::prepared::ptr prepare(
-        const index_reader&, const Order&, score_t,
-        const attribute_provider*) const override {
-      return std::move(query_);
-    }
-
-    mutable multiterm_query::ptr query_;
-  };
-
-  Or multirange_filter;
-
-  for (auto& range_state : range_states) {
-    multirange_filter.add<multiterm_filter_proxy>().query_ =
-        memory::make_managed<multiterm_query>(std::move(range_state),
-                                              shared_stats, kNoBoost,
-                                              sort::MergeType::kSum, 1);
-  }
-
-  return multirange_filter.boost(boost).prepare(index, ord, 1);
+  return memory::make_managed<multiterm_query>(
+      std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
 }
 
 /*static*/ void by_granular_range::visit(const sub_reader& segment,

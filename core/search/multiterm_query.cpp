@@ -118,7 +118,7 @@ doc_iterator::ptr multiterm_query::execute(
 
   // get required features for order
   const IndexFeatures features = ord.features();
-  auto& stats = this->stats();
+  const std::span stats{stats_};
 
   const bool has_unscored_terms = !state->unscored_terms.empty();
 
@@ -167,18 +167,9 @@ doc_iterator::ptr multiterm_query::execute(
         using disjunction_t = min_match_iterator<doc_iterator::ptr, A>;
 
         return MakeWeakDisjunction<disjunction_t>(std::move(itrs), min_match_,
-                                                    std::move(aggregator),
-                                                    state->estimation());
+                                                  std::move(aggregator),
+                                                  state->estimation());
       });
-
-  //  return ResoveMergeType(
-  //      merge_type_, ord.buckets().size(),
-  //      [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-  //        using disjunction_t = disjunction_iterator<doc_iterator::ptr, A>;
-  //
-  //        return make_disjunction<disjunction_t>(
-  //            std::move(itrs), std::move(aggregator), state->estimation());
-  //      });
 }
 
 }  // namespace iresearch

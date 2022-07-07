@@ -74,46 +74,24 @@ struct multiterm_state {
 // Compiled query suitable for filters with non adjacent set of terms.
 class multiterm_query : public filter::prepared {
  public:
-  typedef states_cache<multiterm_state> states_t;
-  typedef std::vector<bstring> stats_t;
+  using states_t = states_cache<multiterm_state>;
+  using stats_t = std::vector<bstring>;
 
-  explicit multiterm_query(states_t&& states,
-                           std::shared_ptr<stats_t> const& stats, score_t boost,
-                           sort::MergeType merge_type, size_t min_match)
-
-      : prepared{boost},
-        states_{std::move(states)},
-        stats_ptr_{stats},
-        merge_type_{merge_type},
-        min_match_{min_match} {
-    assert(stats_ptr_);
-  }
-
-  // multiterm_query will own stats
   explicit multiterm_query(states_t&& states, stats_t&& stats, score_t boost,
                            sort::MergeType merge_type, size_t min_match)
       : prepared{boost},
         states_{std::move(states)},
         stats_{std::move(stats)},
-        stats_ptr_{std::shared_ptr<stats_t>{}, &stats_},
         merge_type_{merge_type},
-        min_match_{min_match} {
-    assert(stats_ptr_);
-  }
+        min_match_{min_match} {}
 
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr, const Order& ord, ExecutionMode mode,
       const attribute_provider* ctx) const override;
 
  private:
-  const stats_t& stats() const noexcept {
-    assert(stats_ptr_);
-    return *stats_ptr_;
-  }
-
   states_t states_;
   stats_t stats_;
-  std::shared_ptr<stats_t> stats_ptr_;
   sort::MergeType merge_type_;
   size_t min_match_;
 };
