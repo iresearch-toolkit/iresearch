@@ -205,8 +205,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
   multiterm_query::states_t states(index);
 
   if (!terms_limit) {
-    all_terms_collector<decltype(states)> term_collector(states, field_stats,
-                                                         term_stats);
+    all_terms_collector term_collector{states, field_stats, term_stats};
     term_collector.stat_index(0);  // aggregate stats from different terms
 
     if (!collect_terms(index, field, prefix, term, d, term_collector)) {
@@ -219,8 +218,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
       return filter::prepared::empty();
     }
 
-    aggregated_stats_visitor<decltype(states)> aggregate_stats(states,
-                                                               term_stats);
+    aggregated_stats_visitor aggregate_stats{states, term_stats};
     term_collector.visit([&aggregate_stats](top_term_state<score_t>& state) {
       aggregate_stats.boost = std::max(0.f, state.key);
       state.visit(aggregate_stats);
