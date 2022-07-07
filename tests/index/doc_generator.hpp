@@ -291,18 +291,13 @@ struct document : irs::util::noncopyable {
   ifield::ptr sorted;
 };  // document
 
-/* -------------------------------------------------------------------
- * GENERATORS
- * ------------------------------------------------------------------*/
-
-/* Base class for document generators */
 struct doc_generator_base {
   using ptr = std::unique_ptr<doc_generator_base>;
 
+  virtual ~doc_generator_base() = default;
+
   virtual const tests::document* next() = 0;
   virtual void reset() = 0;
-
-  virtual ~doc_generator_base() = default;
 };
 
 class limiting_doc_generator : public doc_generator_base {

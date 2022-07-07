@@ -59,16 +59,7 @@ class states_cache : private util::noncopyable {
 
   template<typename Pred>
   void erase_if(Pred pred) {
-    auto begin = std::begin(states_);
-    auto end = std::end(states_);
-
-    while (begin != end) {
-      if (pred(begin->second)) {
-        states_.erase(begin);
-      } else {
-        ++begin;
-      }
-    }
+    absl::erase_if(states_, [&pred](const auto& v) { return pred(v.second); });
   }
 
   bool empty() const noexcept { return states_.empty(); }

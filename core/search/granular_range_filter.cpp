@@ -511,10 +511,10 @@ void visit(const irs::sub_reader& segment, const irs::term_reader& reader,
     }
 
     auto& max_term = *rng.max.rbegin();
-    irs::bytes_ref smallest_term(
-        max_term.c_str(),
-        std::min(max_term.size(),
-                 prefix_size));  // smallest least granular term
+
+    // smallest least granular term
+    const irs::bytes_ref smallest_term{max_term.c_str(),
+                                       std::min(max_term.size(), prefix_size)};
 
     // collect terms ending with max granularity range, include/exclude max term
     if (irs::SeekResult::END != terms->seek_ge(smallest_term)) {

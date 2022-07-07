@@ -1114,11 +1114,14 @@ class block_disjunction final : public doc_iterator,
 
     if (traits_type::kMinMatch && min_match_count > 1) {
       // sort subnodes in ascending order by their cost
-      // FIXME don't use extract
-      std::sort(itrs_.begin(), itrs_.end(),
+      // FIXME(gnusi) don't use extract
+      std::sort(std::begin(itrs_), std::end(itrs_),
                 [](const adapter& lhs, const adapter& rhs) {
                   return cost::extract(lhs, 0) < cost::extract(rhs, 0);
                 });
+
+      // FIXME(gnusi): fix estimation, we have to estimate only min_match
+      // iterators
     }
   }
 

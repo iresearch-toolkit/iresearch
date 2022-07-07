@@ -23,6 +23,7 @@
 #include "search/terms_filter.hpp"
 
 #include "filter_test_case_base.hpp"
+#include "index/doc_generator.hpp"
 #include "search/boost_sort.hpp"
 #include "tests_shared.hpp"
 
@@ -30,9 +31,11 @@ namespace {
 
 irs::by_terms make_filter(
     const irs::string_ref& field,
-    const std::vector<std::pair<irs::string_ref, irs::score_t>>& terms) {
+    const std::vector<std::pair<irs::string_ref, irs::score_t>>& terms,
+    size_t min_match = 1) {
   irs::by_terms q;
   *q.mutable_field() = field;
+  q.mutable_options()->min_match = min_match;
   for (auto& term : terms) {
     q.mutable_options()->terms.emplace(
         irs::ref_cast<irs::byte_type>(term.first), term.second);
@@ -232,11 +235,8 @@ TEST_P(terms_filter_test_case, simple_sequential) {
 
   // match all
   {
-    Docs result;
-    for (size_t i = 0; i < 32; ++i) {
-      result.push_back(
-          irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i));
-    }
+    Docs result(32);
+    std::iota(std::begin(result), std::end(result), irs::doc_limits::min());
     Costs costs{result.size()};
     const auto filter = make_filter("same", {{"xyz", 1.f}});
     CheckQuery(filter, result, costs, rdr);
@@ -255,11 +255,27 @@ TEST_P(terms_filter_test_case, simple_sequential) {
 
   // match all
   {
-    Docs result;
-    for (size_t i = 0; i < 32; ++i) {
-      result.push_back(
-          irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i));
-    }
+    Docs result(32);
+    std::iota(std::begin(result), std::end(result), irs::doc_limits::min());
+    Costs costs{result.size()};
+    const auto filter = make_filter("same", {{"invalid", 1.f}}, 0);
+    CheckQuery(filter, result, costs, rdr);
+
+    // test visit
+    tests::empty_filter_visitor visitor;
+    const auto* reader = segment.field("same");
+    ASSERT_NE(nullptr, reader);
+    irs::by_terms::visit(segment, *reader, filter.options().terms, visitor);
+    ASSERT_EQ(1, visitor.prepare_calls_counter());
+    ASSERT_EQ(0, visitor.visit_calls_counter());
+    ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{}),
+              visitor.term_refs<char>());
+  }
+
+  // match all
+  {
+    Docs result(32);
+    std::iota(std::begin(result), std::end(result), irs::doc_limits::min());
     Costs costs{result.size()};
     const auto filter =
         make_filter("same", {{"xyz", 1.f}, {"invalid_term", 0.5f}});
@@ -318,7 +334,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
               visitor.term_refs<char>());
   }
 
-  // test non existent term
+  // test non existing term
   {
     const Docs result{1, 21, 31, 32};
     const Costs costs{result.size()};
@@ -337,6 +353,76 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{
                   {"abc", 0.5f}, {"abcd", 1.f}, {"abcy", 0.5f}}),
               visitor.term_refs<char>());
+  }
+}
+
+TEST_P(terms_filter_test_case, min_match) {
+  // write segments
+  auto writer = open_writer(irs::OM_CREATE);
+
+  {
+    tests::json_doc_generator gen{resource("AdventureWorks2014.json"),
+                                  &tests::generic_json_field_factory};
+    add_segment(*writer, gen);
+  }
+  {
+    tests::json_doc_generator gen{resource("AdventureWorks2014Edges.json"),
+                                  &tests::generic_json_field_factory};
+    add_segment(*writer, gen);
+  }
+  {
+    tests::json_doc_generator gen{resource("Northwnd.json"),
+                                  &tests::generic_json_field_factory};
+    add_segment(*writer, gen);
+  }
+  {
+    tests::json_doc_generator gen{resource("NorthwndEdges.json"),
+                                  &tests::generic_json_field_factory};
+    add_segment(*writer, gen);
+  }
+
+  auto rdr = open_reader();
+  ASSERT_EQ(4, rdr.size());
+
+  {
+    const auto& segment = rdr[0];
+    tests::empty_filter_visitor visitor;
+    const auto* reader = segment.field("Fields");
+    ASSERT_NE(nullptr, reader);
+    const auto filter = make_filter(
+        "Fields", {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}}, 1);
+    irs::by_terms::visit(segment, *reader, filter.options().terms, visitor);
+    ASSERT_EQ(1, visitor.prepare_calls_counter());
+    ASSERT_EQ(2, visitor.visit_calls_counter());
+    ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{
+                  {"BusinessEntityID", 1.f}, {"StartDate", 1.f}}),
+              visitor.term_refs<char>());
+  }
+
+  {
+    const Docs result{4,  5,  6,  7,  19, 20, 21, 22, 25, 27, 28, 29,
+                      30, 34, 38, 46, 52, 53, 57, 62, 65, 69, 70};
+    const Costs costs{25, 0, 0, 0};
+    const auto filter = make_filter(
+        "Fields", {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}}, 1);
+    CheckQuery(filter, result, costs, rdr);
+  }
+
+  {
+    const Docs result{21, 57};
+    // FIXME(gnusi): fix estimation, it's not accurate
+    const Costs costs{7, 0, 0, 0};
+    const auto filter = make_filter(
+        "Fields", {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}}, 2);
+    CheckQuery(filter, result, costs, rdr);
+  }
+
+  {
+    const Docs result{};
+    const Costs costs{0, 0, 0, 0};
+    const auto filter = make_filter(
+        "Fields", {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}}, 3);
+    CheckQuery(filter, result, costs, rdr);
   }
 }
 
