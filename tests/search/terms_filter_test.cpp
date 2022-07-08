@@ -447,6 +447,87 @@ TEST_P(terms_filter_test_case, min_match) {
                                     3);
     CheckQuery(filter, result, costs, rdr);
   }
+
+  // empty prefix test collector call count for field/term/finish
+  {
+    ScoredDocs result(71);
+    for (irs::doc_id_t i = 0; auto& [doc, scores] : result) {
+      doc = ++i;
+      scores = {0.f};
+    }
+    for (const auto doc : {4,  5,  6,  7,  19, 20, 21, 22, 25, 27, 28, 29,
+                           30, 34, 38, 46, 52, 53, 57, 62, 65, 69, 70}) {
+      result[doc - 1].second = {static_cast<float_t>(doc)};
+    }
+    for (const auto doc : {21, 57}) {
+      result[doc - 1].second = {static_cast<float_t>(2 * doc)};
+    }
+
+    const Costs costs{25, 0, 0, 0};
+
+    size_t collect_field_count = 0;
+    size_t collect_term_count = 0;
+    size_t finish_count = 0;
+
+    irs::sort::ptr impl{std::make_unique<tests::sort::custom_sort>()};
+    auto* scorer = static_cast<tests::sort::custom_sort*>(impl.get());
+
+    scorer->collector_collect_field = [&collect_field_count](
+                                          const irs::sub_reader&,
+                                          const irs::term_reader&) -> void {
+      ++collect_field_count;
+    };
+    scorer->collector_collect_term =
+        [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
+                              const irs::attribute_provider&) -> void {
+      ++collect_term_count;
+    };
+    scorer->collectors_collect_ =
+        [&finish_count](irs::byte_type*, const irs::index_reader&,
+                        const irs::sort::field_collector*,
+                        const irs::sort::term_collector*) -> void {
+      ++finish_count;
+    };
+    scorer->prepare_field_collector_ =
+        [&scorer]() -> irs::sort::field_collector::ptr {
+      return irs::memory::make_unique<
+          tests::sort::custom_sort::prepared::field_collector>(*scorer);
+    };
+    scorer->prepare_term_collector_ =
+        [&scorer]() -> irs::sort::term_collector::ptr {
+      return irs::memory::make_unique<
+          tests::sort::custom_sort::prepared::term_collector>(*scorer);
+    };
+    scorer->prepare_scorer = [](const irs::sub_reader&, const irs::term_reader&,
+                                const irs::byte_type*,
+                                const irs::attribute_provider& attrs,
+                                irs::score_t boost) -> irs::ScoreFunction {
+      struct ScoreCtx : public irs::score_ctx {
+        ScoreCtx(const irs::document* doc, irs::score_t boost) noexcept
+            : doc{doc}, boost{boost} {}
+        const irs::document* doc;
+        irs::score_t boost;
+      };
+
+      auto* doc = irs::get<irs::document>(attrs);
+      EXPECT_NE(nullptr, doc);
+
+      return {std::make_unique<ScoreCtx>(doc, boost),
+              [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+                auto* state = static_cast<ScoreCtx*>(ctx);
+                *res =
+                    static_cast<irs::score_t>(state->doc->value) * state->boost;
+              }};
+    };
+
+    const auto filter = make_filter(
+        "Fields", {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}}, 0);
+
+    CheckQuery(filter, std::span{&impl, 1}, result, rdr[0]);
+    ASSERT_EQ(1, collect_field_count);  // 1 fields in 1 segment
+    ASSERT_EQ(2, collect_term_count);   // 2 different terms
+    ASSERT_EQ(3, finish_count);         // 3 unque terms
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(

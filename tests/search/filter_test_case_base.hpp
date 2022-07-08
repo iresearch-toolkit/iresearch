@@ -191,10 +191,10 @@ struct custom_sort : public irs::sort {
         const irs::term_reader& term_reader,
         const irs::byte_type* filter_node_attrs,
         const irs::attribute_provider& document_attrs,
-        irs::score_t /*boost*/) const override {
+        irs::score_t boost) const override {
       if (sort_.prepare_scorer) {
         return sort_.prepare_scorer(segment_reader, term_reader,
-                                    filter_node_attrs, document_attrs);
+                                    filter_node_attrs, document_attrs, boost);
       }
 
       return {irs::memory::make_unique<custom_sort::prepared::scorer>(
@@ -236,7 +236,7 @@ struct custom_sort : public irs::sort {
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector_;
   std::function<irs::ScoreFunction(
       const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*,
-      const irs::attribute_provider&)>
+      const irs::attribute_provider&, irs::score_t)>
       prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector_;
   std::function<void(irs::doc_id_t, irs::score_t*)> scorer_score;
