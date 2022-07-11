@@ -472,7 +472,7 @@ bool MinHashTokenStream::next() {
 
   size_t value;
   if constexpr (is_big_endian()) {
-    value = numeric_utils::ntoh64(*begin_);
+    value = absl::gbswap_64(*begin_);
   } else {
     value = *begin_;
   }
