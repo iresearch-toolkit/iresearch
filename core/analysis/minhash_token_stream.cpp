@@ -470,12 +470,13 @@ bool MinHashTokenStream::next() {
     return false;
   }
 
-  size_t value;
-  if constexpr (is_big_endian()) {
-    value = numeric_utils::ntoh64(*begin_);
-  } else {
-    value = *begin_;
-  }
+  const size_t value = [&]() noexcept -> size_t {
+    if constexpr (is_big_endian()) {
+      return numeric_utils::ntoh64(*begin_);
+    } else {
+      return *begin_;
+    }
+  }();
 
   [[maybe_unused]] const size_t length =
       absl::strings_internal::Base64EscapeInternal(

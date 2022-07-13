@@ -148,11 +148,13 @@ doc_iterator::ptr multiterm_query::execute(
       }
     }
 
+    assert(it != std::end(itrs));
     *it = std::move(docs);
     ++it;
   }
 
   if (has_unscored_terms) {
+    assert(it != std::end(itrs));
     *it = {memory::make_managed<::lazy_bitset_iterator>(
         segment, *state->reader, state->unscored_terms,
         state->unscored_states_estimation)};
