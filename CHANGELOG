@@ -1,6 +1,8 @@
 master
 -------------------------
 
+* Allow specifying minimum number of matches for `by_terms` filter.
+
 * Add `MinHashAnalyzer` capable of producing tokens composing a MinHash
   signature.
 

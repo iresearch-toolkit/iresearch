@@ -27,11 +27,21 @@
 #include <span>
 #include <vector>
 
+#include "utils/math_utils.hpp"
+
 namespace iresearch {
 
 // Implementation of MinHash variant with a single hash function.
 class MinHash {
  public:
+  // Returns number of hashes required to preserve probabilistic error
+  // threshold.
+  static constexpr size_t MaxSize(double_t err) noexcept {
+    return err > 0. && err < 1.
+               ? math::ceil64(1. / (err * err))
+               : (err < 1. ? std::numeric_limits<size_t>::max() : 0);
+  }
+
   // Returns expected probabilistic error according
   // the size of MinHash signature.
   static constexpr double_t Error(size_t size) noexcept {
@@ -43,8 +53,8 @@ class MinHash {
       : max_size_{std::max(size, size_t{1})}, left_{max_size_} {
     min_hashes_.reserve(left_);
 
-    // +1 because we inserting a new hash
-    // value one before removing an old one.
+    // +1 because we insert a new hash
+    // value before removing an old one.
     dedup_.reserve(left_ + 1);
   }
 

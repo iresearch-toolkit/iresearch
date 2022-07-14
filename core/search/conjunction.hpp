@@ -275,20 +275,20 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
 };
 
 // Returns conjunction iterator created from the specified sub iterators
-template<typename Conjunction, typename... Args>
-doc_iterator::ptr make_conjunction(typename Conjunction::doc_iterators_t&& itrs,
-                                   Args&&... args) {
-  switch (itrs.size()) {
-    case 0:
-      // empty or unreachable search criteria
-      return doc_iterator::empty();
-    case 1:
-      // single sub-query
-      return std::move(itrs.front());
+template<typename Conjunction, typename Merger, typename... Args>
+doc_iterator::ptr MakeConjunction(typename Conjunction::doc_iterators_t&& itrs,
+                                  Merger&& merger, Args&&... args) {
+  if (const auto size = itrs.size(); 0 == size) {
+    // empty or unreachable search criteria
+    return doc_iterator::empty();
+  } else if (1 == size) {
+    // single sub-query
+    return std::move(itrs.front());
   }
 
   // conjunction
   return memory::make_managed<Conjunction>(std::move(itrs),
+                                           std::forward<Merger>(merger),
                                            std::forward<Args>(args)...);
 }
 

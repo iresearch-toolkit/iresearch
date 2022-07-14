@@ -118,13 +118,13 @@ doc_iterator::ptr multiterm_query::execute(
 
   // get required features for order
   const IndexFeatures features = ord.features();
-  auto& stats = this->stats();
+  const std::span stats{stats_};
 
   const bool has_unscored_terms = !state->unscored_terms.empty();
 
   std::vector<score_iterator_adapter<doc_iterator::ptr>> itrs(
       state->scored_states.size() + size_t(has_unscored_terms));
-  auto it = itrs.begin();
+  auto it = std::begin(itrs);
 
   // add an iterator for each of the scored states
   const bool no_score = ord.empty();
@@ -148,28 +148,29 @@ doc_iterator::ptr multiterm_query::execute(
       }
     }
 
+    assert(it != std::end(itrs));
     *it = std::move(docs);
     ++it;
   }
 
   if (has_unscored_terms) {
+    assert(it != std::end(itrs));
     *it = {memory::make_managed<::lazy_bitset_iterator>(
         segment, *state->reader, state->unscored_terms,
         state->unscored_states_estimation)};
     ++it;
   }
 
-  if (IRS_UNLIKELY(it != itrs.end())) {
-    itrs.erase(it, itrs.end());
-  }
+  itrs.erase(it, std::end(itrs));
 
   return ResoveMergeType(
       merge_type_, ord.buckets().size(),
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using disjunction_t = disjunction_iterator<doc_iterator::ptr, A>;
+        using disjunction_t = min_match_iterator<doc_iterator::ptr, A>;
 
-        return make_disjunction<disjunction_t>(
-            std::move(itrs), std::move(aggregator), state->estimation());
+        return MakeWeakDisjunction<disjunction_t>(std::move(itrs), min_match_,
+                                                  std::move(aggregator),
+                                                  state->estimation());
       });
 }
 

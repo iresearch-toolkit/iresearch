@@ -23,105 +23,74 @@
 #ifndef IRESEARCH_STORE_UTILS_H
 #define IRESEARCH_STORE_UTILS_H
 
-#include "shared.hpp"
-
-#include "directory.hpp"
-#include "data_output.hpp"
 #include "data_input.hpp"
-
-#include "utils/string.hpp"
-#include "utils/bitpack.hpp"
+#include "data_output.hpp"
+#include "directory.hpp"
+#include "shared.hpp"
+#include "utils/attributes.hpp"
 #include "utils/bit_utils.hpp"
+#include "utils/bitpack.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/numeric_utils.hpp"
-#include "utils/attributes.hpp"
 #include "utils/std.hpp"
+#include "utils/string.hpp"
 
-namespace {
-
-using iresearch::data_input;
-using iresearch::data_output;
+namespace iresearch {
+namespace detail {
 
 template<typename T, size_t N = sizeof(T)>
-struct read_write_helper{
-  static T read(data_input& in);
-  static T write(data_output& out, T size);
+struct read_write_helper {
+  static T read(irs::data_input& in);
+  static T write(irs::data_output& out, T size);
 };
 
 template<typename T>
 struct read_write_helper<T, sizeof(irs::byte_type)> {
-  inline static T read(data_input& in) {
-    return in.read_byte();
-  }
+  inline static T read(irs::data_input& in) { return in.read_byte(); }
 
-  inline static void write(data_output& out, T in) {
-    out.write_byte(in);
-  }
+  inline static void write(irs::data_output& out, T in) { out.write_byte(in); }
 };
 
 template<typename T>
 struct read_write_helper<T, sizeof(uint16_t)> {
-  inline static T read(data_input& in) {
-    return in.read_short();
-  }
+  inline static T read(irs::data_input& in) { return in.read_short(); }
 
-  inline static void write(data_output& out, T in) {
-    out.write_short(in);
-  }
+  inline static void write(irs::data_output& out, T in) { out.write_short(in); }
 };
 
 template<typename T>
 struct read_write_helper<T, sizeof(uint32_t)> {
-  inline static T read(data_input& in) {
-    return in.read_vint();
-  }
+  inline static T read(irs::data_input& in) { return in.read_vint(); }
 
-  inline static void write(data_output& out, T in) {
-    out.write_vint(in);
-  }
+  inline static void write(irs::data_output& out, T in) { out.write_vint(in); }
 };
 
 template<typename T>
 struct read_write_helper<T, sizeof(uint64_t)> {
-  inline static T read(data_input& in) {
-    return in.read_vlong();
-  }
+  inline static T read(irs::data_input& in) { return in.read_vlong(); }
 
-  inline static void write(data_output& out, T in) {
-    out.write_vlong(in);
-  }
+  inline static void write(irs::data_output& out, T in) { out.write_vlong(in); }
 };
 
-} // LOCAL
+}  // namespace detail
 
-namespace iresearch {
-
-
-template<
-  typename StringType,
-  typename TraitsType = typename StringType::traits_type
-> StringType to_string(const byte_type* begin) {
+template<typename StringType,
+         typename TraitsType = typename StringType::traits_type>
+StringType to_string(const byte_type* begin) {
   typedef typename TraitsType::char_type char_type;
 
   const auto size = irs::vread<uint32_t>(begin);
 
-  return StringType(
-    reinterpret_cast<const char_type*>(begin),
-    size
-  );
+  return StringType(reinterpret_cast<const char_type*>(begin), size);
 }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                               read/write helpers
-// ----------------------------------------------------------------------------
 
 struct enum_hash {
   template<typename T>
   size_t operator()(T value) const {
-    typedef typename std::enable_if<
-      std::is_enum<T>::value,
-      typename std::underlying_type<T>::type
-    >::type underlying_type_t;
+    typedef
+        typename std::enable_if<std::is_enum<T>::value,
+                                typename std::underlying_type<T>::type>::type
+            underlying_type_t;
 
     return static_cast<underlying_type_t>(value);
   }
@@ -129,34 +98,29 @@ struct enum_hash {
 
 template<typename T>
 void write_enum(data_output& out, T value) {
-  typedef typename std::enable_if<
-    std::is_enum<T>::value,
-    typename std::underlying_type<T>::type
-  >::type underlying_type_t;
+  typedef typename std::enable_if<std::is_enum<T>::value,
+                                  typename std::underlying_type<T>::type>::type
+      underlying_type_t;
 
-  ::read_write_helper<underlying_type_t>::write(
-    out, static_cast<underlying_type_t>(value)
-  );
+  detail::read_write_helper<underlying_type_t>::write(
+      out, static_cast<underlying_type_t>(value));
 }
 
 template<typename T>
 T read_enum(data_input& in) {
-  typedef typename std::enable_if<
-    std::is_enum<T>::value,
-    typename std::underlying_type<T>::type
-  >::type underlying_type_t;
+  typedef typename std::enable_if<std::is_enum<T>::value,
+                                  typename std::underlying_type<T>::type>::type
+      underlying_type_t;
 
-  return static_cast<T>(
-    ::read_write_helper<underlying_type_t>::read(in)
-  );
+  return static_cast<T>(detail::read_write_helper<underlying_type_t>::read(in));
 }
 
 inline void write_size(data_output& out, size_t size) {
-  ::read_write_helper<size_t>::write(out, size);
+  detail::read_write_helper<size_t>::write(out, size);
 }
 
 inline size_t read_size(data_input& in) {
-  return ::read_write_helper<size_t>::read(in);
+  return detail::read_write_helper<size_t>::read(in);
 }
 
 void write_zvfloat(data_output& out, float_t v);
@@ -216,16 +180,17 @@ inline StringType read_string(data_input& in) {
 
   StringType str(len, 0);
 #ifdef IRESEARCH_DEBUG
-  const size_t read = in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), str.size());
+  const size_t read =
+      in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), str.size());
   assert(read == str.size());
   UNUSED(read);
 #else
   in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), str.size());
-#endif // IRESEARCH_DEBUG
+#endif  // IRESEARCH_DEBUG
   return str;
 }
 
-template< typename ContType >
+template<typename ContType>
 inline ContType read_strings(data_input& in) {
   ContType c;
 
@@ -238,10 +203,6 @@ inline ContType read_strings(data_input& in) {
 
   return c;
 }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                    bytes helpers
-// ----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write to 'out' array of data pointed by 'value' of length 'size'
@@ -279,7 +240,7 @@ template<typename T>
 T& read_ref(const byte_type*& in) {
   auto& data = reinterpret_cast<T&>(*in);
 
-  in += sizeof(T); // increment past value
+  in += sizeof(T);  // increment past value
 
   return data;
 }
@@ -291,14 +252,10 @@ template<typename T>
 T* read_ref(const byte_type*& in, size_t size) {
   auto* data = reinterpret_cast<T*>(&(*in));
 
-  in += sizeof(T) * size; // increment past value
+  in += sizeof(T) * size;  // increment past value
 
   return data;
 }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                   string helpers
-// ----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write to 'out' size + data pointed by 'value' of length 'size'
@@ -320,20 +277,14 @@ void vwrite_string(OutputIterator& out, const StringType& value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read a string + size into a value of type 'StringType' from 'in'
 ////////////////////////////////////////////////////////////////////////////////
-template<
-  typename StringType,
-  typename TraitsType = typename StringType::traits_type
->
+template<typename StringType,
+         typename TraitsType = typename StringType::traits_type>
 StringType vread_string(const byte_type*& in) {
   typedef typename TraitsType::char_type char_type;
   const auto size = vread<uint64_t>(in);
 
   return StringType(read_ref<const char_type>(in, size), size);
 }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                              bit packing helpers
-// ----------------------------------------------------------------------------
 
 FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) noexcept {
   assert(val <= UINT64_C(0x7FFFFFFFFFFFFFFF));
@@ -357,22 +308,14 @@ FORCE_INLINE T shift_unpack_32(uint32_t in, U& out) noexcept {
   return static_cast<T>(in & 1);
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                      I/O streams
-// ----------------------------------------------------------------------------
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class bytes_output
 //////////////////////////////////////////////////////////////////////////////
 class bytes_output : public data_output {
  public:
-  explicit bytes_output(bstring& buf) noexcept
-    : buf_(&buf) {
-  }
+  explicit bytes_output(bstring& buf) noexcept : buf_(&buf) {}
 
-  virtual void write_byte(byte_type b) override final {
-    (*buf_) += b;
-  }
+  virtual void write_byte(byte_type b) override final { (*buf_) += b; }
 
   virtual void write_bytes(const byte_type* b, size_t size) override final {
     buf_->append(b, size);
@@ -380,7 +323,7 @@ class bytes_output : public data_output {
 
  private:
   bstring* buf_;
-}; // bytes_output
+};  // bytes_output
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class bytes_ref_input
@@ -389,8 +332,7 @@ class bytes_ref_input : public index_input {
  public:
   bytes_ref_input() = default;
   explicit bytes_ref_input(bytes_ref data) noexcept
-      : data_(data), pos_(data_.begin()) {
-  }
+      : data_(data), pos_(data_.begin()) {}
 
   void skip(size_t size) noexcept {
     assert(pos_ + size <= data_.end());
@@ -406,9 +348,7 @@ class bytes_ref_input : public index_input {
     return std::distance(data_.begin(), pos_);
   }
 
-  virtual size_t length() const noexcept override final {
-    return data_.size();
-  }
+  virtual size_t length() const noexcept override final { return data_.size(); }
 
   virtual bool eof() const noexcept override final {
     return pos_ >= data_.end();
@@ -419,7 +359,8 @@ class bytes_ref_input : public index_input {
     return *pos_++;
   }
 
-  virtual const byte_type* read_buffer(size_t offset, size_t size, BufferHint /*hint*/) noexcept override final {
+  virtual const byte_type* read_buffer(
+      size_t offset, size_t size, BufferHint /*hint*/) noexcept override final {
     const auto begin = data_.begin() + offset;
     const auto end = begin + size;
 
@@ -431,7 +372,8 @@ class bytes_ref_input : public index_input {
     return nullptr;
   }
 
-  virtual const byte_type* read_buffer(size_t size, BufferHint /*hint*/) noexcept override final {
+  virtual const byte_type* read_buffer(
+      size_t size, BufferHint /*hint*/) noexcept override final {
     const auto* pos = pos_ + size;
 
     if (pos <= data_.end()) {
@@ -444,7 +386,8 @@ class bytes_ref_input : public index_input {
 
   virtual size_t read_bytes(byte_type* b, size_t size) noexcept override final;
 
-  virtual size_t read_bytes(size_t offset, byte_type* b, size_t size) noexcept override final;
+  virtual size_t read_bytes(size_t offset, byte_type* b,
+                            size_t size) noexcept override final;
 
   // append to buf
   void read_bytes(bstring& buf, size_t size);
@@ -454,17 +397,13 @@ class bytes_ref_input : public index_input {
     pos_ = data;
   }
 
-  void reset(bytes_ref ref) noexcept {
-    reset(ref.c_str(), ref.size());
-  }
+  void reset(bytes_ref ref) noexcept { reset(ref.c_str(), ref.size()); }
 
   virtual ptr dup() const override {
     return memory::make_unique<bytes_ref_input>(*this);
   }
 
-  virtual ptr reopen() const override {
-    return dup();
-  }
+  virtual ptr reopen() const override { return dup(); }
 
   virtual int16_t read_short() noexcept override final {
     return irs::read<uint16_t>(pos_);
@@ -490,14 +429,10 @@ class bytes_ref_input : public index_input {
 
  private:
   bytes_ref data_;
-  const byte_type* pos_{ data_.begin() };
-}; // bytes_ref_input
+  const byte_type* pos_{data_.begin()};
+};  // bytes_ref_input
 
 namespace encode {
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                      delta encode/decode helpers
-// ----------------------------------------------------------------------------
 
 namespace delta {
 
@@ -506,7 +441,7 @@ inline void decode(Iterator begin, Iterator end) {
   assert(std::distance(begin, end) > 0);
 
   typedef typename std::iterator_traits<Iterator>::value_type value_type;
-  const auto second = begin+1;
+  const auto second = begin + 1;
 
   std::transform(second, end, begin, second, std::plus<value_type>());
 }
@@ -520,34 +455,29 @@ inline void encode(Iterator begin, Iterator end) {
   const auto rbegin = irstd::make_reverse_iterator(end);
 
   std::transform(
-    rbegin + 1, rend, rbegin, rbegin,
-    [](const value_type& lhs, const value_type& rhs) {
-      return rhs - lhs;
-  });
+      rbegin + 1, rend, rbegin, rbegin,
+      [](const value_type& lhs, const value_type& rhs) { return rhs - lhs; });
 }
 
-} // delta
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                        avg encode/decode helpers
-// ----------------------------------------------------------------------------
+}  // namespace delta
 
 namespace avg {
 
 // Encodes block denoted by [begin;end) using average encoding algorithm
 // Returns block std::pair{ base, average }
-inline std::tuple<uint64_t, uint64_t, bool> encode(uint64_t* begin, uint64_t* end) noexcept {
+inline std::tuple<uint64_t, uint64_t, bool> encode(uint64_t* begin,
+                                                   uint64_t* end) noexcept {
   assert(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
   --end;
 
   const uint64_t base = *begin;
   const std::ptrdiff_t distance = std::distance(begin, end);
 
-  const uint64_t avg = std::lround(
-    static_cast<double_t>(*end - base) / (distance > 0 ? distance : 1));
+  const uint64_t avg = std::lround(static_cast<double_t>(*end - base) /
+                                   (distance > 0 ? distance : 1));
 
   uint64_t value = 0;
-  *begin++ = 0; // zig_zag_encode64(*begin - base - avg*0) == 0
+  *begin++ = 0;  // zig_zag_encode64(*begin - base - avg*0) == 0
   for (uint64_t avg_base = base; begin <= end; ++begin) {
     *begin = zig_zag_encode64(*begin - (avg_base += avg));
     value |= *begin;
@@ -558,17 +488,19 @@ inline std::tuple<uint64_t, uint64_t, bool> encode(uint64_t* begin, uint64_t* en
 
 // Encodes block denoted by [begin;end) using average encoding algorithm
 // Returns block std::pair{ base, average }
-inline std::pair<uint32_t, uint32_t> encode(uint32_t* begin, uint32_t* end) noexcept {
+inline std::pair<uint32_t, uint32_t> encode(uint32_t* begin,
+                                            uint32_t* end) noexcept {
   assert(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
   --end;
 
   const uint32_t base = *begin;
-  const std::ptrdiff_t distance = std::distance(begin, end); // prevent division by 0
+  const std::ptrdiff_t distance =
+      std::distance(begin, end);  // prevent division by 0
 
-  const uint32_t avg = std::lround(
-    static_cast<float_t>(*end - base) / (distance > 0 ? distance : 1));
+  const uint32_t avg = std::lround(static_cast<float_t>(*end - base) /
+                                   (distance > 0 ? distance : 1));
 
-  *begin++ = 0; // zig_zag_encode32(*begin - base - avg*0) == 0
+  *begin++ = 0;  // zig_zag_encode32(*begin - base - avg*0) == 0
   for (uint32_t avg_base = base; begin <= end; ++begin) {
     *begin = zig_zag_encode32(*begin - (avg_base += avg));
   }
@@ -579,10 +511,8 @@ inline std::pair<uint32_t, uint32_t> encode(uint32_t* begin, uint32_t* end) noex
 // Visit average compressed block denoted by [begin;end) with the
 // specified 'visitor'
 template<typename Visitor>
-inline void visit(
-    uint64_t base, const uint64_t avg,
-    uint64_t* begin, uint64_t* end,
-    Visitor visitor) {
+inline void visit(uint64_t base, const uint64_t avg, uint64_t* begin,
+                  uint64_t* end, Visitor visitor) {
   for (; begin != end; ++begin, base += avg) {
     visitor(base + zig_zag_decode64(*begin));
   }
@@ -591,10 +521,8 @@ inline void visit(
 // Visit average compressed block denoted by [begin;end) with the
 // specified 'visitor'
 template<typename Visitor>
-inline void visit(
-    uint32_t base, const uint32_t avg,
-    uint32_t* begin, uint32_t* end,
-    Visitor visitor) {
+inline void visit(uint32_t base, const uint32_t avg, uint32_t* begin,
+                  uint32_t* end, Visitor visitor) {
   for (; begin != end; ++begin, base += avg) {
     visitor(base + zig_zag_decode32(*begin));
   }
@@ -603,10 +531,8 @@ inline void visit(
 // Visit average compressed, bit packed block denoted
 // by [begin;begin+size) with the specified 'visitor'
 template<typename Visitor>
-inline void visit_packed(
-    uint64_t base,  const uint64_t avg,
-    uint64_t* begin, size_t size,
-    const uint32_t bits, Visitor visitor) {
+inline void visit_packed(uint64_t base, const uint64_t avg, uint64_t* begin,
+                         size_t size, const uint32_t bits, Visitor visitor) {
   for (size_t i = 0; i < size; ++i, base += avg) {
     visitor(base + zig_zag_decode64(packed::at(begin, i, bits)));
   }
@@ -615,86 +541,68 @@ inline void visit_packed(
 // Visit average compressed, bit packed block denoted
 // by [begin;begin+size) with the specified 'visitor'
 template<typename Visitor>
-inline void visit_packed(
-    uint32_t base,  const uint32_t avg,
-    uint32_t* begin, size_t size,
-    const uint32_t bits, Visitor visitor) {
+inline void visit_packed(uint32_t base, const uint32_t avg, uint32_t* begin,
+                         size_t size, const uint32_t bits, Visitor visitor) {
   for (size_t i = 0; i < size; ++i, base += avg) {
     visitor(base + zig_zag_decode32(packed::at(begin, i, bits)));
   }
 }
 
 // Decodes average compressed block denoted by [begin;end)
-inline void decode(
-    const uint64_t base, const uint64_t avg,
-    uint64_t* begin, uint64_t* end) {
-  visit(base, avg, begin, end, [begin](uint64_t decoded) mutable {
-    *begin++ = decoded;
-  });
+inline void decode(const uint64_t base, const uint64_t avg, uint64_t* begin,
+                   uint64_t* end) {
+  visit(base, avg, begin, end,
+        [begin](uint64_t decoded) mutable { *begin++ = decoded; });
 }
 
 // Decodes average compressed block denoted by [begin;end)
-inline void decode(
-    const uint32_t base, const uint32_t avg,
-    uint32_t* begin, uint32_t* end) {
-  visit(base, avg, begin, end, [begin](uint32_t decoded) mutable {
-    *begin++ = decoded;
-  });
+inline void decode(const uint32_t base, const uint32_t avg, uint32_t* begin,
+                   uint32_t* end) {
+  visit(base, avg, begin, end,
+        [begin](uint32_t decoded) mutable { *begin++ = decoded; });
 }
 
 template<typename PackFunc>
 inline uint32_t write_block(
-    PackFunc&& pack,
-    data_output& out,
-    const uint64_t base,
-    const uint64_t avg,
+    PackFunc&& pack, data_output& out, const uint64_t base, const uint64_t avg,
     const uint64_t* RESTRICT decoded,
-    const uint64_t size, // same type as 'read_block'/'write_block'
+    const uint64_t size,  // same type as 'read_block'/'write_block'
     uint64_t* RESTRICT encoded) {
   out.write_vlong(base);
   out.write_vlong(avg);
-  return bitpack::write_block64(
-    std::forward<PackFunc>(pack),
-    out, decoded, size, encoded);
+  return bitpack::write_block64(std::forward<PackFunc>(pack), out, decoded,
+                                size, encoded);
 }
 
 template<typename PackFunc>
 inline uint32_t write_block(
-    PackFunc&& pack,
-    data_output& out,
-    const uint32_t base,
-    const uint32_t avg,
+    PackFunc&& pack, data_output& out, const uint32_t base, const uint32_t avg,
     const uint32_t* RESTRICT decoded,
-    const uint32_t size, // same type as 'read_block'/'write_block'
+    const uint32_t size,  // same type as 'read_block'/'write_block'
     uint32_t* RESTRICT encoded) {
   out.write_vint(base);
   out.write_vint(avg);
-  return bitpack::write_block32(
-    std::forward<PackFunc>(pack),
-    out, decoded, size, encoded);
+  return bitpack::write_block32(std::forward<PackFunc>(pack), out, decoded,
+                                size, encoded);
 }
 
 // Skips average encoded 64-bit block
 inline void skip_block64(index_input& in, size_t size) {
-  in.read_vlong(); // skip base
-  in.read_vlong(); // skip avg
+  in.read_vlong();  // skip base
+  in.read_vlong();  // skip avg
   bitpack::skip_block64(in, size);
 }
 
 // Skips average encoded 64-bit block
 inline void skip_block32(index_input& in, uint32_t size) {
-  in.read_vint(); // skip base
-  in.read_vint(); // skip avg
+  in.read_vint();  // skip base
+  in.read_vint();  // skip avg
   bitpack::skip_block32(in, size);
 }
 
 template<typename Visitor>
-inline void visit_block_rl64(
-    data_input& in,
-    uint64_t base,
-    const uint64_t avg,
-    size_t size,
-    Visitor visitor) {
+inline void visit_block_rl64(data_input& in, uint64_t base, const uint64_t avg,
+                             size_t size, Visitor visitor) {
   base += in.read_vlong();
   for (; size; --size, base += avg) {
     visitor(base);
@@ -702,76 +610,55 @@ inline void visit_block_rl64(
 }
 
 template<typename Visitor>
-inline void visit_block_rl32(
-    data_input& in,
-    uint32_t base,
-    const uint32_t avg,
-    size_t size,
-    Visitor visitor) {
+inline void visit_block_rl32(data_input& in, uint32_t base, const uint32_t avg,
+                             size_t size, Visitor visitor) {
   base += in.read_vint();
   for (; size; --size, base += avg) {
     visitor(base);
   }
 }
 
-inline bool check_block_rl64(
-    data_input& in,
-    uint64_t expected_avg) {
-  in.read_vlong(); // skip base
+inline bool check_block_rl64(data_input& in, uint64_t expected_avg) {
+  in.read_vlong();  // skip base
   const uint64_t avg = in.read_vlong();
   const uint32_t bits = in.read_vint();
   const uint64_t value = in.read_vlong();
 
-  return expected_avg == avg &&
-         bitpack::ALL_EQUAL == bits &&
-         0 == value; // delta
+  return expected_avg == avg && bitpack::ALL_EQUAL == bits &&
+         0 == value;  // delta
 }
 
-inline bool check_block_rl32(
-    data_input& in,
-    uint32_t expected_avg) {
-  in.read_vint(); // skip base
+inline bool check_block_rl32(data_input& in, uint32_t expected_avg) {
+  in.read_vint();  // skip base
   const uint32_t avg = in.read_vint();
   const uint32_t bits = in.read_vint();
   const uint32_t value = in.read_vint();
 
-  return expected_avg == avg &&
-         bitpack::ALL_EQUAL == bits &&
-         0 == value; // delta
+  return expected_avg == avg && bitpack::ALL_EQUAL == bits &&
+         0 == value;  // delta
 }
 
-inline bool read_block_rl64(
-    data_input& in,
-    uint64_t& base,
-    uint64_t& avg) {
+inline bool read_block_rl64(data_input& in, uint64_t& base, uint64_t& avg) {
   base = in.read_vlong();
   avg = in.read_vlong();
   const uint32_t bits = in.read_vint();
   const uint64_t value = in.read_vlong();
 
-  return bitpack::ALL_EQUAL == bits &&
-         0 == value; // delta
+  return bitpack::ALL_EQUAL == bits && 0 == value;  // delta
 }
 
-inline bool read_block_rl32(
-    data_input& in,
-    uint32_t& base,
-    uint32_t& avg) {
+inline bool read_block_rl32(data_input& in, uint32_t& base, uint32_t& avg) {
   base = in.read_vint();
   avg = in.read_vint();
   const uint32_t bits = in.read_vint();
   const uint32_t value = in.read_vint();
 
-  return bitpack::ALL_EQUAL == bits &&
-         0 == value; // delta
+  return bitpack::ALL_EQUAL == bits && 0 == value;  // delta
 }
 
 template<typename Visitor>
-inline void visit_block_packed_tail(
-    data_input& in,
-    size_t size,
-    uint64_t* packed,
-    Visitor visitor) {
+inline void visit_block_packed_tail(data_input& in, size_t size,
+                                    uint64_t* packed, Visitor visitor) {
   const uint64_t base = in.read_vlong();
   const uint64_t avg = in.read_vlong();
   const uint32_t bits = in.read_vint();
@@ -784,19 +671,15 @@ inline void visit_block_packed_tail(
   const size_t block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
 
   in.read_bytes(
-    reinterpret_cast<byte_type*>(packed),
-    sizeof(uint64_t)*packed::blocks_required_64(block_size, bits)
-  );
+      reinterpret_cast<byte_type*>(packed),
+      sizeof(uint64_t) * packed::blocks_required_64(block_size, bits));
 
   visit_packed(base, avg, packed, size, bits, visitor);
 }
 
 template<typename Visitor>
-inline void visit_block_packed_tail(
-    data_input& in,
-    uint32_t size,
-    uint32_t* packed,
-    Visitor visitor) {
+inline void visit_block_packed_tail(data_input& in, uint32_t size,
+                                    uint32_t* packed, Visitor visitor) {
   const uint32_t base = in.read_vint();
   const uint32_t avg = in.read_vint();
   const uint32_t bits = in.read_vint();
@@ -809,19 +692,15 @@ inline void visit_block_packed_tail(
   const uint32_t block_size = math::ceil32(size, packed::BLOCK_SIZE_32);
 
   in.read_bytes(
-    reinterpret_cast<byte_type*>(packed),
-    sizeof(uint32_t)*packed::blocks_required_32(block_size, bits)
-  );
+      reinterpret_cast<byte_type*>(packed),
+      sizeof(uint32_t) * packed::blocks_required_32(block_size, bits));
 
   visit_packed(base, avg, packed, size, bits, visitor);
 }
 
 template<typename Visitor>
-inline void visit_block_packed(
-    data_input& in,
-    size_t size,
-    uint64_t* packed,
-    Visitor visitor) {
+inline void visit_block_packed(data_input& in, size_t size, uint64_t* packed,
+                               Visitor visitor) {
   const uint64_t base = in.read_vlong();
   const uint64_t avg = in.read_vlong();
   const uint32_t bits = in.read_vint();
@@ -831,20 +710,15 @@ inline void visit_block_packed(
     return;
   }
 
-  in.read_bytes(
-    reinterpret_cast<byte_type*>(packed),
-    sizeof(uint64_t)*packed::blocks_required_64(size, bits)
-  );
+  in.read_bytes(reinterpret_cast<byte_type*>(packed),
+                sizeof(uint64_t) * packed::blocks_required_64(size, bits));
 
   visit_packed(base, avg, packed, size, bits, visitor);
 }
 
 template<typename Visitor>
-inline void visit_block_packed(
-    data_input& in,
-    uint32_t size,
-    uint32_t* packed,
-    Visitor visitor) {
+inline void visit_block_packed(data_input& in, uint32_t size, uint32_t* packed,
+                               Visitor visitor) {
   const uint32_t base = in.read_vint();
   const uint32_t avg = in.read_vint();
   const uint32_t bits = in.read_vint();
@@ -854,18 +728,14 @@ inline void visit_block_packed(
     return;
   }
 
-  in.read_bytes(
-    reinterpret_cast<byte_type*>(packed),
-    sizeof(uint32_t)*packed::blocks_required_32(size, bits)
-  );
+  in.read_bytes(reinterpret_cast<byte_type*>(packed),
+                sizeof(uint32_t) * packed::blocks_required_32(size, bits));
 
   visit_packed(base, avg, packed, size, bits, visitor);
 }
 
-} // avg
-
-} // encode
-
-} // ROOT
+}  // namespace avg
+}  // namespace encode
+}  // namespace iresearch
 
 #endif

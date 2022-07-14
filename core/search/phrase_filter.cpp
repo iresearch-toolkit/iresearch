@@ -41,8 +41,7 @@ struct fixed_phrase_state : util::noncopyable {
   struct term_state {
     term_state(seek_term_iterator::cookie_ptr&& first,
                score_t /*second*/) noexcept
-      : first(std::move(first)) {
-    }
+        : first(std::move(first)) {}
 
     seek_term_iterator::cookie_ptr first;
   };
@@ -58,7 +57,7 @@ static_assert(std::is_nothrow_move_assignable_v<fixed_phrase_state>);
 struct variadic_phrase_state : fixed_phrase_state {
   using term_state = std::pair<seek_term_iterator::cookie_ptr, score_t>;
 
-  std::vector<size_t> num_terms; // number of terms per phrase part
+  std::vector<size_t> num_terms;  // number of terms per phrase part
   phrase_state<term_state> terms;
   const term_reader* reader{};
   bool volatile_boost{};
@@ -71,19 +70,17 @@ struct get_visitor {
   using result_type = field_visitor;
 
   result_type operator()(const by_term_options& part) const {
-    return [term = bytes_ref(part.term)](
-        const sub_reader& segment,
-        const term_reader& field,
-        filter_visitor& visitor) {
+    return [term = bytes_ref(part.term)](const sub_reader& segment,
+                                         const term_reader& field,
+                                         filter_visitor& visitor) {
       return by_term::visit(segment, field, term, visitor);
     };
   }
 
   result_type operator()(const by_prefix_options& part) const {
-    return [term = bytes_ref(part.term)](
-        const sub_reader& segment,
-        const term_reader& field,
-        filter_visitor& visitor) {
+    return [term = bytes_ref(part.term)](const sub_reader& segment,
+                                         const term_reader& field,
+                                         filter_visitor& visitor) {
       return by_prefix::visit(segment, field, term, visitor);
     };
   }
@@ -97,19 +94,17 @@ struct get_visitor {
   }
 
   result_type operator()(const by_terms_options& part) const {
-    return [terms = &part.terms](
-        const sub_reader& segment,
-        const term_reader& field,
-        filter_visitor& visitor) {
+    return [terms = &part.terms](const sub_reader& segment,
+                                 const term_reader& field,
+                                 filter_visitor& visitor) {
       return by_terms::visit(segment, field, *terms, visitor);
     };
   }
 
   result_type operator()(const by_range_options& part) const {
-    return [range = &part.range](
-        const sub_reader& segment,
-        const term_reader& field,
-        filter_visitor& visitor) {
+    return [range = &part.range](const sub_reader& segment,
+                                 const term_reader& field,
+                                 filter_visitor& visitor) {
       return by_range::visit(segment, field, *range, visitor);
     };
   }
@@ -117,7 +112,7 @@ struct get_visitor {
   template<typename T>
   result_type operator()(const T&) const {
     assert(false);
-    return [](const sub_reader&, const term_reader&, filter_visitor&) { };
+    return [](const sub_reader&, const term_reader&, filter_visitor&) {};
   }
 };
 
@@ -129,33 +124,29 @@ struct prepare : util::noncopyable {
   }
 
   result_type operator()(const by_prefix_options& part) const {
-    return by_prefix::prepare(
-      index, order, boost, field,
-      part.term, part.scored_terms_limit);
+    return by_prefix::prepare(index, order, boost, field, part.term,
+                              part.scored_terms_limit);
   }
 
   result_type operator()(const by_wildcard_options& part) const {
-    return by_wildcard::prepare(
-      index, order, boost, field,
-      part.term, part.scored_terms_limit);
+    return by_wildcard::prepare(index, order, boost, field, part.term,
+                                part.scored_terms_limit);
   }
 
   result_type operator()(const by_edit_distance_filter_options& part) const {
-    return by_edit_distance::prepare(
-      index, order, boost, field, part.term,
-      0, // collect all terms
-      part.max_distance, part.provider,
-      part.with_transpositions, part.prefix);
+    return by_edit_distance::prepare(index, order, boost, field, part.term,
+                                     0,  // collect all terms
+                                     part.max_distance, part.provider,
+                                     part.with_transpositions, part.prefix);
   }
 
   result_type operator()(const by_terms_options& /*part*/) const {
-    return nullptr; // FIXME
+    return nullptr;  // FIXME
   }
 
   result_type operator()(const by_range_options& part) const {
-    return by_range::prepare(
-      index, order, boost, field,
-       part.range, part.scored_terms_limit);
+    return by_range::prepare(index, order, boost, field, part.range,
+                             part.scored_terms_limit);
   }
 
   template<typename T>
@@ -164,13 +155,9 @@ struct prepare : util::noncopyable {
     return filter::prepared::empty();
   }
 
-  prepare(const index_reader& index,
-          const Order& order,
-          std::string_view field,
+  prepare(const index_reader& index, const Order& order, std::string_view field,
           const score_t boost) noexcept
-    : index(index), order(order),
-      field(field), boost(boost) {
-  }
+      : index(index), order(order), field(field), boost(boost) {}
 
   const index_reader& index;
   const irs::Order& order;
@@ -178,7 +165,7 @@ struct prepare : util::noncopyable {
   const score_t boost;
 };
 
-}
+}  // namespace
 
 namespace iresearch {
 
@@ -188,11 +175,9 @@ class phrase_term_visitor final : public filter_visitor,
                                   private util::noncopyable {
  public:
   explicit phrase_term_visitor(PhraseStates& phrase_states) noexcept
-    : phrase_states_(phrase_states) {
-  }
+      : phrase_states_(phrase_states) {}
 
-  virtual void prepare(const sub_reader& segment,
-                       const term_reader& field,
+  virtual void prepare(const sub_reader& segment, const term_reader& field,
                        const seek_term_iterator& terms) noexcept override {
     segment_ = &segment;
     reader_ = &field;
@@ -218,9 +203,7 @@ class phrase_term_visitor final : public filter_visitor,
     phrase_states_.emplace_back(terms_->cookie(), boost);
   }
 
-  void reset() noexcept {
-    volatile_boost_ = false;
-  }
+  void reset() noexcept { volatile_boost_ = false; }
 
   void reset(term_collectors& collectors) noexcept {
     found_ = false;
@@ -246,7 +229,7 @@ class phrase_term_visitor final : public filter_visitor,
   bool volatile_boost_ = false;
 };
 
-}
+}  // namespace iresearch
 
 namespace iresearch {
 
@@ -257,16 +240,12 @@ class phrase_query : public filter::prepared {
   using states_t = states_cache<State>;
   using positions_t = std::vector<position::value_t>;
 
-  phrase_query(
-      states_t&& states,
-      positions_t&& positions,
-      bstring&& stats,
-      score_t boost) noexcept
-    : prepared(boost),
-      states_(std::move(states)),
-      positions_(std::move(positions)),
-      stats_(std::move(stats)) {
-  }
+  phrase_query(states_t&& states, positions_t&& positions, bstring&& stats,
+               score_t boost) noexcept
+      : prepared(boost),
+        states_(std::move(states)),
+        positions_(std::move(positions)),
+        stats_(std::move(stats)) {}
 
  protected:
   states_t states_;
@@ -276,21 +255,16 @@ class phrase_query : public filter::prepared {
 
 class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
  public:
-  fixed_phrase_query(
-      states_t&& states, positions_t&& positions,
-      bstring&& stats, score_t boost) noexcept
-    : phrase_query<fixed_phrase_state>(
-        std::move(states),  std::move(positions),
-        std::move(stats), boost) {
-  }
+  fixed_phrase_query(states_t&& states, positions_t&& positions,
+                     bstring&& stats, score_t boost) noexcept
+      : phrase_query<fixed_phrase_state>(
+            std::move(states), std::move(positions), std::move(stats), boost) {}
 
   using filter::prepared::execute;
 
-  doc_iterator::ptr execute(
-      const sub_reader& rdr,
-      const Order& ord,
-      ExecutionMode /*mode*/,
-      const attribute_provider* /*ctx*/) const override {
+  doc_iterator::ptr execute(const sub_reader& rdr, const Order& ord,
+                            ExecutionMode /*mode*/,
+                            const attribute_provider* /*ctx*/) const override {
     // get phrase state for the specified reader
     auto phrase_state = states_.find(rdr);
 
@@ -300,7 +274,8 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
     }
 
     // get index features required for query & order
-    const IndexFeatures features = ord.features() | by_phrase::kRequiredFeatures;
+    const IndexFeatures features =
+        ord.features() | by_phrase::kRequiredFeatures;
 
     std::vector<score_iterator_adapter<doc_iterator::ptr>> itrs;
     itrs.reserve(phrase_state->terms.size());
@@ -335,46 +310,38 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
       ++position;
     }
 
-    using phrase_iterator_t = phrase_iterator<
-      conjunction<doc_iterator::ptr, NoopAggregator>,
-      fixed_phrase_frequency>;
+    using phrase_iterator_t =
+        phrase_iterator<conjunction<doc_iterator::ptr, NoopAggregator>,
+                        fixed_phrase_frequency>;
 
     return memory::make_managed<phrase_iterator_t>(
-        std::move(itrs),
-        std::move(positions),
-        rdr,
-        *phrase_state->reader,
-        stats_.c_str(),
-        ord,
-        boost());
+        std::move(itrs), std::move(positions), rdr, *phrase_state->reader,
+        stats_.c_str(), ord, boost());
   }
-}; // fixed_phrase_query
+};  // fixed_phrase_query
 
 class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
  public:
   // FIXME add proper handling of overlapped case
   template<bool VolatileBoost>
-  using phrase_iterator_t = phrase_iterator<conjunction<doc_iterator::ptr, NoopAggregator>,
-                                            variadic_phrase_frequency<VolatileBoost>>;
+  using phrase_iterator_t =
+      phrase_iterator<conjunction<doc_iterator::ptr, NoopAggregator>,
+                      variadic_phrase_frequency<VolatileBoost>>;
 
-  variadic_phrase_query(
-      states_t&& states, positions_t&& positions,
-      bstring&& stats, score_t boost) noexcept
-    : phrase_query<variadic_phrase_state>(
-        std::move(states), std::move(positions),
-        std::move(stats), boost) {
-  }
+  variadic_phrase_query(states_t&& states, positions_t&& positions,
+                        bstring&& stats, score_t boost) noexcept
+      : phrase_query<variadic_phrase_state>(
+            std::move(states), std::move(positions), std::move(stats), boost) {}
 
   using filter::prepared::execute;
 
-  doc_iterator::ptr execute(
-      const sub_reader& rdr,
-      const Order& ord,
-      ExecutionMode /*mode*/,
-      const attribute_provider* /*ctx*/) const override {
+  doc_iterator::ptr execute(const sub_reader& rdr, const Order& ord,
+                            ExecutionMode /*mode*/,
+                            const attribute_provider* /*ctx*/) const override {
     using adapter_t = variadic_phrase_adapter;
     using compound_doc_iterator_t = irs::compound_doc_iterator<adapter_t>;
-    using disjunction_t = disjunction<doc_iterator::ptr, NoopAggregator, adapter_t, true>;
+    using disjunction_t =
+        disjunction<doc_iterator::ptr, NoopAggregator, adapter_t, true>;
 
     // get phrase state for the specified reader
     auto phrase_state = states_.find(rdr);
@@ -385,7 +352,8 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
     }
 
     // get features required for query & order
-    const IndexFeatures features = ord.features() | by_phrase::kRequiredFeatures;
+    const IndexFeatures features =
+        ord.features() | by_phrase::kRequiredFeatures;
 
     std::vector<score_iterator_adapter<doc_iterator::ptr>> conj_itrs;
     conj_itrs.reserve(phrase_state->terms.size());
@@ -409,7 +377,8 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
 
       std::vector<adapter_t> disj_itrs;
       disj_itrs.reserve(num_terms);
-      for (const auto end = term_state + num_terms; term_state != end; ++term_state) {
+      for (const auto end = term_state + num_terms; term_state != end;
+           ++term_state) {
         assert(term_state->first);
 
         adapter_t docs{reader->postings(*term_state->first, features),
@@ -427,7 +396,8 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
         return doc_iterator::empty();
       }
 
-      auto disj = make_disjunction<disjunction_t>(std::move(disj_itrs));
+      auto disj = MakeDisjunction<disjunction_t>(std::move(disj_itrs),
+                                                  NoopAggregator{});
       pos.first = down_cast<compound_doc_iterator_t>(disj.get());
       conj_itrs.emplace_back(std::move(disj));
       ++position;
@@ -436,30 +406,18 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
 
     if (phrase_state->volatile_boost) {
       return memory::make_managed<phrase_iterator_t<true>>(
-        std::move(conj_itrs),
-        std::move(positions),
-        rdr,
-        *phrase_state->reader,
-        stats_.c_str(),
-        ord,
-        boost());
+          std::move(conj_itrs), std::move(positions), rdr,
+          *phrase_state->reader, stats_.c_str(), ord, boost());
     }
 
     return memory::make_managed<phrase_iterator_t<false>>(
-      std::move(conj_itrs),
-      std::move(positions),
-      rdr,
-      *phrase_state->reader,
-      stats_.c_str(),
-      ord,
-      boost());
+        std::move(conj_itrs), std::move(positions), rdr, *phrase_state->reader,
+        stats_.c_str(), ord, boost());
   }
 };
 
 filter::prepared::ptr by_phrase::prepare(
-    const index_reader& index,
-    const Order& ord,
-    score_t boost,
+    const index_reader& index, const Order& ord, score_t boost,
     const attribute_provider* /*ctx*/) const {
   if (field().empty() || options().empty()) {
     // empty field or phrase
@@ -467,9 +425,9 @@ filter::prepared::ptr by_phrase::prepare(
   }
 
   if (1 == options().size()) {
-    auto query = std::visit(
-      ::prepare{index, ord, field(), this->boost()*boost},
-      options().begin()->second);
+    auto query =
+        std::visit(::prepare{index, ord, field(), this->boost() * boost},
+                   options().begin()->second);
 
     if (query) {
       return query;
@@ -485,9 +443,7 @@ filter::prepared::ptr by_phrase::prepare(
 }
 
 filter::prepared::ptr by_phrase::fixed_prepare_collect(
-    const index_reader& index,
-    const Order& ord,
-    score_t boost) const {
+    const index_reader& index, const Order& ord, score_t boost) const {
   const auto phrase_size = options().size();
   const auto is_ord_empty = ord.empty();
 
@@ -516,16 +472,19 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     }
 
     // check required features
-    if (kRequiredFeatures != (reader->meta().index_features & kRequiredFeatures)) {
+    if (kRequiredFeatures !=
+        (reader->meta().index_features & kRequiredFeatures)) {
       continue;
     }
 
-    field_stats.collect(segment, *reader); // collect field statistics once per segment
+    field_stats.collect(segment,
+                        *reader);  // collect field statistics once per segment
     ptv.reset(term_stats);
 
     for (const auto& word : options()) {
       assert(std::get_if<by_term_options>(&word.second));
-      by_term::visit(segment, *reader, std::get<by_term_options>(word.second).term, ptv);
+      by_term::visit(segment, *reader,
+                     std::get<by_term_options>(word.second).term, ptv);
       if (!ptv.found()) {
         if (is_ord_empty) {
           break;
@@ -553,7 +512,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   const size_t base_offset = options().begin()->first;
 
   // finish stats
-  bstring stats(ord.stats_size(), 0); // aggregated phrase stats
+  bstring stats(ord.stats_size(), 0);  // aggregated phrase stats
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
   fixed_phrase_query::positions_t positions(phrase_size);
@@ -568,16 +527,12 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   }
 
   return memory::make_managed<fixed_phrase_query>(
-    std::move(phrase_states),
-    std::move(positions),
-    std::move(stats),
-    this->boost() * boost);
+      std::move(phrase_states), std::move(positions), std::move(stats),
+      this->boost() * boost);
 }
 
 filter::prepared::ptr by_phrase::variadic_prepare_collect(
-    const index_reader& index,
-    const Order& ord,
-    score_t boost) const {
+    const index_reader& index, const Order& ord, score_t boost) const {
   const auto phrase_size = options().size();
 
   // stats collectors
@@ -596,9 +551,10 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   variadic_phrase_query::states_t phrase_states(index);
 
   // per segment phrase terms
-  std::vector<size_t> num_terms(phrase_size); // number of terms per part
+  std::vector<size_t> num_terms(phrase_size);  // number of terms per part
   phrase_state<variadic_phrase_state::term_state> phrase_terms;
-  phrase_terms.reserve(phrase_size); // reserve space for at least 1 term per part
+  phrase_terms.reserve(
+      phrase_size);  // reserve space for at least 1 term per part
 
   // iterate over the segments
   const string_ref field = this->field();
@@ -615,17 +571,19 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     }
 
     // check required features
-    if (kRequiredFeatures != (reader->meta().index_features & kRequiredFeatures)) {
+    if (kRequiredFeatures !=
+        (reader->meta().index_features & kRequiredFeatures)) {
       continue;
     }
 
-    ptv.reset(); // reset boost volaitility mark
-    field_stats.collect(segment, *reader); // collect field statistics once per segment
+    ptv.reset();  // reset boost volaitility mark
+    field_stats.collect(segment,
+                        *reader);  // collect field statistics once per segment
 
     size_t part_offset = 0;
     size_t found_words_count = 0;
 
-    for (const auto& visitor: phrase_part_visitors) {
+    for (const auto& visitor : phrase_part_visitors) {
       const auto terms_count = phrase_terms.size();
 
       ptv.reset(phrase_part_stats[part_offset]);
@@ -659,7 +617,8 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     assert(phrase_size == state.num_terms.size());
 
     phrase_terms.reserve(phrase_size);
-    num_terms.resize(phrase_size); // reserve space for at least 1 term per part
+    num_terms.resize(
+        phrase_size);  // reserve space for at least 1 term per part
   }
 
   // offset of the first term in a phrase
@@ -668,7 +627,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
   // finish stats
   assert(phrase_size == phrase_part_stats.size());
-  bstring stats(ord.stats_size(), 0); // aggregated phrase stats
+  bstring stats(ord.stats_size(), 0);  // aggregated phrase stats
   auto* stats_buf = const_cast<byte_type*>(stats.data());
   auto collector = phrase_part_stats.begin();
 
@@ -677,7 +636,8 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
   for (const auto& term : options()) {
     *pos_itr = position::value_t(term.first - base_offset);
-    for (size_t term_idx = 0, size = collector->size(); term_idx < size; ++term_idx) {
+    for (size_t term_idx = 0, size = collector->size(); term_idx < size;
+         ++term_idx) {
       collector->finish(stats_buf, term_idx, field_stats, index);
     }
     ++pos_itr;
@@ -685,10 +645,8 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   }
 
   return memory::make_managed<variadic_phrase_query>(
-    std::move(phrase_states),
-    std::move(positions),
-    std::move(stats),
-    this->boost() * boost);
+      std::move(phrase_states), std::move(positions), std::move(stats),
+      this->boost() * boost);
 }
 
-}
+}  // namespace iresearch
