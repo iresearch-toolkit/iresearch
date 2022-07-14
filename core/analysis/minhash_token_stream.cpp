@@ -470,11 +470,11 @@ bool MinHashTokenStream::next() {
     return false;
   }
 
-  const size_t value = [&]() noexcept -> size_t {
+  const size_t value = [value = *begin_]() noexcept -> size_t {
     if constexpr (is_big_endian()) {
-      return absl::gbswap_64(*begin_);
+      return absl::gbswap_64(value);
     } else {
-      return *begin_;
+      return value;
     }
   }();
 

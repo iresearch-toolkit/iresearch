@@ -124,11 +124,11 @@ filter::prepared::ptr by_terms::prepare(const index_reader& index,
     if (order.empty()) {
       return all().prepare(index);
     } else {
-      assert(by_terms_options{}.min_match == 1);
-
       Or disj;
-      disj.add<all>().boost(0.);  // don't contribute to the score
-      disj.add<by_terms>(*this);  // min_match == 1 by default
+      // Don't contribute to the score
+      disj.add<all>().boost(0.);
+      // Reset min_match to 1
+      disj.add<by_terms>(*this).mutable_options()->min_match = 1;
       return disj.prepare(index, order, kNoBoost, ctx);
     }
   }
