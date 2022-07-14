@@ -902,7 +902,8 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
     const irs::sub_reader& /*segment*/,
     const irs::term_reader& /*term*/,
     const irs::byte_type* /*stats_buf*/,
-    const irs::attribute_provider& attr)->irs::ScoreFunction {
+    const irs::attribute_provider& attr,
+    irs::score_t)->irs::ScoreFunction {
       auto* freq = irs::get<irs::frequency>(attr);
       auto* boost = irs::get<irs::filter_boost>(attr);
       return {
@@ -978,7 +979,8 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
       const irs::sub_reader& /*segment*/,
       const irs::term_reader& /*term*/,
       const irs::byte_type* /*stats_buf*/,
-      const irs::attribute_provider& attr)->irs::ScoreFunction {
+      const irs::attribute_provider& attr,
+      irs::score_t)->irs::ScoreFunction {
     auto* freq = irs::get<irs::frequency>(attr);
     auto* boost = irs::get<irs::filter_boost>(attr);
     return {

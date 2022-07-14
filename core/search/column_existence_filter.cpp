@@ -115,7 +115,7 @@ class column_prefix_existence_query final : public column_existence_query {
           using disjunction_t =
               irs::disjunction_iterator<irs::doc_iterator::ptr, A>;
 
-          return irs::make_disjunction<disjunction_t>(std::move(itrs),
+          return irs::MakeDisjunction<disjunction_t>(std::move(itrs),
                                                       std::move(aggregator));
         });
   }

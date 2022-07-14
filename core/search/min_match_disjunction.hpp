@@ -422,6 +422,15 @@ class min_match_disjunction : public doc_iterator,
   attributes attrs_;
 };
 
+template<typename DocIterator, typename Merger>
+struct RebindIterator<min_match_disjunction<DocIterator, Merger>> {
+  using Adapter = typename min_match_disjunction<DocIterator,
+                                                 Merger>::cost_iterator_adapter;
+
+  using Disjunction = disjunction<DocIterator, Merger, Adapter>;
+  using Conjunction = conjunction<DocIterator, Merger>;
+};
+
 }  // namespace iresearch
 
 #endif  // IRESEARCH_MIN_MATCH_DISJUNCTION_H
