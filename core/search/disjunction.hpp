@@ -1386,7 +1386,7 @@ template<typename WeakConjunction, typename Merger, typename... Args>
 doc_iterator::ptr MakeWeakDisjunction(
     typename WeakConjunction::doc_iterators_t&& itrs, size_t min_match,
     Merger&& merger, Args&&... args) {
-  // FIXME(gnusi)
+  // This case must be handled by a caller, we're unable to process it here
   assert(min_match > 0);
 
   const auto size = itrs.size();

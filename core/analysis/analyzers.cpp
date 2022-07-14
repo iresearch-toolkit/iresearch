@@ -82,7 +82,7 @@ namespace {
 
 constexpr std::string_view kFileNamePrefix{"libanalyzer-"};
 
-class analyzer_register
+class analyzer_register final
     : public irs::tagged_generic_register<::key, ::value, irs::string_ref,
                                           analyzer_register> {
  protected:

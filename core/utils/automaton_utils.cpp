@@ -396,7 +396,7 @@ filter::prepared::ptr prepare_automaton_filter(
   if (fst::kError == matcher.Properties(0)) {
     IR_FRMT_ERROR(
         "Expected deterministic, epsilon-free acceptor, "
-        "got the following properties " IR_UINT64_T_SPECIFIER "",
+        "got the following properties " IR_UINT64_T_SPECIFIER,
         matcher.GetFst().Properties(automaton_table_matcher::FST_PROPERTIES,
                                     false));
 
