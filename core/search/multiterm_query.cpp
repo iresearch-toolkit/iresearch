@@ -102,9 +102,46 @@ bool lazy_bitset_iterator::refill(const word_t** begin, const word_t** end) {
 
 namespace iresearch {
 
-doc_iterator::ptr multiterm_query::execute(
-    const sub_reader& segment, const Order& ord, ExecutionMode /*mode*/,
-    const attribute_provider* /*ctx*/) const {
+/*
+ * {
+ *   "foo" : [ 0, 1, 2, 3, 4, 8 ],
+ *
+ * }
+ */
+class OffsetExtractor final : public Extractor {
+ public:
+  IndexFeatures features() const noexcept override {
+    return irs::IndexFeatures::POS | irs::IndexFeatures::OFFS;
+  }
+
+ protected:
+  void ProcessField(const term_reader& field) noexcept override {
+    cur_ = &fields_[&field];
+  }
+
+  void ProcessPostings(const attribute_provider& attrs) override {
+    if (const auto* offs = irs::get<irs::offset>(attrs); offs) {
+      cur_->emplace_back(offs);
+    }
+  }
+
+  template<typename Visitor>
+  void visit(Visitor&& visitor) const {
+    for (auto& [field, offsets] : fields_) {
+      visitor(field->meta(), offsets);
+    }
+  }
+
+ private:
+  absl::flat_hash_map<const term_reader*, std::vector<const offset*>> fields_;
+  std::vector<const offset*>* cur_;
+};
+
+doc_iterator::ptr multiterm_query::execute(const ExecutionContext& ctx) const {
+  auto& extractor = GetExtractor(ctx);
+  auto& segment = ctx.segment;
+  auto& ord = ctx.scorers;
+
   // get term state for the specified reader
   auto state = states_.find(segment);
 
@@ -116,8 +153,10 @@ doc_iterator::ptr multiterm_query::execute(
   auto* reader = state->reader;
   assert(reader);
 
-  // get required features for order
-  const IndexFeatures features = ord.features();
+  extractor.ProcessField(*reader);
+
+  // Get required features
+  const IndexFeatures features = ord.features() | extractor.features();
   const std::span stats{stats_};
 
   const bool has_unscored_terms = !state->unscored_terms.empty();
@@ -147,6 +186,8 @@ doc_iterator::ptr multiterm_query::execute(
                               *docs, entry.boost * boost());
       }
     }
+
+    extractor.ProcessPostings(*docs);
 
     assert(it != std::end(itrs));
     *it = std::move(docs);

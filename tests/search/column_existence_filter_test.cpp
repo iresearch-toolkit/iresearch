@@ -47,7 +47,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
           : name_(name) {
         }
 
-        bool write(data_output&) const { return true; }
+        bool write(irs::data_output&) const { return true; }
         irs::string_ref name() const { return name_; }
         irs::IndexFeatures index_features() const noexcept { return irs::IndexFeatures::NONE; }
         irs::features_t features() const { return {}; }

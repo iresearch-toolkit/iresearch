@@ -254,20 +254,17 @@ struct boosted : public irs::filter {
                       irs::score_t boost)
         : irs::filter::prepared(boost), docs(docs) {}
 
-    virtual irs::doc_iterator::ptr execute(
-        const irs::sub_reader& /*rdr*/, const irs::Order& ord,
-        irs::ExecutionMode /*mode*/,
-        const irs::attribute_provider* /*ctx*/) const override {
+    irs::doc_iterator::ptr execute(const irs::ExecutionContext& ctx) const override {
       boosted::execute_count++;
       return irs::memory::make_managed<basic_doc_iterator>(
-          docs.begin(), docs.end(), stats.c_str(), ord, boost());
+          docs.begin(), docs.end(), stats.c_str(), ctx.scorers, boost());
     }
 
     basic_doc_iterator::docids_t docs;
     irs::bstring stats;
   };  // prepared
 
-  virtual irs::filter::prepared::ptr prepare(
+  irs::filter::prepared::ptr prepare(
       const irs::index_reader&, const irs::Order&, irs::score_t boost,
       const irs::attribute_provider* /*ctx*/) const override {
     return irs::memory::make_managed<boosted::prepared>(docs,
@@ -1066,8 +1063,6 @@ TEST(boolean_query_boost, or_filter) {
 
   // unboosted root & several unboosted subqueries
   {
-    const irs::score_t value = 5;
-
     auto pord = irs::Order::Prepare(tests::sort::boost{});
 
     irs::Or root;
@@ -1150,8 +1145,7 @@ struct unestimated : public irs::filter {
 
   struct prepared : public irs::filter::prepared {
     virtual irs::doc_iterator::ptr execute(
-        const irs::sub_reader&, const irs::Order&, irs::ExecutionMode /*mode*/,
-        const irs::attribute_provider*) const override {
+        const irs::ExecutionContext&) const override {
       return irs::memory::make_managed<unestimated::doc_iterator>();
     }
   };  // prepared
@@ -1200,8 +1194,7 @@ struct estimated : public irs::filter {
         : evaluated(evaluated), est(est) {}
 
     virtual irs::doc_iterator::ptr execute(
-        const irs::sub_reader&, const irs::Order&, irs::ExecutionMode /*mode*/,
-        const irs::attribute_provider*) const override {
+        const irs::ExecutionContext& ctx) const override {
       return irs::memory::make_managed<estimated::doc_iterator>(est, evaluated);
     }
 

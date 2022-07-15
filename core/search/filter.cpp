@@ -21,44 +21,38 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "filter.hpp"
+
 #include "utils/singleton.hpp"
 
 namespace {
 
 // Represent a query returning an empty result set
-struct empty_query final
-    : public irs::filter::prepared,
-      public irs::singleton<empty_query> {
+struct empty_query final : public irs::filter::prepared,
+                           public irs::singleton<empty_query> {
  public:
-  virtual irs::doc_iterator::ptr execute(
-      const irs::sub_reader&,
-      const irs::Order&,
-      irs::ExecutionMode,
-      const irs::attribute_provider*) const override {
+  irs::doc_iterator::ptr execute(const irs::ExecutionContext&) const override {
     return irs::doc_iterator::empty();
   }
 };
 
-}
+}  // namespace
 
 namespace iresearch {
 
+Extractor Extractor::kNoop{};
+
 filter::filter(const type_info& type) noexcept
-  : boost_(irs::kNoBoost), type_(type.id()) {
-}
+    : boost_(irs::kNoBoost), type_(type.id()) {}
 
 filter::prepared::ptr filter::prepared::empty() {
   return memory::to_managed<filter::prepared, false>(&empty_query::instance());
 }
 
-empty::empty() : filter(irs::type<empty>::get()) { }
+empty::empty() : filter(irs::type<empty>::get()) {}
 
-filter::prepared::ptr empty::prepare(
-    const index_reader&,
-    const Order&,
-    score_t,
-    const attribute_provider*) const {
+filter::prepared::ptr empty::prepare(const index_reader&, const Order&, score_t,
+                                     const attribute_provider*) const {
   return memory::to_managed<filter::prepared, false>(&empty_query::instance());
 }
 
-}
+}  // namespace iresearch

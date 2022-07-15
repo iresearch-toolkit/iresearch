@@ -262,9 +262,10 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
 
   using filter::prepared::execute;
 
-  doc_iterator::ptr execute(const sub_reader& rdr, const Order& ord,
-                            ExecutionMode /*mode*/,
-                            const attribute_provider* /*ctx*/) const override {
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
+    auto& rdr = ctx.segment;
+    auto& ord = ctx.scorers;
+
     // get phrase state for the specified reader
     auto phrase_state = states_.find(rdr);
 
@@ -320,7 +321,7 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
   }
 };  // fixed_phrase_query
 
-class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
+class variadic_phrase_query final : public phrase_query<variadic_phrase_state> {
  public:
   // FIXME add proper handling of overlapped case
   template<bool VolatileBoost>
@@ -335,13 +336,14 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
 
   using filter::prepared::execute;
 
-  doc_iterator::ptr execute(const sub_reader& rdr, const Order& ord,
-                            ExecutionMode /*mode*/,
-                            const attribute_provider* /*ctx*/) const override {
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
     using adapter_t = variadic_phrase_adapter;
     using compound_doc_iterator_t = irs::compound_doc_iterator<adapter_t>;
     using disjunction_t =
         disjunction<doc_iterator::ptr, NoopAggregator, adapter_t, true>;
+
+    auto& rdr = ctx.segment;
+    auto& ord = ctx.scorers;
 
     // get phrase state for the specified reader
     auto phrase_state = states_.find(rdr);
@@ -397,7 +399,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
       }
 
       auto disj = MakeDisjunction<disjunction_t>(std::move(disj_itrs),
-                                                  NoopAggregator{});
+                                                 NoopAggregator{});
       pos.first = down_cast<compound_doc_iterator_t>(disj.get());
       conj_itrs.emplace_back(std::move(disj));
       ++position;
