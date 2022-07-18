@@ -621,7 +621,6 @@ doc_iterator::ptr ByNesterQuery::execute(const ExecutionContext& ctx) const {
   auto child = child_->execute({.segment = rdr,
                                 .scorers = GetOrder(match_, ord),
                                 .ctx = ctx.ctx,
-                                .extractor = ctx.extractor,
                                 .mode = ExecutionMode::kAll});
 
   if (IRS_UNLIKELY(!child)) {

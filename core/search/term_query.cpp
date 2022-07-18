@@ -65,10 +65,6 @@ doc_iterator::ptr term_query::execute(const ExecutionContext& ctx) const {
     }
   }
 
-  auto& extractor = GetExtractor(ctx);
-  extractor.ProcessField(*reader);
-  extractor.ProcessPostings(*docs);
-
   return docs;
 }
 

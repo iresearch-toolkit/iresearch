@@ -41,29 +41,12 @@ enum class ExecutionMode : uint32_t {
   kTop   // Access only top matched documents
 };
 
-struct Extractor {
-  static Extractor kNoop;
-
-  virtual ~Extractor() = default;
-
-  virtual IndexFeatures features() const { return IndexFeatures::NONE; }
-
-  virtual void ProcessField(const term_reader&) {}
-
-  virtual void ProcessPostings(const attribute_provider&) {}
-};
-
 struct ExecutionContext {
   const sub_reader& segment;
   const Order& scorers;
   const attribute_provider* ctx{};
-  Extractor* extractor{};
   ExecutionMode mode{ExecutionMode::kAll};
 };
-
-inline Extractor& GetExtractor(const ExecutionContext& ctx) noexcept {
-  return ctx.extractor ? *ctx.extractor : Extractor::kNoop;
-}
 
 // Base class for all user-side filters
 class filter {

@@ -39,8 +39,6 @@ struct empty_query final : public irs::filter::prepared,
 
 namespace iresearch {
 
-Extractor Extractor::kNoop{};
-
 filter::filter(const type_info& type) noexcept
     : boost_(irs::kNoBoost), type_(type.id()) {}
 

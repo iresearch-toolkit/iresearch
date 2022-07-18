@@ -24,8 +24,20 @@
 
 #include "search/bitset_doc_iterator.hpp"
 #include "search/disjunction.hpp"
+#include "search/min_match_disjunction.hpp"
 #include "shared.hpp"
 #include "utils/bitset.hpp"
+
+/*
+ * phrase -> [start of the first term;end of the last term]
+ * ngram  -> ???
+ * prefix, range, levenshtein, wildcard, terms
+ * term   ->
+ *
+ * OFFSET_INFO(d, { fields: [ { name: "body", maxCount: 30 } ] }
+ * OFFSET_INFO(d, ["body"]) -> [ ]
+ * OFFSET_INFO(d, "body")   -> [ ]
+ */
 
 namespace {
 
@@ -102,43 +114,7 @@ bool lazy_bitset_iterator::refill(const word_t** begin, const word_t** end) {
 
 namespace iresearch {
 
-/*
- * {
- *   "foo" : [ 0, 1, 2, 3, 4, 8 ],
- *
- * }
- */
-class OffsetExtractor final : public Extractor {
- public:
-  IndexFeatures features() const noexcept override {
-    return irs::IndexFeatures::POS | irs::IndexFeatures::OFFS;
-  }
-
- protected:
-  void ProcessField(const term_reader& field) noexcept override {
-    cur_ = &fields_[&field];
-  }
-
-  void ProcessPostings(const attribute_provider& attrs) override {
-    if (const auto* offs = irs::get<irs::offset>(attrs); offs) {
-      cur_->emplace_back(offs);
-    }
-  }
-
-  template<typename Visitor>
-  void visit(Visitor&& visitor) const {
-    for (auto& [field, offsets] : fields_) {
-      visitor(field->meta(), offsets);
-    }
-  }
-
- private:
-  absl::flat_hash_map<const term_reader*, std::vector<const offset*>> fields_;
-  std::vector<const offset*>* cur_;
-};
-
 doc_iterator::ptr multiterm_query::execute(const ExecutionContext& ctx) const {
-  auto& extractor = GetExtractor(ctx);
   auto& segment = ctx.segment;
   auto& ord = ctx.scorers;
 
@@ -153,10 +129,8 @@ doc_iterator::ptr multiterm_query::execute(const ExecutionContext& ctx) const {
   auto* reader = state->reader;
   assert(reader);
 
-  extractor.ProcessField(*reader);
-
   // Get required features
-  const IndexFeatures features = ord.features() | extractor.features();
+  const IndexFeatures features = ord.features();
   const std::span stats{stats_};
 
   const bool has_unscored_terms = !state->unscored_terms.empty();
@@ -186,8 +160,6 @@ doc_iterator::ptr multiterm_query::execute(const ExecutionContext& ctx) const {
                               *docs, entry.boost * boost());
       }
     }
-
-    extractor.ProcessPostings(*docs);
 
     assert(it != std::end(itrs));
     *it = std::move(docs);
