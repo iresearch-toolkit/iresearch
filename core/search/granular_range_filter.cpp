@@ -130,14 +130,14 @@ void collect_terms_between(
   } else if (!include_begin_term && !terms.next()) {
     return;  // skipped current term and no more terms in segment
   } else {
-    tmp = static_cast<irs::bstring>(
-        terms.value());  // need a copy as the original reference may be changed
-    masked_begin_level = mask_granularity(
-        tmp, prefix_size);  // the starting range granularity level
+    // need a copy as the original reference may be changed
+    tmp = static_cast<irs::bstring>(terms.value());
+    // the starting range granularity level
+    masked_begin_level = mask_granularity(tmp, prefix_size);
   }
 
-  const auto& masked_end_term = mask_value(
-      end_term, prefix_size);  // the ending term for range collection
+  // the ending term for range collection
+  const auto& masked_end_term = mask_value(end_term, prefix_size);
 
   collect_terms(
       segment, field, terms, visitor,

@@ -368,7 +368,7 @@ bool ngram_similarity_doc_iterator::check_serial_positions() {
 }
 
 // Prepared ngram similarity query implementation
-class ngram_similarity_query : public filter::prepared {
+class ngram_similarity_query final : public filter::prepared {
  public:
   ngram_similarity_query(size_t min_match_count, states_t&& states,
                          bstring&& stats, score_t boost = kNoBoost)
@@ -379,9 +379,10 @@ class ngram_similarity_query : public filter::prepared {
 
   using filter::prepared::execute;
 
-  virtual doc_iterator::ptr execute(
-      const sub_reader& rdr, const Order& ord, ExecutionMode /*mode*/,
-      const attribute_provider* /*ctx*/) const override {
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
+    auto& rdr = ctx.segment;
+    auto& ord = ctx.scorers;
+
     auto query_state = states_.find(rdr);
     if (!query_state || !query_state->field) {
       // invalid state

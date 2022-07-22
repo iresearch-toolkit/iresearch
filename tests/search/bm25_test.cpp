@@ -38,7 +38,7 @@
 
 namespace {
 
-struct bstring_data_output: public data_output {
+struct bstring_data_output : public irs::data_output {
   irs::bstring out_;
   virtual void write_byte(irs::byte_type b) override { write_bytes(&b, 1); }
   virtual void write_bytes(const irs::byte_type* b, size_t size) override {
@@ -47,10 +47,6 @@ struct bstring_data_output: public data_output {
 };
 
 using namespace tests;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
 
 /////////////////
 // Freq | Term //

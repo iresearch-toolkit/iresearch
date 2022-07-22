@@ -27,8 +27,8 @@
 
 #include "index/field_meta.hpp"
 #include "index/norm.hpp"
-#include "search/term_filter.hpp"
 #include "search/boolean_filter.hpp"
+#include "search/term_filter.hpp"
 #include "store/memory_directory.hpp"
 #include "tests_shared.hpp"
 #include "utils/delta_compression.hpp"
@@ -69,18 +69,24 @@ irs::filter::ptr MakeByTerm(std::string_view name, std::string_view value) {
   return filter;
 }
 
-irs::filter::ptr MakeByTermOrByTerm(std::string_view name0, std::string_view value0,
-                                    std::string_view name1, std::string_view value1) {
+irs::filter::ptr MakeByTermOrByTerm(std::string_view name0,
+                                    std::string_view value0,
+                                    std::string_view name1,
+                                    std::string_view value1) {
   auto filter = std::make_unique<irs::Or>();
-  filter->add<irs::by_term>() = std::move(static_cast<irs::by_term&>(*MakeByTerm(name0, value0)));
-  filter->add<irs::by_term>() = std::move(static_cast<irs::by_term&>(*MakeByTerm(name1, value1)));
+  filter->add<irs::by_term>() =
+      std::move(static_cast<irs::by_term&>(*MakeByTerm(name0, value0)));
+  filter->add<irs::by_term>() =
+      std::move(static_cast<irs::by_term&>(*MakeByTerm(name1, value1)));
   return filter;
 }
 
-irs::filter::ptr MakeOr(const std::vector<std::pair<std::string_view, std::string_view>>& parts) {
+irs::filter::ptr MakeOr(
+    const std::vector<std::pair<std::string_view, std::string_view>>& parts) {
   auto filter = std::make_unique<irs::Or>();
   for (const auto& [name, value] : parts) {
-    filter->add<irs::by_term>() = std::move(static_cast<irs::by_term&>(*MakeByTerm(name, value)));
+    filter->add<irs::by_term>() =
+        std::move(static_cast<irs::by_term&>(*MakeByTerm(name, value)));
   }
   return filter;
 }
@@ -185,7 +191,7 @@ class index_test_case : public tests::index_test_base {
 
   void assert_index(size_t skip = 0,
                     irs::automaton_table_matcher* matcher = nullptr) const {
-    //index_test_base::assert_index(irs::IndexFeatures::NONE, skip, matcher);
+    // index_test_base::assert_index(irs::IndexFeatures::NONE, skip, matcher);
     index_test_base::assert_index(irs::IndexFeatures::FREQ, skip, matcher);
     index_test_base::assert_index(
         irs::IndexFeatures::FREQ | irs::IndexFeatures::POS, skip, matcher);
@@ -415,7 +421,7 @@ class index_test_case : public tests::index_test_base {
 
     size_t thread_count = 16;                         // arbitrary value > 1
     std::vector<const tests::field*> expected_terms;  // used to validate terms
-     // used to validate docs
+                                                      // used to validate docs
     std::vector<irs::seek_term_iterator::ptr> expected_term_itrs;
 
     auto& actual_segment = actual_reader[0];
@@ -2436,14 +2442,14 @@ TEST_P(index_test_case, europarl_docs_big) {
 
 #ifndef IRESEARCH_DEBUG
 
-//TEST_P(index_test_case, europarl_docs_big) {
-//  {
-//    tests::europarl_doc_template doc;
-//    tests::delim_doc_generator gen(resource("europarl.subset.big.txt"), doc);
-//    add_segment(gen);
-//  }
-//  assert_index();
-//}
+// TEST_P(index_test_case, europarl_docs_big) {
+//   {
+//     tests::europarl_doc_template doc;
+//     tests::delim_doc_generator gen(resource("europarl.subset.big.txt"), doc);
+//     add_segment(gen);
+//   }
+//   assert_index();
+// }
 
 TEST_P(index_test_case, europarl_docs_big_automaton) {
   {
@@ -2644,8 +2650,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
   {
     std::condition_variable cond;
     std::mutex mutex;
-    auto query_doc1_doc2 =
-        MakeByTermOrByTerm("name", "A", "name", "B");
+    auto query_doc1_doc2 = MakeByTermOrByTerm("name", "A", "name", "B");
     auto writer = open_writer();
     auto lock = irs::make_unique_lock(mutex);
     std::atomic<bool> stop(false);
@@ -2717,8 +2722,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
   // remove added docs, add same docs again commit separate thread after end of
   // add
   {
-    auto query_doc1_doc2 =
-        MakeByTermOrByTerm("name", "A", "name", "B");
+    auto query_doc1_doc2 = MakeByTermOrByTerm("name", "A", "name", "B");
     auto writer = open_writer();
 
     // initial add docs
@@ -2910,8 +2914,7 @@ TEST_P(index_test_case, document_context) {
 
     std::thread thread0([&writer, &query_doc1, &field]() -> void {
       writer->documents().replace(
-          *query_doc1,
-          [&field](irs::segment_writer::document& doc) -> bool {
+          *query_doc1, [&field](irs::segment_writer::document& doc) -> bool {
             doc.insert<irs::Action::STORE>(field);
             return false;
           });
@@ -4590,8 +4593,7 @@ TEST_P(index_test_case, doc_removal) {
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    writer->documents().remove(
-        std::move(query_doc2));  // not present yet
+    writer->documents().remove(std::move(query_doc2));  // not present yet
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
@@ -4694,8 +4696,7 @@ TEST_P(index_test_case, doc_removal) {
 
   // new segment: add + add, old segment: remove + remove + add
   {
-    auto query_doc1_doc2 =
-        MakeByTermOrByTerm("name", "A", "name", "B");
+    auto query_doc1_doc2 = MakeByTermOrByTerm("name", "A", "name", "B");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -4856,7 +4857,8 @@ TEST_P(index_test_case, doc_removal) {
   // new segment: add + remove, old segment: add + remove old-old segment:
   // remove
   {
-    auto query_doc2_doc6_doc9 = MakeOr({{"name", "B"}, {"name", "F"}, {"name", "I"}});
+    auto query_doc2_doc6_doc9 =
+        MakeOr({{"name", "B"}, {"name", "F"}, {"name", "I"}});
     auto query_doc3_doc7 = MakeByTermOrByTerm("name", "C", "name", "G");
     auto query_doc4 = MakeByTerm("name", "D");
     auto writer = open_writer();
@@ -4973,9 +4975,9 @@ TEST_P(index_test_case, doc_update) {
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_TRUE(update(*writer, *(query_doc1.get()),
-                       doc2->indexed.begin(), doc2->indexed.end(),
-                       doc2->stored.begin(), doc2->stored.end()));
+    ASSERT_TRUE(update(*writer, *(query_doc1.get()), doc2->indexed.begin(),
+                       doc2->indexed.end(), doc2->stored.begin(),
+                       doc2->stored.end()));
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -5006,9 +5008,9 @@ TEST_P(index_test_case, doc_update) {
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_TRUE(update(*writer, std::move(query_doc1),
-                       doc2->indexed.begin(), doc2->indexed.end(),
-                       doc2->stored.begin(), doc2->stored.end()));
+    ASSERT_TRUE(update(*writer, std::move(query_doc1), doc2->indexed.begin(),
+                       doc2->indexed.end(), doc2->stored.begin(),
+                       doc2->stored.end()));
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -5039,10 +5041,10 @@ TEST_P(index_test_case, doc_update) {
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_TRUE(update(
-        *writer, std::shared_ptr<irs::filter>(std::move(query_doc1)),
-        doc2->indexed.begin(), doc2->indexed.end(), doc2->stored.begin(),
-        doc2->stored.end()));
+    ASSERT_TRUE(update(*writer,
+                       std::shared_ptr<irs::filter>(std::move(query_doc1)),
+                       doc2->indexed.begin(), doc2->indexed.end(),
+                       doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -5076,9 +5078,9 @@ TEST_P(index_test_case, doc_update) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
-    ASSERT_TRUE(update(*writer, std::move(query_doc1),
-                       doc3->indexed.begin(), doc3->indexed.end(),
-                       doc3->stored.begin(), doc3->stored.end()));
+    ASSERT_TRUE(update(*writer, std::move(query_doc1), doc3->indexed.begin(),
+                       doc3->indexed.end(), doc3->stored.begin(),
+                       doc3->stored.end()));
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -5134,15 +5136,15 @@ TEST_P(index_test_case, doc_update) {
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_TRUE(update(*writer, std::move(query_doc1),
-                       doc2->indexed.begin(), doc2->indexed.end(),
-                       doc2->stored.begin(), doc2->stored.end()));
-    ASSERT_TRUE(update(*writer, std::move(query_doc2),
-                       doc3->indexed.begin(), doc3->indexed.end(),
-                       doc3->stored.begin(), doc3->stored.end()));
-    ASSERT_TRUE(update(*writer, std::move(query_doc3),
-                       doc4->indexed.begin(), doc4->indexed.end(),
-                       doc4->stored.begin(), doc4->stored.end()));
+    ASSERT_TRUE(update(*writer, std::move(query_doc1), doc2->indexed.begin(),
+                       doc2->indexed.end(), doc2->stored.begin(),
+                       doc2->stored.end()));
+    ASSERT_TRUE(update(*writer, std::move(query_doc2), doc3->indexed.begin(),
+                       doc3->indexed.end(), doc3->stored.begin(),
+                       doc3->stored.end()));
+    ASSERT_TRUE(update(*writer, std::move(query_doc3), doc4->indexed.begin(),
+                       doc4->indexed.end(), doc4->stored.begin(),
+                       doc4->stored.end()));
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -5176,17 +5178,17 @@ TEST_P(index_test_case, doc_update) {
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
-    ASSERT_TRUE(update(*writer, std::move(query_doc1),
-                       doc2->indexed.begin(), doc2->indexed.end(),
-                       doc2->stored.begin(), doc2->stored.end()));
+    ASSERT_TRUE(update(*writer, std::move(query_doc1), doc2->indexed.begin(),
+                       doc2->indexed.end(), doc2->stored.begin(),
+                       doc2->stored.end()));
     writer->commit();
-    ASSERT_TRUE(update(*writer, std::move(query_doc2),
-                       doc3->indexed.begin(), doc3->indexed.end(),
-                       doc3->stored.begin(), doc3->stored.end()));
+    ASSERT_TRUE(update(*writer, std::move(query_doc2), doc3->indexed.begin(),
+                       doc3->indexed.end(), doc3->stored.begin(),
+                       doc3->stored.end()));
     writer->commit();
-    ASSERT_TRUE(update(*writer, std::move(query_doc3),
-                       doc4->indexed.begin(), doc4->indexed.end(),
-                       doc4->stored.begin(), doc4->stored.end()));
+    ASSERT_TRUE(update(*writer, std::move(query_doc3), doc4->indexed.begin(),
+                       doc4->indexed.end(), doc4->stored.begin(),
+                       doc4->stored.end()));
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -5218,9 +5220,8 @@ TEST_P(index_test_case, doc_update) {
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     writer->commit();
-    ASSERT_TRUE(update(*writer, std::move(query_doc2),
-                       doc2->indexed.begin(), doc2->indexed.end(),
-                       doc2->stored.begin(),
+    ASSERT_TRUE(update(*writer, std::move(query_doc2), doc2->indexed.begin(),
+                       doc2->indexed.end(), doc2->stored.begin(),
                        doc2->stored.end()));  // non-existent document
     writer->commit();
 
@@ -5257,8 +5258,7 @@ TEST_P(index_test_case, doc_update) {
     ASSERT_TRUE(update(*writer, *(query_doc2), doc3->indexed.begin(),
                        doc3->indexed.end(), doc3->stored.begin(),
                        doc3->stored.end()));
-    writer->documents().remove(
-        *(query_doc2));  // remove no longer existent
+    writer->documents().remove(*(query_doc2));  // remove no longer existent
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -5300,8 +5300,7 @@ TEST_P(index_test_case, doc_update) {
                        doc3->indexed.end(), doc3->stored.begin(),
                        doc3->stored.end()));
     writer->commit();
-    writer->documents().remove(
-        *(query_doc2));  // remove no longer existent
+    writer->documents().remove(*(query_doc2));  // remove no longer existent
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -5581,9 +5580,9 @@ TEST_P(index_test_case, doc_update) {
     ASSERT_FALSE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                         doc4->stored.begin(),
                         doc4->stored.end()));  // index features differ
-    ASSERT_FALSE(update(*writer, *(query_doc1.get()),
-                        doc3->indexed.begin(), doc3->indexed.end(),
-                        doc3->stored.begin(), doc3->stored.end()));
+    ASSERT_FALSE(update(*writer, *(query_doc1.get()), doc3->indexed.begin(),
+                        doc3->indexed.end(), doc3->stored.begin(),
+                        doc3->stored.end()));
     writer->commit();
 
     auto reader = irs::directory_reader::open(dir(), codec());
@@ -5619,8 +5618,7 @@ TEST_P(index_test_case, doc_update) {
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     writer->documents().replace(
-        *query_doc1,
-        [&doc2](irs::segment_writer::document& doc) -> bool {
+        *query_doc1, [&doc2](irs::segment_writer::document& doc) -> bool {
           doc.insert<irs::Action::INDEX>(doc2->indexed.begin(),
                                          doc2->indexed.end());
           doc.insert<irs::Action::STORE>(doc2->stored.begin(),
@@ -5660,8 +5658,7 @@ TEST_P(index_test_case, doc_update) {
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     writer->documents().replace(
-        *query_doc1,
-        [&docs, &i](irs::segment_writer::document& doc) -> bool {
+        *query_doc1, [&docs, &i](irs::segment_writer::document& doc) -> bool {
           doc.insert<irs::Action::INDEX>(docs[i]->indexed.begin(),
                                          docs[i]->indexed.end());
           doc.insert<irs::Action::STORE>(docs[i]->stored.begin(),
@@ -5705,8 +5702,7 @@ TEST_P(index_test_case, doc_update) {
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_ANY_THROW(writer->documents().replace(
-        *query_doc1,
-        [&docs, &i](irs::segment_writer::document& doc) -> bool {
+        *query_doc1, [&docs, &i](irs::segment_writer::document& doc) -> bool {
           doc.insert<irs::Action::INDEX>(docs[i]->indexed.begin(),
                                          docs[i]->indexed.end());
           doc.insert<irs::Action::STORE>(docs[i]->stored.begin(),
@@ -7993,8 +7989,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   // long running transaction + document removal
   {
     SetUp();  // recreate directory
-    auto query_doc1_doc4 =
-        MakeByTermOrByTerm("name", "A", "name", "D");
+    auto query_doc1_doc4 = MakeByTermOrByTerm("name", "A", "name", "D");
 
     tests::blocking_directory dir(this->dir(), blocker);
     auto writer = open_writer(dir);
@@ -9406,8 +9401,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes
   {
     SetUp();
-    auto query_doc1_doc4 =
-        MakeByTermOrByTerm("name", "A", "name", "D");
+    auto query_doc1_doc4 = MakeByTermOrByTerm("name", "A", "name", "D");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -9962,8 +9956,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes + inserts
   {
     SetUp();
-    auto query_doc1_doc4 =
-        MakeByTermOrByTerm("name", "A", "name", "D");
+    auto query_doc1_doc4 = MakeByTermOrByTerm("name", "A", "name", "D");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -10143,8 +10136,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   // consolidate with deletes + inserts
   {
     SetUp();
-    auto query_doc1_doc4 =
-        MakeByTermOrByTerm("name", "A", "name", "D");
+    auto query_doc1_doc4 = MakeByTermOrByTerm("name", "A", "name", "D");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -11797,7 +11789,8 @@ in doc4 ASSERT_FALSE(docsItr->next());
 
   // consolidate with uncommitted (inserts + deletes)
   {
-    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C", "C");
+    auto query_doc2_doc3 = irs::iql::query_builder().build("name==B || name==C",
+"C");
 
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
@@ -12439,8 +12432,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old, defragment new
   {
-    auto query_doc1_doc2 =
-        MakeByTermOrByTerm("name", "A", "name", "B");
+    auto query_doc1_doc2 = MakeByTermOrByTerm("name", "A", "name", "B");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12486,8 +12478,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old, defragment new
   {
-    auto query_doc1_doc2 =
-        MakeByTermOrByTerm("name", "A", "name", "B");
+    auto query_doc1_doc2 = MakeByTermOrByTerm("name", "A", "name", "B");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12532,8 +12523,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old, defragment old
   {
-    auto query_doc1_doc2 =
-        MakeByTermOrByTerm("name", "A", "name", "B");
+    auto query_doc1_doc2 = MakeByTermOrByTerm("name", "A", "name", "B");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12579,8 +12569,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // remove empty old, defragment old
   {
-    auto query_doc1_doc2 =
-        MakeByTermOrByTerm("name", "A", "name", "B");
+    auto query_doc1_doc2 = MakeByTermOrByTerm("name", "A", "name", "B");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12695,8 +12684,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge new+old segment
   {
-    auto query_doc1_doc3 =
-        MakeByTermOrByTerm("name", "A", "name", "C");
+    auto query_doc1_doc3 = MakeByTermOrByTerm("name", "A", "name", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12748,8 +12736,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge new+old segment
   {
-    auto query_doc1_doc3 =
-        MakeByTermOrByTerm("name", "A", "name", "C");
+    auto query_doc1_doc3 = MakeByTermOrByTerm("name", "A", "name", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12801,8 +12788,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old segment
   {
-    auto query_doc1_doc3 =
-        MakeByTermOrByTerm("name", "A", "name", "C");
+    auto query_doc1_doc3 = MakeByTermOrByTerm("name", "A", "name", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12855,8 +12841,7 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old segment
   {
-    auto query_doc1_doc3 =
-        MakeByTermOrByTerm("name", "A", "name", "C");
+    auto query_doc1_doc3 = MakeByTermOrByTerm("name", "A", "name", "C");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12909,7 +12894,8 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old+old segment
   {
-    auto query_doc1_doc3_doc5 = MakeOr({{"name", "A"}, {"name", "C"}, {"name", "E"}});
+    auto query_doc1_doc3_doc5 =
+        MakeOr({{"name", "A"}, {"name", "C"}, {"name", "E"}});
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -12972,7 +12958,8 @@ TEST_P(index_test_case, segment_consolidate) {
 
   // merge old+old+old segment
   {
-    auto query_doc1_doc3_doc5 = MakeOr({{"name", "A"},{"name", "C"},{"name", "E"}});
+    auto query_doc1_doc3_doc5 =
+        MakeOr({{"name", "A"}, {"name", "C"}, {"name", "E"}});
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -13085,7 +13072,8 @@ TEST_P(index_test_case, segment_consolidate) {
 
     const auto* upper_case_column = segment.column("NAME");
     ASSERT_NE(nullptr, upper_case_column);
-    auto upper_case_values = upper_case_column->iterator(irs::ColumnHint::kNormal);
+    auto upper_case_values =
+        upper_case_column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, upper_case_values);
     auto* upper_case_actual_value = irs::get<irs::payload>(*upper_case_values);
     ASSERT_NE(nullptr, upper_case_actual_value);
@@ -13180,7 +13168,8 @@ TEST_P(index_test_case, segment_consolidate) {
 
     const auto* upper_case_column = segment.column("NAME");
     ASSERT_NE(nullptr, upper_case_column);
-    auto upper_case_values = upper_case_column->iterator(irs::ColumnHint::kNormal);
+    auto upper_case_values =
+        upper_case_column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, upper_case_values);
     auto* upper_case_actual_value = irs::get<irs::payload>(*upper_case_values);
     ASSERT_NE(nullptr, upper_case_actual_value);
@@ -13663,8 +13652,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
   // valid segment fill policy (merge)
   {
-    auto query_doc2_doc4 =
-        MakeByTermOrByTerm("name", "B", "name", "D");
+    auto query_doc2_doc4 = MakeByTermOrByTerm("name", "B", "name", "D");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -13715,8 +13703,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
   // valid segment fill policy (not modified)
   {
-    auto query_doc2_doc4 =
-        MakeByTermOrByTerm("name", "B", "name", "D");
+    auto query_doc2_doc4 = MakeByTermOrByTerm("name", "B", "name", "D");
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -14059,11 +14046,10 @@ TEST_P(index_test_case, segment_options) {
       auto ctx = writer->documents();
       auto doc = ctx.insert(true);
 
-      ASSERT_TRUE(
-        doc.insert<irs::Action::INDEX>(std::begin(doc2->indexed),
-                                       std::end(doc2->indexed)) &&
-        doc.insert<irs::Action::STORE>(std::begin(doc2->stored),
-                                       std::end(doc2->stored)));
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(std::begin(doc2->indexed),
+                                                 std::end(doc2->indexed)) &&
+                  doc.insert<irs::Action::STORE>(std::begin(doc2->stored),
+                                                 std::end(doc2->stored)));
     }
 
     ASSERT_TRUE(writer->commit());
@@ -14630,7 +14616,7 @@ class index_test_case_14 : public index_test_case {
       min_doc_ = std::min(doc, min_doc_);
     }
 
-    virtual void write(data_output& out, irs::bytes_ref payload) final {
+    virtual void write(irs::data_output& out, irs::bytes_ref payload) final {
       ++call_stats_->num_write_consolidation_calls;
 
       if (!payload.empty()) {
@@ -15445,41 +15431,40 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
 
 const auto kDirectories = ::testing::Values(
 #ifdef IRESEARCH_URING
-      &tests::directory<&tests::async_directory>,
+    &tests::directory<&tests::async_directory>,
 #endif
-      &tests::directory<tests::mmap_directory>,
-      &tests::directory<tests::fs_directory>,
-      &tests::directory<tests::memory_directory>,
-      &tests::rot13_directory<&tests::memory_directory, 16>,
-      &tests::rot13_directory<&tests::mmap_directory, 16>);
+    &tests::directory<tests::mmap_directory>,
+    &tests::directory<tests::fs_directory>,
+    &tests::directory<tests::memory_directory>,
+    &tests::rot13_directory<&tests::memory_directory, 16>,
+    &tests::rot13_directory<&tests::mmap_directory, 16>);
 
-INSTANTIATE_TEST_SUITE_P(
-  index_test_14,
-  index_test_case,
-  ::testing::Combine(kDirectories, kIndexTestCase14Formats),
-  index_test_case::to_string);
+INSTANTIATE_TEST_SUITE_P(index_test_14, index_test_case,
+                         ::testing::Combine(kDirectories,
+                                            kIndexTestCase14Formats),
+                         index_test_case::to_string);
 
-INSTANTIATE_TEST_SUITE_P(
-  index_test_14,
-  index_test_case_14,
-  ::testing::Combine(kDirectories, kIndexTestCase14Formats),
-  index_test_case_14::to_string);
+INSTANTIATE_TEST_SUITE_P(index_test_14, index_test_case_14,
+                         ::testing::Combine(kDirectories,
+                                            kIndexTestCase14Formats),
+                         index_test_case_14::to_string);
 
-// Separate definition as MSVC parser fails to do conditional defines in macro expansion
+// Separate definition as MSVC parser fails to do conditional defines in macro
+// expansion
 namespace {
 #if defined(IRESEARCH_SSE2)
-const auto kIndexTestCase15Formats = ::testing::Values(tests::format_info{"1_5", "1_0"},
-                                                       tests::format_info{"1_5simd", "1_0"});
+const auto kIndexTestCase15Formats = ::testing::Values(
+    tests::format_info{"1_5", "1_0"}, tests::format_info{"1_5simd", "1_0"});
 #else
-const auto kIndexTestCase15Formats = ::testing::Values(tests::format_info{"1_5", "1_0"});
+const auto kIndexTestCase15Formats =
+    ::testing::Values(tests::format_info{"1_5", "1_0"});
 #endif
-}
+}  // namespace
 
-INSTANTIATE_TEST_SUITE_P(
-  index_test_15,
-  index_test_case,
-  ::testing::Combine(kDirectories, kIndexTestCase15Formats),
-  index_test_case::to_string);
+INSTANTIATE_TEST_SUITE_P(index_test_15, index_test_case,
+                         ::testing::Combine(kDirectories,
+                                            kIndexTestCase15Formats),
+                         index_test_case::to_string);
 
 class index_test_case_10 : public tests::index_test_base {};
 
@@ -16288,8 +16273,7 @@ const auto kIndexTestCase11Formats = ::testing::Values(
 #endif
 }  // namespace
 
-INSTANTIATE_TEST_SUITE_P(
-    index_test_11,
-    index_test_case_11,
-    ::testing::Combine(kDirectories, kIndexTestCase11Formats),
-    index_test_case_11::to_string);
+INSTANTIATE_TEST_SUITE_P(index_test_11, index_test_case_11,
+                         ::testing::Combine(kDirectories,
+                                            kIndexTestCase11Formats),
+                         index_test_case_11::to_string);

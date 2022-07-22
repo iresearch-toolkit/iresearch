@@ -82,7 +82,7 @@ class test_feature_writer final : public irs::feature_writer {
     writer(doc).write_int(stats.len + value_);
   }
 
-  virtual void write(data_output& out, irs::bytes_ref payload) final {
+  virtual void write(irs::data_output& out, irs::bytes_ref payload) final {
     out.write_bytes(payload.c_str(), payload.size());
   }
 

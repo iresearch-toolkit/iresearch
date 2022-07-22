@@ -443,7 +443,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
       this->features_.emplace_back(irs::type<irs::Norm>::id());
     }
 
-    bool write(data_output&) const noexcept {
+    bool write(irs::data_output&) const noexcept {
       return true;
     }
 

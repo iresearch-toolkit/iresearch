@@ -115,9 +115,10 @@ class same_position_query final : public filter::prepared {
 
   using filter::prepared::execute;
 
-  virtual doc_iterator::ptr execute(
-      const sub_reader& segment, const Order& ord, ExecutionMode /*mode*/,
-      const attribute_provider* /*ctx*/) const override {
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
+    auto& segment = ctx.segment;
+    auto& ord = ctx.scorers;
+
     // get query state for the specified reader
     auto query_state = states_.find(segment);
     if (!query_state) {

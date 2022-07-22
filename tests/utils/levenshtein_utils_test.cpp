@@ -106,7 +106,7 @@ void assert_read_write(const irs::parametric_description& description) {
   irs::bstring buf;
   {
     irs::bytes_output out(buf);
-    irs::write(description, static_cast<data_output&>(out));
+    irs::write(description, static_cast<irs::data_output&>(out));
     ASSERT_FALSE(buf.empty());
   }
   {

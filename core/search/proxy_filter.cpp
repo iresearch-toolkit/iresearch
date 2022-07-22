@@ -37,13 +37,15 @@ class lazy_filter_bitset : private util::noncopyable {
  public:
   using word_t = size_t;
 
-  explicit lazy_filter_bitset(const sub_reader& segment,
-                              const filter::prepared& filter,
-                              const Order& order,
-                              ExecutionMode mode,
-                              const attribute_provider* ctx) noexcept {
+  lazy_filter_bitset(const ExecutionContext& ctx,
+                     const filter::prepared& filter) {
+    auto& segment = ctx.segment;
+
     const size_t bits = segment.docs_count() + doc_limits::min();
-    real_doc_itr_ = segment.mask(filter.execute(segment, order, mode, ctx));
+    real_doc_itr_ = segment.mask(filter.execute({.segment = segment,
+                                                 .scorers = ctx.scorers,
+                                                 .ctx = ctx.ctx,
+                                                 .mode = ctx.mode}));
     words_ = bitset::bits_to_words(bits);
     cost_ = cost::extract(*real_doc_itr_);
     set_ = memory::make_unique<word_t[]>(words_);
@@ -177,16 +179,14 @@ class proxy_query final : public filter::prepared {
     assert(cache_->prepared_real_filter_);
   }
 
-  doc_iterator::ptr execute(const sub_reader& rdr,
-                            const Order& order,
-                            ExecutionMode mode,
-                            const attribute_provider* ctx) const override {
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
     // first try to find segment in cache.
-    auto& [unused, cached] = *cache_->readers_.emplace(&rdr, nullptr).first;
+    auto& [unused, cached] =
+        *cache_->readers_.emplace(&ctx.segment, nullptr).first;
 
     if (!cached) {
       cached = std::make_unique<lazy_filter_bitset>(
-          rdr, *cache_->prepared_real_filter_, order, mode, ctx);
+          ctx, *cache_->prepared_real_filter_);
     }
 
     assert(cached);
@@ -197,7 +197,8 @@ class proxy_query final : public filter::prepared {
   mutable proxy_filter::cache_ptr cache_;
 };
 
-proxy_filter::proxy_filter() noexcept : filter(irs::type<proxy_filter>::get()) {}
+proxy_filter::proxy_filter() noexcept
+    : filter(irs::type<proxy_filter>::get()) {}
 
 filter::prepared::ptr proxy_filter::prepare(
     const index_reader& rdr, const Order& ord, score_t boost,

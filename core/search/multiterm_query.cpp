@@ -24,6 +24,7 @@
 
 #include "search/bitset_doc_iterator.hpp"
 #include "search/disjunction.hpp"
+#include "search/min_match_disjunction.hpp"
 #include "shared.hpp"
 #include "utils/bitset.hpp"
 
@@ -102,9 +103,10 @@ bool lazy_bitset_iterator::refill(const word_t** begin, const word_t** end) {
 
 namespace iresearch {
 
-doc_iterator::ptr multiterm_query::execute(
-    const sub_reader& segment, const Order& ord, ExecutionMode /*mode*/,
-    const attribute_provider* /*ctx*/) const {
+doc_iterator::ptr multiterm_query::execute(const ExecutionContext& ctx) const {
+  auto& segment = ctx.segment;
+  auto& ord = ctx.scorers;
+
   // get term state for the specified reader
   auto state = states_.find(segment);
 
@@ -116,7 +118,7 @@ doc_iterator::ptr multiterm_query::execute(
   auto* reader = state->reader;
   assert(reader);
 
-  // get required features for order
+  // Get required features
   const IndexFeatures features = ord.features();
   const std::span stats{stats_};
 

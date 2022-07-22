@@ -52,10 +52,10 @@ const irs::all kAllDocsZeroBoost = []() {
 
 // Returns disjunction iterator created from the specified queries
 template<typename QueryIterator, typename... Args>
-irs::doc_iterator::ptr make_disjunction(
-    const irs::sub_reader& rdr, const irs::Order& ord, irs::ExecutionMode mode,
-    irs::sort::MergeType merge_type, const irs::attribute_provider* ctx,
-    QueryIterator begin, QueryIterator end, Args&&... args) {
+irs::doc_iterator::ptr make_disjunction(const irs::ExecutionContext& ctx,
+                                        irs::sort::MergeType merge_type,
+                                        QueryIterator begin, QueryIterator end,
+                                        Args&&... args) {
   assert(std::distance(begin, end) >= 0);
   const size_t size = size_t(std::distance(begin, end));
 
@@ -70,7 +70,7 @@ irs::doc_iterator::ptr make_disjunction(
 
   for (; begin != end; ++begin) {
     // execute query - get doc iterator
-    auto docs = begin->execute(rdr, ord, mode, ctx);
+    auto docs = begin->execute(ctx);
 
     // filter out empty iterators
     if (!irs::doc_limits::eof(docs->value())) {
@@ -79,23 +79,23 @@ irs::doc_iterator::ptr make_disjunction(
   }
 
   return irs::ResoveMergeType(
-      merge_type, ord.buckets().size(),
+      merge_type, ctx.scorers.buckets().size(),
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
         using disjunction_t =
             irs::disjunction_iterator<irs::doc_iterator::ptr, A>;
 
-        return irs::MakeDisjunction<disjunction_t>(
-            std::move(itrs), std::move(aggregator),
-            std::forward<Args>(args)...);
+        return irs::MakeDisjunction<disjunction_t>(std::move(itrs),
+                                                   std::move(aggregator),
+                                                   std::forward<Args>(args)...);
       });
 }
 
 // Returns conjunction iterator created from the specified queries
 template<typename QueryIterator, typename... Args>
-irs::doc_iterator::ptr make_conjunction(
-    const irs::sub_reader& rdr, const irs::Order& ord, irs::ExecutionMode mode,
-    irs::sort::MergeType merge_type, const irs::attribute_provider* ctx,
-    QueryIterator begin, QueryIterator end, Args&&... args) {
+irs::doc_iterator::ptr make_conjunction(const irs::ExecutionContext& ctx,
+                                        irs::sort::MergeType merge_type,
+                                        QueryIterator begin, QueryIterator end,
+                                        Args&&... args) {
   assert(std::distance(begin, end) >= 0);
   const size_t size = std::distance(begin, end);
 
@@ -104,14 +104,14 @@ irs::doc_iterator::ptr make_conjunction(
     case 0:
       return irs::doc_iterator::empty();
     case 1:
-      return begin->execute(rdr, ord, mode, ctx);
+      return begin->execute(ctx);
   }
 
   std::vector<irs::score_iterator_adapter<irs::doc_iterator::ptr>> itrs;
   itrs.reserve(size);
 
   for (; begin != end; ++begin) {
-    auto docs = begin->execute(rdr, ord, mode, ctx);
+    auto docs = begin->execute(ctx);
 
     // filter out empty iterators
     if (irs::doc_limits::eof(docs->value())) {
@@ -122,13 +122,13 @@ irs::doc_iterator::ptr make_conjunction(
   }
 
   return irs::ResoveMergeType(
-      merge_type, ord.buckets().size(),
+      merge_type, ctx.scorers.buckets().size(),
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
         using conjunction_t = irs::conjunction<irs::doc_iterator::ptr, A>;
 
-        return irs::MakeConjunction<conjunction_t>(
-            std::move(itrs), std::move(aggregator),
-            std::forward<Args>(args)...);
+        return irs::MakeConjunction<conjunction_t>(std::move(itrs),
+                                                   std::move(aggregator),
+                                                   std::forward<Args>(args)...);
       });
 }
 
@@ -144,20 +144,18 @@ class boolean_query : public filter::prepared {
 
   boolean_query() noexcept : excl_{0} {}
 
-  virtual doc_iterator::ptr execute(
-      const sub_reader& rdr, const Order& ord, ExecutionMode mode,
-      const attribute_provider* ctx) const override {
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
     if (empty()) {
       return doc_iterator::empty();
     }
 
     assert(excl_);
-    auto incl = execute(rdr, ord, mode, ctx, begin(), begin() + excl_);
+    auto incl = execute(ctx, begin(), begin() + excl_);
 
     // exclusion part does not affect scoring at all
-    auto excl = ::make_disjunction(rdr, Order::kUnordered, ExecutionMode::kAll,
-                                   irs::sort::MergeType::kSum, ctx,
-                                   begin() + excl_, end());
+    auto excl = ::make_disjunction(
+        {.segment = ctx.segment, .scorers = Order::kUnordered, .ctx = ctx.ctx},
+        irs::sort::MergeType::kSum, begin() + excl_, end());
 
     // got empty iterator for excluded
     if (doc_limits::eof(excl->value())) {
@@ -205,10 +203,8 @@ class boolean_query : public filter::prepared {
   size_t size() const { return queries_.size(); }
 
  protected:
-  virtual doc_iterator::ptr execute(const sub_reader& rdr, const Order& ord,
-                                    ExecutionMode mode,
-                                    const attribute_provider* ctx,
-                                    iterator begin, iterator end) const = 0;
+  virtual doc_iterator::ptr execute(const ExecutionContext& ctx, iterator begin,
+                                    iterator end) const = 0;
 
   sort::MergeType merge_type() const noexcept { return merge_type_; }
 
@@ -224,24 +220,18 @@ class boolean_query : public filter::prepared {
 // Represent a set of queries joint by "And"
 class and_query final : public boolean_query {
  public:
-  virtual doc_iterator::ptr execute(const sub_reader& rdr, const Order& ord,
-                                    ExecutionMode mode,
-                                    const attribute_provider* ctx,
-                                    iterator begin,
-                                    iterator end) const override {
-    return ::make_conjunction(rdr, ord, mode, merge_type(), ctx, begin, end);
+  doc_iterator::ptr execute(const ExecutionContext& ctx, iterator begin,
+                            iterator end) const override {
+    return ::make_conjunction(ctx, merge_type(), begin, end);
   }
 };
 
 // Represent a set of queries joint by "Or"
 class or_query final : public boolean_query {
  public:
-  virtual doc_iterator::ptr execute(const sub_reader& rdr, const Order& ord,
-                                    ExecutionMode mode,
-                                    const attribute_provider* ctx,
-                                    iterator begin,
-                                    iterator end) const override {
-    return ::make_disjunction(rdr, ord, mode, merge_type(), ctx, begin, end);
+  doc_iterator::ptr execute(const ExecutionContext& ctx, iterator begin,
+                            iterator end) const override {
+    return ::make_disjunction(ctx, merge_type(), begin, end);
   }
 };  // or_query
 
@@ -254,10 +244,7 @@ class min_match_query final : public boolean_query {
     assert(min_match_count_ > 1);
   }
 
-  virtual doc_iterator::ptr execute(const sub_reader& rdr, const Order& ord,
-                                    ExecutionMode mode,
-                                    const attribute_provider* ctx,
-                                    iterator begin,
+  virtual doc_iterator::ptr execute(const ExecutionContext& ctx, iterator begin,
                                     iterator end) const override {
     assert(std::distance(begin, end) >= 0);
     const size_t size = size_t(std::distance(begin, end));
@@ -271,7 +258,7 @@ class min_match_query final : public boolean_query {
       return doc_iterator::empty();
     } else if (min_match_count == size) {
       // pure conjunction
-      return ::make_conjunction(rdr, ord, mode, merge_type(), ctx, begin, end);
+      return ::make_conjunction(ctx, merge_type(), begin, end);
     }
 
     // min_match_count <= size
@@ -281,7 +268,7 @@ class min_match_query final : public boolean_query {
     auto it = std::begin(itrs);
     for (; begin != end; ++begin) {
       // execute query - get doc iterator
-      *it = begin->execute(rdr, ord, mode, ctx);
+      *it = begin->execute(ctx);
 
       // filter out empty iterators
       if (IRS_LIKELY(*it && !doc_limits::eof(it->value()))) {
@@ -291,7 +278,7 @@ class min_match_query final : public boolean_query {
     itrs.erase(it, std::end(itrs));
 
     return ResoveMergeType(
-        merge_type(), ord.buckets().size(),
+        merge_type(), ctx.scorers.buckets().size(),
         [&]<typename A>(A&& aggregator) -> doc_iterator::ptr {
           // FIXME(gnusi): use FAST version
           using disjunction_t = min_match_iterator<doc_iterator::ptr, A>;

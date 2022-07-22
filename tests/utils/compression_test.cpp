@@ -35,7 +35,7 @@ struct dummy_compressor final : irs::compression::compressor {
     return irs::bytes_ref::NIL;
   }
 
-  virtual void flush(data_output&) { }
+  virtual void flush(irs::data_output&) { }
 };
 
 struct dummy_decompressor final : irs::compression::decompressor {
@@ -45,7 +45,7 @@ struct dummy_decompressor final : irs::compression::decompressor {
     return irs::bytes_ref::NIL;
   }
 
-  virtual bool prepare(data_input&) { return true; }
+  virtual bool prepare(irs::data_input&) { return true; }
 };
 
 }
