@@ -28,17 +28,6 @@
 #include "shared.hpp"
 #include "utils/bitset.hpp"
 
-/*
- * phrase -> [start of the first term;end of the last term]
- * ngram  -> ???
- * prefix, range, levenshtein, wildcard, terms
- * term   ->
- *
- * OFFSET_INFO(d, { fields: [ { name: "body", maxCount: 30 } ] }
- * OFFSET_INFO(d, ["body"]) -> [ ]
- * OFFSET_INFO(d, "body")   -> [ ]
- */
-
 namespace {
 
 using namespace irs;
