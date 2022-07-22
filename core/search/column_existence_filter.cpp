@@ -35,16 +35,15 @@ class column_existence_query : public irs::filter::prepared {
                                   score_t boost)
       : filter::prepared(boost), field_{field}, stats_(std::move(stats)) {}
 
-  virtual doc_iterator::ptr execute(
-      const sub_reader& segment, const Order& ord, ExecutionMode /*mode*/,
-      const attribute_provider* /*ctx*/) const override {
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
+    const auto& segment = ctx.segment;
     const auto* column = segment.column(field_);
 
     if (!column) {
       return doc_iterator::empty();
     }
 
-    return iterator(segment, *column, ord);
+    return iterator(segment, *column, ctx.scorers);
   }
 
  protected:
@@ -78,12 +77,11 @@ class column_prefix_existence_query final : public column_existence_query {
                                          bstring&& stats, score_t boost)
       : column_existence_query(prefix, std::move(stats), boost) {}
 
-  virtual irs::doc_iterator::ptr execute(
-      const irs::sub_reader& segment, const irs::Order& ord,
-      ExecutionMode /*mode*/,
-      const irs::attribute_provider* /*ctx*/) const override {
+  irs::doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
     using adapter_t = irs::score_iterator_adapter<irs::doc_iterator::ptr>;
 
+    auto& segment = ctx.segment;
+    auto& ord = ctx.scorers;
     const string_ref prefix = field_;
 
     auto it = segment.columns();
@@ -116,7 +114,7 @@ class column_prefix_existence_query final : public column_existence_query {
               irs::disjunction_iterator<irs::doc_iterator::ptr, A>;
 
           return irs::MakeDisjunction<disjunction_t>(std::move(itrs),
-                                                      std::move(aggregator));
+                                                     std::move(aggregator));
         });
   }
 };

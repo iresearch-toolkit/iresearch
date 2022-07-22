@@ -591,9 +591,8 @@ class ByNesterQuery final : public filter::prepared {
     assert(IsValid(match_));
   }
 
-  doc_iterator::ptr execute(const sub_reader& rdr, const Order& ord,
-                            ExecutionMode mode,
-                            const attribute_provider* ctx) const override;
+  using filter::prepared::execute;
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
 
  private:
   DocIteratorProvider parent_;
@@ -603,10 +602,10 @@ class ByNesterQuery final : public filter::prepared {
   score_t none_boost_;
 };
 
-doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
-                                         const Order& ord,
-                                         ExecutionMode /*mode*/,
-                                         const attribute_provider* ctx) const {
+doc_iterator::ptr ByNesterQuery::execute(const ExecutionContext& ctx) const {
+  auto& rdr = ctx.segment;
+  auto& ord = ctx.scorers;
+
   auto parent = parent_(rdr);
 
   if (IRS_UNLIKELY(!parent || doc_limits::eof(parent->value()))) {
@@ -619,8 +618,10 @@ doc_iterator::ptr ByNesterQuery::execute(const sub_reader& rdr,
     return doc_iterator::empty();
   }
 
-  auto child =
-      child_->execute(rdr, GetOrder(match_, ord), ExecutionMode::kAll, ctx);
+  auto child = child_->execute({.segment = rdr,
+                                .scorers = GetOrder(match_, ord),
+                                .ctx = ctx.ctx,
+                                .mode = ExecutionMode::kAll});
 
   if (IRS_UNLIKELY(!child)) {
     return doc_iterator::empty();

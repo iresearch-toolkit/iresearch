@@ -98,10 +98,7 @@ class doclist_test_query final : public filter::prepared {
   doclist_test_query(const std::vector<doc_id_t>& documents, score_t)
       : documents_(documents){};
 
-  doc_iterator::ptr execute(const sub_reader& /*rdr*/,
-                            const Order& /*order*/,
-                            ExecutionMode /*mode*/,
-                            const attribute_provider* /*ctx*/) const override {
+  doc_iterator::ptr execute(const ExecutionContext&) const override {
     ++executes_;
     return memory::make_managed<doclist_test_iterator>(documents_);
   }

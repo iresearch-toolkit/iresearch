@@ -33,14 +33,14 @@ term_query::term_query(term_query::states_t&& states, bstring&& stats,
       states_(std::move(states)),
       stats_(std::move(stats)) {}
 
-doc_iterator::ptr term_query::execute(const sub_reader& rdr, const Order& ord,
-                                      ExecutionMode mode,
-                                      const attribute_provider* /*ctx*/) const {
+doc_iterator::ptr term_query::execute(const ExecutionContext& ctx) const {
   // get term state for the specified reader
+  auto& rdr = ctx.segment;
+  auto& ord = ctx.scorers;
   auto state = states_.find(rdr);
 
   if (!state) {
-    // invalid state
+    // Invalid state
     return doc_iterator::empty();
   }
 
@@ -48,7 +48,7 @@ doc_iterator::ptr term_query::execute(const sub_reader& rdr, const Order& ord,
   assert(reader);
 
   auto docs =
-      (mode == ExecutionMode::kTop && !ord.empty())
+      (ctx.mode == ExecutionMode::kTop && !ctx.scorers.empty())
           ? reader->wanderator(
                 *state->cookie,
                 [&, bucket = ord.buckets().front().bucket.get()](
@@ -58,7 +58,11 @@ doc_iterator::ptr term_query::execute(const sub_reader& rdr, const Order& ord,
                 },
                 ord.features())
           : reader->postings(*state->cookie, ord.features());
-  assert(docs);
+
+  if (IRS_UNLIKELY(!docs)) {
+    assert(false);
+    return doc_iterator::empty();
+  }
 
   if (!ord.empty()) {
     auto* score = irs::get_mutable<irs::score>(docs.get());

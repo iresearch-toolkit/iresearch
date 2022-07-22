@@ -41,9 +41,7 @@ class term_query final : public filter::prepared {
 
   explicit term_query(states_t&& states, bstring&& stats, score_t boost);
 
-  virtual doc_iterator::ptr execute(
-      const sub_reader& rdr, const Order& ord, ExecutionMode mode,
-      const attribute_provider* /*ctx*/) const override;
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
 
  private:
   states_cache<term_state> states_;

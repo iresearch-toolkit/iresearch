@@ -72,7 +72,7 @@ struct multiterm_state {
 };
 
 // Compiled query suitable for filters with non adjacent set of terms.
-class multiterm_query : public filter::prepared {
+class multiterm_query final : public filter::prepared {
  public:
   using states_t = states_cache<multiterm_state>;
   using stats_t = std::vector<bstring>;
@@ -85,9 +85,7 @@ class multiterm_query : public filter::prepared {
         merge_type_{merge_type},
         min_match_{min_match} {}
 
-  virtual doc_iterator::ptr execute(
-      const sub_reader& rdr, const Order& ord, ExecutionMode mode,
-      const attribute_provider* ctx) const override;
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
 
  private:
   states_t states_;
