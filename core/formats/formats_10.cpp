@@ -2033,6 +2033,7 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
     void MoveDown(size_t level) noexcept {
      auto& next = skip_levels_[level];
      // move to the more granular level
+     assert(prev_);
      CopyState<IteratorTraits>(next, *prev_);
     }
 
@@ -2060,7 +2061,7 @@ class doc_iterator final : public doc_iterator_base<IteratorTraits, FieldTraits>
     }
 
     std::vector<SkipState> skip_levels_;
-    SkipState* prev_; // pointer to skip context used by skip reader
+    SkipState* prev_{}; // pointer to skip context used by skip reader
   };
 
   void seek_to_block(doc_id_t target);
