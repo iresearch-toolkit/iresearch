@@ -31,6 +31,7 @@
 #include "search/cost.hpp"
 #include "search/disjunction.hpp"
 #include "search/min_match_disjunction.hpp"
+#include "search/prepared_state_visitor.hpp"
 #include "search/states/ngram_state.hpp"
 #include "search/states_cache.hpp"
 #include "shared.hpp"
@@ -392,8 +393,11 @@ class ngram_similarity_query final : public filter::prepared {
     }
   }
 
-  void visit(const sub_reader&, PreparedStateVisitor&) const override {
-    // FIXME(gnusi): implement
+  void visit(const sub_reader& segment,
+             PreparedStateVisitor& visitor) const override {
+    if (auto* state = states_.find(segment); state) {
+      visitor.Visit(*state->field, boost(), *state);
+    }
   }
 
  private:
