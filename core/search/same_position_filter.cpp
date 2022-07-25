@@ -25,11 +25,12 @@
 #include <boost/functional/hash.hpp>
 
 #include "analysis/token_attributes.hpp"
-#include "collectors.hpp"
-#include "conjunction.hpp"
 #include "index/field_meta.hpp"
+#include "search/collectors.hpp"
+#include "search/conjunction.hpp"
+#include "search/states_cache.hpp"
+#include "search/term_state.hpp"
 #include "shared.hpp"
-#include "term_query.hpp"
 #include "utils/misc.hpp"
 
 namespace {

@@ -31,10 +31,7 @@ namespace iresearch {
 class by_term;
 struct filter_visitor;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct by_term_options
-/// @brief options for term filter
-////////////////////////////////////////////////////////////////////////////////
+// Options for term filter
 struct by_term_options {
   using filter_type = by_term;
 
@@ -44,43 +41,28 @@ struct by_term_options {
     return term == rhs.term;
   }
 
-  size_t hash() const noexcept {
-    return std::hash<bstring>()(term);
-  }
-}; // by_term_options
+  size_t hash() const noexcept { return std::hash<bstring>()(term); }
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class by_term 
-/// @brief user-side term filter
-//////////////////////////////////////////////////////////////////////////////
+// User-side term filter
 class by_term : public filter_base<by_term_options> {
  public:
-  static prepared::ptr prepare(
-    const index_reader& rdr,
-    const Order& ord,
-    score_t boost,
-    string_ref field,
-    bytes_ref term);
+  static prepared::ptr prepare(const index_reader& rdr, const Order& ord,
+                               score_t boost, string_ref field, bytes_ref term);
 
-  static void visit(
-    const sub_reader& segment,
-    const term_reader& field,
-    bytes_ref term,
-    filter_visitor& visitor);
+  static void visit(const sub_reader& segment, const term_reader& field,
+                    bytes_ref term, filter_visitor& visitor);
 
   using filter::prepare;
 
   virtual prepared::ptr prepare(
-      const index_reader& rdr,
-      const Order& ord,
-      score_t boost,
+      const index_reader& rdr, const Order& ord, score_t boost,
       const attribute_provider* /*ctx*/) const override {
-    return prepare(rdr, ord, boost*this->boost(),
-                   field(), options().term);
+    return prepare(rdr, ord, boost * this->boost(), field(), options().term);
   }
-}; // by_term
+};
 
-}
+}  // namespace iresearch
 
 namespace std {
 
@@ -91,6 +73,6 @@ struct hash<::iresearch::by_term_options> {
   }
 };
 
-}
+}  // namespace std
 
-#endif // IRESEARCH_TERM_FILTER_H
+#endif  // IRESEARCH_TERM_FILTER_H

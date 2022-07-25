@@ -108,10 +108,11 @@ void visit(const sub_reader& segment, const term_reader& reader,
 
 namespace iresearch {
 
-/*static*/ filter::prepared::ptr by_range::prepare(
-    const index_reader& index, const Order& ord, score_t boost,
-    string_ref field, const options_type::range_type& rng,
-    size_t scored_terms_limit) {
+filter::prepared::ptr by_range::prepare(const index_reader& index,
+                                        const Order& ord, score_t boost,
+                                        string_ref field,
+                                        const options_type::range_type& rng,
+                                        size_t scored_terms_limit) {
   // TODO: optimize unordered case
   //  - seek to min
   //  - get ordinal position of the term
@@ -129,11 +130,11 @@ namespace iresearch {
     return prepared::empty();
   }
 
+  // object for collecting order stats
   limited_sample_collector<term_frequency> collector(
-      ord.empty() ? 0
-                  : scored_terms_limit);  // object for collecting order stats
-  multiterm_query::states_t states(index);
-  multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
+      ord.empty() ? 0 : scored_terms_limit);
+  multiterm_query::States states{index};
+  multiterm_visitor mtv{collector, states};
 
   // iterate over the segments
   for (const auto& segment : index) {
@@ -148,17 +149,16 @@ namespace iresearch {
     ::visit(segment, *reader, rng, mtv);
   }
 
-  std::vector<bstring> stats;
+  multiterm_query::Stats stats;
   collector.score(index, ord, stats);
 
   return memory::make_managed<multiterm_query>(
       std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
 }
 
-/*static*/ void by_range::visit(const sub_reader& segment,
-                                const term_reader& reader,
-                                const options_type::range_type& rng,
-                                filter_visitor& visitor) {
+void by_range::visit(const sub_reader& segment, const term_reader& reader,
+                     const options_type::range_type& rng,
+                     filter_visitor& visitor) {
   ::visit(segment, reader, rng, visitor);
 }
 

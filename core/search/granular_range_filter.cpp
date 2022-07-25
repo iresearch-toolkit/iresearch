@@ -579,7 +579,7 @@ void set_granular_term(by_granular_range_options::terms& boundary,
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector{
       ord.empty() ? 0 : scored_terms_limit};
-  multiterm_query::states_t states{index};
+  multiterm_query::States states{index};
   multiterm_visitor mtv{collector, states};
 
   // iterate over the segments
@@ -598,7 +598,7 @@ void set_granular_term(by_granular_range_options::terms& boundary,
     return prepared::empty();
   }
 
-  multiterm_query::stats_t stats;
+  multiterm_query::Stats stats;
   collector.score(index, ord, stats);
 
   return memory::make_managed<multiterm_query>(

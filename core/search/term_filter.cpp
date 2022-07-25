@@ -23,31 +23,22 @@
 #include "term_filter.hpp"
 
 #include "index/index_reader.hpp"
-#include "search/filter_visitor.hpp"
 #include "search/collectors.hpp"
+#include "search/filter_visitor.hpp"
 #include "search/term_query.hpp"
 
 namespace {
 
 using namespace irs;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class term_visitor
-/// @brief filter visitor for term queries
-//////////////////////////////////////////////////////////////////////////////
+// Filter visitor for term queries
 class term_visitor : private util::noncopyable {
  public:
-  term_visitor(
-      const term_collectors& term_stats,
-      term_query::states_t& states)
-    : term_stats_(term_stats),
-      states_(states) {
-  }
+  term_visitor(const term_collectors& term_stats, term_query::States& states)
+      : term_stats_(term_stats), states_(states) {}
 
-  void prepare(
-      const sub_reader& segment,
-      const term_reader& field,
-      const seek_term_iterator& terms) noexcept {
+  void prepare(const sub_reader& segment, const term_reader& field,
+               const seek_term_iterator& terms) noexcept {
     segment_ = &segment;
     reader_ = &field;
     terms_ = &terms;
@@ -68,18 +59,15 @@ class term_visitor : private util::noncopyable {
 
  private:
   const term_collectors& term_stats_;
-  term_query::states_t& states_;
+  term_query::States& states_;
   const sub_reader* segment_{};
   const term_reader* reader_{};
   const seek_term_iterator* terms_{};
 };
 
 template<typename Visitor>
-void visit(
-    const sub_reader& segment,
-    const term_reader& field,
-    bytes_ref term,
-    Visitor& visitor) {
+void visit(const sub_reader& segment, const term_reader& field, bytes_ref term,
+           Visitor& visitor) {
   // find term
   auto terms = field.iterator(SeekMode::RANDOM_ONLY);
 
@@ -95,25 +83,19 @@ void visit(
   visitor.visit(kNoBoost);
 }
 
-}
+}  // namespace
 
 namespace iresearch {
 
-/*static*/ void by_term::visit(
-    const sub_reader& segment,
-    const term_reader& field,
-    bytes_ref term,
-    filter_visitor& visitor) {
+void by_term::visit(const sub_reader& segment, const term_reader& field,
+                    bytes_ref term, filter_visitor& visitor) {
   ::visit(segment, field, term, visitor);
 }
 
-/*static*/ filter::prepared::ptr by_term::prepare(
-    const index_reader& index,
-    const Order& ord,
-    score_t boost,
-    string_ref field,
-    bytes_ref term) {
-  term_query::states_t states(index);
+filter::prepared::ptr by_term::prepare(const index_reader& index,
+                                       const Order& ord, score_t boost,
+                                       string_ref field, bytes_ref term) {
+  term_query::States states(index);
   field_collectors field_stats(ord);
   term_collectors term_stats(ord, 1);
 
@@ -128,7 +110,8 @@ namespace iresearch {
       continue;
     }
 
-    field_stats.collect(segment, *reader); // collect field statistics once per segment
+    field_stats.collect(segment,
+                        *reader);  // collect field statistics once per segment
 
     ::visit(segment, *reader, term, visitor);
   }
@@ -138,8 +121,8 @@ namespace iresearch {
 
   term_stats.finish(stats_buf, 0, field_stats, index);
 
-  return memory::make_managed<term_query>(
-    std::move(states), std::move(stats), boost);
+  return memory::make_managed<term_query>(std::move(states), std::move(stats),
+                                          boost);
 }
 
-} // ROOT
+}  // namespace iresearch

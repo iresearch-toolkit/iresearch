@@ -32,9 +32,9 @@ namespace iresearch {
 // Compiled query suitable for filters with a single term like "by_term"
 class term_query final : public filter::prepared {
  public:
-  using states_t = states_cache<TermState>;
+  using States = states_cache<TermState>;
 
-  explicit term_query(states_t&& states, bstring&& stats, score_t boost);
+  explicit term_query(States&& states, bstring&& stats, score_t boost);
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
 
@@ -42,7 +42,7 @@ class term_query final : public filter::prepared {
              PreparedStateVisitor& visitor) const override;
 
  private:
-  states_cache<TermState> states_;
+  States states_;
   bstring stats_;
 };
 

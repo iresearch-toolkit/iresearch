@@ -28,11 +28,10 @@
 
 namespace iresearch {
 
-term_query::term_query(term_query::states_t&& states, bstring&& stats,
-                       score_t boost)
+term_query::term_query(States&& states, bstring&& stats, score_t boost)
     : filter::prepared(boost),
-      states_(std::move(states)),
-      stats_(std::move(stats)) {}
+      states_{std::move(states)},
+      stats_{std::move(stats)} {}
 
 doc_iterator::ptr term_query::execute(const ExecutionContext& ctx) const {
   // get term state for the specified reader

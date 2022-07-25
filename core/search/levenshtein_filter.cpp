@@ -202,7 +202,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
     const parametric_description& d) {
   field_collectors field_stats(order);
   term_collectors term_stats(order, 1);
-  multiterm_query::states_t states(index);
+  multiterm_query::States states{index};
 
   if (!terms_limit) {
     all_terms_collector term_collector{states, field_stats, term_stats};
