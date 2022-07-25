@@ -124,6 +124,14 @@ enum class SeekResult {
 // Implementation defined term value state
 struct seek_cookie : attribute_provider {
   using ptr = std::unique_ptr<seek_cookie>;
+
+  // Return `true` is cookie denoted by `rhs` is equal to the given one,
+  // false - otherwise.
+  // Caller must provide correct cookie type for comparison
+  virtual bool IsEqual(const seek_cookie& rhs) const = 0;
+
+  // Return cookie hash value.
+  virtual size_t Hash() const = 0;
 };
 
 // An iterator providing random and sequential access to term
