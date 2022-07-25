@@ -26,9 +26,12 @@
 
 namespace iresearch {
 
+struct term_reader;
+
 struct MultiTermState;
 struct TermState;
-struct term_reader;
+struct FixedPhraseState;
+struct VariadicPhraseState;
 
 struct PreparedStateVisitor {
   virtual ~PreparedStateVisitor() = default;
@@ -37,6 +40,10 @@ struct PreparedStateVisitor {
                      const TermState& state) = 0;
   virtual bool Visit(const term_reader& field, score_t boost,
                      const MultiTermState& state) = 0;
+  virtual bool Visit(const term_reader& field, score_t boost,
+                     const FixedPhraseState& state) = 0;
+  virtual bool Visit(const term_reader& field, score_t boost,
+                     const VariadicPhraseState& state) = 0;
 };
 
 }  // namespace iresearch

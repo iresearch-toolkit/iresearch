@@ -26,6 +26,7 @@
 #include "search/collectors.hpp"
 #include "search/filter_visitor.hpp"
 #include "search/phrase_iterator.hpp"
+#include "search/prepared_state_visitor.hpp"
 #include "search/states/phrase_state.hpp"
 #include "search/states_cache.hpp"
 
@@ -209,13 +210,16 @@ class phrase_query : public filter::prepared {
 
   phrase_query(states_t&& states, positions_t&& positions, bstring&& stats,
                score_t boost) noexcept
-      : prepared(boost),
-        states_(std::move(states)),
-        positions_(std::move(positions)),
-        stats_(std::move(stats)) {}
+      : prepared{boost},
+        states_{std::move(states)},
+        positions_{std::move(positions)},
+        stats_{std::move(stats)} {}
 
-  void visit(const sub_reader&, PreparedStateVisitor&) const override {
-    // FIXME(gnusi): implement
+  void visit(const sub_reader& segment,
+             PreparedStateVisitor& visitor) const override {
+    if (auto state = states_.find(segment); state) {
+      visitor.Visit(*state->reader, boost(), *state);
+    }
   }
 
  protected:
