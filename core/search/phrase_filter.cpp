@@ -26,44 +26,12 @@
 #include "search/collectors.hpp"
 #include "search/filter_visitor.hpp"
 #include "search/phrase_iterator.hpp"
+#include "search/phrase_state.hpp"
 #include "search/states_cache.hpp"
 
 namespace {
 
 using namespace irs;
-
-template<typename StateType>
-using phrase_state = std::vector<StateType>;
-
-// Cached per reader fixed phrase state
-struct fixed_phrase_state : util::noncopyable {
-  // mimic std::pair interface
-  struct term_state {
-    term_state(seek_cookie::ptr&& first, score_t /*second*/) noexcept
-        : first(std::move(first)) {}
-
-    seek_cookie::ptr first;
-  };
-
-  phrase_state<term_state> terms;
-  const term_reader* reader{};
-};
-
-static_assert(std::is_nothrow_move_constructible_v<fixed_phrase_state>);
-static_assert(std::is_nothrow_move_assignable_v<fixed_phrase_state>);
-
-// Cached per reader variadic phrase state
-struct variadic_phrase_state : fixed_phrase_state {
-  using term_state = std::pair<seek_cookie::ptr, score_t>;
-
-  std::vector<size_t> num_terms;  // number of terms per phrase part
-  phrase_state<term_state> terms;
-  const term_reader* reader{};
-  bool volatile_boost{};
-};
-
-static_assert(std::is_nothrow_move_constructible_v<variadic_phrase_state>);
-static_assert(std::is_nothrow_move_assignable_v<variadic_phrase_state>);
 
 struct get_visitor {
   using result_type = field_visitor;
@@ -256,12 +224,12 @@ class phrase_query : public filter::prepared {
   bstring stats_;
 };
 
-class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
+class fixed_phrase_query : public phrase_query<FixedPhraseState> {
  public:
   fixed_phrase_query(states_t&& states, positions_t&& positions,
                      bstring&& stats, score_t boost) noexcept
-      : phrase_query<fixed_phrase_state>(
-            std::move(states), std::move(positions), std::move(stats), boost) {}
+      : phrase_query{std::move(states), std::move(positions), std::move(stats),
+                     boost} {}
 
   using filter::prepared::execute;
 
@@ -322,9 +290,9 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
         std::move(itrs), std::move(positions), rdr, *phrase_state->reader,
         stats_.c_str(), ord, boost());
   }
-};  // fixed_phrase_query
+};
 
-class variadic_phrase_query final : public phrase_query<variadic_phrase_state> {
+class variadic_phrase_query final : public phrase_query<VariadicPhraseState> {
  public:
   // FIXME add proper handling of overlapped case
   template<bool VolatileBoost>
@@ -334,8 +302,8 @@ class variadic_phrase_query final : public phrase_query<variadic_phrase_state> {
 
   variadic_phrase_query(states_t&& states, positions_t&& positions,
                         bstring&& stats, score_t boost) noexcept
-      : phrase_query<variadic_phrase_state>(
-            std::move(states), std::move(positions), std::move(stats), boost) {}
+      : phrase_query{std::move(states), std::move(positions), std::move(stats),
+                     boost} {}
 
   using filter::prepared::execute;
 
@@ -460,7 +428,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   fixed_phrase_query::states_t phrase_states(index);
 
   // per segment phrase terms
-  phrase_state<fixed_phrase_state::term_state> phrase_terms;
+  PhraseTerms<FixedPhraseState::TermState> phrase_terms;
   phrase_terms.reserve(phrase_size);
 
   // iterate over the segments
@@ -557,9 +525,9 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
   // per segment phrase terms
   std::vector<size_t> num_terms(phrase_size);  // number of terms per part
-  phrase_state<variadic_phrase_state::term_state> phrase_terms;
-  phrase_terms.reserve(
-      phrase_size);  // reserve space for at least 1 term per part
+  PhraseTerms<VariadicPhraseState::TermState> phrase_terms;
+  // reserve space for at least 1 term per part
+  phrase_terms.reserve(phrase_size);
 
   // iterate over the segments
   const string_ref field = this->field();

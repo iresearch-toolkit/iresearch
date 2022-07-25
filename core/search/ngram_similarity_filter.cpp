@@ -31,6 +31,7 @@
 #include "search/cost.hpp"
 #include "search/disjunction.hpp"
 #include "search/min_match_disjunction.hpp"
+#include "search/ngram_state.hpp"
 #include "search/states_cache.hpp"
 #include "shared.hpp"
 #include "utils/map_utils.hpp"
@@ -40,12 +41,7 @@ namespace {
 
 using namespace irs;
 
-struct ngram_segment_state_t {
-  const term_reader* field{};
-  std::vector<seek_cookie::ptr> terms;
-};
-
-using states_t = states_cache<ngram_segment_state_t>;
+using states_t = states_cache<NGramState>;
 using approximation = min_match_disjunction<doc_iterator::ptr, NoopAggregator>;
 
 }  // namespace
@@ -402,7 +398,7 @@ class ngram_similarity_query final : public filter::prepared {
 
  private:
   doc_iterator::ptr execute_simple_disjunction(
-      const ngram_segment_state_t& query_state) const {
+      const NGramState& query_state) const {
     using disjunction_t =
         irs::disjunction_iterator<doc_iterator::ptr, NoopAggregator>;
 
@@ -430,13 +426,13 @@ class ngram_similarity_query final : public filter::prepared {
       return doc_iterator::empty();
     }
 
-    // FIXME(gnusi): why we dishonor order?
+    // FIXME(gnusi): why do we dishonor order?
     return MakeDisjunction<disjunction_t>(std::move(itrs), NoopAggregator{});
   }
 
-  doc_iterator::ptr execute_ngram_similarity(
-      const sub_reader& rdr, const ngram_segment_state_t& query_state,
-      const Order& ord) const {
+  doc_iterator::ptr execute_ngram_similarity(const sub_reader& rdr,
+                                             const NGramState& query_state,
+                                             const Order& ord) const {
     approximation::doc_iterators_t itrs;
     itrs.reserve(query_state.terms.size());
     const IndexFeatures features =
@@ -449,12 +445,9 @@ class ngram_similarity_query final : public filter::prepared {
       auto* field = query_state.field;
       assert(field);
 
-      // get postings
-      auto docs = field->postings(*term_state, features);
-      assert(docs);
-
-      // add iterator
-      itrs.emplace_back(std::move(docs));
+      if (auto docs = field->postings(*term_state, features); docs) {
+        itrs.emplace_back(std::move(docs));
+      }
     }
 
     if (itrs.size() < min_match_count_) {
