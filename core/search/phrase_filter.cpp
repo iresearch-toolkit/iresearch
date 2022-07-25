@@ -39,11 +39,10 @@ using phrase_state = std::vector<StateType>;
 struct fixed_phrase_state : util::noncopyable {
   // mimic std::pair interface
   struct term_state {
-    term_state(seek_term_iterator::cookie_ptr&& first,
-               score_t /*second*/) noexcept
+    term_state(seek_cookie::ptr&& first, score_t /*second*/) noexcept
         : first(std::move(first)) {}
 
-    seek_term_iterator::cookie_ptr first;
+    seek_cookie::ptr first;
   };
 
   phrase_state<term_state> terms;
@@ -55,7 +54,7 @@ static_assert(std::is_nothrow_move_assignable_v<fixed_phrase_state>);
 
 // Cached per reader variadic phrase state
 struct variadic_phrase_state : fixed_phrase_state {
-  using term_state = std::pair<seek_term_iterator::cookie_ptr, score_t>;
+  using term_state = std::pair<seek_cookie::ptr, score_t>;
 
   std::vector<size_t> num_terms;  // number of terms per phrase part
   phrase_state<term_state> terms;

@@ -25,56 +25,15 @@
 
 #include "search/cost.hpp"
 #include "search/filter.hpp"
+#include "search/multiterm_state.hpp"
 #include "search/states_cache.hpp"
 
 namespace iresearch {
 
-// Cached per reader state.
-struct multiterm_state {
-  struct term_state {
-    term_state(seek_cookie::ptr&& cookie, uint32_t stat_offset,
-               score_t boost = kNoBoost) noexcept
-        : cookie{std::move(cookie)}, stat_offset{stat_offset}, boost{boost} {}
-
-    seek_cookie::ptr cookie;
-    uint32_t stat_offset{};
-    float_t boost{kNoBoost};
-  };
-
-  using unscored_term_state = seek_cookie::ptr;
-
-  // Return true if state is empty
-  bool empty() const noexcept {
-    return scored_states.empty() && unscored_terms.empty();
-  }
-
-  // Return total cost of execution
-  cost::cost_t estimation() const noexcept {
-    return scored_states_estimation + unscored_states_estimation;
-  }
-
-  // Reader using for iterate over the terms
-  const term_reader* reader{};
-
-  // Scored term states
-  std::vector<term_state> scored_states;
-
-  // Matching terms that may have been skipped
-  // while collecting statistics and should not be
-  // scored by the disjunction.
-  std::vector<unscored_term_state> unscored_terms;
-
-  // Estimated cost of scored states
-  cost::cost_t scored_states_estimation{};
-
-  // Estimated cost of unscored states
-  cost::cost_t unscored_states_estimation{};
-};
-
 // Compiled query suitable for filters with non adjacent set of terms.
 class multiterm_query final : public filter::prepared {
  public:
-  using states_t = states_cache<multiterm_state>;
+  using states_t = states_cache<MultiTermState>;
   using stats_t = std::vector<bstring>;
 
   explicit multiterm_query(states_t&& states, stats_t&& stats, score_t boost,

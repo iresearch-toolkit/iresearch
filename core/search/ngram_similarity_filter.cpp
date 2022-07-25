@@ -42,7 +42,7 @@ using namespace irs;
 
 struct ngram_segment_state_t {
   const term_reader* field{};
-  std::vector<seek_term_iterator::cookie_ptr> terms;
+  std::vector<seek_cookie::ptr> terms;
 };
 
 using states_t = states_cache<ngram_segment_state_t>;
@@ -491,7 +491,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
 
   // per segment terms states
   const auto terms_count = ngrams.size();
-  std::vector<seek_term_iterator::cookie_ptr> term_states;
+  std::vector<seek_cookie::ptr> term_states;
   term_states.reserve(terms_count);
 
   // prepare ngrams stats

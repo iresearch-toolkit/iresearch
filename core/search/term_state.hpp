@@ -22,21 +22,16 @@
 
 #pragma once
 
-#include "types.hpp"
+#include "formats/seek_cookie.hpp"
 
 namespace iresearch {
 
-struct MultiTermState;
-struct TermState;
 struct term_reader;
 
-struct PreparedStateVisitor {
-  virtual ~PreparedStateVisitor() = default;
-
-  virtual bool Visit(const term_reader& field, score_t boost,
-                     const TermState& state) = 0;
-  virtual bool Visit(const term_reader& field, score_t boost,
-                     const MultiTermState& state) = 0;
+// Cached per reader term state
+struct TermState {
+  const term_reader* reader{};
+  seek_cookie::ptr cookie;
 };
 
 }  // namespace iresearch

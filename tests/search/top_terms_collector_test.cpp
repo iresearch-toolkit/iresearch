@@ -263,7 +263,7 @@ struct state_visitor {
     expected_cookie = it->second.cookies.begin();
   }
 
-  void operator()(seek_term_iterator::cookie_ptr& cookie) const {
+  void operator()(irs::seek_cookie::ptr& cookie) const {
     auto* cookie_impl =
         static_cast<const ::seek_term_iterator::seek_ptr*>(cookie.get());
 

@@ -25,19 +25,14 @@
 
 #include "search/filter.hpp"
 #include "search/states_cache.hpp"
+#include "search/term_state.hpp"
 
 namespace iresearch {
-
-// Cached per reader term state
-struct term_state {
-  const term_reader* reader{};
-  seek_term_iterator::cookie_ptr cookie;
-};
 
 // Compiled query suitable for filters with a single term like "by_term"
 class term_query final : public filter::prepared {
  public:
-  using states_t = states_cache<term_state>;
+  using states_t = states_cache<TermState>;
 
   explicit term_query(states_t&& states, bstring&& stats, score_t boost);
 
@@ -47,7 +42,7 @@ class term_query final : public filter::prepared {
              PreparedStateVisitor& visitor) const override;
 
  private:
-  states_cache<term_state> states_;
+  states_cache<TermState> states_;
   bstring stats_;
 };
 

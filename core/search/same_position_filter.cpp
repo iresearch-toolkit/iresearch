@@ -105,7 +105,7 @@ class same_position_iterator final : public Conjunction {
 
 class same_position_query final : public filter::prepared {
  public:
-  typedef std::vector<term_state> terms_states_t;
+  typedef std::vector<TermState> terms_states_t;
   typedef states_cache<terms_states_t> states_t;
   typedef std::vector<bstring> stats_t;
 

@@ -25,6 +25,7 @@
 
 #include <absl/container/flat_hash_set.h>
 
+#include "formats/seek_cookie.hpp"
 #include "index/column_info.hpp"
 #include "index/index_features.hpp"
 #include "index/index_meta.hpp"
@@ -76,7 +77,7 @@ struct term_meta : attribute {
   /// @brief how many times a particular term occur in documents
   //////////////////////////////////////////////////////////////////////////////
   uint32_t freq = 0;
-};  // term_meta
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct postings_writer
@@ -114,7 +115,7 @@ struct postings_writer : attribute_provider {
   }
 
   virtual void release(term_meta* meta) noexcept = 0;
-};  // postings_writer
+};
 
 void postings_writer::releaser::operator()(term_meta* meta) const noexcept {
   assert(owner_ && meta);
@@ -133,7 +134,7 @@ struct field_writer {
                      const std::map<type_info::type_id, field_id>& features,
                      term_iterator& data) = 0;
   virtual void end() = 0;
-};  // field_writer
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct postings_reader
@@ -180,7 +181,7 @@ struct postings_reader {
   //////////////////////////////////////////////////////////////////////////////
   virtual size_t bit_union(IndexFeatures field_features,
                            const term_provider_f& provider, size_t* set) = 0;
-};  // postings_reader
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct basic_term_reader
@@ -198,7 +199,7 @@ struct basic_term_reader : public attribute_provider {
 
   // most significant term
   virtual const bytes_ref&(max)() const = 0;
-};  // basic_term_reader
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @enum SeekMode
@@ -214,7 +215,7 @@ enum class SeekMode : uint32_t {
   /// @brief only random exact seeks are supported
   //////////////////////////////////////////////////////////////////////////////
   RANDOM_ONLY
-};  // SeekMode
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct term_reader
@@ -294,7 +295,7 @@ struct field_reader {
   virtual const term_reader* field(string_ref field) const = 0;
   virtual field_iterator::ptr iterator() const = 0;
   virtual size_t size() const = 0;
-};  // field_reader
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct column_output
@@ -302,7 +303,7 @@ struct field_reader {
 struct column_output : data_output {
   // resets stream to previous persisted state
   virtual void reset() = 0;
-};  // column_output
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct columnstore_writer
@@ -389,7 +390,7 @@ struct columnstore_reader {
 
   // Returns total number of columns.
   virtual size_t size() const = 0;
-};  // columnstore_reader
+};
 
 }  // namespace iresearch
 
@@ -407,7 +408,7 @@ struct document_mask_writer {
 
   virtual void write(directory& dir, const segment_meta& meta,
                      const document_mask& docs_mask) = 0;
-};  // document_mask_writer
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct document_mask_reader
@@ -435,7 +436,7 @@ struct segment_meta_writer {
 
   virtual void write(directory& dir, std::string& filename,
                      const segment_meta& meta) = 0;
-};  // segment_meta_writer
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct segment_meta_reader
@@ -465,7 +466,7 @@ struct index_meta_writer {
  protected:
   static void complete(index_meta& meta) noexcept;
   static void prepare(index_meta& meta) noexcept;
-};  // index_meta_writer
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct index_meta_reader
@@ -486,7 +487,7 @@ struct index_meta_reader {
   static void complete(index_meta& meta, uint64_t generation, uint64_t counter,
                        index_meta::index_segments_t&& segments,
                        bstring* payload_buf);
-};  // index_meta_reader
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct format
@@ -518,7 +519,7 @@ class format {
 
  private:
   type_info type_;
-};  // format
+};
 
 }  // namespace iresearch
 
@@ -537,10 +538,6 @@ struct reader_state {
   const directory* dir;
   const segment_meta* meta;
 };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               convinience methods
-// -----------------------------------------------------------------------------
 
 class formats {
  public:
@@ -577,10 +574,6 @@ class formats {
  private:
   formats() = delete;
 };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               format registration
-// -----------------------------------------------------------------------------
 
 class format_registrar {
  public:

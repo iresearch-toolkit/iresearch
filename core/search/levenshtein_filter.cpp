@@ -93,7 +93,7 @@ struct aggregated_stats_visitor : util::noncopyable {
     state->scored_states_estimation += docs_count;
   }
 
-  void operator()(seek_term_iterator::cookie_ptr& cookie) const {
+  void operator()(seek_cookie::ptr& cookie) const {
     assert(segment);
     assert(field);
     term_stats.collect(*segment, *field, 0, *cookie);
@@ -237,10 +237,6 @@ filter::prepared::ptr prepare_levenshtein_filter(
 }  // namespace
 
 namespace iresearch {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                   by_edit_distance implementation
-// -----------------------------------------------------------------------------
 
 /*static*/ field_visitor by_edit_distance::visitor(
     const options_type::filter_options& opts) {
