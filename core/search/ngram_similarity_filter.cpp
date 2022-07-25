@@ -31,7 +31,7 @@
 #include "search/cost.hpp"
 #include "search/disjunction.hpp"
 #include "search/min_match_disjunction.hpp"
-#include "search/ngram_state.hpp"
+#include "search/states/ngram_state.hpp"
 #include "search/states_cache.hpp"
 #include "shared.hpp"
 #include "utils/map_utils.hpp"

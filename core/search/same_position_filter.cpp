@@ -28,8 +28,8 @@
 #include "index/field_meta.hpp"
 #include "search/collectors.hpp"
 #include "search/conjunction.hpp"
+#include "search/states/term_state.hpp"
 #include "search/states_cache.hpp"
-#include "search/term_state.hpp"
 #include "shared.hpp"
 #include "utils/misc.hpp"
 

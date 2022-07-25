@@ -26,7 +26,7 @@
 #include "search/collectors.hpp"
 #include "search/filter_visitor.hpp"
 #include "search/phrase_iterator.hpp"
-#include "search/phrase_state.hpp"
+#include "search/states/phrase_state.hpp"
 #include "search/states_cache.hpp"
 
 namespace {

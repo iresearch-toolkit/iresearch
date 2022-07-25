@@ -23,7 +23,7 @@
 #pragma once
 
 #include "search/filter.hpp"
-#include "search/multiterm_state.hpp"
+#include "search/states/multiterm_state.hpp"
 #include "search/states_cache.hpp"
 
 namespace iresearch {
