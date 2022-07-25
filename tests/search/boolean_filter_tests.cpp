@@ -260,6 +260,10 @@ struct boosted : public irs::filter {
           docs.begin(), docs.end(), stats.c_str(), ctx.scorers, boost());
     }
 
+    void visit(const irs::sub_reader&, irs::PreparedStateVisitor&) const override {
+      // No terms to visit
+    }
+
     basic_doc_iterator::docids_t docs;
     irs::bstring stats;
   };  // prepared
@@ -761,8 +765,6 @@ TEST(boolean_query_boost, and_filter) {
 
   // unboosted root & several unboosted subqueries
   {
-    const irs::score_t value = 5;
-
     auto pord = irs::Order::Prepare(tests::sort::boost{});
 
     irs::And root;
@@ -809,8 +811,6 @@ TEST(boolean_query_boost, and_filter) {
 TEST(boolean_query_boost, or_filter) {
   // single unboosted query
   {
-    const irs::score_t value = 5;
-
     irs::Or root;
 
     auto prep = root.prepare(irs::sub_reader::empty(), irs::Order::kUnordered);
@@ -1148,6 +1148,9 @@ struct unestimated : public irs::filter {
         const irs::ExecutionContext&) const override {
       return irs::memory::make_managed<unestimated::doc_iterator>();
     }
+    void visit(const irs::sub_reader&, irs::PreparedStateVisitor&) const override {
+      // No terms to visit
+    }
   };  // prepared
 
   virtual filter::prepared::ptr prepare(
@@ -1194,8 +1197,12 @@ struct estimated : public irs::filter {
         : evaluated(evaluated), est(est) {}
 
     virtual irs::doc_iterator::ptr execute(
-        const irs::ExecutionContext& ctx) const override {
+        const irs::ExecutionContext&) const override {
       return irs::memory::make_managed<estimated::doc_iterator>(est, evaluated);
+    }
+
+    void visit(const irs::sub_reader&, irs::PreparedStateVisitor&) const override {
+      // No terms to visit
     }
 
     bool* evaluated;
@@ -16111,10 +16118,6 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
 
 #endif
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                   Not base tests
-// ----------------------------------------------------------------------------
-
 TEST(Not_test, ctor) {
   irs::Not q;
   ASSERT_EQ(irs::type<irs::Not>::id(), q.type());
@@ -16148,10 +16151,6 @@ TEST(Not_test, equal) {
     ASSERT_NE(lhs, rhs);
   }
 }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                   And base tests
-// ----------------------------------------------------------------------------
 
 TEST(And_test, ctor) {
   irs::And q;
@@ -16215,7 +16214,7 @@ TEST(And_test, equal) {
 
 TEST(And_test, optimize_double_negation) {
   irs::And root;
-  auto& term = root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>() =
+  root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>() =
       make_filter<irs::by_term>("test_field", "test_term");
 
   auto prepared = root.prepare(irs::sub_reader::empty());
@@ -16243,7 +16242,7 @@ TEST(And_test, optimize_single_node) {
   // complex hierarchy
   {
     irs::And root;
-    auto& term = root.add<irs::And>().add<irs::And>().add<irs::by_term>() =
+    root.add<irs::And>().add<irs::And>().add<irs::by_term>() =
         make_filter<irs::by_term>("test_field", "test_term");
 
     auto prepared = root.prepare(irs::sub_reader::empty());
@@ -16419,7 +16418,7 @@ TEST(Or_test, optimize_single_node) {
   // complex hierarchy
   {
     irs::Or root;
-    auto& term = root.add<irs::Or>().add<irs::Or>().add<irs::by_term>() =
+    root.add<irs::Or>().add<irs::Or>().add<irs::by_term>() =
         make_filter<irs::by_term>("test_field", "test_term");
 
     auto prepared = root.prepare(irs::sub_reader::empty());

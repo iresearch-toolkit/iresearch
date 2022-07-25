@@ -594,6 +594,12 @@ class ByNesterQuery final : public filter::prepared {
   using filter::prepared::execute;
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
 
+  void visit(const sub_reader& segment,
+             PreparedStateVisitor& visitor) const override {
+    // FIXME(gnusi): boost?
+    child_->visit(segment, visitor);
+  }
+
  private:
   DocIteratorProvider parent_;
   prepared::ptr child_;

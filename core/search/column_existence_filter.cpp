@@ -31,8 +31,7 @@ using namespace irs;
 
 class column_existence_query : public irs::filter::prepared {
  public:
-  explicit column_existence_query(std::string_view field, bstring&& stats,
-                                  score_t boost)
+  column_existence_query(std::string_view field, bstring&& stats, score_t boost)
       : filter::prepared(boost), field_{field}, stats_(std::move(stats)) {}
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
@@ -44,6 +43,10 @@ class column_existence_query : public irs::filter::prepared {
     }
 
     return iterator(segment, *column, ctx.scorers);
+  }
+
+  void visit(const sub_reader&, PreparedStateVisitor&) const override {
+    // No terms to visit
   }
 
  protected:
@@ -69,12 +72,12 @@ class column_existence_query : public irs::filter::prepared {
 
   std::string field_;
   bstring stats_;
-};  // column_existence_query
+};
 
 class column_prefix_existence_query final : public column_existence_query {
  public:
-  explicit column_prefix_existence_query(std::string_view prefix,
-                                         bstring&& stats, score_t boost)
+  column_prefix_existence_query(std::string_view prefix, bstring&& stats,
+                                score_t boost)
       : column_existence_query(prefix, std::move(stats), boost) {}
 
   irs::doc_iterator::ptr execute(const ExecutionContext& ctx) const override {

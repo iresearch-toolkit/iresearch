@@ -32,11 +32,16 @@ class all_query final : public filter::prepared {
   explicit all_query(bstring&& stats, score_t boost)
       : filter::prepared(boost), stats_(std::move(stats)) {}
 
-  virtual doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
+  virtual doc_iterator::ptr execute(
+      const ExecutionContext& ctx) const override {
     auto& rdr = ctx.segment;
 
     return memory::make_managed<all_iterator>(rdr, stats_.c_str(), ctx.scorers,
                                               rdr.docs_count(), boost());
+  }
+
+  void visit(const sub_reader&, PreparedStateVisitor&) const override {
+    // No terms to visit
   }
 
  private:

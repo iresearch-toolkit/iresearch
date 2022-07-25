@@ -166,6 +166,14 @@ class boolean_query : public filter::prepared {
     return memory::make_managed<exclusion>(std::move(incl), std::move(excl));
   }
 
+  void visit(const irs::sub_reader& segment,
+             irs::PreparedStateVisitor& visitor) const override {
+    // FIXME(gnusi): visit exclude group? adjust boost?
+    for (auto it = begin(), end = excl_begin(); it != end; ++it) {
+      it->visit(segment, visitor);
+    }
+  }
+
   virtual void prepare(const index_reader& rdr, const Order& ord, score_t boost,
                        sort::MergeType merge_type,
                        const attribute_provider* ctx,
@@ -195,9 +203,9 @@ class boolean_query : public filter::prepared {
     merge_type_ = merge_type;
   }
 
-  iterator begin() const { return iterator(queries_.begin()); }
-  iterator excl_begin() const { return iterator(queries_.begin() + excl_); }
-  iterator end() const { return iterator(queries_.end()); }
+  iterator begin() const { return iterator(std::begin(queries_)); }
+  iterator excl_begin() const { return iterator(std::begin(queries_) + excl_); }
+  iterator end() const { return iterator(std::end(queries_)); }
 
   bool empty() const { return queries_.empty(); }
   size_t size() const { return queries_.size(); }

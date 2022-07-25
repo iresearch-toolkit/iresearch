@@ -247,6 +247,10 @@ class phrase_query : public filter::prepared {
         positions_(std::move(positions)),
         stats_(std::move(stats)) {}
 
+  void visit(const sub_reader&, PreparedStateVisitor&) const override {
+    // FIXME(gnusi): implement
+  }
+
  protected:
   states_t states_;
   positions_t positions_;

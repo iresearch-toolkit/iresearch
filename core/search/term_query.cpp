@@ -23,6 +23,7 @@
 #include "term_query.hpp"
 
 #include "index/index_reader.hpp"
+#include "search/prepared_state_visitor.hpp"
 #include "search/score.hpp"
 
 namespace iresearch {
@@ -66,6 +67,14 @@ doc_iterator::ptr term_query::execute(const ExecutionContext& ctx) const {
   }
 
   return docs;
+}
+
+void term_query::visit(const sub_reader& segment,
+                       PreparedStateVisitor& visitor) const {
+  if (auto state = states_.find(segment); state) {
+    visitor.Visit(*state->reader, boost(), *state);
+    return;
+  }
 }
 
 }  // namespace iresearch

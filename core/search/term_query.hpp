@@ -28,20 +28,23 @@
 
 namespace iresearch {
 
+// Cached per reader term state
+struct term_state {
+  const term_reader* reader{};
+  seek_term_iterator::cookie_ptr cookie;
+};
+
 // Compiled query suitable for filters with a single term like "by_term"
 class term_query final : public filter::prepared {
  public:
-  // Cached per reader term state
-  struct term_state {
-    const term_reader* reader{};
-    seek_term_iterator::cookie_ptr cookie;
-  };  // term_state
-
-  typedef states_cache<term_state> states_t;
+  using states_t = states_cache<term_state>;
 
   explicit term_query(states_t&& states, bstring&& stats, score_t boost);
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
+
+  void visit(const sub_reader& segment,
+             PreparedStateVisitor& visitor) const override;
 
  private:
   states_cache<term_state> states_;

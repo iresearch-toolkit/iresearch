@@ -396,6 +396,10 @@ class ngram_similarity_query final : public filter::prepared {
     }
   }
 
+  void visit(const sub_reader&, PreparedStateVisitor&) const override {
+    // FIXME(gnusi): implement
+  }
+
  private:
   doc_iterator::ptr execute_simple_disjunction(
       const ngram_segment_state_t& query_state) const {

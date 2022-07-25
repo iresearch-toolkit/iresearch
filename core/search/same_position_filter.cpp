@@ -105,7 +105,7 @@ class same_position_iterator final : public Conjunction {
 
 class same_position_query final : public filter::prepared {
  public:
-  typedef std::vector<term_query::term_state> terms_states_t;
+  typedef std::vector<term_state> terms_states_t;
   typedef states_cache<terms_states_t> states_t;
   typedef std::vector<bstring> stats_t;
 
@@ -114,6 +114,10 @@ class same_position_query final : public filter::prepared {
       : prepared(boost), states_(std::move(states)), stats_(std::move(stats)) {}
 
   using filter::prepared::execute;
+
+  void visit(const sub_reader&, PreparedStateVisitor&) const override {
+    // FIXME(gnusi): implement
+  }
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
     auto& segment = ctx.segment;

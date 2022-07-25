@@ -103,6 +103,10 @@ class doclist_test_query final : public filter::prepared {
     return memory::make_managed<doclist_test_iterator>(documents_);
   }
 
+  void visit(const sub_reader&, PreparedStateVisitor&) const override {
+    // No terms to visit
+  }
+
   static size_t get_execs() noexcept { return executes_; }
 
   static void reset_execs() noexcept { executes_ = 0; }

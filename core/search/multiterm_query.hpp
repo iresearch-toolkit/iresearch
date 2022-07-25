@@ -34,7 +34,7 @@ struct multiterm_state {
   struct term_state {
     term_state(seek_cookie::ptr&& cookie, uint32_t stat_offset,
                score_t boost = kNoBoost) noexcept
-        : cookie(std::move(cookie)), stat_offset(stat_offset), boost(boost) {}
+        : cookie{std::move(cookie)}, stat_offset{stat_offset}, boost{boost} {}
 
     seek_cookie::ptr cookie;
     uint32_t stat_offset{};
@@ -86,6 +86,9 @@ class multiterm_query final : public filter::prepared {
         min_match_{min_match} {}
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
+
+  void visit(const sub_reader& segment,
+             PreparedStateVisitor& visitor) const override;
 
  private:
   states_t states_;

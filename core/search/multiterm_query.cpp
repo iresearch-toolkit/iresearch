@@ -25,6 +25,7 @@
 #include "search/bitset_doc_iterator.hpp"
 #include "search/disjunction.hpp"
 #include "search/min_match_disjunction.hpp"
+#include "search/prepared_state_visitor.hpp"
 #include "shared.hpp"
 #include "utils/bitset.hpp"
 
@@ -102,6 +103,13 @@ bool lazy_bitset_iterator::refill(const word_t** begin, const word_t** end) {
 }  // namespace
 
 namespace iresearch {
+
+void multiterm_query::visit(const sub_reader& segment,
+                            PreparedStateVisitor& visitor) const {
+  if (auto state = states_.find(segment); state) {
+    visitor.Visit(*state->reader, boost(), *state);
+  }
+}
 
 doc_iterator::ptr multiterm_query::execute(const ExecutionContext& ctx) const {
   auto& segment = ctx.segment;

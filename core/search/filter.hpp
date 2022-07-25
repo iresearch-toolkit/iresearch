@@ -35,6 +35,7 @@
 namespace iresearch {
 
 struct index_reader;
+struct PreparedStateVisitor;
 
 enum class ExecutionMode : uint32_t {
   kAll,  // Access all documents
@@ -61,14 +62,16 @@ class filter {
     explicit prepared(score_t boost = kNoBoost) noexcept : boost_(boost) {}
     virtual ~prepared() = default;
 
-    doc_iterator::ptr execute(const sub_reader& rdr,
-                              const Order& ord = Order::kUnordered,
+    doc_iterator::ptr execute(const sub_reader& segment,
+                              const Order& scorers = Order::kUnordered,
                               ExecutionMode mode = ExecutionMode::kAll) const {
-      return execute(
-          ExecutionContext{.segment = rdr, .scorers = ord, .mode = mode});
+      return execute({.segment = segment, .scorers = scorers, .mode = mode});
     }
 
     virtual doc_iterator::ptr execute(const ExecutionContext& ctx) const = 0;
+
+    virtual void visit(const sub_reader& segment,
+                       PreparedStateVisitor& visitor) const = 0;
 
     score_t boost() const noexcept { return boost_; }
 
