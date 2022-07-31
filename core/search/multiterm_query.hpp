@@ -29,13 +29,13 @@
 namespace iresearch {
 
 // Compiled query suitable for filters with non adjacent set of terms.
-class multiterm_query final : public filter::prepared {
+class MultiTermQuery final : public filter::prepared {
  public:
   using States = states_cache<MultiTermState>;
   using Stats = std::vector<bstring>;
 
-  explicit multiterm_query(States&& states, Stats&& stats, score_t boost,
-                           sort::MergeType merge_type, size_t min_match)
+  explicit MultiTermQuery(States&& states, Stats&& stats, score_t boost,
+                          sort::MergeType merge_type, size_t min_match)
       : prepared{boost},
         states_{std::move(states)},
         stats_{std::move(stats)},
@@ -44,8 +44,8 @@ class multiterm_query final : public filter::prepared {
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
 
-  void visit(const sub_reader& segment,
-             PreparedStateVisitor& visitor) const override;
+  void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
+             score_t boost) const override;
 
  private:
   States states_;

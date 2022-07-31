@@ -202,7 +202,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
     const parametric_description& d) {
   field_collectors field_stats(order);
   term_collectors term_stats(order, 1);
-  multiterm_query::States states{index};
+  MultiTermQuery::States states{index};
 
   if (!terms_limit) {
     all_terms_collector term_collector{states, field_stats, term_stats};
@@ -230,7 +230,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
   auto* stats_buf = const_cast<byte_type*>(stats[0].data());
   term_stats.finish(stats_buf, 0, field_stats, index);
 
-  return memory::make_managed<multiterm_query>(
+  return memory::make_managed<MultiTermQuery>(
       std::move(states), std::move(stats), boost, sort::MergeType::kMax, 1);
 }
 

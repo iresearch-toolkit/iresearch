@@ -835,11 +835,14 @@ struct cookie final : seek_cookie {
 
   bool IsEqual(const irs::seek_cookie& rhs) const noexcept override {
     // We intentionally don't check `rhs` cookie type.
-    return meta.doc_start == down_cast<cookie>(rhs).meta.doc_start;
+    const auto& rhs_meta = down_cast<cookie>(rhs).meta;
+    return meta.doc_start == rhs_meta.doc_start &&
+           meta.pos_start == rhs_meta.pos_start;
   }
 
   size_t Hash() const noexcept override {
-    return std::hash<size_t>{}(meta.doc_start);
+    return hash_combine(std::hash<size_t>{}(meta.doc_start),
+                        std::hash<size_t>{}(meta.pos_start));
   }
 
   version10::term_meta meta;

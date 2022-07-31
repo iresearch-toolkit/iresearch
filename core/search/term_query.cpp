@@ -28,12 +28,12 @@
 
 namespace iresearch {
 
-term_query::term_query(States&& states, bstring&& stats, score_t boost)
+TermQuery::TermQuery(States&& states, bstring&& stats, score_t boost)
     : filter::prepared(boost),
       states_{std::move(states)},
       stats_{std::move(stats)} {}
 
-doc_iterator::ptr term_query::execute(const ExecutionContext& ctx) const {
+doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
   // get term state for the specified reader
   auto& rdr = ctx.segment;
   auto& ord = ctx.scorers;
@@ -68,10 +68,10 @@ doc_iterator::ptr term_query::execute(const ExecutionContext& ctx) const {
   return docs;
 }
 
-void term_query::visit(const sub_reader& segment,
-                       PreparedStateVisitor& visitor) const {
+void TermQuery::visit(const sub_reader& segment, PreparedStateVisitor& visitor,
+                      score_t boost) const {
   if (auto state = states_.find(segment); state) {
-    visitor.Visit(*state->reader, boost(), *state);
+    visitor.Visit(*this, *state, boost);
     return;
   }
 }

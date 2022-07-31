@@ -104,14 +104,14 @@ bool lazy_bitset_iterator::refill(const word_t** begin, const word_t** end) {
 
 namespace iresearch {
 
-void multiterm_query::visit(const sub_reader& segment,
-                            PreparedStateVisitor& visitor) const {
+void MultiTermQuery::visit(const sub_reader& segment,
+                           PreparedStateVisitor& visitor, score_t boost) const {
   if (auto state = states_.find(segment); state) {
-    visitor.Visit(*state->reader, boost(), *state);
+    visitor.Visit(*this, *state, boost);
   }
 }
 
-doc_iterator::ptr multiterm_query::execute(const ExecutionContext& ctx) const {
+doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
   auto& segment = ctx.segment;
   auto& ord = ctx.scorers;
 

@@ -28,25 +28,30 @@ namespace iresearch {
 
 struct term_reader;
 
+class MultiTermQuery;
 struct MultiTermState;
+class TermQuery;
 struct TermState;
+class FixedPhraseQuery;
 struct FixedPhraseState;
+class VariadicPhraseQuery;
 struct VariadicPhraseState;
+class NGramSimilarityQuery;
 struct NGramState;
 
 struct PreparedStateVisitor {
   virtual ~PreparedStateVisitor() = default;
 
-  virtual bool Visit(const term_reader& field, score_t boost,
-                     const TermState& state) = 0;
-  virtual bool Visit(const term_reader& field, score_t boost,
-                     const MultiTermState& state) = 0;
-  virtual bool Visit(const term_reader& field, score_t boost,
-                     const FixedPhraseState& state) = 0;
-  virtual bool Visit(const term_reader& field, score_t boost,
-                     const VariadicPhraseState& state) = 0;
-  virtual bool Visit(const term_reader& field, score_t boost,
-                     const NGramState& state) = 0;
+  virtual bool Visit(const TermQuery& q, const TermState& state,
+                     score_t boost) = 0;
+  virtual bool Visit(const MultiTermQuery& q, const MultiTermState& state,
+                     score_t boost) = 0;
+  virtual bool Visit(const FixedPhraseQuery& q, const FixedPhraseState& state,
+                     score_t boost) = 0;
+  virtual bool Visit(const VariadicPhraseQuery& q,
+                     const VariadicPhraseState& state, score_t boost) = 0;
+  virtual bool Visit(const NGramSimilarityQuery& q, const NGramState& state,
+                     score_t boost) = 0;
 };
 
 }  // namespace iresearch

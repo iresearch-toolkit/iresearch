@@ -116,7 +116,7 @@ class same_position_query final : public filter::prepared {
 
   using filter::prepared::execute;
 
-  void visit(const sub_reader&, PreparedStateVisitor&) const override {
+  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
     // FIXME(gnusi): implement
   }
 

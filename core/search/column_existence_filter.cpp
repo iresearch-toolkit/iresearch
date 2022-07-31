@@ -45,7 +45,7 @@ class column_existence_query : public irs::filter::prepared {
     return iterator(segment, *column, ctx.scorers);
   }
 
-  void visit(const sub_reader&, PreparedStateVisitor&) const override {
+  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
     // No terms to visit
   }
 

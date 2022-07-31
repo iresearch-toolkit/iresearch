@@ -193,7 +193,7 @@ class proxy_query final : public filter::prepared {
     return memory::make_managed<lazy_filter_bitset_iterator>(*cached);
   }
 
-  void visit(const sub_reader&, PreparedStateVisitor&) const override {
+  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
     // No terms to visit
   }
 

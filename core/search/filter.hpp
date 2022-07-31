@@ -70,8 +70,8 @@ class filter {
 
     virtual doc_iterator::ptr execute(const ExecutionContext& ctx) const = 0;
 
-    virtual void visit(const sub_reader& segment,
-                       PreparedStateVisitor& visitor) const = 0;
+    virtual void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
+                       score_t boost) const = 0;
 
     score_t boost() const noexcept { return boost_; }
 

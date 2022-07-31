@@ -34,7 +34,7 @@ using namespace irs;
 // Filter visitor for term queries
 class term_visitor : private util::noncopyable {
  public:
-  term_visitor(const term_collectors& term_stats, term_query::States& states)
+  term_visitor(const term_collectors& term_stats, TermQuery::States& states)
       : term_stats_(term_stats), states_(states) {}
 
   void prepare(const sub_reader& segment, const term_reader& field,
@@ -59,7 +59,7 @@ class term_visitor : private util::noncopyable {
 
  private:
   const term_collectors& term_stats_;
-  term_query::States& states_;
+  TermQuery::States& states_;
   const sub_reader* segment_{};
   const term_reader* reader_{};
   const seek_term_iterator* terms_{};
@@ -95,7 +95,7 @@ void by_term::visit(const sub_reader& segment, const term_reader& field,
 filter::prepared::ptr by_term::prepare(const index_reader& index,
                                        const Order& ord, score_t boost,
                                        string_ref field, bytes_ref term) {
-  term_query::States states(index);
+  TermQuery::States states(index);
   field_collectors field_stats(ord);
   term_collectors term_stats(ord, 1);
 
@@ -121,7 +121,7 @@ filter::prepared::ptr by_term::prepare(const index_reader& index,
 
   term_stats.finish(stats_buf, 0, field_stats, index);
 
-  return memory::make_managed<term_query>(std::move(states), std::move(stats),
+  return memory::make_managed<TermQuery>(std::move(states), std::move(stats),
                                           boost);
 }
 

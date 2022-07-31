@@ -36,7 +36,7 @@ struct empty_query final : public filter::prepared,
     return irs::doc_iterator::empty();
   }
 
-  void visit(const sub_reader&, PreparedStateVisitor&) const override {
+  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
     // No terms to visit
   }
 };

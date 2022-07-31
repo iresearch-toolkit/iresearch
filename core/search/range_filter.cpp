@@ -133,7 +133,7 @@ filter::prepared::ptr by_range::prepare(const index_reader& index,
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector(
       ord.empty() ? 0 : scored_terms_limit);
-  multiterm_query::States states{index};
+  MultiTermQuery::States states{index};
   multiterm_visitor mtv{collector, states};
 
   // iterate over the segments
@@ -149,10 +149,10 @@ filter::prepared::ptr by_range::prepare(const index_reader& index,
     ::visit(segment, *reader, rng, mtv);
   }
 
-  multiterm_query::Stats stats;
+  MultiTermQuery::Stats stats;
   collector.score(index, ord, stats);
 
-  return memory::make_managed<multiterm_query>(
+  return memory::make_managed<MultiTermQuery>(
       std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
 }
 

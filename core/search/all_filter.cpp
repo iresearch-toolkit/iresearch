@@ -40,7 +40,7 @@ class all_query final : public filter::prepared {
                                               rdr.docs_count(), boost());
   }
 
-  void visit(const sub_reader&, PreparedStateVisitor&) const override {
+  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
     // No terms to visit
   }
 

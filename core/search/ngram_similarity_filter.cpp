@@ -365,10 +365,10 @@ bool ngram_similarity_doc_iterator::check_serial_positions() {
 }
 
 // Prepared ngram similarity query implementation
-class ngram_similarity_query final : public filter::prepared {
+class NGramSimilarityQuery final : public filter::prepared {
  public:
-  ngram_similarity_query(size_t min_match_count, states_t&& states,
-                         bstring&& stats, score_t boost = kNoBoost)
+  NGramSimilarityQuery(size_t min_match_count, states_t&& states,
+                       bstring&& stats, score_t boost = kNoBoost)
       : prepared(boost),
         min_match_count_(min_match_count),
         states_(std::move(states)),
@@ -393,10 +393,10 @@ class ngram_similarity_query final : public filter::prepared {
     }
   }
 
-  void visit(const sub_reader& segment,
-             PreparedStateVisitor& visitor) const override {
+  void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
+             score_t boost) const override {
     if (auto* state = states_.find(segment); state) {
-      visitor.Visit(*state->field, boost(), *state);
+      visitor.Visit(*this, *state, boost);
     }
   }
 
@@ -551,7 +551,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     term_stats.finish(stats_buf, term_idx, field_stats, rdr);
   }
 
-  return memory::make_managed<ngram_similarity_query>(
+  return memory::make_managed<NGramSimilarityQuery>(
       min_match_count, std::move(query_states), std::move(stats),
       this->boost() * boost);
 }
