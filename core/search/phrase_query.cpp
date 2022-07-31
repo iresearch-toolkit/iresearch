@@ -27,6 +27,19 @@
 
 namespace iresearch {
 
+struct OneShot {
+  bool operator()() const noexcept { return false; }
+};
+
+struct ConsumeAll {
+  bool operator()() const noexcept { return true; }
+};
+
+template<typename Callback>
+using FixedPhraseIterator =
+    PhraseIterator<conjunction<doc_iterator::ptr, NoopAggregator>,
+                   FixedPhraseFrequency<Callback>>;
+
 doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
   auto& rdr = ctx.segment;
   auto& ord = ctx.scorers;
@@ -45,7 +58,7 @@ doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
   std::vector<score_iterator_adapter<doc_iterator::ptr>> itrs;
   itrs.reserve(phrase_state->terms.size());
 
-  std::vector<FixedPhraseFrequency::TermPosition> positions;
+  std::vector<FixedTermPosition> positions;
   positions.reserve(phrase_state->terms.size());
 
   auto* reader = phrase_state->reader;
@@ -75,20 +88,22 @@ doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
     ++position;
   }
 
-  using phrase_iterator_t =
-      PhraseIterator<conjunction<doc_iterator::ptr, NoopAggregator>,
-                     FixedPhraseFrequency>;
+  if (ord.empty()) {
+    return memory::make_managed<FixedPhraseIterator<OneShot>>(
+        std::move(itrs), std::move(positions), OneShot{}, rdr,
+        *phrase_state->reader, stats_.c_str(), ord, boost());
+  }
 
-  return memory::make_managed<phrase_iterator_t>(
-      std::move(itrs), std::move(positions), rdr, *phrase_state->reader,
-      stats_.c_str(), ord, boost());
+  return memory::make_managed<FixedPhraseIterator<ConsumeAll>>(
+      std::move(itrs), std::move(positions), ConsumeAll{}, rdr,
+      *phrase_state->reader, stats_.c_str(), ord, boost());
 }
 
 // FIXME add proper handling of overlapped case
-template<bool VolatileBoost>
-using phrase_iterator_t =
+template<bool VolatileBoost, typename Callback>
+using VariadicPhraseIterator =
     PhraseIterator<conjunction<doc_iterator::ptr, NoopAggregator>,
-                   VariadicPhraseFrequency<VolatileBoost>>;
+                   VariadicPhraseFrequency<VolatileBoost, Callback>>;
 
 doc_iterator::ptr VariadicPhraseQuery::execute(
     const ExecutionContext& ctx) const {
@@ -160,15 +175,21 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
   }
   assert(term_state == std::end(phrase_state->terms));
 
-  if (phrase_state->volatile_boost) {
-    return memory::make_managed<phrase_iterator_t<true>>(
-        std::move(conj_itrs), std::move(positions), rdr, *phrase_state->reader,
-        stats_.c_str(), ord, boost());
+  if (ord.empty()) {
+    return memory::make_managed<VariadicPhraseIterator<false, OneShot>>(
+        std::move(conj_itrs), std::move(positions), OneShot{}, rdr,
+        *phrase_state->reader, stats_.c_str(), ord, boost());
   }
 
-  return memory::make_managed<phrase_iterator_t<false>>(
-      std::move(conj_itrs), std::move(positions), rdr, *phrase_state->reader,
-      stats_.c_str(), ord, boost());
+  if (phrase_state->volatile_boost) {
+    return memory::make_managed<VariadicPhraseIterator<true, ConsumeAll>>(
+        std::move(conj_itrs), std::move(positions), ConsumeAll{}, rdr,
+        *phrase_state->reader, stats_.c_str(), ord, boost());
+  }
+
+  return memory::make_managed<VariadicPhraseIterator<false, ConsumeAll>>(
+      std::move(conj_itrs), std::move(positions), ConsumeAll{}, rdr,
+      *phrase_state->reader, stats_.c_str(), ord, boost());
 }
 
 }  // namespace iresearch

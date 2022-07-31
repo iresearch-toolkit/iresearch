@@ -30,19 +30,32 @@ namespace iresearch {
 // position attribute + desired offset in the phrase
 using FixedTermPosition = std::pair<position::ref, position::value_t>;
 
-class FixedPhraseFrequency {
+template<typename CallbackType>
+class CallbackRep : private compact<0, CallbackType> {
+ private:
+  using Rep = compact<0, CallbackType>;
+
+ protected:
+  explicit CallbackRep(CallbackType&& callback) : Rep{std::move(callback)} {}
+
+  bool stop() noexcept { return !Rep::get()(); }
+};
+
+template<typename CallbackType>
+class FixedPhraseFrequency : private CallbackRep<CallbackType> {
  public:
   using TermPosition = FixedTermPosition;
+  using Callback = CallbackType;
 
-  FixedPhraseFrequency(std::vector<TermPosition>&& pos, bool no_freq)
-      : pos_{std::move(pos)}, order_empty_{no_freq} {
+  FixedPhraseFrequency(std::vector<TermPosition>&& pos, Callback&& callback)
+      : CallbackRep<Callback>{std::move(callback)}, pos_{std::move(pos)} {
     assert(!pos_.empty());             // must not be empty
     assert(0 == pos_.front().second);  // lead offset is always 0
   }
 
-  frequency* freq() noexcept { return order_empty_ ? nullptr : &phrase_freq_; }
+  frequency& freq() noexcept { return phrase_freq_; }
 
-  filter_boost* boost() noexcept { return nullptr; }
+  filter_boost* boost() const noexcept { return nullptr; }
 
   // returns frequency of the phrase
   uint32_t operator()() {
@@ -78,11 +91,12 @@ class FixedPhraseFrequency {
       }
 
       if (match) {
-        if (order_empty_) {
-          return (phrase_freq_.value = 1);
+        ++phrase_freq_.value;
+
+        if (this->stop()) {
+          return phrase_freq_.value;
         }
 
-        ++phrase_freq_.value;
         lead.next();
       }
     }
@@ -95,7 +109,6 @@ class FixedPhraseFrequency {
   std::vector<TermPosition> pos_;
   // freqency of the phrase in a document
   frequency phrase_freq_;
-  bool order_empty_;
 };
 
 // Adapter to use doc_iterator with positions for disjunction
@@ -119,21 +132,28 @@ using VariadicTermPosition =
 
 // Helper for variadic phrase frequency evaluation for cases when
 // only one term may be at a single position in a phrase (e.g. synonyms)
-template<bool VolatileBoost>
-class VariadicPhraseFrequency {
+template<bool VolatileBoost, typename CallbackType>
+class VariadicPhraseFrequency : private CallbackRep<CallbackType> {
  public:
   using TermPosition = VariadicTermPosition;
+  using Callback = CallbackType;
 
-  VariadicPhraseFrequency(std::vector<TermPosition>&& pos, bool no_freq)
-      : pos_{std::move(pos)}, phrase_size_{pos_.size()}, order_empty_{no_freq} {
+  VariadicPhraseFrequency(std::vector<TermPosition>&& pos, Callback&& callback)
+      : CallbackRep<Callback>{std::move(callback)},
+        pos_{std::move(pos)},
+        phrase_size_{pos_.size()} {
     assert(!pos_.empty() && phrase_size_);  // must not be empty
     assert(0 == pos_.front().second);       // lead offset is always 0
   }
 
-  frequency* freq() noexcept { return order_empty_ ? nullptr : &phrase_freq_; }
+  frequency& freq() noexcept { return phrase_freq_; }
 
   filter_boost* boost() noexcept {
-    return !VolatileBoost || order_empty_ ? nullptr : &phrase_boost_;
+    if constexpr (VolatileBoost) {
+      return &phrase_boost_;
+    } else {
+      return nullptr;
+    }
   }
 
   // returns frequency of the phrase
@@ -224,7 +244,7 @@ class VariadicPhraseFrequency {
 
       if (match.match) {
         ++self.phrase_freq_.value;
-        if (self.order_empty_) {
+        if (self.stop()) {
           return false;
         }
         if constexpr (VolatileBoost) {
@@ -243,30 +263,34 @@ class VariadicPhraseFrequency {
   const size_t phrase_size_;
   frequency phrase_freq_;      // freqency of the phrase in a document
   filter_boost phrase_boost_;  // boost of the phrase in a document
-  const bool order_empty_;
 };
 
 // Helper for variadic phrase frequency evaluation for cases when
 // different terms may be at the same position in a phrase (e.g.
 // synonyms)
-template<bool VolatileBoost>
-class VariadicPhraseFrequencyOverlapped {
+template<bool VolatileBoost, typename CallbackType>
+class VariadicPhraseFrequencyOverlapped : private CallbackRep<CallbackType> {
  public:
   using TermPosition = VariadicTermPosition;
+  using Callback = CallbackType;
 
   VariadicPhraseFrequencyOverlapped(std::vector<TermPosition>&& pos,
-                                    const Order& ord)
-      : pos_(std::move(pos)),
-        phrase_size_(pos_.size()),
-        order_empty_(ord.empty()) {
+                                    Callback&& callback)
+      : CallbackRep<Callback>{std::move(callback)},
+        pos_(std::move(pos)),
+        phrase_size_(pos_.size()) {
     assert(!pos_.empty() && phrase_size_);  // must not be empty
     assert(0 == pos_.front().second);       // lead offset is always 0
   }
 
-  frequency* freq() noexcept { return order_empty_ ? nullptr : &phrase_freq_; }
+  frequency& freq() noexcept { return phrase_freq_; }
 
   filter_boost* boost() noexcept {
-    return !VolatileBoost || order_empty_ ? nullptr : &phrase_boost_;
+    if constexpr (VolatileBoost) {
+      return &phrase_boost_;
+    } else {
+      return nullptr;
+    }
   }
 
   // returns frequency of the phrase
@@ -382,7 +406,7 @@ class VariadicPhraseFrequencyOverlapped {
 
       if (match_freq) {
         self.phrase_freq_.value += match_freq;
-        if (self.order_empty_) {
+        if (self.stop()) {
           return false;
         }
         ++phrase_freq;
@@ -421,20 +445,24 @@ class PhraseIterator final : public doc_iterator {
  public:
   PhraseIterator(typename Conjunction::doc_iterators_t&& itrs,
                  std::vector<typename Frequency::TermPosition>&& pos,
+                 typename Frequency::Callback&& callback,
                  const sub_reader& segment, const term_reader& field,
                  const byte_type* stats, const Order& ord, score_t boost)
       : approx_{std::move(itrs), NoopAggregator{}},
-        freq_{std::move(pos), ord.empty()} {
+        freq_{std::move(pos), std::move(callback)} {
+    const bool order_empty = ord.empty();
     std::get<attribute_ptr<document>>(attrs_) =
         irs::get_mutable<document>(&approx_);
-    std::get<attribute_ptr<frequency>>(attrs_) = freq_.freq();
-    std::get<attribute_ptr<filter_boost>>(attrs_) = freq_.boost();
+    if (!order_empty) {
+      std::get<attribute_ptr<frequency>>(attrs_) = &freq_.freq();
+      std::get<attribute_ptr<filter_boost>>(attrs_) = freq_.boost();
+    }
 
     // FIXME find a better estimation
     std::get<irs::cost>(attrs_).reset(
         [this]() { return cost::extract(approx_); });
 
-    if (!ord.empty()) {
+    if (!order_empty) {
       auto& score = std::get<irs::score>(attrs_);
 
       score = CompileScore(ord.buckets(), segment, field, stats, *this, boost);

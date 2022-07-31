@@ -386,6 +386,7 @@ class NGramSimilarityQuery final : public filter::prepared {
       return doc_iterator::empty();
     }
 
+    // FIXME(gnusi): move to prepare
     if (1 == min_match_count_ && ord.empty()) {
       return execute_simple_disjunction(*query_state);
     } else {
