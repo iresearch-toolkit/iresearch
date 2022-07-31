@@ -34,6 +34,7 @@
 #include "search/prepared_state_visitor.hpp"
 #include "search/states/ngram_state.hpp"
 #include "search/states_cache.hpp"
+#include "search/terms_filter.hpp"
 #include "shared.hpp"
 #include "utils/map_utils.hpp"
 #include "utils/misc.hpp"
@@ -386,12 +387,9 @@ class NGramSimilarityQuery final : public filter::prepared {
       return doc_iterator::empty();
     }
 
-    // FIXME(gnusi): move to prepare
-    if (1 == min_match_count_ && ord.empty()) {
-      return execute_simple_disjunction(*query_state);
-    } else {
-      return execute_ngram_similarity(rdr, *query_state, ord);
-    }
+    assert(1 != min_match_count_ || !ord.empty());
+
+    return execute_ngram_similarity(rdr, *query_state, ord);
   }
 
   void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
@@ -402,39 +400,6 @@ class NGramSimilarityQuery final : public filter::prepared {
   }
 
  private:
-  doc_iterator::ptr execute_simple_disjunction(
-      const NGramState& query_state) const {
-    using disjunction_t =
-        irs::disjunction_iterator<doc_iterator::ptr, NoopAggregator>;
-
-    disjunction_t::doc_iterators_t itrs;
-    itrs.reserve(query_state.terms.size());
-    for (auto& term_state : query_state.terms) {
-      if (term_state == nullptr) {
-        continue;
-      }
-
-      auto* field = query_state.field;
-      assert(field);
-
-      // get postings
-      auto docs = field->postings(*term_state, IndexFeatures::NONE);
-      assert(docs);
-
-      // add iterator
-      if (IRS_UNLIKELY(!itrs.emplace_back(std::move(docs)))) {
-        itrs.pop_back();
-      }
-    }
-
-    if (itrs.empty()) {
-      return doc_iterator::empty();
-    }
-
-    // FIXME(gnusi): why do we dishonor order?
-    return MakeDisjunction<disjunction_t>(std::move(itrs), NoopAggregator{});
-  }
-
   doc_iterator::ptr execute_ngram_similarity(const sub_reader& rdr,
                                              const NGramState& query_state,
                                              const Order& ord) const {
@@ -471,7 +436,7 @@ class NGramSimilarityQuery final : public filter::prepared {
 
 filter::prepared::ptr by_ngram_similarity::prepare(
     const index_reader& rdr, const Order& ord, score_t boost,
-    const attribute_provider* /*ctx*/) const {
+    const attribute_provider* ctx) const {
   const auto threshold = std::max(0.f, std::min(1.f, options().threshold));
   const auto& ngrams = options().ngrams;
 
@@ -480,10 +445,21 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     return filter::prepared::empty();
   }
 
-  size_t min_match_count =
+  const size_t min_match_count =
       std::max(static_cast<size_t>(
                    std::ceil(static_cast<double>(ngrams.size()) * threshold)),
-               (size_t)1);
+               size_t{1});
+
+  if (ord.empty() && 1 == min_match_count) {
+    irs::by_terms disj;
+    for (auto& terms = disj.mutable_options()->terms;
+         auto& term : options().ngrams) {
+      terms.emplace(term, irs::kNoBoost);
+    }
+    *disj.mutable_field() = this->field();
+    disj.boost(this->boost());
+    return disj.prepare(rdr, irs::Order::kUnordered, boost, ctx);
+  }
 
   states_t query_states(rdr);
 

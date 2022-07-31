@@ -71,68 +71,6 @@ TEST(ngram_similarity_base_test, ctor) {
     irs::by_ngram_similarity::kRequiredFeatures);
 }
 
-TEST(ngram_similarity_base_test, boost) {
-  // no boost
-  {
-    // no terms no field
-    {
-      irs::by_ngram_similarity q;
-
-      auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::kNoBoost, prepared->boost());
-    }
-
-
-    // simple disjunction
-    {
-      irs::by_ngram_similarity q = make_filter("field", {"1", "2"}, 0.5f);
-
-      auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::kNoBoost, prepared->boost());
-    }
-
-    // multiple terms
-    {
-      irs::by_ngram_similarity q = make_filter("field", {"1", "2", "3", "4"}, 0.5f);
-
-      auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::kNoBoost, prepared->boost());
-    }
-  }
-
-  // with boost
-  {
-    iresearch::score_t boost = 1.5f;
-
-    // no terms, return empty query
-    {
-      irs::by_ngram_similarity q;
-      q.boost(boost);
-
-      auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::kNoBoost, prepared->boost());
-    }
-
-    // simple disjunction
-    {
-      irs::by_ngram_similarity q = make_filter("field", {"1", "2"}, 0.5f);
-      q.boost(boost);
-
-      auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(boost, prepared->boost());
-    }
-
-    // multiple terms
-    {
-      irs::by_ngram_similarity q = make_filter("field", {"1", "2", "3", "4"}, 0.5f);
-      q.boost(boost);
-
-      auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(boost, prepared->boost());
-    }
-  }
-}
-
 TEST(ngram_similarity_base_test, equal) {
   ASSERT_EQ(irs::by_ngram_similarity(), irs::by_ngram_similarity());
 
@@ -181,6 +119,79 @@ class ngram_similarity_filter_test_case : public tests::FilterTestCaseBase {
     };
   }
 };
+
+TEST_P(ngram_similarity_filter_test_case, boost) {
+  // no boost
+  {
+    tests::json_doc_generator gen(
+      R"([{ "field": [ "1", "3", "4", "5", "6", "7", "2"] }])",
+      &tests::generic_json_field_factory);
+    add_segment(gen);
+  }
+
+  auto rdr = open_reader();
+  ASSERT_EQ(1, rdr.size());
+  auto& segment = rdr[0];
+
+  {
+    // no terms no field
+    {
+      irs::by_ngram_similarity q;
+
+      auto prepared = q.prepare(segment);
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
+    }
+
+
+    // simple disjunction
+    {
+      irs::by_ngram_similarity q = make_filter("field", {"1", "2"}, 0.5f);
+
+      auto prepared = q.prepare(segment);
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
+    }
+
+    // multiple terms
+    {
+      irs::by_ngram_similarity q = make_filter("field", {"1", "2", "3", "4"}, 0.5f);
+
+      auto prepared = q.prepare(segment);
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
+    }
+  }
+
+  // with boost
+  {
+    iresearch::score_t boost = 1.5f;
+
+    // no terms, return empty query
+    {
+      irs::by_ngram_similarity q;
+      q.boost(boost);
+
+      auto prepared = q.prepare(segment);
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
+    }
+
+    // simple disjunction
+    {
+      irs::by_ngram_similarity q = make_filter("field", {"1", "2"}, 0.5f);
+      q.boost(boost);
+
+      auto prepared = q.prepare(segment);
+      ASSERT_EQ(boost, prepared->boost());
+    }
+
+    // multiple terms
+    {
+      irs::by_ngram_similarity q = make_filter("field", {"1", "2", "3", "4"}, 0.5f);
+      q.boost(boost);
+
+      auto prepared = q.prepare(segment);
+      ASSERT_EQ(boost, prepared->boost());
+    }
+  }
+}
 
 TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
   // sequence 1 3 4 ______ 2 -> longest is 134 not 12
