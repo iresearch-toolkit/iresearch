@@ -260,7 +260,7 @@ struct boosted : public irs::filter {
           docs.begin(), docs.end(), stats.c_str(), ctx.scorers, boost());
     }
 
-    void visit(const irs::sub_reader&, irs::PreparedStateVisitor&) const override {
+    void visit(const irs::sub_reader&, irs::PreparedStateVisitor&, irs::score_t) const override {
       // No terms to visit
     }
 
@@ -1148,7 +1148,7 @@ struct unestimated : public irs::filter {
         const irs::ExecutionContext&) const override {
       return irs::memory::make_managed<unestimated::doc_iterator>();
     }
-    void visit(const irs::sub_reader&, irs::PreparedStateVisitor&) const override {
+    void visit(const irs::sub_reader&, irs::PreparedStateVisitor&, irs::score_t) const override {
       // No terms to visit
     }
   };  // prepared
@@ -1201,7 +1201,7 @@ struct estimated : public irs::filter {
       return irs::memory::make_managed<estimated::doc_iterator>(est, evaluated);
     }
 
-    void visit(const irs::sub_reader&, irs::PreparedStateVisitor&) const override {
+    void visit(const irs::sub_reader&, irs::PreparedStateVisitor&, irs::score_t) const override {
       // No terms to visit
     }
 
@@ -16218,7 +16218,7 @@ TEST(And_test, optimize_double_negation) {
       make_filter<irs::by_term>("test_field", "test_term");
 
   auto prepared = root.prepare(irs::sub_reader::empty());
-  ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
+  ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
 }
 
 TEST(And_test, prepare_empty_filter) {
@@ -16236,7 +16236,7 @@ TEST(And_test, optimize_single_node) {
     append<irs::by_term>(root, "test_field", "test_term");
 
     auto prepared = root.prepare(irs::sub_reader::empty());
-    ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
   }
 
   // complex hierarchy
@@ -16246,7 +16246,7 @@ TEST(And_test, optimize_single_node) {
         make_filter<irs::by_term>("test_field", "test_term");
 
     auto prepared = root.prepare(irs::sub_reader::empty());
-    ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
   }
 }
 
@@ -16284,7 +16284,7 @@ TEST(And_test, optimize_all_filters) {
 
     auto pord = irs::Order::Prepare(tests::sort::boost{});
     auto prepared = root.prepare(irs::sub_reader::empty(), pord);
-    ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
     ASSERT_EQ(8.f, prepared->boost());
   }
 
@@ -16295,7 +16295,7 @@ TEST(And_test, optimize_all_filters) {
     root.add<irs::all>().boost(5.f);
     auto pord = irs::Order::Prepare(tests::sort::boost{});
     auto prepared = root.prepare(irs::sub_reader::empty(), pord);
-    ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
     ASSERT_EQ(6.f, prepared->boost());
   }
 }
@@ -16402,7 +16402,7 @@ TEST(Or_test, optimize_double_negation) {
       make_filter<irs::by_term>("test_field", "test_term");
 
   auto prepared = root.prepare(irs::sub_reader::empty());
-  ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
+  ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
 }
 
 TEST(Or_test, optimize_single_node) {
@@ -16412,7 +16412,7 @@ TEST(Or_test, optimize_single_node) {
     append<irs::by_term>(root, "test_field", "test_term");
 
     auto prepared = root.prepare(irs::sub_reader::empty());
-    ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
   }
 
   // complex hierarchy
@@ -16422,7 +16422,7 @@ TEST(Or_test, optimize_single_node) {
         make_filter<irs::by_term>("test_field", "test_term");
 
     auto prepared = root.prepare(irs::sub_reader::empty());
-    ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
   }
 }
 

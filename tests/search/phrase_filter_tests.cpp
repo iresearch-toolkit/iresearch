@@ -37,7 +37,7 @@ void analyzed_json_field_factory(
     const std::string& name,
     const tests::json_doc_generator::json_value& data) {
   typedef text_field<std::string> text_field;
- 
+
   class string_field : public tests::string_field {
    public:
     string_field(const std::string& name, const irs::string_ref& value)
@@ -1900,7 +1900,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto prepared = q.prepare(rdr);
  #ifndef IRESEARCH_DLL
     // check single word phrase optimization
-    ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -1944,7 +1944,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto prepared = q.prepare(rdr);
  #ifndef IRESEARCH_DLL
     // check single word phrase optimization
-    ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -2004,7 +2004,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto prepared = q.prepare(rdr);
  #ifndef IRESEARCH_DLL
     // check single word phrase optimization
-    ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -2064,7 +2064,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto prepared = q.prepare(rdr);
  #ifndef IRESEARCH_DLL
     // check single word phrase optimization
-    ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -2126,7 +2126,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto prepared = q.prepare(rdr);
  #ifndef IRESEARCH_DLL
     // check single word phrase optimization
-    ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -2173,7 +2173,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto prepared = q.prepare(rdr);
  #ifndef IRESEARCH_DLL
     // check single word phrase optimization
-    ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -2224,7 +2224,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto prepared = q.prepare(rdr);
  #ifndef IRESEARCH_DLL
     // check single word phrase optimization
-    ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -2325,7 +2325,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto prepared = q.prepare(rdr);
  #ifndef IRESEARCH_DLL
     // check single word phrase optimization
-    ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -2472,7 +2472,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto prepared = q.prepare(rdr);
  #ifndef IRESEARCH_DLL
     // check single word phrase optimization
-    ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
  #endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -2619,7 +2619,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
     // check single word phrase optimization
-    ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
 #endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -2721,7 +2721,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
     // check single word phrase optimization
-    ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
 #endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -2825,7 +2825,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
     // check single word phrase optimization
-    ASSERT_NE(nullptr, dynamic_cast<const irs::multiterm_query*>(prepared.get()));
+    ASSERT_NE(nullptr, dynamic_cast<const irs::MultiTermQuery*>(prepared.get()));
 #endif
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -7447,7 +7447,7 @@ TEST(by_phrase_test, boost) {
   // with boost
   {
     irs::score_t boost = 1.5f;
-    
+
     // no terms, return empty query
     {
       irs::by_phrase q;
@@ -7468,8 +7468,8 @@ TEST(by_phrase_test, boost) {
       auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(boost, prepared->boost());
     }
-    
-    // single multiple terms 
+
+    // single multiple terms
     {
       irs::by_phrase q;
       *q.mutable_field() = "field";
@@ -7511,7 +7511,7 @@ TEST(by_phrase_test, boost) {
 TEST(by_phrase_test, push_back_insert) {
   irs::by_phrase_options q;
 
-  // push_back 
+  // push_back
   {
     q.push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
     q.push_back<irs::by_term_options>(1).term = irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
@@ -7532,7 +7532,7 @@ TEST(by_phrase_test, push_back_insert) {
       ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("fox")), st3->term);
     }
 
-    // push term 
+    // push term
     {
       irs::by_term_options st1;
       st1.term = irs::ref_cast<irs::byte_type>(irs::string_ref("squirrel"));

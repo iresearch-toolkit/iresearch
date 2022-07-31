@@ -70,10 +70,14 @@ doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
     assert(term_state.first);
 
     // get postings using cached state
-    auto docs = reader->postings(*term_state.first, features);
-    assert(docs);
+    auto& docs =
+        itrs.emplace_back(reader->postings(*term_state.first, features));
 
-    auto* pos = irs::get_mutable<irs::position>(docs.get());
+    if (IRS_UNLIKELY(!docs)) {
+      return doc_iterator::empty();
+    }
+
+    auto* pos = irs::get_mutable<irs::position>(docs.it.get());
 
     if (!pos) {
       // positions not found
@@ -81,9 +85,6 @@ doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
     }
 
     positions.emplace_back(std::ref(*pos), *position);
-
-    // add base iterator
-    itrs.emplace_back(std::move(docs));
 
     ++position;
   }
@@ -152,8 +153,13 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
          ++term_state) {
       assert(term_state->first);
 
-      adapter_t docs{reader->postings(*term_state->first, features),
-                     term_state->second};
+      auto it = reader->postings(*term_state->first, features);
+
+      if (IRS_UNLIKELY(!it)) {
+        continue;
+      }
+
+      adapter_t docs{std::move(it), term_state->second};
 
       if (!docs.position) {
         // positions not found

@@ -103,7 +103,7 @@ class doclist_test_query final : public filter::prepared {
     return memory::make_managed<doclist_test_iterator>(documents_);
   }
 
-  void visit(const sub_reader&, PreparedStateVisitor&) const override {
+  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
     // No terms to visit
   }
 

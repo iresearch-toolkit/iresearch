@@ -60,7 +60,6 @@ class FixedPhraseFrequency : private CallbackRep<CallbackType> {
   // returns frequency of the phrase
   uint32_t operator()() {
     phrase_freq_.value = 0;
-    bool match;
 
     position& lead = pos_.front().first;
     lead.next();
@@ -68,7 +67,7 @@ class FixedPhraseFrequency : private CallbackRep<CallbackType> {
     for (auto end = std::end(pos_); !pos_limits::eof(lead.value());) {
       const position::value_t base_position = lead.value();
 
-      match = true;
+      bool match = true;
 
       for (auto it = std::begin(pos_) + 1; it != end; ++it) {
         position& pos = it->first;
@@ -435,7 +434,6 @@ class VariadicPhraseFrequencyOverlapped : private CallbackRep<CallbackType> {
   filter_boost phrase_boost_;  // boost of the phrase in a document
   score_t lead_boost_{0.f};    // boost from all matched lead iterators
   uint32_t lead_freq_{0};      // number of matched lead iterators
-  const bool order_empty_;
 };
 
 // implementation is optimized for frequency based similarity measures
@@ -445,26 +443,28 @@ class PhraseIterator final : public doc_iterator {
  public:
   PhraseIterator(typename Conjunction::doc_iterators_t&& itrs,
                  std::vector<typename Frequency::TermPosition>&& pos,
-                 typename Frequency::Callback&& callback,
-                 const sub_reader& segment, const term_reader& field,
-                 const byte_type* stats, const Order& ord, score_t boost)
+                 typename Frequency::Callback&& callback)
       : approx_{std::move(itrs), NoopAggregator{}},
         freq_{std::move(pos), std::move(callback)} {
-    const bool order_empty = ord.empty();
     std::get<attribute_ptr<document>>(attrs_) =
         irs::get_mutable<document>(&approx_);
-    if (!order_empty) {
-      std::get<attribute_ptr<frequency>>(attrs_) = &freq_.freq();
-      std::get<attribute_ptr<filter_boost>>(attrs_) = freq_.boost();
-    }
 
     // FIXME find a better estimation
     std::get<irs::cost>(attrs_).reset(
         [this]() { return cost::extract(approx_); });
+  }
 
-    if (!order_empty) {
+  PhraseIterator(typename Conjunction::doc_iterators_t&& itrs,
+                 std::vector<typename Frequency::TermPosition>&& pos,
+                 typename Frequency::Callback&& callback,
+                 const sub_reader& segment, const term_reader& field,
+                 const byte_type* stats, const Order& ord, score_t boost)
+      : PhraseIterator{std::move(itrs), std::move(pos), std::move(callback)} {
+    if (!ord.empty()) {
+      std::get<attribute_ptr<frequency>>(attrs_) = &freq_.freq();
+      std::get<attribute_ptr<filter_boost>>(attrs_) = freq_.boost();
+
       auto& score = std::get<irs::score>(attrs_);
-
       score = CompileScore(ord.buckets(), segment, field, stats, *this, boost);
     }
   }
