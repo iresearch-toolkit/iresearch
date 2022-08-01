@@ -138,8 +138,11 @@ struct empty_score_buffer {
 }  // namespace detail
 
 template<typename Adapter>
+using IteratorVisitor = bool (*)(void*, Adapter&);
+
+template<typename Adapter>
 struct compound_doc_iterator : doc_iterator {
-  virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) = 0;
+  virtual void visit(void* ctx, IteratorVisitor<Adapter>) = 0;
 };
 
 // Wrapper around regular doc_iterator to conform compound_doc_iterator API
@@ -161,7 +164,7 @@ class unary_disjunction final : public compound_doc_iterator<Adapter> {
 
   virtual doc_id_t seek(doc_id_t target) override { return it_->seek(target); }
 
-  virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) override {
+  virtual void visit(void* ctx, IteratorVisitor<Adapter> visitor) override {
     assert(ctx);
     assert(visitor);
     visitor(ctx, it_);
@@ -225,7 +228,7 @@ class basic_disjunction final : public compound_doc_iterator<Adapter>,
     return (doc.value = std::min(lhs_.value(), rhs_.value()));
   }
 
-  virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) override {
+  virtual void visit(void* ctx, IteratorVisitor<Adapter> visitor) override {
     assert(ctx);
     assert(visitor);
 
@@ -454,7 +457,7 @@ class small_disjunction final : public compound_doc_iterator<Adapter>,
     return (doc.value = min);
   }
 
-  virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) override {
+  virtual void visit(void* ctx, IteratorVisitor<Adapter> visitor) override {
     assert(ctx);
     assert(visitor);
     auto& doc = std::get<document>(attrs_);
@@ -668,7 +671,7 @@ class disjunction final : public compound_doc_iterator<Adapter>,
     return doc.value = lead().value();
   }
 
-  virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) override {
+  virtual void visit(void* ctx, IteratorVisitor<Adapter> visitor) override {
     assert(ctx);
     assert(visitor);
     if (heap_.empty()) {
