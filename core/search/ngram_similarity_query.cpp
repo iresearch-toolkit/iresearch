@@ -91,7 +91,7 @@ struct SearchState {
   const score* scr;
   uint32_t len;
   uint32_t pos;
-  uint32_t offs{};
+  uint32_t offs;
 };
 
 using SearchStates =
@@ -138,7 +138,8 @@ class NGramPosition : public position {
       next = next->parent.get();
     }
 
-    return {.start = state.offs, .end = cur->offs};
+    assert(cur->offs <= state.offs);
+    return {{}, cur->offs, state.offs};
   }
 
   offset offset_;
