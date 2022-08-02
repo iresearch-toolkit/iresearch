@@ -31,64 +31,30 @@ namespace {
 
 using NGramApprox = min_match_disjunction<doc_iterator::ptr, NoopAggregator>;
 
-// Adapter for min_match_disjunction with honor of terms orderings
-class NGramSimilarityDocIterator final : public doc_iterator,
-                                         private score_ctx {
+class SerialPositionsChecker {
  public:
-  NGramSimilarityDocIterator(NGramApprox::doc_iterators_t&& itrs,
-                             const sub_reader& segment,
-                             const term_reader& field, score_t boost,
-                             const byte_type* stats, size_t total_terms_count,
-                             size_t min_match_count = 1,
-                             const Order& ord = Order::kUnordered)
-      : pos_(itrs.begin(), itrs.end()),
-        // we are not interested in disjunction`s // scoring
-        approx_(std::move(itrs), min_match_count, NoopAggregator{}),
-        min_match_count_(min_match_count),
+  template<typename Iterator>
+  SerialPositionsChecker(Iterator begin, Iterator end, size_t total_terms_count,
+                         size_t min_match_count = 1,
+                         bool collect_all_states = false)
+      : pos_(begin, end),
+        min_match_count_{min_match_count},
         // avoid runtime conversion
-        total_terms_count_(static_cast<score_t>(total_terms_count)),
-        empty_order_(ord.empty()) {
-    std::get<attribute_ptr<document>>(attrs_) =
-        irs::get_mutable<document>(&approx_);
+        total_terms_count_{static_cast<score_t>(total_terms_count)},
+        collect_all_states_{collect_all_states} {}
 
-    // FIXME find a better estimation
-    std::get<cost>(attrs_).reset([this]() { return cost::extract(approx_); });
+  bool Check(size_t potential, irs::doc_id_t doc);
 
-    if (!empty_order_) {
-      auto& score = std::get<irs::score>(attrs_);
-      score = CompileScore(ord.buckets(), segment, field, stats, *this, boost);
-    }
-  }
-
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
-    return irs::get_mutable(attrs_, type);
-  }
-
-  virtual bool next() override {
-    bool next = false;
-    while ((next = approx_.next()) && !check_serial_positions()) {
-    }
-    return next;
-  }
-
-  virtual doc_id_t value() const override {
-    return std::get<attribute_ptr<document>>(attrs_).ptr->value;
-  }
-
-  virtual doc_id_t seek(doc_id_t target) override {
-    auto* doc_ = std::get<attribute_ptr<document>>(attrs_).ptr;
-
-    if (doc_->value >= target) {
-      return doc_->value;
-    }
-    const auto doc = approx_.seek(target);
-
-    if (doc_limits::eof(doc) || check_serial_positions()) {
-      return doc;
+  attribute* GetMutable(irs::type_info::type_id type) noexcept {
+    if (type == irs::type<frequency>::id()) {
+      return &seq_freq_;
     }
 
-    next();
-    return doc_->value;
+    if (type == irs::type<filter_boost>::id()) {
+      return &filter_boost_;
+    }
+
+    return nullptr;
   }
 
  private:
@@ -129,35 +95,27 @@ class NGramSimilarityDocIterator final : public doc_iterator,
       std::map<uint32_t, std::shared_ptr<SearchState>, std::greater<uint32_t>>;
   using PosTemp =
       std::vector<std::pair<uint32_t, std::shared_ptr<SearchState>>>;
-  using attributes =
-      std::tuple<attribute_ptr<document>, frequency, cost, score, filter_boost>;
-
-  bool check_serial_positions();
 
   std::vector<Position> pos_;
-  NGramApprox approx_;
-  attributes attrs_;
   std::set<size_t> used_pos_;  // longest sequence positions overlaping detector
   std::vector<const score*> longest_sequence_;
   std::vector<size_t> pos_sequence_;
   size_t min_match_count_;
   SearchStates search_buf_;
   score_t total_terms_count_;
-  bool empty_order_;
+  filter_boost filter_boost_;
+  frequency seq_freq_;
+  bool collect_all_states_;
 };
 
-bool NGramSimilarityDocIterator::check_serial_positions() {
+bool SerialPositionsChecker::Check(size_t potential, doc_id_t doc) {
   // how long max sequence could be in the best case
-  size_t potential = approx_.match_count();
   search_buf_.clear();
   size_t longest_sequence_len = 0;
 
-  auto* doc_ = std::get<attribute_ptr<document>>(attrs_).ptr;
-  auto& seq_freq_ = std::get<frequency>(attrs_);
-
   seq_freq_.value = 0;
   for (const auto& pos_iterator : pos_) {
-    if (pos_iterator.doc->value == doc_->value) {
+    if (pos_iterator.doc->value == doc) {
       position& pos = *(pos_iterator.pos);
       if (potential <= longest_sequence_len || potential < min_match_count_) {
         // this term could not start largest (or long enough) sequence.
@@ -264,13 +222,13 @@ bool NGramSimilarityDocIterator::check_serial_positions() {
       }
 
       // if we have no scoring - we could stop searh once we got enough matches
-      if (longest_sequence_len >= min_match_count_ && empty_order_) {
+      if (longest_sequence_len >= min_match_count_ && !collect_all_states_) {
         break;
       }
     }
   }
 
-  if (longest_sequence_len >= min_match_count_ && !empty_order_) {
+  if (longest_sequence_len >= min_match_count_ && collect_all_states_) {
     uint32_t freq = 0;
     size_t count_longest{0};
     // try to optimize case with one longest candidate
@@ -339,11 +297,91 @@ bool NGramSimilarityDocIterator::check_serial_positions() {
     }
     seq_freq_.value = freq;
     assert(!pos_.empty());
-    std::get<filter_boost>(attrs_).value =
+    filter_boost_.value =
         static_cast<score_t>(longest_sequence_len) / total_terms_count_;
   }
   return longest_sequence_len >= min_match_count_;
 }
+
+// Adapter for min_match_disjunction with honor of terms orderings
+
+class NGramSimilarityDocIterator final : public doc_iterator,
+                                         private score_ctx {
+ public:
+  NGramSimilarityDocIterator(NGramApprox::doc_iterators_t&& itrs,
+                             size_t total_terms_count, size_t min_match_count,
+                             bool collect_all_states)
+      : checker_{std::begin(itrs), std::end(itrs), total_terms_count,
+                 min_match_count, collect_all_states},
+        // we are not interested in disjunction`s // scoring
+        approx_(std::move(itrs), min_match_count, NoopAggregator{}) {
+    // avoid runtime conversion
+    std::get<attribute_ptr<document>>(attrs_) =
+        irs::get_mutable<document>(&approx_);
+
+    // FIXME find a better estimation
+    std::get<cost>(attrs_).reset([this]() { return cost::extract(approx_); });
+  }
+
+  NGramSimilarityDocIterator(NGramApprox::doc_iterators_t&& itrs,
+                             const sub_reader& segment,
+                             const term_reader& field, score_t boost,
+                             const byte_type* stats, size_t total_terms_count,
+                             size_t min_match_count = 1,
+                             const Order& ord = Order::kUnordered)
+      : NGramSimilarityDocIterator{std::move(itrs), total_terms_count,
+                                   min_match_count, !ord.empty()} {
+    if (!ord.empty()) {
+      auto& score = std::get<irs::score>(attrs_);
+      score = CompileScore(ord.buckets(), segment, field, stats, *this, boost);
+    }
+  }
+
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+    auto* attr = irs::get_mutable(attrs_, type);
+
+    return attr ? attr : checker_.GetMutable(type);
+  }
+
+  virtual bool next() override {
+    bool next = false;
+    while ((next = approx_.next()) &&
+           !checker_.Check(approx_.match_count(), value())) {
+    }
+    return next;
+  }
+
+  virtual doc_id_t value() const override {
+    return std::get<attribute_ptr<document>>(attrs_).ptr->value;
+  }
+
+  virtual doc_id_t seek(doc_id_t target) override {
+    auto* doc_ = std::get<attribute_ptr<document>>(attrs_).ptr;
+
+    if (doc_->value >= target) {
+      return doc_->value;
+    }
+    const auto doc = approx_.seek(target);
+
+    if (doc_limits::eof(doc) ||
+        checker_.Check(approx_.match_count(), doc_->value)) {
+      return doc;
+    }
+
+    next();
+    return doc_->value;
+  }
+
+ private:
+  using attributes = std::tuple<attribute_ptr<document>, cost, score>;
+
+  SerialPositionsChecker checker_;
+  NGramApprox approx_;
+  attributes attrs_;
+  std::set<size_t> used_pos_;  // longest sequence positions overlaping detector
+  std::vector<const score*> longest_sequence_;
+  std::vector<size_t> pos_sequence_;
+};
 
 NGramApprox::doc_iterators_t Execute(const NGramState& query_state,
                                      IndexFeatures required_features,
