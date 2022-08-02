@@ -29,17 +29,33 @@
 namespace iresearch {
 namespace {
 
+struct Position {
+  template<typename Iterator>
+  explicit Position(Iterator& itr) noexcept
+      : pos(&position::get_mutable(itr)),
+        doc(irs::get<document>(itr)),
+        scr(&irs::score::get(itr)) {
+    assert(pos);
+    assert(doc);
+    assert(scr);
+  }
+
+  position* pos;
+  const document* doc;
+  const score* scr;
+};
+
 struct SearchState {
-  SearchState(uint32_t p, const score* s)
-      : parent{nullptr}, scr{s}, len{1}, pos{p} {}
+  SearchState(uint32_t p, const Position& attrs)
+      : parent{nullptr}, scr{attrs.scr}, len{1}, pos{p} {}
   SearchState(SearchState&&) = default;
   SearchState(const SearchState&) = default;
   SearchState& operator=(const SearchState&) = default;
 
   // appending constructor
   SearchState(const std::shared_ptr<SearchState>& other, uint32_t p,
-              const score* s)
-      : parent{other}, scr{s}, len{other->len + 1}, pos{p} {}
+              const Position& attrs)
+      : parent{other}, scr{attrs.scr}, len{other->len + 1}, pos{p} {}
 
   std::shared_ptr<SearchState> parent;
   const score* scr;
@@ -96,6 +112,8 @@ class NGramPosition : public position {
 template<typename Base>
 class SerialPositionsChecker : public Base {
  public:
+  static constexpr bool HasPosition = std::is_same_v<NGramPosition, Base>;
+
   template<typename Iterator>
   SerialPositionsChecker(Iterator begin, Iterator end, size_t total_terms_count,
                          size_t min_match_count = 1,
@@ -117,27 +135,17 @@ class SerialPositionsChecker : public Base {
       return &filter_boost_;
     }
 
+    if constexpr (HasPosition) {
+      if (type == irs::type<irs::position>::id()) {
+        return static_cast<Base*>(this);
+      }
+    }
+
     return nullptr;
   }
 
  private:
   friend class NGramPosition;
-
-  struct Position {
-    template<typename Iterator>
-    explicit Position(Iterator& itr) noexcept
-        : pos(&position::get_mutable(itr)),
-          doc(irs::get<document>(itr)),
-          scr(&irs::score::get(itr)) {
-      assert(pos);
-      assert(doc);
-      assert(scr);
-    }
-
-    position* pos;
-    const document* doc;
-    const score* scr;
-  };
 
   using SearchStates =
       std::map<uint32_t, std::shared_ptr<SearchState>, std::greater<uint32_t>>;
@@ -178,9 +186,9 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
         PosTemp swap_cache;
         auto last_found_pos = pos_limits::invalid();
         do {
-          auto current_pos = pos.value();
-          auto found = search_buf_.lower_bound(current_pos);
-          if (found != std::end(search_buf_)) {
+          const auto current_pos = pos.value();
+          if (auto found = search_buf_.lower_bound(current_pos);
+              found != std::end(search_buf_)) {
             if (last_found_pos != found->first) {
               last_found_pos = found->first;
               const auto* found_state = found->second.get();
@@ -218,7 +226,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
               }
               if (current_found_len) {
                 auto new_candidate = std::make_shared<SearchState>(
-                    current_sequence->second, current_pos, pos_iterator.scr);
+                    current_sequence->second, current_pos, pos_iterator);
                 const auto res = search_buf_.try_emplace(
                     current_pos, std::move(new_candidate));
                 if (!res.second) {
@@ -237,7 +245,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
                     std::piecewise_construct,
                     std::forward_as_tuple(current_pos),
                     std::forward_as_tuple(std::make_shared<SearchState>(
-                        current_pos, pos_iterator.scr)));
+                        current_pos, pos_iterator)));
               }
             }
           } else if (potential > longest_sequence_len &&
@@ -246,8 +254,8 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
             // enough sequence so add it to candidate list
             search_buf_.emplace(
                 std::piecewise_construct, std::forward_as_tuple(current_pos),
-                std::forward_as_tuple(std::make_shared<SearchState>(
-                    current_pos, pos_iterator.scr)));
+                std::forward_as_tuple(
+                    std::make_shared<SearchState>(current_pos, pos_iterator)));
             if (!longest_sequence_len) {
               longest_sequence_len = 1;
             }
@@ -339,7 +347,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
             used_pos_.insert(std::begin(pos_sequence_),
                              std::end(pos_sequence_));
           } else {
-            if constexpr (std::is_same_v<NGramPosition, Base>) {
+            if constexpr (HasPosition) {
               i = search_buf_.erase(i);
             } else {
               ++i;
@@ -357,7 +365,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
     filter_boost_.value =
         static_cast<score_t>(longest_sequence_len) / total_terms_count_;
 
-    if constexpr (std::is_same_v<NGramPosition, Base>) {
+    if constexpr (HasPosition) {
       static_cast<NGramPosition&>(*this).reset(std::begin(search_buf_),
                                                std::end(search_buf_));
     }
@@ -399,15 +407,6 @@ class NGramSimilarityDocIterator final : public doc_iterator,
   }
 
   virtual attribute* get_mutable(type_info::type_id type) noexcept override {
-    if (type == irs::type<irs::position>::id()) {
-      if constexpr (std::is_same_v<SerialPositionsChecker<NGramPosition>,
-                                   Checker>) {
-        return &checker_;
-      } else {
-        return nullptr;
-      }
-    }
-
     auto* attr = irs::get_mutable(attrs_, type);
 
     return attr ? attr : checker_.GetMutable(type);
