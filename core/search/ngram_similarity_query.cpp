@@ -32,9 +32,9 @@ namespace {
 struct Position {
   template<typename Iterator>
   explicit Position(Iterator& itr) noexcept
-      : pos(&position::get_mutable(itr)),
-        doc(irs::get<document>(itr)),
-        scr(&irs::score::get(itr)) {
+      : pos{&position::get_mutable(itr)},
+        doc{irs::get<document>(itr)},
+        scr{&irs::score::get(itr)} {
     assert(pos);
     assert(doc);
     assert(scr);
@@ -45,22 +45,53 @@ struct Position {
   const score* scr;
 };
 
+struct PositionWithOffset : Position {
+  template<typename Iterator>
+  explicit PositionWithOffset(Iterator& itr) noexcept
+      : Position{itr}, offs{irs::get<offset>(*this->pos)} {
+    assert(offs);
+  }
+
+  const offset* offs;
+};
+
+template<bool IsStart, typename T>
+uint32_t GetOffset(const T& pos) noexcept {
+  if constexpr (std::is_same_v<PositionWithOffset, T>) {
+    if constexpr (IsStart) {
+      return pos.offs->start;
+    } else {
+      return pos.offs->end;
+    }
+  } else {
+    return 0;
+  }
+}
+
 struct SearchState {
-  SearchState(uint32_t p, const Position& attrs)
-      : parent{nullptr}, scr{attrs.scr}, len{1}, pos{p} {}
-  SearchState(SearchState&&) = default;
-  SearchState(const SearchState&) = default;
-  SearchState& operator=(const SearchState&) = default;
+  template<typename T>
+  SearchState(uint32_t p, const T& attrs)
+      : parent{nullptr},
+        scr{attrs.scr},
+        len{1},
+        pos{p},
+        offs{GetOffset<true>(attrs)} {}
 
   // appending constructor
+  template<typename T>
   SearchState(const std::shared_ptr<SearchState>& other, uint32_t p,
-              const Position& attrs)
-      : parent{other}, scr{attrs.scr}, len{other->len + 1}, pos{p} {}
+              const T& attrs)
+      : parent{other},
+        scr{attrs.scr},
+        len{other->len + 1},
+        pos{p},
+        offs{GetOffset<false>(attrs)} {}
 
   std::shared_ptr<SearchState> parent;
   const score* scr;
   uint32_t len;
   uint32_t pos;
+  uint32_t offs{};
 };
 
 using SearchStates =
@@ -101,7 +132,13 @@ class NGramPosition : public position {
 
  private:
   static offset OffsetFromState(const SearchState& state) noexcept {
-    return {};
+    auto* cur = &state;
+    for (auto* next = state.parent.get(); next;) {
+      cur = next;
+      next = next->parent.get();
+    }
+
+    return {.start = state.offs, .end = cur->offs};
   }
 
   offset offset_;
@@ -152,7 +189,10 @@ class SerialPositionsChecker : public Base {
   using PosTemp =
       std::vector<std::pair<uint32_t, std::shared_ptr<SearchState>>>;
 
-  std::vector<Position> pos_;
+  using PositionType =
+      std::conditional_t<HasPosition, PositionWithOffset, Position>;
+
+  std::vector<PositionType> pos_;
   std::set<size_t> used_pos_;  // longest sequence positions overlaping detector
   std::vector<const score*> longest_sequence_;
   std::vector<size_t> pos_sequence_;
@@ -204,10 +244,10 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
               if (current_found_len > longest_sequence_len) {
                 longest_sequence_len = current_found_len;
               } else {
-                // maybe some previous candidates could produce better results.
-                // lets go leftward and check if there are any candidates which
-                // could became longer if we stick this ngram to them rather
-                // than the closest one found
+                // maybe some previous candidates could produce better
+                // results. lets go leftward and check if there are any
+                // candidates which could became longer if we stick this ngram
+                // to them rather than the closest one found
                 for (++found; found != std::end(search_buf_); ++found) {
                   found_state = found->second.get();
                   assert(found_state);
@@ -230,17 +270,18 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
                 const auto res = search_buf_.try_emplace(
                     current_pos, std::move(new_candidate));
                 if (!res.second) {
-                  // pos already used. This could be if same ngram used several
-                  // times. replace with new length through swap cache - to not
-                  // spoil candidate for following positions of same ngram
+                  // pos already used. This could be if same ngram used
+                  // several times. replace with new length through swap cache
+                  // - to not spoil candidate for following positions of same
+                  // ngram
                   swap_cache.emplace_back(current_pos,
                                           std::move(new_candidate));
                 }
               } else if (initial_found->second->scr == pos_iterator.scr &&
                          potential > longest_sequence_len &&
                          potential >= min_match_count_) {
-                // we just hit same iterator and found no better place to join,
-                // so it will produce new candidate
+                // we just hit same iterator and found no better place to
+                // join, so it will produce new candidate
                 search_buf_.emplace(
                     std::piecewise_construct,
                     std::forward_as_tuple(current_pos),
@@ -275,10 +316,12 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
       }
 
       if (longest_sequence_len + potential < min_match_count_) {
-        break;  // all further terms will not let us build long enough sequence
+        break;  // all further terms will not let us build long enough
+                // sequence
       }
 
-      // if we have no scoring - we could stop searh once we got enough matches
+      // if we have no scoring - we could stop searh once we got enough
+      // matches
       if (longest_sequence_len >= min_match_count_ && !collect_all_states_) {
         break;
       }
@@ -286,13 +329,13 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
   }
 
   if (longest_sequence_len >= min_match_count_ && collect_all_states_) {
-    uint32_t freq = 0;
+    uint32_t freq{0};
     size_t count_longest{0};
+
     // try to optimize case with one longest candidate
     // performance profiling shows it is majority of cases
-    for (auto i = std::begin(search_buf_), end = std::end(search_buf_);
-         i != end; ++i) {
-      if (i->second->len == longest_sequence_len) {
+    for (auto& [_, state] : search_buf_) {
+      if (state->len == longest_sequence_len) {
         ++count_longest;
         if (count_longest > 1) {
           break;
