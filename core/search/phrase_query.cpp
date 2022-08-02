@@ -33,16 +33,16 @@ using namespace irs;
 constexpr IndexFeatures kRequireOffs =
     by_phrase::kRequiredFeatures | IndexFeatures::OFFS;
 
-template<bool OneShot>
+template<bool OneShot, bool HasFreq>
 using FixedPhraseIterator =
     PhraseIterator<conjunction<doc_iterator::ptr, NoopAggregator>,
-                   FixedPhraseFrequency<OneShot>>;
+                   FixedPhraseFrequency<OneShot, HasFreq>>;
 
 // FIXME add proper handling of overlapped case
-template<typename Adapter, bool VolatileBoost, bool OneShot>
-using VariadicPhraseIterator =
-    PhraseIterator<conjunction<doc_iterator::ptr, NoopAggregator>,
-                   VariadicPhraseFrequency<Adapter, VolatileBoost, OneShot>>;
+template<typename Adapter, bool VolatileBoost, bool OneShot, bool HasFreq>
+using VariadicPhraseIterator = PhraseIterator<
+    conjunction<doc_iterator::ptr, NoopAggregator>,
+    VariadicPhraseFrequency<Adapter, VolatileBoost, OneShot, HasFreq>>;
 
 }  // namespace
 
@@ -98,12 +98,11 @@ doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
   }
 
   if (ord.empty()) {
-    return memory::make_managed<FixedPhraseIterator<true>>(
-        std::move(itrs), std::move(positions), rdr, *phrase_state->reader,
-        stats_.c_str(), ord, boost());
+    return memory::make_managed<FixedPhraseIterator<true, false>>(
+        std::move(itrs), std::move(positions));
   }
 
-  return memory::make_managed<::FixedPhraseIterator<false>>(
+  return memory::make_managed<::FixedPhraseIterator<false, true>>(
       std::move(itrs), std::move(positions), rdr, *phrase_state->reader,
       stats_.c_str(), ord, boost());
 }
@@ -112,7 +111,7 @@ doc_iterator::ptr FixedPhraseQuery::ExecuteWithOffsets(
     const irs::sub_reader& rdr) const {
   using FixedPhraseIterator =
       PhraseIterator<conjunction<doc_iterator::ptr, NoopAggregator>,
-                     PhrasePosition<FixedPhraseFrequency<true>>>;
+                     PhrasePosition<FixedPhraseFrequency<true, false>>>;
 
   // get phrase state for the specified reader
   auto phrase_state = states_.find(rdr);
@@ -268,18 +267,20 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
   assert(term_state == std::end(phrase_state->terms));
 
   if (ord.empty()) {
-    return memory::make_managed<VariadicPhraseIterator<Adapter, false, true>>(
-        std::move(conj_itrs), std::move(positions), rdr, *phrase_state->reader,
-        stats_.c_str(), ord, boost());
+    return memory::make_managed<
+        VariadicPhraseIterator<Adapter, false, true, false>>(
+        std::move(conj_itrs), std::move(positions));
   }
 
   if (phrase_state->volatile_boost) {
-    return memory::make_managed<VariadicPhraseIterator<Adapter, true, false>>(
+    return memory::make_managed<
+        VariadicPhraseIterator<Adapter, true, false, true>>(
         std::move(conj_itrs), std::move(positions), rdr, *phrase_state->reader,
         stats_.c_str(), ord, boost());
   }
 
-  return memory::make_managed<VariadicPhraseIterator<Adapter, false, false>>(
+  return memory::make_managed<
+      VariadicPhraseIterator<Adapter, false, false, true>>(
       std::move(conj_itrs), std::move(positions), rdr, *phrase_state->reader,
       stats_.c_str(), ord, boost());
 }
@@ -287,6 +288,9 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
 doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
     const irs::sub_reader& rdr) const {
   using Adapter = VariadicPhraseOffsetAdapter;
+  using FixedPhraseIterator = PhraseIterator<
+      conjunction<doc_iterator::ptr, NoopAggregator>,
+      PhrasePosition<VariadicPhraseFrequency<Adapter, false, true, false>>>;
   using CompundDocIterator = irs::compound_doc_iterator<Adapter>;
   using Disjunction =
       disjunction<doc_iterator::ptr, NoopAggregator, Adapter, true>;
@@ -304,7 +308,7 @@ doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
 
   const auto phrase_size = phrase_state->num_terms.size();
 
-  std::vector<VariadicTermPosition<Adapter>> positions;
+  std::vector<FixedPhraseIterator::TermPosition> positions;
   positions.resize(phrase_size);
 
   // find term using cached state
@@ -383,8 +387,8 @@ doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
   }
   assert(term_state == std::end(phrase_state->terms));
 
-  return memory::make_managed<VariadicPhraseIterator<Adapter, false, true>>(
-      std::move(conj_itrs), std::move(positions));
+  return memory::make_managed<FixedPhraseIterator>(std::move(conj_itrs),
+                                                   std::move(positions));
 }
 
 }  // namespace iresearch

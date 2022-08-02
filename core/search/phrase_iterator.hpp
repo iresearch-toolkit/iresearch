@@ -46,14 +46,17 @@ class PhrasePosition final : public position, public Frequency {
   }
 
   bool next() override {
-    if (!start_) {
+    if (!left_) {
+      // At least 1 position is always approved by the phrase,
+      // and calling next() on exhausted iterator is UB.
+      left_ = 1;
+      value_ = irs::pos_limits::invalid();
       return false;
     }
     ++value_;
     offset_.start = *start_;
     offset_.end = *end_;
-    start_ = reinterpret_cast<const uint32_t*>(
-        reinterpret_cast<size_t>(start_) * size_t{self().NextPosition() > 0});
+    left_ += self().NextPosition() - 1;
     return true;
   }
 
@@ -65,6 +68,7 @@ class PhrasePosition final : public position, public Frequency {
   offset offset_;
   const uint32_t* start_{};
   const uint32_t* end_{};
+  uint32_t left_{1};
 };
 
 template<typename T>
@@ -76,7 +80,7 @@ struct HasPosition<PhrasePosition<T>> : std::true_type {};
 // position attribute + desired offset in the phrase
 using FixedTermPosition = std::pair<position::ref, position::value_t>;
 
-template<bool OneShot>
+template<bool OneShot, bool HasFreq>
 class FixedPhraseFrequency {
  public:
   using TermPosition = FixedTermPosition;
@@ -87,11 +91,15 @@ class FixedPhraseFrequency {
     assert(0 == pos_.front().second);  // lead offset is always 0
   }
 
-  frequency& PhraseFreq() noexcept { return phrase_freq_; }
+  attribute* GetMutable(irs::type_info::type_id id) noexcept {
+    if constexpr (HasFreq) {
+      if (id == irs::type<frequency>::id()) {
+        return &phrase_freq_;
+      }
+    }
 
-  filter_boost* PhraseBoost() const noexcept { return nullptr; }
-
-  attribute* GetMutable(irs::type_info::type_id) noexcept { return nullptr; }
+    return nullptr;
+  }
 
   // returns frequency of the phrase
   uint32_t EvaluateFreq() { return phrase_freq_.value = NextPosition(); }
@@ -194,7 +202,7 @@ using VariadicTermPosition =
 
 // Helper for variadic phrase frequency evaluation for cases when
 // only one term may be at a single position in a phrase (e.g. synonyms)
-template<typename Adapter, bool VolatileBoost, bool OneShot>
+template<typename Adapter, bool VolatileBoost, bool OneShot, bool HasFreq>
 class VariadicPhraseFrequency {
  public:
   using TermPosition = VariadicTermPosition<Adapter>;
@@ -205,19 +213,23 @@ class VariadicPhraseFrequency {
     assert(0 == pos_.front().second);       // lead offset is always 0
   }
 
-  frequency& PhraseFreq() noexcept { return phrase_freq_; }
-
   attribute* GetMutable(irs::type_info::type_id id) noexcept {
-    if (id == irs::type<filter_boost>::id()) {
-      if constexpr (VolatileBoost) {
+    if constexpr (VolatileBoost) {
+      if (id == irs::type<filter_boost>::id()) {
         return &phrase_boost_;
+      }
+    }
+
+    if constexpr (HasFreq) {
+      if (id == irs::type<frequency>::id()) {
+        return &phrase_freq_;
       }
     }
 
     return nullptr;
   }
 
-  // returns frequency of the phrase
+  // Evaluate and return frequency of the phrase
   uint32_t EvaluateFreq() {
     if constexpr (VolatileBoost) {
       phrase_boost_.value = {};
@@ -241,13 +253,13 @@ class VariadicPhraseFrequency {
   struct SubMatchContext {
     position::value_t term_position{pos_limits::eof()};
     position::value_t min_sought{pos_limits::eof()};
-    score_t boost{};
     const uint32_t* end{};  // end match offset
+    score_t boost{};
     bool match{false};
   };
 
   std::pair<const uint32_t*, const uint32_t*> GetOffsets() const noexcept {
-    return {start, end};
+    return {&start, &end};
   }
 
   uint32_t NextPosition() {
@@ -327,9 +339,9 @@ class VariadicPhraseFrequency {
         ++self.phrase_freq_.value;
         if constexpr (std::is_same_v<Adapter, VariadicPhraseOffsetAdapter>) {
           assert(lead_adapter.offset);
-          self.start = &lead_adapter.offset->start;
+          self.start = lead_adapter.offset->start;
           assert(match.end);
-          self.end = match.end;
+          self.end = *match.end;
         }
         if constexpr (OneShot) {
           return false;
@@ -352,14 +364,14 @@ class VariadicPhraseFrequency {
   filter_boost phrase_boost_;  // boost of the phrase in a document
 
   // FIXME(gnusi): refactor
-  const uint32_t* start{};
-  const uint32_t* end{};
+  uint32_t start{};
+  uint32_t end{};
 };
 
 // Helper for variadic phrase frequency evaluation for cases when
 // different terms may be at the same position in a phrase (e.g.
 // synonyms)
-template<typename Adapter, bool VolatileBoost, bool OneShot>
+template<typename Adapter, bool VolatileBoost, bool OneShot, bool HasFreq>
 class VariadicPhraseFrequencyOverlapped {
  public:
   using TermPosition = VariadicTermPosition<Adapter>;
@@ -371,12 +383,16 @@ class VariadicPhraseFrequencyOverlapped {
     assert(0 == pos_.front().second);       // lead offset is always 0
   }
 
-  frequency& PhraseFreq() noexcept { return phrase_freq_; }
-
   attribute* GetMutable(irs::type_info::type_id id) noexcept {
-    if (id == irs::type<filter_boost>::id()) {
-      if constexpr (VolatileBoost) {
+    if constexpr (VolatileBoost) {
+      if (id == irs::type<filter_boost>::id()) {
         return &phrase_boost_;
+      }
+    }
+
+    if constexpr (HasFreq) {
+      if (id == irs::type<frequency>::id()) {
+        return &phrase_freq_;
       }
     }
 
@@ -551,8 +567,6 @@ class PhraseIterator : public doc_iterator {
                  const byte_type* stats, const Order& ord, score_t boost)
       : PhraseIterator{std::move(itrs), std::move(pos)} {
     if (!ord.empty()) {
-      std::get<attribute_ptr<frequency>>(attrs_) = &freq_.PhraseFreq();
-
       auto& score = std::get<irs::score>(attrs_);
       score = CompileScore(ord.buckets(), segment, field, stats, *this, boost);
     }
@@ -601,8 +615,7 @@ class PhraseIterator : public doc_iterator {
   }
 
  private:
-  using attributes = std::tuple<attribute_ptr<document>, cost, score,
-                                attribute_ptr<frequency>>;
+  using attributes = std::tuple<attribute_ptr<document>, cost, score>;
 
   // first approximation (conjunction over all words in a phrase)
   Conjunction approx_;
