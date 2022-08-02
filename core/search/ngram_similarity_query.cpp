@@ -117,6 +117,7 @@ class NGramPosition : public position {
     }
 
     offset_ = OffsetFromState(*begin_->second);
+    ++value_;
     ++begin_;
 
     return true;
@@ -128,6 +129,7 @@ class NGramPosition : public position {
              SearchStates::const_iterator end) noexcept {
     begin_ = begin;
     end_ = end;
+    value_ = irs::pos_limits::invalid();
   }
 
  private:
