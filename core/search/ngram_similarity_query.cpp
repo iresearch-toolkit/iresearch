@@ -345,35 +345,17 @@ bool NGramSimilarityDocIterator::check_serial_positions() {
   return longest_sequence_len >= min_match_count_;
 }
 
-}  // namespace
-
-doc_iterator::ptr NGramSimilarityQuery::execute(
-    const ExecutionContext& ctx) const {
-  auto& rdr = ctx.segment;
-  auto& ord = ctx.scorers;
-
-  auto query_state = states_.find(rdr);
-  if (!query_state || !query_state->field) {
-    // invalid state
-    return doc_iterator::empty();
-  }
-
-  assert(1 != min_match_count_ || !ord.empty());
-
-  return ExecuteNgramSimilarity(rdr, *query_state, ord);
-}
-
-doc_iterator::ptr NGramSimilarityQuery::ExecuteNgramSimilarity(
-    const sub_reader& rdr, const NGramState& query_state,
-    const Order& ord) const {
+NGramApprox::doc_iterators_t Execute(const NGramState& query_state,
+                                     IndexFeatures required_features,
+                                     IndexFeatures extra_features) {
   auto* field = query_state.field;
-  assert(field);
 
-  if (kRequiredFeatures != (field->meta().index_features & kRequiredFeatures)) {
-    return doc_iterator::empty();
+  if (!field ||
+      required_features != (field->meta().index_features & required_features)) {
+    return {};
   }
 
-  const IndexFeatures features = ord.features() | kRequiredFeatures;
+  required_features |= extra_features;
 
   NGramApprox::doc_iterators_t itrs;
   itrs.reserve(query_state.terms.size());
@@ -383,18 +365,61 @@ doc_iterator::ptr NGramSimilarityQuery::ExecuteNgramSimilarity(
       continue;
     }
 
-    if (auto docs = field->postings(*term_state, features); docs) {
-      itrs.emplace_back(std::move(docs));
+    if (auto docs = field->postings(*term_state, required_features); docs) {
+      auto& it = itrs.emplace_back(std::move(docs));
+
+      if (IRS_UNLIKELY(!it)) {
+        itrs.pop_back();
+      }
     }
   }
+
+  return itrs;
+}
+
+}  // namespace
+
+doc_iterator::ptr NGramSimilarityQuery::execute(
+    const ExecutionContext& ctx) const {
+  auto& ord = ctx.scorers;
+  assert(1 != min_match_count_ || !ord.empty());
+
+  auto& segment = ctx.segment;
+  auto query_state = states_.find(segment);
+
+  if (!query_state) {
+    return doc_iterator::empty();
+  }
+
+  auto itrs = Execute(*query_state, kRequiredFeatures, ord.features());
 
   if (itrs.size() < min_match_count_) {
     return doc_iterator::empty();
   }
 
   return memory::make_managed<NGramSimilarityDocIterator>(
-      std::move(itrs), rdr, *query_state.field, boost(), stats_.c_str(),
-      query_state.terms.size(), min_match_count_, ord);
+      std::move(itrs), segment, *query_state->field, boost(), stats_.c_str(),
+      query_state->terms.size(), min_match_count_, ord);
+}
+
+doc_iterator::ptr NGramSimilarityQuery::ExecuteWithOffsets(
+    const sub_reader& rdr) const {
+  auto query_state = states_.find(rdr);
+
+  if (!query_state) {
+    return doc_iterator::empty();
+  }
+
+  auto itrs = Execute(*query_state, kRequiredFeatures | IndexFeatures::OFFS,
+                      IndexFeatures::NONE);
+
+  if (itrs.size() < min_match_count_) {
+    return doc_iterator::empty();
+  }
+
+  return memory::make_managed<NGramSimilarityDocIterator>(
+      std::move(itrs), rdr, *query_state->field, boost(), stats_.c_str(),
+      query_state->terms.size(), min_match_count_, Order::kUnordered);
 }
 
 }  // namespace iresearch

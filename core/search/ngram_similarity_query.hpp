@@ -57,11 +57,9 @@ class NGramSimilarityQuery final : public filter::prepared {
     }
   }
 
- private:
-  doc_iterator::ptr ExecuteNgramSimilarity(const sub_reader& rdr,
-                                           const NGramState& query_state,
-                                           const Order& ord) const;
+  doc_iterator::ptr ExecuteWithOffsets(const sub_reader& rdr) const;
 
+ private:
   size_t min_match_count_;
   NGramStates states_;
   bstring stats_;

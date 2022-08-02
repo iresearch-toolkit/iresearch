@@ -8470,49 +8470,9 @@ TEST(by_phrase_test, ctor) {
 }
 
 TEST(by_phrase_test, boost) {
-  // no boost
-  {// no terms
-   {irs::by_phrase q;
-  *q.mutable_field() = "field";
-
-  auto prepared = q.prepare(irs::sub_reader::empty());
-  ASSERT_EQ(irs::kNoBoost, prepared->boost());
-}
-
-// single term
-{
-  irs::by_phrase q;
-  *q.mutable_field() = "field";
-  q.mutable_options()->push_back<irs::by_term_options>().term =
-      irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
-
-  auto prepared = q.prepare(irs::sub_reader::empty());
-  ASSERT_EQ(irs::kNoBoost, prepared->boost());
-}
-
-// multiple terms
-{
-  irs::by_phrase q;
-  *q.mutable_field() = "field";
-  q.mutable_options()->push_back<irs::by_term_options>().term =
-      irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
-  q.mutable_options()->push_back<irs::by_term_options>().term =
-      irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
-
-  auto prepared = q.prepare(irs::sub_reader::empty());
-  ASSERT_EQ(irs::kNoBoost, prepared->boost());
-}
-}
-
-// with boost
-{
-  irs::score_t boost = 1.5f;
-
-  // no terms, return empty query
   {
     irs::by_phrase q;
     *q.mutable_field() = "field";
-    q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
@@ -8524,13 +8484,12 @@ TEST(by_phrase_test, boost) {
     *q.mutable_field() = "field";
     q.mutable_options()->push_back<irs::by_term_options>().term =
         irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
-    q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(boost, prepared->boost());
+    ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
-  // single multiple terms
+  // multiple terms
   {
     irs::by_phrase q;
     *q.mutable_field() = "field";
@@ -8538,38 +8497,77 @@ TEST(by_phrase_test, boost) {
         irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
     q.mutable_options()->push_back<irs::by_term_options>().term =
         irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
-    q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(boost, prepared->boost());
+    ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
-  // prefix, wildcard, levenshtein, set, range
+  // with boost
   {
-    irs::by_phrase q;
-    *q.mutable_field() = "field";
-    auto& pt = q.mutable_options()->push_back<irs::by_prefix_options>();
-    pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
-    auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>();
-    wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qu__k"));
-    auto& lt =
-        q.mutable_options()->push_back<irs::by_edit_distance_filter_options>();
-    lt.max_distance = 1;
-    lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("brwn"));
-    q.boost(boost);
-    auto& st = q.mutable_options()->push_back<irs::by_terms_options>();
-    st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
-    st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("dob")));
-    auto& rt = q.mutable_options()->push_back<irs::by_range_options>();
-    rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("forward"));
-    rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("forward"));
-    rt.range.min_type = irs::BoundType::INCLUSIVE;
-    rt.range.max_type = irs::BoundType::INCLUSIVE;
+    irs::score_t boost = 1.5f;
 
-    auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(boost, prepared->boost());
+    // no terms, return empty query
+    {
+      irs::by_phrase q;
+      *q.mutable_field() = "field";
+      q.boost(boost);
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
+    }
+
+    // single term
+    {
+      irs::by_phrase q;
+      *q.mutable_field() = "field";
+      q.mutable_options()->push_back<irs::by_term_options>().term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+      q.boost(boost);
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(boost, prepared->boost());
+    }
+
+    // single multiple terms
+    {
+      irs::by_phrase q;
+      *q.mutable_field() = "field";
+      q.mutable_options()->push_back<irs::by_term_options>().term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+      q.mutable_options()->push_back<irs::by_term_options>().term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("brown"));
+      q.boost(boost);
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(boost, prepared->boost());
+    }
+
+    // prefix, wildcard, levenshtein, set, range
+    {
+      irs::by_phrase q;
+      *q.mutable_field() = "field";
+      auto& pt = q.mutable_options()->push_back<irs::by_prefix_options>();
+      pt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qui"));
+      auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>();
+      wt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("qu__k"));
+      auto& lt = q.mutable_options()
+                     ->push_back<irs::by_edit_distance_filter_options>();
+      lt.max_distance = 1;
+      lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("brwn"));
+      q.boost(boost);
+      auto& st = q.mutable_options()->push_back<irs::by_terms_options>();
+      st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
+      st.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("dob")));
+      auto& rt = q.mutable_options()->push_back<irs::by_range_options>();
+      rt.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("forward"));
+      rt.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("forward"));
+      rt.range.min_type = irs::BoundType::INCLUSIVE;
+      rt.range.max_type = irs::BoundType::INCLUSIVE;
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(boost, prepared->boost());
+    }
   }
-}
 }
 
 TEST(by_phrase_test, push_back_insert) {
