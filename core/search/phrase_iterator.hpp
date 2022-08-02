@@ -87,12 +87,14 @@ class FixedPhraseFrequency {
     assert(0 == pos_.front().second);  // lead offset is always 0
   }
 
-  frequency& freq() noexcept { return phrase_freq_; }
+  frequency& PhraseFreq() noexcept { return phrase_freq_; }
 
-  filter_boost* boost() const noexcept { return nullptr; }
+  filter_boost* PhraseBoost() const noexcept { return nullptr; }
+
+  attribute* GetMutable(irs::type_info::type_id) noexcept { return nullptr; }
 
   // returns frequency of the phrase
-  uint32_t operator()() { return phrase_freq_.value = NextPosition(); }
+  uint32_t EvaluateFreq() { return phrase_freq_.value = NextPosition(); }
 
  private:
   friend class PhrasePosition<FixedPhraseFrequency>;
@@ -203,23 +205,25 @@ class VariadicPhraseFrequency {
     assert(0 == pos_.front().second);       // lead offset is always 0
   }
 
-  frequency& freq() noexcept { return phrase_freq_; }
+  frequency& PhraseFreq() noexcept { return phrase_freq_; }
 
-  filter_boost* boost() noexcept {
-    if constexpr (VolatileBoost) {
-      return &phrase_boost_;
-    } else {
-      return nullptr;
+  attribute* GetMutable(irs::type_info::type_id id) noexcept {
+    if (id == irs::type<filter_boost>::id()) {
+      if constexpr (VolatileBoost) {
+        return &phrase_boost_;
+      }
     }
+
+    return nullptr;
   }
 
   // returns frequency of the phrase
-  uint32_t operator()() {
+  uint32_t EvaluateFreq() {
     if constexpr (VolatileBoost) {
       phrase_boost_.value = {};
     }
     phrase_freq_.value = 0;
-    pos_.front().first->visit(this, visit_lead);
+    pos_.front().first->visit(this, VisitLead);
 
     if constexpr (VolatileBoost) {
       if (phrase_freq_.value) {
@@ -249,11 +253,11 @@ class VariadicPhraseFrequency {
   uint32_t NextPosition() {
     // FIXME(gnusi): don't change iterator state
     phrase_freq_.value = 0;
-    pos_.front().first->visit(this, visit_lead);
+    pos_.front().first->visit(this, VisitLead);
     return phrase_freq_.value;
   }
 
-  static bool visit(void* ctx, Adapter& it_adapter) {
+  static bool VisitFollower(void* ctx, Adapter& it_adapter) {
     assert(ctx);
     auto& match = *reinterpret_cast<SubMatchContext*>(ctx);
     auto* p = it_adapter.position;
@@ -282,7 +286,7 @@ class VariadicPhraseFrequency {
     return false;
   }
 
-  static bool visit_lead(void* ctx, Adapter& lead_adapter) {
+  static bool VisitLead(void* ctx, Adapter& lead_adapter) {
     assert(ctx);
     auto& self = *reinterpret_cast<VariadicPhraseFrequency*>(ctx);
     const auto end = std::end(self.pos_);
@@ -307,7 +311,7 @@ class VariadicPhraseFrequency {
         match.match = false;
         match.min_sought = pos_limits::eof();
 
-        it->first->visit(&match, visit);
+        it->first->visit(&match, VisitFollower);
 
         if (!match.match) {
           if (!pos_limits::eof(match.min_sought)) {
@@ -367,18 +371,20 @@ class VariadicPhraseFrequencyOverlapped {
     assert(0 == pos_.front().second);       // lead offset is always 0
   }
 
-  frequency& freq() noexcept { return phrase_freq_; }
+  frequency& PhraseFreq() noexcept { return phrase_freq_; }
 
-  filter_boost* boost() noexcept {
-    if constexpr (VolatileBoost) {
-      return &phrase_boost_;
-    } else {
-      return nullptr;
+  attribute* GetMutable(irs::type_info::type_id id) noexcept {
+    if (id == irs::type<filter_boost>::id()) {
+      if constexpr (VolatileBoost) {
+        return &phrase_boost_;
+      }
     }
+
+    return nullptr;
   }
 
   // returns frequency of the phrase
-  uint32_t operator()() {
+  uint32_t EvaluateFreq() {
     if constexpr (VolatileBoost) {
       lead_freq_ = 0;
       lead_boost_ = {};
@@ -386,7 +392,7 @@ class VariadicPhraseFrequencyOverlapped {
     }
 
     phrase_freq_.value = 0;
-    pos_.front().first->visit(this, visit_lead);
+    pos_.front().first->visit(this, VisitLead);
 
     if constexpr (VolatileBoost) {
       if (lead_freq_) {
@@ -406,7 +412,7 @@ class VariadicPhraseFrequencyOverlapped {
     uint32_t freq{};
   };
 
-  static bool visit(void* ctx, Adapter& it_adapter) {
+  static bool VisitFollower(void* ctx, Adapter& it_adapter) {
     assert(ctx);
     auto& match = *reinterpret_cast<SubMatchContext*>(ctx);
     auto* p = it_adapter.position;
@@ -429,7 +435,7 @@ class VariadicPhraseFrequencyOverlapped {
     return true;  // continue iteration in overlapped case
   }
 
-  static bool visit_lead(void* ctx, Adapter& lead_adapter) {
+  static bool VisitLead(void* ctx, Adapter& lead_adapter) {
     assert(ctx);
     auto& self = *reinterpret_cast<VariadicPhraseFrequencyOverlapped*>(ctx);
     const auto end = std::end(self.pos_);
@@ -461,7 +467,7 @@ class VariadicPhraseFrequencyOverlapped {
         }
         match.min_sought = pos_limits::eof();
 
-        it->first->visit(&match, visit);
+        it->first->visit(&match, VisitFollower);
 
         if (!match.freq) {
           match_freq = 0;
@@ -545,8 +551,7 @@ class PhraseIterator : public doc_iterator {
                  const byte_type* stats, const Order& ord, score_t boost)
       : PhraseIterator{std::move(itrs), std::move(pos)} {
     if (!ord.empty()) {
-      std::get<attribute_ptr<frequency>>(attrs_) = &freq_.freq();
-      std::get<attribute_ptr<filter_boost>>(attrs_) = freq_.boost();
+      std::get<attribute_ptr<frequency>>(attrs_) = &freq_.PhraseFreq();
 
       auto& score = std::get<irs::score>(attrs_);
       score = CompileScore(ord.buckets(), segment, field, stats, *this, boost);
@@ -562,7 +567,8 @@ class PhraseIterator : public doc_iterator {
       }
     }
 
-    return irs::get_mutable(attrs_, type);
+    auto* attr = freq_.GetMutable(type);
+    return attr ? attr : irs::get_mutable(attrs_, type);
   }
 
   doc_id_t value() const override final {
@@ -571,7 +577,7 @@ class PhraseIterator : public doc_iterator {
 
   bool next() override {
     bool next = false;
-    while ((next = approx_.next()) && !freq_()) {
+    while ((next = approx_.next()) && !freq_.EvaluateFreq()) {
     }
 
     return next;
@@ -580,12 +586,12 @@ class PhraseIterator : public doc_iterator {
   doc_id_t seek(doc_id_t target) override {
     auto* pdoc = std::get<attribute_ptr<document>>(attrs_).ptr;
 
-    // important to call freq_() in order
+    // important to call freq_.EvaluateFreq() in order
     // to set attribute values
     const auto prev = pdoc->value;
     const auto doc = approx_.seek(target);
 
-    if (prev == doc || freq_()) {
+    if (prev == doc || freq_.EvaluateFreq()) {
       return doc;
     }
 
@@ -595,10 +601,8 @@ class PhraseIterator : public doc_iterator {
   }
 
  private:
-  // FIXME(gnusi) can store only 4 attrbiutes for non-volatile boost case
-  using attributes =
-      std::tuple<attribute_ptr<document>, cost, score, attribute_ptr<frequency>,
-                 attribute_ptr<filter_boost>>;
+  using attributes = std::tuple<attribute_ptr<document>, cost, score,
+                                attribute_ptr<frequency>>;
 
   // first approximation (conjunction over all words in a phrase)
   Conjunction approx_;
