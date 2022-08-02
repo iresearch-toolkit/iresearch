@@ -29,9 +29,71 @@
 namespace iresearch {
 namespace {
 
+struct SearchState {
+  SearchState(size_t p, const score* s)
+      : parent{nullptr}, scr{s}, pos{p}, len(1) {}
+  SearchState(SearchState&&) = default;
+  SearchState(const SearchState&) = default;
+  SearchState& operator=(const SearchState&) = default;
+
+  // appending constructor
+  SearchState(std::shared_ptr<SearchState>& other, size_t p, const score* s)
+      : parent{other}, scr{s}, pos{p}, len(other->len + 1) {}
+
+  std::shared_ptr<SearchState> parent;
+  const score* scr;
+  size_t pos;
+  size_t len;
+};
+
+using SearchStates =
+    std::map<uint32_t, std::shared_ptr<SearchState>, std::greater<uint32_t>>;
+
 using NGramApprox = min_match_disjunction<doc_iterator::ptr, NoopAggregator>;
 
-class SerialPositionsChecker {
+struct Dummy {};
+
+class NGramPosition : public position {
+ public:
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
+    if (irs::type<offset>::id() == type) {
+      return &offset_;
+    }
+
+    return nullptr;
+  }
+
+  bool next() final {
+    if (begin_ == end_) {
+      return false;
+    }
+
+    offset_ = OffsetFromState(*begin_->second);
+    ++begin_;
+
+    return true;
+  }
+
+  void reset() final { throw not_impl_error{}; }
+
+  void reset(SearchStates::const_iterator begin,
+             SearchStates::const_iterator end) noexcept {
+    begin_ = begin;
+    end_ = end;
+  }
+
+ private:
+  static offset OffsetFromState(const SearchState& state) noexcept {
+    return {};
+  }
+
+  offset offset_;
+  SearchStates::const_iterator begin_;
+  SearchStates::const_iterator end_;
+};
+
+template<typename Base>
+class SerialPositionsChecker : public Base {
  public:
   template<typename Iterator>
   SerialPositionsChecker(Iterator begin, Iterator end, size_t total_terms_count,
@@ -58,6 +120,8 @@ class SerialPositionsChecker {
   }
 
  private:
+  friend class NGramPosition;
+
   struct Position {
     template<typename Iterator>
     explicit Position(Iterator& itr) noexcept
@@ -72,23 +136,6 @@ class SerialPositionsChecker {
     position* pos;
     const document* doc;
     const score* scr;
-  };
-
-  struct SearchState {
-    SearchState(size_t p, const score* s)
-        : parent{nullptr}, scr{s}, pos{p}, len(1) {}
-    SearchState(SearchState&&) = default;
-    SearchState(const SearchState&) = default;
-    SearchState& operator=(const SearchState&) = default;
-
-    // appending constructor
-    SearchState(std::shared_ptr<SearchState>& other, size_t p, const score* s)
-        : parent{other}, scr{s}, pos{p}, len(other->len + 1) {}
-
-    std::shared_ptr<SearchState> parent;
-    const score* scr;
-    size_t pos;
-    size_t len;
   };
 
   using SearchStates =
@@ -108,7 +155,8 @@ class SerialPositionsChecker {
   bool collect_all_states_;
 };
 
-bool SerialPositionsChecker::Check(size_t potential, doc_id_t doc) {
+template<typename Base>
+bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
   // how long max sequence could be in the best case
   search_buf_.clear();
   size_t longest_sequence_len = 0;
@@ -121,7 +169,7 @@ bool SerialPositionsChecker::Check(size_t potential, doc_id_t doc) {
         // this term could not start largest (or long enough) sequence.
         // skip it to first position to append to any existing candidates
         assert(!search_buf_.empty());
-        pos.seek(search_buf_.rbegin()->first + 1);
+        pos.seek(std::rbegin(search_buf_)->first + 1);
       } else {
         pos.next();
       }
@@ -131,7 +179,7 @@ bool SerialPositionsChecker::Check(size_t potential, doc_id_t doc) {
         do {
           auto current_pos = pos.value();
           auto found = search_buf_.lower_bound(current_pos);
-          if (found != search_buf_.end()) {
+          if (found != std::end(search_buf_)) {
             if (last_found_pos != found->first) {
               last_found_pos = found->first;
               const auto* found_state = found->second.get();
@@ -151,7 +199,7 @@ bool SerialPositionsChecker::Check(size_t potential, doc_id_t doc) {
                 // lets go leftward and check if there are any candidates which
                 // could became longer if we stick this ngram to them rather
                 // than the closest one found
-                for (++found; found != search_buf_.end(); ++found) {
+                for (++found; found != std::end(search_buf_); ++found) {
                   found_state = found->second.get();
                   assert(found_state);
                   if (found_state->scr != pos_iterator.scr &&
@@ -206,7 +254,7 @@ bool SerialPositionsChecker::Check(size_t potential, doc_id_t doc) {
         } while (pos.next());
         for (auto& p : swap_cache) {
           auto res = search_buf_.find(p.first);
-          assert(res != search_buf_.end());
+          assert(res != std::end(search_buf_));
           std::swap(res->second, p.second);
         }
       }
@@ -233,7 +281,8 @@ bool SerialPositionsChecker::Check(size_t potential, doc_id_t doc) {
     size_t count_longest{0};
     // try to optimize case with one longest candidate
     // performance profiling shows it is majority of cases
-    for (auto i = search_buf_.begin(), end = search_buf_.end(); i != end; ++i) {
+    for (auto i = std::begin(search_buf_), end = std::end(search_buf_);
+         i != end; ++i) {
       if (i->second->len == longest_sequence_len) {
         ++count_longest;
         if (count_longest > 1) {
@@ -247,7 +296,7 @@ bool SerialPositionsChecker::Check(size_t potential, doc_id_t doc) {
       used_pos_.clear();
       longest_sequence_.reserve(longest_sequence_len);
       pos_sequence_.reserve(longest_sequence_len);
-      for (auto i = search_buf_.begin(), end = search_buf_.end(); i != end;) {
+      for (auto i = std::begin(search_buf_); i != std::end(search_buf_);) {
         pos_sequence_.clear();
         const auto* state = i->second.get();
         assert(state && state->len <= longest_sequence_len);
@@ -264,7 +313,7 @@ bool SerialPositionsChecker::Check(size_t potential, doc_id_t doc) {
               cur_parent = cur_parent->parent;
             }
           } else {
-            if (used_pos_.find(state->pos) != used_pos_.end() ||
+            if (used_pos_.find(state->pos) != std::end(used_pos_) ||
                 state->scr != longest_sequence_[0]) {
               delete_candidate = true;
             } else {
@@ -274,7 +323,7 @@ bool SerialPositionsChecker::Check(size_t potential, doc_id_t doc) {
               while (cur_parent) {
                 assert(j < longest_sequence_.size());
                 if (longest_sequence_[j] != cur_parent->scr ||
-                    used_pos_.find(cur_parent->pos) != used_pos_.end()) {
+                    used_pos_.find(cur_parent->pos) != std::end(used_pos_)) {
                   delete_candidate = true;
                   break;
                 }
@@ -288,9 +337,16 @@ bool SerialPositionsChecker::Check(size_t potential, doc_id_t doc) {
             ++freq;
             used_pos_.insert(std::begin(pos_sequence_),
                              std::end(pos_sequence_));
+          } else {
+            if constexpr (std::is_same_v<NGramPosition, Base>) {
+              i = search_buf_.erase(i);
+            } else {
+              ++i;
+            }
           }
+        } else {
+          ++i;
         }
-        ++i;
       }
     } else {
       freq = 1;
@@ -299,12 +355,16 @@ bool SerialPositionsChecker::Check(size_t potential, doc_id_t doc) {
     assert(!pos_.empty());
     filter_boost_.value =
         static_cast<score_t>(longest_sequence_len) / total_terms_count_;
+
+    if constexpr (std::is_same_v<NGramPosition, Base>) {
+      static_cast<NGramPosition&>(*this).reset(std::begin(search_buf_),
+                                               std::end(search_buf_));
+    }
   }
   return longest_sequence_len >= min_match_count_;
 }
 
-// Adapter for min_match_disjunction with honor of terms orderings
-
+template<typename Checker>
 class NGramSimilarityDocIterator final : public doc_iterator,
                                          private score_ctx {
  public:
@@ -315,6 +375,7 @@ class NGramSimilarityDocIterator final : public doc_iterator,
                  min_match_count, collect_all_states},
         // we are not interested in disjunction`s // scoring
         approx_(std::move(itrs), min_match_count, NoopAggregator{}) {
+    // avoid runtime conversion
     std::get<attribute_ptr<document>>(attrs_) =
         irs::get_mutable<document>(&approx_);
 
@@ -337,6 +398,15 @@ class NGramSimilarityDocIterator final : public doc_iterator,
   }
 
   virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+    if (type == irs::type<irs::position>::id()) {
+      if constexpr (std::is_same_v<SerialPositionsChecker<NGramPosition>,
+                                   Checker>) {
+        return &checker_;
+      } else {
+        return nullptr;
+      }
+    }
+
     auto* attr = irs::get_mutable(attrs_, type);
 
     return attr ? attr : checker_.GetMutable(type);
@@ -374,7 +444,7 @@ class NGramSimilarityDocIterator final : public doc_iterator,
  private:
   using attributes = std::tuple<attribute_ptr<document>, cost, score>;
 
-  SerialPositionsChecker checker_;
+  Checker checker_;
   NGramApprox approx_;
   attributes attrs_;
 };
@@ -431,7 +501,8 @@ doc_iterator::ptr NGramSimilarityQuery::execute(
     return doc_iterator::empty();
   }
 
-  return memory::make_managed<NGramSimilarityDocIterator>(
+  return memory::make_managed<
+      NGramSimilarityDocIterator<SerialPositionsChecker<Dummy>>>(
       std::move(itrs), segment, *query_state->field, boost(), stats_.c_str(),
       query_state->terms.size(), min_match_count_, ord);
 }
@@ -451,9 +522,9 @@ doc_iterator::ptr NGramSimilarityQuery::ExecuteWithOffsets(
     return doc_iterator::empty();
   }
 
-  return memory::make_managed<NGramSimilarityDocIterator>(
-      std::move(itrs), rdr, *query_state->field, boost(), stats_.c_str(),
-      query_state->terms.size(), min_match_count_, Order::kUnordered);
+  return memory::make_managed<
+      NGramSimilarityDocIterator<SerialPositionsChecker<NGramPosition>>>(
+      std::move(itrs), query_state->terms.size(), min_match_count_, true);
 }
 
 }  // namespace iresearch
