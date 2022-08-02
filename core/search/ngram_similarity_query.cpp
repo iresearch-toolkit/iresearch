@@ -315,7 +315,6 @@ class NGramSimilarityDocIterator final : public doc_iterator,
                  min_match_count, collect_all_states},
         // we are not interested in disjunction`s // scoring
         approx_(std::move(itrs), min_match_count, NoopAggregator{}) {
-    // avoid runtime conversion
     std::get<attribute_ptr<document>>(attrs_) =
         irs::get_mutable<document>(&approx_);
 
@@ -378,9 +377,6 @@ class NGramSimilarityDocIterator final : public doc_iterator,
   SerialPositionsChecker checker_;
   NGramApprox approx_;
   attributes attrs_;
-  std::set<size_t> used_pos_;  // longest sequence positions overlaping detector
-  std::vector<const score*> longest_sequence_;
-  std::vector<size_t> pos_sequence_;
 };
 
 NGramApprox::doc_iterators_t Execute(const NGramState& query_state,
