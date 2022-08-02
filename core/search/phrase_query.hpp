@@ -49,7 +49,7 @@ class PhraseQuery : public filter::prepared {
   bstring stats_;
 };
 
-class FixedPhraseQuery : public PhraseQuery<FixedPhraseState> {
+class FixedPhraseQuery final : public PhraseQuery<FixedPhraseState> {
  public:
   FixedPhraseQuery(states_t&& states, positions_t&& positions, bstring&& stats,
                    score_t boost) noexcept
@@ -59,6 +59,8 @@ class FixedPhraseQuery : public PhraseQuery<FixedPhraseState> {
   using filter::prepared::execute;
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
+
+  doc_iterator::ptr ExecuteWithOffsets(const irs::sub_reader& segment) const;
 
   void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
              score_t boost) const override {
@@ -78,6 +80,8 @@ class VariadicPhraseQuery final : public PhraseQuery<VariadicPhraseState> {
   using filter::prepared::execute;
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
+
+  doc_iterator::ptr ExecuteWithOffsets(const irs::sub_reader& segment) const;
 
   void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
              score_t boost) const override {
