@@ -30,20 +30,21 @@ namespace iresearch {
 namespace {
 
 struct SearchState {
-  SearchState(size_t p, const score* s)
-      : parent{nullptr}, scr{s}, pos{p}, len(1) {}
+  SearchState(uint32_t p, const score* s)
+      : parent{nullptr}, scr{s}, len{1}, pos{p} {}
   SearchState(SearchState&&) = default;
   SearchState(const SearchState&) = default;
   SearchState& operator=(const SearchState&) = default;
 
   // appending constructor
-  SearchState(std::shared_ptr<SearchState>& other, size_t p, const score* s)
-      : parent{other}, scr{s}, pos{p}, len(other->len + 1) {}
+  SearchState(const std::shared_ptr<SearchState>& other, uint32_t p,
+              const score* s)
+      : parent{other}, scr{s}, len{other->len + 1}, pos{p} {}
 
   std::shared_ptr<SearchState> parent;
   const score* scr;
-  size_t pos;
-  size_t len;
+  uint32_t len;
+  uint32_t pos;
 };
 
 using SearchStates =
@@ -159,7 +160,7 @@ template<typename Base>
 bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
   // how long max sequence could be in the best case
   search_buf_.clear();
-  size_t longest_sequence_len = 0;
+  uint32_t longest_sequence_len = 0;
 
   seq_freq_.value = 0;
   for (const auto& pos_iterator : pos_) {
@@ -187,10 +188,10 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
               auto current_sequence = found;
               // if we hit same position - set length to 0 to force checking
               // candidates to the left
-              size_t current_found_len = (found->first == current_pos ||
+              uint32_t current_found_len{(found->first == current_pos ||
                                           found_state->scr == pos_iterator.scr)
                                              ? 0
-                                             : found_state->len + 1;
+                                             : found_state->len + 1};
               auto initial_found = found;
               if (current_found_len > longest_sequence_len) {
                 longest_sequence_len = current_found_len;
