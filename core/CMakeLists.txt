@@ -131,6 +131,7 @@ set(IResearch_core_sources
   ./search/term_query.cpp
   ./search/boolean_filter.cpp
   ./search/ngram_similarity_filter.cpp
+  ./search/ngram_similarity_query.cpp
   ./search/proxy_filter.cpp
   ./store/data_input.cpp 
   ./store/data_output.cpp 

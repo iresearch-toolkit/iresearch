@@ -258,8 +258,8 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     }
 
     // check required features
-    if (kRequiredFeatures !=
-        (reader->meta().index_features & kRequiredFeatures)) {
+    if (FixedPhraseQuery::kRequiredFeatures !=
+        (reader->meta().index_features & FixedPhraseQuery::kRequiredFeatures)) {
       continue;
     }
 
@@ -357,8 +357,8 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     }
 
     // check required features
-    if (kRequiredFeatures !=
-        (reader->meta().index_features & kRequiredFeatures)) {
+    if (FixedPhraseQuery::kRequiredFeatures !=
+        (reader->meta().index_features & FixedPhraseQuery::kRequiredFeatures)) {
       continue;
     }
 

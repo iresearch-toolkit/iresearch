@@ -31,7 +31,7 @@ using namespace irs;
 
 // Get index features required for offsets
 constexpr IndexFeatures kRequireOffs =
-    by_phrase::kRequiredFeatures | IndexFeatures::OFFS;
+    FixedPhraseQuery::kRequiredFeatures | IndexFeatures::OFFS;
 
 template<bool OneShot, bool HasFreq>
 using FixedPhraseIterator =
@@ -60,17 +60,22 @@ doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
     return doc_iterator::empty();
   }
 
+  auto* reader = phrase_state->reader;
+  assert(reader);
+
+  if (kRequiredFeatures !=
+      (reader->meta().index_features & kRequiredFeatures)) {
+    return doc_iterator::empty();
+  }
+
   // get index features required for query & order
-  const IndexFeatures features = ord.features() | by_phrase::kRequiredFeatures;
+  const IndexFeatures features = ord.features() | kRequiredFeatures;
 
   std::vector<score_iterator_adapter<doc_iterator::ptr>> itrs;
   itrs.reserve(phrase_state->terms.size());
 
   std::vector<FixedTermPosition> positions;
   positions.reserve(phrase_state->terms.size());
-
-  auto* reader = phrase_state->reader;
-  assert(reader);
 
   auto position = std::begin(positions_);
 
@@ -177,7 +182,7 @@ doc_iterator::ptr FixedPhraseQuery::ExecuteWithOffsets(
     auto back = std::prev(std::end(phrase_state->terms));
 
     while (term_state != back) {
-      if (!add_iterator(by_phrase::kRequiredFeatures)) {
+      if (!add_iterator(kRequiredFeatures)) {
         return doc_iterator::empty();
       }
     }
@@ -209,8 +214,17 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
     return doc_iterator::empty();
   }
 
+  // find term using cached state
+  auto* reader = phrase_state->reader;
+  assert(reader);
+
+  if (kRequiredFeatures !=
+      (reader->meta().index_features & kRequiredFeatures)) {
+    return doc_iterator::empty();
+  }
+
   // get features required for query & order
-  const IndexFeatures features = ord.features() | by_phrase::kRequiredFeatures;
+  const IndexFeatures features = ord.features() | kRequiredFeatures;
 
   std::vector<score_iterator_adapter<doc_iterator::ptr>> conj_itrs;
   conj_itrs.reserve(phrase_state->terms.size());
@@ -219,10 +233,6 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
 
   std::vector<VariadicTermPosition<Adapter>> positions;
   positions.resize(phrase_size);
-
-  // find term using cached state
-  auto* reader = phrase_state->reader;
-  assert(reader);
 
   auto position = std::begin(positions_);
 
@@ -376,7 +386,7 @@ doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
 
   if (i < phrase_size) {
     for (auto size = phrase_size - 1; i < size;) {
-      if (!add_iterator(by_phrase::kRequiredFeatures)) {
+      if (!add_iterator(kRequiredFeatures)) {
         return doc_iterator::empty();
       }
     }

@@ -36,6 +36,10 @@ class PhraseQuery : public filter::prepared {
   using states_t = states_cache<State>;
   using positions_t = std::vector<uint32_t>;
 
+  // Returns features required for phrase filter
+  static constexpr IndexFeatures kRequiredFeatures =
+      IndexFeatures::FREQ | IndexFeatures::POS;
+
   PhraseQuery(states_t&& states, positions_t&& positions, bstring&& stats,
               score_t boost) noexcept
       : prepared{boost},

@@ -52,10 +52,6 @@ struct by_ngram_similarity_options {
 
 class by_ngram_similarity : public filter_base<by_ngram_similarity_options> {
  public:
-  // returns set of features required for filter
-  static constexpr IndexFeatures kRequiredFeatures =
-      IndexFeatures::FREQ | IndexFeatures::POS;
-
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
