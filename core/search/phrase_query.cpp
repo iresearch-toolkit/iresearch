@@ -107,7 +107,7 @@ doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
         std::move(itrs), std::move(positions));
   }
 
-  return memory::make_managed<::FixedPhraseIterator<false, true>>(
+  return memory::make_managed<FixedPhraseIterator<false, true>>(
       std::move(itrs), std::move(positions), rdr, *phrase_state->reader,
       stats_.c_str(), ord, boost());
 }
@@ -202,9 +202,7 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
   using CompoundDocIterator = irs::compound_doc_iterator<Adapter>;
   using Disjunction =
       disjunction<doc_iterator::ptr, NoopAggregator, Adapter, true>;
-
   auto& rdr = ctx.segment;
-  auto& ord = ctx.scorers;
 
   // get phrase state for the specified reader
   auto phrase_state = states_.find(rdr);
@@ -222,6 +220,8 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
       (reader->meta().index_features & kRequiredFeatures)) {
     return doc_iterator::empty();
   }
+
+  auto& ord = ctx.scorers;
 
   // get features required for query & order
   const IndexFeatures features = ord.features() | kRequiredFeatures;

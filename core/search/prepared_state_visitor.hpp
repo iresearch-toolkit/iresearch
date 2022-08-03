@@ -28,6 +28,8 @@ namespace iresearch {
 
 struct term_reader;
 
+class BooleanQuery;
+class ByNestedQuery;
 class MultiTermQuery;
 struct MultiTermState;
 class TermQuery;
@@ -42,6 +44,8 @@ struct NGramState;
 struct PreparedStateVisitor {
   virtual ~PreparedStateVisitor() = default;
 
+  virtual bool Visit(const BooleanQuery& q, score_t boost) = 0;
+  virtual bool Visit(const ByNestedQuery& q, score_t boost) = 0;
   virtual bool Visit(const TermQuery& q, const TermState& state,
                      score_t boost) = 0;
   virtual bool Visit(const MultiTermQuery& q, const MultiTermState& state,

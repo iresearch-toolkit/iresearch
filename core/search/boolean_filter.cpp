@@ -169,8 +169,13 @@ class BooleanQuery : public filter::prepared {
 
   void visit(const irs::sub_reader& segment, irs::PreparedStateVisitor& visitor,
              score_t boost) const override {
-    // FIXME(gnusi): visit exclude group?
     boost *= this->boost();
+
+    if (!visitor.Visit(*this, boost)) {
+      return;
+    }
+
+    // FIXME(gnusi): visit exclude group?
     for (auto it = begin(), end = excl_begin(); it != end; ++it) {
       it->visit(segment, visitor, boost);
     }

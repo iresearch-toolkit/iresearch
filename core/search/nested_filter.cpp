@@ -27,6 +27,7 @@
 
 #include "analysis/token_attributes.hpp"
 #include "search/cost.hpp"
+#include "search/prepared_state_visitor.hpp"
 #include "search/prev_doc.hpp"
 #include "search/score.hpp"
 #include "search/sort.hpp"
@@ -576,9 +577,13 @@ auto ResolveMatchType(const sub_reader& segment,
       match);
 }
 
-class ByNesterQuery final : public filter::prepared {
+}  // namespace
+
+namespace iresearch {
+
+class ByNestedQuery final : public filter::prepared {
  public:
-  ByNesterQuery(DocIteratorProvider parent, prepared::ptr&& child,
+  ByNestedQuery(DocIteratorProvider parent, prepared::ptr&& child,
                 sort::MergeType merge_type, ByNestedOptions::MatchType match,
                 score_t none_boost) noexcept
       : parent_{std::move(parent)},
@@ -596,6 +601,13 @@ class ByNesterQuery final : public filter::prepared {
 
   void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
              score_t boost) const override {
+    boost *= this->boost();
+
+    if (!visitor.Visit(*this, boost)) {
+      return;
+    }
+
+    assert(child_);
     child_->visit(segment, visitor, this->boost() * boost);
   }
 
@@ -607,7 +619,7 @@ class ByNesterQuery final : public filter::prepared {
   score_t none_boost_;
 };
 
-doc_iterator::ptr ByNesterQuery::execute(const ExecutionContext& ctx) const {
+doc_iterator::ptr ByNestedQuery::execute(const ExecutionContext& ctx) const {
   auto& rdr = ctx.segment;
   auto& ord = ctx.scorers;
 
@@ -675,10 +687,6 @@ doc_iterator::ptr ByNesterQuery::execute(const ExecutionContext& ctx) const {
       });
 }
 
-}  // namespace
-
-namespace iresearch {
-
 filter::prepared::ptr ByNestedFilter::prepare(
     const index_reader& rdr, const Order& ord, score_t boost,
     const attribute_provider* ctx) const {
@@ -696,7 +704,7 @@ filter::prepared::ptr ByNestedFilter::prepare(
     return prepared::empty();
   }
 
-  return memory::make_managed<ByNesterQuery>(parent, std::move(prepared_child),
+  return memory::make_managed<ByNestedQuery>(parent, std::move(prepared_child),
                                              merge_type, match,
                                              /*none_boost*/ boost);
 }

@@ -71,11 +71,7 @@ uint32_t GetOffset(const T& pos) noexcept {
 struct SearchState {
   template<typename T>
   SearchState(uint32_t p, const T& attrs)
-      : parent{nullptr},
-        scr{attrs.scr},
-        len{1},
-        pos{p},
-        offs{GetOffset<true>(attrs)} {}
+      : scr{attrs.scr}, len{1}, pos{p}, offs{GetOffset<true>(attrs)} {}
 
   // appending constructor
   template<typename T>
@@ -113,8 +109,6 @@ class NGramPosition : public position {
 
   bool next() final {
     if (begin_ == std::end(offsets_)) {
-      offsets_.clear();
-      begin_ = std::end(offsets_);
       return false;
     }
 
@@ -128,7 +122,12 @@ class NGramPosition : public position {
     value_ = irs::pos_limits::invalid();
   }
 
-  void PushState(const SearchState& state) {
+  void ClearOffsets() noexcept {
+    offsets_.clear();
+    begin_ = std::end(offsets_);
+  }
+
+  void PushOffset(const SearchState& state) {
     offsets_.emplace_back(OffsetFromState(state));
   }
 
@@ -334,6 +333,10 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
   }
 
   if (longest_sequence_len >= min_match_count_ && collect_all_states_) {
+    if constexpr (HasPosition) {
+      static_cast<NGramPosition&>(*this).ClearOffsets();
+    }
+
     uint32_t freq{0};
     size_t count_longest{0};
 
@@ -396,7 +399,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
                              std::end(pos_sequence_));
 
             if constexpr (HasPosition) {
-              static_cast<NGramPosition&>(*this).PushState(*state);
+              static_cast<NGramPosition&>(*this).PushOffset(*state);
             }
           }
         }
