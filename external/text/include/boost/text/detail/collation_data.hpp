@@ -30,10 +30,10 @@ namespace boost { namespace text { namespace detail {
 
     struct collation_element
     {
-        uint32_t l1_;
-        uint16_t l2_;
-        uint16_t l3_;
-        uint32_t l4_;
+        uint32_t l1_{0};
+        uint16_t l2_{0};
+        uint16_t l3_{0};
+        uint32_t l4_{0};
     };
 
 #if BOOST_TEXT_COLLATION_DATA_INSTRUMENTATION
