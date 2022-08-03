@@ -114,12 +114,12 @@ class NGramPosition : public position {
   bool next() final {
     if (begin_ == std::end(offsets_)) {
       offsets_.clear();
+      begin_ = std::end(offsets_);
       return false;
     }
 
     offset_ = *begin_;
     ++begin_;
-
     return true;
   }
 
