@@ -112,24 +112,24 @@ class NGramPosition : public position {
   }
 
   bool next() final {
-    if (begin_ == end_) {
+    if (begin_ == std::end(offsets_)) {
+      offsets_.clear();
       return false;
     }
 
-    offset_ = OffsetFromState(*begin_->second);
-    ++value_;
+    offset_ = *begin_;
     ++begin_;
 
     return true;
   }
 
-  void reset() final { throw not_impl_error{}; }
-
-  void reset(SearchStates::const_iterator begin,
-             SearchStates::const_iterator end) noexcept {
-    begin_ = begin;
-    end_ = end;
+  void reset() final {
+    begin_ = std::begin(offsets_);
     value_ = irs::pos_limits::invalid();
+  }
+
+  void PushState(const SearchState& state) {
+    offsets_.emplace_back(OffsetFromState(state));
   }
 
  private:
@@ -144,9 +144,11 @@ class NGramPosition : public position {
     return {{}, cur->offs, state.offs};
   }
 
+  using Offsets = boost::container::small_vector<offset, 16>;
+
   offset offset_;
-  SearchStates::const_iterator begin_;
-  SearchStates::const_iterator end_;
+  Offsets offsets_;
+  Offsets::const_iterator begin_{std::begin(offsets_)};
 };
 
 template<typename Base>
@@ -392,16 +394,13 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
             ++freq;
             used_pos_.insert(std::begin(pos_sequence_),
                              std::end(pos_sequence_));
-          } else {
+
             if constexpr (HasPosition) {
-              i = search_buf_.erase(i);
-            } else {
-              ++i;
+              static_cast<NGramPosition&>(*this).PushState(*state);
             }
           }
-        } else {
-          ++i;
         }
+        ++i;
       }
     } else {
       freq = 1;
@@ -412,8 +411,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
         static_cast<score_t>(longest_sequence_len) / total_terms_count_;
 
     if constexpr (HasPosition) {
-      static_cast<NGramPosition&>(*this).reset(std::begin(search_buf_),
-                                               std::end(search_buf_));
+      static_cast<NGramPosition&>(*this).reset();
     }
   }
   return longest_sequence_len >= min_match_count_;
