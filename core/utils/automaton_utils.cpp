@@ -403,11 +403,11 @@ filter::prepared::ptr prepare_automaton_filter(
     return filter::prepared::empty();
   }
 
+  // object for collecting order stats
   limited_sample_collector<term_frequency> collector(
-      order.empty() ? 0
-                    : scored_terms_limit);  // object for collecting order stats
-  multiterm_query::states_t states(index);
-  multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
+      order.empty() ? 0 : scored_terms_limit);
+  MultiTermQuery::States states{index};
+  multiterm_visitor mtv{collector, states};
 
   for (const auto& segment : index) {
     // get term dictionary for field
@@ -420,10 +420,10 @@ filter::prepared::ptr prepare_automaton_filter(
     visit(segment, *reader, matcher, mtv);
   }
 
-  std::vector<bstring> stats;
+  MultiTermQuery::Stats stats;
   collector.score(index, order, stats);
 
-  return memory::make_managed<multiterm_query>(
+  return memory::make_managed<MultiTermQuery>(
       std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
 }
 

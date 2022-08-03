@@ -23,49 +23,119 @@
 #ifndef IRESEARCH_PHRASE_ITERATOR_H
 #define IRESEARCH_PHRASE_ITERATOR_H
 
+#include "analysis/token_attributes.hpp"
 #include "disjunction.hpp"
 
 namespace iresearch {
 
-class fixed_phrase_frequency {
+template<typename Frequency>
+class PhrasePosition final : public position, public Frequency {
  public:
-  // position attribute + desired offset in the phrase
-  using term_position_t = std::pair<position::ref, position::value_t>;
+  explicit PhrasePosition(
+      std::vector<typename Frequency::TermPosition>&& pos) noexcept
+      : Frequency{std::move(pos)} {
+    std::tie(start_, end_) = self().GetOffsets();
+  }
 
-  fixed_phrase_frequency(std::vector<term_position_t>&& pos, const Order& ord)
-      : pos_(std::move(pos)), order_empty_(ord.empty()) {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (irs::type<offset>::id() == type) {
+      return &offset_;
+    }
+
+    return nullptr;
+  }
+
+  bool next() override {
+    if (!left_) {
+      // At least 1 position is always approved by the phrase,
+      // and calling next() on exhausted iterator is UB.
+      left_ = 1;
+      value_ = irs::pos_limits::invalid();
+      return false;
+    }
+    ++value_;
+    offset_.start = *start_;
+    offset_.end = *end_;
+    left_ += self().NextPosition() - 1;
+    return true;
+  }
+
+  void reset() override { throw not_impl_error{}; }
+
+ private:
+  Frequency& self() noexcept { return static_cast<Frequency&>(*this); }
+
+  offset offset_;
+  const uint32_t* start_{};
+  const uint32_t* end_{};
+  uint32_t left_{1};
+};
+
+template<typename T>
+struct HasPosition : std::false_type {};
+
+template<typename T>
+struct HasPosition<PhrasePosition<T>> : std::true_type {};
+
+// position attribute + desired offset in the phrase
+using FixedTermPosition = std::pair<position::ref, position::value_t>;
+
+template<bool OneShot, bool HasFreq>
+class FixedPhraseFrequency {
+ public:
+  using TermPosition = FixedTermPosition;
+
+  explicit FixedPhraseFrequency(std::vector<TermPosition>&& pos) noexcept
+      : pos_{std::move(pos)} {
     assert(!pos_.empty());             // must not be empty
     assert(0 == pos_.front().second);  // lead offset is always 0
   }
 
-  frequency* freq() noexcept { return order_empty_ ? nullptr : &phrase_freq_; }
+  attribute* GetMutable(irs::type_info::type_id id) noexcept {
+    if constexpr (HasFreq) {
+      if (id == irs::type<frequency>::id()) {
+        return &phrase_freq_;
+      }
+    }
 
-  filter_boost* boost() noexcept { return nullptr; }
+    return nullptr;
+  }
 
   // returns frequency of the phrase
-  uint32_t operator()() {
-    phrase_freq_.value = 0;
-    bool match;
+  uint32_t EvaluateFreq() { return phrase_freq_.value = NextPosition(); }
 
+ private:
+  friend class PhrasePosition<FixedPhraseFrequency>;
+
+  std::pair<const uint32_t*, const uint32_t*> GetOffsets() const noexcept {
+    auto start = irs::get<irs::offset>(pos_.front().first.get());
+    assert(start);
+    auto end = irs::get<irs::offset>(pos_.back().first.get());
+    assert(end);
+    return {&start->start, &end->end};
+  }
+
+  uint32_t NextPosition() {
+    uint32_t phrase_freq = 0;
     position& lead = pos_.front().first;
     lead.next();
 
-    for (auto end = pos_.end(); !pos_limits::eof(lead.value());) {
+    for (auto end = std::end(pos_); !pos_limits::eof(lead.value());) {
       const position::value_t base_position = lead.value();
 
-      match = true;
+      bool match = true;
 
-      for (auto it = pos_.begin() + 1; it != end; ++it) {
+      for (auto it = std::begin(pos_) + 1; it != end; ++it) {
         position& pos = it->first;
         const auto term_position = base_position + it->second;
         if (!pos_limits::valid(term_position)) {
-          return phrase_freq_.value;
+          return phrase_freq;
         }
         const auto sought = pos.seek(term_position);
 
         if (pos_limits::eof(sought)) {
           // exhausted
-          return phrase_freq_.value;
+          return phrase_freq;
         } else if (sought != term_position) {
           // sought too far from the lead
           match = false;
@@ -76,31 +146,29 @@ class fixed_phrase_frequency {
       }
 
       if (match) {
-        if (order_empty_) {
-          return (phrase_freq_.value = 1);
+        ++phrase_freq;
+
+        if constexpr (OneShot) {
+          return phrase_freq;
         }
 
-        ++phrase_freq_.value;
         lead.next();
       }
     }
 
-    return phrase_freq_.value;
+    return phrase_freq;
   }
 
- private:
   // list of desired positions along with corresponding attributes
-  std::vector<term_position_t> pos_;
+  std::vector<TermPosition> pos_;
   // freqency of the phrase in a document
   frequency phrase_freq_;
-  bool order_empty_;
 };
 
 // Adapter to use doc_iterator with positions for disjunction
-struct variadic_phrase_adapter final
-    : score_iterator_adapter<doc_iterator::ptr> {
-  variadic_phrase_adapter() = default;
-  variadic_phrase_adapter(doc_iterator::ptr&& it, score_t boost) noexcept
+struct VariadicPhraseAdapter : score_iterator_adapter<doc_iterator::ptr> {
+  VariadicPhraseAdapter() = default;
+  VariadicPhraseAdapter(doc_iterator::ptr&& it, score_t boost) noexcept
       : score_iterator_adapter<doc_iterator::ptr>(std::move(it)),
         position(irs::get_mutable<irs::position>(this->it.get())),
         boost(boost) {}
@@ -109,42 +177,65 @@ struct variadic_phrase_adapter final
   score_t boost{kNoBoost};
 };
 
-static_assert(std::is_nothrow_move_constructible_v<variadic_phrase_adapter>);
-static_assert(std::is_nothrow_move_assignable_v<variadic_phrase_adapter>);
+static_assert(std::is_nothrow_move_constructible_v<VariadicPhraseAdapter>);
+static_assert(std::is_nothrow_move_assignable_v<VariadicPhraseAdapter>);
 
-using variadic_term_position =
-    std::pair<compound_doc_iterator<variadic_phrase_adapter>*,
+struct VariadicPhraseOffsetAdapter final : VariadicPhraseAdapter {
+  VariadicPhraseOffsetAdapter() = default;
+  VariadicPhraseOffsetAdapter(doc_iterator::ptr&& it, score_t boost) noexcept
+      : VariadicPhraseAdapter{std::move(it), boost},
+        offset{this->position ? irs::get<irs::offset>(*this->position)
+                              // FIXME(gnusi): use constant
+                              : nullptr} {}
+
+  const irs::offset* offset{};
+};
+
+static_assert(
+    std::is_nothrow_move_constructible_v<VariadicPhraseOffsetAdapter>);
+static_assert(std::is_nothrow_move_assignable_v<VariadicPhraseOffsetAdapter>);
+
+template<typename Adapter>
+using VariadicTermPosition =
+    std::pair<compound_doc_iterator<Adapter>*,
               position::value_t>;  // desired offset in the phrase
 
 // Helper for variadic phrase frequency evaluation for cases when
 // only one term may be at a single position in a phrase (e.g. synonyms)
-template<bool VolatileBoost>
-class variadic_phrase_frequency {
+template<typename Adapter, bool VolatileBoost, bool OneShot, bool HasFreq>
+class VariadicPhraseFrequency {
  public:
-  using term_position_t = variadic_term_position;
+  using TermPosition = VariadicTermPosition<Adapter>;
 
-  variadic_phrase_frequency(std::vector<term_position_t>&& pos,
-                            const Order& ord)
-      : pos_(std::move(pos)),
-        phrase_size_(pos_.size()),
-        order_empty_(ord.empty()) {
+  explicit VariadicPhraseFrequency(std::vector<TermPosition>&& pos) noexcept
+      : pos_{std::move(pos)}, phrase_size_{pos_.size()} {
     assert(!pos_.empty() && phrase_size_);  // must not be empty
     assert(0 == pos_.front().second);       // lead offset is always 0
   }
 
-  frequency* freq() noexcept { return order_empty_ ? nullptr : &phrase_freq_; }
+  attribute* GetMutable(irs::type_info::type_id id) noexcept {
+    if constexpr (VolatileBoost) {
+      if (id == irs::type<filter_boost>::id()) {
+        return &phrase_boost_;
+      }
+    }
 
-  filter_boost* boost() noexcept {
-    return !VolatileBoost || order_empty_ ? nullptr : &phrase_boost_;
+    if constexpr (HasFreq) {
+      if (id == irs::type<frequency>::id()) {
+        return &phrase_freq_;
+      }
+    }
+
+    return nullptr;
   }
 
-  // returns frequency of the phrase
-  uint32_t operator()() {
+  // Evaluate and return frequency of the phrase
+  uint32_t EvaluateFreq() {
     if constexpr (VolatileBoost) {
       phrase_boost_.value = {};
     }
     phrase_freq_.value = 0;
-    pos_.front().first->visit(this, visit_lead);
+    pos_.front().first->visit(this, VisitLead);
 
     if constexpr (VolatileBoost) {
       if (phrase_freq_.value) {
@@ -157,16 +248,30 @@ class variadic_phrase_frequency {
   }
 
  private:
-  struct sub_match_context {
+  friend class PhrasePosition<VariadicPhraseFrequency>;
+
+  struct SubMatchContext {
     position::value_t term_position{pos_limits::eof()};
     position::value_t min_sought{pos_limits::eof()};
+    const uint32_t* end{};  // end match offset
     score_t boost{};
     bool match{false};
   };
 
-  static bool visit(void* ctx, variadic_phrase_adapter& it_adapter) {
+  std::pair<const uint32_t*, const uint32_t*> GetOffsets() const noexcept {
+    return {&start, &end};
+  }
+
+  uint32_t NextPosition() {
+    // FIXME(gnusi): don't change iterator state
+    phrase_freq_.value = 0;
+    pos_.front().first->visit(this, VisitLead);
+    return phrase_freq_.value;
+  }
+
+  static bool VisitFollower(void* ctx, Adapter& it_adapter) {
     assert(ctx);
-    auto& match = *reinterpret_cast<sub_match_context*>(ctx);
+    auto& match = *reinterpret_cast<SubMatchContext*>(ctx);
     auto* p = it_adapter.position;
     p->reset();
     const auto sought = p->seek(match.term_position);
@@ -183,18 +288,24 @@ class variadic_phrase_frequency {
       match.boost += it_adapter.boost;
     }
 
+    if constexpr (std::is_same_v<Adapter, VariadicPhraseOffsetAdapter>) {
+      if (it_adapter.offset) {  // FIXME(gnusi): remove condition
+        match.end = &it_adapter.offset->end;
+      }
+    }
+
     match.match = true;
     return false;
   }
 
-  static bool visit_lead(void* ctx, variadic_phrase_adapter& lead_adapter) {
+  static bool VisitLead(void* ctx, Adapter& lead_adapter) {
     assert(ctx);
-    auto& self = *reinterpret_cast<variadic_phrase_frequency*>(ctx);
-    const auto end = self.pos_.end();
+    auto& self = *reinterpret_cast<VariadicPhraseFrequency*>(ctx);
+    const auto end = std::end(self.pos_);
     auto* lead = lead_adapter.position;
     lead->next();
 
-    sub_match_context match;
+    SubMatchContext match;
 
     for (position::value_t base_position;
          !pos_limits::eof(base_position = lead->value());) {
@@ -203,7 +314,7 @@ class variadic_phrase_frequency {
         match.boost = lead_adapter.boost;
       }
 
-      for (auto it = self.pos_.begin() + 1; it != end; ++it) {
+      for (auto it = std::begin(self.pos_) + 1; it != end; ++it) {
         match.term_position = base_position + it->second;
         if (!pos_limits::valid(match.term_position)) {
           return false;  // invalid for all
@@ -212,7 +323,7 @@ class variadic_phrase_frequency {
         match.match = false;
         match.min_sought = pos_limits::eof();
 
-        it->first->visit(&match, visit);
+        it->first->visit(&match, VisitFollower);
 
         if (!match.match) {
           if (!pos_limits::eof(match.min_sought)) {
@@ -226,7 +337,13 @@ class variadic_phrase_frequency {
 
       if (match.match) {
         ++self.phrase_freq_.value;
-        if (self.order_empty_) {
+        if constexpr (std::is_same_v<Adapter, VariadicPhraseOffsetAdapter>) {
+          assert(lead_adapter.offset);
+          self.start = lead_adapter.offset->start;
+          assert(match.end);
+          self.end = *match.end;
+        }
+        if constexpr (OneShot) {
           return false;
         }
         if constexpr (VolatileBoost) {
@@ -240,39 +357,50 @@ class variadic_phrase_frequency {
   }
 
   // list of desired positions along with corresponding attributes
-  std::vector<term_position_t> pos_;
+  std::vector<TermPosition> pos_;
   // size of the phrase (speedup phrase boost evaluation)
   const size_t phrase_size_;
   frequency phrase_freq_;      // freqency of the phrase in a document
   filter_boost phrase_boost_;  // boost of the phrase in a document
-  const bool order_empty_;
+
+  // FIXME(gnusi): refactor
+  uint32_t start{};
+  uint32_t end{};
 };
 
 // Helper for variadic phrase frequency evaluation for cases when
 // different terms may be at the same position in a phrase (e.g.
 // synonyms)
-template<bool VolatileBoost>
-class variadic_phrase_frequency_overlapped {
+template<typename Adapter, bool VolatileBoost, bool OneShot, bool HasFreq>
+class VariadicPhraseFrequencyOverlapped {
  public:
-  using term_position_t = variadic_term_position;
+  using TermPosition = VariadicTermPosition<Adapter>;
 
-  variadic_phrase_frequency_overlapped(std::vector<term_position_t>&& pos,
-                                       const Order& ord)
-      : pos_(std::move(pos)),
-        phrase_size_(pos_.size()),
-        order_empty_(ord.empty()) {
+  explicit VariadicPhraseFrequencyOverlapped(
+      std::vector<TermPosition>&& pos) noexcept
+      : pos_(std::move(pos)), phrase_size_(pos_.size()) {
     assert(!pos_.empty() && phrase_size_);  // must not be empty
     assert(0 == pos_.front().second);       // lead offset is always 0
   }
 
-  frequency* freq() noexcept { return order_empty_ ? nullptr : &phrase_freq_; }
+  attribute* GetMutable(irs::type_info::type_id id) noexcept {
+    if constexpr (VolatileBoost) {
+      if (id == irs::type<filter_boost>::id()) {
+        return &phrase_boost_;
+      }
+    }
 
-  filter_boost* boost() noexcept {
-    return !VolatileBoost || order_empty_ ? nullptr : &phrase_boost_;
+    if constexpr (HasFreq) {
+      if (id == irs::type<frequency>::id()) {
+        return &phrase_freq_;
+      }
+    }
+
+    return nullptr;
   }
 
   // returns frequency of the phrase
-  uint32_t operator()() {
+  uint32_t EvaluateFreq() {
     if constexpr (VolatileBoost) {
       lead_freq_ = 0;
       lead_boost_ = {};
@@ -280,7 +408,7 @@ class variadic_phrase_frequency_overlapped {
     }
 
     phrase_freq_.value = 0;
-    pos_.front().first->visit(this, visit_lead);
+    pos_.front().first->visit(this, VisitLead);
 
     if constexpr (VolatileBoost) {
       if (lead_freq_) {
@@ -293,16 +421,16 @@ class variadic_phrase_frequency_overlapped {
   }
 
  private:
-  struct sub_match_context {
+  struct SubMatchContext {
     position::value_t term_position{pos_limits::eof()};
     position::value_t min_sought{pos_limits::eof()};
     score_t boost{};
     uint32_t freq{};
   };
 
-  static bool visit(void* ctx, variadic_phrase_adapter& it_adapter) {
+  static bool VisitFollower(void* ctx, Adapter& it_adapter) {
     assert(ctx);
-    auto& match = *reinterpret_cast<sub_match_context*>(ctx);
+    auto& match = *reinterpret_cast<SubMatchContext*>(ctx);
     auto* p = it_adapter.position;
     p->reset();
     const auto sought = p->seek(match.term_position);
@@ -323,14 +451,14 @@ class variadic_phrase_frequency_overlapped {
     return true;  // continue iteration in overlapped case
   }
 
-  static bool visit_lead(void* ctx, variadic_phrase_adapter& lead_adapter) {
+  static bool VisitLead(void* ctx, Adapter& lead_adapter) {
     assert(ctx);
-    auto& self = *reinterpret_cast<variadic_phrase_frequency_overlapped*>(ctx);
-    const auto end = self.pos_.end();
+    auto& self = *reinterpret_cast<VariadicPhraseFrequencyOverlapped*>(ctx);
+    const auto end = std::end(self.pos_);
     auto* lead = lead_adapter.position;
     lead->next();
 
-    sub_match_context match;   // sub-match
+    SubMatchContext match;     // sub-match
     uint32_t phrase_freq = 0;  // phrase frequency for current lead_iterator
     // accumulated match frequency for current lead_iterator
     uint32_t match_freq;
@@ -343,7 +471,7 @@ class variadic_phrase_frequency_overlapped {
         match_boost = 0.f;
       }
 
-      for (auto it = self.pos_.begin() + 1; it != end; ++it) {
+      for (auto it = std::begin(self.pos_) + 1; it != end; ++it) {
         match.term_position = base_position + it->second;
         if (!pos_limits::valid(match.term_position)) {
           return false;  // invalid for all
@@ -355,7 +483,7 @@ class variadic_phrase_frequency_overlapped {
         }
         match.min_sought = pos_limits::eof();
 
-        it->first->visit(&match, visit);
+        it->first->visit(&match, VisitFollower);
 
         if (!match.freq) {
           match_freq = 0;
@@ -384,7 +512,7 @@ class variadic_phrase_frequency_overlapped {
 
       if (match_freq) {
         self.phrase_freq_.value += match_freq;
-        if (self.order_empty_) {
+        if constexpr (OneShot) {
           return false;
         }
         ++phrase_freq;
@@ -406,67 +534,78 @@ class variadic_phrase_frequency_overlapped {
     return true;
   }
   // list of desired positions along with corresponding attributes
-  std::vector<term_position_t> pos_;
+  std::vector<TermPosition> pos_;
   // size of the phrase (speedup phrase boost evaluation)
   const size_t phrase_size_;
   frequency phrase_freq_;      // freqency of the phrase in a document
   filter_boost phrase_boost_;  // boost of the phrase in a document
   score_t lead_boost_{0.f};    // boost from all matched lead iterators
   uint32_t lead_freq_{0};      // number of matched lead iterators
-  const bool order_empty_;
 };
 
 // implementation is optimized for frequency based similarity measures
 // for generic implementation see a03025accd8b84a5f8ecaaba7412fc92a1636be3
 template<typename Conjunction, typename Frequency>
-class phrase_iterator final : public doc_iterator {
+class PhraseIterator : public doc_iterator {
  public:
-  phrase_iterator(typename Conjunction::doc_iterators_t&& itrs,
-                  std::vector<typename Frequency::term_position_t>&& pos,
-                  const sub_reader& segment, const term_reader& field,
-                  const byte_type* stats, const Order& ord, score_t boost)
-      : approx_{std::move(itrs), NoopAggregator{}}, freq_{std::move(pos), ord} {
+  using TermPosition = typename Frequency::TermPosition;
+
+  PhraseIterator(typename Conjunction::doc_iterators_t&& itrs,
+                 std::vector<TermPosition>&& pos)
+      : approx_{std::move(itrs), NoopAggregator{}}, freq_{std::move(pos)} {
     std::get<attribute_ptr<document>>(attrs_) =
         irs::get_mutable<document>(&approx_);
-    std::get<attribute_ptr<frequency>>(attrs_) = freq_.freq();
-    std::get<attribute_ptr<filter_boost>>(attrs_) = freq_.boost();
 
     // FIXME find a better estimation
     std::get<irs::cost>(attrs_).reset(
         [this]() { return cost::extract(approx_); });
+  }
 
+  PhraseIterator(typename Conjunction::doc_iterators_t&& itrs,
+                 std::vector<typename Frequency::TermPosition>&& pos,
+                 const sub_reader& segment, const term_reader& field,
+                 const byte_type* stats, const Order& ord, score_t boost)
+      : PhraseIterator{std::move(itrs), std::move(pos)} {
     if (!ord.empty()) {
       auto& score = std::get<irs::score>(attrs_);
-
       score = CompileScore(ord.buckets(), segment, field, stats, *this, boost);
     }
   }
 
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
-    return irs::get_mutable(attrs_, type);
+  attribute* get_mutable(type_info::type_id type) noexcept override {
+    if (type == irs::type<irs::position>::id()) {
+      if constexpr (HasPosition<Frequency>::value) {
+        return &freq_;
+      } else {
+        return nullptr;
+      }
+    }
+
+    auto* attr = freq_.GetMutable(type);
+    return attr ? attr : irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t value() const override final {
+  doc_id_t value() const override final {
     return std::get<attribute_ptr<document>>(attrs_).ptr->value;
   }
 
-  virtual bool next() override {
+  bool next() override {
     bool next = false;
-    while ((next = approx_.next()) && !freq_()) {
+    while ((next = approx_.next()) && !freq_.EvaluateFreq()) {
     }
 
     return next;
   }
 
-  virtual doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) override {
     auto* pdoc = std::get<attribute_ptr<document>>(attrs_).ptr;
 
-    // important to call freq_() in order
+    // important to call freq_.EvaluateFreq() in order
     // to set attribute values
     const auto prev = pdoc->value;
     const auto doc = approx_.seek(target);
 
-    if (prev == doc || freq_()) {
+    if (prev == doc || freq_.EvaluateFreq()) {
       return doc;
     }
 
@@ -476,10 +615,7 @@ class phrase_iterator final : public doc_iterator {
   }
 
  private:
-  // FIXME can store only 4 attrbiutes for non-volatile boost case
-  using attributes =
-      std::tuple<attribute_ptr<document>, cost, score, attribute_ptr<frequency>,
-                 attribute_ptr<filter_boost>>;
+  using attributes = std::tuple<attribute_ptr<document>, cost, score>;
 
   // first approximation (conjunction over all words in a phrase)
   Conjunction approx_;

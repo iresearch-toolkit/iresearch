@@ -23,6 +23,7 @@
 #ifndef IRESEARCH_ITERATORS_H
 #define IRESEARCH_ITERATORS_H
 
+#include "formats/seek_cookie.hpp"
 #include "index/index_features.hpp"
 #include "shared.hpp"
 #include "utils/attribute_provider.hpp"
@@ -121,16 +122,10 @@ enum class SeekResult {
   END
 };
 
-// Implementation defined term value state
-struct seek_cookie : attribute_provider {
-  using ptr = std::unique_ptr<seek_cookie>;
-};
-
 // An iterator providing random and sequential access to term
 // dictionary.
 struct seek_term_iterator : term_iterator {
   using ptr = memory::managed_ptr<seek_term_iterator>;
-  using cookie_ptr = seek_cookie::ptr;
 
   // Return an empty iterator
   [[nodiscard]] static seek_term_iterator::ptr empty();

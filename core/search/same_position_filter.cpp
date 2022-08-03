@@ -25,11 +25,12 @@
 #include <boost/functional/hash.hpp>
 
 #include "analysis/token_attributes.hpp"
-#include "collectors.hpp"
-#include "conjunction.hpp"
 #include "index/field_meta.hpp"
+#include "search/collectors.hpp"
+#include "search/conjunction.hpp"
+#include "search/states/term_state.hpp"
+#include "search/states_cache.hpp"
 #include "shared.hpp"
-#include "term_query.hpp"
 #include "utils/misc.hpp"
 
 namespace {
@@ -105,7 +106,7 @@ class same_position_iterator final : public Conjunction {
 
 class same_position_query final : public filter::prepared {
  public:
-  typedef std::vector<term_query::term_state> terms_states_t;
+  typedef std::vector<TermState> terms_states_t;
   typedef states_cache<terms_states_t> states_t;
   typedef std::vector<bstring> stats_t;
 
@@ -114,6 +115,10 @@ class same_position_query final : public filter::prepared {
       : prepared(boost), states_(std::move(states)), stats_(std::move(stats)) {}
 
   using filter::prepared::execute;
+
+  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
+    // FIXME(gnusi): implement
+  }
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
     auto& segment = ctx.segment;

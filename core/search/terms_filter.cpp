@@ -141,7 +141,7 @@ filter::prepared::ptr by_terms::prepare(const index_reader& index,
 
   field_collectors field_stats{order};
   term_collectors term_stats{order, size};
-  multiterm_query::states_t states{index};
+  MultiTermQuery::States states{index};
   all_terms_collector collector{states, field_stats, term_stats};
   collect_terms(index, field(), terms, collector);
 
@@ -156,14 +156,14 @@ filter::prepared::ptr by_terms::prepare(const index_reader& index,
     return prepared::empty();
   }
 
-  multiterm_query::stats_t stats{size};
+  MultiTermQuery::Stats stats{size};
   for (size_t term_idx = 0; auto& stat : stats) {
     stat.resize(order.stats_size(), 0);
     auto* stats_buf = const_cast<byte_type*>(stat.data());
     term_stats.finish(stats_buf, term_idx++, field_stats, index);
   }
 
-  return memory::make_managed<multiterm_query>(
+  return memory::make_managed<MultiTermQuery>(
       std::move(states), std::move(stats), boost, merge_type, min_match);
 }
 

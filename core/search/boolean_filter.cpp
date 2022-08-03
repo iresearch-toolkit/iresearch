@@ -28,6 +28,7 @@
 #include "disjunction.hpp"
 #include "exclusion.hpp"
 #include "min_match_disjunction.hpp"
+#include "prepared_state_visitor.hpp"
 
 namespace {
 
@@ -137,12 +138,12 @@ irs::doc_iterator::ptr make_conjunction(const irs::ExecutionContext& ctx,
 namespace iresearch {
 
 // Base class for boolean queries
-class boolean_query : public filter::prepared {
+class BooleanQuery : public filter::prepared {
  public:
   typedef std::vector<filter::prepared::ptr> queries_t;
   typedef ptr_iterator<queries_t::const_iterator> iterator;
 
-  boolean_query() noexcept : excl_{0} {}
+  BooleanQuery() noexcept : excl_{0} {}
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
     if (empty()) {
@@ -166,12 +167,26 @@ class boolean_query : public filter::prepared {
     return memory::make_managed<exclusion>(std::move(incl), std::move(excl));
   }
 
+  void visit(const irs::sub_reader& segment, irs::PreparedStateVisitor& visitor,
+             score_t boost) const override {
+    boost *= this->boost();
+
+    if (!visitor.Visit(*this, boost)) {
+      return;
+    }
+
+    // FIXME(gnusi): visit exclude group?
+    for (auto it = begin(), end = excl_begin(); it != end; ++it) {
+      it->visit(segment, visitor, boost);
+    }
+  }
+
   virtual void prepare(const index_reader& rdr, const Order& ord, score_t boost,
                        sort::MergeType merge_type,
                        const attribute_provider* ctx,
                        std::span<const filter* const> incl,
                        std::span<const filter* const> excl) {
-    boolean_query::queries_t queries;
+    BooleanQuery::queries_t queries;
     queries.reserve(incl.size() + excl.size());
 
     // apply boost to the current node
@@ -195,9 +210,9 @@ class boolean_query : public filter::prepared {
     merge_type_ = merge_type;
   }
 
-  iterator begin() const { return iterator(queries_.begin()); }
-  iterator excl_begin() const { return iterator(queries_.begin() + excl_); }
-  iterator end() const { return iterator(queries_.end()); }
+  iterator begin() const { return iterator(std::begin(queries_)); }
+  iterator excl_begin() const { return iterator(std::begin(queries_) + excl_); }
+  iterator end() const { return iterator(std::end(queries_)); }
 
   bool empty() const { return queries_.empty(); }
   size_t size() const { return queries_.size(); }
@@ -218,7 +233,7 @@ class boolean_query : public filter::prepared {
 };
 
 // Represent a set of queries joint by "And"
-class and_query final : public boolean_query {
+class AndQuery final : public BooleanQuery {
  public:
   doc_iterator::ptr execute(const ExecutionContext& ctx, iterator begin,
                             iterator end) const override {
@@ -227,7 +242,7 @@ class and_query final : public boolean_query {
 };
 
 // Represent a set of queries joint by "Or"
-class or_query final : public boolean_query {
+class OrQuery final : public BooleanQuery {
  public:
   doc_iterator::ptr execute(const ExecutionContext& ctx, iterator begin,
                             iterator end) const override {
@@ -237,9 +252,9 @@ class or_query final : public boolean_query {
 
 // Represent a set of queries joint by "Or" with the specified
 // minimum number of clauses that should satisfy criteria
-class min_match_query final : public boolean_query {
+class MinMatchQuery final : public BooleanQuery {
  public:
-  explicit min_match_query(size_t min_match_count) noexcept
+  explicit MinMatchQuery(size_t min_match_count) noexcept
       : min_match_count_{min_match_count} {
     assert(min_match_count_ > 1);
   }
@@ -436,7 +451,7 @@ filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
     // single node case
     return incl.front()->prepare(rdr, ord, boost, ctx);
   }
-  auto q = memory::make_managed<and_query>();
+  auto q = memory::make_managed<AndQuery>();
   q->prepare(rdr, ord, boost, merge_type(), ctx, incl, excl);
   return q;
 }
@@ -522,13 +537,13 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
   assert(adjusted_min_match_count > 0 &&
          adjusted_min_match_count <= incl.size());
 
-  memory::managed_ptr<boolean_query> q;
+  memory::managed_ptr<BooleanQuery> q;
   if (adjusted_min_match_count == incl.size()) {
-    q = memory::make_managed<and_query>();
+    q = memory::make_managed<AndQuery>();
   } else if (1 == adjusted_min_match_count) {
-    q = memory::make_managed<or_query>();
+    q = memory::make_managed<OrQuery>();
   } else {  // min_match_count > 1 && min_match_count < incl.size()
-    q = memory::make_managed<min_match_query>(adjusted_min_match_count);
+    q = memory::make_managed<MinMatchQuery>(adjusted_min_match_count);
   }
 
   q->prepare(rdr, ord, boost, merge_type(), ctx, incl, excl);
@@ -553,7 +568,7 @@ filter::prepared::ptr Not::prepare(const index_reader& rdr, const Order& ord,
     const std::array<const irs::filter*, 1> incl{&all_docs};
     const std::array<const irs::filter*, 1> excl{res.first};
 
-    auto q = memory::make_managed<and_query>();
+    auto q = memory::make_managed<AndQuery>();
     q->prepare(rdr, ord, boost, sort::MergeType::kSum, ctx, incl, excl);
     return q;
   }

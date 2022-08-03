@@ -25,6 +25,7 @@
 #include "search/bitset_doc_iterator.hpp"
 #include "search/disjunction.hpp"
 #include "search/min_match_disjunction.hpp"
+#include "search/prepared_state_visitor.hpp"
 #include "shared.hpp"
 #include "utils/bitset.hpp"
 
@@ -36,7 +37,7 @@ class lazy_bitset_iterator final : public bitset_doc_iterator {
  public:
   lazy_bitset_iterator(
       const sub_reader& segment, const term_reader& field,
-      std::span<const multiterm_state::unscored_term_state> states,
+      std::span<const MultiTermState::UnscoredTermState> states,
       cost::cost_t estimation) noexcept
       : bitset_doc_iterator(estimation),
         field_(&field),
@@ -58,7 +59,7 @@ class lazy_bitset_iterator final : public bitset_doc_iterator {
   std::unique_ptr<word_t[]> set_;
   const term_reader* field_;
   const sub_reader* segment_;
-  std::span<const multiterm_state::unscored_term_state> states_;
+  std::span<const MultiTermState::UnscoredTermState> states_;
 };
 
 bool lazy_bitset_iterator::refill(const word_t** begin, const word_t** end) {
@@ -103,7 +104,14 @@ bool lazy_bitset_iterator::refill(const word_t** begin, const word_t** end) {
 
 namespace iresearch {
 
-doc_iterator::ptr multiterm_query::execute(const ExecutionContext& ctx) const {
+void MultiTermQuery::visit(const sub_reader& segment,
+                           PreparedStateVisitor& visitor, score_t boost) const {
+  if (auto state = states_.find(segment); state) {
+    visitor.Visit(*this, *state, boost);
+  }
+}
+
+doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
   auto& segment = ctx.segment;
   auto& ord = ctx.scorers;
 

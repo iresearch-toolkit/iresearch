@@ -122,6 +122,7 @@ set(IResearch_core_sources
   ./search/prefix_filter.cpp
   ./search/range_filter.cpp
   ./search/phrase_filter.cpp
+  ./search/phrase_query.cpp
   ./search/column_existence_filter.cpp
   ./search/same_position_filter.cpp
   ./search/wildcard_filter.cpp
@@ -130,6 +131,7 @@ set(IResearch_core_sources
   ./search/term_query.cpp
   ./search/boolean_filter.cpp
   ./search/ngram_similarity_filter.cpp
+  ./search/ngram_similarity_query.cpp
   ./search/proxy_filter.cpp
   ./store/data_input.cpp 
   ./store/data_output.cpp 
