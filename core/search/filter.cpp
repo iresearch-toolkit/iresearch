@@ -26,12 +26,18 @@
 
 namespace {
 
-// Represent a query returning an empty result set
-struct empty_query final : public irs::filter::prepared,
-                           public irs::singleton<empty_query> {
+using namespace irs;
+
+// Represents a query returning empty result set
+struct empty_query final : public filter::prepared,
+                           public singleton<empty_query> {
  public:
-  irs::doc_iterator::ptr execute(const irs::ExecutionContext&) const override {
+  doc_iterator::ptr execute(const ExecutionContext&) const override {
     return irs::doc_iterator::empty();
+  }
+
+  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
+    // No terms to visit
   }
 };
 

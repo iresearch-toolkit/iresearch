@@ -820,9 +820,6 @@ inline int32_t prepare_input(
   return format_utils::check_header(*in, format, min_ver, max_ver);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// @struct cookie
-///////////////////////////////////////////////////////////////////////////////
 struct cookie final : seek_cookie {
   explicit cookie(const version10::term_meta& meta) noexcept
     : meta(meta) {
@@ -834,6 +831,18 @@ struct cookie final : seek_cookie {
     }
 
     return nullptr;
+  }
+
+  bool IsEqual(const irs::seek_cookie& rhs) const noexcept override {
+    // We intentionally don't check `rhs` cookie type.
+    const auto& rhs_meta = down_cast<cookie>(rhs).meta;
+    return meta.doc_start == rhs_meta.doc_start &&
+           meta.pos_start == rhs_meta.pos_start;
+  }
+
+  size_t Hash() const noexcept override {
+    return hash_combine(std::hash<size_t>{}(meta.doc_start),
+                        std::hash<size_t>{}(meta.pos_start));
   }
 
   version10::term_meta meta;
@@ -3116,7 +3125,7 @@ bool automaton_term_iterator<FST>::next() {
           static_cast<bytes_ref>(weight_), *fst_, term_.size(), weight_prefix,
           state, fst_state, data.arcs, data.narcs);
         cur_block_ = &block_stack_.back();
-        
+
         assert(block_stack_.size() < 2 ||  (++block_stack_.rbegin())->block_start() == cur_block_->start());
 
         if (!acceptor_->Final(state))  {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,37 +15,30 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TERM_QUERY_H
-#define IRESEARCH_TERM_QUERY_H
+#pragma once
 
-#include "search/filter.hpp"
-#include "search/states/term_state.hpp"
-#include "search/states_cache.hpp"
+#include <memory>
+
+#include "utils/attribute_provider.hpp"
 
 namespace iresearch {
 
-// Compiled query suitable for filters with a single term like "by_term"
-class TermQuery final : public filter::prepared {
- public:
-  using States = states_cache<TermState>;
+// Implementation defined term value state
+struct seek_cookie : attribute_provider {
+  using ptr = std::unique_ptr<seek_cookie>;
 
-  explicit TermQuery(States&& states, bstring&& stats, score_t boost);
+  // Return `true` is cookie denoted by `rhs` is equal to the given one,
+  // false - otherwise.
+  // Caller must provide correct cookie type for comparison
+  virtual bool IsEqual(const seek_cookie& rhs) const = 0;
 
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
-
-  void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
-             score_t boost) const override;
-
- private:
-  States states_;
-  bstring stats_;
+  // Return cookie hash value.
+  virtual size_t Hash() const = 0;
 };
 
 }  // namespace iresearch
-
-#endif

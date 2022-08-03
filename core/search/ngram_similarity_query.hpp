@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,41 +17,52 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
+/// @author Andrei Abramov
+/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "search/filter.hpp"
-#include "search/states/multiterm_state.hpp"
+#include "search/prepared_state_visitor.hpp"
+#include "search/states/ngram_state.hpp"
 #include "search/states_cache.hpp"
 
 namespace iresearch {
 
-// Compiled query suitable for filters with non adjacent set of terms.
-class MultiTermQuery final : public filter::prepared {
- public:
-  using States = states_cache<MultiTermState>;
-  using Stats = std::vector<bstring>;
+using NGramStates = states_cache<NGramState>;
 
-  explicit MultiTermQuery(States&& states, Stats&& stats, score_t boost,
-                          sort::MergeType merge_type, size_t min_match)
+// Prepared ngram similarity query implementation
+class NGramSimilarityQuery final : public filter::prepared {
+ public:
+  // returns set of features required for filter
+  static constexpr IndexFeatures kRequiredFeatures =
+      IndexFeatures::FREQ | IndexFeatures::POS;
+
+  NGramSimilarityQuery(size_t min_match_count, NGramStates&& states,
+                       bstring&& stats, score_t boost = kNoBoost)
       : prepared{boost},
+        min_match_count_{min_match_count},
         states_{std::move(states)},
-        stats_{std::move(stats)},
-        merge_type_{merge_type},
-        min_match_{min_match} {}
+        stats_{std::move(stats)} {}
+
+  using filter::prepared::execute;
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
 
   void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
-             score_t boost) const override;
+             score_t boost) const override {
+    if (auto* state = states_.find(segment); state) {
+      visitor.Visit(*this, *state, boost);
+    }
+  }
+
+  doc_iterator::ptr ExecuteWithOffsets(const sub_reader& rdr) const;
 
  private:
-  States states_;
-  Stats stats_;
-  sort::MergeType merge_type_;
-  size_t min_match_;
+  size_t min_match_count_;
+  NGramStates states_;
+  bstring stats_;
 };
 
 }  // namespace iresearch

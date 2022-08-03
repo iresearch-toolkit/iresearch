@@ -26,10 +26,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "shared.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/iterators.hpp"
 #include "search/sort.hpp"
+#include "shared.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/map_utils.hpp"
 #include "utils/noncopyable.hpp"
@@ -42,10 +42,7 @@ struct top_term {
 
   template<typename U = key_type>
   top_term(const bytes_ref& term, U&& key)
-    : term(term.c_str(), term.size()),
-      key(std::forward<U>(key)) {
-  }
-
+      : term(term.c_str(), term.size()), key(std::forward<U>(key)) {}
 
   template<typename CollectorState>
   void emplace(const CollectorState& /*state*/) {
@@ -68,36 +65,28 @@ struct top_term_comparer {
     return operator()(lhs, rhs.key, rhs.term);
   }
 
-  bool operator()(const top_term<T>& lhs,
-                  const T& rhs_key,
+  bool operator()(const top_term<T>& lhs, const T& rhs_key,
                   const bytes_ref& rhs_term) const noexcept {
-    return lhs.key < rhs_key ||
-        (!(rhs_key < lhs.key) && lhs.term < rhs_term);
+    return lhs.key < rhs_key || (!(rhs_key < lhs.key) && lhs.term < rhs_term);
   }
 };
 
 template<typename T>
 struct top_term_state : top_term<T> {
   struct segment_state {
-    segment_state(
-        const sub_reader& segment,
-        const term_reader& field,
-        uint32_t docs_count) noexcept
-      : segment(&segment),
-        field(&field),
-        docs_count(docs_count) {
-    }
+    segment_state(const sub_reader& segment, const term_reader& field,
+                  uint32_t docs_count) noexcept
+        : segment(&segment), field(&field), docs_count(docs_count) {}
 
     const sub_reader* segment;
     const term_reader* field;
-    size_t terms_count{1}; // number of terms in a segment
+    size_t terms_count{1};  // number of terms in a segment
     uint32_t docs_count;
   };
 
   template<typename U = T>
   top_term_state(const bytes_ref& term, U&& key)
-    : top_term<T>(term, std::forward<U>(key)) {
-  }
+      : top_term<T>(term, std::forward<U>(key)) {}
 
   template<typename CollectorState>
   void emplace(const CollectorState& state) {
@@ -128,16 +117,13 @@ struct top_term_state : top_term<T> {
   }
 
   std::vector<segment_state> segments;
-  std::vector<seek_term_iterator::cookie_ptr> terms;
+  std::vector<seek_cookie::ptr> terms;
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class top_terms_collector
-//////////////////////////////////////////////////////////////////////////////
 template<typename State,
-         typename Comparer = top_term_comparer<typename State::key_type>
-> class top_terms_collector : private compact<0, Comparer>,
-                              private util::noncopyable {
+         typename Comparer = top_term_comparer<typename State::key_type>>
+class top_terms_collector : private compact<0, Comparer>,
+                            private util::noncopyable {
  private:
   using comparer_rep = compact<0, Comparer>;
 
@@ -146,27 +132,19 @@ template<typename State,
   using key_type = typename state_type::key_type;
   using comparer_type = Comparer;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @note we disallow 0 size collectors for consistency since we're not
-  ///       interested in this use case and don't want to burden "collect(...)"
-  //////////////////////////////////////////////////////////////////////////////
-  explicit top_terms_collector(
-      size_t size,
-      const Comparer& comp = {})
-    : comparer_rep(comp),
-      size_(std::max(size_t(1), size)) {
+  // We disallow 0 size collectors for consistency since we're not
+  // interested in this use case and don't want to burden "collect(...)"
+  explicit top_terms_collector(size_t size, const Comparer& comp = {})
+      : comparer_rep(comp), size_(std::max(size_t(1), size)) {
     heap_.reserve(size);
-    terms_.reserve(size); // ensure all iterators remain valid
+    terms_.reserve(size);  // ensure all iterators remain valid
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief prepare scorer for terms collecting
-  /// @param segment segment reader for the current term
-  /// @param state state containing this scored term
-  /// @param terms segment term-iterator positioned at the current term
-  //////////////////////////////////////////////////////////////////////////////
-  void prepare(const sub_reader& segment,
-               const term_reader& field,
+  // Prepare scorer for terms collecting
+  // `segment` segment reader for the current term
+  // `state` state containing this scored term
+  // `terms` segment term-iterator positioned at the current term
+  void prepare(const sub_reader& segment, const term_reader& field,
                const seek_term_iterator& terms) noexcept {
     state_.segment = &segment;
     state_.field = &field;
@@ -178,9 +156,7 @@ template<typename State,
     state_.docs_count = meta ? &meta->docs_count : &no_docs_;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief collect current term
-  //////////////////////////////////////////////////////////////////////////////
+  // Collect current term
   void visit(const key_type& key) {
     const auto& term = *state_.term;
 
@@ -229,7 +205,7 @@ template<typename State,
     }
   }
 
-  //FIXME rename
+  // FIXME rename
   template<typename Visitor>
   void visit(const Visitor& visitor) noexcept {
     for (auto& entry : terms_) {
@@ -238,11 +214,9 @@ template<typename State,
   }
 
  private:
-  typedef std::unordered_map<hashed_bytes_ref, state_type> states_map_t;
+  using states_map_t = std::unordered_map<hashed_bytes_ref, state_type>;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a representation of state of the collector
-  //////////////////////////////////////////////////////////////////////////////
+  // Collector state
   struct collector_state {
     const sub_reader* segment{};
     const term_reader* field{};
@@ -252,49 +226,40 @@ template<typename State,
   };
 
   void make_heap() noexcept {
-    std::make_heap(
-      heap_.begin(),
-      heap_.end(),
-      [this](const auto lhs, const auto rhs) noexcept {
-       return comparer()(rhs->second, lhs->second);
-    });
+    std::make_heap(heap_.begin(), heap_.end(),
+                   [this](const auto lhs, const auto rhs) noexcept {
+                     return comparer()(rhs->second, lhs->second);
+                   });
   }
 
   void push() noexcept {
-    std::push_heap(
-      heap_.begin(),
-      heap_.end(),
-      [this](const auto lhs, const auto rhs) noexcept {
-       return comparer()(rhs->second, lhs->second);
-    });
+    std::push_heap(heap_.begin(), heap_.end(),
+                   [this](const auto lhs, const auto rhs) noexcept {
+                     return comparer()(rhs->second, lhs->second);
+                   });
   }
 
   void pop() noexcept {
-    std::pop_heap(
-      heap_.begin(),
-      heap_.end(),
-      [this](const auto lhs, const auto rhs) noexcept {
-       return comparer()(rhs->second, lhs->second);
-    });
+    std::pop_heap(heap_.begin(), heap_.end(),
+                  [this](const auto lhs, const auto rhs) noexcept {
+                    return comparer()(rhs->second, lhs->second);
+                  });
   }
 
-  std::pair<typename states_map_t::iterator, bool>
-  emplace(const hashed_bytes_ref& term, const key_type& key) {
+  std::pair<typename states_map_t::iterator, bool> emplace(
+      const hashed_bytes_ref& term, const key_type& key) {
     // replace original reference to 'name' provided by the caller
     // with a reference to the cached copy in 'value'
     return map_utils::try_emplace_update_key(
-      terms_,
-      [](const hashed_bytes_ref& key,
-         const state_type& value) noexcept {
+        terms_,
+        [](const hashed_bytes_ref& key, const state_type& value) noexcept {
           // reuse hash but point ref at value
           return hashed_bytes_ref(key.hash(), value.term);
-      },
-      term, term, key);
+        },
+        term, term, key);
   }
 
-  const comparer_type& comparer() const noexcept {
-    return comparer_rep::get();
-  }
+  const comparer_type& comparer() const noexcept { return comparer_rep::get(); }
 
   collector_state state_;
   std::vector<typename states_map_t::iterator> heap_;
@@ -302,8 +267,8 @@ template<typename State,
   size_t size_;
   size_t left_{size_};
   const decltype(term_meta::docs_count) no_docs_{0};
-}; // top_terms_collector
+};
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_TOP_TERMS_COLLECTOR_H
+#endif  // IRESEARCH_TOP_TERMS_COLLECTOR_H

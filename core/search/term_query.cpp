@@ -23,17 +23,17 @@
 #include "term_query.hpp"
 
 #include "index/index_reader.hpp"
+#include "search/prepared_state_visitor.hpp"
 #include "search/score.hpp"
 
 namespace iresearch {
 
-term_query::term_query(term_query::states_t&& states, bstring&& stats,
-                       score_t boost)
+TermQuery::TermQuery(States&& states, bstring&& stats, score_t boost)
     : filter::prepared(boost),
-      states_(std::move(states)),
-      stats_(std::move(stats)) {}
+      states_{std::move(states)},
+      stats_{std::move(stats)} {}
 
-doc_iterator::ptr term_query::execute(const ExecutionContext& ctx) const {
+doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
   // get term state for the specified reader
   auto& rdr = ctx.segment;
   auto& ord = ctx.scorers;
@@ -74,6 +74,14 @@ doc_iterator::ptr term_query::execute(const ExecutionContext& ctx) const {
   }
 
   return docs;
+}
+
+void TermQuery::visit(const sub_reader& segment, PreparedStateVisitor& visitor,
+                      score_t boost) const {
+  if (auto state = states_.find(segment); state) {
+    visitor.Visit(*this, *state, boost);
+    return;
+  }
 }
 
 }  // namespace iresearch

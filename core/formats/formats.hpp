@@ -25,6 +25,7 @@
 
 #include <absl/container/flat_hash_set.h>
 
+#include "formats/seek_cookie.hpp"
 #include "index/column_info.hpp"
 #include "index/index_features.hpp"
 #include "index/index_meta.hpp"
@@ -326,7 +327,7 @@ struct columnstore_reader {
 
   // Returns total number of columns.
   virtual size_t size() const = 0;
-};  // columnstore_reader
+};
 
 struct document_mask_writer {
   using ptr = memory::managed_ptr<document_mask_writer>;
@@ -446,7 +447,6 @@ struct reader_state {
 };
 
 namespace formats {
-
 // Checks whether a format with the specified name is registered.
 bool exists(string_ref name, bool load_library = true);
 
@@ -467,7 +467,6 @@ void load_all(std::string_view path);
 bool visit(const std::function<bool(string_ref)>& visitor);
 
 }  // namespace formats
-
 class format_registrar {
  public:
   format_registrar(const type_info& type, string_ref module,

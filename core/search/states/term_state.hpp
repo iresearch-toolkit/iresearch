@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,37 +15,23 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TERM_QUERY_H
-#define IRESEARCH_TERM_QUERY_H
+#pragma once
 
-#include "search/filter.hpp"
-#include "search/states/term_state.hpp"
-#include "search/states_cache.hpp"
+#include "formats/seek_cookie.hpp"
 
 namespace iresearch {
 
-// Compiled query suitable for filters with a single term like "by_term"
-class TermQuery final : public filter::prepared {
- public:
-  using States = states_cache<TermState>;
+struct term_reader;
 
-  explicit TermQuery(States&& states, bstring&& stats, score_t boost);
-
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
-
-  void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
-             score_t boost) const override;
-
- private:
-  States states_;
-  bstring stats_;
+// Cached per reader term state
+struct TermState {
+  const term_reader* reader{};
+  seek_cookie::ptr cookie;
 };
 
 }  // namespace iresearch
-
-#endif

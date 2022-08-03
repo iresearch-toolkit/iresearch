@@ -555,8 +555,16 @@ class term_iterator final : public irs::seek_term_iterator {
     explicit term_cookie(irs::bytes_ref term) noexcept
       : term(term) { }
 
-    virtual irs::attribute* get_mutable(irs::type_info::type_id) override {
+    irs::attribute* get_mutable(irs::type_info::type_id) override {
       return nullptr;
+    }
+
+    bool IsEqual(const irs::seek_cookie& rhs) const noexcept override {
+      return term == irs::down_cast<term_cookie>(rhs).term;
+    }
+
+    size_t Hash() const noexcept override {
+      return std::hash<irs::bytes_ref>{}(term);
     }
 
     irs::bytes_ref term;
