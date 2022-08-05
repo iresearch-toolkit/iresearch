@@ -99,15 +99,19 @@ class boolean_token_stream final
 ///        it does not tokenize or analyze field, just set attributes based
 ///        on initial string length
 //////////////////////////////////////////////////////////////////////////////
-class string_token_stream final
+class string_token_stream
     : public analysis::analyzer,
       private util::noncopyable {
  public:
+  static constexpr irs::string_ref type_name() noexcept {
+    return "identity";
+  }
+
   string_token_stream() noexcept;
 
-  virtual bool next() noexcept override;
+  virtual bool next() noexcept final;
 
-  virtual attribute* get_mutable(type_info::type_id id) noexcept override final {
+  virtual attribute* get_mutable(type_info::type_id id) noexcept final {
     return irs::get_mutable(attrs_, id);
   }
 
@@ -116,14 +120,10 @@ class string_token_stream final
     in_use_ = false;
   }
 
-  bool reset(string_ref value) noexcept override {
+  bool reset(string_ref value) noexcept final {
     value_ = ref_cast<byte_type>(value);
     in_use_ = false;
     return true;
-  }
-
-  static constexpr irs::string_ref type_name() noexcept {
-    return "string_token_stream";
   }
 
  private:

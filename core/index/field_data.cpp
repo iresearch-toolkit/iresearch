@@ -72,6 +72,7 @@ template<typename Stream>
 void write_offset(
     posting& p,
     Stream& out,
+    IndexFeatures& features,
     const uint32_t base,
     const offset& offs) {
   const uint32_t start_offset = base + offs.start;
@@ -83,6 +84,7 @@ void write_offset(
   irs::vwrite<uint32_t>(out, end_offset - start_offset);
 
   p.offs = start_offset;
+  features |= IndexFeatures::OFFS;
 }
 
 template<typename Stream>
@@ -204,7 +206,7 @@ class pos_iterator final : public irs::position {
       prox_in_.read(const_cast<byte_type*>(payload_value_.data()), size);
       pay_.value = payload_value_;
     }
-    
+
     value_ += pos;
     assert(pos_limits::valid(value_));
 
@@ -600,7 +602,7 @@ class term_iterator : public irs::term_iterator {
     return (this->*POSTINGS[size_t(field_->prox_random_access())])(**it_);
   }
 
-  virtual bool next() override {   
+  virtual bool next() override {
     if (next_ == end_) {
       return false;
     }
@@ -739,12 +741,14 @@ field_data::field_data(
     int_block_pool::inserter& int_writer,
     IndexFeatures index_features,
     bool random_access)
-  : meta_(name, index_features),
-    terms_(*byte_writer),
-    byte_writer_(&byte_writer),
-    int_writer_(&int_writer),
-    proc_table_(TERM_PROCESSING_TABLES[size_t(random_access)]),
-    last_doc_(doc_limits::invalid()) {
+  : meta_{name, index_features},
+    terms_{*byte_writer},
+    byte_writer_{&byte_writer},
+    int_writer_{&int_writer},
+    proc_table_{TERM_PROCESSING_TABLES[size_t(random_access)]},
+    seen_features_{index_features & (~(IndexFeatures::OFFS | IndexFeatures::PAY))},
+    last_doc_{doc_limits::invalid()} {
+
   for (const type_info::type_id feature : features) {
     assert(feature_columns);
     auto [feature_column_info, feature_writer_factory] = feature_columns(feature);
@@ -829,9 +833,8 @@ void field_data::new_term(
 
       write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
-        assert(offs);
-        write_offset(p, prox_out, offs_, *offs);
+      if (offs) {
+        write_offset(p, prox_out, meta_.index_features, offs_, *offs);
       }
 
       prox_stream_end = prox_out.pool_offset();
@@ -887,10 +890,9 @@ void field_data::add_term(
 
       write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
-        assert(offs);
+      if (offs) {
         p.offs = 0; // reset base offset
-        write_offset(p, prox_out, offs_, *offs);
+        write_offset(p, prox_out, meta_.index_features, offs_, *offs);
       }
 
       prox_stream_end = prox_out.pool_offset();
@@ -906,9 +908,8 @@ void field_data::add_term(
 
       write_prox(prox_out, pos_ - p.pos, pay, meta_.index_features);
 
-      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
-        assert(offs);
-        write_offset(p, prox_out, offs_, *offs);
+      if (offs) {
+        write_offset(p, prox_out, meta_.index_features, offs_, *offs);
       }
 
       prox_stream_end = prox_out.pool_offset();
@@ -947,9 +948,8 @@ void field_data::new_term_random_access(
 
       write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
-        assert(offs);
-        write_offset(p, prox_out, offs_, *offs);
+      if (offs) {
+        write_offset(p, prox_out, meta_.index_features, offs_, *offs);
       }
 
       auto& end_cookie = *int_writer_->parent().seek(p.int_start+2);
@@ -1020,10 +1020,9 @@ void field_data::add_term_random_access(
 
       write_prox(prox_out, pos_, pay, meta_.index_features);
 
-      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
-        assert(offs);
+      if (offs) {
         p.offs = 0; // reset base offset
-        write_offset(p, prox_out, offs_, *offs);
+        write_offset(p, prox_out, meta_.index_features, offs_, *offs);
       }
 
       end_cookie = cookie(prox_out);
@@ -1040,9 +1039,8 @@ void field_data::add_term_random_access(
 
       write_prox(prox_out, pos_ - p.pos, pay, meta_.index_features);
 
-      if (IndexFeatures::NONE != (meta_.index_features & IndexFeatures::OFFS)) {
-        assert(offs);
-        write_offset(p, prox_out, offs_, *offs);
+      if (offs) {
+        write_offset(p, prox_out, meta_.index_features, offs_, *offs);
       }
 
       end_cookie = cookie(prox_out);
@@ -1080,7 +1078,7 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
     if (offs) {
       pay = get<payload>(stream);
     }
-  } 
+  }
 
   reset(id); // initialize field_data for the supplied doc_id
 
