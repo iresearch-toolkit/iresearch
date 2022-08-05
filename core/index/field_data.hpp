@@ -96,8 +96,11 @@ class field_data : util::noncopyable {
   bool seen() const noexcept { return seen_; }
   void seen(bool value) noexcept { seen_ = value; }
 
+  IndexFeatures requested_features() const noexcept {
+    return requested_features_;
+  }
+
   void compute_features() const {
-    meta_.index_features &= seen_features_;
     for (auto& entry : features_) {
       assert(entry.handler);
       entry.handler->write(stats_, doc(), entry.writer);
@@ -149,7 +152,7 @@ class field_data : util::noncopyable {
   int_block_pool::inserter* int_writer_;
   const process_term_f* proc_table_;
   field_stats stats_;
-  IndexFeatures seen_features_{};
+  IndexFeatures requested_features_{};
   doc_id_t last_doc_{doc_limits::invalid()};
   uint32_t pos_;
   uint32_t last_pos_;
