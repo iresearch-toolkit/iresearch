@@ -3177,11 +3177,11 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   doc3.insert(std::make_shared<tests::string_field>("doc_string", string3));
   doc4.insert(std::make_shared<tests::string_field>("doc_string", string4));
   doc1.indexed.push_back(
-      std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text1));
+      std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text1, true));
   doc2.indexed.push_back(
-      std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text2));
+      std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text2, true));
   doc3.indexed.push_back(
-      std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text3));
+      std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text3, true));
 
   irs::index_writer::init_options opts;
   opts.features = [](irs::type_info::type_id type) {
