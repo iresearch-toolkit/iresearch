@@ -1644,7 +1644,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       auto terms = segment.field("doc_text");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto features = TEXT_FIELD_FEATURES;
+      auto features = (TEXT_FIELD_FEATURES & (~irs::IndexFeatures::PAY));
       size_t frequency = 1;
       std::vector<uint32_t> position = {irs::pos_limits::min()};
       std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>>
@@ -2011,7 +2011,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       auto terms = segment.field("doc_text");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto features = TEXT_FIELD_FEATURES;
+      auto features = (TEXT_FIELD_FEATURES & (~irs::IndexFeatures::PAY));
       size_t frequency = 1;
       std::vector<uint32_t> position = {irs::pos_limits::min()};
       std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>>
@@ -2488,7 +2488,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     auto terms = segment.field("doc_text");
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
-    auto features = TEXT_FIELD_FEATURES;
+    auto features = (TEXT_FIELD_FEATURES & (~irs::IndexFeatures::PAY));
     size_t frequency = 1;
     std::vector<uint32_t> position = {irs::pos_limits::min()};
     std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>>
