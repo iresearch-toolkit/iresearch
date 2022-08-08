@@ -1335,7 +1335,7 @@ namespace iresearch {
 merge_writer::reader_ctx::reader_ctx(sub_reader::ptr reader) noexcept
     : reader{std::move(reader)},
       doc_map([](doc_id_t) noexcept { return doc_limits::eof(); }) {
-  assert(reader);
+  assert(this->reader);
 }
 
 merge_writer::merge_writer() noexcept
