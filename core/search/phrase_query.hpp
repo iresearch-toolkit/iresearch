@@ -29,6 +29,9 @@
 
 namespace iresearch {
 
+class FixedPhraseQuery;
+class VariadicPhraseQuery;
+
 // Prepared phrase query implementation
 template<typename State>
 class PhraseQuery : public filter::prepared {
@@ -47,7 +50,23 @@ class PhraseQuery : public filter::prepared {
         positions_{std::move(positions)},
         stats_{std::move(stats)} {}
 
- protected:
+  void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
+             score_t boost) const final {
+    static_assert(std::is_same_v<State, FixedPhraseState> ||
+                  std::is_same_v<State, VariadicPhraseState>);
+
+    if (auto state = states_.find(segment); state) {
+      boost *= this->boost();
+      if constexpr (std::is_same_v<State, FixedPhraseState>) {
+        visitor.Visit(static_cast<const FixedPhraseQuery&>(*this), *state,
+                      boost);
+      } else if constexpr (std::is_same_v<State, FixedPhraseState>) {
+        visitor.Visit(static_cast<const VariadicPhraseQuery&>(*this), *state,
+                      boost);
+      }
+    }
+  }
+
   states_t states_;
   positions_t positions_;
   bstring stats_;
@@ -65,13 +84,6 @@ class FixedPhraseQuery final : public PhraseQuery<FixedPhraseState> {
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
 
   doc_iterator::ptr ExecuteWithOffsets(const irs::sub_reader& segment) const;
-
-  void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
-             score_t boost) const override {
-    if (auto state = states_.find(segment); state) {
-      visitor.Visit(*this, *state, boost);
-    }
-  }
 };
 
 class VariadicPhraseQuery final : public PhraseQuery<VariadicPhraseState> {
@@ -86,13 +98,6 @@ class VariadicPhraseQuery final : public PhraseQuery<VariadicPhraseState> {
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
 
   doc_iterator::ptr ExecuteWithOffsets(const irs::sub_reader& segment) const;
-
-  void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
-             score_t boost) const override {
-    if (auto state = states_.find(segment); state) {
-      visitor.Visit(*this, *state, boost);
-    }
-  }
 };
 
 }  // namespace iresearch
