@@ -889,7 +889,7 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
         if (::GetLastError() != ERROR_ALREADY_EXISTS || createNew) {
           // failed to create directory  or directory exist, but we are asked to perform creation
 
-          IR_FRMT_ERROR("Failed to create path: '%s', error %d",
+          IR_FRMT_ERROR("Failed to create relative path: '%s', error %d",
                         utf8_path{path}.c_str(), GetLastError());
           return false;
         }
@@ -909,7 +909,7 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
       if (::GetLastError() != ERROR_ALREADY_EXISTS || createNew) {
         // failed to create directory  or directory exist, but we are asked to perform creation
 
-        IR_FRMT_ERROR("Failed to create path: '%s', error %d",
+        IR_FRMT_ERROR("Failed to create absolute path: '%s', error %d",
                       utf8_path{path}.c_str(), GetLastError());
 
         return false;
