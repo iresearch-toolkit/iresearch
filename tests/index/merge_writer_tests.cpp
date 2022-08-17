@@ -1644,7 +1644,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       auto terms = segment.field("doc_text");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto features = TEXT_FIELD_FEATURES;
+      auto features = (TEXT_FIELD_FEATURES & (~irs::IndexFeatures::PAY));
       size_t frequency = 1;
       std::vector<uint32_t> position = {irs::pos_limits::min()};
       std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>>
@@ -2011,7 +2011,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       auto terms = segment.field("doc_text");
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
-      auto features = TEXT_FIELD_FEATURES;
+      auto features = (TEXT_FIELD_FEATURES & (~irs::IndexFeatures::PAY));
       size_t frequency = 1;
       std::vector<uint32_t> position = {irs::pos_limits::min()};
       std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>>
@@ -2488,7 +2488,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     auto terms = segment.field("doc_text");
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
-    auto features = TEXT_FIELD_FEATURES;
+    auto features = (TEXT_FIELD_FEATURES & (~irs::IndexFeatures::PAY));
     size_t frequency = 1;
     std::vector<uint32_t> position = {irs::pos_limits::min()};
     std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>>
@@ -3177,11 +3177,11 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   doc3.insert(std::make_shared<tests::string_field>("doc_string", string3));
   doc4.insert(std::make_shared<tests::string_field>("doc_string", string4));
   doc1.indexed.push_back(
-      std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text1));
+      std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text1, true));
   doc2.indexed.push_back(
-      std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text2));
+      std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text2, true));
   doc3.indexed.push_back(
-      std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text3));
+      std::make_shared<tests::text_field<irs::string_ref>>("doc_text", text3, true));
 
   irs::index_writer::init_options opts;
   opts.features = [](irs::type_info::type_id type) {

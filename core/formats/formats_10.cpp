@@ -904,8 +904,8 @@ void postings_writer<FormatTraits>::add_position(uint32_t pos) {
     FormatTraits::write_block(*pos_out_, pos_.buf.data(), buf_);
     pos_.size = 0;
 
-    if (attrs_.pay_) {
-      assert(IndexFeatures::NONE != (features_ & IndexFeatures::PAY) && pay_out_);
+    if (IndexFeatures::NONE != (features_ & IndexFeatures::PAY)) {
+      assert(pay_out_);
       auto& pay_buf = pay_.pay_buf_;
 
       pay_out_->write_vint(static_cast<uint32_t>(pay_buf.size()));
@@ -916,8 +916,8 @@ void postings_writer<FormatTraits>::add_position(uint32_t pos) {
       }
     }
 
-    if (attrs_.offs_) {
-      assert(IndexFeatures::NONE != (features_ & IndexFeatures::OFFS) && pay_out_);
+    if (IndexFeatures::NONE != (features_ & IndexFeatures::OFFS)) {
+      assert(pay_out_);
       FormatTraits::write_block(*pay_out_, pay_.offs_start_buf, buf_);
       FormatTraits::write_block(*pay_out_, pay_.offs_len_buf, buf_);
     }
