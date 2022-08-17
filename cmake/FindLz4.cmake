@@ -8,10 +8,10 @@
 
 if ("${LZ4_ROOT}" STREQUAL "")
   set(LZ4_ROOT "$ENV{LZ4_ROOT}")
-  if (NOT "${LZ4_ROOT}" STREQUAL "") 
+  if (NOT "${LZ4_ROOT}" STREQUAL "")
     string(REPLACE "\"" "" LZ4_ROOT ${LZ4_ROOT})
-  endif()
-endif()
+  endif ()
+endif ()
 
 if (NOT "${LZ4_ROOT}" STREQUAL "")
   set(LZ4_SEARCH_HEADER_PATHS
@@ -20,12 +20,12 @@ if (NOT "${LZ4_ROOT}" STREQUAL "")
     ${LZ4_ROOT}/include/lz4
     ${LZ4_ROOT}/include
     ${LZ4_ROOT}/lib
-  )
+    )
 
   set(LZ4_SEARCH_LIB_PATHS
     ${LZ4_ROOT}
     ${LZ4_ROOT}/lib
-  )
+    )
 
   set(LZ4_SEARCH_SRC_PATHS
     ${LZ4_ROOT}
@@ -33,66 +33,66 @@ if (NOT "${LZ4_ROOT}" STREQUAL "")
     ${LZ4_ROOT}/src
     ${LZ4_ROOT}/src/lz4
     ${LZ4_ROOT}/src/lz4/lib
-  )
+    )
 elseif (NOT MSVC)
   set(LZ4_SEARCH_HEADER_PATHS
-      "/usr/include"
-      "/usr/include/lz4"
-      "/usr/include/x86_64-linux-gnu"
-      "/usr/include/x86_64-linux-gnu/lz4"
-  )
+    "/usr/include"
+    "/usr/include/lz4"
+    "/usr/include/x86_64-linux-gnu"
+    "/usr/include/x86_64-linux-gnu/lz4"
+    )
 
   set(LZ4_SEARCH_LIB_PATHS
-      "/lib"
-      "/lib/x86_64-linux-gnu"
-      "/usr/lib"
-      "/usr/lib/x86_64-linux-gnu"
-  )
+    "/lib"
+    "/lib/x86_64-linux-gnu"
+    "/usr/lib"
+    "/usr/lib/x86_64-linux-gnu"
+    )
 
   set(LZ4_SEARCH_SRC_PATHS
-      "/usr/src"
-      "/usr/src/lz4"
-      "/usr/src/lz4/lib"
-  )
-endif()
+    "/usr/src"
+    "/usr/src/lz4"
+    "/usr/src/lz4/lib"
+    )
+endif ()
 
 find_path(Lz4_INCLUDE_DIR
   lz4.h
   PATHS ${LZ4_SEARCH_HEADER_PATHS}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
-)
+  )
 
 find_path(Lz4_SRC_DIR_LZ4
   lz4.c
   PATHS ${LZ4_SEARCH_SRC_PATHS}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
-)
+  )
 
 if (Lz4_SRC_DIR_LZ4)
   get_filename_component(Lz4_SRC_DIR_PARENT ${Lz4_SRC_DIR_LZ4} DIRECTORY)
 
   set(LZ4_CMAKE_PATH "")
 
-  if(IS_DIRECTORY "${Lz4_SRC_DIR_PARENT}/build/cmake")
-    if(EXISTS "${Lz4_SRC_DIR_PARENT}/build/cmake/CMakeLists.txt") # Location of CMakeLists.txt is changed since 1.9.3 
-        set (LZ4_CMAKE_PATH ${Lz4_SRC_DIR_PARENT}/build/cmake)
-    endif()
-  elseif(IS_DIRECTORY "${Lz4_SRC_DIR_PARENT}/contrib/cmake_unofficial")
-    if(EXISTS "${Lz4_SRC_DIR_PARENT}/contrib/cmake_unofficial/CMakeLists.txt") # Location of CMakeLists.txt before 1.9.3
-      set (LZ4_CMAKE_PATH ${Lz4_SRC_DIR_PARENT}/contrib/cmake_unofficial)
-    endif()
-  endif()
+  if (IS_DIRECTORY "${Lz4_SRC_DIR_PARENT}/build/cmake")
+    if (EXISTS "${Lz4_SRC_DIR_PARENT}/build/cmake/CMakeLists.txt") # Location of CMakeLists.txt is changed since 1.9.3
+      set(LZ4_CMAKE_PATH ${Lz4_SRC_DIR_PARENT}/build/cmake)
+    endif ()
+  elseif (IS_DIRECTORY "${Lz4_SRC_DIR_PARENT}/contrib/cmake_unofficial")
+    if (EXISTS "${Lz4_SRC_DIR_PARENT}/contrib/cmake_unofficial/CMakeLists.txt") # Location of CMakeLists.txt before 1.9.3
+      set(LZ4_CMAKE_PATH ${Lz4_SRC_DIR_PARENT}/contrib/cmake_unofficial)
+    endif ()
+  endif ()
 
   if ("${LZ4_CMAKE_PATH}" STREQUAL "")
     message(FATAL_ERROR "Can't find CMakeLists.txt for LZ4")
-  endif()
+  endif ()
 
   find_path(Lz4_SRC_DIR_CMAKE
     CMakeLists.txt
     PATHS ${Lz4_SRC_DIR_LZ4} ${LZ4_CMAKE_PATH}
     NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
-  )
-endif()
+    )
+endif ()
 
 # found the cmake enabled source directory
 if (Lz4_INCLUDE_DIR AND Lz4_SRC_DIR_LZ4 AND Lz4_SRC_DIR_CMAKE)
@@ -115,7 +115,7 @@ if (Lz4_INCLUDE_DIR AND Lz4_SRC_DIR_LZ4 AND Lz4_SRC_DIR_CMAKE)
   set(Lz4_STATIC_LIB lz4_static)
 
   return()
-endif()
+endif ()
 
 include(Utils)
 
@@ -123,13 +123,13 @@ include(Utils)
 if (MSVC)
   set(LZ4_LIBRARY_PREFIX "")
   set(LZ4_LIBRARY_SUFFIX ".lib")
-elseif(APPLE)
+elseif (APPLE)
   set(LZ4_LIBRARY_PREFIX "lib")
   set(LZ4_LIBRARY_SUFFIX ".dylib")
-else()
+else ()
   set(LZ4_LIBRARY_PREFIX "lib")
   set(LZ4_LIBRARY_SUFFIX ".so")
-endif()
+endif ()
 set_find_library_options("${LZ4_LIBRARY_PREFIX}" "${LZ4_LIBRARY_SUFFIX}")
 
 # find library
@@ -137,7 +137,7 @@ find_library(Lz4_SHARED_LIB
   NAMES lz4
   PATHS ${LZ4_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
-)
+  )
 
 # restore initial options
 restore_find_library_options()
@@ -147,10 +147,10 @@ restore_find_library_options()
 if (MSVC)
   set(LZ4_LIBRARY_PREFIX "")
   set(LZ4_LIBRARY_SUFFIX ".lib")
-else()
+else ()
   set(LZ4_LIBRARY_PREFIX "lib")
   set(LZ4_LIBRARY_SUFFIX ".a")
-endif()
+endif ()
 set_find_library_options("${LZ4_LIBRARY_PREFIX}" "${LZ4_LIBRARY_SUFFIX}")
 
 # find library
@@ -158,7 +158,7 @@ find_library(Lz4_STATIC_LIB
   NAMES lz4
   PATHS ${LZ4_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
-)
+  )
 
 # restore initial options
 restore_find_library_options()
@@ -171,22 +171,22 @@ if (Lz4_INCLUDE_DIR AND Lz4_SHARED_LIB AND Lz4_STATIC_LIB)
     CACHE PATH
     "Directory containing lz4 libraries"
     FORCE
-  )
+    )
 
   add_library(lz4_shared IMPORTED SHARED)
   set_target_properties(lz4_shared PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${Lz4_INCLUDE_DIR}"
     IMPORTED_LOCATION "${Lz4_SHARED_LIB}"
-  )
+    )
 
   add_library(lz4_static IMPORTED STATIC)
   set_target_properties(lz4_static PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${Lz4_INCLUDE_DIR}"
     IMPORTED_LOCATION "${Lz4_STATIC_LIB}"
-  )
+    )
 else ()
   set(Lz4_FOUND FALSE)
-endif()
+endif ()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Lz4
@@ -194,7 +194,7 @@ find_package_handle_standard_args(Lz4
   Lz4_INCLUDE_DIR
   Lz4_SHARED_LIB
   Lz4_STATIC_LIB
-)
+  )
 message("Lz4_INCLUDE_DIR: " ${Lz4_INCLUDE_DIR})
 message("Lz4_LIBRARY_DIR: " ${Lz4_LIBRARY_DIR})
 message("Lz4_SHARED_LIB: " ${Lz4_SHARED_LIB})

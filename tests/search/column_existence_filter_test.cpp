@@ -21,10 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
-#include "filter_test_case_base.hpp"
 #include "search/column_existence_filter.hpp"
+
+#include "filter_test_case_base.hpp"
 #include "search/sort.hpp"
+#include "tests_shared.hpp"
 
 namespace {
 
@@ -43,13 +44,13 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
     {
       class mask_field : public tests::ifield {
        public:
-        explicit mask_field(const std::string& name)
-          : name_(name) {
-        }
+        explicit mask_field(const std::string& name) : name_(name) {}
 
         bool write(irs::data_output&) const { return true; }
         irs::string_ref name() const { return name_; }
-        irs::IndexFeatures index_features() const noexcept { return irs::IndexFeatures::NONE; }
+        irs::IndexFeatures index_features() const noexcept {
+          return irs::IndexFeatures::NONE;
+        }
         irs::features_t features() const { return {}; }
         irs::token_stream& get_tokens() const {
           // nothing to index
@@ -64,11 +65,10 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       tests::json_doc_generator gen(
         resource("simple_sequential.json"),
-        [](tests::document& doc,
-           const std::string& name,
+        [](tests::document& doc, const std::string& name,
            const tests::json_doc_generator::json_value& /*data*/) {
           doc.insert(std::make_shared<mask_field>(name));
-      });
+        });
       add_segment(gen);
     }
 
@@ -80,9 +80,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -111,9 +109,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -145,9 +141,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -175,9 +169,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -208,9 +200,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -237,9 +227,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -266,9 +254,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -287,9 +273,8 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
   void simple_sequential_exact_match() {
     // add segment
     {
-      tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
-        &tests::generic_json_field_factory);
+      tests::json_doc_generator gen(resource("simple_sequential.json"),
+                                    &tests::generic_json_field_factory);
       add_segment(gen);
     }
 
@@ -301,9 +286,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -332,9 +315,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -366,9 +347,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -396,9 +375,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -429,9 +406,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -458,9 +433,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -487,9 +460,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -522,9 +493,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_prefix, true);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -541,7 +510,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_TRUE(bool(doc));
 
       // #(foo) + #(foobar) + #(foobaz) + #(fookar)
-      ASSERT_EQ(8+9+1+10, irs::cost::extract(*it));
+      ASSERT_EQ(8 + 9 + 1 + 10, irs::cost::extract(*it));
 
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
@@ -591,9 +560,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_prefix, true);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -610,7 +577,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_TRUE(bool(doc));
 
       // #(koobar) + #(koobaz)
-      ASSERT_EQ(4+2, irs::cost::extract(*it));
+      ASSERT_EQ(4 + 2, irs::cost::extract(*it));
 
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
@@ -636,9 +603,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_prefix, true);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -655,7 +620,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_TRUE(bool(doc));
 
       // #(oobar) + #(oobaz)
-      ASSERT_EQ(5+3, irs::cost::extract(*it));
+      ASSERT_EQ(5 + 3, irs::cost::extract(*it));
 
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
@@ -681,9 +646,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_prefix, true);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -723,9 +686,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_prefix, true);
 
-      auto prepared = filter.prepare(
-        *rdr, irs::Order::kUnordered
-      );
+      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -744,9 +705,8 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
   void simple_sequential_order() {
     // add segment
     {
-      tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
-        &tests::generic_json_field_factory);
+      tests::json_doc_generator gen(resource("simple_sequential.json"),
+                                    &tests::generic_json_field_factory);
       add_segment(gen);
     }
 
@@ -766,23 +726,24 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
       tests::sort::custom_sort sort;
 
       sort.collector_collect_field = [&collector_collect_field_count](
-          const irs::sub_reader&, const irs::term_reader&)->void {
+                                       const irs::sub_reader&,
+                                       const irs::term_reader&) -> void {
         ++collector_collect_field_count;
       };
       sort.collector_collect_term = [&collector_collect_term_count](
-          const irs::sub_reader&,
-          const irs::term_reader&,
-          const irs::attribute_provider&)->void {
+                                      const irs::sub_reader&,
+                                      const irs::term_reader&,
+                                      const irs::attribute_provider&) -> void {
         ++collector_collect_term_count;
       };
       sort.collectors_collect_ = [&collector_finish_count](
-          irs::byte_type*,
-          const irs::index_reader&,
-          const irs::sort::field_collector*,
-          const irs::sort::term_collector*)->void {
+                                   irs::byte_type*, const irs::index_reader&,
+                                   const irs::sort::field_collector*,
+                                   const irs::sort::term_collector*) -> void {
         ++collector_finish_count;
       };
-      sort.scorer_score = [&scorer_score_count](irs::doc_id_t doc, irs::score_t* score)->void {
+      sort.scorer_score = [&scorer_score_count](irs::doc_id_t doc,
+                                                irs::score_t* score) -> void {
         ++scorer_score_count;
         *score = irs::score_t(doc & 0xAAAAAAAA);
       };
@@ -822,15 +783,20 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(segment.docs_count(), docs_count);
       ASSERT_EQ(segment.live_docs_count(), docs_count);
 
-      ASSERT_EQ(0, collector_collect_field_count); // should not be executed (field statistics not applicable to columnstore) FIXME TODO discuss
-      ASSERT_EQ(0, collector_collect_term_count); // should not be executed
+      ASSERT_EQ(
+        0, collector_collect_field_count);  // should not be executed (field
+                                            // statistics not applicable to
+                                            // columnstore) FIXME TODO discuss
+      ASSERT_EQ(0, collector_collect_term_count);  // should not be executed
       ASSERT_EQ(1, collector_finish_count);
       ASSERT_EQ(32, scorer_score_count);
 
-      std::vector<irs::doc_id_t> expected = { 1, 4, 5, 16, 17, 20, 21, 2, 3, 6, 7, 18, 19, 22, 23, 8, 9, 12, 13, 24, 25, 28, 29, 10, 11, 14, 15, 26, 27, 30, 31, 32 };
+      std::vector<irs::doc_id_t> expected = {
+        1, 4,  5,  16, 17, 20, 21, 2,  3,  6,  7,  18, 19, 22, 23, 8,
+        9, 12, 13, 24, 25, 28, 29, 10, 11, 14, 15, 26, 27, 30, 31, 32};
       std::vector<irs::doc_id_t> actual;
 
-      for (auto& entry: scored_result) {
+      for (auto& entry : scored_result) {
         actual.emplace_back(entry.second);
       }
 
@@ -851,23 +817,24 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
       tests::sort::custom_sort sort;
 
       sort.collector_collect_field = [&collector_collect_field_count](
-          const irs::sub_reader&, const irs::term_reader&)->void {
+                                       const irs::sub_reader&,
+                                       const irs::term_reader&) -> void {
         ++collector_collect_field_count;
       };
       sort.collector_collect_term = [&collector_collect_term_count](
-          const irs::sub_reader&,
-          const irs::term_reader&,
-          const irs::attribute_provider&)->void {
+                                      const irs::sub_reader&,
+                                      const irs::term_reader&,
+                                      const irs::attribute_provider&) -> void {
         ++collector_collect_term_count;
       };
       sort.collectors_collect_ = [&collector_finish_count](
-          irs::byte_type*,
-          const irs::index_reader&,
-          const irs::sort::field_collector*,
-          const irs::sort::term_collector*)->void {
+                                   irs::byte_type*, const irs::index_reader&,
+                                   const irs::sort::field_collector*,
+                                   const irs::sort::term_collector*) -> void {
         ++collector_finish_count;
       };
-      sort.scorer_score = [&scorer_score_count](irs::doc_id_t doc, irs::score_t* score)->void {
+      sort.scorer_score = [&scorer_score_count](irs::doc_id_t doc,
+                                                irs::score_t* score) -> void {
         ++scorer_score_count;
         *score = irs::score_t(doc & 0xAAAAAAAA);
       };
@@ -905,15 +872,20 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(segment.docs_count(), docs_count);
       ASSERT_EQ(segment.live_docs_count(), docs_count);
 
-      ASSERT_EQ(0, collector_collect_field_count); // should not be executed (field statistics not applicable to columnstore) FIXME TODO discuss
-      ASSERT_EQ(0, collector_collect_term_count); // should not be executed
+      ASSERT_EQ(
+        0, collector_collect_field_count);  // should not be executed (field
+                                            // statistics not applicable to
+                                            // columnstore) FIXME TODO discuss
+      ASSERT_EQ(0, collector_collect_term_count);  // should not be executed
       ASSERT_EQ(1, collector_finish_count);
       ASSERT_EQ(32, scorer_score_count);
 
-      std::vector<irs::doc_id_t> expected = { 1, 4, 5, 16, 17, 20, 21, 2, 3, 6, 7, 18, 19, 22, 23, 8, 9, 12, 13, 24, 25, 28, 29, 10, 11, 14, 15, 26, 27, 30, 31, 32 };
+      std::vector<irs::doc_id_t> expected = {
+        1, 4,  5,  16, 17, 20, 21, 2,  3,  6,  7,  18, 19, 22, 23, 8,
+        9, 12, 13, 24, 25, 28, 29, 10, 11, 14, 15, 26, 27, 30, 31, 32};
       std::vector<irs::doc_id_t> actual;
 
-      for (auto& entry: scored_result) {
+      for (auto& entry : scored_result) {
         actual.emplace_back(entry.second);
       }
 
@@ -935,23 +907,24 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
       tests::sort::custom_sort sort;
 
       sort.collector_collect_field = [&collector_collect_field_count](
-          const irs::sub_reader&, const irs::term_reader&)->void {
+                                       const irs::sub_reader&,
+                                       const irs::term_reader&) -> void {
         ++collector_collect_field_count;
       };
       sort.collector_collect_term = [&collector_collect_term_count](
-          const irs::sub_reader&,
-          const irs::term_reader&,
-          const irs::attribute_provider&)->void {
+                                      const irs::sub_reader&,
+                                      const irs::term_reader&,
+                                      const irs::attribute_provider&) -> void {
         ++collector_collect_term_count;
       };
       sort.collectors_collect_ = [&collector_finish_count](
-          irs::byte_type*,
-          const irs::index_reader&,
-          const irs::sort::field_collector*,
-          const irs::sort::term_collector*)->void {
+                                   irs::byte_type*, const irs::index_reader&,
+                                   const irs::sort::field_collector*,
+                                   const irs::sort::term_collector*) -> void {
         ++collector_finish_count;
       };
-      sort.scorer_score = [&scorer_score_count](irs::doc_id_t doc, irs::score_t* score)->void {
+      sort.scorer_score = [&scorer_score_count](irs::doc_id_t doc,
+                                                irs::score_t* score) -> void {
         ++scorer_score_count;
         *score = irs::score_t(doc & 0xAAAAAAAA);
       };
@@ -967,7 +940,8 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_NE(nullptr, column);
       auto column_itr = column->iterator(irs::ColumnHint::kNormal);
       auto filter_itr = prepared_filter->execute(segment, prepared_order);
-      ASSERT_EQ(column->size() * 2, irs::cost::extract(*filter_itr)); // 2 columns matched
+      ASSERT_EQ(column->size() * 2,
+                irs::cost::extract(*filter_itr));  // 2 columns matched
 
       size_t docs_count = 0;
       auto* score = irs::get<irs::score>(*filter_itr);
@@ -987,22 +961,27 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(segment.docs_count(), docs_count);
       ASSERT_EQ(segment.live_docs_count(), docs_count);
 
-      ASSERT_EQ(0, collector_collect_field_count); // should not be executed (field statistics not applicable to columnstore) FIXME TODO discuss
-      ASSERT_EQ(0, collector_collect_term_count); // should not be executed
+      ASSERT_EQ(
+        0, collector_collect_field_count);  // should not be executed (field
+                                            // statistics not applicable to
+                                            // columnstore) FIXME TODO discuss
+      ASSERT_EQ(0, collector_collect_term_count);  // should not be executed
       ASSERT_EQ(1, collector_finish_count);
-      ASSERT_EQ(32 * 2, scorer_score_count); // 2 columns matched
+      ASSERT_EQ(32 * 2, scorer_score_count);  // 2 columns matched
 
-      std::vector<irs::doc_id_t> expected = { 1, 4, 5, 16, 17, 20, 21, 2, 3, 6, 7, 18, 19, 22, 23, 8, 9, 12, 13, 24, 25, 28, 29, 10, 11, 14, 15, 26, 27, 30, 31, 32 };
+      std::vector<irs::doc_id_t> expected = {
+        1, 4,  5,  16, 17, 20, 21, 2,  3,  6,  7,  18, 19, 22, 23, 8,
+        9, 12, 13, 24, 25, 28, 29, 10, 11, 14, 15, 26, 27, 30, 31, 32};
       std::vector<irs::doc_id_t> actual;
 
-      for (auto& entry: scored_result) {
+      for (auto& entry : scored_result) {
         actual.emplace_back(entry.second);
       }
 
       ASSERT_EQ(expected, actual);
     }
   }
-}; // column_existence_filter_test_case
+};  // column_existence_filter_test_case
 
 TEST_P(column_existence_filter_test_case, mask_column) {
   simple_sequential_mask();
@@ -1055,15 +1034,12 @@ TEST(by_column_existence, equal) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-  column_existence_filter_test,
-  column_existence_filter_test_case,
+  column_existence_filter_test, column_existence_filter_test_case,
   ::testing::Combine(
-    ::testing::Values(
-      &tests::directory<&tests::memory_directory>,
-      &tests::directory<&tests::fs_directory>,
-      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(&tests::directory<&tests::memory_directory>,
+                      &tests::directory<&tests::fs_directory>,
+                      &tests::directory<&tests::mmap_directory>),
     ::testing::Values("1_0")),
-  column_existence_filter_test_case::to_string
-);
+  column_existence_filter_test_case::to_string);
 
-}
+}  // namespace

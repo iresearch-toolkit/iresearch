@@ -37,7 +37,7 @@ TEST(attributes_tests, duplicate_register) {
   if (initial_expected) {
     ASSERT_FALSE(irs::attributes::exists(irs::type<dummy_attribute>::name()));
     ASSERT_FALSE(
-        irs::attributes::get(irs::type<dummy_attribute>::get().name()));
+      irs::attributes::get(irs::type<dummy_attribute>::get().name()));
 
     irs::attribute_registrar initial(irs::type<dummy_attribute>::get());
     ASSERT_EQ(!initial_expected, !initial);
@@ -49,6 +49,6 @@ TEST(attributes_tests, duplicate_register) {
   ASSERT_TRUE(!duplicate);
 
   ASSERT_TRUE(
-      irs::attributes::exists(irs::type<dummy_attribute>::get().name()));
+    irs::attributes::exists(irs::type<dummy_attribute>::get().name()));
   ASSERT_TRUE(irs::attributes::get(irs::type<dummy_attribute>::name()));
 }

@@ -26,13 +26,12 @@
 #include <string>
 #include <unordered_map>
 
-#include "index-dump.hpp"
 #include "index-convert.hpp"
+#include "index-dump.hpp"
 
-typedef std::unordered_map<
-  std::string,
-  std::function<int(int argc, char* argv[])>
-> handlers_t;
+typedef std::unordered_map<std::string,
+                           std::function<int(int argc, char* argv[])>>
+  handlers_t;
 
 const std::string MODE_DUMP = "dump";
 const std::string MODE_CONV = "convert";
@@ -42,4 +41,3 @@ bool init_handlers(handlers_t& handlers) {
   handlers.emplace(MODE_CONV, &convert);
   return true;
 }
-

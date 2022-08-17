@@ -23,10 +23,10 @@
 #ifndef IRESEARCH_ALL_TERMS_COLLECTOR_H
 #define IRESEARCH_ALL_TERMS_COLLECTOR_H
 
-#include "shared.hpp"
 #include "analysis/token_attributes.hpp"
-#include "search/sort.hpp"
 #include "search/collectors.hpp"
+#include "search/sort.hpp"
+#include "shared.hpp"
 #include "utils/noncopyable.hpp"
 
 namespace iresearch {
@@ -34,14 +34,9 @@ namespace iresearch {
 template<typename States>
 class all_terms_collector : util::noncopyable {
  public:
-  all_terms_collector(
-      States& states,
-      field_collectors& field_stats,
-      term_collectors& term_stats) noexcept
-    : states_(states),
-      field_stats_(field_stats),
-      term_stats_(term_stats) {
-  }
+  all_terms_collector(States& states, field_collectors& field_stats,
+                      term_collectors& term_stats) noexcept
+    : states_(states), field_stats_(field_stats), term_stats_(term_stats) {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prepare collector for terms collecting
@@ -49,8 +44,7 @@ class all_terms_collector : util::noncopyable {
   /// @param state state containing this scored term
   /// @param terms segment term-iterator positioned at the current term
   //////////////////////////////////////////////////////////////////////////////
-  void prepare(const sub_reader& segment,
-               const term_reader& field,
+  void prepare(const sub_reader& segment, const term_reader& field,
                const seek_term_iterator& terms) noexcept {
     field_stats_.collect(segment, field);
 
@@ -69,10 +63,12 @@ class all_terms_collector : util::noncopyable {
 
   void visit(const score_t boost) {
     assert(state_);
-    term_stats_.collect(*state_.segment, *state_.state->reader, stat_index_, *state_.terms);
+    term_stats_.collect(*state_.segment, *state_.state->reader, stat_index_,
+                        *state_.terms);
 
     auto& state = *state_.state;
-    state.scored_states.emplace_back(state_.terms->cookie(), stat_index_, boost);
+    state.scored_states.emplace_back(state_.terms->cookie(), stat_index_,
+                                     boost);
     state.scored_states_estimation += *state_.docs_count;
   }
 
@@ -103,7 +99,6 @@ class all_terms_collector : util::noncopyable {
   const decltype(term_meta::docs_count) no_docs_{0};
 };
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_ALL_TERMS_COLLECTOR_H
-
+#endif  // IRESEARCH_ALL_TERMS_COLLECTOR_H

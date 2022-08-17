@@ -44,8 +44,8 @@ class memory_allocator final {
   static ptr make(size_t pool_size);
 
   using allocator_type =
-      container_utils::memory::bucket_allocator<buffer,
-                                                16>;  // as in memory_file
+    container_utils::memory::bucket_allocator<buffer,
+                                              16>;  // as in memory_file
 
   static memory_allocator& global() noexcept;
 
@@ -88,8 +88,7 @@ struct encryption {
   virtual size_t header_length() = 0;
 
   // Creates cipher header in an allocated block for a new file
-  virtual bool create_header(std::string_view filename,
-                             byte_type* header) = 0;
+  virtual bool create_header(std::string_view filename, byte_type* header) = 0;
 
   // Returns a cipher stream for a file given file name
   virtual stream::ptr create_stream(std::string_view filename,

@@ -23,19 +23,19 @@
 
 #include "delimited_token_stream.hpp"
 
-#include "velocypack/Slice.h"
+#include <string_view>
+
+#include "utils/vpack_utils.hpp"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
+#include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
-#include "utils/vpack_utils.hpp"
-
-#include <string_view>
 
 namespace {
 
 irs::bytes_ref eval_term(irs::bstring& buf, irs::bytes_ref data) {
   if (!data.size() || '"' != data[0]) {
-    return data; // not a quoted term (even if quotes inside
+    return data;  // not a quoted term (even if quotes inside
   }
 
   buf.clear();
@@ -43,16 +43,16 @@ irs::bytes_ref eval_term(irs::bstring& buf, irs::bytes_ref data) {
   bool escaped = false;
   size_t start = 1;
 
-  for(size_t i = 1, count = data.size(); i < count; ++i) {
+  for (size_t i = 1, count = data.size(); i < count; ++i) {
     if ('"' == data[i]) {
-      if (escaped && start == i) { // an escaped quote
+      if (escaped && start == i) {  // an escaped quote
         escaped = false;
 
         continue;
       }
 
       if (escaped) {
-        break; // mismatched quote
+        break;  // mismatched quote
       }
 
       buf.append(&data[start], i - start);
@@ -61,7 +61,9 @@ irs::bytes_ref eval_term(irs::bstring& buf, irs::bytes_ref data) {
     }
   }
 
-  return start != 1 && start == data.size() ? irs::bytes_ref(buf) : data; // return identity for mismatched quotes
+  return start != 1 && start == data.size()
+           ? irs::bytes_ref(buf)
+           : data;  // return identity for mismatched quotes
 }
 
 size_t find_delimiter(irs::bytes_ref data, irs::bytes_ref delim) {
@@ -81,12 +83,12 @@ size_t find_delimiter(irs::bytes_ref data, irs::bytes_ref delim) {
     }
 
     if (data.size() - i < delim.size()) {
-      break; // no more delimiters in data
+      break;  // no more delimiters in data
     }
 
-    if (0 == memcmp(data.c_str() + i, delim.c_str(), delim.size())
-        && (i || delim.size())) { // do not match empty delim at data start
-      return i; // delimiter match takes precedence over '"' match
+    if (0 == memcmp(data.c_str() + i, delim.c_str(), delim.size()) &&
+        (i || delim.size())) {  // do not match empty delim at data start
+      return i;  // delimiter match takes precedence over '"' match
     }
 
     if ('"' == data[i]) {
@@ -97,10 +99,9 @@ size_t find_delimiter(irs::bytes_ref data, irs::bytes_ref delim) {
   return data.size();
 }
 
-constexpr std::string_view DELIMITER_PARAM_NAME {"delimiter"};
+constexpr std::string_view DELIMITER_PARAM_NAME{"delimiter"};
 
 bool parse_vpack_options(const VPackSlice slice, std::string& delimiter) {
-
   if (!slice.isObject() && !slice.isString()) {
     IR_FRMT_ERROR(
       "Slice for delimited_token_stream is not an object or string");
@@ -116,7 +117,8 @@ bool parse_vpack_options(const VPackSlice slice, std::string& delimiter) {
         auto delim_type_slice = slice.get(DELIMITER_PARAM_NAME);
         if (!delim_type_slice.isString()) {
           IR_FRMT_WARN(
-            "Invalid type '%s' (string expected) for delimited_token_stream from "
+            "Invalid type '%s' (string expected) for delimited_token_stream "
+            "from "
             "VPack arguments",
             DELIMITER_PARAM_NAME.data());
           return false;
@@ -124,11 +126,13 @@ bool parse_vpack_options(const VPackSlice slice, std::string& delimiter) {
         delimiter = irs::get_string<irs::string_ref>(delim_type_slice);
         return true;
       }
-    default: {}  // fall through
+    default: {
+    }  // fall through
   }
 
   IR_FRMT_ERROR(
-    "Missing '%s' while constructing delimited_token_stream from VPack arguments",
+    "Missing '%s' while constructing delimited_token_stream from VPack "
+    "arguments",
     DELIMITER_PARAM_NAME.data());
 
   return false;
@@ -154,9 +158,10 @@ irs::analysis::analyzer::ptr make_vpack(irs::string_ref args) {
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief builds analyzer config from internal options in json format
 /// @param delimiter reference to analyzer options storage
-/// @param definition string for storing json document with config 
+/// @param definition string for storing json document with config
 ///////////////////////////////////////////////////////////////////////////////
-bool make_vpack_config(std::string_view delimiter, VPackBuilder* vpack_builder) {
+bool make_vpack_config(std::string_view delimiter,
+                       VPackBuilder* vpack_builder) {
   VPackObjectBuilder object(vpack_builder);
   {
     // delimiter
@@ -166,7 +171,8 @@ bool make_vpack_config(std::string_view delimiter, VPackBuilder* vpack_builder) 
   return true;
 }
 
-bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* vpack_builder) {
+bool normalize_vpack_config(const VPackSlice slice,
+                            VPackBuilder* vpack_builder) {
   std::string delimiter;
   if (parse_vpack_options(slice, delimiter)) {
     return make_vpack_config(delimiter, vpack_builder);
@@ -180,7 +186,8 @@ bool normalize_vpack_config(irs::string_ref args, std::string& definition) {
   VPackBuilder builder;
   bool res = normalize_vpack_config(slice, &builder);
   if (res) {
-    definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
+    definition.assign(builder.slice().startAs<char>(),
+                      builder.slice().byteSize());
   }
   return res;
 }
@@ -193,7 +200,7 @@ irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     return make_vpack(vpack->slice());
-  } catch(const VPackException& ex) {
+  } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
       "Caught error '%s' while constructing delimited_token_stream from JSON",
       ex.what());
@@ -216,7 +223,7 @@ bool normalize_json_config(irs::string_ref args, std::string& definition) {
       definition = vpack_builder.toString();
       return !definition.empty();
     }
-  } catch(const VPackException& ex) {
+  } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
       "Caught error '%s' while normalizing delimited_token_stream from JSON",
       ex.what());
@@ -239,11 +246,14 @@ bool normalize_text_config(irs::string_ref delimiter, std::string& definition) {
   return true;
 }
 
-REGISTER_ANALYZER_VPACK(irs::analysis::delimited_token_stream, make_vpack, normalize_vpack_config);
-REGISTER_ANALYZER_JSON(irs::analysis::delimited_token_stream, make_json, normalize_json_config);
-REGISTER_ANALYZER_TEXT(irs::analysis::delimited_token_stream, make_text, normalize_text_config);
+REGISTER_ANALYZER_VPACK(irs::analysis::delimited_token_stream, make_vpack,
+                        normalize_vpack_config);
+REGISTER_ANALYZER_JSON(irs::analysis::delimited_token_stream, make_json,
+                       normalize_json_config);
+REGISTER_ANALYZER_TEXT(irs::analysis::delimited_token_stream, make_text,
+                       normalize_text_config);
 
-}
+}  // namespace
 
 namespace iresearch {
 namespace analysis {
@@ -252,8 +262,8 @@ delimited_token_stream::delimited_token_stream(string_ref delimiter)
   : analyzer(irs::type<delimited_token_stream>::get()),
     delim_(ref_cast<byte_type>(delimiter)) {
   if (!delim_.null()) {
-    delim_buf_ = delim_; // keep a local copy of the delimiter
-    delim_ = delim_buf_; // update the delimter to point at the local copy
+    delim_buf_ = delim_;  // keep a local copy of the delimiter
+    delim_ = delim_buf_;  // update the delimter to point at the local copy
   }
 }
 
@@ -262,9 +272,12 @@ delimited_token_stream::delimited_token_stream(string_ref delimiter)
 }
 
 /*static*/ void delimited_token_stream::init() {
-  REGISTER_ANALYZER_VPACK(delimited_token_stream, make_vpack, normalize_vpack_config); // match registration above
-  REGISTER_ANALYZER_JSON(delimited_token_stream, make_json, normalize_json_config); // match registration above
-  REGISTER_ANALYZER_TEXT(delimited_token_stream, make_text, normalize_text_config); // match registration above
+  REGISTER_ANALYZER_VPACK(delimited_token_stream, make_vpack,
+                          normalize_vpack_config);  // match registration above
+  REGISTER_ANALYZER_JSON(delimited_token_stream, make_json,
+                         normalize_json_config);  // match registration above
+  REGISTER_ANALYZER_TEXT(delimited_token_stream, make_text,
+                         normalize_text_config);  // match registration above
 }
 
 bool delimited_token_stream::next() {
@@ -276,21 +289,25 @@ bool delimited_token_stream::next() {
 
   auto size = find_delimiter(data_, delim_);
   auto next = std::max(size_t(1), size + delim_.size());
-  auto start = offset.end + uint32_t(delim_.size()); // value is allowed to overflow, will only produce invalid result
+  auto start =
+    offset.end + uint32_t(delim_.size());  // value is allowed to overflow, will
+                                           // only produce invalid result
   auto end = start + size;
 
   if (std::numeric_limits<uint32_t>::max() < end) {
-    return false; // cannot fit the next token into offset calculation
+    return false;  // cannot fit the next token into offset calculation
   }
 
   auto& term = std::get<term_attribute>(attrs_);
 
   offset.start = start;
   offset.end = uint32_t(end);
-  term.value =  delim_.null() ? bytes_ref(data_.c_str(), size)
-                              : eval_term(term_buf_, bytes_ref(data_.c_str(), size));
-  data_ = size >= data_.size() ? bytes_ref::NIL
-                               : bytes_ref(data_.c_str() + next, data_.size() - next);
+  term.value = delim_.null()
+                 ? bytes_ref(data_.c_str(), size)
+                 : eval_term(term_buf_, bytes_ref(data_.c_str(), size));
+  data_ = size >= data_.size()
+            ? bytes_ref::NIL
+            : bytes_ref(data_.c_str() + next, data_.size() - next);
 
   return true;
 }
@@ -300,10 +317,11 @@ bool delimited_token_stream::reset(string_ref data) {
 
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
-  offset.end = 0 - uint32_t(delim_.size()); // counterpart to computation in next() above
+  offset.end =
+    0 - uint32_t(delim_.size());  // counterpart to computation in next() above
 
   return true;
 }
 
-} // analysis
-} // ROOT
+}  // namespace analysis
+}  // namespace iresearch

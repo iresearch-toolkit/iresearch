@@ -29,9 +29,9 @@
 namespace iresearch {
 
 TermQuery::TermQuery(States&& states, bstring&& stats, score_t boost)
-    : filter::prepared(boost),
-      states_{std::move(states)},
-      stats_{std::move(stats)} {}
+  : filter::prepared(boost),
+    states_{std::move(states)},
+    stats_{std::move(stats)} {}
 
 doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
   // get term state for the specified reader
@@ -48,8 +48,8 @@ doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
   assert(reader);
 
   auto docs = (ctx.mode == ExecutionMode::kTop)
-                  ? reader->wanderator(*state->cookie, ord.features())
-                  : reader->postings(*state->cookie, ord.features());
+                ? reader->wanderator(*state->cookie, ord.features())
+                : reader->postings(*state->cookie, ord.features());
 
   if (IRS_UNLIKELY(!docs)) {
     assert(false);

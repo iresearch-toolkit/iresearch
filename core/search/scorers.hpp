@@ -35,11 +35,9 @@ namespace iresearch {
 
 class scorer_registrar {
  public:
-  scorer_registrar(
-    const type_info& type,
-    const type_info& args_format,
-    sort::ptr(*factory)(irs::string_ref args),
-    const char* source = nullptr);
+  scorer_registrar(const type_info& type, const type_info& args_format,
+                   sort::ptr (*factory)(irs::string_ref args),
+                   const char* source = nullptr);
   operator bool() const noexcept;
 
  private:
@@ -47,15 +45,28 @@ class scorer_registrar {
 };
 
 #define REGISTER_SCORER__(scorer_name, args_format, factory, line, source) \
-  static ::iresearch::scorer_registrar scorer_registrar ## _ ## line(::iresearch::type<scorer_name>::get(), ::iresearch::type<args_format>::get(), &factory, source)
-#define REGISTER_SCORER_EXPANDER__(scorer_name, args_format, factory, file, line) REGISTER_SCORER__(scorer_name, args_format, factory, line, file ":" TOSTRING(line))
-#define REGISTER_SCORER(scorer_name, args_format, factory) REGISTER_SCORER_EXPANDER__(scorer_name, args_format, factory, __FILE__, __LINE__)
-#define REGISTER_SCORER_CSV(scorer_name, factory) REGISTER_SCORER(scorer_name, ::iresearch::text_format::csv, factory)
-#define REGISTER_SCORER_JSON(scorer_name, factory) REGISTER_SCORER(scorer_name, ::iresearch::text_format::json, factory)
-#define REGISTER_SCORER_VPACK(scorer_name, factory) REGISTER_SCORER(scorer_name, ::iresearch::text_format::vpack, factory)
-#define REGISTER_SCORER_TEXT(scorer_name, factory) REGISTER_SCORER(scorer_name, ::iresearch::text_format::text, factory)
-#define REGISTER_SCORER_XML(scorer_name, factory) REGISTER_SCORER(scorer_name, ::iresearch::text_format::xml, factory)
-#define REGISTER_SCORER_TYPED(scorer_name, args_format) REGISTER_SCORER(scorer_name, args_format, scorer_name::make)
+  static ::iresearch::scorer_registrar scorer_registrar##_##line(          \
+    ::iresearch::type<scorer_name>::get(),                                 \
+    ::iresearch::type<args_format>::get(), &factory, source)
+#define REGISTER_SCORER_EXPANDER__(scorer_name, args_format, factory, file, \
+                                   line)                                    \
+  REGISTER_SCORER__(scorer_name, args_format, factory, line,                \
+                    file ":" TOSTRING(line))
+#define REGISTER_SCORER(scorer_name, args_format, factory)                \
+  REGISTER_SCORER_EXPANDER__(scorer_name, args_format, factory, __FILE__, \
+                             __LINE__)
+#define REGISTER_SCORER_CSV(scorer_name, factory) \
+  REGISTER_SCORER(scorer_name, ::iresearch::text_format::csv, factory)
+#define REGISTER_SCORER_JSON(scorer_name, factory) \
+  REGISTER_SCORER(scorer_name, ::iresearch::text_format::json, factory)
+#define REGISTER_SCORER_VPACK(scorer_name, factory) \
+  REGISTER_SCORER(scorer_name, ::iresearch::text_format::vpack, factory)
+#define REGISTER_SCORER_TEXT(scorer_name, factory) \
+  REGISTER_SCORER(scorer_name, ::iresearch::text_format::text, factory)
+#define REGISTER_SCORER_XML(scorer_name, factory) \
+  REGISTER_SCORER(scorer_name, ::iresearch::text_format::xml, factory)
+#define REGISTER_SCORER_TYPED(scorer_name, args_format) \
+  REGISTER_SCORER(scorer_name, args_format, scorer_name::make)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               convinience methods
@@ -66,21 +77,16 @@ class scorers {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether scorer with a specified name is registered
   ////////////////////////////////////////////////////////////////////////////////
-  static bool exists(
-    string_ref name,
-    const type_info& args_format,
-    bool load_library = true);
+  static bool exists(string_ref name, const type_info& args_format,
+                     bool load_library = true);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find a scorer by name, or nullptr if not found
   ///        indirect call to <class>::make(...)
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   ////////////////////////////////////////////////////////////////////////////////
-  static sort::ptr get(
-    string_ref name,
-    const type_info& args_format,
-    string_ref args,
-    bool load_library = true) noexcept;
+  static sort::ptr get(string_ref name, const type_info& args_format,
+                       string_ref args, bool load_library = true) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief for static lib reference all known scorers in lib
@@ -104,6 +110,6 @@ class scorers {
   scorers() = delete;
 };
 
-}
+}  // namespace iresearch
 
 #endif

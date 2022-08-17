@@ -23,9 +23,10 @@
 #ifndef IRESEARCH_SINGLETONE_H
 #define IRESEARCH_SINGLETONE_H
 
-// internal iResearch functionality not to be exported outside main library (so/dll)
+// internal iResearch functionality not to be exported outside main library
+// (so/dll)
 #ifdef IRESEARCH_DLL_PLUGIN
-  static_assert(false, "Singleton should not be visible in plugins")
+static_assert(false, "Singleton should not be visible in plugins")
 #else
 
 #include "shared.hpp"
@@ -33,8 +34,8 @@
 
 namespace iresearch {
 
-template< typename T >
-class singleton: util::noncopyable {
+template<typename T>
+class singleton : util::noncopyable {
  public:
   static T& instance() {
     static T inst;
@@ -45,7 +46,7 @@ class singleton: util::noncopyable {
   singleton() = default;
 };
 
-} // namespace iresearch {
+}  // namespace iresearch
 
-#endif // #ifdef IRESEARCH_DLL_PLUGIN
+#endif  // #ifdef IRESEARCH_DLL_PLUGIN
 #endif

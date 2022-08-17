@@ -23,18 +23,18 @@
 
 #include "doc_generator.hpp"
 
-#include <sstream>
-#include <iomanip>
-#include <numeric>
-
+#include <rapidjson/istreamwrapper.h>
 #include <rapidjson/rapidjson.h>
 #include <rapidjson/reader.h>
-#include <rapidjson/istreamwrapper.h>
 #include <utf8.h>
 
-#include "index/norm.hpp"
-#include "index/field_data.hpp"
+#include <iomanip>
+#include <numeric>
+#include <sstream>
+
 #include "analysis/token_streams.hpp"
+#include "index/field_data.hpp"
+#include "index/norm.hpp"
 #include "store/store_utils.hpp"
 #include "utils/file_utils.hpp"
 
@@ -52,7 +52,8 @@ class break_iterator {
   using reference = value_type&;
   using difference_type = void;
 
-  break_iterator(utf8::uint32_t delim, const octet_iterator& begin, const octet_iterator& end)
+  break_iterator(utf8::uint32_t delim, const octet_iterator& begin,
+                 const octet_iterator& end)
     : delim_(delim), wbegin_(begin), wend_(begin), end_(end) {
     if (!done()) {
       next();
@@ -60,8 +61,7 @@ class break_iterator {
   }
 
   explicit break_iterator(const octet_iterator& end)
-    : wbegin_(end), wend_(end), end_(end) {
-  }
+    : wbegin_(end), wend_(end), end_(end) {}
 
   const std::string& operator*() const { return res_; }
 
@@ -89,7 +89,7 @@ class break_iterator {
     return tmp;
   }
 
-  private:
+ private:
   void next() {
     wbegin_ = wend_;
     wend_ = std::find(wbegin_, end_, delim_);
@@ -108,8 +108,8 @@ class break_iterator {
   utf8iterator end_;
 };
 
-} // unchecked
-} // utf8
+}  // namespace unchecked
+}  // namespace utf8
 
 namespace tests {
 
@@ -118,19 +118,16 @@ namespace tests {
 // -----------------------------------------------------------------------------
 
 document::document(document&& rhs) noexcept
-  : indexed(std::move(rhs.indexed)), 
+  : indexed(std::move(rhs.indexed)),
     stored(std::move(rhs.stored)),
-    sorted(std::move(rhs.sorted)) {
-}
+    sorted(std::move(rhs.sorted)) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         field_base implementation
 // -----------------------------------------------------------------------------
 
 field_base::field_base(field_base&& rhs) noexcept
-  : features_(std::move(rhs.features_)),
-    name_(std::move(rhs.name_)) {
-}
+  : features_(std::move(rhs.features_)), name_(std::move(rhs.name_)) {}
 
 field_base& field_base::operator=(field_base&& rhs) noexcept {
   if (this != &rhs) {
@@ -215,9 +212,7 @@ bool binary_field::write(irs::data_output& out) const {
 // --SECTION--                                           particle implementation
 // -----------------------------------------------------------------------------
 
-particle::particle(particle&& rhs) noexcept
-  : fields_(std::move(rhs.fields_)) {
-}
+particle::particle(particle&& rhs) noexcept : fields_(std::move(rhs.fields_)) {}
 
 particle& particle::operator=(particle&& rhs) noexcept {
   if (this != &rhs) {
@@ -228,22 +223,20 @@ particle& particle::operator=(particle&& rhs) noexcept {
 }
 
 bool particle::contains(const irs::string_ref& name) const {
-  return fields_.end() != std::find_if(
-    fields_.begin(), fields_.end(),
-    [&name] (const ifield::ptr& fld) {
-      return name == fld->name();
-  });
+  return fields_.end() != std::find_if(fields_.begin(), fields_.end(),
+                                       [&name](const ifield::ptr& fld) {
+                                         return name == fld->name();
+                                       });
 }
 
 std::vector<ifield::ptr> particle::find(const irs::string_ref& name) const {
   std::vector<ifield::ptr> fields;
-  std::for_each(
-    fields_.begin(), fields_.end(),
-    [&fields, &name] (ifield::ptr fld) {
-      if (name == fld->name()) {
-        fields.emplace_back(fld);
-      }
-  });
+  std::for_each(fields_.begin(), fields_.end(),
+                [&fields, &name](ifield::ptr fld) {
+                  if (name == fld->name()) {
+                    fields.emplace_back(fld);
+                  }
+                });
 
   return fields;
 }
@@ -251,30 +244,24 @@ std::vector<ifield::ptr> particle::find(const irs::string_ref& name) const {
 ifield* particle::get(const irs::string_ref& name) const {
   auto it = std::find_if(
     fields_.begin(), fields_.end(),
-    [&name] (const ifield::ptr& fld) {
-      return name == fld->name();
-  });
+    [&name](const ifield::ptr& fld) { return name == fld->name(); });
 
   return fields_.end() == it ? nullptr : it->get();
 }
 
 void particle::remove(const irs::string_ref& name) {
-  fields_.erase(
-    std::remove_if(fields_.begin(), fields_.end(),
-      [&name] (const ifield::ptr& fld) {
-        return name == fld->name();
-    })
-  );
+  fields_.erase(std::remove_if(
+    fields_.begin(), fields_.end(),
+    [&name](const ifield::ptr& fld) { return name == fld->name(); }));
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                delim_doc_generator implementation
 // -----------------------------------------------------------------------------
 
-delim_doc_generator::delim_doc_generator(
-    const irs::utf8_path& file,
-    doc_template& doc,
-    uint32_t delim /* = 0x0009 */)
+delim_doc_generator::delim_doc_generator(const irs::utf8_path& file,
+                                         doc_template& doc,
+                                         uint32_t delim /* = 0x0009 */)
   : ifs_(file.native(), std::ifstream::in | std::ifstream::binary),
     doc_(&doc),
     delim_(delim) {
@@ -285,17 +272,19 @@ delim_doc_generator::delim_doc_generator(
 const document* delim_doc_generator::next() {
   if (!getline(ifs_, str_)) {
     return nullptr;
-  } 
+  }
 
   {
-    const std::string::const_iterator end = utf8::find_invalid(str_.begin(), str_.end());
+    const std::string::const_iterator end =
+      utf8::find_invalid(str_.begin(), str_.end());
     if (end != str_.end()) {
       /* invalid utf8 string */
       return nullptr;
     }
   }
 
-  using word_iterator = utf8::unchecked::break_iterator<std::string::const_iterator>;
+  using word_iterator =
+    utf8::unchecked::break_iterator<std::string::const_iterator>;
 
   const word_iterator end(str_.end());
   word_iterator begin(delim_, str_.begin(), str_.end());
@@ -305,7 +294,7 @@ const document* delim_doc_generator::next() {
   doc_->end();
   return doc_;
 }
- 
+
 void delim_doc_generator::reset() {
   ifs_.clear();
   ifs_.seekg(ifs_.beg);
@@ -316,12 +305,12 @@ void delim_doc_generator::reset() {
 // --SECTION--                                  csv_doc_generator implementation
 // -----------------------------------------------------------------------------
 
-csv_doc_generator::csv_doc_generator(
-    const irs::utf8_path& file,
-    doc_template& doc)
+csv_doc_generator::csv_doc_generator(const irs::utf8_path& file,
+                                     doc_template& doc)
   : doc_(doc),
     ifs_(file.native(), std::ifstream::in | std::ifstream::binary),
-    stream_(irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::text>::get(), ",")) {
+    stream_(irs::analysis::analyzers::get(
+      "delimiter", irs::type<irs::text_format::text>::get(), ",")) {
   doc_.init();
   doc_.reset();
 }
@@ -350,9 +339,7 @@ void csv_doc_generator::reset() {
   doc_.reset();
 }
 
-bool csv_doc_generator::skip() {
-  return false == !getline(ifs_, line_);
-}
+bool csv_doc_generator::skip() { return false == !getline(ifs_, line_); }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class parse_json_handler
@@ -363,9 +350,9 @@ class parse_json_handler : irs::util::noncopyable {
  public:
   typedef std::vector<document> documents_t;
 
-  parse_json_handler(const json_doc_generator::factory_f& factory, documents_t& docs)
-    : factory_(factory), docs_(docs) {
-  }
+  parse_json_handler(const json_doc_generator::factory_f& factory,
+                     documents_t& docs)
+    : factory_(factory), docs_(docs) {}
 
   bool Null() {
     val_.vt = json_doc_generator::ValueType::NIL;
@@ -444,7 +431,7 @@ class parse_json_handler : irs::util::noncopyable {
   }
 
   bool Key(const char* str, rapidjson::SizeType length, bool) {
-    if (level_-1 > path_.size()) {
+    if (level_ - 1 > path_.size()) {
       path_.emplace_back(str, length);
     } else {
       path_.back().assign(str, length);
@@ -466,21 +453,19 @@ class parse_json_handler : irs::util::noncopyable {
   }
 
  private:
-  void AddField() {
-    factory_(docs_.back(), path_.back(), val_);
-  }
+  void AddField() { factory_(docs_.back(), path_.back(), val_); }
 
   const json_doc_generator::factory_f& factory_;
   documents_t& docs_;
   std::vector<std::string> path_;
   size_t level_{};
   json_doc_generator::json_value val_;
-}; // parse_json_handler
+};  // parse_json_handler
 
 json_doc_generator::json_doc_generator(
-    const irs::utf8_path& file,
-    const json_doc_generator::factory_f& factory) {
-  std::ifstream input(irs::utf8_path(file).string().c_str(), std::ios::in | std::ios::binary);
+  const irs::utf8_path& file, const json_doc_generator::factory_f& factory) {
+  std::ifstream input(irs::utf8_path(file).string().c_str(),
+                      std::ios::in | std::ios::binary);
   assert(input);
 
   rapidjson::IStreamWrapper stream(input);
@@ -494,8 +479,7 @@ json_doc_generator::json_doc_generator(
 }
 
 json_doc_generator::json_doc_generator(
-    const char* data,
-    const json_doc_generator::factory_f& factory) {
+  const char* data, const json_doc_generator::factory_f& factory) {
   assert(data);
 
   rapidjson::StringStream stream(data);
@@ -509,10 +493,9 @@ json_doc_generator::json_doc_generator(
 }
 
 json_doc_generator::json_doc_generator(json_doc_generator&& rhs) noexcept
-  : docs_(std::move(rhs.docs_)), 
-    prev_(std::move(rhs.prev_)), 
-    next_(std::move(rhs.next_)) {
-}
+  : docs_(std::move(rhs.docs_)),
+    prev_(std::move(rhs.prev_)),
+    next_(std::move(rhs.next_)) {}
 
 const document* json_doc_generator::next() {
   if (docs_.end() == next_) {
@@ -523,18 +506,17 @@ const document* json_doc_generator::next() {
   return &*prev_;
 }
 
-void json_doc_generator::reset() {
-  next_ = docs_.begin();
-}
+void json_doc_generator::reset() { next_ = docs_.begin(); }
 
 token_stream_payload::token_stream_payload(irs::token_stream* impl)
   : impl_(impl) {
-    assert(impl_);
-    term_ = irs::get<irs::term_attribute>(*impl_);
-    assert(term_);
+  assert(impl_);
+  term_ = irs::get<irs::term_attribute>(*impl_);
+  assert(term_);
 }
 
-irs::attribute* token_stream_payload::get_mutable(irs::type_info::type_id type) {
+irs::attribute* token_stream_payload::get_mutable(
+  irs::type_info::type_id type) {
   if (irs::type<irs::payload>::id() == type) {
     return &pay_;
   }
@@ -552,29 +534,31 @@ bool token_stream_payload::next() {
 }
 
 string_field::string_field(
-    std::string_view name,
-    irs::IndexFeatures index_features,
-    const std::vector<irs::type_info::type_id>& extra_features) {
-  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | index_features;
+  std::string_view name, irs::IndexFeatures index_features,
+  const std::vector<irs::type_info::type_id>& extra_features) {
+  index_features_ =
+    (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | index_features;
   features_ = extra_features;
   name_ = name;
 }
 
 string_field::string_field(
-    std::string_view name,
-    irs::string_ref value,
-    irs::IndexFeatures index_features,
-    const std::vector<irs::type_info::type_id>& extra_features)
+  std::string_view name, irs::string_ref value,
+  irs::IndexFeatures index_features,
+  const std::vector<irs::type_info::type_id>& extra_features)
   : value_(value) {
-  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | index_features;
+  index_features_ =
+    (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | index_features;
   features_ = extra_features;
   name_ = name;
 }
 
 // reject too long terms
 void string_field::value(const irs::string_ref& str) {
-  const auto size_len = irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
-  const auto max_len = (std::min)(str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
+  const auto size_len =
+    irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
+  const auto max_len = (std::min)(
+    str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
   auto begin = str.begin();
   auto end = str.begin() + max_len;
   value_.assign(begin, end);
@@ -593,29 +577,31 @@ irs::token_stream& string_field::get_tokens() const {
 }
 
 string_ref_field::string_ref_field(
-    const std::string& name,
-    irs::IndexFeatures extra_index_features,
-    const std::vector<irs::type_info::type_id>& extra_features) {
-  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | extra_index_features;
+  const std::string& name, irs::IndexFeatures extra_index_features,
+  const std::vector<irs::type_info::type_id>& extra_features) {
+  index_features_ =
+    (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | extra_index_features;
   features_ = extra_features;
   name_ = name;
 }
 
 string_ref_field::string_ref_field(
-    const std::string& name,
-    const irs::string_ref& value,
-    irs::IndexFeatures extra_index_features,
-    const std::vector<irs::type_info::type_id>& extra_features)
+  const std::string& name, const irs::string_ref& value,
+  irs::IndexFeatures extra_index_features,
+  const std::vector<irs::type_info::type_id>& extra_features)
   : value_(value) {
-  index_features_ = (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | extra_index_features;
+  index_features_ =
+    (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) | extra_index_features;
   features_ = extra_features;
   name_ = name;
 }
 
 // truncate very long terms
 void string_ref_field::value(const irs::string_ref& str) {
-  const auto size_len = irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
-  const auto max_len = (std::min)(str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
+  const auto size_len =
+    irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
+  const auto max_len = (std::min)(
+    str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
 
   value_ = irs::string_ref(str.c_str(), max_len);
 }
@@ -660,21 +646,21 @@ void europarl_doc_template::value(size_t idx, const std::string& value) {
     std::tm tmb{};
     char c;
     ss >> tmb.tm_year >> c >> tmb.tm_mon >> c >> tmb.tm_mday;
-    return std::mktime( &tmb );
+    return std::mktime(&tmb);
   };
 
   switch (idx) {
-    case 0: // title
+    case 0:  // title
       title_ = value;
       indexed.get<string_field>("title")->value(title_);
       indexed.get<text_ref_field>("title_anl")->value(title_);
       indexed.get<text_ref_field>("title_anl_pay")->value(title_);
       break;
-    case 1: // date
+    case 1:  // date
       indexed.get<long_field>("date")->value(get_time(value));
       indexed.get<string_field>("datestr")->value(value);
       break;
-    case 2: // body
+    case 2:  // body
       body_ = value;
       indexed.get<string_field>("body")->value(body_);
       indexed.get<text_ref_field>("body_anl")->value(body_);
@@ -689,31 +675,30 @@ void europarl_doc_template::end() {
   indexed.get<string_field>("idstr")->value(std::to_string(idval_));
 }
 
-void europarl_doc_template::reset() {
-  idval_ = 0;
-}
+void europarl_doc_template::reset() { idval_ = 0; }
 
-void generic_json_field_factory(
-    document& doc,
-    const std::string& name,
-    const json_doc_generator::json_value& data) {
+void generic_json_field_factory(document& doc, const std::string& name,
+                                const json_doc_generator::json_value& data) {
   if (json_doc_generator::ValueType::STRING == data.vt) {
     doc.insert(std::make_shared<string_field>(name, data.str));
   } else if (json_doc_generator::ValueType::NIL == data.vt) {
     doc.insert(std::make_shared<binary_field>());
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
+    field.value(
+      irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<binary_field>());
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
+    field.value(
+      irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<binary_field>());
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
+    field.value(
+      irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<double_field>());
@@ -723,22 +708,18 @@ void generic_json_field_factory(
   }
 }
 
-void payloaded_json_field_factory(
-    document& doc,
-    const std::string& name,
-    const json_doc_generator::json_value& data) {
+void payloaded_json_field_factory(document& doc, const std::string& name,
+                                  const json_doc_generator::json_value& data) {
   typedef text_field<std::string> text_field;
 
   if (json_doc_generator::ValueType::STRING == data.vt) {
     // analyzed && pyaloaded
     doc.indexed.push_back(std::make_shared<text_field>(
-      std::string(name.c_str()) + "_anl_pay",
-      data.str, true));
+      std::string(name.c_str()) + "_anl_pay", data.str, true));
 
     // analyzed field
     doc.indexed.push_back(std::make_shared<text_field>(
-      std::string(name.c_str()) + "_anl",
-      data.str));
+      std::string(name.c_str()) + "_anl", data.str));
 
     // not analyzed field
     doc.insert(std::make_shared<string_field>(name, data.str));
@@ -746,17 +727,20 @@ void payloaded_json_field_factory(
     doc.insert(std::make_shared<binary_field>());
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
+    field.value(
+      irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<binary_field>());
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
+    field.value(
+      irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<binary_field>());
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
-    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false()));
+    field.value(
+      irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<double_field>());
@@ -767,19 +751,16 @@ void payloaded_json_field_factory(
 }
 
 void normalized_string_json_field_factory(
-    document& doc,
-    const std::string& name,
-    const json_doc_generator::json_value& data) {
+  document& doc, const std::string& name,
+  const json_doc_generator::json_value& data) {
   if (json_doc_generator::ValueType::STRING == data.vt) {
-    doc.insert(
-      std::make_shared<string_field>(
-        name,
-        data.str,
-        irs::IndexFeatures::NONE,
-        std::vector<irs::type_info::type_id>{ irs::type<irs::Norm>::id() }));;
+    doc.insert(std::make_shared<string_field>(
+      name, data.str, irs::IndexFeatures::NONE,
+      std::vector<irs::type_info::type_id>{irs::type<irs::Norm>::id()}));
+    ;
   } else {
     generic_json_field_factory(doc, name, data);
   }
 }
 
-} // tests
+}  // namespace tests

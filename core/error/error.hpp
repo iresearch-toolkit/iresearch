@@ -47,17 +47,17 @@ enum class ErrorCode : uint32_t {
   undefined_error
 };
 
-#define DECLARE_ERROR_CODE(class_name) \
+#define DECLARE_ERROR_CODE(class_name)                 \
   static const ErrorCode CODE = ErrorCode::class_name; \
   virtual ::iresearch::ErrorCode code() const noexcept override { return CODE; }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct error_base
 //////////////////////////////////////////////////////////////////////////////
-struct error_base: std::exception {
+struct error_base : std::exception {
   virtual ErrorCode code() const noexcept { return ErrorCode::undefined_error; }
   virtual const char* what() const noexcept override;
-}; // error_base
+};  // error_base
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class detailed_error_base
@@ -66,21 +66,16 @@ class detailed_error_base : public error_base {
  public:
   detailed_error_base() = default;
 
-  explicit detailed_error_base(const char* error)
-    : error_(error) {
-  }
+  explicit detailed_error_base(const char* error) : error_(error) {}
 
   explicit detailed_error_base(std::string&& error) noexcept
-    : error_(std::move(error)) {
-  }
+    : error_(std::move(error)) {}
 
-  virtual const char* what() const noexcept override {
-    return error_.c_str();
-  }
+  virtual const char* what() const noexcept override { return error_.c_str(); }
 
  private:
   std::string error_;
-}; // detailed_error_base
+};  // detailed_error_base
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct not_supported
@@ -89,7 +84,7 @@ struct not_supported : error_base {
   DECLARE_ERROR_CODE(not_supported);
 
   virtual const char* what() const noexcept override;
-}; // not_supported
+};  // not_supported
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct io_error
@@ -100,10 +95,8 @@ struct io_error : detailed_error_base {
   io_error() = default;
 
   template<typename T>
-  explicit io_error(T&& error)
-    : detailed_error_base(std::forward<T>(error)) {
-  }
-}; // io_error
+  explicit io_error(T&& error) : detailed_error_base(std::forward<T>(error)) {}
+};  // io_error
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct lock_obtain_failed
@@ -117,12 +110,12 @@ class lock_obtain_failed : public error_base {
 
  private:
   std::string error_;
-}; // lock_obtain_failed
+};  // lock_obtain_failed
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class file_not_found
 //////////////////////////////////////////////////////////////////////////////
-class file_not_found: public error_base {
+class file_not_found : public error_base {
  public:
   DECLARE_ERROR_CODE(file_not_found);
 
@@ -131,7 +124,7 @@ class file_not_found: public error_base {
 
  private:
   std::string error_;
-}; // file_not_found
+};  // file_not_found
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct file_not_found
@@ -140,7 +133,7 @@ struct index_not_found : error_base {
   DECLARE_ERROR_CODE(index_not_found);
 
   virtual const char* what() const noexcept override;
-}; // index_not_found
+};  // index_not_found
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct index_error
@@ -150,9 +143,8 @@ struct index_error : detailed_error_base {
 
   template<typename T>
   explicit index_error(T&& error)
-    : detailed_error_base(std::forward<T>(error)) {
-  }
-}; // index_error
+    : detailed_error_base(std::forward<T>(error)) {}
+};  // index_error
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct not_impl_error
@@ -161,7 +153,7 @@ struct not_impl_error : error_base {
   DECLARE_ERROR_CODE(not_impl_error);
 
   virtual const char* what() const noexcept override;
-}; // not_impl_error
+};  // not_impl_error
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct illegal_argument
@@ -171,9 +163,8 @@ struct illegal_argument : detailed_error_base {
 
   template<typename T>
   explicit illegal_argument(T&& error)
-    : detailed_error_base(std::forward<T>(error)) {
-  }
-}; // illegal_argument
+    : detailed_error_base(std::forward<T>(error)) {}
+};  // illegal_argument
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct illegal_state
@@ -183,10 +174,9 @@ struct illegal_state : detailed_error_base {
 
   template<typename T>
   explicit illegal_state(T&& error)
-    : detailed_error_base(std::forward<T>(error)) {
-  }
-}; // illegal_state
+    : detailed_error_base(std::forward<T>(error)) {}
+};  // illegal_state
 
-}
+}  // namespace iresearch
 
 #endif

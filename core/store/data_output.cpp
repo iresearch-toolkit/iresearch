@@ -20,14 +20,14 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
-#include "data_input.hpp"
 #include "data_output.hpp"
 
-#include "utils/std.hpp"
-#include "utils/bytes_utils.hpp"
-
 #include <memory>
+
+#include "data_input.hpp"
+#include "shared.hpp"
+#include "utils/bytes_utils.hpp"
+#include "utils/std.hpp"
 
 namespace iresearch {
 
@@ -35,12 +35,10 @@ namespace iresearch {
 // --SECTION--                                         output_buf implementation
 // -----------------------------------------------------------------------------
 
-output_buf::output_buf(index_output* out) : out_(out) {
-  assert(out_);
-}
+output_buf::output_buf(index_output* out) : out_(out) { assert(out_); }
 
 std::streamsize output_buf::xsputn(const char_type* c, std::streamsize size) {
-  out_->write_bytes(reinterpret_cast< const byte_type* >(c), size);
+  out_->write_bytes(reinterpret_cast<const byte_type*>(c), size);
   return size;
 }
 
@@ -115,7 +113,7 @@ void buffered_index_output::write_bytes(const byte_type* b, size_t length) {
       start_ += length;
     } else {
       // we fill/flush the buffer (until the input is written)
-      size_t slice_pos_ = 0; // pos_ition in the input data
+      size_t slice_pos_ = 0;  // pos_ition in the input data
 
       while (slice_pos_ < length) {
         auto slice_len = std::min(length - slice_pos_, left);
@@ -158,4 +156,4 @@ void buffered_index_output::close() {
   pos_ = buf_;
 }
 
-}
+}  // namespace iresearch

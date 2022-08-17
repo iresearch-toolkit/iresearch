@@ -31,12 +31,11 @@ class ImmutableFastText : public FastText {
  public:
   void loadModel(const std::string& filename) {
     FastText::loadModel(filename);
-    FastText::lazyComputeWordVectors(); // ensure word vectors are computed
+    FastText::lazyComputeWordVectors();  // ensure word vectors are computed
   }
 
-  std::vector<std::pair<real, std::string>> getNN(
-      const std::string& word,
-      int32_t k) const {
+  std::vector<std::pair<real, std::string>> getNN(const std::string& word,
+                                                  int32_t k) const {
     Vector query(args_->dim);
 
     getWordVector(query, word);
@@ -46,15 +45,12 @@ class ImmutableFastText : public FastText {
   }
 
   std::vector<std::pair<real, std::string>> getNN(
-      const DenseMatrix& wordVectors,
-      const Vector& queryVec,
-      int32_t k,
-      const std::set<std::string>& banSet) const {
+    const DenseMatrix& wordVectors, const Vector& queryVec, int32_t k,
+    const std::set<std::string>& banSet) const {
     return FastText::getNN(wordVectors, queryVec, k, banSet);
   }
-}; // ImmutableFastText
+};  // ImmutableFastText
 
-}
+}  // namespace fasttext
 
-#endif // IRESEARCH_FASTTEXT_UTILS_H
-
+#endif  // IRESEARCH_FASTTEXT_UTILS_H

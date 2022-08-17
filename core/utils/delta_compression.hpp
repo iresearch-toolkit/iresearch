@@ -23,24 +23,25 @@
 #ifndef IRESEARCH_DELTA_COMPRESSION_H
 #define IRESEARCH_DELTA_COMPRESSION_H
 
-#include "string.hpp"
 #include "compression.hpp"
 #include "noncopyable.hpp"
+#include "string.hpp"
 
 namespace iresearch {
 namespace compression {
 
 class delta_compressor : public compressor, private util::noncopyable {
  public:
-  virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override final;
-}; // delta_compressor
+  virtual bytes_ref compress(byte_type* src, size_t size,
+                             bstring& out) override final;
+};  // delta_compressor
 
 class delta_decompressor : public decompressor, private util::noncopyable {
  public:
   /// @returns bytes_ref::NIL in case of error
   virtual bytes_ref decompress(const byte_type* src, size_t src_size,
                                byte_type* dst, size_t dst_size) override final;
-}; // delta_decompressor
+};  // delta_decompressor
 
 struct delta {
   static constexpr string_ref type_name() noexcept {
@@ -50,10 +51,9 @@ struct delta {
   static void init();
   static compression::compressor::ptr compressor(const options& opts);
   static compression::decompressor::ptr decompressor();
-}; // delta
+};  // delta
 
-} // compression
-} // namespace iresearch {
+}  // namespace compression
+}  // namespace iresearch
 
 #endif
-

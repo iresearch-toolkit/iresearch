@@ -25,21 +25,20 @@
 #include "fst/concat.h"
 
 #if defined(_MSC_VER)
-  // NOOP
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wsign-compare"
-  #pragma GCC diagnostic ignored "-Wunused-variable"
+// NOOP
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
 
 #include "fstext/determinize-star.h"
 
 #if defined(_MSC_VER)
-  // NOOP
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic pop
+// NOOP
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
 #endif
-
 
 #include "automaton_utils.hpp"
 
@@ -96,8 +95,7 @@ WildcardType wildcard_type(bytes_ref expr) noexcept {
   }
 
   if (0 == num_match_any_string) {
-    return seen_escaped ? WildcardType::TERM_ESCAPED
-                        : WildcardType::TERM;
+    return seen_escaped ? WildcardType::TERM_ESCAPED : WildcardType::TERM;
   }
 
   if (expr.size() == num_match_any_string) {
@@ -105,8 +103,7 @@ WildcardType wildcard_type(bytes_ref expr) noexcept {
   }
 
   if (num_match_any_string == num_adjacent_match_any_string) {
-    return seen_escaped ? WildcardType::PREFIX_ESCAPED
-                        : WildcardType::PREFIX;
+    return seen_escaped ? WildcardType::PREFIX_ESCAPED : WildcardType::PREFIX;
   }
 
   return WildcardType::WILDCARD;
@@ -120,7 +117,7 @@ automaton from_wildcard(bytes_ref expr) {
 
   bool escaped = false;
   std::vector<automaton> parts;
-  parts.reserve(expr.size() / 2); // reserve some space
+  parts.reserve(expr.size() / 2);  // reserve some space
 
   auto append_char = [&](bytes_ref label) {
     parts.emplace_back(make_char(label));
@@ -187,18 +184,18 @@ automaton from_wildcard(bytes_ref expr) {
   nfa.SetFinal(0, true);
 
   for (auto begin = parts.rbegin(), end = parts.rend(); begin != end; ++begin) {
-    // prefer prepending version of fst::Concat(...) as the cost of concatenation
-    // is linear in the sum of the size of the input FSAs
+    // prefer prepending version of fst::Concat(...) as the cost of
+    // concatenation is linear in the sum of the size of the input FSAs
     fst::Concat(*begin, &nfa);
   }
 
 #ifdef IRESEARCH_DEBUG
   // ensure nfa is sorted
   static constexpr auto EXPECTED_NFA_PROPERTIES =
-    fst::kILabelSorted | fst::kOLabelSorted |
-    fst::kAcceptor | fst::kUnweighted;
+    fst::kILabelSorted | fst::kOLabelSorted | fst::kAcceptor | fst::kUnweighted;
 
-  assert(EXPECTED_NFA_PROPERTIES == nfa.Properties(EXPECTED_NFA_PROPERTIES, true));
+  assert(EXPECTED_NFA_PROPERTIES ==
+         nfa.Properties(EXPECTED_NFA_PROPERTIES, true));
   UNUSED(EXPECTED_NFA_PROPERTIES);
 #endif
 
@@ -216,11 +213,12 @@ automaton from_wildcard(bytes_ref expr) {
   static constexpr auto EXPECTED_DFA_PROPERTIES =
     fst::kIDeterministic | EXPECTED_NFA_PROPERTIES;
 
-  assert(EXPECTED_DFA_PROPERTIES == dfa.Properties(EXPECTED_DFA_PROPERTIES, true));
+  assert(EXPECTED_DFA_PROPERTIES ==
+         dfa.Properties(EXPECTED_DFA_PROPERTIES, true));
   UNUSED(EXPECTED_DFA_PROPERTIES);
 #endif
 
   return dfa;
 }
 
-}
+}  // namespace iresearch

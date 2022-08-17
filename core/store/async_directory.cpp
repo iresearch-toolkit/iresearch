@@ -23,14 +23,13 @@
 #include "async_directory.hpp"
 
 #include "liburing.h"
-
 #include "store_utils.hpp"
-#include "utils/utf8_path.hpp"
-#include "utils/mmap_utils.hpp"
-#include "utils/memory.hpp"
-#include "utils/string_utils.hpp"
-#include "utils/file_utils.hpp"
 #include "utils/crc.hpp"
+#include "utils/file_utils.hpp"
+#include "utils/memory.hpp"
+#include "utils/mmap_utils.hpp"
+#include "utils/string_utils.hpp"
+#include "utils/utf8_path.hpp"
 
 namespace {
 
@@ -41,13 +40,11 @@ constexpr size_t PAGE_SIZE = 4096;
 constexpr size_t PAGE_ALIGNEMNT = 4096;
 
 struct buffer_deleter {
-  void operator()(byte_type* b) const noexcept {
-    ::free(b);
-  }
+  void operator()(byte_type* b) const noexcept { ::free(b); }
 };
 
 std::unique_ptr<byte_type, buffer_deleter> allocate() {
-  constexpr size_t BUF_SIZE = NUM_PAGES*PAGE_SIZE;
+  constexpr size_t BUF_SIZE = NUM_PAGES * PAGE_SIZE;
 
   void* mem = nullptr;
   if (posix_memalign(&mem, PAGE_ALIGNEMNT, BUF_SIZE)) {
@@ -55,7 +52,7 @@ std::unique_ptr<byte_type, buffer_deleter> allocate() {
   }
 
   return std::unique_ptr<byte_type, buffer_deleter>{
-    static_cast<byte_type*>(mem) };
+    static_cast<byte_type*>(mem)};
 }
 
 class segregated_buffer {
@@ -64,21 +61,13 @@ class segregated_buffer {
 
   segregated_buffer();
 
-  node_type* pop() noexcept {
-    return free_pages_.pop();
-  }
+  node_type* pop() noexcept { return free_pages_.pop(); }
 
-  void push(node_type& node) noexcept {
-    free_pages_.push(node);
-  }
+  void push(node_type& node) noexcept { free_pages_.push(node); }
 
-  constexpr size_t size() const noexcept {
-    return NUM_PAGES*PAGE_SIZE;
-  }
+  constexpr size_t size() const noexcept { return NUM_PAGES * PAGE_SIZE; }
 
-  byte_type* data() const noexcept {
-    return buffer_.get();
-  }
+  byte_type* data() const noexcept { return buffer_.get(); }
 
  private:
   std::unique_ptr<byte_type, buffer_deleter> buffer_;
@@ -86,8 +75,7 @@ class segregated_buffer {
   concurrent_stack<byte_type*> free_pages_;
 };
 
-segregated_buffer::segregated_buffer()
-  : buffer_(allocate()) {
+segregated_buffer::segregated_buffer() : buffer_(allocate()) {
   auto begin = buffer_.get();
   for (auto& page : pages_) {
     page.value = begin;
@@ -104,23 +92,15 @@ class uring {
     }
   }
 
-  ~uring() {
-    io_uring_queue_exit(&ring);
-  }
+  ~uring() { io_uring_queue_exit(&ring); }
 
   void reg_buffer(byte_type* b, size_t size);
 
-  size_t size() noexcept {
-    return ring.sq.ring_sz;
-  }
+  size_t size() noexcept { return ring.sq.ring_sz; }
 
-  io_uring_sqe* get_sqe() noexcept {
-    return io_uring_get_sqe(&ring);
-  }
+  io_uring_sqe* get_sqe() noexcept { return io_uring_get_sqe(&ring); }
 
-  size_t sq_ready() noexcept {
-    return io_uring_sq_ready(&ring);
-  }
+  size_t sq_ready() noexcept { return io_uring_sq_ready(&ring); }
 
   void submit();
   bool deque(bool wait, uint64_t* data);
@@ -148,14 +128,13 @@ void uring::submit() {
 
 bool uring::deque(bool wait, uint64_t* data) {
   io_uring_cqe* cqe;
-  const int ret = wait
-    ? io_uring_wait_cqe(&ring, &cqe)
-    : io_uring_peek_cqe(&ring, &cqe);
+  const int ret =
+    wait ? io_uring_wait_cqe(&ring, &cqe) : io_uring_peek_cqe(&ring, &cqe);
 
   if (ret < 0) {
     if (ret != -EAGAIN) {
-      throw io_error(string_utils::to_string(
-        "failed to peek a request, error %d", -ret));
+      throw io_error(
+        string_utils::to_string("failed to peek a request, error %d", -ret));
     }
 
     return false;
@@ -172,14 +151,13 @@ bool uring::deque(bool wait, uint64_t* data) {
   return true;
 }
 
-}
+}  // namespace
 
 namespace iresearch {
 
 class async_file {
  public:
-  async_file(size_t queue_size, unsigned flags)
-    : ring_(queue_size, flags) {
+  async_file(size_t queue_size, unsigned flags) : ring_(queue_size, flags) {
     ring_.reg_buffer(buffer_.data(), buffer_.size());
   }
 
@@ -197,17 +175,17 @@ class async_file {
   uring ring_;
 };
 
-async_file_builder::ptr async_file_builder::make(size_t queue_size, unsigned flags) {
+async_file_builder::ptr async_file_builder::make(size_t queue_size,
+                                                 unsigned flags) {
   return async_file_builder::ptr(new async_file(queue_size, flags));
 }
 
-void async_file_deleter::operator()(async_file* p) noexcept {
-  delete p;
-}
+void async_file_deleter::operator()(async_file* p) noexcept { delete p; }
 
 segregated_buffer::node_type* async_file::get_buffer() {
   uint64_t data = 0;
-  while (ring_.deque(false, &data) && !data);
+  while (ring_.deque(false, &data) && !data)
+    ;
 
   if (data) {
     return reinterpret_cast<segregated_buffer::node_type*>(data);
@@ -219,7 +197,8 @@ segregated_buffer::node_type* async_file::get_buffer() {
     return node;
   }
 
-  while (ring_.deque(true, &data) && !data);
+  while (ring_.deque(true, &data) && !data)
+    ;
   return reinterpret_cast<segregated_buffer::node_type*>(data);
 }
 
@@ -279,9 +258,8 @@ class async_index_output final : public index_output {
  public:
   DEFINE_FACTORY_INLINE(async_index_output);
 
-  static index_output::ptr open(
-    const file_path_t name,
-    async_file_ptr&& async) noexcept;
+  static index_output::ptr open(const file_path_t name,
+                                async_file_ptr&& async) noexcept;
 
   virtual void write_int(int32_t value) override;
   virtual void write_long(int64_t value) override;
@@ -296,7 +274,7 @@ class async_index_output final : public index_output {
   virtual void flush() override;
 
   virtual void close() override {
-    auto reset = irs::make_finally([this]()noexcept{
+    auto reset = irs::make_finally([this]() noexcept {
       async_->release_buffer(*buf_);
       handle_.reset(nullptr);
     });
@@ -316,9 +294,8 @@ class async_index_output final : public index_output {
  private:
   using node_type = concurrent_stack<byte_type*>::node_type;
 
-  async_index_output(
-      async_file_ptr&& async,
-      file_utils::handle_t&& handle) noexcept
+  async_index_output(async_file_ptr&& async,
+                     file_utils::handle_t&& handle) noexcept
     : async_(std::move(async)),
       handle_(std::move(handle)),
       buf_(async_->get_buffer()) {
@@ -326,9 +303,7 @@ class async_index_output final : public index_output {
   }
 
   // returns number of reamining bytes in the buffer
-  FORCE_INLINE size_t remain() const {
-    return std::distance(pos_, end_);
-  }
+  FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
 
   void reset(byte_type* buf) {
     pos_ = buf;
@@ -340,13 +315,13 @@ class async_index_output final : public index_output {
   node_type* buf_;
   crc32c crc_;
 
-  byte_type* pos_{ }; // current position in the buffer
-  byte_type* end_{ }; // end of the valid bytes in the buffer
-  size_t start_{}; // position of the buffer in file
-}; // async_index_output
+  byte_type* pos_{};  // current position in the buffer
+  byte_type* end_{};  // end of the valid bytes in the buffer
+  size_t start_{};    // position of the buffer in file
+};                    // async_index_output
 
 /*static*/ index_output::ptr async_index_output::open(
-    const file_path_t name, async_file_ptr&& async) noexcept {
+  const file_path_t name, async_file_ptr&& async) noexcept {
   assert(name);
 
   if (!async) {
@@ -359,19 +334,19 @@ class async_index_output final : public index_output {
   if (nullptr == handle) {
 #ifdef _WIN32
     IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
-                   GetLastError(), irs::utf8_path{name}.c_str());
+                  GetLastError(), irs::utf8_path{name}.c_str());
 #else
-    IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
-                  errno, irs::utf8_path{name}.c_str());
+    IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno,
+                  irs::utf8_path{name}.c_str());
 #endif
 
     return nullptr;
   }
 
   try {
-    return index_output::make<async_index_output>(
-      std::move(async), std::move(handle));
-  } catch(...) {
+    return index_output::make<async_index_output>(std::move(async),
+                                                  std::move(handle));
+  } catch (...) {
   }
 
   return nullptr;
@@ -429,9 +404,8 @@ void async_index_output::flush() {
 
   io_uring_sqe* sqe = async_->get_sqe();
 
-  io_uring_prep_write_fixed(
-    sqe, handle_cast(handle_.get()),
-    buf, size, start_, 0);
+  io_uring_prep_write_fixed(sqe, handle_cast(handle_.get()), buf, size, start_,
+                            0);
   sqe->user_data = reinterpret_cast<uint64_t>(buf_);
 
   async_->submit();
@@ -460,9 +434,8 @@ void async_index_output::write_bytes(const byte_type* b, size_t length) {
     {
       auto* buf = buf_->value;
       io_uring_sqe* sqe = async_->get_sqe();
-      io_uring_prep_write_fixed(
-        sqe, handle_cast(handle_.get()),
-        buf, PAGE_SIZE, start_, 0);
+      io_uring_prep_write_fixed(sqe, handle_cast(handle_.get()), buf, PAGE_SIZE,
+                                start_, 0);
       sqe->user_data = reinterpret_cast<uint64_t>(buf_);
     }
     length -= left;
@@ -479,9 +452,8 @@ void async_index_output::write_bytes(const byte_type* b, size_t length) {
       {
         auto* buf = buf_->value;
         io_uring_sqe* sqe = async_->get_sqe();
-        io_uring_prep_write_fixed(
-          sqe, handle_cast(handle_.get()),
-          buf, PAGE_SIZE, start_, 0);
+        io_uring_prep_write_fixed(sqe, handle_cast(handle_.get()), buf,
+                                  PAGE_SIZE, start_, 0);
         sqe->user_data = reinterpret_cast<uint64_t>(buf_);
       }
       b += PAGE_SIZE;
@@ -490,9 +462,9 @@ void async_index_output::write_bytes(const byte_type* b, size_t length) {
 
     async_->submit();
 
-    const size_t processed = PAGE_SIZE*count;
+    const size_t processed = PAGE_SIZE * count;
     crc_.process_bytes(buf, PAGE_SIZE);
-    crc_.process_bytes(borig, count*PAGE_SIZE);
+    crc_.process_bytes(borig, count * PAGE_SIZE);
 
     buf_ = async_->get_buffer();
     reset(buf_->value);
@@ -503,7 +475,7 @@ void async_index_output::write_bytes(const byte_type* b, size_t length) {
   }
 }
 
-}
+}  // namespace iresearch
 
 namespace iresearch {
 
@@ -511,29 +483,24 @@ namespace iresearch {
 // --SECTION--                                     mmap_directory implementation
 // -----------------------------------------------------------------------------
 
-async_directory::async_directory(
-    std::string path,
-    directory_attributes attrs,
-    size_t pool_size,
-    size_t queue_size,
-    unsigned flags)
+async_directory::async_directory(std::string path, directory_attributes attrs,
+                                 size_t pool_size, size_t queue_size,
+                                 unsigned flags)
   : mmap_directory{std::move(path), std::move(attrs)},
     async_pool_{pool_size},
     queue_size_{queue_size},
-    flags_{flags} {
-}
+    flags_{flags} {}
 
-index_output::ptr async_directory::create(
-    std::string_view name) noexcept {
+index_output::ptr async_directory::create(std::string_view name) noexcept {
   utf8_path path;
 
   try {
-    (path/=directory())/=name;
+    (path /= directory()) /= name;
 
-    return async_index_output::open(
-      path.c_str(),
-      async_pool_.emplace(queue_size_, flags_));
-  } catch(...) { }
+    return async_index_output::open(path.c_str(),
+                                    async_pool_.emplace(queue_size_, flags_));
+  } catch (...) {
+  }
 
   return nullptr;
 }
@@ -543,7 +510,7 @@ bool async_directory::sync(std::span<std::string_view> names) noexcept {
 
   try {
     std::vector<file_utils::handle_t> handles(names.size());
-    path/=directory();
+    path /= directory();
 
     auto async = async_pool_.emplace(queue_size_, flags_);
 
@@ -581,31 +548,30 @@ bool async_directory::sync(std::span<std::string_view> names) noexcept {
   return true;
 }
 
-//bool async_directory::sync(std::string_view name) noexcept {
-//  utf8_path path;
+// bool async_directory::sync(std::string_view name) noexcept {
+//   utf8_path path;
 //
-//  try {
-//    (path/=directory())/=name;
-//  } catch (...) {
-//    return false;
-//  }
+//   try {
+//     (path/=directory())/=name;
+//   } catch (...) {
+//     return false;
+//   }
 //
-//  io_uring_sqe* sqe = io_uring_get_sqe(&ring_);
+//   io_uring_sqe* sqe = io_uring_get_sqe(&ring_);
 //
-//  if (!sqe) {
-//    IR_FRMT_ERROR("Failed to get sqe, path: %s", path.utf8().c_str());
-//  }
+//   if (!sqe) {
+//     IR_FRMT_ERROR("Failed to get sqe, path: %s", path.utf8().c_str());
+//   }
 //
-//  file_utils::handle_t handle(
-//    file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL));
+//   file_utils::handle_t handle(
+//     file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL));
 //
-//  io_uring_prep_fsync()
+//   io_uring_prep_fsync()
 //
-//  return false;
+//   return false;
 //
-//  io_uring_prep_write_fixed(sqe, handle_cast(handle_.get()), b, len, buffer_offset(), 0);
-//  sqe->user_data = reinterpret_cast<uint64_t>(b);
-//}
+//   io_uring_prep_write_fixed(sqe, handle_cast(handle_.get()), b, len,
+//   buffer_offset(), 0); sqe->user_data = reinterpret_cast<uint64_t>(b);
+// }
 
-} // ROOT
-
+}  // namespace iresearch

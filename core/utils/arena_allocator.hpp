@@ -25,9 +25,9 @@
 
 #include <vector>
 
-#include "shared.hpp"
 #include "memory.hpp"
 #include "noncopyable.hpp"
+#include "shared.hpp"
 
 namespace iresearch {
 namespace memory {
@@ -36,9 +36,8 @@ namespace memory {
 /// @class arena_allocator
 ///////////////////////////////////////////////////////////////////////////////
 template<size_t Size, size_t Alignment = alignof(std::max_align_t)>
-struct memory_arena
-    : private aligned_storage<Size, Alignment>,
-      private util::noncopyable {
+struct memory_arena : private aligned_storage<Size, Alignment>,
+                      private util::noncopyable {
  public:
   static const size_t SIZE = Size;
   static const size_t ALIGNMENT = Alignment;
@@ -56,15 +55,13 @@ struct memory_arena
     }
 
 #if (defined(__cpp_aligned_new) && __cpp_aligned_new >= 201606)
-//FIXME
-//    if (Alignment > alignof(MAX_ALIGN_T)) {
-//      return reinterpret_cast<char*>(::operator new(size, Alignment));
-//    }
+// FIXME
+//     if (Alignment > alignof(MAX_ALIGN_T)) {
+//       return reinterpret_cast<char*>(::operator new(size, Alignment));
+//     }
 #else
-    static_assert(
-      Alignment <= alignof(MAX_ALIGN_T),
-      "new can't guarantee the requested alignment"
-    );
+    static_assert(Alignment <= alignof(MAX_ALIGN_T),
+                  "new can't guarantee the requested alignment");
 #endif
 
     return reinterpret_cast<char*>(::operator new(size));
@@ -81,23 +78,19 @@ struct memory_arena
       }
     } else {
 #if (defined(__cpp_aligned_new) && __cpp_aligned_new >= 201606)
-//FIXME
-//      if (Alignment > alignof(MAX_ALIGN_T)) {
-//        ::operator delete(p, Alignment);
-//      }
+// FIXME
+//       if (Alignment > alignof(MAX_ALIGN_T)) {
+//         ::operator delete(p, Alignment);
+//       }
 #else
-      static_assert(
-        Alignment <= alignof(MAX_ALIGN_T),
-        "new can't guarantee the requested alignment"
-      );
+      static_assert(Alignment <= alignof(MAX_ALIGN_T),
+                    "new can't guarantee the requested alignment");
 #endif
       ::operator delete(p);
     }
   }
 
-  size_t used() const noexcept {
-    return p_ - buffer_t::data;
-  }
+  size_t used() const noexcept { return p_ - buffer_t::data; }
 
   bool within_arena(const char* p) const noexcept {
     return std::begin(buffer_t::data) <= p && p <= std::end(buffer_t::data);
@@ -106,8 +99,8 @@ struct memory_arena
  private:
   typedef aligned_storage<Size, Alignment> buffer_t;
 
-  char* p_{ buffer_t::data }; // current position
-}; // memory_arena
+  char* p_{buffer_t::data};  // current position
+};                           // memory_arena
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class arena_allocator_wrapper
@@ -120,20 +113,18 @@ class arena_allocator {
 
   // cppcheck-suppress constParameter
   // cppcheck-suppress noExplicitConstructor
-  arena_allocator(arena_t& arena) noexcept
-    : arena_(&arena) {
+  arena_allocator(arena_t& arena) noexcept : arena_(&arena) {
     static_assert(arena_t::SIZE % arena_t::ALIGNMENT == 0,
                   "size needs to be a multiple of alignment");
   }
 
-  template <class U>
+  template<class U>
   arena_allocator(const arena_allocator<U, Arena>& rhs) noexcept
-    : arena_(rhs.arena_) {
-  }
+    : arena_(rhs.arena_) {}
 
   arena_allocator(const arena_allocator&) = default;
 
-  template <class U>
+  template<class U>
   struct rebind {
     using other = arena_allocator<U, Arena>;
   };
@@ -150,16 +141,16 @@ class arena_allocator {
   friend bool operator==(const arena_allocator<T1, A1>& lhs,
                          const arena_allocator<U, A2>& rhs) noexcept;
 
-  template <typename U, typename A>
+  template<typename U, typename A>
   friend class arena_allocator;
 
  private:
   arena_allocator& operator=(const arena_allocator&) = delete;
 
   arena_t* arena_;
-}; // arena_allocator
+};  // arena_allocator
 
-template <class T, typename A1, class U, typename A2>
+template<class T, typename A1, class U, typename A2>
 inline bool operator!=(const arena_allocator<T, A1>& lhs,
                        const arena_allocator<U, A2>& rhs) noexcept {
   return !(lhs == rhs);
@@ -167,18 +158,18 @@ inline bool operator!=(const arena_allocator<T, A1>& lhs,
 
 template<typename T1, typename U, typename A1, typename A2>
 inline bool operator==(const arena_allocator<T1, A1>& lhs,
-  const arena_allocator<U, A2>& rhs) noexcept {
-  return std::is_same<A1, A2>::value && 
+                       const arena_allocator<U, A2>& rhs) noexcept {
+  return std::is_same<A1, A2>::value &&
          lhs.arena_ == reinterpret_cast<const void*>(rhs.arena_);
 }
 
 template<typename T, size_t N>
-using arena = memory_arena<N*sizeof(T), alignof(T)>;
+using arena = memory_arena<N * sizeof(T), alignof(T)>;
 
 template<typename T, typename Arena>
 using arena_vector = std::vector<T, arena_allocator<T, Arena>>;
 
-} // memory
-} // ROOT
+}  // namespace memory
+}  // namespace iresearch
 
-#endif // IRESEARCH_ARENA_ALLOCATOR_H
+#endif  // IRESEARCH_ARENA_ALLOCATOR_H

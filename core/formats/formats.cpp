@@ -24,13 +24,13 @@
 
 // list of statically loaded formats via init()
 #ifndef IRESEARCH_DLL
-  #include "formats_10.hpp"
+#include "formats_10.hpp"
 #endif
 
 #include "analysis/token_attributes.hpp"
 #include "utils/hash_utils.hpp"
-#include "utils/type_limits.hpp"
 #include "utils/register.hpp"
+#include "utils/type_limits.hpp"
 
 namespace {
 
@@ -52,32 +52,31 @@ struct hash {
   }
 };
 
-class format_register :
-  public irs::tagged_generic_register<key_t, irs::format::ptr(*)(), irs::string_ref, format_register, hash, equal_to> {
+class format_register
+  : public irs::tagged_generic_register<key_t, irs::format::ptr (*)(),
+                                        irs::string_ref, format_register, hash,
+                                        equal_to> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
     auto const& module = key.second.null() ? key.first : key.second;
 
     std::string filename(kFileNamePrefix.size() + module.size(), 0);
 
-    std::memcpy(
-      filename.data(),
-      kFileNamePrefix.data(),
-      kFileNamePrefix.size());
+    std::memcpy(filename.data(), kFileNamePrefix.data(),
+                kFileNamePrefix.size());
 
-    std::memcpy(
-      filename.data() + kFileNamePrefix.size(),
-      module.c_str(), module.size());
+    std::memcpy(filename.data() + kFileNamePrefix.size(), module.c_str(),
+                module.size());
 
     return filename;
   }
-}; // format_register
+};  // format_register
 
-}
+}  // namespace
 
 namespace iresearch {
 
-/* static */void index_meta_writer::complete(index_meta& meta) noexcept {
+/* static */ void index_meta_writer::complete(index_meta& meta) noexcept {
   meta.last_gen_ = meta.gen_;
 }
 /* static */ void index_meta_writer::prepare(index_meta& meta) noexcept {
@@ -85,11 +84,8 @@ namespace iresearch {
 }
 
 /* static */ void index_meta_reader::complete(
-    index_meta& meta,
-    uint64_t generation,
-    uint64_t counter,
-    index_meta::index_segments_t&& segments,
-    bstring* payload) {
+  index_meta& meta, uint64_t generation, uint64_t counter,
+  index_meta::index_segments_t&& segments, bstring* payload) {
   meta.gen_ = generation;
   meta.last_gen_ = generation;
   meta.seg_counter_ = counter;
@@ -101,17 +97,14 @@ namespace iresearch {
   }
 }
 
-/*static*/ bool formats::exists(
-    string_ref name,
-    bool load_library /*= true*/) {
+/*static*/ bool formats::exists(string_ref name, bool load_library /*= true*/) {
   auto const key = std::make_pair(name, string_ref::NIL);
   return nullptr != format_register::instance().get(key, load_library);
 }
 
-/*static*/ format::ptr formats::get(
-    string_ref name,
-    string_ref module /*= string_ref::NIL*/,
-    bool load_library /*= true*/) noexcept {
+/*static*/ format::ptr formats::get(string_ref name,
+                                    string_ref module /*= string_ref::NIL*/,
+                                    bool load_library /*= true*/) noexcept {
   try {
     auto const key = std::make_pair(name, module);
     auto* factory = format_register::instance().get(key, load_library);
@@ -134,8 +127,7 @@ namespace iresearch {
   load_libraries(path, kFileNamePrefix, "");
 }
 
-/*static*/ bool formats::visit(
-    const std::function<bool(string_ref)>& visitor) {
+/*static*/ bool formats::visit(const std::function<bool(string_ref)>& visitor) {
   auto visit_all = [&visitor](const format_register::key_type& key) {
     if (!visitor(key.first)) {
       return false;
@@ -150,18 +142,14 @@ namespace iresearch {
 // --SECTION--                                               format registration
 // -----------------------------------------------------------------------------
 
-format_registrar::format_registrar(
-    const type_info& type,
-    string_ref module,
-    format::ptr(*factory)(),
-    const char* source /*= nullptr*/) {
+format_registrar::format_registrar(const type_info& type, string_ref module,
+                                   format::ptr (*factory)(),
+                                   const char* source /*= nullptr*/) {
   string_ref source_ref(source);
 
   auto entry = format_register::instance().set(
-    std::make_pair(type.name(), module),
-    factory,
-    source_ref.null() ? nullptr : &source_ref
-  );
+    std::make_pair(type.name(), module), factory,
+    source_ref.null() ? nullptr : &source_ref);
 
   registered_ = entry.second;
 
@@ -171,26 +159,26 @@ format_registrar::format_registrar(
 
     if (source && registered_source) {
       IR_FRMT_WARN(
-        "type name collision detected while registering format, ignoring: type '%s' from %s, previously from %s",
-        type.name().c_str(),
-        source,
-        registered_source->c_str());
+        "type name collision detected while registering format, ignoring: type "
+        "'%s' from %s, previously from %s",
+        type.name().c_str(), source, registered_source->c_str());
     } else if (source) {
       IR_FRMT_WARN(
-        "type name collision detected while registering format, ignoring: type '%s' from %s",
-        type.name().c_str(),
-        source);
+        "type name collision detected while registering format, ignoring: type "
+        "'%s' from %s",
+        type.name().c_str(), source);
     } else if (registered_source) {
       IR_FRMT_WARN(
-        "type name collision detected while registering format, ignoring: type '%s', previously from %s",
-        type.name().c_str(),
-        registered_source->c_str());
+        "type name collision detected while registering format, ignoring: type "
+        "'%s', previously from %s",
+        type.name().c_str(), registered_source->c_str());
     } else {
       IR_FRMT_WARN(
-        "type name collision detected while registering format, ignoring: type '%s'",
+        "type name collision detected while registering format, ignoring: type "
+        "'%s'",
         type.name().c_str());
     }
   }
 }
 
-}
+}  // namespace iresearch

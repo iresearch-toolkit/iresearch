@@ -20,8 +20,9 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "formats_10_attributes.hpp"
+
+#include "shared.hpp"
 
 namespace iresearch {
 namespace version10 {
@@ -36,5 +37,5 @@ REGISTER_ATTRIBUTE(documents);
 // --SECTION--                                                         term_meta
 // -----------------------------------------------------------------------------
 
-} // version10
-} // ROOT
+}  // namespace version10
+}  // namespace iresearch

@@ -42,9 +42,9 @@ class by_phrase;
 class by_phrase_options {
  private:
   using phrase_part =
-      std::variant<by_term_options, by_prefix_options, by_wildcard_options,
-                   by_edit_distance_filter_options, by_terms_options,
-                   by_range_options>;
+    std::variant<by_term_options, by_prefix_options, by_wildcard_options,
+                 by_edit_distance_filter_options, by_terms_options,
+                 by_range_options>;
 
   using phrase_type = std::map<size_t, phrase_part>;
 
@@ -150,8 +150,8 @@ class by_phrase : public filter_base<by_phrase_options> {
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& index, const Order& ord, score_t boost,
-      const attribute_provider* ctx) const override;
+    const index_reader& index, const Order& ord, score_t boost,
+    const attribute_provider* ctx) const override;
 
  private:
   filter::prepared::ptr fixed_prepare_collect(const index_reader& index,

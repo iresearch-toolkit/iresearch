@@ -36,10 +36,7 @@
 namespace iresearch {
 namespace columnstore2 {
 
-enum class Version : int32_t {
-  kMin = 0,
-  kMax = kMin
-};
+enum class Version : int32_t { kMin = 0, kMax = kMin };
 
 class column final : public irs::column_output {
  public:
@@ -73,11 +70,11 @@ class column final : public irs::column_output {
                   const irs::type_info& compression,
                   columnstore_writer::column_finalizer_f&& finalizer,
                   compression::compressor::ptr deflater)
-      : ctx_{ctx},
-        compression_{compression},
-        deflater_{std::move(deflater)},
-        finalizer_{std::move(finalizer)},
-        id_{id} {
+    : ctx_{ctx},
+      compression_{compression},
+      deflater_{std::move(deflater)},
+      finalizer_{std::move(finalizer)},
+      id_{id} {
     assert(field_limits::valid(id_));
   }
 
@@ -188,7 +185,7 @@ class writer final : public columnstore_writer {
  public:
   static constexpr string_ref kDataFormatName = "iresearch_11_columnstore_data";
   static constexpr string_ref kIndexFormatName =
-      "iresearch_11_columnstore_index";
+    "iresearch_11_columnstore_index";
   static constexpr string_ref kDataFormatExt = "csd";
   static constexpr string_ref kIndexFormatExt = "csi";
 
@@ -272,8 +269,8 @@ class reader final : public columnstore_reader {
 
   virtual const column_reader* column(field_id field) const override {
     return field >= columns_.size()
-               ? nullptr  // can't find column with the specified identifier
-               : columns_[field];
+             ? nullptr  // can't find column with the specified identifier
+             : columns_[field];
   }
 
   virtual bool visit(const column_visitor_f& visitor) const override;

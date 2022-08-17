@@ -21,9 +21,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "store/mmap_directory.hpp"
+
 #include "store/store_utils.hpp"
-#include "utils/mmap_utils.hpp"
 #include "utils/memory.hpp"
+#include "utils/mmap_utils.hpp"
 
 namespace {
 
@@ -53,8 +54,7 @@ inline int get_posix_madvice(IOAdvice advice) {
 
   IR_FRMT_ERROR(
     "madvice '%d' is not valid (RANDOM|SEQUENTIAL), fallback to NORMAL",
-    uint32_t(advice)
-  );
+    uint32_t(advice));
 
   return IR_MADVICE_NORMAL;
 }
@@ -65,9 +65,8 @@ inline int get_posix_madvice(IOAdvice advice) {
 //////////////////////////////////////////////////////////////////////////////
 class mmap_index_input : public bytes_ref_input {
  public:
-  static index_input::ptr open(
-      const file_path_t file,
-      IOAdvice advice) noexcept {
+  static index_input::ptr open(const file_path_t file,
+                               IOAdvice advice) noexcept {
     assert(file);
 
     mmap_handle_ptr handle;
@@ -79,7 +78,9 @@ class mmap_index_input : public bytes_ref_input {
     }
 
     if (!handle->open(file)) {
-      IR_FRMT_ERROR("Failed to open mmapped input file, path: " IR_FILEPATH_SPECIFIER, file);
+      IR_FRMT_ERROR(
+        "Failed to open mmapped input file, path: " IR_FILEPATH_SPECIFIER,
+        file);
       return nullptr;
     }
 
@@ -90,7 +91,9 @@ class mmap_index_input : public bytes_ref_input {
     const int padvice = get_posix_madvice(advice);
 
     if (IR_MADVICE_NORMAL != padvice && !handle->advise(padvice)) {
-      IR_FRMT_ERROR("Failed to madvise input file, path: " IR_FILEPATH_SPECIFIER ", error %d", file, errno);
+      IR_FRMT_ERROR("Failed to madvise input file, path: " IR_FILEPATH_SPECIFIER
+                    ", error %d",
+                    file, errno);
     }
 
     handle->dontneed(bool(advice & IOAdvice::READONCE));
@@ -102,13 +105,9 @@ class mmap_index_input : public bytes_ref_input {
     }
   }
 
-  virtual ptr dup() const override {
-    return ptr(new mmap_index_input(*this));
-  }
+  virtual ptr dup() const override { return ptr(new mmap_index_input(*this)); }
 
-  virtual ptr reopen() const override {
-    return dup();
-  }
+  virtual ptr reopen() const override { return dup(); }
 
  private:
   explicit mmap_index_input(mmap_handle_ptr&& handle) noexcept
@@ -123,16 +122,14 @@ class mmap_index_input : public bytes_ref_input {
   }
 
   mmap_index_input(const mmap_index_input& rhs) noexcept
-    : bytes_ref_input(rhs),
-      handle_(rhs.handle_) {
-  }
+    : bytes_ref_input(rhs), handle_(rhs.handle_) {}
 
   mmap_index_input& operator=(const mmap_index_input&) = delete;
 
   mmap_handle_ptr handle_;
-}; // mmap_index_input
+};  // mmap_index_input
 
-} // LOCAL
+}  // namespace
 
 namespace iresearch {
 
@@ -140,23 +137,20 @@ namespace iresearch {
 // --SECTION--                                     mmap_directory implementation
 // -----------------------------------------------------------------------------
 
-mmap_directory::mmap_directory(
-    irs::utf8_path path,
-    directory_attributes attrs /* = {} */)
-  : fs_directory{std::move(path), std::move(attrs)} {
-}
+mmap_directory::mmap_directory(irs::utf8_path path,
+                               directory_attributes attrs /* = {} */)
+  : fs_directory{std::move(path), std::move(attrs)} {}
 
-index_input::ptr mmap_directory::open(
-    std::string_view name,
-    IOAdvice advice) const noexcept {
+index_input::ptr mmap_directory::open(std::string_view name,
+                                      IOAdvice advice) const noexcept {
   try {
     auto path = directory();
     path /= name;
 
     return mmap_index_input::open(path.c_str(), advice);
-  } catch(...) {
+  } catch (...) {
     return nullptr;
   }
 }
 
-} // ROOT
+}  // namespace iresearch

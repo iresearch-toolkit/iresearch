@@ -7,21 +7,19 @@
 #ifndef FST_SCRIPT_DRAW_IMPL_H_
 #define FST_SCRIPT_DRAW_IMPL_H_
 
-#include <ostream>
-#include <sstream>
-#include <string>
-
 #include <fst/fst.h>
 #include <fst/symbol-table.h>
 #include <fst/util.h>
+
+#include <ostream>
+#include <sstream>
+#include <string>
 
 namespace fst {
 
 template<typename Label>
 struct LabelToString {
-  std::string operator()(Label label) const {
-    return std::to_string(label);
-  }
+  std::string operator()(Label label) const { return std::to_string(label); }
 };
 
 // Print a binary FST in GraphViz textual format (helper class for fstdraw.cc).
@@ -33,32 +31,32 @@ class FstDrawer {
   using StateId = typename Arc::StateId;
   using Weight = typename Arc::Weight;
 
-  FstDrawer(const Fst<Arc> &fst, const LabelToString& labelToString, const SymbolTable *isyms,
-            const SymbolTable *osyms, const SymbolTable *ssyms, bool accep,
-            const std::string &title, float width, float height, bool portrait,
-            bool vertical, float ranksep, float nodesep, int fontsize,
-            int precision, const std::string &float_format,
-            bool show_weight_one)
-      : fst_(fst),
-        isyms_(isyms),
-        osyms_(osyms),
-        ssyms_(ssyms),
-        accep_(accep && fst.Properties(kAcceptor, true)),
-        ostrm_(nullptr),
-        title_(title),
-        width_(width),
-        height_(height),
-        portrait_(portrait),
-        vertical_(vertical),
-        ranksep_(ranksep),
-        nodesep_(nodesep),
-        fontsize_(fontsize),
-        precision_(precision),
-        float_format_(float_format),
-        show_weight_one_(show_weight_one) {}
+  FstDrawer(const Fst<Arc>& fst, const LabelToString& labelToString,
+            const SymbolTable* isyms, const SymbolTable* osyms,
+            const SymbolTable* ssyms, bool accep, const std::string& title,
+            float width, float height, bool portrait, bool vertical,
+            float ranksep, float nodesep, int fontsize, int precision,
+            const std::string& float_format, bool show_weight_one)
+    : fst_(fst),
+      isyms_(isyms),
+      osyms_(osyms),
+      ssyms_(ssyms),
+      accep_(accep && fst.Properties(kAcceptor, true)),
+      ostrm_(nullptr),
+      title_(title),
+      width_(width),
+      height_(height),
+      portrait_(portrait),
+      vertical_(vertical),
+      ranksep_(ranksep),
+      nodesep_(nodesep),
+      fontsize_(fontsize),
+      precision_(precision),
+      float_format_(float_format),
+      show_weight_one_(show_weight_one) {}
 
   // Draws FST to an output buffer.
-  void Draw(std::ostream *strm, const std::string &dest) {
+  void Draw(std::ostream* strm, const std::string& dest) {
     ostrm_ = strm;
     SetStreamState(ostrm_);
     dest_ = dest;
@@ -101,17 +99,17 @@ class FstDrawer {
   void SetStreamState(std::ostream* strm) const {
     strm->precision(precision_);
     if (float_format_ == "e")
-        strm->setf(std::ios_base::scientific, std::ios_base::floatfield);
+      strm->setf(std::ios_base::scientific, std::ios_base::floatfield);
     if (float_format_ == "f")
-        strm->setf(std::ios_base::fixed, std::ios_base::floatfield);
+      strm->setf(std::ios_base::fixed, std::ios_base::floatfield);
     // O.w. defaults to "g" per standard lib.
   }
 
-  void PrintString(const std::string &str) const { *ostrm_ << str; }
+  void PrintString(const std::string& str) const { *ostrm_ << str; }
 
   // Escapes backslash and double quote if these occur in the string. Dot
   // will not deal gracefully with these if they are not escaped.
-  static std::string Escape(const std::string &str) {
+  static std::string Escape(const std::string& str) {
     std::string ns;
     for (char c : str) {
       if (c == '\\' || c == '"') ns.push_back('\\');
@@ -120,7 +118,7 @@ class FstDrawer {
     return ns;
   }
 
-  void PrintId(StateId id, const SymbolTable *syms, const char *name) const {
+  void PrintId(StateId id, const SymbolTable* syms, const char* name) const {
     if (syms) {
       auto symbol = syms->Find(id);
       if (symbol.empty()) {
@@ -151,8 +149,10 @@ class FstDrawer {
     PrintString(Escape(ToString(w)));
   }
 
-  template <class T>
-  void Print(T t) const { *ostrm_ << t; }
+  template<class T>
+  void Print(T t) const {
+    *ostrm_ << t;
+  }
 
   void PrintLabel(int32_t id, const SymbolTable* syms, const char* name) const {
     if (syms) {
@@ -172,7 +172,7 @@ class FstDrawer {
     *ostrm_ << label_to_string_(label);
   }
 
-  template <class T>
+  template<class T>
   std::string ToString(T t) const {
     std::stringstream ss;
     SetStreamState(&ss);
@@ -203,7 +203,7 @@ class FstDrawer {
     Print(fontsize_);
     PrintString("]\n");
     for (ArcIterator<Fst<Arc>> aiter(fst_, s); !aiter.Done(); aiter.Next()) {
-      const auto &arc = aiter.Value();
+      const auto& arc = aiter.Value();
       PrintString("\t");
       Print(s);
       PrintString(" -> ");
@@ -224,13 +224,13 @@ class FstDrawer {
     }
   }
 
-  const Fst<Arc> &fst_;
+  const Fst<Arc>& fst_;
   LabelToString label_to_string_;
-  const SymbolTable *isyms_;  // ilabel symbol table.
-  const SymbolTable *osyms_;  // olabel symbol table.
-  const SymbolTable *ssyms_;  // slabel symbol table.
+  const SymbolTable* isyms_;  // ilabel symbol table.
+  const SymbolTable* osyms_;  // olabel symbol table.
+  const SymbolTable* ssyms_;  // slabel symbol table.
   bool accep_;                // Print as acceptor when possible.
-  std::ostream *ostrm_;       // Drawn FST destination.
+  std::ostream* ostrm_;       // Drawn FST destination.
   std::string dest_;          // Drawn FST destination name.
 
   std::string title_;
@@ -245,72 +245,51 @@ class FstDrawer {
   std::string float_format_;
   bool show_weight_one_;
 
-  FstDrawer(const FstDrawer &) = delete;
-  FstDrawer &operator=(const FstDrawer &) = delete;
+  FstDrawer(const FstDrawer&) = delete;
+  FstDrawer& operator=(const FstDrawer&) = delete;
 };
 
 template<typename Fst,
          typename LabelToString = fst::LabelToString<typename Fst::Arc::Label>>
 inline void drawFst(
-    const Fst& fst,
-    std::ostream& strm,
-    const LabelToString& label_to_string = {},
-    const std::string& dest = "",
-    const SymbolTable* isyms = nullptr,
-    const SymbolTable* osyms = nullptr,
-    const SymbolTable* ssyms = nullptr,
-    bool accep = false,
-    const std::string& title = "",
-    float width = 11,
-    float height = 8.5,
-    bool partrait = true,
-    bool vertical = false,
-    float randsep = 0.4,
-    float nodesep = 0.25,
-    int fontsize = 14,
-    int precision = 5,
-    const std::string& float_format = "g",
-    bool show_weight_one = false) {
+  const Fst& fst, std::ostream& strm, const LabelToString& label_to_string = {},
+  const std::string& dest = "", const SymbolTable* isyms = nullptr,
+  const SymbolTable* osyms = nullptr, const SymbolTable* ssyms = nullptr,
+  bool accep = false, const std::string& title = "", float width = 11,
+  float height = 8.5, bool partrait = true, bool vertical = false,
+  float randsep = 0.4, float nodesep = 0.25, int fontsize = 14,
+  int precision = 5, const std::string& float_format = "g",
+  bool show_weight_one = false) {
   FstDrawer<typename Fst::Arc, LabelToString> drawer(
     fst, label_to_string, isyms, osyms, ssyms, accep, title, width, height,
-    partrait, vertical, randsep, nodesep, fontsize, precision,
-    float_format, show_weight_one
-  );
+    partrait, vertical, randsep, nodesep, fontsize, precision, float_format,
+    show_weight_one);
 
   drawer.Draw(&strm, dest);
 }
 
 template<typename Fst,
          typename LabelToString = fst::LabelToString<typename Fst::Arc::Label>>
-inline bool drawFst(
-    const Fst& fst,
-    const std::string& dest,
-    const LabelToString& label_to_string = {},
-    const SymbolTable* isyms = nullptr,
-    const SymbolTable* osyms = nullptr,
-    const SymbolTable* ssyms = nullptr,
-    bool accep = false,
-    const std::string& title = "",
-    float width = 11,
-    float height = 8.5,
-    bool partrait = true,
-    bool vertical = false,
-    float randsep = 0.4,
-    float nodesep = 0.25,
-    int fontsize = 14,
-    int precision = 5,
-    const std::string& float_format = "g",
-    bool show_weight_one = false) {
+inline bool drawFst(const Fst& fst, const std::string& dest,
+                    const LabelToString& label_to_string = {},
+                    const SymbolTable* isyms = nullptr,
+                    const SymbolTable* osyms = nullptr,
+                    const SymbolTable* ssyms = nullptr, bool accep = false,
+                    const std::string& title = "", float width = 11,
+                    float height = 8.5, bool partrait = true,
+                    bool vertical = false, float randsep = 0.4,
+                    float nodesep = 0.25, int fontsize = 14, int precision = 5,
+                    const std::string& float_format = "g",
+                    bool show_weight_one = false) {
   std::fstream stream;
   stream.open(dest, std::fstream::binary | std::fstream::out);
   if (!stream) {
     return false;
   }
 
-  fst::drawFst(
-    fst, stream, label_to_string, dest, isyms, osyms, ssyms, accep, title,
-    width, height, partrait, vertical, randsep, nodesep,
-    fontsize, precision, float_format, show_weight_one);
+  fst::drawFst(fst, stream, label_to_string, dest, isyms, osyms, ssyms, accep,
+               title, width, height, partrait, vertical, randsep, nodesep,
+               fontsize, precision, float_format, show_weight_one);
 
   return true;
 }

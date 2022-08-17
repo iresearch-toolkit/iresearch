@@ -39,7 +39,8 @@ struct consolidate_bytes {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @param threshold merge segment if:
-///   {threshold} >= (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
+///   {threshold} >= (segment_bytes + sum_of_merge_candidate_segment_bytes) /
+///   all_segment_bytes
 ////////////////////////////////////////////////////////////////////////////////
 struct consolidate_bytes_accum {
   float threshold = 0;
@@ -62,25 +63,29 @@ struct consolidate_docs_live {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @param threshold merge segment if:
-///   {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
+///   {threshold} > #segment_docs{valid} / (#segment_docs{valid} +
+///   #segment_docs{removed})
 ////////////////////////////////////////////////////////////////////////////////
 struct consolidate_docs_fill {
   float threshold = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @param min_segments minimum allowed number of segments to consolidate at once
-/// @param max_segments maximum allowed number of segments to consolidate at once
+/// @param min_segments minimum allowed number of segments to consolidate at
+/// once
+/// @param max_segments maximum allowed number of segments to consolidate at
+/// once
 /// @param max_segments_bytes maxinum allowed size of all consolidated segments
-/// @param floor_segment_bytes treat all smaller segments as equal for consolidation selection
+/// @param floor_segment_bytes treat all smaller segments as equal for
+/// consolidation selection
 /// @param lookahead how many tiers have to be inspected
 /// @param min_score filter out candidates with score less than min_score
 ////////////////////////////////////////////////////////////////////////////////
 struct consolidate_tier {
   size_t min_segments = 1;
   size_t max_segments = 10;
-  size_t max_segments_bytes = size_t(5)*(1<<30);
-  size_t floor_segment_bytes = size_t(2)*(1<<20);
+  size_t max_segments_bytes = size_t(5) * (1 << 30);
+  size_t floor_segment_bytes = size_t(2) * (1 << 20);
   double_t min_score = 0.;
 };
 
@@ -88,45 +93,40 @@ struct consolidate_tier {
 /// @return a consolidation policy with the specified options
 ////////////////////////////////////////////////////////////////////////////////
 index_writer::consolidation_policy_t consolidation_policy(
-  const consolidate_bytes& options
-);
+  const consolidate_bytes& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a consolidation policy with the specified options
 ////////////////////////////////////////////////////////////////////////////////
 index_writer::consolidation_policy_t consolidation_policy(
-  const consolidate_bytes_accum& options
-);
+  const consolidate_bytes_accum& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a consolidation policy with the specified options
 ////////////////////////////////////////////////////////////////////////////////
 index_writer::consolidation_policy_t consolidation_policy(
-  const consolidate_count& options
-);
+  const consolidate_count& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a consolidation policy with the specified options
 ////////////////////////////////////////////////////////////////////////////////
 index_writer::consolidation_policy_t consolidation_policy(
-  const consolidate_docs_fill& options
-);
+  const consolidate_docs_fill& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a consolidation policy with the specified options
 ////////////////////////////////////////////////////////////////////////////////
 index_writer::consolidation_policy_t consolidation_policy(
-  const consolidate_docs_live& options
-);
+  const consolidate_docs_live& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a consolidation policy with the specified options
 ////////////////////////////////////////////////////////////////////////////////
 index_writer::consolidation_policy_t consolidation_policy(
-  const consolidate_tier& options
-);
+  const consolidate_tier& options);
 
-void read_document_mask(document_mask& docs_mask, const directory& dir, const segment_meta& meta);
+void read_document_mask(document_mask& docs_mask, const directory& dir,
+                        const segment_meta& meta);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes segment_meta to the supplied directory
@@ -135,7 +135,7 @@ void read_document_mask(document_mask& docs_mask, const directory& dir, const se
 ////////////////////////////////////////////////////////////////////////////////
 void flush_index_segment(directory& dir, index_meta::index_segment_t& segment);
 
-}
-}
+}  // namespace index_utils
+}  // namespace iresearch
 
 #endif

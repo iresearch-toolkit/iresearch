@@ -22,13 +22,14 @@
 
 #if defined(_MSC_VER)
 
-#include "shared.hpp"
 #include "mman_win32.hpp"
-#include "log.hpp"
 
-#include <windows.h>
 #include <errno.h>
 #include <io.h>
+#include <windows.h>
+
+#include "log.hpp"
+#include "shared.hpp"
 
 namespace {
 
@@ -57,7 +58,7 @@ DWORD page_protection(int prot) noexcept {
 
   IR_FRMT_ERROR("Can't convert protection level %d, use PAGE_NOACCESS", prot);
 
-  return PAGE_NOACCESS; // fallback
+  return PAGE_NOACCESS;  // fallback
 }
 
 DWORD file_protection(int prot) noexcept {
@@ -82,26 +83,35 @@ DWORD file_protection(int prot) noexcept {
   return access;
 }
 
-} //namespace
+}  // namespace
 
-void* mmap(void* /*addr*/, size_t len, int prot, int flags, int fd, OffsetType off) {
+void *mmap(void * /*addr*/, size_t len, int prot, int flags, int fd,
+           OffsetType off) {
   const OffsetType maxSize = off + static_cast<OffsetType>(len);
 
-  const DWORD dwFileOffsetLow = (sizeof(OffsetType) <= sizeof(DWORD))
+  const DWORD dwFileOffsetLow =
+    (sizeof(OffsetType) <= sizeof(DWORD))
       ? static_cast<DWORD>(off)
       : static_cast<DWORD>(off & UINT32_C(0xFFFFFFFF));
 
-  const DWORD dwFileOffsetHigh = (sizeof(OffsetType) <= sizeof(DWORD))
+  const DWORD dwFileOffsetHigh =
+    (sizeof(OffsetType) <= sizeof(DWORD))
       ? static_cast<DWORD>(0)
-      : static_cast<DWORD>((off >> 32) & UINT32_C(0xFFFFFFFF)); // cppcheck-suppress shiftTooManyBits
+      : static_cast<DWORD>(
+          (off >> 32) &
+          UINT32_C(0xFFFFFFFF));  // cppcheck-suppress shiftTooManyBits
 
-  const DWORD dwMaxSizeLow = (sizeof(OffsetType) <= sizeof(DWORD))
+  const DWORD dwMaxSizeLow =
+    (sizeof(OffsetType) <= sizeof(DWORD))
       ? static_cast<DWORD>(maxSize)
       : static_cast<DWORD>(maxSize & UINT32_C(0xFFFFFFFF));
 
-  const DWORD dwMaxSizeHigh = (sizeof(OffsetType) <= sizeof(DWORD))
+  const DWORD dwMaxSizeHigh =
+    (sizeof(OffsetType) <= sizeof(DWORD))
       ? static_cast<DWORD>(0)
-      : static_cast<DWORD>((maxSize >> 32) & UINT32_C(0xFFFFFFFF)); // cppcheck-suppress shiftTooManyBits
+      : static_cast<DWORD>(
+          (maxSize >> 32) &
+          UINT32_C(0xFFFFFFFF));  // cppcheck-suppress shiftTooManyBits
 
   const DWORD protect = page_protection(prot);
 
@@ -109,37 +119,39 @@ void* mmap(void* /*addr*/, size_t len, int prot, int flags, int fd, OffsetType o
 
   errno = 0;
 
-  if (len == 0
-      || (flags & MAP_FIXED) != 0  // Unsupported flag combinations
-      || prot == PROT_EXEC) {      // Usupported protection combinations
+  if (len == 0 || (flags & MAP_FIXED) != 0  // Unsupported flag combinations
+      || prot == PROT_EXEC) {  // Usupported protection combinations
     errno = EINVAL;
     return MAP_FAILED;
   }
 
-  HANDLE handle = ((flags & MAP_ANONYMOUS) == 0)
-      ? (HANDLE)_get_osfhandle(fd)
-      : INVALID_HANDLE_VALUE;
+  HANDLE handle = ((flags & MAP_ANONYMOUS) == 0) ? (HANDLE)_get_osfhandle(fd)
+                                                 : INVALID_HANDLE_VALUE;
 
   if ((flags & MAP_ANONYMOUS) == 0 && handle == INVALID_HANDLE_VALUE) {
     errno = EBADF;
     return MAP_FAILED;
   }
 
-  HANDLE mapping = CreateFileMapping(handle, NULL, protect, dwMaxSizeHigh, dwMaxSizeLow, NULL);
+  HANDLE mapping =
+    CreateFileMapping(handle, NULL, protect, dwMaxSizeHigh, dwMaxSizeLow, NULL);
 
   if (NULL == mapping) {
     errno = GetLastError();
     return MAP_FAILED;
   }
 
-  void* map = MapViewOfFile(mapping, desiredAccess, dwFileOffsetHigh, dwFileOffsetLow, len);
+  void *map = MapViewOfFile(mapping, desiredAccess, dwFileOffsetHigh,
+                            dwFileOffsetLow, len);
 
-  // According to (https://msdn.microsoft.com/en-us/library/windows/desktop/aa366537(v=vs.85).aspx)
-  // Mapped views of a file mapping object maintain internal references to the object,
-  // and a file mapping object does not close until all references to it are released.
-  // Therefore, to fully close a file mapping object, an application must unmap all mapped views
-  // of the file mapping object by calling UnmapViewOfFile and close the file mapping object
-  // handle by calling CloseHandle. These functions can be called in any order.
+  // According to
+  // (https://msdn.microsoft.com/en-us/library/windows/desktop/aa366537(v=vs.85).aspx)
+  // Mapped views of a file mapping object maintain internal references to the
+  // object, and a file mapping object does not close until all references to it
+  // are released. Therefore, to fully close a file mapping object, an
+  // application must unmap all mapped views of the file mapping object by
+  // calling UnmapViewOfFile and close the file mapping object handle by calling
+  // CloseHandle. These functions can be called in any order.
   CloseHandle(mapping);
 
   if (NULL == map) {
@@ -203,8 +215,6 @@ int munlock(const void *addr, size_t len) {
   return -1;
 }
 
-int madvise(void*, size_t, int) {
-  return 0;
-}
+int madvise(void *, size_t, int) { return 0; }
 
-#endif // defined(_MSC_VER)
+#endif  // defined(_MSC_VER)

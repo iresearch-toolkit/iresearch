@@ -20,18 +20,19 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "utils/misc.hpp"
 
+#include "tests_shared.hpp"
+
 TEST(misc_test, cached_func_contexpr) {
-  constexpr auto cached_func = irs::cache_func<uint32_t, 3>(
-    0, [](uint32_t v) { return v + 1; });
-  static_assert (3 == cached_func.size());
-  static_assert (1 == cached_func.get<false>(0));
-  static_assert (2 == cached_func.get<true>(1));
-  static_assert (3 == cached_func.get<true>(2));
-  static_assert (4 == cached_func.get<true>(3));
-  static_assert (5 == cached_func.get<true>(4));
+  constexpr auto cached_func =
+    irs::cache_func<uint32_t, 3>(0, [](uint32_t v) { return v + 1; });
+  static_assert(3 == cached_func.size());
+  static_assert(1 == cached_func.get<false>(0));
+  static_assert(2 == cached_func.get<true>(1));
+  static_assert(3 == cached_func.get<true>(2));
+  static_assert(4 == cached_func.get<true>(3));
+  static_assert(5 == cached_func.get<true>(4));
 }
 
 TEST(misc_test, cached_func) {

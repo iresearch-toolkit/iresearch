@@ -23,29 +23,29 @@
 #ifndef IRESEARCH_AUTOMATON_H
 #define IRESEARCH_AUTOMATON_H
 
-#include "shared.hpp"
-
 #include <vector>
 
+#include "shared.hpp"
+
 #if defined(_MSC_VER)
-  // NOOP
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wsign-compare"
+// NOOP
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #endif
 
 #ifndef FST_NO_DYNAMIC_LINKING
 #define FST_NO_DYNAMIC_LINKING
 #endif
 
-#include <fst/fst.h>
 #include <fst/connect.h>
+#include <fst/fst.h>
 #include <fst/test-properties.h>
 
 #if defined(_MSC_VER)
-  // NOOP
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic pop
+// NOOP
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
 #endif
 
 #include "utils/automaton_decl.hpp"
@@ -70,18 +70,19 @@ class BooleanWeight {
   static constexpr BooleanWeight NoWeight() noexcept { return {}; }
 
   static constexpr uint64 Properties() noexcept {
-    return kLeftSemiring | kRightSemiring |
-           kCommutative | kIdempotent | kPath;
+    return kLeftSemiring | kRightSemiring | kCommutative | kIdempotent | kPath;
   }
 
   constexpr BooleanWeight() noexcept = default;
   // cppcheck-suppress noExplicitConstructor
   constexpr BooleanWeight(bool v, PayloadType payload = 0) noexcept
-    : v_(PayloadType(v)), p_(payload) {
-  }
+    : v_(PayloadType(v)), p_(payload) {}
 
   constexpr bool Member() const noexcept { return Invalid != v_; }
-  constexpr BooleanWeight Quantize([[maybe_unused]]float delta = kDelta) const noexcept { return {};  }
+  constexpr BooleanWeight Quantize(
+    [[maybe_unused]] float delta = kDelta) const noexcept {
+    return {};
+  }
   std::istream& Read(std::istream& strm) noexcept {
     v_ = strm.get();
     if (strm.fail()) {
@@ -89,7 +90,7 @@ class BooleanWeight {
     }
     return strm;
   }
-  std::ostream& Write(std::ostream &strm) const noexcept {
+  std::ostream& Write(std::ostream& strm) const noexcept {
     strm.put(v_);
     return strm;
   }
@@ -98,19 +99,26 @@ class BooleanWeight {
   constexpr PayloadType Payload() const noexcept { return p_; }
   constexpr operator bool() const noexcept { return v_ == True; }
 
-  friend constexpr bool operator==(const BooleanWeight& lhs, const BooleanWeight& rhs) noexcept {
+  friend constexpr bool operator==(const BooleanWeight& lhs,
+                                   const BooleanWeight& rhs) noexcept {
     return lhs.Hash() == rhs.Hash();
   }
-  friend constexpr bool operator!=(const BooleanWeight& lhs, const BooleanWeight& rhs) noexcept {
+  friend constexpr bool operator!=(const BooleanWeight& lhs,
+                                   const BooleanWeight& rhs) noexcept {
     return !(lhs == rhs);
   }
-  friend constexpr BooleanWeight Plus(const BooleanWeight& lhs, const BooleanWeight& rhs) noexcept {
-    return BooleanWeight(bool(lhs.Hash()) || bool(rhs.Hash()), lhs.Payload() | rhs.Payload());
+  friend constexpr BooleanWeight Plus(const BooleanWeight& lhs,
+                                      const BooleanWeight& rhs) noexcept {
+    return BooleanWeight(bool(lhs.Hash()) || bool(rhs.Hash()),
+                         lhs.Payload() | rhs.Payload());
   }
-  friend constexpr BooleanWeight Times(const BooleanWeight& lhs, const BooleanWeight& rhs) noexcept {
-    return BooleanWeight(bool(lhs.Hash()) && bool(rhs.Hash()), lhs.Payload() & rhs.Payload());
+  friend constexpr BooleanWeight Times(const BooleanWeight& lhs,
+                                       const BooleanWeight& rhs) noexcept {
+    return BooleanWeight(bool(lhs.Hash()) && bool(rhs.Hash()),
+                         lhs.Payload() & rhs.Payload());
   }
-  friend constexpr BooleanWeight Divide(BooleanWeight, BooleanWeight, DivideType) noexcept {
+  friend constexpr BooleanWeight Divide(BooleanWeight, BooleanWeight,
+                                        DivideType) noexcept {
     return NoWeight();
   }
   friend constexpr BooleanWeight Divide(BooleanWeight, BooleanWeight) noexcept {
@@ -122,7 +130,8 @@ class BooleanWeight {
     }
     return strm;
   }
-  friend constexpr bool ApproxEqual(const BooleanWeight& lhs, const BooleanWeight& rhs,
+  friend constexpr bool ApproxEqual(const BooleanWeight& lhs,
+                                    const BooleanWeight& rhs,
                                     [[maybe_unused]] float delta = kDelta) {
     return lhs == rhs;
   }
@@ -130,15 +139,14 @@ class BooleanWeight {
  private:
   static constexpr PayloadType False = 0;
   static constexpr PayloadType True = 1;     // "is true" mask
-  static constexpr PayloadType Invalid = 2; // "not a member" value
+  static constexpr PayloadType Invalid = 2;  // "not a member" value
 
   PayloadType v_{Invalid};
   PayloadType p_{};
 };
 
 struct RangeLabelLE {
-  constexpr RangeLabelLE(int64_t ilabel) noexcept
-    : ilabel{ilabel} {}
+  constexpr RangeLabelLE(int64_t ilabel) noexcept : ilabel{ilabel} {}
   constexpr RangeLabelLE(uint32_t min, uint32_t max) noexcept
     : max{max}, min{min} {}
 
@@ -152,8 +160,7 @@ struct RangeLabelLE {
 };
 
 struct RangeLabelBE {
-  constexpr RangeLabelBE(int64_t ilabel) noexcept
-    : ilabel{ilabel} {}
+  constexpr RangeLabelBE(int64_t ilabel) noexcept : ilabel{ilabel} {}
   constexpr RangeLabelBE(uint32_t min, uint32_t max) noexcept
     : min{min}, max{max} {}
 
@@ -166,8 +173,8 @@ struct RangeLabelBE {
   };
 };
 
-using RangeLabelType = std::conditional_t<
-    irs::is_big_endian(), RangeLabelBE, RangeLabelLE>;
+using RangeLabelType =
+  std::conditional_t<irs::is_big_endian(), RangeLabelBE, RangeLabelLE>;
 
 // We inherit from annonymous union to be OpenFST compliant.
 struct RangeLabel : RangeLabelType {
@@ -181,24 +188,21 @@ struct RangeLabel : RangeLabelType {
     return RangeLabel{label};
   }
 
-  constexpr RangeLabel() noexcept
-    : RangeLabel{fst::kNoLabel} { }
+  constexpr RangeLabel() noexcept : RangeLabel{fst::kNoLabel} {}
 
   constexpr RangeLabel(uint32_t min, uint32_t max) noexcept
-    : RangeLabelType{min, max} { }
+    : RangeLabelType{min, max} {}
 
   constexpr explicit RangeLabel(int64_t ilabel) noexcept
-    : RangeLabelType{ilabel} { }
+    : RangeLabelType{ilabel} {}
 
-  constexpr operator int64_t() const noexcept {
-    return ilabel;
-  }
+  constexpr operator int64_t() const noexcept { return ilabel; }
 
   friend std::ostream& operator<<(std::ostream& strm, const RangeLabel& l) {
     strm << '[' << l.min << ".." << l.max << ']';
     return strm;
   }
-}; // RangeLabel
+};  // RangeLabel
 
 template<typename W = BooleanWeight>
 struct Transition : RangeLabel {
@@ -206,7 +210,7 @@ struct Transition : RangeLabel {
   using Label = int64_t;
   using StateId = int32_t;
 
-  static const std::string &Type() {
+  static const std::string& Type() {
     static const std::string type("Transition");
     return type;
   }
@@ -214,40 +218,31 @@ struct Transition : RangeLabel {
   union {
     StateId nextstate{fst::kNoStateId};
     fstext::EmptyLabel<Label> olabel;
-    fstext::EmptyWeight<Weight> weight; // all arcs are trivial
+    fstext::EmptyWeight<Weight> weight;  // all arcs are trivial
   };
 
   constexpr Transition() = default;
 
   constexpr Transition(RangeLabel ilabel, StateId nextstate)
-    : RangeLabel{ilabel},
-      nextstate(nextstate) {
-  }
+    : RangeLabel{ilabel}, nextstate(nextstate) {}
 
   constexpr Transition(Label ilabel, StateId nextstate)
-    : RangeLabel{ilabel},
-      nextstate{nextstate} {
-  }
+    : RangeLabel{ilabel}, nextstate{nextstate} {}
 
   // satisfy openfst API
   constexpr Transition(Label ilabel, Label, Weight, StateId nextstate)
-    : RangeLabel{ilabel},
-      nextstate{nextstate} {
-  }
+    : RangeLabel{ilabel}, nextstate{nextstate} {}
 
   // satisfy openfst API
   constexpr Transition(Label ilabel, Label, StateId nextstate)
-    : RangeLabel{ilabel},
-      nextstate{nextstate} {
-  }
+    : RangeLabel{ilabel}, nextstate{nextstate} {}
 };
 
-} // fsa
+}  // namespace fsa
 
 template<typename W>
-uint64 ComputeProperties(
-    const Fst<fsa::Transition<W>> &fst, uint64 mask,
-    uint64 *known, bool use_stored) {
+uint64 ComputeProperties(const Fst<fsa::Transition<W>>& fst, uint64 mask,
+                         uint64* known, bool use_stored) {
   using Arc = fsa::Transition<W>;
   using Label = typename Arc::Label;
   using StateId = typename Arc::StateId;
@@ -296,7 +291,7 @@ uint64 ComputeProperties(
         fsa::RangeLabel lhsRange{lhs};
         fsa::RangeLabel rhsRange{rhs};
 
-        return lhsRange.min < rhsRange.min && lhsRange.max < rhsRange.min; 
+        return lhsRange.min < rhsRange.min && lhsRange.max < rhsRange.min;
       }
     };
 
@@ -317,7 +312,7 @@ uint64 ComputeProperties(
       }
       bool first_arc = true;
       for (ArcIterator<Fst<Arc>> aiter(fst, s); !aiter.Done(); aiter.Next()) {
-        const auto &arc = aiter.Value();
+        const auto& arc = aiter.Value();
         if (ilabels && ilabels->find(arc.ilabel) != ilabels->end()) {
           comp_props |= kNonIDeterministic;
           comp_props &= ~kIDeterministic;
@@ -402,22 +397,22 @@ uint64 ComputeProperties(
   return comp_props;
 }
 
-} // fst
+}  // namespace fst
 
 #if defined(_MSC_VER)
-  // NOOP
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wsign-compare"
+   // NOOP
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #endif
 
-#include <fst/vector-fst.h>
 #include <fst/matcher.h>
+#include <fst/vector-fst.h>
 
 #if defined(_MSC_VER)
-  // NOOP
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic pop
+   // NOOP
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
 #endif
 
-#endif // IRESEARCH_AUTOMATON_H
+#endif  // IRESEARCH_AUTOMATON_H

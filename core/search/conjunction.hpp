@@ -37,7 +37,7 @@ struct doc_iterator_adapter {
 
   doc_iterator_adapter() = default;
   doc_iterator_adapter(doc_iterator_t&& it) noexcept
-      : it(std::move(it)), doc(irs::get<irs::document>(*this->it)) {
+    : it(std::move(it)), doc(irs::get<irs::document>(*this->it)) {
     assert(doc);
   }
 
@@ -74,8 +74,8 @@ struct score_iterator_adapter : public doc_iterator_adapter<DocIterator> {
 
   score_iterator_adapter() = default;
   score_iterator_adapter(doc_iterator_t&& it) noexcept
-      : doc_iterator_adapter<DocIterator>(std::move(it)),
-        score{&irs::score::get(*this->it)} {
+    : doc_iterator_adapter<DocIterator>(std::move(it)),
+      score{&irs::score::get(*this->it)} {
     assert(this->doc);
   }
 
@@ -104,30 +104,30 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
                 "default move constructor expected");
 
   explicit conjunction(doc_iterators_t&& itrs, Merger&& merger = Merger{})
-      : Merger{std::move(merger)},
-        itrs_{[](doc_iterators_t&& itrs) {
-          assert(!itrs.empty());
+    : Merger{std::move(merger)},
+      itrs_{[](doc_iterators_t&& itrs) {
+        assert(!itrs.empty());
 
-          // sort subnodes in ascending order by their cost
-          std::sort(std::begin(itrs), std::end(itrs),
-                    [](const auto& lhs, const auto& rhs) {
-                      return cost::extract(lhs, cost::kMax) <
-                             cost::extract(rhs, cost::kMax);
-                    });
+        // sort subnodes in ascending order by their cost
+        std::sort(std::begin(itrs), std::end(itrs),
+                  [](const auto& lhs, const auto& rhs) {
+                    return cost::extract(lhs, cost::kMax) <
+                           cost::extract(rhs, cost::kMax);
+                  });
 #if defined(__GNUC__) && (__GNUC__ < 11)
-          // Circumvent GCC10 compilation issue.
-          return std::move(itrs);
+        // Circumvent GCC10 compilation issue.
+        return std::move(itrs);
 #else
-          return itrs;
+        return itrs;
 #endif
-        }(std::move(itrs))},
-        front_{itrs_.front().it.get()},
-        front_doc_{irs::get_mutable<document>(front_)} {
+      }(std::move(itrs))},
+      front_{itrs_.front().it.get()},
+      front_doc_{irs::get_mutable<document>(front_)} {
     assert(!itrs_.empty());
     assert(front_);
     assert(front_doc_);
     std::get<attribute_ptr<document>>(attrs_) =
-        const_cast<document*>(front_doc_);
+      const_cast<document*>(front_doc_);
     std::get<attribute_ptr<cost>>(attrs_) = irs::get_mutable<cost>(front_);
 
     if constexpr (HasScore_v<Merger>) {
@@ -142,7 +142,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
   size_t size() const noexcept { return itrs_.size(); }
 
   virtual attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override final {
+    irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
 
@@ -166,7 +166,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
 
  private:
   using attributes =
-      std::tuple<attribute_ptr<document>, attribute_ptr<cost>, score>;
+    std::tuple<attribute_ptr<document>, attribute_ptr<cost>, score>;
 
   void prepare_score() {
     assert(Merger::size());
@@ -287,9 +287,8 @@ doc_iterator::ptr MakeConjunction(typename Conjunction::doc_iterators_t&& itrs,
   }
 
   // conjunction
-  return memory::make_managed<Conjunction>(std::move(itrs),
-                                           std::forward<Merger>(merger),
-                                           std::forward<Args>(args)...);
+  return memory::make_managed<Conjunction>(
+    std::move(itrs), std::forward<Merger>(merger), std::forward<Args>(args)...);
 }
 
 }  // namespace iresearch

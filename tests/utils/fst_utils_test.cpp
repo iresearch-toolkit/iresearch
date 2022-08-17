@@ -22,27 +22,50 @@
 
 #include "tests_shared.hpp"
 #include "utils/automaton.hpp"
-#include "utils/fstext/fst_table_matcher.hpp"
 #include "utils/fstext/fst_sorted_range_matcher.hpp"
+#include "utils/fstext/fst_table_matcher.hpp"
 
 TEST(fst_table_matcher_test, static_const) {
-  static_assert(fst::MATCH_INPUT == fst::TableMatcher<fst::fsa::Automaton<fst::fsa::BooleanWeight>>::MATCH_TYPE);
-  static_assert(fst::kNoIEpsilons | fst::kIDeterministic | fst::kAcceptor == fst::TableMatcher<fst::fsa::Automaton<fst::fsa::BooleanWeight>>::MATCH_TYPE);
-  static_assert(fst::MATCH_OUTPUT == fst::TableMatcher<fst::fsa::Automaton<fst::fsa::BooleanWeight>, 256, false>::MATCH_TYPE);
-  static_assert(fst::kNoOEpsilons | fst::kODeterministic | fst::kAcceptor == fst::TableMatcher<fst::fsa::Automaton<fst::fsa::BooleanWeight>, 256, false>::MATCH_TYPE);
-  static_assert(std::is_same<fst::fsa::Automaton<fst::fsa::BooleanWeight>, fst::TableMatcher<fst::fsa::Automaton<fst::fsa::BooleanWeight>>::FST>::value);
-  static_assert(std::is_same<fst::fsa::Transition<fst::fsa::BooleanWeight>,fst::TableMatcher<fst::fsa::Automaton<fst::fsa::BooleanWeight>>::Arc>::value);
-  static_assert(std::is_same<int64_t,fst::TableMatcher<fst::fsa::Automaton<fst::fsa::BooleanWeight>>::Label>::value);
-  static_assert(std::is_same<int32_t,fst::TableMatcher<fst::fsa::Automaton<fst::fsa::BooleanWeight>>::StateId>::value);
-  static_assert(std::is_same<fst::fsa::BooleanWeight,fst::TableMatcher<fst::fsa::Automaton<fst::fsa::BooleanWeight>>::Weight>::value);
+  static_assert(fst::MATCH_INPUT ==
+                fst::TableMatcher<
+                  fst::fsa::Automaton<fst::fsa::BooleanWeight>>::MATCH_TYPE);
+  static_assert(fst::kNoIEpsilons | fst::kIDeterministic |
+                fst::kAcceptor ==
+                  fst::TableMatcher<
+                    fst::fsa::Automaton<fst::fsa::BooleanWeight>>::MATCH_TYPE);
+  static_assert(fst::MATCH_OUTPUT ==
+                fst::TableMatcher<fst::fsa::Automaton<fst::fsa::BooleanWeight>,
+                                  256, false>::MATCH_TYPE);
+  static_assert(
+    fst::kNoOEpsilons | fst::kODeterministic |
+    fst::kAcceptor ==
+      fst::TableMatcher<fst::fsa::Automaton<fst::fsa::BooleanWeight>, 256,
+                        false>::MATCH_TYPE);
+  static_assert(
+    std::is_same<fst::fsa::Automaton<fst::fsa::BooleanWeight>,
+                 fst::TableMatcher<
+                   fst::fsa::Automaton<fst::fsa::BooleanWeight>>::FST>::value);
+  static_assert(
+    std::is_same<fst::fsa::Transition<fst::fsa::BooleanWeight>,
+                 fst::TableMatcher<
+                   fst::fsa::Automaton<fst::fsa::BooleanWeight>>::Arc>::value);
+  static_assert(
+    std::is_same<int64_t, fst::TableMatcher<fst::fsa::Automaton<
+                            fst::fsa::BooleanWeight>>::Label>::value);
+  static_assert(
+    std::is_same<int32_t, fst::TableMatcher<fst::fsa::Automaton<
+                            fst::fsa::BooleanWeight>>::StateId>::value);
+  static_assert(std::is_same<fst::fsa::BooleanWeight,
+                             fst::TableMatcher<fst::fsa::Automaton<
+                               fst::fsa::BooleanWeight>>::Weight>::value);
 }
 
 TEST(fst_table_matcher_test, test_properties) {
   // non-deterministic
   {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
-    a.AddState(); // 0
-    a.AddState(); // 1
+    a.AddState();  // 0
+    a.AddState();  // 1
     a.EmplaceArc(1, fst::fsa::RangeLabel(1), 0);
     a.EmplaceArc(1, fst::fsa::RangeLabel(1), 0);
     ASSERT_EQ(fst::kILabelSorted,
@@ -54,8 +77,8 @@ TEST(fst_table_matcher_test, test_properties) {
   // non-deterministic
   {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
-    a.AddState(); // 0
-    a.AddState(); // 1
+    a.AddState();  // 0
+    a.AddState();  // 1
     a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
     a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
     ASSERT_EQ(fst::kILabelSorted,
@@ -67,8 +90,8 @@ TEST(fst_table_matcher_test, test_properties) {
   // non-deterministic
   {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
-    a.AddState(); // 0
-    a.AddState(); // 1
+    a.AddState();  // 0
+    a.AddState();  // 1
     a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
     a.EmplaceArc(1, fst::fsa::RangeLabel(21, 22), 0);
     ASSERT_EQ(fst::kILabelSorted,
@@ -80,8 +103,8 @@ TEST(fst_table_matcher_test, test_properties) {
   // non-deterministic
   {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
-    a.AddState(); // 0
-    a.AddState(); // 1
+    a.AddState();  // 0
+    a.AddState();  // 1
     a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
     a.EmplaceArc(1, fst::fsa::RangeLabel(19, 22), 0);
     ASSERT_EQ(fst::kILabelSorted,
@@ -93,8 +116,8 @@ TEST(fst_table_matcher_test, test_properties) {
   // non-deterministic
   {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
-    a.AddState(); // 0
-    a.AddState(); // 1
+    a.AddState();  // 0
+    a.AddState();  // 1
     a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
     a.EmplaceArc(1, fst::fsa::RangeLabel(19, 22), 0);
     ASSERT_EQ(fst::kILabelSorted,
@@ -106,8 +129,8 @@ TEST(fst_table_matcher_test, test_properties) {
   // non-deterministic, unsorted
   {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
-    a.AddState(); // 0
-    a.AddState(); // 1
+    a.AddState();  // 0
+    a.AddState();  // 1
     a.EmplaceArc(1, fst::fsa::RangeLabel(19, 22), 0);
     a.EmplaceArc(1, fst::fsa::RangeLabel(1, 21), 0);
     ASSERT_EQ(0, a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
@@ -118,11 +141,12 @@ TEST(fst_table_matcher_test, test_properties) {
   // deterministic, unsorted
   {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
-    a.AddState(); // 0
-    a.AddState(); // 1
+    a.AddState();  // 0
+    a.AddState();  // 1
     a.EmplaceArc(1, fst::fsa::RangeLabel(19, 22), 0);
     a.EmplaceArc(1, fst::fsa::RangeLabel(1, 18), 0);
-    ASSERT_EQ(fst::kIDeterministic, a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
+    ASSERT_EQ(fst::kIDeterministic,
+              a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
     fst::TableMatcher<decltype(a)> matcher(a, true);
     ASSERT_EQ(fst::kError, matcher.Properties(0));
   }
@@ -130,10 +154,10 @@ TEST(fst_table_matcher_test, test_properties) {
   // acceptor, regardless of specified arc weights
   {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
-    a.AddState(); // 0
-    a.AddState(); // 1
-    a.EmplaceArc(1, fst::fsa::RangeLabel(1,1), 0);
-    a.EmplaceArc(1, fst::fsa::RangeLabel(2,4), 0);
+    a.AddState();  // 0
+    a.AddState();  // 1
+    a.EmplaceArc(1, fst::fsa::RangeLabel(1, 1), 0);
+    a.EmplaceArc(1, fst::fsa::RangeLabel(2, 4), 0);
     ASSERT_EQ(fst::kIDeterministic | fst::kILabelSorted,
               a.Properties(fst::kIDeterministic | fst::kILabelSorted, true));
     fst::ArcIteratorData<decltype(a)::Arc> data;
@@ -234,8 +258,8 @@ TEST(fst_table_matcher_test, test_matcher) {
   // create matcher with non-empty automaton and range
   {
     fst::fsa::Automaton<fst::fsa::BooleanWeight> a;
-    a.SetFinal(a.AddState()); // 0
-    a.AddState(); // 1
+    a.SetFinal(a.AddState());  // 0
+    a.AddState();              // 1
     a.EmplaceArc(1, fst::fsa::RangeLabel(42), 0);
     a.EmplaceArc(1, fst::fsa::RangeLabel(43, 255), 0);
 
@@ -261,19 +285,18 @@ TEST(fst_table_matcher_test, test_matcher) {
     ASSERT_TRUE(matcher.Find(42));
     ASSERT_EQ(0, matcher.Value().nextstate);
     matcher.Next();
-    ASSERT_EQ(0, matcher.Value().nextstate); // rho transition
+    ASSERT_EQ(0, matcher.Value().nextstate);  // rho transition
     matcher.Next();
     ASSERT_TRUE(matcher.Done());
     matcher.Next();
     ASSERT_TRUE(matcher.Done());
     matcher.SetState(1);
     ASSERT_TRUE(matcher.Find(43));
-    ASSERT_EQ(0, matcher.Value().nextstate); // rho transition
+    ASSERT_EQ(0, matcher.Value().nextstate);  // rho transition
     matcher.Next();
     ASSERT_TRUE(matcher.Done());
     matcher.Next();
     ASSERT_TRUE(matcher.Done());
-
 
     std::unique_ptr<fst::TableMatcher<decltype(a)>> copy(matcher.Copy(false));
     ASSERT_NE(nullptr, copy);
@@ -298,14 +321,14 @@ TEST(fst_table_matcher_test, test_matcher) {
     ASSERT_TRUE(copy->Find(42));
     ASSERT_EQ(0, copy->Value().nextstate);
     copy->Next();
-    ASSERT_EQ(0, copy->Value().nextstate); // rho transition
+    ASSERT_EQ(0, copy->Value().nextstate);  // rho transition
     copy->Next();
     ASSERT_TRUE(copy->Done());
     copy->Next();
     ASSERT_TRUE(copy->Done());
     copy->SetState(1);
     ASSERT_TRUE(copy->Find(43));
-    ASSERT_EQ(0, copy->Value().nextstate); // rho transition
+    ASSERT_EQ(0, copy->Value().nextstate);  // rho transition
     copy->Next();
     ASSERT_TRUE(copy->Done());
     copy->Next();
@@ -319,7 +342,8 @@ TEST(fst_table_matcher_test, test_matcher) {
     // build automaton
     {
       auto from = a.AddState();
-      auto add_state = [&a, &from](uint32_t min, uint32_t max, int step) mutable {
+      auto add_state = [&a, &from](uint32_t min, uint32_t max,
+                                   int step) mutable {
         auto to = a.AddState();
 
         for (; min < max; min += step) {
@@ -329,11 +353,11 @@ TEST(fst_table_matcher_test, test_matcher) {
         from = to;
       };
 
-      a.SetStart(from);        // state: 0
-      add_state(1, 1024, 3);   // state: 1
-      add_state(512, 2048, 7); // state: 2
-      add_state(152, 512, 11); // state: 3
-      {                        // state: 4
+      a.SetStart(from);         // state: 0
+      add_state(1, 1024, 3);    // state: 1
+      add_state(512, 2048, 7);  // state: 2
+      add_state(152, 512, 11);  // state: 3
+      {                         // state: 4
         auto to = a.AddState();
         a.EmplaceArc(from, fst::fsa::RangeLabel(1, 2), to);
         a.EmplaceArc(from, fst::fsa::RangeLabel(17, 167), to);
@@ -341,7 +365,7 @@ TEST(fst_table_matcher_test, test_matcher) {
         from = to;
       }
 
-      a.SetFinal(from);        // state: 5
+      a.SetFinal(from);  // state: 5
     }
 
     // check automaton
@@ -359,7 +383,8 @@ TEST(fst_table_matcher_test, test_matcher) {
           const auto found = expected_matcher.Find(min);
           ASSERT_EQ(found, matcher.Find(min));
           if (found) {
-            ASSERT_EQ(expected_matcher.Value().nextstate, matcher.Value().nextstate);
+            ASSERT_EQ(expected_matcher.Value().nextstate,
+                      matcher.Value().nextstate);
           }
         }
       }

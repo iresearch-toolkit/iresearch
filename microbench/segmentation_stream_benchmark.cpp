@@ -30,7 +30,8 @@ using namespace irs::analysis;
 
 void BM_segmentation_analyzer(benchmark::State& state) {
   segmentation_token_stream::options_t opts;
-  opts.case_convert = segmentation_token_stream::options_t::case_convert_t::LOWER;
+  opts.case_convert =
+    segmentation_token_stream::options_t::case_convert_t::LOWER;
   opts.word_break = segmentation_token_stream::options_t::word_break_t::ALPHA;
 
   segmentation_token_stream stream(std::move(opts));
@@ -44,6 +45,6 @@ void BM_segmentation_analyzer(benchmark::State& state) {
   }
 }
 
-}
+}  // namespace
 
 BENCHMARK(BM_segmentation_analyzer);

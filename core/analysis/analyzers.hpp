@@ -84,9 +84,9 @@ bool visit(const std::function<bool(string_ref, const type_info&)>& visitor);
 #define REGISTER_ANALYZER__(analyzer_name, args_format, factory, normalizer, \
                             line, source)                                    \
   static ::iresearch::analysis::analyzer_registrar                           \
-      analyzer_registrar##_##line(::iresearch::type<analyzer_name>::get(),   \
-                                  ::iresearch::type<args_format>::get(),     \
-                                  &factory, &normalizer, source)
+    analyzer_registrar##_##line(::iresearch::type<analyzer_name>::get(),     \
+                                ::iresearch::type<args_format>::get(),       \
+                                &factory, &normalizer, source)
 #define REGISTER_ANALYZER_EXPANDER__(analyzer_name, args_format, factory,    \
                                      normalizer, file, line)                 \
   REGISTER_ANALYZER__(analyzer_name, args_format, factory, normalizer, line, \

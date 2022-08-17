@@ -42,7 +42,7 @@
                         e.what());                                         \
         } catch (...) {                                                    \
           IR_FRMT_ERROR(                                                   \
-              "caught an unspecified exception while closing i/o stream"); \
+            "caught an unspecified exception while closing i/o stream");   \
         }                                                                  \
       }                                                                    \
     }                                                                      \

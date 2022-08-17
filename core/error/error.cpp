@@ -20,8 +20,9 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "error.hpp"
+
+#include "shared.hpp"
 
 namespace iresearch {
 
@@ -30,12 +31,12 @@ const char* error_base::what() const noexcept {
 }
 
 const char* not_supported::what() const noexcept {
-  return "Operation not supported."; 
+  return "Operation not supported.";
 }
 
-lock_obtain_failed::lock_obtain_failed(
-    irs::string_ref filename /*= "" */
-) : error_("Lock obtain timed out") {
+lock_obtain_failed::lock_obtain_failed(irs::string_ref filename /*= "" */
+                                       )
+  : error_("Lock obtain timed out") {
   if (filename.null()) {
     error_ += ".";
   } else {
@@ -44,13 +45,11 @@ lock_obtain_failed::lock_obtain_failed(
   }
 }
 
-const char* lock_obtain_failed::what() const noexcept {
-  return error_.c_str();
-}
+const char* lock_obtain_failed::what() const noexcept { return error_.c_str(); }
 
-file_not_found::file_not_found(
-    irs::string_ref filename /*= "" */
-): error_("File not found") {
+file_not_found::file_not_found(irs::string_ref filename /*= "" */
+                               )
+  : error_("File not found") {
   if (filename.null()) {
     error_ += ".";
   } else {
@@ -59,16 +58,12 @@ file_not_found::file_not_found(
   }
 }
 
-const char* file_not_found::what() const noexcept { 
-  return error_.c_str();
-}
+const char* file_not_found::what() const noexcept { return error_.c_str(); }
 
 const char* index_not_found::what() const noexcept {
   return "No segments* file found.";
 }
 
-const char* not_impl_error::what() const noexcept { 
-  return "Not implemented."; 
-}
+const char* not_impl_error::what() const noexcept { return "Not implemented."; }
 
-} // namespace iresearch {
+}  // namespace iresearch

@@ -20,20 +20,20 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
+#include "search/levenshtein_filter.hpp"
+
 #include "filter_test_case_base.hpp"
 #include "index/norm.hpp"
-#include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/term_filter.hpp"
+#include "tests_shared.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
 #include "utils/misc.hpp"
 
 namespace {
 
-irs::by_term make_term_filter(
-    const irs::string_ref& field,
-    const irs::string_ref term) {
+irs::by_term make_term_filter(const irs::string_ref& field,
+                              const irs::string_ref term) {
   irs::by_term q;
   *q.mutable_field() = field;
   q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
@@ -41,12 +41,10 @@ irs::by_term make_term_filter(
 }
 
 irs::by_edit_distance make_filter(
-    const irs::string_ref& field,
-    const irs::string_ref term,
-    irs::byte_type max_distance = 0,
-    size_t max_terms = 0,
-    bool with_transpositions = false,
-    const irs::string_ref prefix = irs::string_ref::EMPTY) {
+  const irs::string_ref& field, const irs::string_ref term,
+  irs::byte_type max_distance = 0, size_t max_terms = 0,
+  bool with_transpositions = false,
+  const irs::string_ref prefix = irs::string_ref::EMPTY) {
   irs::by_edit_distance q;
   *q.mutable_field() = field;
   q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
@@ -57,9 +55,9 @@ irs::by_edit_distance make_filter(
   return q;
 }
 
-}
+}  // namespace
 
-class levenshtein_filter_test_case : public tests::FilterTestCaseBase { };
+class levenshtein_filter_test_case : public tests::FilterTestCaseBase {};
 
 TEST(by_edit_distance_test, options) {
   irs::by_edit_distance_options opts;
@@ -89,7 +87,8 @@ TEST(by_edit_distance_test, equal) {
   {
     irs::by_prefix rhs;
     *rhs.mutable_field() = "field";
-    rhs.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+    rhs.mutable_options()->term =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
     ASSERT_NE(q, rhs);
   }
 }
@@ -99,7 +98,8 @@ TEST(by_edit_distance_test, boost) {
   {
     irs::by_edit_distance q;
     *q.mutable_field() = "field";
-    q.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar*"));
+    q.mutable_options()->term =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("bar*"));
 
     auto prepared = q.prepare(irs::sub_reader::empty());
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
@@ -111,7 +111,8 @@ TEST(by_edit_distance_test, boost) {
 
     irs::by_edit_distance q;
     *q.mutable_field() = "field";
-    q.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("bar*"));
+    q.mutable_options()->term =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("bar*"));
     q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());
@@ -124,7 +125,7 @@ TEST(by_edit_distance_test, boost) {
 #ifdef __clang__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpotentially-evaluated-expression"
-#endif // __clang__
+#endif  // __clang__
 
 TEST(by_edit_distance_test, test_type_of_prepared_query) {
   // term query
@@ -137,19 +138,17 @@ TEST(by_edit_distance_test, test_type_of_prepared_query) {
 
 #ifdef __clang__
 #pragma GCC diagnostic pop
-#endif // __clang__
+#endif  // __clang__
 
 #endif
 
-class by_edit_distance_test_case : public tests::FilterTestCaseBase { };
+class by_edit_distance_test_case : public tests::FilterTestCaseBase {};
 
 TEST_P(by_edit_distance_test_case, test_order) {
   // add segment
   {
-    tests::json_doc_generator gen(
-      resource("levenshtein_sequential.json"),
-      &tests::generic_json_field_factory
-    );
+    tests::json_doc_generator gen(resource("levenshtein_sequential.json"),
+                                  &tests::generic_json_field_factory);
     add_segment(gen);
   }
 
@@ -160,7 +159,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
 
   {
     Docs docs{28, 29};
-    Costs costs{ docs.size() };
+    Costs costs{docs.size()};
 
     size_t term_collectors_count = 0;
     size_t field_collectors_count = 0;
@@ -169,46 +168,50 @@ TEST_P(by_edit_distance_test_case, test_order) {
     size_t finish_count = 0;
 
     std::array<irs::sort::ptr, 1> order{
-        std::make_unique<tests::sort::custom_sort>() };
+      std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](
-        const irs::sub_reader&, const irs::term_reader&)->void{
+                                       const irs::sub_reader&,
+                                       const irs::term_reader&) -> void {
       ++collect_field_count;
     };
-    scorer.collector_collect_term = [&collect_term_count](
-        const irs::sub_reader&,
-        const irs::term_reader&,
-        const irs::attribute_provider&)->void{
+    scorer.collector_collect_term =
+      [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
+                            const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
     scorer.collectors_collect_ = [&finish_count](
-        irs::byte_type*,
-        const irs::index_reader&,
-        const irs::sort::field_collector*,
-        const irs::sort::term_collector*)->void {
+                                   irs::byte_type*, const irs::index_reader&,
+                                   const irs::sort::field_collector*,
+                                   const irs::sort::term_collector*) -> void {
       ++finish_count;
     };
-    scorer.prepare_field_collector_ = [&scorer, &field_collectors_count]()->irs::sort::field_collector::ptr {
+    scorer.prepare_field_collector_ =
+      [&scorer, &field_collectors_count]() -> irs::sort::field_collector::ptr {
       ++field_collectors_count;
-      return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
+      return irs::memory::make_unique<
+        tests::sort::custom_sort::prepared::field_collector>(scorer);
     };
-    scorer.prepare_term_collector_ = [&scorer, &term_collectors_count]()->irs::sort::term_collector::ptr {
+    scorer.prepare_term_collector_ =
+      [&scorer, &term_collectors_count]() -> irs::sort::term_collector::ptr {
       ++term_collectors_count;
-      return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
+      return irs::memory::make_unique<
+        tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
 
     CheckQuery(make_filter("title", "", 1, 0, false), order, docs, rdr);
-    ASSERT_EQ(1, field_collectors_count); // 1 field, 1 field collector
-    ASSERT_EQ(1, term_collectors_count); // need only 1 term collector since we distribute stats across terms
-    ASSERT_EQ(1, collect_field_count); // 1 fields
-    ASSERT_EQ(2, collect_term_count); // 2 different terms
-    ASSERT_EQ(1, finish_count); // we distribute idf across all matched terms
+    ASSERT_EQ(1, field_collectors_count);  // 1 field, 1 field collector
+    ASSERT_EQ(1, term_collectors_count);  // need only 1 term collector since we
+                                          // distribute stats across terms
+    ASSERT_EQ(1, collect_field_count);    // 1 fields
+    ASSERT_EQ(2, collect_term_count);     // 2 different terms
+    ASSERT_EQ(1, finish_count);  // we distribute idf across all matched terms
   }
 
   {
     Docs docs{28, 29};
-    Costs costs{ docs.size() };
+    Costs costs{docs.size()};
 
     size_t term_collectors_count = 0;
     size_t field_collectors_count = 0;
@@ -217,46 +220,50 @@ TEST_P(by_edit_distance_test_case, test_order) {
     size_t finish_count = 0;
 
     std::array<irs::sort::ptr, 1> order{
-        std::make_unique<tests::sort::custom_sort>() };
+      std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](
-        const irs::sub_reader&, const irs::term_reader&)->void{
+                                       const irs::sub_reader&,
+                                       const irs::term_reader&) -> void {
       ++collect_field_count;
     };
-    scorer.collector_collect_term = [&collect_term_count](
-        const irs::sub_reader&,
-        const irs::term_reader&,
-        const irs::attribute_provider&)->void{
+    scorer.collector_collect_term =
+      [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
+                            const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
     scorer.collectors_collect_ = [&finish_count](
-        irs::byte_type*,
-        const irs::index_reader&,
-        const irs::sort::field_collector*,
-        const irs::sort::term_collector*)->void {
+                                   irs::byte_type*, const irs::index_reader&,
+                                   const irs::sort::field_collector*,
+                                   const irs::sort::term_collector*) -> void {
       ++finish_count;
     };
-    scorer.prepare_field_collector_ = [&scorer, &field_collectors_count]()->irs::sort::field_collector::ptr {
+    scorer.prepare_field_collector_ =
+      [&scorer, &field_collectors_count]() -> irs::sort::field_collector::ptr {
       ++field_collectors_count;
-      return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
+      return irs::memory::make_unique<
+        tests::sort::custom_sort::prepared::field_collector>(scorer);
     };
-    scorer.prepare_term_collector_ = [&scorer, &term_collectors_count]()->irs::sort::term_collector::ptr {
+    scorer.prepare_term_collector_ =
+      [&scorer, &term_collectors_count]() -> irs::sort::term_collector::ptr {
       ++term_collectors_count;
-      return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
+      return irs::memory::make_unique<
+        tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
 
     CheckQuery(make_filter("title", "", 1, 10, false), order, docs, rdr);
-    ASSERT_EQ(1, field_collectors_count); // 1 field, 1 field collector
-    ASSERT_EQ(1, term_collectors_count); // need only 1 term collector since we distribute stats across terms
-    ASSERT_EQ(1, collect_field_count); // 1 fields
-    ASSERT_EQ(2, collect_term_count); // 2 different terms
-    ASSERT_EQ(1, finish_count); // we distribute idf across all matched terms
+    ASSERT_EQ(1, field_collectors_count);  // 1 field, 1 field collector
+    ASSERT_EQ(1, term_collectors_count);  // need only 1 term collector since we
+                                          // distribute stats across terms
+    ASSERT_EQ(1, collect_field_count);    // 1 fields
+    ASSERT_EQ(2, collect_term_count);     // 2 different terms
+    ASSERT_EQ(1, finish_count);  // we distribute idf across all matched terms
   }
 
   {
     Docs docs{29};
-    Costs costs{ docs.size() };
+    Costs costs{docs.size()};
 
     size_t term_collectors_count = 0;
     size_t field_collectors_count = 0;
@@ -265,51 +272,53 @@ TEST_P(by_edit_distance_test_case, test_order) {
     size_t finish_count = 0;
 
     std::array<irs::sort::ptr, 1> order{
-        std::make_unique<tests::sort::custom_sort>() };
+      std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](
-        const irs::sub_reader&, const irs::term_reader&)->void{
+                                       const irs::sub_reader&,
+                                       const irs::term_reader&) -> void {
       ++collect_field_count;
     };
-    scorer.collector_collect_term = [&collect_term_count](
-        const irs::sub_reader&,
-        const irs::term_reader&,
-        const irs::attribute_provider&)->void{
+    scorer.collector_collect_term =
+      [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
+                            const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
     scorer.collectors_collect_ = [&finish_count](
-        irs::byte_type*,
-        const irs::index_reader&,
-        const irs::sort::field_collector*,
-        const irs::sort::term_collector*)->void {
+                                   irs::byte_type*, const irs::index_reader&,
+                                   const irs::sort::field_collector*,
+                                   const irs::sort::term_collector*) -> void {
       ++finish_count;
     };
-    scorer.prepare_field_collector_ = [&scorer, &field_collectors_count]()->irs::sort::field_collector::ptr {
+    scorer.prepare_field_collector_ =
+      [&scorer, &field_collectors_count]() -> irs::sort::field_collector::ptr {
       ++field_collectors_count;
-      return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
+      return irs::memory::make_unique<
+        tests::sort::custom_sort::prepared::field_collector>(scorer);
     };
-    scorer.prepare_term_collector_ = [&scorer, &term_collectors_count]()->irs::sort::term_collector::ptr {
+    scorer.prepare_term_collector_ =
+      [&scorer, &term_collectors_count]() -> irs::sort::term_collector::ptr {
       ++term_collectors_count;
-      return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
+      return irs::memory::make_unique<
+        tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
 
     CheckQuery(make_filter("title", "", 1, 1, false), order, docs, rdr);
-    ASSERT_EQ(1, field_collectors_count); // 1 field, 1 field collector
-    ASSERT_EQ(1, term_collectors_count); // need only 1 term collector since we distribute stats across terms
-    ASSERT_EQ(1, collect_field_count); // 1 fields
-    ASSERT_EQ(1, collect_term_count); // 1 term
-    ASSERT_EQ(1, finish_count); // we distribute idf across all matched terms
+    ASSERT_EQ(1, field_collectors_count);  // 1 field, 1 field collector
+    ASSERT_EQ(1, term_collectors_count);  // need only 1 term collector since we
+                                          // distribute stats across terms
+    ASSERT_EQ(1, collect_field_count);    // 1 fields
+    ASSERT_EQ(1, collect_term_count);     // 1 term
+    ASSERT_EQ(1, finish_count);  // we distribute idf across all matched terms
   }
 }
 
 TEST_P(by_edit_distance_test_case, test_filter) {
   // add data
   {
-    tests::json_doc_generator gen(
-      resource("levenshtein_sequential.json"),
-      &tests::generic_json_field_factory
-    );
+    tests::json_doc_generator gen(resource("levenshtein_sequential.json"),
+                                  &tests::generic_json_field_factory);
     add_segment(gen);
   }
 
@@ -323,19 +332,29 @@ TEST_P(by_edit_distance_test_case, test_filter) {
   /// Levenshtein and Damerau-Levenshtein with prefix
   //////////////////////////////////////////////////////////////////////////////
   // distance 0 (term query)
-  CheckQuery(make_filter("title", "", 0, 1024, false, "aaaw"), Docs{32}, Costs{1}, rdr);
-  CheckQuery(make_filter("title", "w", 0, 1024, false, "aaa"), Docs{32}, Costs{1}, rdr);
-  CheckQuery(make_filter("title", "w", 0, 1024, true, "aaa"), Docs{32}, Costs{1}, rdr);
-  CheckQuery(make_filter("title", "", 0, 1024, false, ""), Docs{}, Costs{0}, rdr);
+  CheckQuery(make_filter("title", "", 0, 1024, false, "aaaw"), Docs{32},
+             Costs{1}, rdr);
+  CheckQuery(make_filter("title", "w", 0, 1024, false, "aaa"), Docs{32},
+             Costs{1}, rdr);
+  CheckQuery(make_filter("title", "w", 0, 1024, true, "aaa"), Docs{32},
+             Costs{1}, rdr);
+  CheckQuery(make_filter("title", "", 0, 1024, false, ""), Docs{}, Costs{0},
+             rdr);
   // distance 1
-  CheckQuery(make_filter("title", "aa", 1, 1024, false, "aaabbba"), Docs{9, 10}, Costs{2}, rdr);
-  CheckQuery(make_filter("title", "", 1, 1024, false, ""), Docs{28,29}, Costs{2}, rdr);
+  CheckQuery(make_filter("title", "aa", 1, 1024, false, "aaabbba"), Docs{9, 10},
+             Costs{2}, rdr);
+  CheckQuery(make_filter("title", "", 1, 1024, false, ""), Docs{28, 29},
+             Costs{2}, rdr);
   // distance 2
-  CheckQuery(make_filter("title", "ca", 2, 1024, false, "b"), Docs{29,30}, Costs{2}, rdr);
-  CheckQuery(make_filter("title", "aa", 2, 1024, false, "aa"), Docs{5,7,13,16,19,27,32}, Costs{7}, rdr);
+  CheckQuery(make_filter("title", "ca", 2, 1024, false, "b"), Docs{29, 30},
+             Costs{2}, rdr);
+  CheckQuery(make_filter("title", "aa", 2, 1024, false, "aa"),
+             Docs{5, 7, 13, 16, 19, 27, 32}, Costs{7}, rdr);
   // distance 3
-  CheckQuery(make_filter("title", "", 3, 1024, false, "aaa"), Docs{5,7,13,16,19,32}, Costs{6}, rdr);
-  CheckQuery(make_filter("title", "", 3, 1024, true, "aaa"), Docs{5,7,13,16,19,32}, Costs{6}, rdr);
+  CheckQuery(make_filter("title", "", 3, 1024, false, "aaa"),
+             Docs{5, 7, 13, 16, 19, 32}, Costs{6}, rdr);
+  CheckQuery(make_filter("title", "", 3, 1024, true, "aaa"),
+             Docs{5, 7, 13, 16, 19, 32}, Costs{6}, rdr);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Levenshtein
@@ -359,28 +378,73 @@ TEST_P(by_edit_distance_test_case, test_filter) {
   CheckQuery(make_filter("title", "ababab", 0, 1024), Docs{17}, Costs{1}, rdr);
 
   // distance 2
-  CheckQuery(make_filter("title", "", 2, 1024), Docs{27, 28, 29}, Costs{3}, rdr);
+  CheckQuery(make_filter("title", "", 2, 1024), Docs{27, 28, 29}, Costs{3},
+             rdr);
   CheckQuery(make_filter("title", "", 2, 0), Docs{27, 28, 29}, Costs{3}, rdr);
   CheckQuery(make_filter("title", "", 2, 1), Docs{29}, Costs{1}, rdr);
   CheckQuery(make_filter("title", "", 2, 2), Docs{28, 29}, Costs{2}, rdr);
-  CheckQuery(make_filter("title", "aa", 2, 1024), Docs{27, 28, 29, 30, 32}, Costs{5}, rdr);
-  CheckQuery(make_filter("title", "aa", 2, 0), Docs{27, 28, 29, 30, 32}, Costs{5}, rdr);
+  CheckQuery(make_filter("title", "aa", 2, 1024), Docs{27, 28, 29, 30, 32},
+             Costs{5}, rdr);
+  CheckQuery(make_filter("title", "aa", 2, 0), Docs{27, 28, 29, 30, 32},
+             Costs{5}, rdr);
   CheckQuery(make_filter("title", "ababab", 2, 1024), Docs{17}, Costs{1}, rdr);
   CheckQuery(make_filter("title", "ababab", 2, 0), Docs{17}, Costs{1}, rdr);
 
   // distance 3
-  CheckQuery(make_filter("title", "", 3, 1024), Docs{27, 28, 29, 30, 31}, Costs{5}, rdr);
-  CheckQuery(make_filter("title", "", 3, 0), Docs{27, 28, 29, 30, 31}, Costs{5}, rdr);
-  CheckQuery(make_filter("title", "aaaa", 3, 10), Docs{5, 7, 13, 16, 17, 18, 19, 21, 27, 28, 30, 32, }, Costs{12}, rdr);
-  CheckQuery(make_filter("title", "aaaa", 3, 0), Docs{5, 7, 13, 16, 17, 18, 19, 21, 27, 28, 30, 32, }, Costs{12}, rdr);
-  CheckQuery(make_filter("title", "ababab", 3, 1024), Docs{3, 5, 7, 13, 14, 15, 16, 17, 32}, Costs{9}, rdr);
-  CheckQuery(make_filter("title", "ababab", 3, 0), Docs{3, 5, 7, 13, 14, 15, 16, 17, 32}, Costs{9}, rdr);
+  CheckQuery(make_filter("title", "", 3, 1024), Docs{27, 28, 29, 30, 31},
+             Costs{5}, rdr);
+  CheckQuery(make_filter("title", "", 3, 0), Docs{27, 28, 29, 30, 31}, Costs{5},
+             rdr);
+  CheckQuery(make_filter("title", "aaaa", 3, 10),
+             Docs{
+               5,
+               7,
+               13,
+               16,
+               17,
+               18,
+               19,
+               21,
+               27,
+               28,
+               30,
+               32,
+             },
+             Costs{12}, rdr);
+  CheckQuery(make_filter("title", "aaaa", 3, 0),
+             Docs{
+               5,
+               7,
+               13,
+               16,
+               17,
+               18,
+               19,
+               21,
+               27,
+               28,
+               30,
+               32,
+             },
+             Costs{12}, rdr);
+  CheckQuery(make_filter("title", "ababab", 3, 1024),
+             Docs{3, 5, 7, 13, 14, 15, 16, 17, 32}, Costs{9}, rdr);
+  CheckQuery(make_filter("title", "ababab", 3, 0),
+             Docs{3, 5, 7, 13, 14, 15, 16, 17, 32}, Costs{9}, rdr);
 
   // distance 4
-  CheckQuery(make_filter("title", "", 4, 1024), Docs{27, 28, 29, 30, 31, 32}, Costs{6}, rdr);
-  CheckQuery(make_filter("title", "", 4, 0), Docs{27, 28, 29, 30, 31, 32}, Costs{6}, rdr);
-  CheckQuery(make_filter("title", "ababab", 4, 1024), Docs{3, 4, 5, 6, 7, 10, 13, 14, 15, 16, 17, 18, 19, 21, 27, 30, 32, 34}, Costs{18}, rdr);
-  CheckQuery(make_filter("title", "ababab", 4, 0), Docs{3, 4, 5, 6, 7, 10, 13, 14, 15, 16, 17, 18, 19, 21, 27, 30, 32, 34}, Costs{18}, rdr);
+  CheckQuery(make_filter("title", "", 4, 1024), Docs{27, 28, 29, 30, 31, 32},
+             Costs{6}, rdr);
+  CheckQuery(make_filter("title", "", 4, 0), Docs{27, 28, 29, 30, 31, 32},
+             Costs{6}, rdr);
+  CheckQuery(
+    make_filter("title", "ababab", 4, 1024),
+    Docs{3, 4, 5, 6, 7, 10, 13, 14, 15, 16, 17, 18, 19, 21, 27, 30, 32, 34},
+    Costs{18}, rdr);
+  CheckQuery(
+    make_filter("title", "ababab", 4, 0),
+    Docs{3, 4, 5, 6, 7, 10, 13, 14, 15, 16, 17, 18, 19, 21, 27, 30, 32, 34},
+    Costs{18}, rdr);
 
   // default provider doesn't support Levenshtein distances > 4
   CheckQuery(make_filter("title", "", 5, 1024), Docs{}, Costs{0}, rdr);
@@ -393,30 +457,46 @@ TEST_P(by_edit_distance_test_case, test_filter) {
   //////////////////////////////////////////////////////////////////////////////
 
   // distance 0 (term query)
-  CheckQuery(make_filter("title", "aa", 0, 1024, true), Docs{27}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "aa", 0, 1024, true), Docs{27}, Costs{1},
+             rdr);
   CheckQuery(make_filter("title", "aa", 0, 0, true), Docs{27}, Costs{1}, rdr);
-  CheckQuery(make_filter("title", "ababab", 0, 1024, true), Docs{17}, Costs{1}, rdr);
-  CheckQuery(make_filter("title", "ababab", 0, 0, true), Docs{17}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "ababab", 0, 1024, true), Docs{17}, Costs{1},
+             rdr);
+  CheckQuery(make_filter("title", "ababab", 0, 0, true), Docs{17}, Costs{1},
+             rdr);
 
   // distance 1
-  CheckQuery(make_filter("title", "", 1, 1024, true), Docs{28, 29}, Costs{2}, rdr);
+  CheckQuery(make_filter("title", "", 1, 1024, true), Docs{28, 29}, Costs{2},
+             rdr);
   CheckQuery(make_filter("title", "", 1, 0, true), Docs{28, 29}, Costs{2}, rdr);
-  CheckQuery(make_filter("title", "aa", 1, 1024, true), Docs{27, 28}, Costs{2}, rdr);
-  CheckQuery(make_filter("title", "aa", 1, 0, true), Docs{27, 28}, Costs{2}, rdr);
-  CheckQuery(make_filter("title", "ababab", 1, 1024, true), Docs{17}, Costs{1}, rdr);
-  CheckQuery(make_filter("title", "ababab", 1, 0, true), Docs{17}, Costs{1}, rdr);
+  CheckQuery(make_filter("title", "aa", 1, 1024, true), Docs{27, 28}, Costs{2},
+             rdr);
+  CheckQuery(make_filter("title", "aa", 1, 0, true), Docs{27, 28}, Costs{2},
+             rdr);
+  CheckQuery(make_filter("title", "ababab", 1, 1024, true), Docs{17}, Costs{1},
+             rdr);
+  CheckQuery(make_filter("title", "ababab", 1, 0, true), Docs{17}, Costs{1},
+             rdr);
 
   // distance 2
-  CheckQuery(make_filter("title", "aa", 2, 1024, true), Docs{27, 28, 29, 30, 32}, Costs{5}, rdr);
-  CheckQuery(make_filter("title", "aa", 2, 0, true), Docs{27, 28, 29, 30, 32}, Costs{5}, rdr);
-  CheckQuery(make_filter("title", "ababab", 2, 1024, true), Docs{17, 18}, Costs{2}, rdr);
-  CheckQuery(make_filter("title", "ababab", 2, 0, true), Docs{17, 18}, Costs{2}, rdr);
+  CheckQuery(make_filter("title", "aa", 2, 1024, true),
+             Docs{27, 28, 29, 30, 32}, Costs{5}, rdr);
+  CheckQuery(make_filter("title", "aa", 2, 0, true), Docs{27, 28, 29, 30, 32},
+             Costs{5}, rdr);
+  CheckQuery(make_filter("title", "ababab", 2, 1024, true), Docs{17, 18},
+             Costs{2}, rdr);
+  CheckQuery(make_filter("title", "ababab", 2, 0, true), Docs{17, 18}, Costs{2},
+             rdr);
 
   // distance 3
-  CheckQuery(make_filter("title", "", 3, 1024, true), Docs{27, 28, 29, 30, 31}, Costs{5}, rdr);
-  CheckQuery(make_filter("title", "", 3, 0, true), Docs{27, 28, 29, 30, 31}, Costs{5}, rdr);
-  CheckQuery(make_filter("title", "ababab", 3, 1024, true), Docs{3, 5, 7, 13, 14, 15, 16, 17, 18, 32}, Costs{10}, rdr);
-  CheckQuery(make_filter("title", "ababab", 3, 0, true), Docs{3, 5, 7, 13, 14, 15, 16, 17, 18, 32}, Costs{10}, rdr);
+  CheckQuery(make_filter("title", "", 3, 1024, true), Docs{27, 28, 29, 30, 31},
+             Costs{5}, rdr);
+  CheckQuery(make_filter("title", "", 3, 0, true), Docs{27, 28, 29, 30, 31},
+             Costs{5}, rdr);
+  CheckQuery(make_filter("title", "ababab", 3, 1024, true),
+             Docs{3, 5, 7, 13, 14, 15, 16, 17, 18, 32}, Costs{10}, rdr);
+  CheckQuery(make_filter("title", "ababab", 3, 0, true),
+             Docs{3, 5, 7, 13, 14, 15, 16, 17, 18, 32}, Costs{10}, rdr);
 
   // default provider doesn't support Damerau-Levenshtein distances > 3
   CheckQuery(make_filter("title", "", 4, 1024, true), Docs{}, Costs{0}, rdr);
@@ -426,8 +506,8 @@ TEST_P(by_edit_distance_test_case, test_filter) {
 }
 
 TEST_P(by_edit_distance_test_case, bm25) {
-  using tests::json_doc_generator;
   using tests::field_base;
+  using tests::json_doc_generator;
 
   auto analyzer = irs::analysis::analyzers::get(
     "text", irs::type<irs::text_format::json>::get(),
@@ -443,9 +523,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
       this->features_.emplace_back(irs::type<irs::Norm>::id());
     }
 
-    bool write(irs::data_output&) const noexcept {
-      return true;
-    }
+    bool write(irs::data_output&) const noexcept { return true; }
 
     irs::token_stream& get_tokens() const {
       const bool res = analyzer_->reset(value_);
@@ -461,9 +539,8 @@ TEST_P(by_edit_distance_test_case, bm25) {
   {
     json_doc_generator gen(
       resource("v_DSS_Entity_id.json"),
-      [&analyzer](tests::document& doc,
-         const std::string& name,
-         const json_doc_generator::json_value& data) {
+      [&analyzer](tests::document& doc, const std::string& name,
+                  const json_doc_generator::json_value& data) {
         if (json_doc_generator::ValueType::STRING == data.vt && name == "id") {
           auto field = std::make_shared<text_field>(
             *analyzer, std::string{data.str.data, data.str.size});
@@ -473,7 +550,8 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     irs::index_writer::init_options opts;
     opts.features = [](irs::type_info::type_id id) {
-      const irs::column_info info{irs::type<irs::compression::lz4>::get(), {}, false};
+      const irs::column_info info{
+        irs::type<irs::compression::lz4>::get(), {}, false};
 
       if (irs::type<irs::Norm>::id() == id) {
         return std::make_pair(info, &irs::Norm::MakeWriter);
@@ -485,10 +563,8 @@ TEST_P(by_edit_distance_test_case, bm25) {
     add_segment(gen, irs::OM_CREATE, opts);
   }
 
-  std::array<irs::sort::ptr, 1> order{
-      irs::scorers::get("bm25",
-                        irs::type<irs::text_format::json>::get(),
-                        irs::string_ref::NIL) };
+  std::array<irs::sort::ptr, 1> order{irs::scorers::get(
+    "bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL)};
   ASSERT_NE(nullptr, order.front());
 
   auto prepared_order = irs::Order::Prepare(order);
@@ -516,11 +592,11 @@ TEST_P(by_edit_distance_test_case, bm25) {
     ASSERT_NE(nullptr, score);
     ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
-    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
-      { 6.21361256f, 261 },
-      { 9.32042027f, 272 },
-      { 7.76701689f, 273 },
-      { 6.21361256f, 289 },
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[]{
+      {6.21361256f, 261},
+      {9.32042027f, 272},
+      {7.76701689f, 273},
+      {6.21361256f, 289},
     };
 
     auto expected_doc = std::begin(expected_docs);
@@ -554,9 +630,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
     ASSERT_NE(nullptr, score);
     ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
-    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
-      { 9.9112005f, 272 },
-      { 8.2593336f, 273 },
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[]{
+      {9.9112005f, 272},
+      {8.2593336f, 273},
     };
 
     auto expected_doc = std::begin(expected_docs);
@@ -590,9 +666,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
     ASSERT_NE(nullptr, score);
     ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
-    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
-      { 9.9112005f, 272 },
-      { 8.2593336f, 273 },
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[]{
+      {9.9112005f, 272},
+      {8.2593336f, 273},
     };
 
     auto expected_doc = std::begin(expected_docs);
@@ -627,21 +703,12 @@ TEST_P(by_edit_distance_test_case, bm25) {
     ASSERT_NE(nullptr, score);
     ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
-    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
-      { 8.1443901f, 265   },
-      { 6.9717164f, 46355 },
-      { 6.9717164f, 46356 },
-      { 6.9717164f, 46357 },
-      { 6.7869916f, 264   },
-      { 6.7869916f, 3054  },
-      { 6.7869916f, 3069  },
-      { 5.8097634f, 46353 },
-      { 5.8097634f, 46354 },
-      { 5.4295926f, 263   },
-      { 5.4295926f, 3062  },
-      { 4.6478105f, 46350 },
-      { 4.6478105f, 46351 },
-      { 4.6478105f, 46352 },
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[]{
+      {8.1443901f, 265},   {6.9717164f, 46355}, {6.9717164f, 46356},
+      {6.9717164f, 46357}, {6.7869916f, 264},   {6.7869916f, 3054},
+      {6.7869916f, 3069},  {5.8097634f, 46353}, {5.8097634f, 46354},
+      {5.4295926f, 263},   {5.4295926f, 3062},  {4.6478105f, 46350},
+      {4.6478105f, 46351}, {4.6478105f, 46352},
     };
 
     std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
@@ -653,19 +720,18 @@ TEST_P(by_edit_distance_test_case, bm25) {
     ASSERT_FALSE(docs->next());
     ASSERT_EQ(std::size(expected_docs), actual_docs.size());
 
-    std::sort(
-      std::begin(actual_docs), std::end(actual_docs),
-      [](const auto& lhs, const auto& rhs) {
-        if (lhs.first < rhs.first) {
-          return false;
-        }
+    std::sort(std::begin(actual_docs), std::end(actual_docs),
+              [](const auto& lhs, const auto& rhs) {
+                if (lhs.first < rhs.first) {
+                  return false;
+                }
 
-        if (lhs.first > rhs.first) {
-          return true;
-        }
+                if (lhs.first > rhs.first) {
+                  return true;
+                }
 
-        return lhs.second < rhs.second;
-    });
+                return lhs.second < rhs.second;
+              });
 
     auto expected_doc = std::begin(expected_docs);
     for (auto& actual_doc : actual_docs) {
@@ -694,10 +760,10 @@ TEST_P(by_edit_distance_test_case, bm25) {
     ASSERT_NE(nullptr, score);
     ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
-    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
-        { 3.8292058f, 275 },
-        { 3.2778559f, 46376 },
-        { 3.2778559f, 46377 },
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[]{
+      {3.8292058f, 275},
+      {3.2778559f, 46376},
+      {3.2778559f, 46377},
     };
 
     std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
@@ -710,19 +776,18 @@ TEST_P(by_edit_distance_test_case, bm25) {
     ASSERT_FALSE(docs->next());
     ASSERT_EQ(std::size(expected_docs), actual_docs.size());
 
-    std::sort(
-      std::begin(actual_docs), std::end(actual_docs),
-      [](const auto& lhs, const auto& rhs) {
-        if (lhs.first < rhs.first) {
-          return false;
-        }
+    std::sort(std::begin(actual_docs), std::end(actual_docs),
+              [](const auto& lhs, const auto& rhs) {
+                if (lhs.first < rhs.first) {
+                  return false;
+                }
 
-        if (lhs.first > rhs.first) {
-          return true;
-        }
+                if (lhs.first > rhs.first) {
+                  return true;
+                }
 
-        return lhs.second < rhs.second;
-    });
+                return lhs.second < rhs.second;
+              });
 
     auto expected_doc = std::begin(expected_docs);
     for (auto& actual_doc : actual_docs) {
@@ -753,10 +818,10 @@ TEST_P(by_edit_distance_test_case, bm25) {
     ASSERT_NE(nullptr, score);
     ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
-    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[] {
-      { 3.8292058f, 275 },
-      { 3.2778559f, 46376 },
-      { 3.2778559f, 46377 },
+    constexpr std::pair<float_t, irs::doc_id_t> expected_docs[]{
+      {3.8292058f, 275},
+      {3.2778559f, 46376},
+      {3.2778559f, 46377},
     };
 
     std::vector<std::pair<float_t, irs::doc_id_t>> actual_docs;
@@ -769,19 +834,18 @@ TEST_P(by_edit_distance_test_case, bm25) {
     ASSERT_FALSE(docs->next());
     ASSERT_EQ(std::size(expected_docs), actual_docs.size());
 
-    std::sort(
-      std::begin(actual_docs), std::end(actual_docs),
-      [](const auto& lhs, const auto& rhs) {
-        if (lhs.first < rhs.first) {
-          return false;
-        }
+    std::sort(std::begin(actual_docs), std::end(actual_docs),
+              [](const auto& lhs, const auto& rhs) {
+                if (lhs.first < rhs.first) {
+                  return false;
+                }
 
-        if (lhs.first > rhs.first) {
-          return true;
-        }
+                if (lhs.first > rhs.first) {
+                  return true;
+                }
 
-        return lhs.second < rhs.second;
-    });
+                return lhs.second < rhs.second;
+              });
 
     auto expected_doc = std::begin(expected_docs);
     for (auto& actual_doc : actual_docs) {
@@ -795,9 +859,8 @@ TEST_P(by_edit_distance_test_case, bm25) {
 TEST_P(by_edit_distance_test_case, visit) {
   // add segment
   {
-    tests::json_doc_generator gen(
-      resource("simple_sequential.json"),
-      &tests::generic_json_field_factory);
+    tests::json_doc_generator gen(resource("simple_sequential.json"),
+                                  &tests::generic_json_field_factory);
     add_segment(gen);
   }
   const irs::string_ref field = "prefix";
@@ -823,9 +886,9 @@ TEST_P(by_edit_distance_test_case, visit) {
     field_visitor(segment, *reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
-    ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::score_t>>{{"abc", irs::kNoBoost}}),
-      visitor.term_refs<char>());
+    ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{
+                {"abc", irs::kNoBoost}}),
+              visitor.term_refs<char>());
     visitor.reset();
   }
 
@@ -845,9 +908,9 @@ TEST_P(by_edit_distance_test_case, visit) {
 
     const auto actual_terms = visitor.term_refs<char>();
     std::vector<std::pair<irs::string_ref, irs::score_t>> expected_terms{
-      {"abc",  irs::kNoBoost},
-      {"abcd", 2.f/3},
-      {"abcy", 2.f/3},
+      {"abc", irs::kNoBoost},
+      {"abcd", 2.f / 3},
+      {"abcy", 2.f / 3},
     };
     ASSERT_EQ(expected_terms.size(), actual_terms.size());
 
@@ -879,11 +942,8 @@ TEST_P(by_edit_distance_test_case, visit) {
 
     const auto actual_terms = visitor.term_refs<char>();
     std::vector<std::pair<irs::string_ref, irs::score_t>> expected_terms{
-      {"abc",  irs::kNoBoost},
-      {"abcd", 2.f/3},
-      {"abcde", 1.f/3},
-      {"abcy", 2.f/3},
-      {"abde", 1.f/3},
+      {"abc", irs::kNoBoost}, {"abcd", 2.f / 3}, {"abcde", 1.f / 3},
+      {"abcy", 2.f / 3},      {"abde", 1.f / 3},
     };
     ASSERT_EQ(expected_terms.size(), actual_terms.size());
 
@@ -899,16 +959,12 @@ TEST_P(by_edit_distance_test_case, visit) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-  by_edit_distance_test,
-  by_edit_distance_test_case,
+  by_edit_distance_test, by_edit_distance_test_case,
   ::testing::Combine(
-    ::testing::Values(
-      &tests::directory<&tests::memory_directory>,
-      &tests::directory<&tests::fs_directory>,
-      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values(
-      tests::format_info{"1_0"},
-      tests::format_info{"1_1", "1_0"},
-      tests::format_info{"1_2", "1_0"})),
-  by_edit_distance_test_case::to_string
-);
+    ::testing::Values(&tests::directory<&tests::memory_directory>,
+                      &tests::directory<&tests::fs_directory>,
+                      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(tests::format_info{"1_0"},
+                      tests::format_info{"1_1", "1_0"},
+                      tests::format_info{"1_2", "1_0"})),
+  by_edit_distance_test_case::to_string);

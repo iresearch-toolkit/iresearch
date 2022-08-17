@@ -23,22 +23,22 @@
 
 #include "timer_utils.hpp"
 
-#include <mutex>
-#include <map>
-
 #include <absl/container/node_hash_map.h>
+
+#include <map>
+#include <mutex>
 
 #include "singleton.hpp"
 
 namespace {
 using namespace irs;
 
-class timer_states: public irs::singleton<timer_states> {
+class timer_states : public irs::singleton<timer_states> {
  public:
   using key_type = std::string;
   using entry_type = irs::timer_utils::timer_stat_t;
 
-  timer_states(): track_all_keys_(false) {}
+  timer_states() : track_all_keys_(false) {}
 
   entry_type& find(const key_type& key) {
     if (track_all_keys_) {
@@ -56,31 +56,31 @@ class timer_states: public irs::singleton<timer_states> {
     return itr->second;
   }
 
-  void init(
-      bool track_all_keys = false,
-      const absl::flat_hash_set<key_type>& tracked_keys = {}) {
+  void init(bool track_all_keys = false,
+            const absl::flat_hash_set<key_type>& tracked_keys = {}) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    for (auto& entry: state_map_) {
+    for (auto& entry : state_map_) {
       entry.second.count = 0;
       entry.second.time = 0;
     }
 
     track_all_keys_ = track_all_keys;
 
-    for (auto& key: tracked_keys) {
+    for (auto& key : tracked_keys) {
       state_map_[key];
     }
   }
 
-  bool visit(
-      const std::function<bool(const key_type& key, size_t count, size_t time_us)>& visitor
-  ) {
+  bool visit(const std::function<bool(const key_type& key, size_t count,
+                                      size_t time_us)>& visitor) {
     static const auto usec =
-      (1000000. * std::chrono::system_clock::period::num) / std::chrono::system_clock::period::den;
+      (1000000. * std::chrono::system_clock::period::num) /
+      std::chrono::system_clock::period::den;
 
-    for (auto& entry: state_map_) {
-      if (!visitor(entry.first, entry.second.count, size_t(entry.second.time * usec))) { // truncate 'time_us'
+    for (auto& entry : state_map_) {
+      if (!visitor(entry.first, entry.second.count,
+                   size_t(entry.second.time * usec))) {  // truncate 'time_us'
         return false;
       }
     }
@@ -96,18 +96,20 @@ class timer_states: public irs::singleton<timer_states> {
   bool track_all_keys_;
 };
 
-} // namespace {
+}  // namespace
 
 namespace iresearch {
 namespace timer_utils {
 
-scoped_timer::scoped_timer(timer_stat_t& stat):
-  start_(std::chrono::system_clock::now().time_since_epoch().count()), stat_(stat) {
+scoped_timer::scoped_timer(timer_stat_t& stat)
+  : start_(std::chrono::system_clock::now().time_since_epoch().count()),
+    stat_(stat) {
   ++(stat_.count);
 }
 
 scoped_timer::~scoped_timer() {
-  stat_.time += std::chrono::system_clock::now().time_since_epoch().count() - start_;
+  stat_.time +=
+    std::chrono::system_clock::now().time_since_epoch().count() - start_;
 }
 
 // -----------------------------------------------------------------------------
@@ -123,21 +125,22 @@ timer_stat_t& get_stat(const std::string& key) {
 // -----------------------------------------------------------------------------
 
 void init_stats(
-    bool track_all_keys /*= false*/,
-    const absl::flat_hash_set<std::string>& tracked_keys /*= {} */) {
+  bool track_all_keys /*= false*/,
+  const absl::flat_hash_set<std::string>& tracked_keys /*= {} */) {
   timer_states::instance().init(track_all_keys, tracked_keys);
 }
 
-bool visit(
-    const std::function<bool(const std::string& key, size_t count, size_t time_us)>& visitor
-) {
+bool visit(const std::function<bool(const std::string& key, size_t count,
+                                    size_t time_us)>& visitor) {
   return timer_states::instance().visit(visitor);
 }
 
-void flush_stats(std::ostream &out) {
+void flush_stats(std::ostream& out) {
   std::map<std::string, std::pair<size_t, size_t>> ordered_stats;
 
-  iresearch::timer_utils::visit([&ordered_stats](const std::string& key, size_t count, size_t time)->bool {
+  iresearch::timer_utils::visit([&ordered_stats](const std::string& key,
+                                                 size_t count,
+                                                 size_t time) -> bool {
     std::string key_str = key;
 
 #if defined(__GNUC__)
@@ -162,13 +165,15 @@ void flush_stats(std::ostream &out) {
     return true;
   });
 
-  for (auto& entry: ordered_stats) {
+  for (auto& entry : ordered_stats) {
     auto& key = entry.first;
     auto& count = entry.second.first;
     auto& time = entry.second.second;
-    out << key << "\tcalls:" << count << ",\ttime: " << time/1000 << " us,\tavg call: " << time/1000/(double)count << " us"<< std::endl;
+    out << key << "\tcalls:" << count << ",\ttime: " << time / 1000
+        << " us,\tavg call: " << time / 1000 / (double)count << " us"
+        << std::endl;
   }
 }
 
-} // timer_utils
-} // namespace iresearch {
+}  // namespace timer_utils
+}  // namespace iresearch

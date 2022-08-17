@@ -24,26 +24,26 @@
 #ifndef IRESEARCH_BIT_PACKING_H
 #define IRESEARCH_BIT_PACKING_H
 
-#include "shared.hpp"
-#include "math_utils.hpp"
-
 #include <cmath>
-#include <limits>
 #include <iterator>
+#include <limits>
+
+#include "math_utils.hpp"
+#include "shared.hpp"
 
 namespace iresearch {
 namespace packed {
 
-constexpr uint32_t BLOCK_SIZE_32 = sizeof(uint32_t) * 8; // block size is tied to number of bits in value
-constexpr uint32_t BLOCK_SIZE_64 = sizeof(uint64_t) * 8; // block size is tied to number of bits in value
+constexpr uint32_t BLOCK_SIZE_32 =
+  sizeof(uint32_t) * 8;  // block size is tied to number of bits in value
+constexpr uint32_t BLOCK_SIZE_64 =
+  sizeof(uint64_t) * 8;  // block size is tied to number of bits in value
 
 FORCE_INLINE uint32_t maxbits64(uint64_t val) noexcept {
   return math::math_traits<uint64_t>::bits_required(val);
 }
 
-inline uint32_t maxbits64(
-    const uint64_t* begin,
-    const uint64_t* end) noexcept {
+inline uint32_t maxbits64(const uint64_t* begin, const uint64_t* end) noexcept {
   uint64_t accum = 0;
 
   while (begin != end) {
@@ -57,9 +57,7 @@ FORCE_INLINE uint32_t maxbits32(uint32_t val) noexcept {
   return math::math_traits<uint32_t>::bits_required(val);
 }
 
-inline uint32_t maxbits32(
-    const uint32_t* begin,
-    const uint32_t* end) noexcept {
+inline uint32_t maxbits32(const uint32_t* begin, const uint32_t* end) noexcept {
   uint32_t accum = 0;
 
   while (begin != end) {
@@ -69,20 +67,24 @@ inline uint32_t maxbits32(
   return maxbits32(accum);
 }
 
-FORCE_INLINE constexpr uint32_t bytes_required_32(uint32_t count, uint32_t bits) noexcept {
-  return math::div_ceil32(count*bits, 8);
+FORCE_INLINE constexpr uint32_t bytes_required_32(uint32_t count,
+                                                  uint32_t bits) noexcept {
+  return math::div_ceil32(count * bits, 8);
 }
 
-FORCE_INLINE constexpr uint64_t bytes_required_64(uint64_t count, uint64_t bits) noexcept {
-  return math::div_ceil64(count*bits, 8);
+FORCE_INLINE constexpr uint64_t bytes_required_64(uint64_t count,
+                                                  uint64_t bits) noexcept {
+  return math::div_ceil64(count * bits, 8);
 }
 
-FORCE_INLINE constexpr uint32_t blocks_required_32(uint32_t count, uint32_t bits) noexcept {
-  return math::div_ceil32(count*bits, 8*sizeof(uint32_t));
+FORCE_INLINE constexpr uint32_t blocks_required_32(uint32_t count,
+                                                   uint32_t bits) noexcept {
+  return math::div_ceil32(count * bits, 8 * sizeof(uint32_t));
 }
 
-FORCE_INLINE constexpr uint64_t blocks_required_64(uint64_t count, uint64_t bits) noexcept {
-  return math::div_ceil64(count*bits, 8*sizeof(uint64_t));
+FORCE_INLINE constexpr uint64_t blocks_required_64(uint64_t count,
+                                                   uint64_t bits) noexcept {
+  return math::div_ceil64(count * bits, 8 * sizeof(uint64_t));
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -96,70 +98,46 @@ FORCE_INLINE constexpr uint64_t iterations_required(uint32_t count) noexcept {
   return items_required(count) / BLOCK_SIZE_32;
 }
 
-template< typename T >
+template<typename T>
 inline T max_value(uint32_t bits) noexcept {
-  assert(bits >= 0U && bits <= sizeof( T ) * 8U);
+  assert(bits >= 0U && bits <= sizeof(T) * 8U);
 
-  return bits == sizeof(T) * 8U
-    ? (std::numeric_limits<T>::max)() 
-    : ~(~T(0) << bits);
+  return bits == sizeof(T) * 8U ? (std::numeric_limits<T>::max)()
+                                : ~(~T(0) << bits);
 }
 
-void pack_block(
-  const uint32_t* RESTRICT first,
-  uint32_t* RESTRICT out,
-  const uint32_t bit) noexcept;
+void pack_block(const uint32_t* RESTRICT first, uint32_t* RESTRICT out,
+                const uint32_t bit) noexcept;
 
-void pack_block(
-  const uint64_t* RESTRICT first,
-  uint64_t* RESTRICT out,
-  const uint32_t bit) noexcept;
+void pack_block(const uint64_t* RESTRICT first, uint64_t* RESTRICT out,
+                const uint32_t bit) noexcept;
 
-void unpack_block(
-  const uint32_t* RESTRICT in,
-  uint32_t* RESTRICT out,
-  const uint32_t bit) noexcept;
+void unpack_block(const uint32_t* RESTRICT in, uint32_t* RESTRICT out,
+                  const uint32_t bit) noexcept;
 
-void unpack_block(
-  const uint64_t* RESTRICT in,
-  uint64_t* RESTRICT out,
-  const uint32_t bit) noexcept;
+void unpack_block(const uint64_t* RESTRICT in, uint64_t* RESTRICT out,
+                  const uint32_t bit) noexcept;
 
-uint32_t fastpack_at(
-  const uint32_t* encoded,
-  const size_t i,
-  const uint32_t bit) noexcept;
+uint32_t fastpack_at(const uint32_t* encoded, const size_t i,
+                     const uint32_t bit) noexcept;
 
-uint64_t fastpack_at(
-  const uint64_t* encoded,
-  const size_t i,
-  const uint32_t bit) noexcept;
+uint64_t fastpack_at(const uint64_t* encoded, const size_t i,
+                     const uint32_t bit) noexcept;
 
-inline uint32_t at(
-    const uint32_t* encoded,
-    const size_t i,
-    const uint32_t bit) noexcept {
-  return fastpack_at(
-    encoded + bit * (i / BLOCK_SIZE_32),
-    i % BLOCK_SIZE_32,
-    bit);
+inline uint32_t at(const uint32_t* encoded, const size_t i,
+                   const uint32_t bit) noexcept {
+  return fastpack_at(encoded + bit * (i / BLOCK_SIZE_32), i % BLOCK_SIZE_32,
+                     bit);
 }
 
-inline uint64_t at(
-    const uint64_t* encoded,
-    const size_t i,
-    const uint32_t bit) noexcept {
-  return fastpack_at(
-    encoded + bit * (i / BLOCK_SIZE_64),
-    i % BLOCK_SIZE_64,
-    bit);
+inline uint64_t at(const uint64_t* encoded, const size_t i,
+                   const uint32_t bit) noexcept {
+  return fastpack_at(encoded + bit * (i / BLOCK_SIZE_64), i % BLOCK_SIZE_64,
+                     bit);
 }
 
-inline void pack(
-    const uint32_t* first,
-    const uint32_t* last,
-    uint32_t* out,
-    const uint32_t bit) noexcept {
+inline void pack(const uint32_t* first, const uint32_t* last, uint32_t* out,
+                 const uint32_t bit) noexcept {
   assert(0 == (last - first) % BLOCK_SIZE_32);
 
   for (; first < last; first += BLOCK_SIZE_32, out += bit) {
@@ -167,11 +145,8 @@ inline void pack(
   }
 }
 
-inline void pack(
-    const uint64_t* first,
-    const uint64_t* last,
-    uint64_t* out,
-    const uint32_t bit) noexcept {
+inline void pack(const uint64_t* first, const uint64_t* last, uint64_t* out,
+                 const uint32_t bit) noexcept {
   assert(0 == (last - first) % BLOCK_SIZE_64);
 
   for (; first < last; first += BLOCK_SIZE_64, out += bit) {
@@ -179,21 +154,15 @@ inline void pack(
   }
 }
 
-inline void unpack(
-    uint32_t* first,
-    uint32_t* last,
-    const uint32_t* in,
-    const uint32_t bit) noexcept {
+inline void unpack(uint32_t* first, uint32_t* last, const uint32_t* in,
+                   const uint32_t bit) noexcept {
   for (; first < last; first += BLOCK_SIZE_32, in += bit) {
     unpack_block(in, first, bit);
   }
 }
 
-inline void unpack(
-    uint64_t* first,
-    uint64_t* last,
-    const uint64_t* in,
-    const uint32_t bit) noexcept {
+inline void unpack(uint64_t* first, uint64_t* last, const uint64_t* in,
+                   const uint32_t bit) noexcept {
   for (; first < last; first += BLOCK_SIZE_64, in += bit) {
     unpack_block(in, first, bit);
   }
@@ -212,7 +181,7 @@ class iterator {
   iterator(const_pointer packed, uint32_t bits, size_t i = 0) noexcept
     : packed_(packed), i_(i), bits_(bits) {
     assert(packed_);
-    assert(bits_ > 0 && bits <= sizeof(value_type)*8);
+    assert(bits_ > 0 && bits <= sizeof(value_type) * 8);
   }
 
   iterator(const iterator&) = default;
@@ -220,7 +189,7 @@ class iterator {
 
   iterator& operator++() noexcept {
     ++i_;
-    return *this; 
+    return *this;
   }
 
   iterator operator++(int) noexcept {
@@ -240,15 +209,15 @@ class iterator {
 
   iterator& operator--() noexcept {
     --i_;
-    return *this; 
+    return *this;
   }
-  
+
   iterator operator--(int) noexcept {
     const auto tmp = *this;
     --*this;
     return tmp;
   }
-  
+
   iterator& operator-=(difference_type v) noexcept {
     i_ -= v;
     return *this;
@@ -257,18 +226,16 @@ class iterator {
   iterator operator-(difference_type v) const noexcept {
     return iterator(packed_, bits_, i_ - v);
   }
-  
+
   difference_type operator-(const iterator& rhs) const noexcept {
-    assert(packed_ == rhs.packed_); // compatibility
+    assert(packed_ == rhs.packed_);  // compatibility
     return i_ - rhs.i_;
   }
 
-  value_type operator*() const noexcept {
-    return at(packed_, i_, bits_);
-  }
+  value_type operator*() const noexcept { return at(packed_, i_, bits_); }
 
   bool operator==(const iterator& rhs) const noexcept {
-    assert(packed_ == rhs.packed_); // compatibility
+    assert(packed_ == rhs.packed_);  // compatibility
     return i_ == rhs.i_;
   }
 
@@ -277,33 +244,29 @@ class iterator {
   }
 
   bool operator<(const iterator& rhs) const noexcept {
-    assert(packed_ == rhs.packed_); // compatibility
+    assert(packed_ == rhs.packed_);  // compatibility
     return i_ < rhs.i_;
   }
 
-  bool operator>=(const iterator& rhs) const noexcept {
-    return !(*this < rhs);
-  }
-  
+  bool operator>=(const iterator& rhs) const noexcept { return !(*this < rhs); }
+
   bool operator>(const iterator& rhs) const noexcept {
-    assert(packed_ == rhs.packed_); // compatibility
+    assert(packed_ == rhs.packed_);  // compatibility
     return i_ > rhs.i_;
   }
-  
-  bool operator<=(const iterator& rhs) const noexcept {
-    return !(*this > rhs);
-  }
+
+  bool operator<=(const iterator& rhs) const noexcept { return !(*this > rhs); }
 
  private:
   const_pointer packed_;
   size_t i_;
   uint32_t bits_;
-}; // iterator
+};  // iterator
 
 typedef iterator<uint32_t> iterator32;
 typedef iterator<uint64_t> iterator64;
 
-} // packing
-} // root
+}  // namespace packed
+}  // namespace iresearch
 
 #endif

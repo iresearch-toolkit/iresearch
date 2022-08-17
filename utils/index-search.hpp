@@ -31,9 +31,8 @@ namespace cmdline {
 
 class parser;
 
-} // cmdline
+}  // namespace cmdline
 
 int search(int argc, char* argv[]);
 
-#endif // IRESEARCH_INDEX_SEARCH_H
-
+#endif  // IRESEARCH_INDEX_SEARCH_H

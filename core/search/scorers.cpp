@@ -26,12 +26,12 @@
 #include "shared.hpp"
 // list of statically loaded scorers via init()
 #ifndef IRESEARCH_DLL
-  #include "tfidf.hpp"
-  #include "bm25.hpp"
-  #include "boost_sort.hpp"
+#include "bm25.hpp"
+#include "boost_sort.hpp"
+#include "tfidf.hpp"
 #endif
-#include "utils/register.hpp"
 #include "utils/hash_utils.hpp"
+#include "utils/register.hpp"
 
 namespace {
 
@@ -39,18 +39,15 @@ struct entry_key_t {
   irs::type_info args_format_;
   const irs::string_ref name_;
 
-  entry_key_t(
-      irs::string_ref name,
-      const irs::type_info& args_format)
-    : args_format_(args_format), name_(name) {
-  }
+  entry_key_t(irs::string_ref name, const irs::type_info& args_format)
+    : args_format_(args_format), name_(name) {}
 
   bool operator==(const entry_key_t& other) const noexcept {
     return args_format_ == other.args_format_ && name_ == other.name_;
   }
 };
 
-}
+}  // namespace
 
 namespace std {
 
@@ -58,58 +55,51 @@ template<>
 struct hash<entry_key_t> {
   size_t operator()(const entry_key_t& value) const {
     return irs::hash_combine(
-          std::hash<irs::type_info::type_id>()(value.args_format_.id()),
-          std::hash<irs::string_ref>()(value.name_));
+      std::hash<irs::type_info::type_id>()(value.args_format_.id()),
+      std::hash<irs::string_ref>()(value.name_));
   }
-}; // hash
+};  // hash
 
-} // std
+}  // namespace std
 
 namespace {
 
 constexpr std::string_view kFileNamePrefix{"libscorer-"};
 
-class scorer_register:
-  public irs::tagged_generic_register<entry_key_t, irs::sort::ptr(*)(irs::string_ref args), irs::string_ref, scorer_register> {
+class scorer_register : public irs::tagged_generic_register<
+                          entry_key_t, irs::sort::ptr (*)(irs::string_ref args),
+                          irs::string_ref, scorer_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
     auto& name = key.name_;
     std::string filename(kFileNamePrefix.size() + name.size(), 0);
 
-    std::memcpy(
-      filename.data(),
-      kFileNamePrefix.data(),
-      kFileNamePrefix.size());
+    std::memcpy(filename.data(), kFileNamePrefix.data(),
+                kFileNamePrefix.size());
 
-    std::memcpy(
-      filename.data() + kFileNamePrefix.size(),
-      name.c_str(),
-      name.size());
+    std::memcpy(filename.data() + kFileNamePrefix.size(), name.c_str(),
+                name.size());
 
     return filename;
   }
 };
 
-}
+}  // namespace
 
 namespace iresearch {
 
-/*static*/ bool scorers::exists(
-    string_ref name,
-    const type_info& args_format,
-    bool load_library /*= true*/) {
-  return nullptr != scorer_register::instance().get(entry_key_t(name, args_format),load_library);
+/*static*/ bool scorers::exists(string_ref name, const type_info& args_format,
+                                bool load_library /*= true*/) {
+  return nullptr != scorer_register::instance().get(
+                      entry_key_t(name, args_format), load_library);
 }
 
-/*static*/ sort::ptr scorers::get(
-    string_ref name,
-    const type_info& args_format,
-    string_ref args,
-    bool load_library /*= true*/) noexcept {
+/*static*/ sort::ptr scorers::get(string_ref name, const type_info& args_format,
+                                  string_ref args,
+                                  bool load_library /*= true*/) noexcept {
   try {
     auto* factory = scorer_register::instance().get(
-      entry_key_t(name, args_format), load_library
-    );
+      entry_key_t(name, args_format), load_library);
 
     return factory ? factory(args) : nullptr;
   } catch (...) {
@@ -120,11 +110,11 @@ namespace iresearch {
 }
 
 /*static*/ void scorers::init() {
-  #ifndef IRESEARCH_DLL
-    irs::bm25_sort::init();
-    irs::tfidf_sort::init();
-    irs::boost_sort::init();
-  #endif
+#ifndef IRESEARCH_DLL
+  irs::bm25_sort::init();
+  irs::tfidf_sort::init();
+  irs::boost_sort::init();
+#endif
 }
 
 /*static*/ void scorers::load_all(std::string_view path) {
@@ -132,8 +122,9 @@ namespace iresearch {
 }
 
 /*static*/ bool scorers::visit(
-    const std::function<bool(string_ref, const type_info&)>& visitor) {
-  scorer_register::visitor_t wrapper = [&visitor](const entry_key_t& key)->bool {
+  const std::function<bool(string_ref, const type_info&)>& visitor) {
+  scorer_register::visitor_t wrapper =
+    [&visitor](const entry_key_t& key) -> bool {
     return visitor(key.name_, key.args_format_);
   };
 
@@ -144,15 +135,13 @@ namespace iresearch {
 // --SECTION--                                               scorer registration
 // -----------------------------------------------------------------------------
 
-scorer_registrar::scorer_registrar(
-    const type_info& type,
-    const type_info& args_format,
-    sort::ptr(*factory)(irs::string_ref args),
-    const char* source /*= nullptr*/) {
+scorer_registrar::scorer_registrar(const type_info& type,
+                                   const type_info& args_format,
+                                   sort::ptr (*factory)(irs::string_ref args),
+                                   const char* source /*= nullptr*/) {
   irs::string_ref source_ref(source);
   auto entry = scorer_register::instance().set(
-    entry_key_t(type.name(), args_format),
-    factory,
+    entry_key_t(type.name(), args_format), factory,
     source_ref.null() ? nullptr : &source_ref);
 
   registered_ = entry.second;
@@ -163,33 +152,28 @@ scorer_registrar::scorer_registrar(
 
     if (source && registered_source) {
       IR_FRMT_WARN(
-        "type name collision detected while registering scorer, ignoring: type '%s' from %s, previously from %s",
-        type.name().c_str(),
-        source,
-        registered_source->c_str()
-      );
+        "type name collision detected while registering scorer, ignoring: type "
+        "'%s' from %s, previously from %s",
+        type.name().c_str(), source, registered_source->c_str());
     } else if (source) {
       IR_FRMT_WARN(
-        "type name collision detected while registering scorer, ignoring: type '%s' from %s",
-        type.name().c_str(),
-        source
-      );
+        "type name collision detected while registering scorer, ignoring: type "
+        "'%s' from %s",
+        type.name().c_str(), source);
     } else if (registered_source) {
       IR_FRMT_WARN(
-        "type name collision detected while registering scorer, ignoring: type '%s', previously from %s",
-        type.name().c_str(),
-        registered_source->c_str()
-      );
+        "type name collision detected while registering scorer, ignoring: type "
+        "'%s', previously from %s",
+        type.name().c_str(), registered_source->c_str());
     } else {
       IR_FRMT_WARN(
-        "type name collision detected while registering scorer, ignoring: type '%s'",
-        type.name().c_str()
-      );
+        "type name collision detected while registering scorer, ignoring: type "
+        "'%s'",
+        type.name().c_str());
     }
-  }}
-
-scorer_registrar::operator bool() const noexcept {
-  return registered_;
+  }
 }
 
-}
+scorer_registrar::operator bool() const noexcept { return registered_; }
+
+}  // namespace iresearch

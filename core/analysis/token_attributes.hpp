@@ -23,16 +23,14 @@
 #ifndef IRESEARCH_TOKEN_ATTRIBUTES_H
 #define IRESEARCH_TOKEN_ATTRIBUTES_H
 
-#include "store/data_input.hpp"
-
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
-
+#include "store/data_input.hpp"
 #include "utils/attribute_provider.hpp"
 #include "utils/attributes.hpp"
+#include "utils/iterator.hpp"
 #include "utils/string.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/iterator.hpp"
 
 namespace iresearch {
 
@@ -78,8 +76,7 @@ struct document : attribute {
   static constexpr string_ref type_name() noexcept { return "document"; }
 
   explicit document(irs::doc_id_t doc = irs::doc_limits::invalid()) noexcept
-    : value(doc) {
-  }
+    : value(doc) {}
 
   doc_id_t value;
 };
@@ -104,9 +101,7 @@ struct granularity_prefix final {
 };
 
 // Iterator representing term positions in a document
-class position
-  : public attribute,
-    public attribute_provider {
+class position : public attribute, public attribute_provider {
  public:
   using value_t = uint32_t;
   using ref = std::reference_wrapper<position>;
@@ -123,20 +118,19 @@ class position
   }
 
   virtual value_t seek(value_t target) {
-    while ((value_< target) && next());
+    while ((value_ < target) && next())
+      ;
     return value_;
   }
 
-  value_t value() const noexcept {
-    return value_;
-  }
+  value_t value() const noexcept { return value_; }
 
   virtual void reset() = 0;
 
   virtual bool next() = 0;
 
  protected:
-  value_t value_{ pos_limits::invalid() };
+  value_t value_{pos_limits::invalid()};
 };
 
 // Subscription for attribute provider change
@@ -162,7 +156,7 @@ class attribute_provider_change final : public attribute {
   }
 
  private:
-  static void noop(attribute_provider&) noexcept { }
+  static void noop(attribute_provider&) noexcept {}
 
   mutable callback_f callback_{&noop};
 };
@@ -180,6 +174,6 @@ struct score_threshold final : public attribute {
   std::span<const value_type> skip_scores;
 };
 
-} // ROOT
+}  // namespace iresearch
 
 #endif

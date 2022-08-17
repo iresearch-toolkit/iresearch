@@ -21,21 +21,24 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
-#include "utils/ref_counter.hpp"
 #include <unordered_map>
 
-namespace tests {
-  class ref_counter_tests: public ::testing::Test {
-    virtual void SetUp() {
-      // Code here will be called immediately after the constructor (right before each test).
-    }
+#include "gtest/gtest.h"
+#include "utils/ref_counter.hpp"
 
-    virtual void TearDown() {
-      // Code here will be called immediately after each test (right before the destructor).
-    }
-  };
-}
+namespace tests {
+class ref_counter_tests : public ::testing::Test {
+  virtual void SetUp() {
+    // Code here will be called immediately after the constructor (right before
+    // each test).
+  }
+
+  virtual void TearDown() {
+    // Code here will be called immediately after each test (right before the
+    // destructor).
+  }
+};
+}  // namespace tests
 
 using namespace tests;
 
@@ -153,8 +156,8 @@ TEST_F(ref_counter_tests, test_ref_counter_visit) {
 
   // test full visitation
   {
-    std::unordered_map<int, size_t> expected = { {1, 2}, {2, 3} };
-    auto visitor = [&expected](const int& key, size_t count)->bool {
+    std::unordered_map<int, size_t> expected = {{1, 2}, {2, 3}};
+    auto visitor = [&expected](const int& key, size_t count) -> bool {
       auto itr = expected.find(key);
       EXPECT_EQ(itr->second, count);
       expected.erase(itr);
@@ -167,8 +170,8 @@ TEST_F(ref_counter_tests, test_ref_counter_visit) {
 
   // test early terminate
   {
-    std::unordered_map<int, size_t> expected = { {1, 2}, {2, 3} };
-    auto visitor = [&expected](const int& key, size_t count)->bool {
+    std::unordered_map<int, size_t> expected = {{1, 2}, {2, 3}};
+    auto visitor = [&expected](const int& key, size_t count) -> bool {
       auto itr = expected.find(key);
       EXPECT_EQ(itr->second, count);
       expected.erase(itr);
@@ -176,13 +179,13 @@ TEST_F(ref_counter_tests, test_ref_counter_visit) {
     };
 
     ASSERT_FALSE(refs.visit(visitor));
-    ASSERT_EQ(1, expected.size()); // only 1 element removed out of 2
+    ASSERT_EQ(1, expected.size());  // only 1 element removed out of 2
   }
 
   // test remove unused
   {
-    std::unordered_map<int, size_t> expected = { {1, 0}, {2, 2} };
-    auto visitor = [&expected](const int& key, size_t count)->bool {
+    std::unordered_map<int, size_t> expected = {{1, 0}, {2, 2}};
+    auto visitor = [&expected](const int& key, size_t count) -> bool {
       auto itr = expected.find(key);
       EXPECT_EQ(itr->second, count);
       expected.erase(itr);
@@ -199,7 +202,7 @@ TEST_F(ref_counter_tests, test_ref_counter_visit) {
 
   // test empty
   {
-    auto visitor = [](const int& key, size_t count)->bool { return true; };
+    auto visitor = [](const int& key, size_t count) -> bool { return true; };
 
     ASSERT_FALSE(refs.empty());
     ASSERT_TRUE(refs.visit(visitor, true));

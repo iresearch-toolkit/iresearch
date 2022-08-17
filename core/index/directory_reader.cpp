@@ -39,8 +39,8 @@ using namespace irs;
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable : 4457)))  // variable hides function param
 irs::index_file_refs::ref_t load_newest_index_meta(
-    irs::index_meta& meta, const irs::directory& dir,
-    const irs::format* codec) noexcept {
+  irs::index_meta& meta, const irs::directory& dir,
+  const irs::format* codec) noexcept {
   // if a specific codec was specified
   if (codec) {
     try {
@@ -72,9 +72,9 @@ irs::index_file_refs::ref_t load_newest_index_meta(
       return ref;
     } catch (const std::exception& e) {
       IR_FRMT_ERROR(
-          "Caught exception while reading index meta with codec '%s', error "
-          "'%s'",
-          codec->type().name().c_str(), e.what());
+        "Caught exception while reading index meta with codec '%s', error "
+        "'%s'",
+        codec->type().name().c_str(), e.what());
     } catch (...) {
       IR_FRMT_ERROR("Caught exception while reading index meta with codec '%s'",
                     codec->type().name().c_str());
@@ -150,8 +150,8 @@ irs::index_file_refs::ref_t load_newest_index_meta(
     return newest.ref;
   } catch (const std::exception& e) {
     IR_FRMT_ERROR(
-        "Caught exception while loading the newest index meta, error '%s'",
-        e.what());
+      "Caught exception while loading the newest index meta, error '%s'",
+      e.what());
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while loading the newest index meta");
   }
@@ -195,14 +195,14 @@ class directory_reader_impl : public composite_reader<segment_reader> {
 };  // directory_reader_impl
 
 directory_reader::directory_reader(impl_ptr&& impl) noexcept
-    : impl_(std::move(impl)) {}
+  : impl_(std::move(impl)) {}
 
 directory_reader::directory_reader(const directory_reader& other) noexcept {
   *this = other;
 }
 
 directory_reader& directory_reader::operator=(
-    const directory_reader& other) noexcept {
+  const directory_reader& other) noexcept {
   if (this != &other) {
     // make a copy
     impl_ptr impl = std::atomic_load(&other.impl_);
@@ -220,17 +220,17 @@ const directory_meta& directory_reader::meta() const {
 }
 
 /*static*/ directory_reader directory_reader::open(
-    const directory& dir, format::ptr codec /*= nullptr*/) {
+  const directory& dir, format::ptr codec /*= nullptr*/) {
   return directory_reader_impl::open(dir, codec.get());
 }
 
 directory_reader directory_reader::reopen(
-    format::ptr codec /*= nullptr*/) const {
+  format::ptr codec /*= nullptr*/) const {
   // make a copy
   impl_ptr impl = std::atomic_load(&impl_);
 
   return directory_reader_impl::open(
-      down_cast<directory_reader_impl>(*impl).dir(), codec.get(), impl);
+    down_cast<directory_reader_impl>(*impl).dir(), codec.get(), impl);
 }
 
 // -------------------------------------------------------------------
@@ -238,19 +238,19 @@ directory_reader directory_reader::reopen(
 // -------------------------------------------------------------------
 
 directory_reader_impl::directory_reader_impl(
-    const directory& dir, reader_file_refs_t&& file_refs, directory_meta&& meta,
-    readers_t&& readers, uint64_t docs_count, uint64_t docs_max)
-    : composite_reader(std::move(readers), docs_count, docs_max),
-      dir_(dir),
-      file_refs_(std::move(file_refs)),
-      meta_(std::move(meta)) {}
+  const directory& dir, reader_file_refs_t&& file_refs, directory_meta&& meta,
+  readers_t&& readers, uint64_t docs_count, uint64_t docs_max)
+  : composite_reader(std::move(readers), docs_count, docs_max),
+    dir_(dir),
+    file_refs_(std::move(file_refs)),
+    meta_(std::move(meta)) {}
 
 /*static*/ index_reader::ptr directory_reader_impl::open(
-    const directory& dir, const format* codec /*= nullptr*/,
-    const index_reader::ptr& cached /*= nullptr*/) {
+  const directory& dir, const format* codec /*= nullptr*/,
+  const index_reader::ptr& cached /*= nullptr*/) {
   index_meta meta;
   index_file_refs::ref_t meta_file_ref =
-      load_newest_index_meta(meta, dir, codec);
+    load_newest_index_meta(meta, dir, codec);
 
   if (!meta_file_ref) {
     throw index_not_found{};
@@ -265,13 +265,13 @@ directory_reader_impl::directory_reader_impl(
   constexpr size_t INVALID_CANDIDATE{std::numeric_limits<size_t>::max()};
   const size_t count = cached_impl ? cached_impl->meta_.meta.size() : 0;
   absl::flat_hash_map<string_ref, size_t>
-      reuse_candidates;  // map by segment name to old segment id
+    reuse_candidates;  // map by segment name to old segment id
   reuse_candidates.reserve(count);
 
   for (size_t i = 0; i < count; ++i) {
     assert(cached_impl);  // ensured by loop condition above
-    auto itr = reuse_candidates.emplace(
-        cached_impl->meta_.meta.segment(i).meta.name, i);
+    auto itr =
+      reuse_candidates.emplace(cached_impl->meta_.meta.segment(i).meta.name, i);
 
     if (!itr.second) {
       itr.first->second = INVALID_CANDIDATE;  // treat collisions as invalid
@@ -305,8 +305,8 @@ directory_reader_impl::directory_reader_impl(
 
     if (!reader) {
       throw index_error(string_utils::to_string(
-          "while opening reader for segment '%s', error: failed to open reader",
-          segment.name.c_str()));
+        "while opening reader for segment '%s', error: failed to open reader",
+        segment.name.c_str()));
     }
 
     docs_max += reader.docs_count();
@@ -318,7 +318,7 @@ directory_reader_impl::directory_reader_impl(
   directory_utils::reference(dir, meta, visitor, true);
   tmp_file_refs.emplace(meta_file_ref);
   file_refs.back().swap(
-      tmp_file_refs);  // use last position for storing index_meta refs
+    tmp_file_refs);  // use last position for storing index_meta refs
 
   directory_meta dir_meta;
 

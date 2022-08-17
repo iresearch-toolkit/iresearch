@@ -161,7 +161,7 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
       });
 
       auto result =
-          cond.wait_for(lock, 1000ms);  // assume thread blocks in 1000ms
+        cond.wait_for(lock, 1000ms);  // assume thread blocks in 1000ms
 
       // As declaration for wait_for contains "It may also be unblocked
       // spuriously." for all platforms
@@ -238,7 +238,7 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
       cond.notify_all();
     });
     auto result =
-        cond.wait_for(lock, 1000ms);  // assume thread finishes in 1000ms
+      cond.wait_for(lock, 1000ms);  // assume thread finishes in 1000ms
 
     // As declaration for wait_for contains "It may also be unblocked
     // spuriously." for all platforms
@@ -254,8 +254,8 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
 
     thread.join();
     ASSERT_EQ(
-        std::cv_status::timeout,
-        result);  // check only after joining with thread to avoid early exit
+      std::cv_status::timeout,
+      result);  // check only after joining with thread to avoid early exit
     // ^^^ expecting timeout because pool should block indefinitely
   }
 }
@@ -279,7 +279,7 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
       });
 
       auto result =
-          cond.wait_for(lock, 1000ms);  // assume thread blocks in 1000ms
+        cond.wait_for(lock, 1000ms);  // assume thread blocks in 1000ms
 
       // As declaration for wait_for contains "It may also be unblocked
       // spuriously." for all platforms
@@ -354,7 +354,7 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
       cond.notify_all();
     });
     auto result =
-        cond.wait_for(lock, 1000ms);  // assume thread finishes in 1000ms
+      cond.wait_for(lock, 1000ms);  // assume thread finishes in 1000ms
 
     // As declaration for wait_for contains "It may also be unblocked
     // spuriously." for all platforms
@@ -459,8 +459,8 @@ TEST(unbounded_object_pool_tests, test_uobject_pool_1) {
         cond.notify_all();
       });
       ASSERT_EQ(
-          std::cv_status::no_timeout,
-          cond.wait_for(lock, 1000ms));  // assume threads start within 1000msec
+        std::cv_status::no_timeout,
+        cond.wait_for(lock, 1000ms));  // assume threads start within 1000msec
       lock.unlock();
       thread.join();
     }
@@ -595,8 +595,8 @@ TEST(unbounded_object_pool_tests, test_uobject_pool_2) {
         cond.notify_all();
       });
       ASSERT_EQ(
-          std::cv_status::no_timeout,
-          cond.wait_for(lock, 1000ms));  // assume threads start within 1000msec
+        std::cv_status::no_timeout,
+        cond.wait_for(lock, 1000ms));  // assume threads start within 1000msec
       lock.unlock();
       thread.join();
     }
@@ -1032,8 +1032,9 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_1) {
 }
 
 TEST(unbounded_object_pool_volatile_tests, return_object_after_pool_destroyed) {
-  auto pool = irs::memory::make_unique<
-      irs::unbounded_object_pool_volatile<test_uobject>>(1);
+  auto pool =
+    irs::memory::make_unique<irs::unbounded_object_pool_volatile<test_uobject>>(
+      1);
   ASSERT_EQ(0, pool->generation_size());
   ASSERT_NE(nullptr, pool);
 

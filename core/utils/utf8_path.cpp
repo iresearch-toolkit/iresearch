@@ -24,15 +24,15 @@
 
 #ifdef __APPLE__
 
+#include "error/error.hpp"
 #include "file_utils.hpp"
 #include "log.hpp"
-#include "error/error.hpp"
 
 namespace {
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wunused-function"
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 
 // use inline to avoid GCC warning
@@ -42,17 +42,16 @@ inline bool append_path(std::string& buf, irs::string_ref value) {
   return true;
 }
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
 #endif
 
-} // namespace
+}  // namespace
 
 namespace iresearch {
 
 utf8_path::utf8_path(const char* utf8_path)
-  : irs::utf8_path(irs::string_ref(utf8_path)) {
-}
+  : irs::utf8_path(irs::string_ref(utf8_path)) {}
 
 utf8_path::utf8_path(const std::string& utf8_path) {
   if (!append_path(path_, string_ref(utf8_path))) {
@@ -65,7 +64,8 @@ utf8_path::utf8_path(irs::string_ref utf8_path) {
   if (utf8_path.null()) {
     std::basic_string<native_char_t> buf;
 
-    // emulate boost::filesystem behaviour by leaving path_ unset in case of error
+    // emulate boost::filesystem behaviour by leaving path_ unset in case of
+    // error
     if (irs::file_utils::read_cwd(buf)) {
       *this += buf;
     }
@@ -83,7 +83,7 @@ utf8_path& utf8_path::operator+=(const char* utf8_name) {
   return (*this) += irs::string_ref(utf8_name);
 }
 
-utf8_path& utf8_path::operator+=(const std::string &utf8_name) {
+utf8_path& utf8_path::operator+=(const std::string& utf8_name) {
   if (!append_path(path_, string_ref(utf8_name))) {
     // emulate boost::filesystem behaviour by throwing an exception
     throw io_error("path conversion failure");
@@ -105,7 +105,7 @@ utf8_path& utf8_path::operator/=(const char* utf8_name) {
   return (*this) /= irs::string_ref(utf8_name);
 }
 
-utf8_path& utf8_path::operator/=(const std::string &utf8_name) {
+utf8_path& utf8_path::operator/=(const std::string& utf8_name) {
   if (!path_.empty()) {
     path_.append(1, file_path_delimiter);
   }
@@ -135,9 +135,7 @@ bool utf8_path::is_absolute(bool& result) const noexcept {
   return irs::file_utils::absolute(result, c_str());
 }
 
-void utf8_path::clear() {
-  path_.clear();
-}
+void utf8_path::clear() { path_.clear(); }
 
 const utf8_path::native_char_t* utf8_path::c_str() const noexcept {
   return path_.c_str();
@@ -148,18 +146,18 @@ const utf8_path::native_str_t& utf8_path::native() const noexcept {
 }
 
 std::string utf8_path::u8string() const {
-  #ifdef _WIN32
-    std::string buf;
+#ifdef _WIN32
+  std::string buf;
 
-    if (!append_path(buf, path_)) {
-      // emulate boost::filesystem behaviour by throwing an exception
-      throw io_error("Path conversion failure");
-    }
+  if (!append_path(buf, path_)) {
+    // emulate boost::filesystem behaviour by throwing an exception
+    throw io_error("Path conversion failure");
+  }
 
-    return buf;
-  #else
-    return path_;
-  #endif
+  return buf;
+#else
+  return path_;
+#endif
 }
 
 utf8_path operator/(const utf8_path& lhs, const utf8_path& rhs) {
@@ -178,11 +176,9 @@ utf8_path current_path() {
   return cwd;
 }
 
-} // namespace iresearch
+}  // namespace iresearch
 #else
 namespace iresearch {
-utf8_path current_path() {
-  return std::filesystem::current_path();
-}
-} // namespace iresearch
+utf8_path current_path() { return std::filesystem::current_path(); }
+}  // namespace iresearch
 #endif

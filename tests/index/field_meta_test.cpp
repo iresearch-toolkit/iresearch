@@ -21,9 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "index/field_meta.hpp"
+
 #include "analysis/token_attributes.hpp"
+#include "tests_shared.hpp"
 
 using namespace iresearch;
 
@@ -94,9 +95,9 @@ TEST(field_meta_test, move) {
 
 TEST(field_meta_test, compare) {
   irs::feature_map_t features;
-  features[irs::type<irs::offset>::id()]    = irs::field_limits::invalid();
+  features[irs::type<irs::offset>::id()] = irs::field_limits::invalid();
   features[irs::type<irs::increment>::id()] = irs::field_limits::invalid();
-  features[irs::type<irs::document>::id()]  = irs::field_limits::invalid();
+  features[irs::type<irs::document>::id()] = irs::field_limits::invalid();
 
   const std::string name("name");
 

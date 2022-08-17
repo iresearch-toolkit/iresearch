@@ -23,11 +23,11 @@
 #ifndef IRESEARCH_LZ4COMPRESSION_H
 #define IRESEARCH_LZ4COMPRESSION_H
 
-#include "string.hpp"
+#include <memory>
+
 #include "compression.hpp"
 #include "noncopyable.hpp"
-
-#include <memory>
+#include "string.hpp"
 
 namespace iresearch {
 namespace compression {
@@ -54,33 +54,31 @@ struct lz4 {
   class lz4compressor final : public compression::compressor {
    public:
     explicit lz4compressor(int acceleration = 0) noexcept
-      : acceleration_(acceleration) {
-    }
+      : acceleration_(acceleration) {}
 
     int acceleration() const noexcept { return acceleration_; }
 
-    virtual bytes_ref compress(
-      byte_type* src,
-      size_t size,
-      bstring& out) override IRESEARCH_ATTRIBUTE_NONNULL();
+    virtual bytes_ref compress(byte_type* src, size_t size,
+                               bstring& out) override
+      IRESEARCH_ATTRIBUTE_NONNULL();
 
    private:
-    const int acceleration_{0}; // 0 - default acceleration
+    const int acceleration_{0};  // 0 - default acceleration
   };
 
   class lz4decompressor final : public compression::decompressor {
    public:
-    virtual bytes_ref decompress(
-      const byte_type* src, size_t src_size,
-      byte_type* dst, size_t dst_size) override IRESEARCH_ATTRIBUTE_NONNULL();
+    virtual bytes_ref decompress(const byte_type* src, size_t src_size,
+                                 byte_type* dst, size_t dst_size) override
+      IRESEARCH_ATTRIBUTE_NONNULL();
   };
 
   static void init();
   static compression::compressor::ptr compressor(const options& opts);
   static compression::decompressor::ptr decompressor();
-}; // lz4basic
+};  // lz4basic
 
-} // compression
-} // namespace iresearch {
+}  // namespace compression
+}  // namespace iresearch
 
 #endif

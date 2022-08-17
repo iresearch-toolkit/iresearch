@@ -23,12 +23,12 @@
 #ifndef IRESEARCH_INDEX_READER_H
 #define IRESEARCH_INDEX_READER_H
 
-#include <vector>
-#include <numeric>
 #include <functional>
+#include <numeric>
+#include <vector>
 
-#include "index/field_meta.hpp"
 #include "formats/formats.hpp"
+#include "index/field_meta.hpp"
 #include "store/directory.hpp"
 #include "store/directory_attributes.hpp"
 #include "utils/iterator.hpp"
@@ -58,9 +58,7 @@ struct index_reader {
       return (*reader_)[i_];
     }
 
-    pointer operator->() const {
-      return &(**this);
-    }
+    pointer operator->() const { return &(**this); }
 
     reader_iterator& operator++() noexcept {
       ++i_;
@@ -86,12 +84,11 @@ struct index_reader {
     friend struct index_reader;
 
     explicit reader_iterator(const index_reader& reader, size_t i = 0) noexcept
-      : reader_(&reader), i_(i) {
-    }
+      : reader_(&reader), i_(i) {}
 
     const index_reader* reader_;
     size_t i_;
-  }; // reader_iterator
+  };  // reader_iterator
 
   using ptr = std::shared_ptr<const index_reader>;
 
@@ -110,15 +107,11 @@ struct index_reader {
   virtual size_t size() const = 0;
 
   // first sub-segment
-  reader_iterator begin() const noexcept {
-    return reader_iterator(*this, 0);
-  }
+  reader_iterator begin() const noexcept { return reader_iterator(*this, 0); }
 
   // after the last sub-segment
-  reader_iterator end() const {
-    return reader_iterator(*this, size());
-  }
-}; // index_reader
+  reader_iterator end() const { return reader_iterator(*this, size()); }
+};  // index_reader
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct sub_reader
@@ -154,7 +147,7 @@ struct sub_reader : index_reader {
   virtual const irs::column_reader* column(string_ref field) const = 0;
 
   virtual const irs::column_reader* sort() const = 0;
-}; // sub_reader
+};  // sub_reader
 
 template<typename Visitor, typename FilterVisitor>
 void visit(const index_reader& index, string_ref field,
@@ -168,6 +161,6 @@ void visit(const index_reader& index, string_ref field,
   }
 }
 
-}
+}  // namespace iresearch
 
 #endif

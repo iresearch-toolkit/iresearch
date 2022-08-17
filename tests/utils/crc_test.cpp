@@ -25,30 +25,30 @@
 
 #ifdef IRESEARCH_SSE4_2
 
-#include "utils/crc.hpp"
-
 #include <fstream>
 
+#include "utils/crc.hpp"
+
 #if defined(_MSC_VER)
-  #pragma warning(disable : 4244)
-  #pragma warning(disable : 4245)
-#elif defined (__GNUC__)
-  // NOOP
+#pragma warning(disable : 4244)
+#pragma warning(disable : 4245)
+#elif defined(__GNUC__)
+// NOOP
 #endif
 
 #include <boost/crc.hpp>
 
 #if defined(_MSC_VER)
-  #pragma warning(default: 4244)
-  #pragma warning(default: 4245)
-#elif defined (__GNUC__)
-  // NOOP
+#pragma warning(default : 4244)
+#pragma warning(default : 4245)
+#elif defined(__GNUC__)
+// NOOP
 #endif
 
 TEST(crc_test, check_invalid_range) {
   irs::crc32c crc;
 
-  char buf[1257] { 1, 2, 3 };
+  char buf[1257]{1, 2, 3};
   crc.process_block(std::end(buf), std::begin(buf));
   ASSERT_EQ(0, crc.checksum());
 }

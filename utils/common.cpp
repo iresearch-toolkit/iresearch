@@ -24,8 +24,8 @@
 
 #include "common.hpp"
 
-#include <frozen/unordered_map.h>
 #include <frozen/string.h>
+#include <frozen/unordered_map.h>
 
 #include "shared.hpp"
 #ifdef IRESEARCH_URING
@@ -36,9 +36,10 @@
 
 namespace {
 
-using factory_f = irs::directory::ptr(*)(std::string_view);
+using factory_f = irs::directory::ptr (*)(std::string_view);
 
-constexpr auto kFactories = frozen::make_unordered_map<frozen::string, factory_f>({
+constexpr auto kFactories =
+  frozen::make_unordered_map<frozen::string, factory_f>({
 #ifdef IRESEARCH_URING
     {"async",
      [](std::string_view path) -> irs::directory::ptr {
@@ -46,7 +47,7 @@ constexpr auto kFactories = frozen::make_unordered_map<frozen::string, factory_f
      }},
 #endif
     {"mmap",
-     [](std::string_view path) -> irs::directory::ptr{
+     [](std::string_view path) -> irs::directory::ptr {
        return irs::memory::make_unique<irs::mmap_directory>(path);
      }},
     {"fs", [](std::string_view path) -> irs::directory::ptr {

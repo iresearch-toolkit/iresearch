@@ -23,11 +23,11 @@
 #ifndef IRESEARCH_SORTED_COLUMN_H
 #define IRESEARCH_SORTED_COLUMN_H
 
-#include "index/column_info.hpp"
-#include "formats/formats.hpp"
-#include "store/store_utils.hpp"
-
 #include <vector>
+
+#include "formats/formats.hpp"
+#include "index/column_info.hpp"
+#include "store/store_utils.hpp"
 
 namespace iresearch {
 
@@ -37,11 +37,9 @@ class comparer;
 
 class sorted_column final : public column_output, private util::noncopyable {
  public:
-  using flush_buffer_t = std::vector<std::pair<doc_id_t, doc_id_t>> ;
+  using flush_buffer_t = std::vector<std::pair<doc_id_t, doc_id_t>>;
 
-  explicit sorted_column(const column_info& info)
-    : info_{info} {
-  }
+  explicit sorted_column(const column_info& info) : info_{info} {}
 
   void prepare(doc_id_t key) {
     assert(index_.empty() || key >= index_.back().first);
@@ -51,9 +49,7 @@ class sorted_column final : public column_output, private util::noncopyable {
     }
   }
 
-  virtual void write_byte(byte_type b) override {
-    data_buf_ += b;
-  }
+  virtual void write_byte(byte_type b) override { data_buf_ += b; }
 
   virtual void write_bytes(const byte_type* b, size_t size) override {
     data_buf_.append(b, size);
@@ -68,13 +64,9 @@ class sorted_column final : public column_output, private util::noncopyable {
     index_.pop_back();
   }
 
-  bool empty() const noexcept {
-    return index_.empty();
-  }
+  bool empty() const noexcept { return index_.empty(); }
 
-  size_t size() const noexcept {
-    return index_.size();
-  }
+  size_t size() const noexcept { return index_.size(); }
 
   void clear() noexcept {
     data_buf_.clear();
@@ -86,55 +78,49 @@ class sorted_column final : public column_output, private util::noncopyable {
   std::pair<doc_map, field_id> flush(
     columnstore_writer& writer,
     columnstore_writer::column_finalizer_f header_writer,
-    doc_id_t max, // total number of docs in segment
+    doc_id_t max,  // total number of docs in segment
     const comparer& less);
 
-  field_id flush(
-    columnstore_writer& writer,
-    columnstore_writer::column_finalizer_f header_writer,
-    const doc_map& docmap,
-    flush_buffer_t& buffer);
+  field_id flush(columnstore_writer& writer,
+                 columnstore_writer::column_finalizer_f header_writer,
+                 const doc_map& docmap, flush_buffer_t& buffer);
 
   size_t memory_active() const noexcept {
-    return data_buf_.size() + index_.size()*sizeof(decltype(index_)::value_type);
+    return data_buf_.size() +
+           index_.size() * sizeof(decltype(index_)::value_type);
   }
 
   size_t memory_reserved() const noexcept {
-    return data_buf_.capacity() + index_.capacity()*sizeof(decltype(index_)::value_type);
+    return data_buf_.capacity() +
+           index_.capacity() * sizeof(decltype(index_)::value_type);
   }
 
-  const column_info& info() const noexcept {
-    return info_;
-  }
+  const column_info& info() const noexcept { return info_; }
 
  private:
   void write_value(data_output& out, const size_t idx) {
     assert(idx + 1 < index_.size());
     const auto begin = index_[idx].second;
-    const auto end = index_[idx+1].second;
+    const auto end = index_[idx + 1].second;
     assert(begin <= end);
 
     out.write_bytes(data_buf_.c_str() + begin, end - begin);
   }
 
-  void flush_already_sorted(
-    const columnstore_writer::values_writer_f& writer);
+  void flush_already_sorted(const columnstore_writer::values_writer_f& writer);
 
-  bool flush_dense(
-    const columnstore_writer::values_writer_f& writer,
-    const doc_map& docmap,
-    flush_buffer_t& buffer);
+  bool flush_dense(const columnstore_writer::values_writer_f& writer,
+                   const doc_map& docmap, flush_buffer_t& buffer);
 
-  void flush_sparse(
-    const columnstore_writer::values_writer_f& writer,
-    const doc_map& docmap,
-    flush_buffer_t& buffer);
+  void flush_sparse(const columnstore_writer::values_writer_f& writer,
+                    const doc_map& docmap, flush_buffer_t& buffer);
 
-  bstring data_buf_; // FIXME use memory_file or block_pool instead
-  std::vector<std::pair<irs::doc_id_t, size_t>> index_; // doc_id + offset in 'data_buf_'
+  bstring data_buf_;  // FIXME use memory_file or block_pool instead
+  std::vector<std::pair<irs::doc_id_t, size_t>>
+    index_;  // doc_id + offset in 'data_buf_'
   column_info info_;
-}; // sorted_column
+};  // sorted_column
 
-} // ROOT
+}  // namespace iresearch
 
-#endif // IRESEARCH_SORTED_COLUMN_H
+#endif  // IRESEARCH_SORTED_COLUMN_H

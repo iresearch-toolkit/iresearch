@@ -23,17 +23,15 @@
 #ifndef IRESEARCH_DATAINPUT_H
 #define IRESEARCH_DATAINPUT_H
 
+#include <iterator>
 #include <memory>
 
 #include "error/error.hpp"
-
 #include "utils/bit_utils.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/io_utils.hpp"
-#include "utils/string.hpp"
 #include "utils/noncopyable.hpp"
-
-#include <iterator>
+#include "utils/string.hpp"
 
 namespace iresearch {
 
@@ -52,7 +50,7 @@ enum class BufferHint {
   ///        in memory while underlying stream is open
   //////////////////////////////////////////////////////////////////////////////
   PERSISTENT
-}; // BufferHint
+};  // BufferHint
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct data_input
@@ -102,18 +100,14 @@ struct data_input {
     return irs::read<uint64_t>(*this);
   }
 
-  virtual uint32_t read_vint() {
-    return irs::vread<uint32_t>(*this);
-  }
+  virtual uint32_t read_vint() { return irs::vread<uint32_t>(*this); }
 
-  virtual uint64_t read_vlong() {
-    return irs::vread<uint64_t>(*this);
-  }
+  virtual uint64_t read_vlong() { return irs::vread<uint64_t>(*this); }
 
   byte_type operator*() { return read_byte(); }
   data_input& operator++() noexcept { return *this; }
   data_input& operator++(int) noexcept { return *this; }
-}; // data_input
+};  // data_input
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct index_input
@@ -122,8 +116,9 @@ struct index_input : public data_input {
  public:
   using ptr = std::unique_ptr<index_input>;
 
-  virtual ptr dup() const = 0; // non-thread-safe fd copy (offset preserved)
-  virtual ptr reopen() const = 0; // thread-safe new low-level-fd (offset preserved)
+  virtual ptr dup() const = 0;  // non-thread-safe fd copy (offset preserved)
+  virtual ptr reopen()
+    const = 0;  // thread-safe new low-level-fd (offset preserved)
   virtual void seek(size_t pos) = 0;
 
   using data_input::read_bytes;
@@ -137,7 +132,8 @@ struct index_input : public data_input {
   /// @note operation is atomic
   /// @note in case of failure stream state doesn't change
   //////////////////////////////////////////////////////////////////////////////
-  virtual const byte_type* read_buffer(size_t offset, size_t count, BufferHint hint) = 0;
+  virtual const byte_type* read_buffer(size_t offset, size_t count,
+                                       BufferHint hint) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return checksum from the current position to a
@@ -151,7 +147,7 @@ struct index_input : public data_input {
 
  private:
   index_input& operator=(const index_input&) = delete;
-}; // index_input
+};  // index_input
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class input_buf
@@ -171,13 +167,13 @@ class input_buf final : public std::streambuf, util::noncopyable {
 
   virtual int_type underflow() override;
 
-  operator index_input&() { return *in_; } // cppcheck-suppress syntaxError
+  operator index_input&() { return *in_; }  // cppcheck-suppress syntaxError
 
   index_input* internal() const { return in_; }
 
  private:
   index_input* in_;
-}; // input_buf
+};  // input_buf
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class buffered_index_input
@@ -188,22 +184,23 @@ class buffered_index_input : public index_input {
 
   virtual size_t read_bytes(byte_type* b, size_t count) override final;
 
-  virtual size_t read_bytes(size_t offset, byte_type* b, size_t count) override final {
+  virtual size_t read_bytes(size_t offset, byte_type* b,
+                            size_t count) override final {
     seek(offset);
     return read_bytes(b, count);
   }
 
-  virtual const byte_type* read_buffer(size_t size, BufferHint hint) noexcept override final;
+  virtual const byte_type* read_buffer(size_t size,
+                                       BufferHint hint) noexcept override final;
 
-  virtual const byte_type* read_buffer(size_t offset, size_t size, BufferHint hint) noexcept override final;
+  virtual const byte_type* read_buffer(size_t offset, size_t size,
+                                       BufferHint hint) noexcept override final;
 
   virtual size_t file_pointer() const noexcept override final {
     return start_ + offset();
   }
 
-  virtual bool eof() const override final {
-    return file_pointer() >= length();
-  }
+  virtual bool eof() const override final { return file_pointer() >= length(); }
 
   virtual void seek(size_t pos) override final;
 
@@ -265,13 +262,13 @@ class buffered_index_input : public index_input {
     return std::distance(buf_, end_);
   }
 
-  byte_type* buf_{}; // buffer itself
-  byte_type* begin_{ buf_ }; // current position in the buffer
-  byte_type* end_{ buf_ }; // end of the valid bytes in the buffer
-  size_t start_{}; // position of the buffer in file
-  size_t buf_size_{}; // size of the buffer in bytes
-}; // buffered_index_input
+  byte_type* buf_{};        // buffer itself
+  byte_type* begin_{buf_};  // current position in the buffer
+  byte_type* end_{buf_};    // end of the valid bytes in the buffer
+  size_t start_{};          // position of the buffer in file
+  size_t buf_size_{};       // size of the buffer in bytes
+};                          // buffered_index_input
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_DATAINPUT_H
+#endif  // IRESEARCH_DATAINPUT_H

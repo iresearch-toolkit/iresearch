@@ -23,24 +23,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #if defined(_MSC_VER)
-  #pragma warning(disable: 4101)
-  #pragma warning(disable: 4267)
+#pragma warning(disable : 4101)
+#pragma warning(disable : 4267)
 #endif
 
-  #include <cmdline.h>
+#include <cmdline.h>
 
 #if defined(_MSC_VER)
-  #pragma warning(default: 4267)
-  #pragma warning(default: 4101)
+#pragma warning(default : 4267)
+#pragma warning(default : 4101)
 #endif
 
-#include "shared.hpp"
-#include "index-convert.hpp"
 #include "common.hpp"
-
 #include "formats/formats.hpp"
+#include "index-convert.hpp"
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
+#include "shared.hpp"
 
 namespace {
 
@@ -51,31 +50,31 @@ const std::string OUT_DIR = "out";
 const std::string OUT_FORMAT = "out-format";
 const std::string FORMATS_DIR = "format-dir";
 
-}
+}  // namespace
 
-int convert(
-    const std::string& in,
-    const std::string& out,
-    const std::string& dir_type,
-    const std::string& format) {
+int convert(const std::string& in, const std::string& out,
+            const std::string& dir_type, const std::string& format) {
   auto in_dir = create_directory(dir_type, in);
 
   if (!in_dir) {
-    std::cerr << "Unable to create input directory directory of type '" << dir_type << "'" << std::endl;
+    std::cerr << "Unable to create input directory directory of type '"
+              << dir_type << "'" << std::endl;
     return 1;
   }
 
   auto out_dir = create_directory(dir_type, out);
 
   if (!out_dir) {
-    std::cerr << "Unable to create input directory directory of type '" << dir_type << "'" << std::endl;
+    std::cerr << "Unable to create input directory directory of type '"
+              << dir_type << "'" << std::endl;
     return 1;
   }
 
   auto codec = irs::formats::get(format);
 
   if (!codec) {
-    std::cerr << "Unable to load the specified format '" << dir_type << "'" << std::endl;
+    std::cerr << "Unable to load the specified format '" << dir_type << "'"
+              << std::endl;
     return 1;
   }
 
@@ -90,9 +89,7 @@ int convert(
 }
 
 int convert(const cmdline::parser& args) {
-  if (!args.exist(IN_DIR)
-      || !args.exist(OUT_DIR)
-      || !args.exist(OUT_FORMAT)) {
+  if (!args.exist(IN_DIR) || !args.exist(OUT_DIR) || !args.exist(OUT_FORMAT)) {
     return 1;
   }
 
@@ -110,9 +107,8 @@ int convert(const cmdline::parser& args) {
 
   const auto& out_format = args.get<std::string>(OUT_FORMAT);
 
-  const auto dir_type = args.exist(DIR_TYPE)
-    ? args.get<std::string>(DIR_TYPE) 
-    : std::string("fs");
+  const auto dir_type =
+    args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("fs");
 
   // init formats
   irs::formats::init();
@@ -134,7 +130,8 @@ int convert(int argc, char* argv[]) {
   cmdconv.add<std::string>(OUT_DIR, 0, "Path to output index directory", true);
   cmdconv.add<std::string>(FORMATS_DIR, 0, "Plugin directory", false);
   cmdconv.add<std::string>(OUT_FORMAT, 0, "Output format", true);
-  cmdconv.add<std::string>(DIR_TYPE, 0, "Directory type (fs|mmap)", false, std::string("fs"));
+  cmdconv.add<std::string>(DIR_TYPE, 0, "Directory type (fs|mmap)", false,
+                           std::string("fs"));
 
   cmdconv.parse(argc, argv);
 

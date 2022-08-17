@@ -32,7 +32,7 @@ using namespace irs;
 
 struct key {
   key(string_ref type, const irs::type_info& args_format)
-      : type{type}, args_format{args_format} {}
+    : type{type}, args_format{args_format} {}
 
   bool operator==(const key& other) const noexcept {
     return args_format == other.args_format && type == other.type;
@@ -47,7 +47,7 @@ struct key {
 struct value {
   explicit value(analysis::factory_f factory = nullptr,
                  analysis::normalizer_f normalizer = nullptr)
-      : factory(factory), normalizer(normalizer) {}
+    : factory(factory), normalizer(normalizer) {}
 
   bool empty() const noexcept { return nullptr == factory; }
 
@@ -71,8 +71,7 @@ template<>
 struct hash<::key> {
   size_t operator()(const ::key& value) const noexcept {
     return irs::hash_combine(
-        std::hash<irs::type_info::type_id>()(value.args_format.id()),
-        value.type);
+      std::hash<irs::type_info::type_id>()(value.args_format.id()), value.type);
   }
 };
 
@@ -83,8 +82,8 @@ namespace {
 constexpr std::string_view kFileNamePrefix{"libanalyzer-"};
 
 class analyzer_register final
-    : public irs::tagged_generic_register<::key, ::value, irs::string_ref,
-                                          analyzer_register> {
+  : public irs::tagged_generic_register<::key, ::value, irs::string_ref,
+                                        analyzer_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
     const auto& name = key.type;
@@ -105,42 +104,42 @@ class analyzer_register final
 namespace iresearch::analysis {
 
 analyzer_registrar::analyzer_registrar(
-    const type_info& type, const type_info& args_format,
-    analyzer::ptr (*factory)(string_ref args),
-    bool (*normalizer)(string_ref args, std::string& config),
-    const char* source /*= nullptr*/) {
+  const type_info& type, const type_info& args_format,
+  analyzer::ptr (*factory)(string_ref args),
+  bool (*normalizer)(string_ref args, std::string& config),
+  const char* source /*= nullptr*/) {
   const string_ref source_ref(source);
   const auto new_entry = ::value(factory, normalizer);
   auto entry = analyzer_register::instance().set(
-      ::key(type.name(), args_format), new_entry,
-      source_ref.null() ? nullptr : &source_ref);
+    ::key(type.name(), args_format), new_entry,
+    source_ref.null() ? nullptr : &source_ref);
 
   registered_ = entry.second;
 
   if (!registered_ && new_entry != entry.first) {
     auto* registered_source =
-        analyzer_register::instance().tag(::key(type.name(), args_format));
+      analyzer_register::instance().tag(::key(type.name(), args_format));
 
     if (source && registered_source) {
       IR_FRMT_WARN(
-          "type name collision detected while registering analyzer, ignoring: "
-          "type '%s' from %s, previously from %s",
-          type.name().c_str(), source, registered_source->c_str());
+        "type name collision detected while registering analyzer, ignoring: "
+        "type '%s' from %s, previously from %s",
+        type.name().c_str(), source, registered_source->c_str());
     } else if (source) {
       IR_FRMT_WARN(
-          "type name collision detected while registering analyzer, ignoring: "
-          "type '%s' from %s",
-          type.name().c_str(), source);
+        "type name collision detected while registering analyzer, ignoring: "
+        "type '%s' from %s",
+        type.name().c_str(), source);
     } else if (registered_source) {
       IR_FRMT_WARN(
-          "type name collision detected while registering analyzer, ignoring: "
-          "type '%s', previously from %s",
-          type.name().c_str(), registered_source->c_str());
+        "type name collision detected while registering analyzer, ignoring: "
+        "type '%s', previously from %s",
+        type.name().c_str(), registered_source->c_str());
     } else {
       IR_FRMT_WARN(
-          "type name collision detected while registering analyzer, ignoring: "
-          "type '%s'",
-          type.name().c_str());
+        "type name collision detected while registering analyzer, ignoring: "
+        "type '%s'",
+        type.name().c_str());
     }
   }
 }
@@ -150,16 +149,16 @@ namespace analyzers {
 bool exists(string_ref name, const type_info& args_format,
             bool load_library /*= true*/) {
   return !analyzer_register::instance()
-              .get(::key(name, args_format), load_library)
-              .empty();
+            .get(::key(name, args_format), load_library)
+            .empty();
 }
 
 bool normalize(std::string& out, string_ref name, const type_info& args_format,
                string_ref args, bool load_library /*= true*/) noexcept {
   try {
     auto* normalizer = analyzer_register::instance()
-                           .get(::key(name, args_format), load_library)
-                           .normalizer;
+                         .get(::key(name, args_format), load_library)
+                         .normalizer;
 
     return normalizer ? normalizer(args, out) : false;
   } catch (...) {
@@ -175,8 +174,8 @@ result get(analyzer::ptr& analyzer, string_ref name,
            bool load_library /*= true*/) noexcept {
   try {
     auto* factory = analyzer_register::instance()
-                        .get(::key(name, args_format), load_library)
-                        .factory;
+                      .get(::key(name, args_format), load_library)
+                      .factory;
 
     if (!factory) {
       return result::make<result::NOT_FOUND>();
@@ -185,10 +184,10 @@ result get(analyzer::ptr& analyzer, string_ref name,
     analyzer = factory(args);
   } catch (const std::exception& e) {
     return result::make<result::INVALID_ARGUMENT>(
-        "Caught exception while getting an analyzer instance", e.what());
+      "Caught exception while getting an analyzer instance", e.what());
   } catch (...) {
     return result::make<result::INVALID_ARGUMENT>(
-        "Caught exception while getting an analyzer instance");
+      "Caught exception while getting an analyzer instance");
   }
 
   return {};
@@ -198,8 +197,8 @@ analyzer::ptr get(string_ref name, const type_info& args_format,
                   string_ref args, bool load_library /*= true*/) noexcept {
   try {
     auto* factory = analyzer_register::instance()
-                        .get(::key(name, args_format), load_library)
-                        .factory;
+                      .get(::key(name, args_format), load_library)
+                      .factory;
 
     return factory ? factory(args) : nullptr;
   } catch (...) {

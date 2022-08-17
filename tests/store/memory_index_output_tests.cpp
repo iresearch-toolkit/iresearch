@@ -21,40 +21,39 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
+#include "tests_shared.hpp"
 #include "utils/string.hpp"
 
 using namespace iresearch;
 
 TEST(memory_index_output_tests, reset) {
-  memory_file file{ irs::memory_allocator::global() };
+  memory_file file{irs::memory_allocator::global()};
   memory_index_output out(file);
 
   std::vector<std::string> data0{
-    "JhPHnhXNpYvbEjq", "g7gyby2SdUdNvGQ", "U98XcyIXfllcXZH", "4ibtjQKrCYNXiVj", "NkxevgneHQsS43D",
-    "CkSTrCYOLqYNvvY", "6U9Ye5jTBItN8l9", "69cwjIUu5C8VfbL", "isp25Lua9zoZJMX", "naLGb64dJPKflqI",
-    "fcgWxthncllqjCc", "HfYNfB3H4hhRqOJ", "MlWiQmdTanRjmFP", "A8rQhYANfoLLX7s", "NcqEzShxKehR4Xk",
-    "qufYsQKbsSddt6Z", "ylkrc2Ks5XBQNw3", "aMnUYWt2nFMBrym", "pLrBC2CIGe747CI", "A71DZO5FekXjd94",
-    "TDlPw3x3yLkP9Zh", "o71RcnwQCWusoBF", "zWBwGnqIXimoZVG", "2VV0N388HixOMry", "VCOYY4ezKnhfsd8",
-    "LIRWmNgCwmBeUHU", "roerCNsxOIOzpyw", "rNV3uP1RTJArKq2", "RNpHK0SdzffO9UU", "W2ydkfmSyzsLBQp",
-    "T87A8xZ4y2XCsQh", "8K0UlwDwO8Nn2Zj", "I1n5sUTCLeGMBdm", "ZMkW85eqS7UZVt0", "6MEyOHo5ow6VXZA",
-    "ZJbmLBTxgYF0bx8", "7lXcionqcEIXwhy", "35uOTpyl1zFYsy3", "VNHdXeNPR4mFM07", "vtynqrb2yMUxhx4",
-    "m3FYKk12UzHICpA", "6OoUF1Qu4WGTJZm", "ydx0PgXLrCMziL5", "CxfuGVzMpgX7pGd", "HKiG3GInGyYDL4Z",
-    "PJqhLXODbAcwVkV", "I8kXANrB85cob6c", "StNikW1Eeahpi0L", "8MG2lAxZwOrRuPu", "kKLlAuK4yU3ZFGl" 
-  };
+    "JhPHnhXNpYvbEjq", "g7gyby2SdUdNvGQ", "U98XcyIXfllcXZH", "4ibtjQKrCYNXiVj",
+    "NkxevgneHQsS43D", "CkSTrCYOLqYNvvY", "6U9Ye5jTBItN8l9", "69cwjIUu5C8VfbL",
+    "isp25Lua9zoZJMX", "naLGb64dJPKflqI", "fcgWxthncllqjCc", "HfYNfB3H4hhRqOJ",
+    "MlWiQmdTanRjmFP", "A8rQhYANfoLLX7s", "NcqEzShxKehR4Xk", "qufYsQKbsSddt6Z",
+    "ylkrc2Ks5XBQNw3", "aMnUYWt2nFMBrym", "pLrBC2CIGe747CI", "A71DZO5FekXjd94",
+    "TDlPw3x3yLkP9Zh", "o71RcnwQCWusoBF", "zWBwGnqIXimoZVG", "2VV0N388HixOMry",
+    "VCOYY4ezKnhfsd8", "LIRWmNgCwmBeUHU", "roerCNsxOIOzpyw", "rNV3uP1RTJArKq2",
+    "RNpHK0SdzffO9UU", "W2ydkfmSyzsLBQp", "T87A8xZ4y2XCsQh", "8K0UlwDwO8Nn2Zj",
+    "I1n5sUTCLeGMBdm", "ZMkW85eqS7UZVt0", "6MEyOHo5ow6VXZA", "ZJbmLBTxgYF0bx8",
+    "7lXcionqcEIXwhy", "35uOTpyl1zFYsy3", "VNHdXeNPR4mFM07", "vtynqrb2yMUxhx4",
+    "m3FYKk12UzHICpA", "6OoUF1Qu4WGTJZm", "ydx0PgXLrCMziL5", "CxfuGVzMpgX7pGd",
+    "HKiG3GInGyYDL4Z", "PJqhLXODbAcwVkV", "I8kXANrB85cob6c", "StNikW1Eeahpi0L",
+    "8MG2lAxZwOrRuPu", "kKLlAuK4yU3ZFGl"};
 
-  std::for_each(
-    data0.begin(),
-    data0.end(),
-    [&out] (const std::string& s) {
-      write_string(out, s.c_str(), s.size());
+  std::for_each(data0.begin(), data0.end(), [&out](const std::string& s) {
+    write_string(out, s.c_str(), s.size());
   });
 
   out.flush();
   out.reset();
-  
+
   file.reset();
 
   std::vector<std::string> data1{
@@ -70,23 +69,16 @@ TEST(memory_index_output_tests, reset) {
     "4xom8m3oNonaPgj", "708zrcsjsOMd1cA", "Fm7NYzezfw25zGv", "lmwUMdwdHa766QN",
     "TYJISGvr8Wcadkn", "STFEhNDe78VEyZp", "3BHag0mVfbmr2wQ", "HDRau9wa3paVsNz",
     "loVKjLS7qwDpUFc", "j0TluqvROLMMheb", "9zm8hOUGnhwT7dB", "DWJHR2a22l5M6PB",
-    "CIvs4EyDjz59q1V", "EIKi8LuYghXWHD3"
-  };
+    "CIvs4EyDjz59q1V", "EIKi8LuYghXWHD3"};
 
-  std::for_each(
-    data1.begin(),
-    data1.end(),
-    [&out] (const std::string& s) {
+  std::for_each(data1.begin(), data1.end(), [&out](const std::string& s) {
     write_string(out, s.c_str(), s.size());
   });
 
   out.flush();
 
   memory_index_input in(file);
-  std::for_each(
-    data1.begin(),
-    data1.end(),
-    [&in] (const std::string& s) {
+  std::for_each(data1.begin(), data1.end(), [&in](const std::string& s) {
     const std::string cs = read_string<std::string>(in);
     EXPECT_EQ(s, cs);
   });

@@ -24,7 +24,6 @@
 #define IRESEARCH_ASYNC_DIRECTORY_H
 
 #include "liburing.h"
-
 #include "store/mmap_directory.hpp"
 #include "utils/object_pool.hpp"
 
@@ -50,12 +49,10 @@ using async_file_ptr = async_file_pool::ptr;
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API async_directory : public mmap_directory {
  public:
-  explicit async_directory(
-    std::string dir,
-    directory_attributes attrs = directory_attributes{},
-    size_t pool_size = 16,
-    size_t queue_size = 1024,
-    unsigned flags = 0);
+  explicit async_directory(std::string dir,
+                           directory_attributes attrs = directory_attributes{},
+                           size_t pool_size = 16, size_t queue_size = 1024,
+                           unsigned flags = 0);
 
   virtual index_output::ptr create(std::string_view name) noexcept override;
   virtual bool sync(std::span<std::string_view> names) noexcept override;
@@ -66,9 +63,8 @@ class IRESEARCH_API async_directory : public mmap_directory {
   async_file_pool async_pool_;
   size_t queue_size_;
   unsigned flags_;
-}; // async_directory
+};  // async_directory
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_ASYNC_DIRECTORY_H
-
+#endif  // IRESEARCH_ASYNC_DIRECTORY_H

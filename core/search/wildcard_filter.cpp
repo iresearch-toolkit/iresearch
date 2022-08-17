@@ -22,15 +22,15 @@
 
 #include "wildcard_filter.hpp"
 
-#include "shared.hpp"
+#include "index/index_reader.hpp"
 #include "search/filter_visitor.hpp"
 #include "search/multiterm_query.hpp"
-#include "search/term_filter.hpp"
 #include "search/prefix_filter.hpp"
-#include "index/index_reader.hpp"
-#include "utils/wildcard_utils.hpp"
+#include "search/term_filter.hpp"
+#include "shared.hpp"
 #include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"
+#include "utils/wildcard_utils.hpp"
 
 namespace {
 
@@ -42,27 +42,26 @@ bytes_ref unescape(bytes_ref in, bstring& out) {
   bool copy = true;
   std::copy_if(in.begin(), in.end(), std::back_inserter(out),
                [&copy](byte_type c) {
-    if (c == WildcardMatch::ESCAPE) {
-      copy = !copy;
-    } else {
-      copy = true;
-    }
-    return copy;
-  });
+                 if (c == WildcardMatch::ESCAPE) {
+                   copy = !copy;
+                 } else {
+                   copy = true;
+                 }
+                 return copy;
+               });
 
   return out;
 }
 
 template<typename Invalid, typename Term, typename Prefix, typename WildCard>
-auto executeWildcard(
-    bstring& buf, bytes_ref term,
-    Invalid&& inv, Term&& t, Prefix&& p, WildCard&& w) {
+auto executeWildcard(bstring& buf, bytes_ref term, Invalid&& inv, Term&& t,
+                     Prefix&& p, WildCard&& w) {
   switch (wildcard_type(term)) {
     case WildcardType::INVALID:
       return inv();
     case WildcardType::TERM_ESCAPED:
       term = unescape(term, buf);
-    [[fallthrough]];
+      [[fallthrough]];
     case WildcardType::TERM:
       return t(term);
     case WildcardType::MATCH_ALL:
@@ -70,17 +69,18 @@ auto executeWildcard(
       return p(term);
     case WildcardType::PREFIX_ESCAPED:
       term = unescape(term, buf);
-    [[fallthrough]];
+      [[fallthrough]];
     case WildcardType::PREFIX: {
       assert(!term.empty());
       const auto* begin = term.c_str();
       const auto* end = begin + term.size();
 
       // term is already checked to be a valid UTF-8 sequence
-      const auto* pos = utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
+      const auto* pos =
+        utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
       assert(pos != end);
 
-      term = bytes_ref(begin, size_t(pos - begin)); // remove trailing '%'
+      term = bytes_ref(begin, size_t(pos - begin));  // remove trailing '%'
       return p(term);
     }
     case WildcardType::WILDCARD:
@@ -91,7 +91,7 @@ auto executeWildcard(
   }
 }
 
-}
+}  // namespace
 
 namespace iresearch {
 
@@ -100,32 +100,29 @@ field_visitor by_wildcard::visitor(bytes_ref term) {
   return executeWildcard(
     buf, term,
     []() -> field_visitor {
-      return [](const sub_reader&, const term_reader&, filter_visitor&) { };
+      return [](const sub_reader&, const term_reader&, filter_visitor&) {};
     },
     [](bytes_ref term) -> field_visitor {
       // must copy term as it may point to temporary string
-      return [term = bstring(term)](
-          const sub_reader& segment,
-          const term_reader& field,
-          filter_visitor& visitor) {
+      return [term = bstring(term)](const sub_reader& segment,
+                                    const term_reader& field,
+                                    filter_visitor& visitor) {
         by_term::visit(segment, field, term, visitor);
       };
     },
     [](bytes_ref term) -> field_visitor {
       // must copy term as it may point to temporary string
-      return [term = bstring(term)](
-          const sub_reader& segment,
-          const term_reader& field,
-          filter_visitor& visitor) {
+      return [term = bstring(term)](const sub_reader& segment,
+                                    const term_reader& field,
+                                    filter_visitor& visitor) {
         by_prefix::visit(segment, field, term, visitor);
       };
     },
-    [](bytes_ref term) -> field_visitor{
+    [](bytes_ref term) -> field_visitor {
       struct automaton_context : util::noncopyable {
         automaton_context(bytes_ref term)
           : acceptor(from_wildcard(term)),
-            matcher(make_automaton_matcher(acceptor)) {
-        }
+            matcher(make_automaton_matcher(acceptor)) {}
 
         automaton acceptor;
         automaton_table_matcher matcher;
@@ -134,43 +131,36 @@ field_visitor by_wildcard::visitor(bytes_ref term) {
       auto ctx = memory::make_shared<automaton_context>(term);
 
       if (!validate(ctx->acceptor)) {
-        return [](const sub_reader&, const term_reader&, filter_visitor&) { };
+        return [](const sub_reader&, const term_reader&, filter_visitor&) {};
       }
 
-      return [ctx = std::move(ctx)](
-          const sub_reader& segment,
-          const term_reader& field,
-          filter_visitor& visitor) mutable {
+      return [ctx = std::move(ctx)](const sub_reader& segment,
+                                    const term_reader& field,
+                                    filter_visitor& visitor) mutable {
         return irs::visit(segment, field, ctx->matcher, visitor);
       };
-    }
-  );
+    });
 }
 
 /*static*/ filter::prepared::ptr by_wildcard::prepare(
-    const index_reader& index,
-    const Order& order,
-    score_t boost,
-    string_ref field,
-    bytes_ref term,
-    size_t scored_terms_limit) {
+  const index_reader& index, const Order& order, score_t boost,
+  string_ref field, bytes_ref term, size_t scored_terms_limit) {
   bstring buf;
   return executeWildcard(
-    buf, term,
-    []() -> filter::prepared::ptr {
-      return prepared::empty();
-    },
+    buf, term, []() -> filter::prepared::ptr { return prepared::empty(); },
     [&index, &order, boost, &field](bytes_ref term) -> filter::prepared::ptr {
       return by_term::prepare(index, order, boost, field, term);
     },
-    [&index, &order, boost, &field, scored_terms_limit](bytes_ref term) -> filter::prepared::ptr {
-      return by_prefix::prepare(index, order, boost, field, term, scored_terms_limit);
+    [&index, &order, boost, &field,
+     scored_terms_limit](bytes_ref term) -> filter::prepared::ptr {
+      return by_prefix::prepare(index, order, boost, field, term,
+                                scored_terms_limit);
     },
-    [&index, &order, boost, &field, scored_terms_limit](bytes_ref term) -> filter::prepared::ptr {
-      return prepare_automaton_filter(field, from_wildcard(term), scored_terms_limit,
-                                      index, order, boost);
-    }
-  );
+    [&index, &order, boost, &field,
+     scored_terms_limit](bytes_ref term) -> filter::prepared::ptr {
+      return prepare_automaton_filter(field, from_wildcard(term),
+                                      scored_terms_limit, index, order, boost);
+    });
 }
 
-}
+}  // namespace iresearch

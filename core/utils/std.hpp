@@ -23,8 +23,8 @@
 #ifndef IRESEARCH_STD_H
 #define IRESEARCH_STD_H
 
-#include <iterator>
 #include <algorithm>
+#include <iterator>
 
 #include "shared.hpp"
 
@@ -46,20 +46,21 @@ struct adjust_const<const In, Out> {
 };
 
 // constexpr versions of min/max functions (for prior c++14 environments)
-template<typename T> 
-constexpr const T& (max)(const T& a, const T& b) { 
-  return a < b ? b : a; 
+template<typename T>
+constexpr const T&(max)(const T& a, const T& b) {
+  return a < b ? b : a;
 }
 
-template<typename T> 
-constexpr const T& (min)(const T& a, const T& b) { 
-  return a < b ? a : b; 
+template<typename T>
+constexpr const T&(min)(const T& a, const T& b) {
+  return a < b ? a : b;
 }
 
 // converts reverse iterator to corresponding forward iterator
 // the function does not accept containers "end"
 template<typename ReverseIterator>
-constexpr typename ReverseIterator::iterator_type to_forward(ReverseIterator it) {
+constexpr typename ReverseIterator::iterator_type to_forward(
+  ReverseIterator it) {
   return --(it.base());
 }
 
@@ -78,11 +79,9 @@ void swap_remove(Container& cont, Iterator it) {
 namespace heap {
 namespace detail {
 
-template<typename RandomAccessIterator, typename Diff, typename Func >
-inline void _for_each_top(
-    RandomAccessIterator begin,
-    Diff idx, Diff bottom,
-    Func func) {
+template<typename RandomAccessIterator, typename Diff, typename Func>
+inline void _for_each_top(RandomAccessIterator begin, Diff idx, Diff bottom,
+                          Func func) {
   if (idx < bottom) {
     const RandomAccessIterator target = begin + idx;
     if (*begin == *target) {
@@ -93,13 +92,10 @@ inline void _for_each_top(
   }
 }
 
-template<
-  typename RandomAccessIterator, typename Diff,
-  typename Pred, typename Func>
-inline void _for_each_if(
-    RandomAccessIterator begin,
-    Diff idx, Diff bottom,
-    Pred pred, Func func) {
+template<typename RandomAccessIterator, typename Diff, typename Pred,
+         typename Func>
+inline void _for_each_if(RandomAccessIterator begin, Diff idx, Diff bottom,
+                         Pred pred, Func func) {
   if (idx < bottom) {
     const RandomAccessIterator target = begin + idx;
     if (pred(*target)) {
@@ -110,51 +106,38 @@ inline void _for_each_if(
   }
 }
 
-} // detail
+}  // namespace detail
 
 /////////////////////////////////////////////////////////////////////////////
 /// @brief calls func for each element in a heap equals to top
 ////////////////////////////////////////////////////////////////////////////
 template<typename RandomAccessIterator, typename Pred, typename Func>
-inline void for_each_if(
-    RandomAccessIterator begin,
-    RandomAccessIterator end,
-    Pred pred,
-    Func func) {
-  typedef typename std::iterator_traits<
-      RandomAccessIterator
-  >::difference_type difference_type;
+inline void for_each_if(RandomAccessIterator begin, RandomAccessIterator end,
+                        Pred pred, Func func) {
+  typedef typename std::iterator_traits<RandomAccessIterator>::difference_type
+    difference_type;
 
-  detail::_for_each_if(
-      begin,
-      difference_type(0),
-      difference_type(end - begin),
-      pred, func);
+  detail::_for_each_if(begin, difference_type(0), difference_type(end - begin),
+                       pred, func);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 /// @brief calls func for each element in a heap equals to top
 ////////////////////////////////////////////////////////////////////////////
-template< typename RandomAccessIterator, typename Func >
-inline void for_each_top( 
-    RandomAccessIterator begin, 
-    RandomAccessIterator end, 
-    Func func) {
-  typedef typename std::iterator_traits<
-    RandomAccessIterator
-  >::difference_type difference_type;
-  
-  detail::_for_each_top( 
-    begin, 
-    difference_type(0),
-    difference_type(end - begin),
-    func);
+template<typename RandomAccessIterator, typename Func>
+inline void for_each_top(RandomAccessIterator begin, RandomAccessIterator end,
+                         Func func) {
+  typedef typename std::iterator_traits<RandomAccessIterator>::difference_type
+    difference_type;
+
+  detail::_for_each_top(begin, difference_type(0), difference_type(end - begin),
+                        func);
 }
 
-} // heap
+}  // namespace heap
 
 /////////////////////////////////////////////////////////////////////////////
-/// @brief checks that all values in the specified range are equals 
+/// @brief checks that all values in the specified range are equals
 ////////////////////////////////////////////////////////////////////////////
 template<typename ForwardIterator>
 inline bool all_equal(ForwardIterator begin, ForwardIterator end) {
@@ -163,8 +146,8 @@ inline bool all_equal(ForwardIterator begin, ForwardIterator end) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class back_emplace_iterator 
-/// @brief provide in place construction capabilities for stl algorithms 
+/// @class back_emplace_iterator
+/// @brief provide in place construction capabilities for stl algorithms
 ////////////////////////////////////////////////////////////////////////////
 template<typename Container>
 class back_emplace_iterator {
@@ -176,9 +159,8 @@ class back_emplace_iterator {
   using reference = void;
   using difference_type = void;
 
-  explicit back_emplace_iterator(Container& cont) 
-    : cont_(std::addressof(cont)) {
-  }
+  explicit back_emplace_iterator(Container& cont)
+    : cont_(std::addressof(cont)) {}
 
   template<class T>
   back_emplace_iterator<Container>& operator=(T&& t) {
@@ -192,7 +174,7 @@ class back_emplace_iterator {
 
  private:
   Container* cont_;
-}; // back_emplace_iterator 
+};  // back_emplace_iterator
 
 template<typename Container>
 inline back_emplace_iterator<Container> back_emplacer(Container& cont) {
@@ -206,16 +188,14 @@ inline back_emplace_iterator<Container> back_emplacer(Container& cont) {
 //////////////////////////////////////////////////////////////////////////////
 template<typename Stream>
 class output_stream_iterator {
-public:
+ public:
   using iterator_category = std::output_iterator_tag;
   using value_type = void;
   using pointer = void;
   using reference = void;
   using difference_type = void;
 
-  explicit output_stream_iterator(Stream& strm) noexcept
-    : strm_(&strm) {
-  }
+  explicit output_stream_iterator(Stream& strm) noexcept : strm_(&strm) {}
 
   output_stream_iterator& operator*() noexcept { return *this; }
   output_stream_iterator& operator++() noexcept { return *this; }
@@ -227,7 +207,7 @@ public:
     return *this;
   }
 
-private:
+ private:
   Stream* strm_;
 };
 
@@ -243,27 +223,23 @@ output_stream_iterator<Stream> make_ostream_iterator(Stream& strm) {
 //////////////////////////////////////////////////////////////////////////////
 template<typename Stream>
 class input_stream_iterator {
-public:
+ public:
   using iterator_category = std::input_iterator_tag;
   using value_type = typename Stream::char_type;
   using pointer = value_type*;
   using reference = value_type&;
   using difference_type = void;
 
-  explicit input_stream_iterator(Stream& strm) noexcept
-    : strm_(&strm) {
-  }
+  explicit input_stream_iterator(Stream& strm) noexcept : strm_(&strm) {}
 
-  typename Stream::int_type operator*() const noexcept {
-    return strm_->get();
-  }
+  typename Stream::int_type operator*() const noexcept { return strm_->get(); }
 
   input_stream_iterator& operator++() noexcept { return *this; }
   input_stream_iterator& operator++(int) noexcept { return *this; }
 
-private:
+ private:
   Stream* strm_;
-}; // input_stream_iterator
+};  // input_stream_iterator
 
 template<typename Stream>
 input_stream_iterator<Stream> make_istream_iterator(Stream& strm) {
@@ -281,8 +257,7 @@ struct initializer {
   template<typename Array>
   constexpr explicit initializer(Array& cache) : init_(cache) {
     cache[Idx] = []() -> const type& {
-      static const typename Builder::type INSTANCE
-        = Builder::make(Idx);
+      static const typename Builder::type INSTANCE = Builder::make(Idx);
       return INSTANCE;
     };
   }
@@ -299,8 +274,7 @@ struct initializer<Builder, 1> {
   template<typename Array>
   constexpr explicit initializer(Array& cache) {
     cache[Idx] = []() -> const type& {
-      static const typename Builder::type INSTANCE
-        = Builder::make(Idx);
+      static const typename Builder::type INSTANCE = Builder::make(Idx);
       return INSTANCE;
     };
   }
@@ -309,7 +283,7 @@ struct initializer<Builder, 1> {
 template<typename Builder>
 struct initializer<Builder, 0>;
 
-} // detail
+}  // namespace detail
 
 template<typename Builder, size_t Size>
 class static_lazy_array {
@@ -329,13 +303,13 @@ class static_lazy_array {
     };
   }
 
-  using func = const type&(*)();
+  using func = const type& (*)();
 
-  func cache_[Size+1];
+  func cache_[Size + 1];
   detail::initializer<Builder, Size> init_;
 };
 
-} // irstd
-} // ROOT
+}  // namespace irstd
+}  // namespace iresearch
 
 #endif

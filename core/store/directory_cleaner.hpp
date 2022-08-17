@@ -47,10 +47,11 @@ class directory_cleaner {
   // @return count of files removed
   static size_t clean(
     directory& dir,
-    const removal_acceptor_t& acceptor =
-      [](std::string_view)->bool { return true; });
+    const removal_acceptor_t& acceptor = [](std::string_view) -> bool {
+      return true;
+    });
 };
 
-}
+}  // namespace iresearch
 
 #endif

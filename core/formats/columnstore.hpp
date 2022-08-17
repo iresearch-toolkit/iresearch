@@ -23,9 +23,8 @@
 #ifndef IRESEARCH_COLUMNSTORE_H
 #define IRESEARCH_COLUMNSTORE_H
 
-#include "shared.hpp"
-
 #include "formats/formats.hpp"
+#include "shared.hpp"
 
 namespace iresearch {
 namespace columnstore {
@@ -54,14 +53,13 @@ enum class Version : int32_t {
   /// * per column compression
   ////////////////////////////////////////////////////////////////////////////
   MAX = 1,
-}; // Version
+};  // Version
 
-irs::columnstore_writer::ptr make_writer(
-    Version version,
-    ColumnMetaVersion meta_version);
+irs::columnstore_writer::ptr make_writer(Version version,
+                                         ColumnMetaVersion meta_version);
 irs::columnstore_reader::ptr make_reader();
 
-} // columnstore
-} // iresearch
+}  // namespace columnstore
+}  // namespace iresearch
 
-#endif // IRESEARCH_COLUMNSTORE_H
+#endif  // IRESEARCH_COLUMNSTORE_H

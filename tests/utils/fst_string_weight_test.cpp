@@ -21,8 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "utils/fstext/fst_string_weight.h"
+
+#include "tests_shared.hpp"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           fst_string_weight_tests
@@ -30,11 +31,13 @@
 
 TEST(fst_string_weight_test, static_const) {
   ASSERT_EQ("left_string", fst::StringLeftWeight<char>::Type());
-  ASSERT_EQ(fst::StringLeftWeight<char>(fst::kStringInfinity), fst::StringLeftWeight<char>::Zero());
+  ASSERT_EQ(fst::StringLeftWeight<char>(fst::kStringInfinity),
+            fst::StringLeftWeight<char>::Zero());
   ASSERT_TRUE(fst::StringLeftWeight<char>::Zero().Member());
   ASSERT_EQ(fst::StringLeftWeight<char>(), fst::StringLeftWeight<char>::One());
   ASSERT_TRUE(fst::StringLeftWeight<char>::One().Member());
-  ASSERT_EQ(fst::StringLeftWeight<char>(fst::kStringBad), fst::StringLeftWeight<char>::NoWeight());
+  ASSERT_EQ(fst::StringLeftWeight<char>(fst::kStringBad),
+            fst::StringLeftWeight<char>::NoWeight());
   ASSERT_FALSE(fst::StringLeftWeight<char>::NoWeight().Member());
 }
 
@@ -73,8 +76,9 @@ TEST(fst_string_weight_test, plus) {
 
     const fst::StringLeftWeight<char> lhs_weight(lhs.begin(), lhs.end());
     const fst::StringLeftWeight<char> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<char> prefix_weight(prefix.begin(), prefix.end());
-    ASSERT_EQ(prefix_weight, fst::Plus(lhs_weight,rhs_weight));
+    const fst::StringLeftWeight<char> prefix_weight(prefix.begin(),
+                                                    prefix.end());
+    ASSERT_EQ(prefix_weight, fst::Plus(lhs_weight, rhs_weight));
   }
 
   // weight + weight
@@ -85,8 +89,9 @@ TEST(fst_string_weight_test, plus) {
 
     const fst::StringLeftWeight<char> lhs_weight(lhs.begin(), lhs.end());
     const fst::StringLeftWeight<char> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<char> prefix_weight(prefix.begin(), prefix.end());
-    ASSERT_EQ(prefix_weight, fst::Plus(lhs_weight,rhs_weight));
+    const fst::StringLeftWeight<char> prefix_weight(prefix.begin(),
+                                                    prefix.end());
+    ASSERT_EQ(prefix_weight, fst::Plus(lhs_weight, rhs_weight));
   }
 
   // weight + Zero()
@@ -95,8 +100,10 @@ TEST(fst_string_weight_test, plus) {
     const std::string prefix = "";
 
     const fst::StringLeftWeight<char> lhs_weight(lhs.begin(), lhs.end());
-    const fst::StringLeftWeight<char> prefix_weight(prefix.begin(), prefix.end());
-    ASSERT_EQ(lhs_weight, fst::Plus(lhs_weight, fst::StringLeftWeight<char>::Zero()));
+    const fst::StringLeftWeight<char> prefix_weight(prefix.begin(),
+                                                    prefix.end());
+    ASSERT_EQ(lhs_weight,
+              fst::Plus(lhs_weight, fst::StringLeftWeight<char>::Zero()));
   }
 
   // Zero() + weight
@@ -105,8 +112,10 @@ TEST(fst_string_weight_test, plus) {
     const std::string prefix = "";
 
     const fst::StringLeftWeight<char> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<char> prefix_weight(prefix.begin(), prefix.end());
-    ASSERT_EQ(rhs_weight, fst::Plus(fst::StringLeftWeight<char>::Zero(), rhs_weight));
+    const fst::StringLeftWeight<char> prefix_weight(prefix.begin(),
+                                                    prefix.end());
+    ASSERT_EQ(rhs_weight,
+              fst::Plus(fst::StringLeftWeight<char>::Zero(), rhs_weight));
   }
 
   // weight + NoWeight()
@@ -114,7 +123,8 @@ TEST(fst_string_weight_test, plus) {
     const std::string lhs = "123456";
 
     const fst::StringLeftWeight<char> lhs_weight(lhs.begin(), lhs.end());
-    ASSERT_EQ(fst::StringLeftWeight<char>::NoWeight(), fst::Plus(lhs_weight, fst::StringLeftWeight<char>::NoWeight()));
+    ASSERT_EQ(fst::StringLeftWeight<char>::NoWeight(),
+              fst::Plus(lhs_weight, fst::StringLeftWeight<char>::NoWeight()));
   }
 
   // NoWeight() + weight
@@ -122,7 +132,8 @@ TEST(fst_string_weight_test, plus) {
     const std::string rhs = "123456";
 
     const fst::StringLeftWeight<char> rhs_weight(rhs.begin(), rhs.end());
-    ASSERT_EQ(fst::StringLeftWeight<char>::NoWeight(), fst::Plus(fst::StringLeftWeight<char>::NoWeight(), rhs_weight));
+    ASSERT_EQ(fst::StringLeftWeight<char>::NoWeight(),
+              fst::Plus(fst::StringLeftWeight<char>::NoWeight(), rhs_weight));
   }
 
   // weight + One()
@@ -131,8 +142,10 @@ TEST(fst_string_weight_test, plus) {
     const std::string prefix = "";
 
     const fst::StringLeftWeight<char> lhs_weight(lhs.begin(), lhs.end());
-    const fst::StringLeftWeight<char> prefix_weight(prefix.begin(), prefix.end());
-    ASSERT_EQ(prefix_weight, fst::Plus(lhs_weight, fst::StringLeftWeight<char>::One()));
+    const fst::StringLeftWeight<char> prefix_weight(prefix.begin(),
+                                                    prefix.end());
+    ASSERT_EQ(prefix_weight,
+              fst::Plus(lhs_weight, fst::StringLeftWeight<char>::One()));
   }
 
   // One() + weight
@@ -141,8 +154,10 @@ TEST(fst_string_weight_test, plus) {
     const std::string prefix = "";
 
     const fst::StringLeftWeight<char> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<char> prefix_weight(prefix.begin(), prefix.end());
-    ASSERT_EQ(prefix_weight, fst::Plus(fst::StringLeftWeight<char>::One(), rhs_weight));
+    const fst::StringLeftWeight<char> prefix_weight(prefix.begin(),
+                                                    prefix.end());
+    ASSERT_EQ(prefix_weight,
+              fst::Plus(fst::StringLeftWeight<char>::One(), rhs_weight));
   }
 }
 
@@ -155,8 +170,9 @@ TEST(fst_string_weight_test, times) {
 
     const fst::StringLeftWeight<char> lhs_weight(lhs.begin(), lhs.end());
     const fst::StringLeftWeight<char> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<char> result_weight(result.begin(), result.end());
-    ASSERT_EQ(result_weight, fst::Times(lhs_weight,rhs_weight));
+    const fst::StringLeftWeight<char> result_weight(result.begin(),
+                                                    result.end());
+    ASSERT_EQ(result_weight, fst::Times(lhs_weight, rhs_weight));
   }
 
   // weight * weight
@@ -167,8 +183,9 @@ TEST(fst_string_weight_test, times) {
 
     const fst::StringLeftWeight<char> lhs_weight(lhs.begin(), lhs.end());
     const fst::StringLeftWeight<char> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<char> result_weight(result.begin(), result.end());
-    ASSERT_EQ(result_weight, fst::Times(lhs_weight,rhs_weight));
+    const fst::StringLeftWeight<char> result_weight(result.begin(),
+                                                    result.end());
+    ASSERT_EQ(result_weight, fst::Times(lhs_weight, rhs_weight));
   }
 
   // weight * Zero()
@@ -177,8 +194,10 @@ TEST(fst_string_weight_test, times) {
     const std::string result = "";
 
     const fst::StringLeftWeight<char> lhs_weight(lhs.begin(), lhs.end());
-    const fst::StringLeftWeight<char> result_weight(result.begin(), result.end());
-    ASSERT_EQ(fst::StringLeftWeight<char>::Zero(), fst::Times(lhs_weight, fst::StringLeftWeight<char>::Zero()));
+    const fst::StringLeftWeight<char> result_weight(result.begin(),
+                                                    result.end());
+    ASSERT_EQ(fst::StringLeftWeight<char>::Zero(),
+              fst::Times(lhs_weight, fst::StringLeftWeight<char>::Zero()));
   }
 
   // Zero() * weight
@@ -187,8 +206,10 @@ TEST(fst_string_weight_test, times) {
     const std::string result = "";
 
     const fst::StringLeftWeight<char> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<char> result_weight(result.begin(), result.end());
-    ASSERT_EQ(fst::StringLeftWeight<char>::Zero(), fst::Times(fst::StringLeftWeight<char>::Zero(), rhs_weight));
+    const fst::StringLeftWeight<char> result_weight(result.begin(),
+                                                    result.end());
+    ASSERT_EQ(fst::StringLeftWeight<char>::Zero(),
+              fst::Times(fst::StringLeftWeight<char>::Zero(), rhs_weight));
   }
 
   // weight * NoWeight()
@@ -196,7 +217,8 @@ TEST(fst_string_weight_test, times) {
     const std::string lhs = "123456";
 
     const fst::StringLeftWeight<char> lhs_weight(lhs.begin(), lhs.end());
-    ASSERT_EQ(fst::StringLeftWeight<char>::NoWeight(), fst::Times(lhs_weight, fst::StringLeftWeight<char>::NoWeight()));
+    ASSERT_EQ(fst::StringLeftWeight<char>::NoWeight(),
+              fst::Times(lhs_weight, fst::StringLeftWeight<char>::NoWeight()));
   }
 
   // NoWeight() * weight
@@ -204,7 +226,8 @@ TEST(fst_string_weight_test, times) {
     const std::string rhs = "123456";
 
     const fst::StringLeftWeight<char> rhs_weight(rhs.begin(), rhs.end());
-    ASSERT_EQ(fst::StringLeftWeight<char>::NoWeight(), fst::Times(fst::StringLeftWeight<char>::NoWeight(), rhs_weight));
+    ASSERT_EQ(fst::StringLeftWeight<char>::NoWeight(),
+              fst::Times(fst::StringLeftWeight<char>::NoWeight(), rhs_weight));
   }
 
   // weight * One()
@@ -213,8 +236,10 @@ TEST(fst_string_weight_test, times) {
     const std::string result = "123456";
 
     const fst::StringLeftWeight<char> lhs_weight(lhs.begin(), lhs.end());
-    const fst::StringLeftWeight<char> result_weight(result.begin(), result.end());
-    ASSERT_EQ(result_weight, fst::Times(lhs_weight, fst::StringLeftWeight<char>::One()));
+    const fst::StringLeftWeight<char> result_weight(result.begin(),
+                                                    result.end());
+    ASSERT_EQ(result_weight,
+              fst::Times(lhs_weight, fst::StringLeftWeight<char>::One()));
   }
 
   // One() + weight
@@ -223,8 +248,10 @@ TEST(fst_string_weight_test, times) {
     const std::string result = "123456";
 
     const fst::StringLeftWeight<char> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<char> result_weight(result.begin(), result.end());
-    ASSERT_EQ(result_weight, fst::Times(fst::StringLeftWeight<char>::One(), rhs_weight));
+    const fst::StringLeftWeight<char> result_weight(result.begin(),
+                                                    result.end());
+    ASSERT_EQ(result_weight,
+              fst::Times(fst::StringLeftWeight<char>::One(), rhs_weight));
   }
 }
 
@@ -237,8 +264,10 @@ TEST(fst_string_weight_test, divide) {
 
     const fst::StringLeftWeight<char> lhs_weight(lhs.begin(), lhs.end());
     const fst::StringLeftWeight<char> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<char> result_weight(result.begin(), result.end());
-    ASSERT_EQ(result_weight, fst::Divide(lhs_weight,rhs_weight, fst::DIVIDE_LEFT));
+    const fst::StringLeftWeight<char> result_weight(result.begin(),
+                                                    result.end());
+    ASSERT_EQ(result_weight,
+              fst::Divide(lhs_weight, rhs_weight, fst::DIVIDE_LEFT));
   }
 
   // weight / weight
@@ -249,8 +278,10 @@ TEST(fst_string_weight_test, divide) {
 
     const fst::StringLeftWeight<char> lhs_weight(lhs.begin(), lhs.end());
     const fst::StringLeftWeight<char> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<char> result_weight(result.begin(), result.end());
-    ASSERT_EQ(result_weight, fst::Divide(lhs_weight,rhs_weight, fst::DIVIDE_LEFT));
+    const fst::StringLeftWeight<char> result_weight(result.begin(),
+                                                    result.end());
+    ASSERT_EQ(result_weight,
+              fst::Divide(lhs_weight, rhs_weight, fst::DIVIDE_LEFT));
   }
 
   // weight / Zero()
@@ -258,7 +289,9 @@ TEST(fst_string_weight_test, divide) {
     const std::string lhs = "123456";
 
     const fst::StringLeftWeight<char> lhs_weight(lhs.begin(), lhs.end());
-    ASSERT_EQ(fst::StringLeftWeight<char>::NoWeight(), fst::Divide(lhs_weight, fst::StringLeftWeight<char>::Zero(), fst::DIVIDE_LEFT));
+    ASSERT_EQ(fst::StringLeftWeight<char>::NoWeight(),
+              fst::Divide(lhs_weight, fst::StringLeftWeight<char>::Zero(),
+                          fst::DIVIDE_LEFT));
   }
 
   // Zero() / weight
@@ -266,7 +299,9 @@ TEST(fst_string_weight_test, divide) {
     const std::string rhs = "123456";
 
     const fst::StringLeftWeight<char> rhs_weight(rhs.begin(), rhs.end());
-    ASSERT_EQ(fst::StringLeftWeight<char>::Zero(), fst::Divide(fst::StringLeftWeight<char>::Zero(), rhs_weight, fst::DIVIDE_LEFT));
+    ASSERT_EQ(fst::StringLeftWeight<char>::Zero(),
+              fst::Divide(fst::StringLeftWeight<char>::Zero(), rhs_weight,
+                          fst::DIVIDE_LEFT));
   }
 
   // weight / NoWeight()
@@ -274,7 +309,9 @@ TEST(fst_string_weight_test, divide) {
     const std::string lhs = "123456";
 
     const fst::StringLeftWeight<char> lhs_weight(lhs.begin(), lhs.end());
-    ASSERT_EQ(fst::StringLeftWeight<char>::NoWeight(), fst::Divide(lhs_weight, fst::StringLeftWeight<char>::NoWeight(), fst::DIVIDE_LEFT));
+    ASSERT_EQ(fst::StringLeftWeight<char>::NoWeight(),
+              fst::Divide(lhs_weight, fst::StringLeftWeight<char>::NoWeight(),
+                          fst::DIVIDE_LEFT));
   }
 
   // NoWeight() / weight
@@ -282,7 +319,9 @@ TEST(fst_string_weight_test, divide) {
     const std::string rhs = "123456";
 
     const fst::StringLeftWeight<char> rhs_weight(rhs.begin(), rhs.end());
-    ASSERT_EQ(fst::StringLeftWeight<char>::NoWeight(), fst::Divide(fst::StringLeftWeight<char>::NoWeight(), rhs_weight, fst::DIVIDE_LEFT));
+    ASSERT_EQ(fst::StringLeftWeight<char>::NoWeight(),
+              fst::Divide(fst::StringLeftWeight<char>::NoWeight(), rhs_weight,
+                          fst::DIVIDE_LEFT));
   }
 
   // weight / One()
@@ -291,8 +330,11 @@ TEST(fst_string_weight_test, divide) {
     const std::string result = "123456";
 
     const fst::StringLeftWeight<char> lhs_weight(lhs.begin(), lhs.end());
-    const fst::StringLeftWeight<char> result_weight(result.begin(), result.end());
-    ASSERT_EQ(result_weight, fst::Divide(lhs_weight, fst::StringLeftWeight<char>::One(), fst::DIVIDE_LEFT));
+    const fst::StringLeftWeight<char> result_weight(result.begin(),
+                                                    result.end());
+    ASSERT_EQ(result_weight,
+              fst::Divide(lhs_weight, fst::StringLeftWeight<char>::One(),
+                          fst::DIVIDE_LEFT));
   }
 
   // One() / weight
@@ -301,8 +343,10 @@ TEST(fst_string_weight_test, divide) {
     const std::string result = "";
 
     const fst::StringLeftWeight<char> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<char> result_weight(result.begin(), result.end());
-    ASSERT_EQ(result_weight, fst::Divide(fst::StringLeftWeight<char>::One(), rhs_weight, fst::DIVIDE_LEFT));
+    const fst::StringLeftWeight<char> result_weight(result.begin(),
+                                                    result.end());
+    ASSERT_EQ(result_weight, fst::Divide(fst::StringLeftWeight<char>::One(),
+                                         rhs_weight, fst::DIVIDE_LEFT));
   }
 }
 
@@ -314,248 +358,337 @@ TEST(fst_byte_weight_test, static_const) {
   ASSERT_EQ("left_string", fst::StringLeftWeight<irs::byte_type>::Type());
   ASSERT_TRUE(fst::StringLeftWeight<irs::byte_type>::Zero().Empty());
   ASSERT_TRUE(fst::StringLeftWeight<irs::byte_type>::Zero().Member());
-  ASSERT_EQ(fst::StringLeftWeight<irs::byte_type>::One(), fst::StringLeftWeight<irs::byte_type>::Zero());
-  ASSERT_EQ(fst::StringLeftWeight<irs::byte_type>::NoWeight(), fst::StringLeftWeight<irs::byte_type>::Zero());
+  ASSERT_EQ(fst::StringLeftWeight<irs::byte_type>::One(),
+            fst::StringLeftWeight<irs::byte_type>::Zero());
+  ASSERT_EQ(fst::StringLeftWeight<irs::byte_type>::NoWeight(),
+            fst::StringLeftWeight<irs::byte_type>::Zero());
 }
 
 TEST(fst_byte_weight_test, plus) {
   // weight + weight
   {
-    const std::vector<irs::byte_type> lhs { 1,2,3,4,5,6 };
-    const std::vector<irs::byte_type> rhs { 1,2,4 };
-    const std::vector<irs::byte_type> prefix{ 1,2 };
+    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> rhs{1, 2, 4};
+    const std::vector<irs::byte_type> prefix{1, 2};
 
-    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(), lhs.end());
-    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(), prefix.end());
-    ASSERT_EQ(prefix_weight, fst::Plus(lhs_weight,rhs_weight));
+    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
+                                                           lhs.end());
+    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
+                                                           rhs.end());
+    const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(),
+                                                              prefix.end());
+    ASSERT_EQ(prefix_weight, fst::Plus(lhs_weight, rhs_weight));
   }
 
   // weight + weight
   {
-    const std::vector<irs::byte_type> lhs { 1,2,4 };
-    const std::vector<irs::byte_type> rhs { 1,2,3,4,5,6 };
-    const std::vector<irs::byte_type> prefix{ 1,2 };
+    const std::vector<irs::byte_type> lhs{1, 2, 4};
+    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> prefix{1, 2};
 
-    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(), lhs.end());
-    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(), prefix.end());
-    ASSERT_EQ(prefix_weight, fst::Plus(lhs_weight,rhs_weight));
+    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
+                                                           lhs.end());
+    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
+                                                           rhs.end());
+    const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(),
+                                                              prefix.end());
+    ASSERT_EQ(prefix_weight, fst::Plus(lhs_weight, rhs_weight));
   }
 
   // weight + Zero()
   {
-    const std::vector<irs::byte_type> lhs{ 1,2,3,4,5,6 };
-    const std::vector<irs::byte_type> prefix{ };
+    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> prefix{};
 
-    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(), lhs.end());
-    const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(), prefix.end());
-    ASSERT_EQ(prefix_weight, fst::Plus(lhs_weight, fst::StringLeftWeight<irs::byte_type>::Zero()));
+    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
+                                                           lhs.end());
+    const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(),
+                                                              prefix.end());
+    ASSERT_EQ(
+      prefix_weight,
+      fst::Plus(lhs_weight, fst::StringLeftWeight<irs::byte_type>::Zero()));
   }
 
   // Zero() + weight
   {
-    const std::vector<irs::byte_type> rhs{ 1,2,3,4,5,6 };
-    const std::vector<irs::byte_type> prefix{ };
+    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> prefix{};
 
-    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(), prefix.end());
-    ASSERT_EQ(prefix_weight, fst::Plus(fst::StringLeftWeight<irs::byte_type>::Zero(), rhs_weight));
+    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
+                                                           rhs.end());
+    const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(),
+                                                              prefix.end());
+    ASSERT_EQ(
+      prefix_weight,
+      fst::Plus(fst::StringLeftWeight<irs::byte_type>::Zero(), rhs_weight));
   }
 
   // weight + NoWeight()
   {
-    const std::vector<irs::byte_type> lhs{ 1,2,3,4,5,6 };
-    const std::vector<irs::byte_type> prefix{ };
+    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> prefix{};
 
-    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(), lhs.end());
-    const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(), prefix.end());
-    ASSERT_EQ(prefix_weight, fst::Plus(lhs_weight, fst::StringLeftWeight<irs::byte_type>::NoWeight()));
+    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
+                                                           lhs.end());
+    const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(),
+                                                              prefix.end());
+    ASSERT_EQ(
+      prefix_weight,
+      fst::Plus(lhs_weight, fst::StringLeftWeight<irs::byte_type>::NoWeight()));
   }
 
   // NoWeight() + weight
   {
-    const std::vector<irs::byte_type> rhs{ 1,2,3,4,5,6 };
-    const std::vector<irs::byte_type> prefix{ };
+    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> prefix{};
 
-    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(), prefix.end());
-    ASSERT_EQ(prefix_weight, fst::Plus(fst::StringLeftWeight<irs::byte_type>::NoWeight(), rhs_weight));
+    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
+                                                           rhs.end());
+    const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(),
+                                                              prefix.end());
+    ASSERT_EQ(
+      prefix_weight,
+      fst::Plus(fst::StringLeftWeight<irs::byte_type>::NoWeight(), rhs_weight));
   }
 
   // weight + One()
   {
-    const std::vector<irs::byte_type> lhs{ 1,2,3,4,5,6 };
-    const std::vector<irs::byte_type> prefix{ };
+    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> prefix{};
 
-    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(), lhs.end());
-    const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(), prefix.end());
-    ASSERT_EQ(prefix_weight, fst::Plus(lhs_weight, fst::StringLeftWeight<irs::byte_type>::One()));
+    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
+                                                           lhs.end());
+    const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(),
+                                                              prefix.end());
+    ASSERT_EQ(
+      prefix_weight,
+      fst::Plus(lhs_weight, fst::StringLeftWeight<irs::byte_type>::One()));
   }
 
   // One() + weight
   {
-    const std::vector<irs::byte_type> rhs{ 1,2,3,4,5,6 };
-    const std::vector<irs::byte_type> prefix{ };
+    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> prefix{};
 
-    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(), prefix.end());
-    ASSERT_EQ(prefix_weight, fst::Plus(fst::StringLeftWeight<irs::byte_type>::One(), rhs_weight));
+    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
+                                                           rhs.end());
+    const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(),
+                                                              prefix.end());
+    ASSERT_EQ(
+      prefix_weight,
+      fst::Plus(fst::StringLeftWeight<irs::byte_type>::One(), rhs_weight));
   }
 }
 
 TEST(fst_byte_weight_test, times) {
   // weight * weight
   {
-    const std::vector<irs::byte_type> lhs { 1,2,3,4,5,6 };
-    const std::vector<irs::byte_type> rhs { 1,2,4 };
-    const std::vector<irs::byte_type> result{ 1,2,3,4,5,6,1,2,4 };
+    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> rhs{1, 2, 4};
+    const std::vector<irs::byte_type> result{1, 2, 3, 4, 5, 6, 1, 2, 4};
 
-    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(), lhs.end());
-    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<irs::byte_type> result_weight(result.begin(), result.end());
-    ASSERT_EQ(result_weight, fst::Times(lhs_weight,rhs_weight));
+    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
+                                                           lhs.end());
+    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
+                                                           rhs.end());
+    const fst::StringLeftWeight<irs::byte_type> result_weight(result.begin(),
+                                                              result.end());
+    ASSERT_EQ(result_weight, fst::Times(lhs_weight, rhs_weight));
   }
 
   // weight * weight
   {
-    const std::vector<irs::byte_type> lhs { 1,2,4 };
-    const std::vector<irs::byte_type> rhs { 1,2,3,4,5,6 };
-    const std::vector<irs::byte_type> result{ 1,2,4,1,2,3,4,5,6 };
+    const std::vector<irs::byte_type> lhs{1, 2, 4};
+    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> result{1, 2, 4, 1, 2, 3, 4, 5, 6};
 
-    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(), lhs.end());
-    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<irs::byte_type> result_weight(result.begin(), result.end());
-    ASSERT_EQ(result_weight, fst::Times(lhs_weight,rhs_weight));
+    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
+                                                           lhs.end());
+    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
+                                                           rhs.end());
+    const fst::StringLeftWeight<irs::byte_type> result_weight(result.begin(),
+                                                              result.end());
+    ASSERT_EQ(result_weight, fst::Times(lhs_weight, rhs_weight));
   }
 
   // weight * Zero()
   {
-    const std::vector<irs::byte_type> lhs{ 1,2,3,4,5,6 };
+    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
 
-    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(), lhs.end());
-    ASSERT_EQ(lhs_weight, fst::Times(lhs_weight, fst::StringLeftWeight<irs::byte_type>::Zero()));
+    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
+                                                           lhs.end());
+    ASSERT_EQ(
+      lhs_weight,
+      fst::Times(lhs_weight, fst::StringLeftWeight<irs::byte_type>::Zero()));
   }
 
   // Zero() * weight
   {
-    const std::vector<irs::byte_type> rhs{ 1,2,3,4,5,6 };
+    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
 
-    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(), rhs.end());
-    ASSERT_EQ(rhs_weight, fst::Times(fst::StringLeftWeight<irs::byte_type>::Zero(), rhs_weight));
+    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
+                                                           rhs.end());
+    ASSERT_EQ(
+      rhs_weight,
+      fst::Times(fst::StringLeftWeight<irs::byte_type>::Zero(), rhs_weight));
   }
 
   // weight * NoWeight()
   {
-    const std::vector<irs::byte_type> lhs{ 1,2,3,4,5,6 };
+    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
 
-    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(), lhs.end());
-    ASSERT_EQ(lhs_weight, fst::Times(lhs_weight, fst::StringLeftWeight<irs::byte_type>::NoWeight()));
+    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
+                                                           lhs.end());
+    ASSERT_EQ(lhs_weight,
+              fst::Times(lhs_weight,
+                         fst::StringLeftWeight<irs::byte_type>::NoWeight()));
   }
 
   // NoWeight() * weight
   {
-    const std::vector<irs::byte_type> rhs{ 1,2,3,4,5,6 };
+    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
 
-    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(), rhs.end());
-    ASSERT_EQ(rhs_weight, fst::Times(fst::StringLeftWeight<irs::byte_type>::NoWeight(), rhs_weight));
+    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
+                                                           rhs.end());
+    ASSERT_EQ(rhs_weight,
+              fst::Times(fst::StringLeftWeight<irs::byte_type>::NoWeight(),
+                         rhs_weight));
   }
 
   // weight * One()
   {
-    const std::vector<irs::byte_type> lhs{ 1,2,3,4,5,6 };
+    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
 
-    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(), lhs.end());
-    ASSERT_EQ(lhs_weight, fst::Times(lhs_weight, fst::StringLeftWeight<irs::byte_type>::One()));
+    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
+                                                           lhs.end());
+    ASSERT_EQ(
+      lhs_weight,
+      fst::Times(lhs_weight, fst::StringLeftWeight<irs::byte_type>::One()));
   }
 
   // One() * weight
   {
-    const std::vector<irs::byte_type> rhs{ 1,2,3,4,5,6 };
+    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
 
-    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(), rhs.end());
-    ASSERT_EQ(rhs_weight, fst::Times(fst::StringLeftWeight<irs::byte_type>::One(), rhs_weight));
+    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
+                                                           rhs.end());
+    ASSERT_EQ(
+      rhs_weight,
+      fst::Times(fst::StringLeftWeight<irs::byte_type>::One(), rhs_weight));
   }
 }
 
 TEST(fst_byte_weight_test, divide) {
   // weight / weight
   {
-    const std::vector<irs::byte_type> lhs { 1,2,3,4,5,6 };
-    const std::vector<irs::byte_type> rhs { 1,2 };
-    const std::vector<irs::byte_type> result{ 3,4,5,6 };
+    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> rhs{1, 2};
+    const std::vector<irs::byte_type> result{3, 4, 5, 6};
 
-    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(), lhs.end());
-    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<irs::byte_type> result_weight(result.begin(), result.end());
-    ASSERT_EQ(result_weight, fst::Divide(lhs_weight,rhs_weight, fst::DIVIDE_LEFT));
+    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
+                                                           lhs.end());
+    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
+                                                           rhs.end());
+    const fst::StringLeftWeight<irs::byte_type> result_weight(result.begin(),
+                                                              result.end());
+    ASSERT_EQ(result_weight,
+              fst::Divide(lhs_weight, rhs_weight, fst::DIVIDE_LEFT));
   }
 
   // weight / weight
   {
-    const std::vector<irs::byte_type> lhs { 1,2 };
-    const std::vector<irs::byte_type> rhs { 1,2,3,4,5,6 };
-    const std::vector<irs::byte_type> result{ };
+    const std::vector<irs::byte_type> lhs{1, 2};
+    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> result{};
 
-    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(), lhs.end());
-    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<irs::byte_type> result_weight(result.begin(), result.end());
-    ASSERT_EQ(result_weight, fst::Divide(lhs_weight,rhs_weight, fst::DIVIDE_LEFT));
+    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
+                                                           lhs.end());
+    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
+                                                           rhs.end());
+    const fst::StringLeftWeight<irs::byte_type> result_weight(result.begin(),
+                                                              result.end());
+    ASSERT_EQ(result_weight,
+              fst::Divide(lhs_weight, rhs_weight, fst::DIVIDE_LEFT));
   }
 
   // weight / Zero()
   {
-    const std::vector<irs::byte_type> lhs { 1,2,3,4,5,6 };
+    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
 
-    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(), lhs.end());
-    ASSERT_EQ(lhs_weight, fst::Divide(lhs_weight, fst::StringLeftWeight<irs::byte_type>::Zero(), fst::DIVIDE_LEFT));
+    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
+                                                           lhs.end());
+    ASSERT_EQ(
+      lhs_weight,
+      fst::Divide(lhs_weight, fst::StringLeftWeight<irs::byte_type>::Zero(),
+                  fst::DIVIDE_LEFT));
   }
 
   // Zero() / weight
   {
-    const std::vector<irs::byte_type> rhs { 1,2,3,4,5,6 };
-    const std::vector<irs::byte_type> result{ };
+    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> result{};
 
-    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<irs::byte_type> result_weight(result.begin(), result.end());
-    ASSERT_EQ(result_weight, fst::Divide(fst::StringLeftWeight<irs::byte_type>::Zero(), rhs_weight, fst::DIVIDE_LEFT));
+    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
+                                                           rhs.end());
+    const fst::StringLeftWeight<irs::byte_type> result_weight(result.begin(),
+                                                              result.end());
+    ASSERT_EQ(result_weight,
+              fst::Divide(fst::StringLeftWeight<irs::byte_type>::Zero(),
+                          rhs_weight, fst::DIVIDE_LEFT));
   }
 
   // weight / NoWeight()
   {
-    const std::vector<irs::byte_type> lhs { 1,2,3,4,5,6 };
+    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
 
-    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(), lhs.end());
-    ASSERT_EQ(lhs_weight, fst::Divide(lhs_weight, fst::StringLeftWeight<irs::byte_type>::NoWeight(), fst::DIVIDE_LEFT));
+    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
+                                                           lhs.end());
+    ASSERT_EQ(
+      lhs_weight,
+      fst::Divide(lhs_weight, fst::StringLeftWeight<irs::byte_type>::NoWeight(),
+                  fst::DIVIDE_LEFT));
   }
 
   // NoWeight() / weight
   {
-    const std::vector<irs::byte_type> rhs { 1,2,3,4,5,6 };
-    const std::vector<irs::byte_type> result{ };
+    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> result{};
 
-    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<irs::byte_type> result_weight(result.begin(), result.end());
-    ASSERT_EQ(result_weight, fst::Divide(fst::StringLeftWeight<irs::byte_type>::NoWeight(), rhs_weight, fst::DIVIDE_LEFT));
+    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
+                                                           rhs.end());
+    const fst::StringLeftWeight<irs::byte_type> result_weight(result.begin(),
+                                                              result.end());
+    ASSERT_EQ(result_weight,
+              fst::Divide(fst::StringLeftWeight<irs::byte_type>::NoWeight(),
+                          rhs_weight, fst::DIVIDE_LEFT));
   }
 
   // weight / One()
   {
-    const std::vector<irs::byte_type> lhs { 1,2,3,4,5,6 };
-    const std::vector<irs::byte_type> result { 1,2,3,4,5,6 };
+    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> result{1, 2, 3, 4, 5, 6};
 
-    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(), lhs.end());
-    const fst::StringLeftWeight<irs::byte_type> result_weight(result.begin(), result.end());
-    ASSERT_EQ(result_weight, fst::Divide(lhs_weight, fst::StringLeftWeight<irs::byte_type>::One(), fst::DIVIDE_LEFT));
+    const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
+                                                           lhs.end());
+    const fst::StringLeftWeight<irs::byte_type> result_weight(result.begin(),
+                                                              result.end());
+    ASSERT_EQ(
+      result_weight,
+      fst::Divide(lhs_weight, fst::StringLeftWeight<irs::byte_type>::One(),
+                  fst::DIVIDE_LEFT));
   }
 
   // One() / weight
   {
     const std::string rhs = "123456";
-    const std::vector<irs::byte_type> result{ };
+    const std::vector<irs::byte_type> result{};
 
-    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(), rhs.end());
-    const fst::StringLeftWeight<irs::byte_type> result_weight(result.begin(), result.end());
-    ASSERT_EQ(result_weight, fst::Divide(fst::StringLeftWeight<irs::byte_type>::One(), rhs_weight, fst::DIVIDE_LEFT));
+    const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
+                                                           rhs.end());
+    const fst::StringLeftWeight<irs::byte_type> result_weight(result.begin(),
+                                                              result.end());
+    ASSERT_EQ(result_weight,
+              fst::Divide(fst::StringLeftWeight<irs::byte_type>::One(),
+                          rhs_weight, fst::DIVIDE_LEFT));
   }
 }

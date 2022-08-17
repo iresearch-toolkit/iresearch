@@ -63,19 +63,19 @@ struct get_visitor {
   }
 
   result_type operator()(const by_terms_options& part) const {
-    return [terms = &part.terms](const sub_reader& segment,
-                                 const term_reader& field,
-                                 filter_visitor& visitor) {
-      return by_terms::visit(segment, field, *terms, visitor);
-    };
+    return
+      [terms = &part.terms](const sub_reader& segment, const term_reader& field,
+                            filter_visitor& visitor) {
+        return by_terms::visit(segment, field, *terms, visitor);
+      };
   }
 
   result_type operator()(const by_range_options& part) const {
-    return [range = &part.range](const sub_reader& segment,
-                                 const term_reader& field,
-                                 filter_visitor& visitor) {
-      return by_range::visit(segment, field, *range, visitor);
-    };
+    return
+      [range = &part.range](const sub_reader& segment, const term_reader& field,
+                            filter_visitor& visitor) {
+        return by_range::visit(segment, field, *range, visitor);
+      };
   }
 
   template<typename T>
@@ -126,7 +126,7 @@ struct prepare : util::noncopyable {
 
   prepare(const index_reader& index, const Order& order, std::string_view field,
           const score_t boost) noexcept
-      : index(index), order(order), field(field), boost(boost) {}
+    : index(index), order(order), field(field), boost(boost) {}
 
   const index_reader& index;
   const irs::Order& order;
@@ -144,7 +144,7 @@ class phrase_term_visitor final : public filter_visitor,
                                   private util::noncopyable {
  public:
   explicit phrase_term_visitor(PhraseStates& phrase_states) noexcept
-      : phrase_states_(phrase_states) {}
+    : phrase_states_(phrase_states) {}
 
   virtual void prepare(const sub_reader& segment, const term_reader& field,
                        const seek_term_iterator& terms) noexcept override {
@@ -203,8 +203,8 @@ class phrase_term_visitor final : public filter_visitor,
 namespace iresearch {
 
 filter::prepared::ptr by_phrase::prepare(
-    const index_reader& index, const Order& ord, score_t boost,
-    const attribute_provider* /*ctx*/) const {
+  const index_reader& index, const Order& ord, score_t boost,
+  const attribute_provider* /*ctx*/) const {
   if (field().empty() || options().empty()) {
     // empty field or phrase
     return filter::prepared::empty();
@@ -212,8 +212,8 @@ filter::prepared::ptr by_phrase::prepare(
 
   if (1 == options().size()) {
     auto query =
-        std::visit(::prepare{index, ord, field(), this->boost() * boost},
-                   options().begin()->second);
+      std::visit(::prepare{index, ord, field(), this->boost() * boost},
+                 options().begin()->second);
 
     if (query) {
       return query;
@@ -229,7 +229,7 @@ filter::prepared::ptr by_phrase::prepare(
 }
 
 filter::prepared::ptr by_phrase::fixed_prepare_collect(
-    const index_reader& index, const Order& ord, score_t boost) const {
+  const index_reader& index, const Order& ord, score_t boost) const {
   const auto phrase_size = options().size();
   const auto is_ord_empty = ord.empty();
 
@@ -313,12 +313,12 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   }
 
   return memory::make_managed<FixedPhraseQuery>(
-      std::move(phrase_states), std::move(positions), std::move(stats),
-      this->boost() * boost);
+    std::move(phrase_states), std::move(positions), std::move(stats),
+    this->boost() * boost);
 }
 
 filter::prepared::ptr by_phrase::variadic_prepare_collect(
-    const index_reader& index, const Order& ord, score_t boost) const {
+  const index_reader& index, const Order& ord, score_t boost) const {
   const auto phrase_size = options().size();
 
   // stats collectors
@@ -404,7 +404,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
     phrase_terms.reserve(phrase_size);
     num_terms.resize(
-        phrase_size);  // reserve space for at least 1 term per part
+      phrase_size);  // reserve space for at least 1 term per part
   }
 
   // offset of the first term in a phrase
@@ -431,8 +431,8 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   }
 
   return memory::make_managed<VariadicPhraseQuery>(
-      std::move(phrase_states), std::move(positions), std::move(stats),
-      this->boost() * boost);
+    std::move(phrase_states), std::move(positions), std::move(stats),
+    this->boost() * boost);
 }
 
 }  // namespace iresearch

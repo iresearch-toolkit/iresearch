@@ -31,18 +31,18 @@ using namespace irs;
 
 // Get index features required for offsets
 constexpr IndexFeatures kRequireOffs =
-    FixedPhraseQuery::kRequiredFeatures | IndexFeatures::OFFS;
+  FixedPhraseQuery::kRequiredFeatures | IndexFeatures::OFFS;
 
 template<bool OneShot, bool HasFreq>
 using FixedPhraseIterator =
-    PhraseIterator<conjunction<doc_iterator::ptr, NoopAggregator>,
-                   FixedPhraseFrequency<OneShot, HasFreq>>;
+  PhraseIterator<conjunction<doc_iterator::ptr, NoopAggregator>,
+                 FixedPhraseFrequency<OneShot, HasFreq>>;
 
 // FIXME add proper handling of overlapped case
 template<typename Adapter, bool VolatileBoost, bool OneShot, bool HasFreq>
 using VariadicPhraseIterator = PhraseIterator<
-    conjunction<doc_iterator::ptr, NoopAggregator>,
-    VariadicPhraseFrequency<Adapter, VolatileBoost, OneShot, HasFreq>>;
+  conjunction<doc_iterator::ptr, NoopAggregator>,
+  VariadicPhraseFrequency<Adapter, VolatileBoost, OneShot, HasFreq>>;
 
 }  // namespace
 
@@ -84,7 +84,7 @@ doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
 
     // get postings using cached state
     auto& docs =
-        itrs.emplace_back(reader->postings(*term_state.first, features));
+      itrs.emplace_back(reader->postings(*term_state.first, features));
 
     if (IRS_UNLIKELY(!docs)) {
       return doc_iterator::empty();
@@ -104,19 +104,19 @@ doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
 
   if (ord.empty()) {
     return memory::make_managed<FixedPhraseIterator<true, false>>(
-        std::move(itrs), std::move(positions));
+      std::move(itrs), std::move(positions));
   }
 
   return memory::make_managed<FixedPhraseIterator<false, true>>(
-      std::move(itrs), std::move(positions), rdr, *phrase_state->reader,
-      stats_.c_str(), ord, boost());
+    std::move(itrs), std::move(positions), rdr, *phrase_state->reader,
+    stats_.c_str(), ord, boost());
 }
 
 doc_iterator::ptr FixedPhraseQuery::ExecuteWithOffsets(
-    const irs::sub_reader& rdr) const {
+  const irs::sub_reader& rdr) const {
   using FixedPhraseIterator =
-      PhraseIterator<conjunction<doc_iterator::ptr, NoopAggregator>,
-                     PhrasePosition<FixedPhraseFrequency<true, false>>>;
+    PhraseIterator<conjunction<doc_iterator::ptr, NoopAggregator>,
+                   PhrasePosition<FixedPhraseFrequency<true, false>>>;
 
   // get phrase state for the specified reader
   auto phrase_state = states_.find(rdr);
@@ -149,7 +149,7 @@ doc_iterator::ptr FixedPhraseQuery::ExecuteWithOffsets(
 
     // get postings using cached state
     auto& docs =
-        itrs.emplace_back(reader->postings(*term_state->first, features));
+      itrs.emplace_back(reader->postings(*term_state->first, features));
 
     if (IRS_UNLIKELY(!docs)) {
       return false;
@@ -197,11 +197,11 @@ doc_iterator::ptr FixedPhraseQuery::ExecuteWithOffsets(
 }
 
 doc_iterator::ptr VariadicPhraseQuery::execute(
-    const ExecutionContext& ctx) const {
+  const ExecutionContext& ctx) const {
   using Adapter = VariadicPhraseAdapter;
   using CompoundDocIterator = irs::compound_doc_iterator<Adapter>;
   using Disjunction =
-      disjunction<doc_iterator::ptr, NoopAggregator, Adapter, true>;
+    disjunction<doc_iterator::ptr, NoopAggregator, Adapter, true>;
   auto& rdr = ctx.segment;
 
   // get phrase state for the specified reader
@@ -269,7 +269,7 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
     }
 
     auto disj =
-        MakeDisjunction<Disjunction>(std::move(disj_itrs), NoopAggregator{});
+      MakeDisjunction<Disjunction>(std::move(disj_itrs), NoopAggregator{});
     pos.first = down_cast<CompoundDocIterator>(disj.get());
     conj_itrs.emplace_back(std::move(disj));
     ++position;
@@ -278,32 +278,32 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
 
   if (ord.empty()) {
     return memory::make_managed<
-        VariadicPhraseIterator<Adapter, false, true, false>>(
-        std::move(conj_itrs), std::move(positions));
+      VariadicPhraseIterator<Adapter, false, true, false>>(
+      std::move(conj_itrs), std::move(positions));
   }
 
   if (phrase_state->volatile_boost) {
     return memory::make_managed<
-        VariadicPhraseIterator<Adapter, true, false, true>>(
-        std::move(conj_itrs), std::move(positions), rdr, *phrase_state->reader,
-        stats_.c_str(), ord, boost());
+      VariadicPhraseIterator<Adapter, true, false, true>>(
+      std::move(conj_itrs), std::move(positions), rdr, *phrase_state->reader,
+      stats_.c_str(), ord, boost());
   }
 
   return memory::make_managed<
-      VariadicPhraseIterator<Adapter, false, false, true>>(
-      std::move(conj_itrs), std::move(positions), rdr, *phrase_state->reader,
-      stats_.c_str(), ord, boost());
+    VariadicPhraseIterator<Adapter, false, false, true>>(
+    std::move(conj_itrs), std::move(positions), rdr, *phrase_state->reader,
+    stats_.c_str(), ord, boost());
 }
 
 doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
-    const irs::sub_reader& rdr) const {
+  const irs::sub_reader& rdr) const {
   using Adapter = VariadicPhraseOffsetAdapter;
   using FixedPhraseIterator = PhraseIterator<
-      conjunction<doc_iterator::ptr, NoopAggregator>,
-      PhrasePosition<VariadicPhraseFrequency<Adapter, false, true, false>>>;
+    conjunction<doc_iterator::ptr, NoopAggregator>,
+    PhrasePosition<VariadicPhraseFrequency<Adapter, false, true, false>>>;
   using CompundDocIterator = irs::compound_doc_iterator<Adapter>;
   using Disjunction =
-      disjunction<doc_iterator::ptr, NoopAggregator, Adapter, true>;
+    disjunction<doc_iterator::ptr, NoopAggregator, Adapter, true>;
 
   // get phrase state for the specified reader
   auto phrase_state = states_.find(rdr);
@@ -372,7 +372,7 @@ doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
     }
 
     auto disj =
-        MakeDisjunction<Disjunction>(std::move(disj_itrs), NoopAggregator{});
+      MakeDisjunction<Disjunction>(std::move(disj_itrs), NoopAggregator{});
     pos.first = down_cast<CompundDocIterator>(disj.get());
     conj_itrs.emplace_back(std::move(disj));
     ++position;

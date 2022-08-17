@@ -35,7 +35,7 @@
 namespace tests {
 
 std::shared_ptr<irs::directory> memory_directory(
-    const test_base* /*test*/, irs::directory_attributes attrs) {
+  const test_base* /*test*/, irs::directory_attributes attrs) {
   return std::make_shared<irs::memory_directory>(std::move(attrs));
 }
 
@@ -50,11 +50,11 @@ std::shared_ptr<irs::directory> fs_directory(const test_base* test,
     irs::file_utils::mkdir(dir.c_str(), false);
 
     impl = std::shared_ptr<irs::fs_directory>(
-        new irs::fs_directory(dir, std::move(attrs)),
-        [dir](irs::fs_directory* p) {
-          irs::file_utils::remove(dir.c_str());
-          delete p;
-        });
+      new irs::fs_directory(dir, std::move(attrs)),
+      [dir](irs::fs_directory* p) {
+        irs::file_utils::remove(dir.c_str());
+        delete p;
+      });
   }
 
   return impl;
@@ -62,7 +62,7 @@ std::shared_ptr<irs::directory> fs_directory(const test_base* test,
 
 #ifdef IRESEARCH_URING
 std::shared_ptr<irs::directory> async_directory(
-    const test_base* test, irs::directory_attributes attrs) {
+  const test_base* test, irs::directory_attributes attrs) {
   std::shared_ptr<irs::directory> impl;
 
   if (test) {
@@ -72,11 +72,11 @@ std::shared_ptr<irs::directory> async_directory(
     irs::file_utils::mkdir(dir.c_str(), false);
 
     impl = std::shared_ptr<irs::async_directory>(
-        new irs::async_directory(dir, std::move(attrs)),
-        [dir](irs::fs_directory* p) {
-          irs::file_utils::remove(dir.c_str());
-          delete p;
-        });
+      new irs::async_directory(dir, std::move(attrs)),
+      [dir](irs::fs_directory* p) {
+        irs::file_utils::remove(dir.c_str());
+        delete p;
+      });
   }
 
   return impl;
@@ -84,7 +84,7 @@ std::shared_ptr<irs::directory> async_directory(
 #endif
 
 std::shared_ptr<irs::directory> mmap_directory(
-    const test_base* test, irs::directory_attributes attrs) {
+  const test_base* test, irs::directory_attributes attrs) {
   std::shared_ptr<irs::directory> impl;
 
   if (test) {
@@ -94,11 +94,11 @@ std::shared_ptr<irs::directory> mmap_directory(
     irs::file_utils::mkdir(dir.c_str(), false);
 
     impl = std::shared_ptr<irs::mmap_directory>(
-        new irs::mmap_directory(dir, std::move(attrs)),
-        [dir](irs::mmap_directory* p) {
-          irs::file_utils::remove(dir.c_str());
-          delete p;
-        });
+      new irs::mmap_directory(dir, std::move(attrs)),
+      [dir](irs::mmap_directory* p) {
+        irs::file_utils::remove(dir.c_str());
+        delete p;
+      });
   }
 
   return impl;

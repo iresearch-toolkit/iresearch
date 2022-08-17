@@ -21,30 +21,28 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "bitset_doc_iterator.hpp"
+
 #include "formats/empty_term_reader.hpp"
 #include "utils/math_utils.hpp"
 
 namespace iresearch {
 
-bitset_doc_iterator::bitset_doc_iterator(
-    const word_t* begin,
-    const word_t* end) noexcept
+bitset_doc_iterator::bitset_doc_iterator(const word_t* begin,
+                                         const word_t* end) noexcept
   : cost_(math::popcount(begin, end)),
-    doc_(cost_.estimate()
-      ? doc_limits::invalid()
-      : doc_limits::eof()),
+    doc_(cost_.estimate() ? doc_limits::invalid() : doc_limits::eof()),
     begin_(begin),
     end_(end) {
   reset();
 }
 
-attribute* bitset_doc_iterator::get_mutable(irs::type_info::type_id id) noexcept {
+attribute* bitset_doc_iterator::get_mutable(
+  irs::type_info::type_id id) noexcept {
   if (type<document>::id() == id) {
     return &doc_;
   }
 
-  return type<cost>::id() == id
-    ? &cost_ : nullptr;
+  return type<cost>::id() == id ? &cost_ : nullptr;
 }
 
 bool bitset_doc_iterator::next() noexcept {
@@ -108,4 +106,4 @@ doc_id_t bitset_doc_iterator::seek(doc_id_t target) noexcept {
   return doc_.value;
 }
 
-} // ROOT
+}  // namespace iresearch

@@ -30,7 +30,7 @@ namespace utf8_utils {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @returns true if a specified character 'c' is a whitespace according to
-/// unicode standard, 
+/// unicode standard,
 /// @note for details see https://unicode.org/reports
 ////////////////////////////////////////////////////////////////////////////////
 constexpr bool char_is_white_space(uint32_t c) noexcept {
@@ -38,36 +38,53 @@ constexpr bool char_is_white_space(uint32_t c) noexcept {
 }
 
 struct GeneralCategory {
-  static constexpr auto Cc = std::make_pair('C','c');  // Other: Control
-  static constexpr auto Cf = std::make_pair('C','f');  // Other: Format
-  static constexpr auto Cn = std::make_pair('C','n');  // Other: Unassigned
-  static constexpr auto Co = std::make_pair('C','o');  // Other: Private use
-  static constexpr auto Cs = std::make_pair('C','s');  // Other: Surrogate
-  static constexpr auto Ll = std::make_pair('L','l');  // Letter: Lowercase letter
-  static constexpr auto Lm = std::make_pair('L','m');  // Letter: Modifier letter
-  static constexpr auto Lo = std::make_pair('L','o');  // Letter: Other letter
-  static constexpr auto Lt = std::make_pair('L','t');  // Letter: Titlecase letter
-  static constexpr auto Lu = std::make_pair('L','u');  // Letter: Uppercase letter
-  static constexpr auto Mc = std::make_pair('M','c');  // Mark: Spacing mark
-  static constexpr auto Me = std::make_pair('M','e');  // Mark: Enclosing mark
-  static constexpr auto Mn = std::make_pair('M','n');  // Mark: Nonspacing mark
-  static constexpr auto Nd = std::make_pair('N','d');  // Number: Decimal number
-  static constexpr auto Nl = std::make_pair('N','l');  // Number: Letter number
-  static constexpr auto No = std::make_pair('N','o');  // Number: Other number
-  static constexpr auto Pc = std::make_pair('P','c');  // Punctuation: Connector punctuation
-  static constexpr auto Pd = std::make_pair('P','d');  // Punctuation: Dash punctuation
-  static constexpr auto Pe = std::make_pair('P','e');  // Punctuation: Close punctuation
-  static constexpr auto Pf = std::make_pair('P','f');  // Punctuation: Final punctuation
-  static constexpr auto Pi = std::make_pair('P','i');  // Punctuation: Initial punctuation
-  static constexpr auto Po = std::make_pair('P','o');  // Punctuation: Other punctuation
-  static constexpr auto Ps = std::make_pair('P','s');  // Punctuation: Open punctuation
-  static constexpr auto Sc = std::make_pair('S','c');  // Symbol: Currency symbol
-  static constexpr auto Sk = std::make_pair('S','k');  // Symbol: Modifier symbol
-  static constexpr auto Sm = std::make_pair('S','m');  // Symbol: Math symbol
-  static constexpr auto So = std::make_pair('S','o');  // Symbol: Other symbol
-  static constexpr auto Zl = std::make_pair('Z','l');  // Separator: Line separator
-  static constexpr auto Zp = std::make_pair('Z','p');  // Separator: Paragraph separator
-  static constexpr auto Zs = std::make_pair('Z','s');  // Separator: Space separator
+  static constexpr auto Cc = std::make_pair('C', 'c');  // Other: Control
+  static constexpr auto Cf = std::make_pair('C', 'f');  // Other: Format
+  static constexpr auto Cn = std::make_pair('C', 'n');  // Other: Unassigned
+  static constexpr auto Co = std::make_pair('C', 'o');  // Other: Private use
+  static constexpr auto Cs = std::make_pair('C', 's');  // Other: Surrogate
+  static constexpr auto Ll =
+    std::make_pair('L', 'l');  // Letter: Lowercase letter
+  static constexpr auto Lm =
+    std::make_pair('L', 'm');  // Letter: Modifier letter
+  static constexpr auto Lo = std::make_pair('L', 'o');  // Letter: Other letter
+  static constexpr auto Lt =
+    std::make_pair('L', 't');  // Letter: Titlecase letter
+  static constexpr auto Lu =
+    std::make_pair('L', 'u');  // Letter: Uppercase letter
+  static constexpr auto Mc = std::make_pair('M', 'c');  // Mark: Spacing mark
+  static constexpr auto Me = std::make_pair('M', 'e');  // Mark: Enclosing mark
+  static constexpr auto Mn = std::make_pair('M', 'n');  // Mark: Nonspacing mark
+  static constexpr auto Nd =
+    std::make_pair('N', 'd');  // Number: Decimal number
+  static constexpr auto Nl = std::make_pair('N', 'l');  // Number: Letter number
+  static constexpr auto No = std::make_pair('N', 'o');  // Number: Other number
+  static constexpr auto Pc =
+    std::make_pair('P', 'c');  // Punctuation: Connector punctuation
+  static constexpr auto Pd =
+    std::make_pair('P', 'd');  // Punctuation: Dash punctuation
+  static constexpr auto Pe =
+    std::make_pair('P', 'e');  // Punctuation: Close punctuation
+  static constexpr auto Pf =
+    std::make_pair('P', 'f');  // Punctuation: Final punctuation
+  static constexpr auto Pi =
+    std::make_pair('P', 'i');  // Punctuation: Initial punctuation
+  static constexpr auto Po =
+    std::make_pair('P', 'o');  // Punctuation: Other punctuation
+  static constexpr auto Ps =
+    std::make_pair('P', 's');  // Punctuation: Open punctuation
+  static constexpr auto Sc =
+    std::make_pair('S', 'c');  // Symbol: Currency symbol
+  static constexpr auto Sk =
+    std::make_pair('S', 'k');  // Symbol: Modifier symbol
+  static constexpr auto Sm = std::make_pair('S', 'm');  // Symbol: Math symbol
+  static constexpr auto So = std::make_pair('S', 'o');  // Symbol: Other symbol
+  static constexpr auto Zl =
+    std::make_pair('Z', 'l');  // Separator: Line separator
+  static constexpr auto Zp =
+    std::make_pair('Z', 'p');  // Separator: Paragraph separator
+  static constexpr auto Zs =
+    std::make_pair('Z', 's');  // Separator: Space separator
 
   GeneralCategory() = delete;
 };
@@ -92,7 +109,7 @@ constexpr bool char_is_alphanumeric(uint32_t c) noexcept {
   return g == 'L' || g == 'N';
 }
 
-} // utf8_utils
-} // iresearch
+}  // namespace utf8_utils
+}  // namespace iresearch
 
-#endif // IRESEARCH_UTF8_CHARACTER_UTILS_H
+#endif  // IRESEARCH_UTF8_CHARACTER_UTILS_H

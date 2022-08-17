@@ -24,8 +24,8 @@
 #ifndef IRESEARCH_TYPES_H
 #define IRESEARCH_TYPES_H
 
-#include <cstdint>
 #include <cmath>
+#include <cstdint>
 
 namespace iresearch {
 
@@ -34,6 +34,6 @@ using field_id = uint64_t;
 using doc_id_t = uint32_t;
 using score_t = float_t;
 
-}
+}  // namespace iresearch
 
 #endif

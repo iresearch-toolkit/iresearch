@@ -23,8 +23,8 @@
 #ifndef IRESEARCH_SORTED_RANGE_MATCHER_H
 #define IRESEARCH_SORTED_RANGE_MATCHER_H
 
-#include "utils/automaton.hpp"
 #include "fst/matcher.h"
+#include "utils/automaton.hpp"
 
 namespace fst {
 
@@ -33,7 +33,7 @@ namespace fst {
 // Arc(kNoLabel, 0, Weight::One(), current_state) as well as any
 // actual epsilon transitions. If match_type == MATCH_OUTPUT, then
 // Arc(0, kNoLabel, Weight::One(), current_state) is instead matched.
-template <class F, fst::MatchType MatchType = MATCH_INPUT>
+template<class F, fst::MatchType MatchType = MATCH_INPUT>
 class SortedRangeExplicitMatcher : public MatcherBase<typename F::Arc> {
  public:
   using FST = F;
@@ -49,18 +49,15 @@ class SortedRangeExplicitMatcher : public MatcherBase<typename F::Arc> {
   // o.w. linear search is used.
   // This doesn't copy the FST.
   SortedRangeExplicitMatcher(const FST *fst, Label binary_label = 1)
-      : fst_(*fst),
-        binary_label_(binary_label),
-        error_(false) {
-  }
+    : fst_(*fst), binary_label_(binary_label), error_(false) {}
 
   // This makes a copy of the FST.
-  SortedRangeExplicitMatcher(const SortedRangeExplicitMatcher<FST> &matcher, bool safe = false)
-      : owned_fst_(matcher.fst_.Copy(safe)),
-        fst_(*owned_fst_),
-        binary_label_(matcher.binary_label_),
-        error_(matcher.error_) {
-   }
+  SortedRangeExplicitMatcher(const SortedRangeExplicitMatcher<FST> &matcher,
+                             bool safe = false)
+    : owned_fst_(matcher.fst_.Copy(safe)),
+      fst_(*owned_fst_),
+      binary_label_(matcher.binary_label_),
+      error_(matcher.error_) {}
 
   ~SortedRangeExplicitMatcher() override { Destroy(aiter_, &aiter_pool_); }
 
@@ -71,9 +68,9 @@ class SortedRangeExplicitMatcher : public MatcherBase<typename F::Arc> {
   fst::MatchType Type(bool test) const override {
     if constexpr (MatchType == MATCH_NONE) return MatchType;
     const auto true_prop =
-        MatchType == MATCH_INPUT ? kILabelSorted : kOLabelSorted;
+      MatchType == MATCH_INPUT ? kILabelSorted : kOLabelSorted;
     const auto false_prop =
-        MatchType == MATCH_INPUT ? kNotILabelSorted : kNotOLabelSorted;
+      MatchType == MATCH_INPUT ? kNotILabelSorted : kNotOLabelSorted;
     const auto props = fst_.Properties(true_prop | false_prop, test);
     if (props & true_prop) {
       return MatchType;
@@ -128,9 +125,9 @@ class SortedRangeExplicitMatcher : public MatcherBase<typename F::Arc> {
   bool Done() const final {
     if (aiter_->Done()) return true;
     if (!exact_match_) return false;
-    aiter_->SetFlags(MatchType == MATCH_INPUT ?
-        kArcILabelValue : kArcOLabelValue,
-        kArcValueFlags);
+    aiter_->SetFlags(
+      MatchType == MATCH_INPUT ? kArcILabelValue : kArcOLabelValue,
+      kArcValueFlags);
     return GetLabel() != match_label_;
   }
 
@@ -139,17 +136,11 @@ class SortedRangeExplicitMatcher : public MatcherBase<typename F::Arc> {
     return aiter_->Value();
   }
 
-  void Next() final {
-    aiter_->Next();
-  }
+  void Next() final { aiter_->Next(); }
 
-  Weight Final(StateId s) const final {
-    return MatcherBase<Arc>::Final(s);
-  }
+  Weight Final(StateId s) const final { return MatcherBase<Arc>::Final(s); }
 
-  ssize_t Priority(StateId s) final {
-    return MatcherBase<Arc>::Priority(s);
-  }
+  ssize_t Priority(StateId s) final { return MatcherBase<Arc>::Priority(s); }
 
   const FST &GetFst() const override { return fst_; }
 
@@ -174,16 +165,16 @@ class SortedRangeExplicitMatcher : public MatcherBase<typename F::Arc> {
   bool LinearSearch();
   bool Search();
 
-  std::unique_ptr<const FST> owned_fst_;       // FST ptr if owned.
-  const FST &fst_;                             // FST for matching.
-  StateId state_{kNoStateId};                  // Matcher state.
-  ArcIterator<FST> *aiter_{};                  // Iterator for current state.
-  Label binary_label_;                         // Least label for binary search.
-  Label match_label_{kNoLabel};                // Current label to be matched.
-  size_t narcs_{0};                            // Current state arc count.
-  MemoryPool<ArcIterator<FST>> aiter_pool_{1}; // Pool of arc iterators.
-  bool exact_match_;                           // Exact match or lower bound?
-  bool error_;                                 // Error encountered?
+  std::unique_ptr<const FST> owned_fst_;  // FST ptr if owned.
+  const FST &fst_;                        // FST for matching.
+  StateId state_{kNoStateId};             // Matcher state.
+  ArcIterator<FST> *aiter_{};             // Iterator for current state.
+  Label binary_label_;                    // Least label for binary search.
+  Label match_label_{kNoLabel};           // Current label to be matched.
+  size_t narcs_{0};                       // Current state arc count.
+  MemoryPool<ArcIterator<FST>> aiter_pool_{1};  // Pool of arc iterators.
+  bool exact_match_;                            // Exact match or lower bound?
+  bool error_;                                  // Error encountered?
 };
 
 // Returns true iff match to match_label_. The arc iterator is positioned at the
@@ -191,7 +182,7 @@ class SortedRangeExplicitMatcher : public MatcherBase<typename F::Arc> {
 // match_label_, or the end if all elements are less than match_label_.
 // If multiple elements are equal to the `match_label_`, returns the rightmost
 // one.
-template <class FST, fst::MatchType MatchType>
+template<class FST, fst::MatchType MatchType>
 inline bool SortedRangeExplicitMatcher<FST, MatchType>::BinarySearch() {
   size_t size = narcs_;
   if (size == 0) {
@@ -221,7 +212,7 @@ inline bool SortedRangeExplicitMatcher<FST, MatchType>::BinarySearch() {
 
 // Returns true iff match to match_label_, positioning arc iterator at lower
 // bound.
-template <class FST, fst::MatchType MatchType>
+template<class FST, fst::MatchType MatchType>
 inline bool SortedRangeExplicitMatcher<FST, MatchType>::LinearSearch() {
   for (aiter_->Reset(); !aiter_->Done(); aiter_->Next()) {
     const fsa::RangeLabel range{GetLabel()};
@@ -233,10 +224,9 @@ inline bool SortedRangeExplicitMatcher<FST, MatchType>::LinearSearch() {
 
 // Returns true iff match to match_label_, positioning arc iterator at lower
 // bound.
-template <class FST, fst::MatchType MatchType>
+template<class FST, fst::MatchType MatchType>
 inline bool SortedRangeExplicitMatcher<FST, MatchType>::Search() {
-  aiter_->SetFlags(MatchType == MATCH_INPUT ?
-                   kArcILabelValue : kArcOLabelValue,
+  aiter_->SetFlags(MatchType == MATCH_INPUT ? kArcILabelValue : kArcOLabelValue,
                    kArcValueFlags);
   if (match_label_ >= binary_label_) {
     return BinarySearch();
@@ -245,7 +235,6 @@ inline bool SortedRangeExplicitMatcher<FST, MatchType>::Search() {
   }
 }
 
-} // fst
+}  // namespace fst
 
-#endif // IRESEARCH_SORTED_RANGE_MATCHER_H
-
+#endif  // IRESEARCH_SORTED_RANGE_MATCHER_H

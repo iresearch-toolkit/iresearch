@@ -24,17 +24,16 @@
 #ifndef IRESEARCH_MEMORYDIRECTORY_H
 #define IRESEARCH_MEMORYDIRECTORY_H
 
-#include "directory.hpp"
+#include <absl/container/flat_hash_map.h>
 
 #include <mutex>
 #include <shared_mutex>
 
-#include <absl/container/flat_hash_map.h>
-
+#include "directory.hpp"
 #include "store/directory_attributes.hpp"
+#include "utils/async_utils.hpp"
 #include "utils/attributes.hpp"
 #include "utils/string.hpp"
-#include "utils/async_utils.hpp"
 
 namespace iresearch {
 
@@ -43,13 +42,14 @@ namespace iresearch {
 /// @brief in memory file
 ////////////////////////////////////////////////////////////////////////////////
 class memory_file
-    : public container_utils::raw_block_vector<16, 8, memory_allocator::allocator_type> {
+  : public container_utils::raw_block_vector<16, 8,
+                                             memory_allocator::allocator_type> {
  private:
   typedef container_utils::raw_block_vector<
-    memory_allocator::allocator_type::SIZE, // total number of levels
-    8, // size of the first level 2^8
-    memory_allocator::allocator_type
-  > raw_block_vector_t;
+    memory_allocator::allocator_type::SIZE,  // total number of levels
+    8,                                       // size of the first level 2^8
+    memory_allocator::allocator_type>
+    raw_block_vector_t;
 
  public:
   explicit memory_file(const memory_allocator& alloc) noexcept
@@ -58,9 +58,7 @@ class memory_file
   }
 
   memory_file(memory_file&& rhs) noexcept
-    : raw_block_vector_t(std::move(rhs)),
-      meta_(rhs.meta_),
-      len_(rhs.len_) {
+    : raw_block_vector_t(std::move(rhs)), meta_(rhs.meta_), len_(rhs.len_) {
     rhs.len_ = 0;
   }
 
@@ -75,17 +73,15 @@ class memory_file
       len -= to_copy;
     }
 
-    assert(!len); // everything copied
+    assert(!len);  // everything copied
 
     return *this;
   }
 
-  size_t length() const noexcept {
-    return len_;
-  }
+  size_t length() const noexcept { return len_; }
 
   void length(size_t length) noexcept {
-    len_ = length; 
+    len_ = length;
     touch(meta_.mtime);
   }
 
@@ -96,20 +92,17 @@ class memory_file
     if (i == last_buf) {
       auto& buffer = get_buffer(i);
 
-      // %size for the case if the last buffer is not one of the precomputed buckets
+      // %size for the case if the last buffer is not one of the precomputed
+      // buckets
       return (len_ - buffer.offset) % buffer.size;
     }
 
     return i < last_buf ? get_buffer(i).size : 0;
   }
 
-  std::time_t mtime() const noexcept {
-    return meta_.mtime;
-  }
+  std::time_t mtime() const noexcept { return meta_.mtime; }
 
-  void reset() noexcept {
-    len_ = 0;
-  }
+  void reset() noexcept { len_ = 0; }
 
   void reset(const memory_allocator& alloc) noexcept {
     reset();
@@ -133,10 +126,9 @@ class memory_file
   }
 
  private:
-  static_assert(
-    raw_block_vector_t::NUM_BUCKETS == memory_allocator::allocator_type::SIZE,
-    "memory allocator is not compatible with a file"
-  );
+  static_assert(raw_block_vector_t::NUM_BUCKETS ==
+                  memory_allocator::allocator_type::SIZE,
+                "memory allocator is not compatible with a file");
 
   // metadata for a memory_file
   struct meta {
@@ -144,14 +136,13 @@ class memory_file
   };
 
   static void touch(std::time_t& time) noexcept {
-    time = std::chrono::system_clock::to_time_t(
-      std::chrono::system_clock::now()
-    );
+    time =
+      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   }
 
   meta meta_;
   size_t len_{};
-}; // memory_file
+};  // memory_file
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class memory_index_input
@@ -165,8 +156,10 @@ class memory_index_input final : public index_input {
   virtual int64_t checksum(size_t offset) const override;
   virtual bool eof() const override;
   virtual byte_type read_byte() override;
-  virtual const byte_type* read_buffer(size_t size, BufferHint hint) noexcept override;
-  virtual const byte_type* read_buffer(size_t offset, size_t size, BufferHint hint) noexcept override;
+  virtual const byte_type* read_buffer(size_t size,
+                                       BufferHint hint) noexcept override;
+  virtual const byte_type* read_buffer(size_t offset, size_t size,
+                                       BufferHint hint) noexcept override;
   virtual size_t read_bytes(byte_type* b, size_t len) override;
   virtual size_t read_bytes(size_t offset, byte_type* b, size_t len) override {
     seek(offset);
@@ -195,16 +188,14 @@ class memory_index_input final : public index_input {
   void switch_buffer(size_t pos);
 
   // returns number of reamining bytes in the buffer
-  FORCE_INLINE size_t remain() const {
-    return std::distance(begin_, end_);
-  }
+  FORCE_INLINE size_t remain() const { return std::distance(begin_, end_); }
 
-  const memory_file* file_; // underline file
-  const byte_type* buf_{}; // current buffer
-  const byte_type* begin_{ buf_ }; // current position
-  const byte_type* end_{ buf_ }; // end of the valid bytes
-  size_t start_{}; // buffer offset in file
-}; // memory_index_input
+  const memory_file* file_;       // underline file
+  const byte_type* buf_{};        // current buffer
+  const byte_type* begin_{buf_};  // current position
+  const byte_type* end_{buf_};    // end of the valid bytes
+  size_t start_{};                // buffer offset in file
+};                                // memory_index_input
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class memory_index_output
@@ -213,7 +204,7 @@ class memory_index_input final : public index_input {
 class memory_index_output : public index_output {
  public:
   explicit memory_index_output(memory_file& file) noexcept;
-  memory_index_output(const memory_index_output&) = default; 
+  memory_index_output(const memory_index_output&) = default;
   memory_index_output& operator=(const memory_index_output&) = delete;
 
   void reset() noexcept;
@@ -228,7 +219,7 @@ class memory_index_output : public index_output {
 
   // index_output
 
-  virtual void flush() override; // deprecated
+  virtual void flush() override;  // deprecated
 
   virtual size_t file_pointer() const override final;
 
@@ -259,18 +250,16 @@ class memory_index_output : public index_output {
 
  private:
   // returns number of reamining bytes in the buffer
-  FORCE_INLINE size_t remain() const {
-    return std::distance(pos_, end_);
-  }
+  FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
 
  protected:
-  memory_file::buffer_t buf_; // current buffer
-  byte_type* pos_; // position in current buffer
+  memory_file::buffer_t buf_;  // current buffer
+  byte_type* pos_;             // position in current buffer
 
  private:
-  memory_file& file_; // underlying file
+  memory_file& file_;  // underlying file
   byte_type* end_;
-}; // memory_index_output
+};  // memory_index_output
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class memory_directory
@@ -289,29 +278,24 @@ class memory_directory final : public directory {
 
   virtual index_output::ptr create(std::string_view name) noexcept override;
 
-  virtual bool exists(
-    bool& result,
-    std::string_view name) const noexcept override;
+  virtual bool exists(bool& result,
+                      std::string_view name) const noexcept override;
 
-  virtual bool length(
-    uint64_t& result,
-    std::string_view name) const noexcept override;
+  virtual bool length(uint64_t& result,
+                      std::string_view name) const noexcept override;
 
   virtual index_lock::ptr make_lock(std::string_view name) noexcept override;
 
-  virtual bool mtime(
-    std::time_t& result,
-    std::string_view name) const noexcept override;
+  virtual bool mtime(std::time_t& result,
+                     std::string_view name) const noexcept override;
 
-  virtual index_input::ptr open(
-    std::string_view name,
-    IOAdvice advice) const noexcept override;
+  virtual index_input::ptr open(std::string_view name,
+                                IOAdvice advice) const noexcept override;
 
   virtual bool remove(std::string_view name) noexcept override;
 
-  virtual bool rename(
-    std::string_view src,
-    std::string_view dst) noexcept override;
+  virtual bool rename(std::string_view src,
+                      std::string_view dst) noexcept override;
 
   virtual bool sync(std::string_view name) noexcept override;
 
@@ -319,7 +303,8 @@ class memory_directory final : public directory {
 
  private:
   friend class single_instance_lock;
-  using file_map = absl::flat_hash_map<std::string, std::unique_ptr<memory_file>>; // unique_ptr because of rename
+  using file_map = absl::flat_hash_map<
+    std::string, std::unique_ptr<memory_file>>;  // unique_ptr because of rename
   using lock_map = absl::flat_hash_set<std::string>;
 
   directory_attributes attrs_;
@@ -335,12 +320,9 @@ class memory_directory final : public directory {
 ////////////////////////////////////////////////////////////////////////////////
 struct memory_output {
   explicit memory_output(const memory_allocator& alloc) noexcept
-    : file(alloc) {
-  }
+    : file(alloc) {}
 
-  memory_output(memory_output&& rhs) noexcept
-    : file(std::move(rhs.file)) {
-  }
+  memory_output(memory_output&& rhs) noexcept : file(std::move(rhs.file)) {}
 
   void reset() noexcept {
     file.reset();
@@ -353,9 +335,9 @@ struct memory_output {
   }
 
   memory_file file;
-  memory_index_output stream{ file };
-}; // memory_output
+  memory_index_output stream{file};
+};  // memory_output
 
-}
+}  // namespace iresearch
 
 #endif

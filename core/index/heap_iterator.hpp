@@ -51,7 +51,7 @@ class ExternalHeapIterator : private compact<0, Context> {
 
  public:
   explicit ExternalHeapIterator(Context&& ctx = {})
-      : context_store_t(std::move(ctx)) {}
+    : context_store_t(std::move(ctx)) {}
 
   void reset(size_t size) {
     heap_.resize(size);

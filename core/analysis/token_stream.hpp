@@ -38,6 +38,6 @@ class token_stream : public attribute_provider {
   virtual bool next() = 0;
 };
 
-}
+}  // namespace iresearch
 
 #endif

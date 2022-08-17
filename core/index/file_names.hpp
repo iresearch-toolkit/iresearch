@@ -24,9 +24,9 @@
 #ifndef IRESEARCH_FILE_NAMES_H
 #define IRESEARCH_FILE_NAMES_H
 
-#include "utils/string.hpp"
-
 #include <memory>
+
+#include "utils/string.hpp"
 
 namespace iresearch {
 
@@ -43,6 +43,6 @@ void file_name(std::string& out, string_ref name, string_ref ext);
 // returns string in the following format : {name}.{gen}.{ext}
 std::string file_name(string_ref name, uint64_t gen, string_ref ext);
 
-}
+}  // namespace iresearch
 
 #endif

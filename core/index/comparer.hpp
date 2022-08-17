@@ -32,23 +32,18 @@ class comparer {
  public:
   virtual ~comparer() = default;
 
-  bool operator()(bytes_ref lhs, bytes_ref rhs) const {
-    return less(lhs, rhs);
-  }
+  bool operator()(bytes_ref lhs, bytes_ref rhs) const { return less(lhs, rhs); }
 
  protected:
   virtual bool less(bytes_ref lhs, bytes_ref rhs) const = 0;
-}; // comparer
+};  // comparer
 
 inline bool use_dense_sort(size_t size, size_t total) noexcept {
   // check: N*logN > K
-  return std::isgreaterequal(
-    static_cast<double_t>(size)*std::log(size),
-    static_cast<double_t>(total)
-  );
+  return std::isgreaterequal(static_cast<double_t>(size) * std::log(size),
+                             static_cast<double_t>(total));
 }
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_COMPARER_H
-
+#endif  // IRESEARCH_COMPARER_H

@@ -23,27 +23,28 @@
 
 #include "pipeline_token_stream.hpp"
 
-#include "velocypack/Slice.h"
+#include <string_view>
+
+#include "utils/vpack_utils.hpp"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
+#include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
 #include "velocypack/vpack.h"
-#include "utils/vpack_utils.hpp"
-
-#include <string_view>
 
 namespace {
 
-constexpr std::string_view PIPELINE_PARAM_NAME    {"pipeline"};
-constexpr std::string_view TYPE_PARAM_NAME        {"type"};
-constexpr std::string_view PROPERTIES_PARAM_NAME  {"properties"};
+constexpr std::string_view PIPELINE_PARAM_NAME{"pipeline"};
+constexpr std::string_view TYPE_PARAM_NAME{"type"};
+constexpr std::string_view PROPERTIES_PARAM_NAME{"properties"};
 
 const irs::offset NO_OFFSET;
 using options_normalize_t = std::vector<std::pair<std::string, std::string>>;
 
 template<typename T>
 bool parse_vpack_options(const VPackSlice slice, T& options) {
-  if constexpr (std::is_same_v<T, irs::analysis::pipeline_token_stream::options_t>) {
+  if constexpr (std::is_same_v<
+                  T, irs::analysis::pipeline_token_stream::options_t>) {
     assert(options.empty());
   }
   if (!slice.isObject()) {
@@ -64,7 +65,8 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
               type = irs::get_string<irs::string_ref>(type_attr_slice);
             } else {
               IR_FRMT_ERROR(
-                "Failed to read '%s' attribute of  '%s' member as string while constructing "
+                "Failed to read '%s' attribute of  '%s' member as string while "
+                "constructing "
                 "pipeline_token_stream from VPack arguments",
                 TYPE_PARAM_NAME.data(), PIPELINE_PARAM_NAME.data());
               return false;
@@ -79,60 +81,64 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
           if (pipe.hasKey(PROPERTIES_PARAM_NAME)) {
             auto properties_attr_slice = pipe.get(PROPERTIES_PARAM_NAME);
 
-            if constexpr (std::is_same_v<T, irs::analysis::pipeline_token_stream::options_t>) {
+            if constexpr (std::is_same_v<
+                            T,
+                            irs::analysis::pipeline_token_stream::options_t>) {
+              auto analyzer = irs::analysis::analyzers::get(
+                type, irs::type<irs::text_format::vpack>::get(),
+                {properties_attr_slice.startAs<char>(),
+                 properties_attr_slice.byteSize()});
 
-              auto analyzer = irs::analysis::analyzers::get(type,
-                                                            irs::type<irs::text_format::vpack>::get(),
-                                                            { properties_attr_slice.startAs<char>(),
-                                                            properties_attr_slice.byteSize() });
-
-               // fallback to json format if vpack isn't available
+              // fallback to json format if vpack isn't available
               if (!analyzer) {
-                analyzer = irs::analysis::analyzers::get(type,
-                                                         irs::type<irs::text_format::json>::get(),
-                                                         irs::slice_to_string(properties_attr_slice));
+                analyzer = irs::analysis::analyzers::get(
+                  type, irs::type<irs::text_format::json>::get(),
+                  irs::slice_to_string(properties_attr_slice));
               }
 
               if (analyzer) {
                 options.push_back(std::move(analyzer));
               } else {
                 IR_FRMT_ERROR(
-                  "Failed to create pipeline member of type '%s' with properties '%s' while constructing "
+                  "Failed to create pipeline member of type '%s' with "
+                  "properties '%s' while constructing "
                   "pipeline_token_stream from VPack arguments",
-                  type.c_str(), irs::slice_to_string(properties_attr_slice).c_str());
+                  type.c_str(),
+                  irs::slice_to_string(properties_attr_slice).c_str());
                 return false;
               }
             } else {
               std::string normalized;
-              if (irs::analysis::analyzers::normalize(normalized,
-                                                      type,
-                                                      irs::type<irs::text_format::vpack>::get(),
-                                                      { properties_attr_slice.startAs<char>(),
-                                                      properties_attr_slice.byteSize() })) {
+              if (irs::analysis::analyzers::normalize(
+                    normalized, type, irs::type<irs::text_format::vpack>::get(),
+                    {properties_attr_slice.startAs<char>(),
+                     properties_attr_slice.byteSize()})) {
+                options.emplace_back(std::piecewise_construct,
+                                     std::forward_as_tuple(type),
+                                     std::forward_as_tuple(normalized));
 
-                  options.emplace_back(std::piecewise_construct,
-                                       std::forward_as_tuple(type),
-                                       std::forward_as_tuple(normalized));
-
-                  // fallback to json format if vpack isn't available
-              } else if (irs::analysis::analyzers::normalize(normalized,
-                                                              type,
-                                                              irs::type<irs::text_format::json>::get(),
-                                                              irs::slice_to_string(properties_attr_slice))) {
+                // fallback to json format if vpack isn't available
+              } else if (irs::analysis::analyzers::normalize(
+                           normalized, type,
+                           irs::type<irs::text_format::json>::get(),
+                           irs::slice_to_string(properties_attr_slice))) {
                 // in options we'll store vpack as string
-                auto vpack = VPackParser::fromJson(normalized.c_str(), normalized.size());
+                auto vpack =
+                  VPackParser::fromJson(normalized.c_str(), normalized.size());
                 std::string normalized_vpack_str;
-                normalized_vpack_str.assign(vpack->slice().startAs<char>(), vpack->slice().byteSize());
+                normalized_vpack_str.assign(vpack->slice().startAs<char>(),
+                                            vpack->slice().byteSize());
                 options.emplace_back(
-                  std::piecewise_construct,
-                  std::forward_as_tuple(type),
+                  std::piecewise_construct, std::forward_as_tuple(type),
                   std::forward_as_tuple(vpack->slice().startAs<char>(),
                                         vpack->slice().byteSize()));
               } else {
                 IR_FRMT_ERROR(
-                  "Failed to normalize pipeline member of type '%s' with properties '%s' while constructing "
+                  "Failed to normalize pipeline member of type '%s' with "
+                  "properties '%s' while constructing "
                   "pipeline_token_stream from VPack arguments",
-                  type.c_str(), irs::slice_to_string(properties_attr_slice).c_str());
+                  type.c_str(),
+                  irs::slice_to_string(properties_attr_slice).c_str());
                 return false;
               }
             }
@@ -183,7 +189,8 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
           VPackObjectBuilder analyzers_obj(builder);
           {
             builder->add(TYPE_PARAM_NAME, VPackValue(analyzer.first));
-            VPackSlice sub_slice(reinterpret_cast<const uint8_t*>(analyzer.second.c_str()));
+            VPackSlice sub_slice(
+              reinterpret_cast<const uint8_t*>(analyzer.second.c_str()));
             builder->add(PROPERTIES_PARAM_NAME, sub_slice);
           }
         }
@@ -233,9 +240,10 @@ irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     return make_vpack(vpack->slice());
-  } catch(const VPackException& ex) {
+  } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
-      "Caught error '%s' while constructing pipeline_token_stream from JSON", ex.what());
+      "Caught error '%s' while constructing pipeline_token_stream from JSON",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
       "Caught error while constructing pipeline_token_stream from JSON");
@@ -255,9 +263,10 @@ bool normalize_json_config(irs::string_ref args, std::string& definition) {
       definition = builder.toString();
       return !definition.empty();
     }
-  } catch(const VPackException& ex) {
+  } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
-      "Caught error '%s' while normalizing pipeline_token_stream from JSON", ex.what());
+      "Caught error '%s' while normalizing pipeline_token_stream from JSON",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
       "Caught error while normalizing pipeline_token_stream from JSON");
@@ -266,12 +275,13 @@ bool normalize_json_config(irs::string_ref args, std::string& definition) {
 }
 
 REGISTER_ANALYZER_JSON(irs::analysis::pipeline_token_stream, make_json,
-  normalize_json_config);
+                       normalize_json_config);
 
 REGISTER_ANALYZER_VPACK(irs::analysis::pipeline_token_stream, make_vpack,
-  normalize_vpack_config);
+                        normalize_vpack_config);
 
-irs::payload* find_payload(std::span<const irs::analysis::analyzer::ptr> pipeline) {
+irs::payload* find_payload(
+  std::span<const irs::analysis::analyzer::ptr> pipeline) {
   for (auto it = pipeline.rbegin(); it != pipeline.rend(); ++it) {
     auto payload = irs::get_mutable<irs::payload>(it->get());
     if (payload) {
@@ -282,37 +292,33 @@ irs::payload* find_payload(std::span<const irs::analysis::analyzer::ptr> pipelin
 }
 
 bool all_have_offset(std::span<const irs::analysis::analyzer::ptr> pipeline) {
-  return std::all_of(
-      pipeline.begin(), pipeline.end(),
-      [](const irs::analysis::analyzer::ptr& v) {
-    return nullptr != irs::get<irs::offset>(*v);
-  });
+  return std::all_of(pipeline.begin(), pipeline.end(),
+                     [](const irs::analysis::analyzer::ptr& v) {
+                       return nullptr != irs::get<irs::offset>(*v);
+                     });
 }
 
-} // namespace
+}  // namespace
 
 namespace iresearch {
 namespace analysis {
 
-pipeline_token_stream::pipeline_token_stream(pipeline_token_stream::options_t&& options)
+pipeline_token_stream::pipeline_token_stream(
+  pipeline_token_stream::options_t&& options)
   : analyzer{irs::type<pipeline_token_stream>::get()},
-    attrs_{
-      {},
-      options.empty()
-        ? nullptr
-        : irs::get_mutable<term_attribute>(options.back().get()),
-      all_have_offset(options)
-        ? &offs_
-        : attribute_ptr<offset>{},
-      find_payload(options)
-    } {
+    attrs_{{},
+           options.empty()
+             ? nullptr
+             : irs::get_mutable<term_attribute>(options.back().get()),
+           all_have_offset(options) ? &offs_ : attribute_ptr<offset>{},
+           find_payload(options)} {
   const auto track_offset = irs::get<offset>(*this) != nullptr;
   pipeline_.reserve(options.size());
   for (auto& p : options) {
     assert(p);
     pipeline_.emplace_back(std::move(p), track_offset);
   }
-  options.clear(); // mimic move semantic
+  options.clear();  // mimic move semantic
   if (pipeline_.empty()) {
     pipeline_.emplace_back();
   }
@@ -325,21 +331,30 @@ pipeline_token_stream::pipeline_token_stream(pipeline_token_stream::options_t&& 
 /// Offset is recalculated accordingly (only if ALL analyzers in pipeline )
 /// Payload is taken from lowest analyzer having this attribute
 /// Increment is calculated according to following position change rules
-///  - If none of pipeline members changes position - whole pipeline holds position
-///  - If one or more pipeline member moves - pipeline moves( change from max->0 is not move, see rules below!).
-///    All position gaps are accumulated (e.g. if one member has inc 2(1 pos gap) and other has inc 3(2 pos gap)  - pipeline has inc 4 (1+2 pos gap))
-///  - All position changes caused by parent analyzer move next (e.g. transfer from max->0 by first next after reset) are collapsed.
-///    e.g if parent moves after next, all its children are resetted to new token and also moves step froward - this whole operation
-///    is just one step for pipeline (if any of children has moved more than 1 step - gaps are preserved!)
-///  - If parent after next is NOT moved (inc == 0) than pipeline makes one step forward if at least one child changes
-///    position from any positive value back to 0 due to reset (additional gaps also preserved!) as this is
-///    not change max->0 and position is indeed changed.
+///  - If none of pipeline members changes position - whole pipeline holds
+///  position
+///  - If one or more pipeline member moves - pipeline moves( change from max->0
+///  is not move, see rules below!).
+///    All position gaps are accumulated (e.g. if one member has inc 2(1 pos
+///    gap) and other has inc 3(2 pos gap)  - pipeline has inc 4 (1+2 pos gap))
+///  - All position changes caused by parent analyzer move next (e.g. transfer
+///  from max->0 by first next after reset) are collapsed.
+///    e.g if parent moves after next, all its children are resetted to new
+///    token and also moves step froward - this whole operation is just one step
+///    for pipeline (if any of children has moved more than 1 step - gaps are
+///    preserved!)
+///  - If parent after next is NOT moved (inc == 0) than pipeline makes one step
+///  forward if at least one child changes
+///    position from any positive value back to 0 due to reset (additional gaps
+///    also preserved!) as this is not change max->0 and position is indeed
+///    changed.
 bool pipeline_token_stream::next() {
   uint32_t pipeline_inc;
-  bool step_for_rollback{ false };
+  bool step_for_rollback{false};
   do {
     while (!current_->next()) {
-      if (current_ == top_) { // reached pipeline top and next has failed - we are done
+      if (current_ ==
+          top_) {  // reached pipeline top and next has failed - we are done
         return false;
       }
       --current_;
@@ -353,22 +368,28 @@ bool pipeline_token_stream::next() {
       const auto prev_end = current_->end();
       ++current_;
       // check do we need to do step forward due to rollback to 0.
-      step_for_rollback |= top_holds_position && current_->pos != 0 &&
+      step_for_rollback |=
+        top_holds_position && current_->pos != 0 &&
         current_->pos != std::numeric_limits<uint32_t>::max();
-      if (!current_->reset(prev_start, prev_end, irs::ref_cast<char>(prev_term))) {
+      if (!current_->reset(prev_start, prev_end,
+                           irs::ref_cast<char>(prev_term))) {
         return false;
       }
-      if (!current_->next()) { // empty one found. Another round from the very beginning.
+      if (!current_->next()) {  // empty one found. Another round from the very
+                                // beginning.
         assert(current_ != top_);
         --current_;
         break;
       }
       pipeline_inc += current_->inc->value;
-      assert(current_->inc->value > 0); // first increment after reset should be positive to give 0 or next pos!
+      assert(current_->inc->value > 0);  // first increment after reset should
+                                         // be positive to give 0 or next pos!
       assert(pipeline_inc > 0);
-      pipeline_inc--; // compensate placing sub_analyzer from max to 0 due to reset
-                      // as this step actually does not move whole pipeline
-                      // sub analyzer just stays same pos as it`s parent (step for rollback to 0 will be done below if necessary!)
+      pipeline_inc--;  // compensate placing sub_analyzer from max to 0 due to
+                       // reset as this step actually does not move whole
+                       // pipeline sub analyzer just stays same pos as it`s
+                       // parent (step for rollback to 0 will be done below if
+                       // necessary!)
     }
   } while (current_ != bottom_);
   if (step_for_rollback) {
@@ -385,18 +406,16 @@ bool pipeline_token_stream::reset(string_ref data) {
   return pipeline_.front().reset(0, static_cast<uint32_t>(data.size()), data);
 }
 
-
 /*static*/ void pipeline_token_stream::init() {
   REGISTER_ANALYZER_JSON(pipeline_token_stream, make_json,
-    normalize_json_config);  // match registration above
+                         normalize_json_config);  // match registration above
 
   REGISTER_ANALYZER_VPACK(irs::analysis::pipeline_token_stream, make_vpack,
-    normalize_vpack_config); // match registration above
+                          normalize_vpack_config);  // match registration above
 }
 
 pipeline_token_stream::sub_analyzer_t::sub_analyzer_t(
-    irs::analysis::analyzer::ptr a,
-    bool track_offset)
+  irs::analysis::analyzer::ptr a, bool track_offset)
   : term(irs::get<irs::term_attribute>(*a)),
     inc(irs::get<irs::increment>(*a)),
     offs(track_offset ? irs::get<irs::offset>(*a) : &NO_OFFSET),
@@ -406,8 +425,10 @@ pipeline_token_stream::sub_analyzer_t::sub_analyzer_t(
 }
 
 pipeline_token_stream::sub_analyzer_t::sub_analyzer_t()
-  : term(nullptr), inc(nullptr), offs(nullptr),
-    analyzer(memory::make_unique<empty_analyzer>()) { }
+  : term(nullptr),
+    inc(nullptr),
+    offs(nullptr),
+    analyzer(memory::make_unique<empty_analyzer>()) {}
 
-} // namespace analysis
-} // namespace iresearch
+}  // namespace analysis
+}  // namespace iresearch

@@ -20,20 +20,19 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "sorted_column.hpp"
+
 #include "comparer.hpp"
-#include "utils/type_limits.hpp"
-#include "utils/misc.hpp"
+#include "shared.hpp"
 #include "utils/lz4compression.hpp"
+#include "utils/misc.hpp"
+#include "utils/type_limits.hpp"
 
 namespace iresearch {
 
 std::pair<doc_map, field_id> sorted_column::flush(
-    columnstore_writer& writer,
-    columnstore_writer::column_finalizer_f finalizer,
-    doc_id_t max,
-    const comparer& less) {
+  columnstore_writer& writer, columnstore_writer::column_finalizer_f finalizer,
+  doc_id_t max, const comparer& less) {
   assert(index_.size() <= max);
   assert(index_.empty() || index_.back().first <= max);
 
@@ -47,8 +46,8 @@ std::pair<doc_map, field_id> sorted_column::flush(
     doc_limits::min() + max, std::make_pair(doc_limits::eof(), 0));
 
   doc_id_t new_doc_id = irs::doc_limits::min();
-  for (size_t i = 0, size = index_.size()-1; i < size; ++i) {
-    const auto doc_id = index_[i].first; // 'doc_limit::min()'-based doc_id
+  for (size_t i = 0, size = index_.size() - 1; i < size; ++i) {
+    const auto doc_id = index_[i].first;  // 'doc_limit::min()'-based doc_id
 
     while (new_doc_id < doc_id) {
       new_old[new_doc_id].second = new_doc_id;
@@ -62,14 +61,14 @@ std::pair<doc_map, field_id> sorted_column::flush(
 
   auto get_value = [this](irs::doc_id_t doc) {
     return doc_limits::eof(doc)
-      ? bytes_ref::NIL
-      : bytes_ref(data_buf_.c_str() + index_[doc].second,
-                  index_[doc+1].second - index_[doc].second);
+             ? bytes_ref::NIL
+             : bytes_ref(data_buf_.c_str() + index_[doc].second,
+                         index_[doc + 1].second - index_[doc].second);
   };
 
-  auto comparer = [&less, &get_value] (
-      const std::pair<doc_id_t, doc_id_t>& lhs,
-      const std::pair<doc_id_t, doc_id_t>& rhs) {
+  auto comparer = [&less, &get_value](
+                    const std::pair<doc_id_t, doc_id_t>& lhs,
+                    const std::pair<doc_id_t, doc_id_t>& rhs) {
     if (lhs.first == rhs.first) {
       return false;
     }
@@ -86,7 +85,8 @@ std::pair<doc_map, field_id> sorted_column::flush(
 
     docmap.resize(new_old.size(), doc_limits::eof());
 
-    for (size_t i = irs::doc_limits::min(), size = docmap.size(); i < size; ++i) {
+    for (size_t i = irs::doc_limits::min(), size = docmap.size(); i < size;
+         ++i) {
       docmap[new_old[i].second] = doc_id_t(i);
     }
   }
@@ -104,39 +104,36 @@ std::pair<doc_map, field_id> sorted_column::flush(
     }
   };
 
-  clear(); // data have been flushed
+  clear();  // data have been flushed
 
-  return std::pair<doc_map, field_id>{
-    std::piecewise_construct,
-    std::forward_as_tuple(std::move(docmap)),
-    std::forward_as_tuple(column.first)};
+  return std::pair<doc_map, field_id>{std::piecewise_construct,
+                                      std::forward_as_tuple(std::move(docmap)),
+                                      std::forward_as_tuple(column.first)};
 }
 
 void sorted_column::flush_already_sorted(
-    const columnstore_writer::values_writer_f& writer) {
-  for (size_t i = 0, size = index_.size() - 1; i < size; ++i) { // -1 for sentinel
+  const columnstore_writer::values_writer_f& writer) {
+  for (size_t i = 0, size = index_.size() - 1; i < size;
+       ++i) {  // -1 for sentinel
     write_value(writer(index_[i].first), i);
   }
 }
 
 bool sorted_column::flush_dense(
-    const columnstore_writer::values_writer_f& writer,
-    const doc_map& docmap,
-    flush_buffer_t& buffer) {
+  const columnstore_writer::values_writer_f& writer, const doc_map& docmap,
+  flush_buffer_t& buffer) {
   assert(!docmap.empty());
 
-  const size_t total = docmap.size() - 1; // -1 for first element
-  const size_t size = index_.size() - 1; // -1 for sentinel
+  const size_t total = docmap.size() - 1;  // -1 for first element
+  const size_t size = index_.size() - 1;   // -1 for sentinel
 
   if (!use_dense_sort(size, total)) {
     return false;
   }
 
   buffer.clear();
-  buffer.resize(
-    total,
-    std::make_pair(doc_limits::eof(), doc_limits::invalid())
-  );
+  buffer.resize(total,
+                std::make_pair(doc_limits::eof(), doc_limits::invalid()));
 
   for (size_t i = 0; i < size; ++i) {
     buffer[docmap[index_[i].first] - doc_limits::min()].first = doc_id_t(i);
@@ -155,12 +152,11 @@ bool sorted_column::flush_dense(
 }
 
 void sorted_column::flush_sparse(
-    const columnstore_writer::values_writer_f& writer,
-    const doc_map& docmap,
-    flush_buffer_t& buffer) {
+  const columnstore_writer::values_writer_f& writer, const doc_map& docmap,
+  flush_buffer_t& buffer) {
   assert(!docmap.empty());
 
-  const size_t size = index_.size() - 1; // -1 for sentinel
+  const size_t size = index_.size() - 1;  // -1 for sentinel
 
   buffer.resize(size);
 
@@ -168,24 +164,21 @@ void sorted_column::flush_sparse(
     buffer[i] = std::make_pair(doc_id_t(i), docmap[index_[i].first]);
   }
 
-  std::sort(
-    buffer.begin(), buffer.end(),
-    [] (const std::pair<size_t, doc_id_t>& lhs,
-        const std::pair<size_t, doc_id_t>& rhs) {
-      return lhs.second < rhs.second;
-  });
+  std::sort(buffer.begin(), buffer.end(),
+            [](const std::pair<size_t, doc_id_t>& lhs,
+               const std::pair<size_t, doc_id_t>& rhs) {
+              return lhs.second < rhs.second;
+            });
 
   // flush sorted data
-  for (const auto& entry: buffer) {
+  for (const auto& entry : buffer) {
     write_value(writer(entry.second), entry.first);
   };
 }
 
 field_id sorted_column::flush(
-    columnstore_writer& writer,
-    columnstore_writer::column_finalizer_f finalizer,
-    const doc_map& docmap,
-    std::vector<std::pair<doc_id_t, doc_id_t>>& buffer) {
+  columnstore_writer& writer, columnstore_writer::column_finalizer_f finalizer,
+  const doc_map& docmap, std::vector<std::pair<doc_id_t, doc_id_t>>& buffer) {
   assert(docmap.size() < irs::doc_limits::eof());
 
   if (index_.empty()) {
@@ -204,9 +197,9 @@ field_id sorted_column::flush(
     flush_sparse(column_writer, docmap, buffer);
   }
 
-  clear(); // data have been flushed
+  clear();  // data have been flushed
 
   return column.first;
 }
 
-}
+}  // namespace iresearch

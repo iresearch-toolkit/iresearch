@@ -49,7 +49,7 @@ class attribute_registrar {
 
 #define REGISTER_ATTRIBUTE__(attribute_name, line, source)              \
   static ::iresearch::attribute_registrar attribute_registrar##_##line( \
-      ::iresearch::type<attribute_name>::get(), source)
+    ::iresearch::type<attribute_name>::get(), source)
 #define REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, file, line) \
   REGISTER_ATTRIBUTE__(attribute_name, line, file ":" TOSTRING(line))
 #define REGISTER_ATTRIBUTE(attribute_name) \

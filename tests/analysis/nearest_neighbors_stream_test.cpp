@@ -21,10 +21,9 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
-
 #include "analysis/nearest_neighbors_stream.hpp"
 
+#include "tests_shared.hpp"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
@@ -32,56 +31,69 @@ namespace {
 
 std::string_view EXPECTED_MODEL;
 
-irs::analysis::nearest_neighbors_stream::model_ptr null_provider(std::string_view model) {
+irs::analysis::nearest_neighbors_stream::model_ptr null_provider(
+  std::string_view model) {
   EXPECT_EQ(EXPECTED_MODEL, model);
   return nullptr;
 }
 
-irs::analysis::nearest_neighbors_stream::model_ptr throwing_provider(std::string_view model) {
+irs::analysis::nearest_neighbors_stream::model_ptr throwing_provider(
+  std::string_view model) {
   EXPECT_EQ(EXPECTED_MODEL, model);
   throw std::exception();
 }
 
-}
+}  // namespace
 
 TEST(nearest_neighbors_stream_test, consts) {
-  static_assert("nearest_neighbors" == irs::type<irs::analysis::nearest_neighbors_stream>::name());
+  static_assert("nearest_neighbors" ==
+                irs::type<irs::analysis::nearest_neighbors_stream>::name());
 }
 
 TEST(nearest_neighbors_stream_test, test_custom_provider) {
-#ifdef  WIN32
-    const auto model_loc = test_base::resource("model_cooking.bin").generic_string();
+#ifdef WIN32
+  const auto model_loc =
+    test_base::resource("model_cooking.bin").generic_string();
 #else
-    const auto model_loc = test_base::resource("model_cooking.bin").string();
+  const auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
   EXPECTED_MODEL = model_loc;
 
-  const auto input_json = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
+  const auto input_json =
+    "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
 
-  ASSERT_EQ(nullptr, irs::analysis::nearest_neighbors_stream::set_model_provider(&::null_provider));
-  ASSERT_EQ(nullptr, irs::analysis::analyzers::get("nearest_neighbors",
-                                                   irs::type<irs::text_format::json>::get(),
-                                                   input_json));
+  ASSERT_EQ(nullptr,
+            irs::analysis::nearest_neighbors_stream::set_model_provider(
+              &::null_provider));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
+                       "nearest_neighbors",
+                       irs::type<irs::text_format::json>::get(), input_json));
 
-  ASSERT_EQ(&::null_provider, irs::analysis::nearest_neighbors_stream::set_model_provider(&::throwing_provider));
-  ASSERT_EQ(nullptr, irs::analysis::analyzers::get("nearest_neighbors",
-                                                   irs::type<irs::text_format::json>::get(),
-                                                   input_json));
+  ASSERT_EQ(&::null_provider,
+            irs::analysis::nearest_neighbors_stream::set_model_provider(
+              &::throwing_provider));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
+                       "nearest_neighbors",
+                       irs::type<irs::text_format::json>::get(), input_json));
 
-  ASSERT_EQ(&::throwing_provider, irs::analysis::nearest_neighbors_stream::set_model_provider(nullptr));
+  ASSERT_EQ(
+    &::throwing_provider,
+    irs::analysis::nearest_neighbors_stream::set_model_provider(nullptr));
 }
 
 TEST(nearest_neighbors_stream_test, test_load) {
   // load json string
   {
-#ifdef  WIN32
+#ifdef WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
     auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
     irs::string_ref data{"salt"};
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
-    auto stream = irs::analysis::analyzers::get("nearest_neighbors", irs::type<irs::text_format::json>::get(), input_json);
+    auto stream = irs::analysis::analyzers::get(
+      "nearest_neighbors", irs::type<irs::text_format::json>::get(),
+      input_json);
 
     ASSERT_NE(nullptr, stream);
     ASSERT_FALSE(stream->next());
@@ -104,13 +116,16 @@ TEST(nearest_neighbors_stream_test, test_load) {
   }
 
   {
-#ifdef  WIN32
+#ifdef WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
     auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
-    auto input_json = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
-    auto stream = irs::analysis::analyzers::get("nearest_neighbors", irs::type<irs::text_format::json>::get(), input_json);
+    auto input_json =
+      "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
+    auto stream = irs::analysis::analyzers::get(
+      "nearest_neighbors", irs::type<irs::text_format::json>::get(),
+      input_json);
 
     ASSERT_NE(nullptr, stream);
     ASSERT_FALSE(stream->next());
@@ -154,14 +169,17 @@ TEST(nearest_neighbors_stream_test, test_load) {
 
   // test longer string
   {
-#ifdef  WIN32
+#ifdef WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
     auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
     irs::string_ref data{"salt oil"};
-    auto input_json = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
-    auto stream = irs::analysis::analyzers::get("nearest_neighbors", irs::type<irs::text_format::json>::get(), input_json);
+    auto input_json =
+      "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
+    auto stream = irs::analysis::analyzers::get(
+      "nearest_neighbors", irs::type<irs::text_format::json>::get(),
+      input_json);
 
     ASSERT_NE(nullptr, stream);
     ASSERT_FALSE(stream->next());
@@ -194,117 +212,131 @@ TEST(nearest_neighbors_stream_test, test_load) {
 
   // failing cases
   {
-#ifdef  WIN32
+#ifdef WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
     auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
 
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("nearest_neighbors",
-                                                     irs::type<irs::text_format::json>::get(),
-                                                     R"([])"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("nearest_neighbors",
-                                                     irs::type<irs::text_format::json>::get(),
-                                                     R"({"model_location": "invalid_localtion" })"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("nearest_neighbors",
-                                                     irs::type<irs::text_format::json>::get(),
-                                                     R"({"model_location": bool })"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("nearest_neighbors",
-                                                     irs::type<irs::text_format::json>::get(),
-                                                     R"({"model_location": {} })"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("nearest_neighbors",
-                                                     irs::type<irs::text_format::json>::get(),
-                                                     R"({"model_location": 42 })"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("nearest_neighbors",
-                                                     irs::type<irs::text_format::json>::get(),
-                                                     "{\"model_location\": \"" + model_loc + "\", \"top_k\": false}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("nearest_neighbors",
-                                                     irs::type<irs::text_format::json>::get(),
-                                                     "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2147483648}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
+                         "nearest_neighbors",
+                         irs::type<irs::text_format::json>::get(), R"([])"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                "nearest_neighbors", irs::type<irs::text_format::json>::get(),
+                R"({"model_location": "invalid_localtion" })"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                "nearest_neighbors", irs::type<irs::text_format::json>::get(),
+                R"({"model_location": bool })"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                "nearest_neighbors", irs::type<irs::text_format::json>::get(),
+                R"({"model_location": {} })"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                "nearest_neighbors", irs::type<irs::text_format::json>::get(),
+                R"({"model_location": 42 })"));
+    ASSERT_EQ(
+      nullptr,
+      irs::analysis::analyzers::get(
+        "nearest_neighbors", irs::type<irs::text_format::json>::get(),
+        "{\"model_location\": \"" + model_loc + "\", \"top_k\": false}"));
+    ASSERT_EQ(
+      nullptr,
+      irs::analysis::analyzers::get(
+        "nearest_neighbors", irs::type<irs::text_format::json>::get(),
+        "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2147483648}"));
   }
 }
-
 
 TEST(nearest_neighbors_stream_test, test_make_config_json) {
   // random extra param
   {
-#ifdef  WIN32
+#ifdef WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
     auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
-    std::string config = "{\"model_location\": \"" + model_loc + "\", \"not_valid\": false}";
-    std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1}";
+    std::string config =
+      "{\"model_location\": \"" + model_loc + "\", \"not_valid\": false}";
+    std::string expected_conf =
+      "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1}";
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "nearest_neighbors", irs::type<irs::text_format::json>::get(), config));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+      actual, "nearest_neighbors", irs::type<irs::text_format::json>::get(),
+      config));
     ASSERT_EQ(VPackParser::fromJson(expected_conf)->toString(), actual);
   }
 
   // test top k
   {
-#ifdef  WIN32
+#ifdef WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
     auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
-    std::string config = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
-    std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
+    std::string config =
+      "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
+    std::string expected_conf =
+      "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "nearest_neighbors", irs::type<irs::text_format::json>::get(), config));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+      actual, "nearest_neighbors", irs::type<irs::text_format::json>::get(),
+      config));
     ASSERT_EQ(VPackParser::fromJson(expected_conf)->toString(), actual);
   }
 
   // test VPack
   {
-#ifdef  WIN32
+#ifdef WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
     auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
-    std::string config = "{\"model_location\":\"" + model_loc + "\", \"not_valid\": false}";
-    auto expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1}";
+    std::string config =
+      "{\"model_location\":\"" + model_loc + "\", \"not_valid\": false}";
+    auto expected_conf =
+      "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1}";
     auto in_vpack = VPackParser::fromJson(config);
     std::string in_str;
-    in_str.assign(in_vpack->slice().startAs<char>(), in_vpack->slice().byteSize());
+    in_str.assign(in_vpack->slice().startAs<char>(),
+                  in_vpack->slice().byteSize());
     std::string out_str;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(out_str, "nearest_neighbors", irs::type<irs::text_format::vpack>::get(), in_str));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+      out_str, "nearest_neighbors", irs::type<irs::text_format::vpack>::get(),
+      in_str));
     VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
-    ASSERT_EQ(VPackParser::fromJson(expected_conf)->toString(), out_slice.toString());
+    ASSERT_EQ(VPackParser::fromJson(expected_conf)->toString(),
+              out_slice.toString());
   }
 
   // failing cases
   {
     std::string out;
-#ifdef  WIN32
+#ifdef WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
     auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
 
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-      out, "nearest_neighbors",
-      irs::type<irs::text_format::json>::get(),
+      out, "nearest_neighbors", irs::type<irs::text_format::json>::get(),
       R"([])"));
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-      out, "nearest_neighbors",
-      irs::type<irs::text_format::json>::get(),
+      out, "nearest_neighbors", irs::type<irs::text_format::json>::get(),
       R"({"model_location": bool })"));
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-      out, "nearest_neighbors",
-      irs::type<irs::text_format::json>::get(),
+      out, "nearest_neighbors", irs::type<irs::text_format::json>::get(),
       R"({"model_location": {} })"));
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-      out, "nearest_neighbors",
-      irs::type<irs::text_format::json>::get(),
+      out, "nearest_neighbors", irs::type<irs::text_format::json>::get(),
       R"({"model_location": 42 })"));
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-      out, "nearest_neighbors",
-      irs::type<irs::text_format::json>::get(),
+      out, "nearest_neighbors", irs::type<irs::text_format::json>::get(),
       "{\"model_location\": \"" + model_loc + "\", \"top_k\": false}"));
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-      out, "nearest_neighbors",
-      irs::type<irs::text_format::json>::get(),
+      out, "nearest_neighbors", irs::type<irs::text_format::json>::get(),
       "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2147483648}"));
   }
 }
-

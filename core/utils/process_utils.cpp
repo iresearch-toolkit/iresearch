@@ -20,41 +20,42 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "process_utils.hpp"
 
+#include "shared.hpp"
+
 #ifdef _WIN32
-  #include <Windows.h>
-  #include <process.h> // _getpid
-  #include <tlhelp32.h>
+#include <Windows.h>
+#include <process.h>  // _getpid
+#include <tlhelp32.h>
 #else
-  #include <sys/types.h>
-  #include <unistd.h>
-  #include <signal.h>
-#endif // _WIN32
+#include <signal.h>
+#include <sys/types.h>
+#include <unistd.h>
+#endif  // _WIN32
 
 namespace iresearch {
 
 bool is_running(pid_t pid) {
 #ifdef _WIN32
-  HANDLE ps = CreateToolhelp32Snapshot(TH32CS_SNAPALL, 0);   
+  HANDLE ps = CreateToolhelp32Snapshot(TH32CS_SNAPALL, 0);
 
-  PROCESSENTRY32 pe = { 0 };  
-  pe.dwSize = sizeof(pe);  
-  if (Process32First(ps, &pe)) {  
-    do {  
-      // pe.szExeFile can also be useful  
+  PROCESSENTRY32 pe = {0};
+  pe.dwSize = sizeof(pe);
+  if (Process32First(ps, &pe)) {
+    do {
+      // pe.szExeFile can also be useful
       if (pe.th32ProcessID == DWORD(pid)) {
-        CloseHandle(ps);  
+        CloseHandle(ps);
         return true;
       }
-    } while (Process32Next(ps, &pe));  
-  }   
-  CloseHandle(ps);  
-  return false;  
+    } while (Process32Next(ps, &pe));
+  }
+  CloseHandle(ps);
+  return false;
 #else
   return 0 == kill(pid, 0);
-#endif // _WIN32
+#endif  // _WIN32
 }
 
 pid_t get_pid() {
@@ -62,15 +63,14 @@ pid_t get_pid() {
   return _getpid();
 #else
   return getpid();
-#endif // _WIN32
+#endif  // _WIN32
 }
 
 bool is_valid_pid(const char* buf) {
   const auto pid = strtol(buf, nullptr, 10);
-  return 0 != pid
-      && pid <= std::numeric_limits<pid_t>::max()
-      && pid >= std::numeric_limits<pid_t>::min()
-      && is_running(static_cast<pid_t>(pid));
+  return 0 != pid && pid <= std::numeric_limits<pid_t>::max() &&
+         pid >= std::numeric_limits<pid_t>::min() &&
+         is_running(static_cast<pid_t>(pid));
 }
 
-}
+}  // namespace iresearch

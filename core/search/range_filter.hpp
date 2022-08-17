@@ -44,10 +44,8 @@ struct by_range_filter_options {
     return range == rhs.range;
   }
 
-  size_t hash() const noexcept {
-    return std::hash<range_type>()(range);
-  }
-}; // by_range_filter_options
+  size_t hash() const noexcept { return std::hash<range_type>()(range); }
+};  // by_range_filter_options
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct by_prefix_options
@@ -64,14 +62,15 @@ struct by_range_options : by_range_filter_options {
 
   bool operator==(const by_range_options& rhs) const noexcept {
     return filter_options::operator==(rhs) &&
-      scored_terms_limit == rhs.scored_terms_limit;
+           scored_terms_limit == rhs.scored_terms_limit;
   }
 
   size_t hash() const noexcept {
-    return hash_combine(filter_options::hash(),
-                        std::hash<decltype(scored_terms_limit)>()(scored_terms_limit));
+    return hash_combine(
+      filter_options::hash(),
+      std::hash<decltype(scored_terms_limit)>()(scored_terms_limit));
   }
-}; // by_range_options
+};  // by_range_options
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_range
@@ -79,34 +78,26 @@ struct by_range_options : by_range_filter_options {
 //////////////////////////////////////////////////////////////////////////////
 class by_range : public filter_base<by_range_options> {
  public:
-  static prepared::ptr prepare(
-    const index_reader& index,
-    const Order& ord,
-    score_t boost,
-    string_ref field,
-    const options_type::range_type& rng,
-    size_t scored_terms_limit);
+  static prepared::ptr prepare(const index_reader& index, const Order& ord,
+                               score_t boost, string_ref field,
+                               const options_type::range_type& rng,
+                               size_t scored_terms_limit);
 
-  static void visit(
-    const sub_reader& segment,
-    const term_reader& reader,
-    const options_type::range_type& rng,
-    filter_visitor& visitor);
+  static void visit(const sub_reader& segment, const term_reader& reader,
+                    const options_type::range_type& rng,
+                    filter_visitor& visitor);
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& index,
-      const Order& ord,
-      score_t boost,
-      const attribute_provider* /*ctx*/) const override {
-    return prepare(index, ord, this->boost()*boost,
-                   field(), options().range,
+    const index_reader& index, const Order& ord, score_t boost,
+    const attribute_provider* /*ctx*/) const override {
+    return prepare(index, ord, this->boost() * boost, field(), options().range,
                    options().scored_terms_limit);
   }
-}; // by_range 
+};  // by_range
 
-} // ROOT
+}  // namespace iresearch
 
 namespace std {
 
@@ -117,6 +108,6 @@ struct hash<::iresearch::by_range_options> {
   }
 };
 
-}
+}  // namespace std
 
-#endif // IRESEARCH_RANGE_FILTER_H
+#endif  // IRESEARCH_RANGE_FILTER_H

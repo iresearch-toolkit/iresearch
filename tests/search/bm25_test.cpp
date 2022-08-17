@@ -21,7 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
+#include "search/bm25.hpp"
+
 #include "index/index_tests.hpp"
 #include "index/norm.hpp"
 #include "search/all_filter.hpp"
@@ -30,11 +31,11 @@
 #include "search/phrase_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
+#include "search/score.hpp"
 #include "search/scorers.hpp"
 #include "search/sort.hpp"
-#include "search/score.hpp"
-#include "search/bm25.hpp"
 #include "search/term_filter.hpp"
+#include "tests_shared.hpp"
 
 namespace {
 
@@ -77,30 +78,27 @@ class bm25_test_case : public index_test_base {
                         irs::feature_writer_factory_t handler);
 };
 
-
 void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
                                       irs::feature_writer_factory_t handler) {
   {
-    const std::vector<irs::type_info::type_id> extra_features = { norm };
+    const std::vector<irs::type_info::type_id> extra_features = {norm};
 
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
-      [&extra_features](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
-        if (data.is_string()) { // field
+      [&extra_features](tests::document& doc, const std::string& name,
+                        const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {  // field
           doc.insert(
             std::make_shared<string_field>(
-              name, data.str, irs::IndexFeatures::NONE,
-              extra_features),
+              name, data.str, irs::IndexFeatures::NONE, extra_features),
             true, false);
-        } else if (data.is_number()) { // seq
+        } else if (data.is_number()) {  // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
-          doc.insert(
-            std::make_shared<string_field>(
-              name, value, irs::IndexFeatures::NONE,
-              extra_features),
-            false, true);
+          doc.insert(std::make_shared<string_field>(
+                       name, value, irs::IndexFeatures::NONE, extra_features),
+                     false, true);
         }
-    });
+      });
 
     irs::index_writer::init_options opts;
     opts.features = [&](irs::type_info::type_id id) {
@@ -117,7 +115,7 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
   }
 
   auto prepared_order = irs::Order::Prepare(
-      irs::bm25_sort{irs::bm25_sort::K(), irs::bm25_sort::B(), true});
+    irs::bm25_sort{irs::bm25_sort::K(), irs::bm25_sort::B(), true});
 
   auto reader = irs::directory_reader::open(dir(), codec());
   auto& segment = *(reader.begin());
@@ -132,13 +130,15 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
 
     irs::by_range filter;
     *filter.mutable_field() = "field";
-    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    filter.mutable_options()->range.min =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
     filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
-    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.max =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
-    constexpr std::array expected{ 7, 3, 0, 1, 5 };
+    constexpr std::array expected{7, 3, 0, 1, 5};
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
@@ -146,7 +146,7 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
+    while (docs->next()) {
       irs::score_t score_value;
       (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
@@ -160,7 +160,7 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
     ASSERT_EQ(expected.size(), sorted.size());
     size_t i = 0;
 
-    for (auto& entry: sorted) {
+    for (auto& entry : sorted) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
@@ -174,22 +174,24 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
 
     irs::by_range filter;
     *filter.mutable_field() = "field";
-    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    filter.mutable_options()->range.min =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
     filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
-    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.max =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
     const auto expected = norm == irs::type<irs::Norm2>::id()
-        ? std::array{ 0, 7, 5, 3, 2, 1 }
-        : std::array{ 7, 0, 5, 3, 2, 1 };
+                            ? std::array{0, 7, 5, 3, 2, 1}
+                            : std::array{7, 0, 5, 3, 2, 1};
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
 
-    while(docs->next()) {
+    while (docs->next()) {
       irs::score_t score_value;
       (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
@@ -203,7 +205,7 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
     ASSERT_EQ(expected.size(), sorted.size());
     size_t i = 0;
 
-    for (auto& entry: sorted) {
+    for (auto& entry : sorted) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
@@ -214,7 +216,8 @@ TEST_P(bm25_test_case, consts) {
 }
 
 TEST_P(bm25_test_case, test_load) {
-  auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+  auto scorer = irs::scorers::get(
+    "bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
   ASSERT_NE(nullptr, scorer);
 }
 
@@ -223,7 +226,8 @@ TEST_P(bm25_test_case, test_load) {
 TEST_P(bm25_test_case, make_from_array) {
   // default args
   {
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+    auto scorer = irs::scorers::get(
+      "bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     ASSERT_EQ(irs::type<irs::bm25_sort>::id(), scorer->type());
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
@@ -234,7 +238,8 @@ TEST_P(bm25_test_case, make_from_array) {
 
   // default args
   {
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[]");
+    auto scorer =
+      irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[]");
     ASSERT_NE(nullptr, scorer);
     ASSERT_EQ(irs::type<irs::bm25_sort>::id(), scorer->type());
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
@@ -245,7 +250,8 @@ TEST_P(bm25_test_case, make_from_array) {
 
   // `k` argument
   {
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5 ]");
+    auto scorer = irs::scorers::get(
+      "bm25", irs::type<irs::text_format::json>::get(), "[ 1.5 ]");
     ASSERT_NE(nullptr, scorer);
     ASSERT_EQ(irs::type<irs::bm25_sort>::id(), scorer->type());
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
@@ -255,17 +261,32 @@ TEST_P(bm25_test_case, make_from_array) {
   }
 
   // invalid `k` argument
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ \"1.5\" ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ \"abc\" ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ null]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ true ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ false ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ {} ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ [] ]"));
+  ASSERT_EQ(nullptr,
+            irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                              "[ \"1.5\" ]"));
+  ASSERT_EQ(nullptr,
+            irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                              "[ \"abc\" ]"));
+  ASSERT_EQ(nullptr,
+            irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                              "[ null]"));
+  ASSERT_EQ(nullptr,
+            irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                              "[ true ]"));
+  ASSERT_EQ(nullptr,
+            irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                              "[ false ]"));
+  ASSERT_EQ(nullptr,
+            irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                              "[ {} ]"));
+  ASSERT_EQ(nullptr,
+            irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                              "[ [] ]"));
 
   // `b` argument
   {
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, 1.7 ]");
+    auto scorer = irs::scorers::get(
+      "bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, 1.7 ]");
     ASSERT_NE(nullptr, scorer);
     ASSERT_EQ(irs::type<irs::bm25_sort>::id(), scorer->type());
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
@@ -275,21 +296,36 @@ TEST_P(bm25_test_case, make_from_array) {
   }
 
   // invalid `b` argument
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, \"1.7\" ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, \"abc\" ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, null]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, true ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, false ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, {} ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, [] ]"));
+  ASSERT_EQ(nullptr,
+            irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                              "[ 1.5, \"1.7\" ]"));
+  ASSERT_EQ(nullptr,
+            irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                              "[ 1.5, \"abc\" ]"));
+  ASSERT_EQ(nullptr,
+            irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                              "[ 1.5, null]"));
+  ASSERT_EQ(nullptr,
+            irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                              "[ 1.5, true ]"));
+  ASSERT_EQ(nullptr,
+            irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                              "[ 1.5, false ]"));
+  ASSERT_EQ(nullptr,
+            irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                              "[ 1.5, {} ]"));
+  ASSERT_EQ(nullptr,
+            irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                              "[ 1.5, [] ]"));
 }
 
-#endif // IRESEARCH_DLL
+#endif  // IRESEARCH_DLL
 
 TEST_P(bm25_test_case, test_normalize_features) {
   // default norms
   {
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+    auto scorer = irs::scorers::get(
+      "bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
@@ -298,7 +334,8 @@ TEST_P(bm25_test_case, test_normalize_features) {
 
   // without norms (bm15)
   {
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 0.0}");
+    auto scorer = irs::scorers::get(
+      "bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 0.0}");
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
@@ -307,7 +344,8 @@ TEST_P(bm25_test_case, test_normalize_features) {
 
   // without norms (bm15), integer argument
   {
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 0}");
+    auto scorer = irs::scorers::get(
+      "bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 0}");
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
@@ -316,39 +354,38 @@ TEST_P(bm25_test_case, test_normalize_features) {
 }
 
 TEST_P(bm25_test_case, test_phrase) {
-  auto analyzed_json_field_factory = [](
-      tests::document& doc,
-      const std::string& name,
-      const tests::json_doc_generator::json_value& data) {
-    typedef text_field<std::string> text_field;
+  auto analyzed_json_field_factory =
+    [](tests::document& doc, const std::string& name,
+       const tests::json_doc_generator::json_value& data) {
+      typedef text_field<std::string> text_field;
 
-    class string_field : public tests::string_field {
-     public:
-      string_field(const std::string& name, const irs::string_ref& value)
-        : tests::string_field(name, value) {
-        this->index_features_ = irs::IndexFeatures::FREQ;
+      class string_field : public tests::string_field {
+       public:
+        string_field(const std::string& name, const irs::string_ref& value)
+          : tests::string_field(name, value) {
+          this->index_features_ = irs::IndexFeatures::FREQ;
+        }
+      };  // string_field
+
+      if (data.is_string()) {
+        // analyzed field
+        doc.indexed.push_back(std::make_shared<text_field>(
+          std::string(name.c_str()) + "_anl", data.str));
+
+        // not analyzed field
+        doc.insert(std::make_shared<string_field>(name, data.str));
       }
-    }; // string_field
-
-    if (data.is_string()) {
-      // analyzed field
-      doc.indexed.push_back(std::make_shared<text_field>(
-        std::string(name.c_str()) + "_anl", data.str));
-
-      // not analyzed field
-      doc.insert(std::make_shared<string_field>(name, data.str));
-    }
-  };
+    };
 
   // add segment
   {
-    tests::json_doc_generator gen(
-      resource("phrase_sequential.json"),
-      analyzed_json_field_factory);
+    tests::json_doc_generator gen(resource("phrase_sequential.json"),
+                                  analyzed_json_field_factory);
     add_segment(gen);
   }
 
-  auto impl = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
+  auto impl = irs::scorers::get(
+    "bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
   auto prepared_order = irs::Order::Prepare(*impl);
 
   // read segment
@@ -360,16 +397,18 @@ TEST_P(bm25_test_case, test_phrase) {
   {
     irs::by_phrase filter;
     *filter.mutable_field() = "phrase_anl";
-    filter.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("jumps"));
-    filter.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("high"));
+    filter.mutable_options()->push_back<irs::by_term_options>().term =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("jumps"));
+    filter.mutable_options()->push_back<irs::by_term_options>().term =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("high"));
 
     std::multimap<irs::score_t, std::string, std::greater<>> sorted;
 
     constexpr std::array<std::string_view, 4> expected{
-      "O",  // jumps high jumps high hotdog
-      "P",  // jumps high jumps left jumps right jumps down jumps back
-      "Q",  // jumps high jumps left jumps right jumps down walks back
-      "R"}; // jumps high jumps left jumps right walks down walks back
+      "O",   // jumps high jumps high hotdog
+      "P",   // jumps high jumps left jumps right jumps down jumps back
+      "Q",   // jumps high jumps left jumps right jumps down walks back
+      "R"};  // jumps high jumps left jumps right walks down walks back
 
     auto prepared_filter = filter.prepare(*index, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
@@ -388,16 +427,14 @@ TEST_P(bm25_test_case, test_phrase) {
       (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
 
-      sorted.emplace(
-        score_value,
-        irs::to_string<std::string>(actual_value->value.c_str())
-      );
+      sorted.emplace(score_value,
+                     irs::to_string<std::string>(actual_value->value.c_str()));
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
     size_t i = 0;
 
-    for (auto& entry: sorted) {
+    for (auto& entry : sorted) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
@@ -407,20 +444,26 @@ TEST_P(bm25_test_case, test_phrase) {
     irs::by_phrase filter;
     *filter.mutable_field() = "phrase_anl";
     auto& phrase = *filter.mutable_options();
-    phrase.push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("cookies"));
-    phrase.push_back<irs::by_prefix_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("ca"));
-    phrase.push_back<irs::by_wildcard_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("p_e"));
+    phrase.push_back<irs::by_term_options>().term =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("cookies"));
+    phrase.push_back<irs::by_prefix_options>().term =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("ca"));
+    phrase.push_back<irs::by_wildcard_options>().term =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("p_e"));
     auto& lt = phrase.push_back<irs::by_edit_distance_filter_options>();
     lt.max_distance = 1;
     lt.term = irs::ref_cast<irs::byte_type>(irs::string_ref("biscuit"));
     auto& ct = phrase.push_back<irs::by_terms_options>();
-    ct.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("meringue")));
-    ct.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("marshmallows")));
+    ct.terms.emplace(
+      irs::ref_cast<irs::byte_type>(irs::string_ref("meringue")));
+    ct.terms.emplace(
+      irs::ref_cast<irs::byte_type>(irs::string_ref("marshmallows")));
 
     std::multimap<irs::score_t, std::string, std::greater<>> sorted;
 
     constexpr std::array<std::string_view, 4> expected{
-      "SPWLC0",   // cookies cake pie biscuit meringue cookies cake pie biscuit marshmallows paste bread
+      "SPWLC0",   // cookies cake pie biscuit meringue cookies cake pie biscuit
+                  // marshmallows paste bread
       "SPWLC1",   // cookies cake pie biskuit marshmallows cookies pie meringue
       "SPWLC2",   // cookies cake pie biscwit meringue pie biscuit paste
       "SPWLC3"};  // cookies cake pie biscuet marshmallows cake meringue
@@ -449,7 +492,7 @@ TEST_P(bm25_test_case, test_phrase) {
     ASSERT_EQ(expected.size(), sorted.size());
     size_t i = 0;
 
-    for (auto& entry: sorted) {
+    for (auto& entry : sorted) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
@@ -459,17 +502,18 @@ TEST_P(bm25_test_case, test_query) {
   {
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
-      [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
-        if (data.is_string()) { // field
-          doc.insert(std::make_shared<string_field>(name, data.str), true, false);
-        } else if (data.is_number()) { // seq
+      [](tests::document& doc, const std::string& name,
+         const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {  // field
+          doc.insert(std::make_shared<string_field>(name, data.str), true,
+                     false);
+        } else if (data.is_number()) {  // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
           doc.insert(std::make_shared<string_field>(name, value), false, true);
         }
-    });
+      });
     add_segment(gen);
   }
-
 
   irs::bm25_sort impl{irs::bm25_sort::K(), irs::bm25_sort::B(), true};
   const irs::sort* sort{&impl};
@@ -489,10 +533,11 @@ TEST_P(bm25_test_case, test_query) {
 
     irs::by_term filter;
     *filter.mutable_field() = "field";
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
+    filter.mutable_options()->term =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
-    constexpr std::array expected{ 0, 1, 5, 7 };
+    constexpr std::array expected{0, 1, 5, 7};
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
@@ -500,7 +545,7 @@ TEST_P(bm25_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
+    while (docs->next()) {
       irs::score_t score_value;
       (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
@@ -514,7 +559,7 @@ TEST_P(bm25_test_case, test_query) {
     ASSERT_EQ(expected.size(), sorted.size());
     size_t i = 0;
 
-    for (auto& entry: sorted) {
+    for (auto& entry : sorted) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
@@ -528,14 +573,16 @@ TEST_P(bm25_test_case, test_query) {
 
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
-      [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
-        if (data.is_string()) { // field
-          doc.insert(std::make_shared<string_field>(name, data.str), true, false);
-        } else if (data.is_number()) { // seq
+      [](tests::document& doc, const std::string& name,
+         const json_doc_generator::json_value& data) {
+        if (data.is_string()) {  // field
+          doc.insert(std::make_shared<string_field>(name, data.str), true,
+                     false);
+        } else if (data.is_number()) {  // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
           doc.insert(std::make_shared<string_field>(name, value), false, true);
         }
-    });
+      });
     auto writer = open_writer(irs::OM_CREATE);
     const document* doc;
 
@@ -543,12 +590,9 @@ TEST_P(bm25_test_case, test_query) {
     {
       gen.reset();
       while ((doc = gen.next())) {
-        ASSERT_TRUE(insert(
-          *writer,
-          doc->indexed.begin(), doc->indexed.end(),
-          doc->stored.begin(), doc->stored.end()
-        ));
-        gen.next(); // skip 1 doc
+        ASSERT_TRUE(insert(*writer, doc->indexed.begin(), doc->indexed.end(),
+                           doc->stored.begin(), doc->stored.end()));
+        gen.next();  // skip 1 doc
       }
       writer->commit();
     }
@@ -556,14 +600,11 @@ TEST_P(bm25_test_case, test_query) {
     // add second segment (odd 'seq')
     {
       gen.reset();
-      gen.next(); // skip 1 doc
+      gen.next();  // skip 1 doc
       while ((doc = gen.next())) {
-        ASSERT_TRUE(insert(
-          *writer,
-          doc->indexed.begin(), doc->indexed.end(),
-          doc->stored.begin(), doc->stored.end()
-        ));
-        gen.next(); // skip 1 doc
+        ASSERT_TRUE(insert(*writer, doc->indexed.begin(), doc->indexed.end(),
+                           doc->stored.begin(), doc->stored.end()));
+        gen.next();  // skip 1 doc
       }
       writer->commit();
     }
@@ -571,18 +612,19 @@ TEST_P(bm25_test_case, test_query) {
     auto reader = irs::directory_reader::open(dir(), codec());
     irs::by_term filter;
     *filter.mutable_field() = "field";
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    filter.mutable_options()->term =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
     constexpr std::array expected{
-      0, 2, // segment 0
-      5     // segment 1
+      0, 2,  // segment 0
+      5      // segment 1
     };
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
 
-    for (auto& segment: reader) {
+    for (auto& segment : reader) {
       const auto* column = segment.column("seq");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator(irs::ColumnHint::kNormal);
@@ -593,7 +635,7 @@ TEST_P(bm25_test_case, test_query) {
       auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
-      while(docs->next()) {
+      while (docs->next()) {
         irs::score_t score_value;
         (*score)(&score_value);
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
@@ -608,12 +650,13 @@ TEST_P(bm25_test_case, test_query) {
     ASSERT_EQ(expected.size(), sorted.size());
     size_t i = 0;
 
-    for (auto& entry: sorted) {
+    for (auto& entry : sorted) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
 
-  // by_term disjunction multi-segment, different terms (same score for all docs)
+  // by_term disjunction multi-segment, different terms (same score for all
+  // docs)
   {
     auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
@@ -622,14 +665,16 @@ TEST_P(bm25_test_case, test_query) {
 
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
-      [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
-        if (data.is_string()) { // field
-          doc.insert(std::make_shared<string_field>(name, data.str), true, false);
-        } else if (data.is_number()) { // seq
+      [](tests::document& doc, const std::string& name,
+         const json_doc_generator::json_value& data) {
+        if (data.is_string()) {  // field
+          doc.insert(std::make_shared<string_field>(name, data.str), true,
+                     false);
+        } else if (data.is_number()) {  // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
           doc.insert(std::make_shared<string_field>(name, value), false, true);
         }
-    });
+      });
     auto writer = open_writer(irs::OM_CREATE);
     const document* doc;
 
@@ -637,12 +682,9 @@ TEST_P(bm25_test_case, test_query) {
     {
       gen.reset();
       while ((doc = gen.next())) {
-        ASSERT_TRUE(insert(
-          *writer,
-          doc->indexed.begin(), doc->indexed.end(),
-          doc->stored.begin(), doc->stored.end()
-        ));
-        gen.next(); // skip 1 doc
+        ASSERT_TRUE(insert(*writer, doc->indexed.begin(), doc->indexed.end(),
+                           doc->stored.begin(), doc->stored.end()));
+        gen.next();  // skip 1 doc
       }
       writer->commit();
     }
@@ -650,14 +692,11 @@ TEST_P(bm25_test_case, test_query) {
     // add second segment (odd 'seq')
     {
       gen.reset();
-      gen.next(); // skip 1 doc
+      gen.next();  // skip 1 doc
       while ((doc = gen.next())) {
-        ASSERT_TRUE(insert(
-          *writer,
-          doc->indexed.begin(), doc->indexed.end(),
-          doc->stored.begin(), doc->stored.end()
-        ));
-        gen.next(); // skip 1 doc
+        ASSERT_TRUE(insert(*writer, doc->indexed.begin(), doc->indexed.end(),
+                           doc->stored.begin(), doc->stored.end()));
+        gen.next();  // skip 1 doc
       }
       writer->commit();
     }
@@ -668,25 +707,27 @@ TEST_P(bm25_test_case, test_query) {
       // doc 0, 2, 5
       auto& sub = filter.add<irs::by_term>();
       *sub.mutable_field() = "field";
-      sub.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+      sub.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
     }
     {
       // doc 3, 7
       auto& sub = filter.add<irs::by_term>();
       *sub.mutable_field() = "field";
-      sub.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+      sub.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     }
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
     constexpr std::array expected{
-      3, 7, // same value in 2 documents
-      0, 2, 5 // same value in 3 documents
+      3, 7,    // same value in 2 documents
+      0, 2, 5  // same value in 3 documents
     };
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
 
-    for (auto& segment: reader) {
+    for (auto& segment : reader) {
       const auto* column = segment.column("seq");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator(irs::ColumnHint::kNormal);
@@ -697,7 +738,7 @@ TEST_P(bm25_test_case, test_query) {
       auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
-      while(docs->next()) {
+      while (docs->next()) {
         irs::score_t score_value;
         (*score)(&score_value);
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
@@ -712,7 +753,7 @@ TEST_P(bm25_test_case, test_query) {
     ASSERT_EQ(expected.size(), sorted.size());
     size_t i = 0;
 
-    for (auto& entry: sorted) {
+    for (auto& entry : sorted) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
@@ -726,14 +767,16 @@ TEST_P(bm25_test_case, test_query) {
 
     tests::json_doc_generator gen(
       resource("simple_sequential.json"),
-      [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
-        if (data.is_string()) { // field
-          doc.insert(std::make_shared<string_field>(name, data.str), true, false);
-        } else if (data.is_number()) { // seq
+      [](tests::document& doc, const std::string& name,
+         const json_doc_generator::json_value& data) {
+        if (data.is_string()) {  // field
+          doc.insert(std::make_shared<string_field>(name, data.str), true,
+                     false);
+        } else if (data.is_number()) {  // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
           doc.insert(std::make_shared<string_field>(name, value), false, true);
         }
-    });
+      });
     auto writer = open_writer(irs::OM_CREATE);
     const document* doc;
 
@@ -741,12 +784,9 @@ TEST_P(bm25_test_case, test_query) {
     {
       gen.reset();
       while ((doc = gen.next())) {
-        ASSERT_TRUE(insert(
-          *writer,
-          doc->indexed.begin(), doc->indexed.end(),
-          doc->stored.begin(), doc->stored.end()
-        ));
-        gen.next(); // skip 1 doc
+        ASSERT_TRUE(insert(*writer, doc->indexed.begin(), doc->indexed.end(),
+                           doc->stored.begin(), doc->stored.end()));
+        gen.next();  // skip 1 doc
       }
       writer->commit();
     }
@@ -754,14 +794,11 @@ TEST_P(bm25_test_case, test_query) {
     // add second segment (odd 'seq')
     {
       gen.reset();
-      gen.next(); // skip 1 doc
+      gen.next();  // skip 1 doc
       while ((doc = gen.next())) {
-        ASSERT_TRUE(insert(
-          *writer,
-          doc->indexed.begin(), doc->indexed.end(),
-          doc->stored.begin(), doc->stored.end()
-        ));
-        gen.next(); // skip 1 doc
+        ASSERT_TRUE(insert(*writer, doc->indexed.begin(), doc->indexed.end(),
+                           doc->stored.begin(), doc->stored.end()));
+        gen.next();  // skip 1 doc
       }
       writer->commit();
     }
@@ -769,19 +806,21 @@ TEST_P(bm25_test_case, test_query) {
     auto reader = irs::directory_reader::open(dir(), codec());
     irs::by_prefix filter;
     *filter.mutable_field() = "prefix";
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref(""));
+    filter.mutable_options()->term =
+      irs::ref_cast<irs::byte_type>(irs::string_ref(""));
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
     constexpr std::array expected{
-      0, 8, 20, 28, // segment 0
-      3, 15, 23, 25, // segment 1
-      30, 31, // same value in segment 0 and segment 1 (smaller idf() -> smaller tfidf() + reverse)
+      0,  8,  20, 28,  // segment 0
+      3,  15, 23, 25,  // segment 1
+      30, 31,  // same value in segment 0 and segment 1 (smaller idf() ->
+               // smaller tfidf() + reverse)
     };
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
 
-    for (auto& segment: reader) {
+    for (auto& segment : reader) {
       const auto* column = segment.column("seq");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator(irs::ColumnHint::kNormal);
@@ -792,7 +831,7 @@ TEST_P(bm25_test_case, test_query) {
       auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
-      while(docs->next()) {
+      while (docs->next()) {
         irs::score_t score_value;
         (*score)(&score_value);
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
@@ -807,7 +846,7 @@ TEST_P(bm25_test_case, test_query) {
     ASSERT_EQ(expected.size(), sorted.size());
     size_t i = 0;
 
-    for (auto& entry: sorted) {
+    for (auto& entry : sorted) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
@@ -821,20 +860,22 @@ TEST_P(bm25_test_case, test_query) {
 
     irs::by_range filter;
     *filter.mutable_field() = "field";
-    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    filter.mutable_options()->range.min =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
     filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
-    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.max =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
-    constexpr std::array expected{ 0, 1, 5, 7 };
+    constexpr std::array expected{0, 1, 5, 7};
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
 
-    while(docs->next()) {
+    while (docs->next()) {
       irs::score_t score_value;
       (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
@@ -848,7 +889,7 @@ TEST_P(bm25_test_case, test_query) {
     ASSERT_EQ(expected.size(), sorted.size());
     size_t i = 0;
 
-    for (auto& entry: sorted) {
+    for (auto& entry : sorted) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
@@ -862,14 +903,16 @@ TEST_P(bm25_test_case, test_query) {
 
     irs::by_range filter;
     *filter.mutable_field() = "field";
-    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.min =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
-    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("9"));
+    filter.mutable_options()->range.max =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("9"));
     filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
     filter.mutable_options()->scored_terms_limit = 1;
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
-    constexpr std::array expected{ 3, 7 };
+    constexpr std::array expected{3, 7};
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
@@ -877,7 +920,7 @@ TEST_P(bm25_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
+    while (docs->next()) {
       irs::score_t score_value;
       (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
@@ -891,52 +934,52 @@ TEST_P(bm25_test_case, test_query) {
     ASSERT_EQ(expected.size(), sorted.size());
     size_t i = 0;
 
-    for (auto& entry: sorted) {
+    for (auto& entry : sorted) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
 
-//FIXME!!!
-//  // by_range single + scored_terms_limit(0)
-//  {
-//    auto values = column->iterator(irs::ColumnHint::kNormal);
-//    ASSERT_NE(nullptr, values);
-//    auto* actual_value = irs::get<irs::payload>(*values);
-//    ASSERT_NE(nullptr, actual_value);
-//
-//    irs::by_range filter;
-//
-//    filter.field("field").scored_terms_limit(0)
-//      .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("8")
-//      .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("9");
-//
-//    std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
-//    constexpr std::array expected{ 3, 7 };
-//
-//    irs::bytes_ref_input in;
-//    auto prepared_filter = filter.prepare(reader, prepared_order);
-//    auto docs = prepared_filter->execute(segment, prepared_order);
-//    auto* score = irs::get<irs::score>(*docs);
-//    ASSERT_TRUE(bool(score));
-//
-//    while(docs->next()) {
-//      irs::score_t score_value;
-//      (*score)(&score_value);
-//      ASSERT_EQ(docs->value(), values->seek(docs->value()));
-//      in.reset(actual_value->value);
-//
-//      auto str_seq = irs::read_string<std::string>(in);
-//      auto seq = strtoull(str_seq.c_str(), nullptr, 10);
-//      sorted.emplace(score_value, seq);
-//    }
-//
-//    ASSERT_EQ(expected.size(), sorted.size());
-//    size_t i = 0;
-//
-//    for (auto& entry: sorted) {
-//      ASSERT_EQ(expected[i++], entry.second);
-//    }
-//  }
+  // FIXME!!!
+  //   // by_range single + scored_terms_limit(0)
+  //   {
+  //     auto values = column->iterator(irs::ColumnHint::kNormal);
+  //     ASSERT_NE(nullptr, values);
+  //     auto* actual_value = irs::get<irs::payload>(*values);
+  //     ASSERT_NE(nullptr, actual_value);
+  //
+  //     irs::by_range filter;
+  //
+  //     filter.field("field").scored_terms_limit(0)
+  //       .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("8")
+  //       .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("9");
+  //
+  //     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
+  //     constexpr std::array expected{ 3, 7 };
+  //
+  //     irs::bytes_ref_input in;
+  //     auto prepared_filter = filter.prepare(reader, prepared_order);
+  //     auto docs = prepared_filter->execute(segment, prepared_order);
+  //     auto* score = irs::get<irs::score>(*docs);
+  //     ASSERT_TRUE(bool(score));
+  //
+  //     while(docs->next()) {
+  //       irs::score_t score_value;
+  //       (*score)(&score_value);
+  //       ASSERT_EQ(docs->value(), values->seek(docs->value()));
+  //       in.reset(actual_value->value);
+  //
+  //       auto str_seq = irs::read_string<std::string>(in);
+  //       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
+  //       sorted.emplace(score_value, seq);
+  //     }
+  //
+  //     ASSERT_EQ(expected.size(), sorted.size());
+  //     size_t i = 0;
+  //
+  //     for (auto& entry: sorted) {
+  //       ASSERT_EQ(expected[i++], entry.second);
+  //     }
+  //   }
 
   // by_range multiple
   {
@@ -947,20 +990,22 @@ TEST_P(bm25_test_case, test_query) {
 
     irs::by_range filter;
     *filter.mutable_field() = "field";
-    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    filter.mutable_options()->range.min =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
     filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
-    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.max =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
-    constexpr std::array expected{ 7, 3, 0, 1, 5 };
+    constexpr std::array expected{7, 3, 0, 1, 5};
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
 
-    while(docs->next()) {
+    while (docs->next()) {
       irs::score_t score_value;
       (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
@@ -974,7 +1019,7 @@ TEST_P(bm25_test_case, test_query) {
     ASSERT_EQ(expected.size(), sorted.size());
     size_t i = 0;
 
-    for (auto& entry: sorted) {
+    for (auto& entry : sorted) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
@@ -988,13 +1033,15 @@ TEST_P(bm25_test_case, test_query) {
 
     irs::by_range filter;
     *filter.mutable_field() = "field";
-    filter.mutable_options()->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
+    filter.mutable_options()->range.min =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
     filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
-    filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
+    filter.mutable_options()->range.max =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
-    constexpr std::array expected{ 7, 0, 5, 3, 2, 1 };
+    constexpr std::array expected{7, 0, 5, 3, 2, 1};
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
@@ -1002,7 +1049,7 @@ TEST_P(bm25_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    while(docs->next()) {
+    while (docs->next()) {
       irs::score_t score_value;
       (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
@@ -1016,7 +1063,7 @@ TEST_P(bm25_test_case, test_query) {
     ASSERT_EQ(expected.size(), sorted.size());
     size_t i = 0;
 
-    for (auto& entry: sorted) {
+    for (auto& entry : sorted) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
@@ -1030,14 +1077,15 @@ TEST_P(bm25_test_case, test_query) {
 
     irs::by_phrase filter;
     *filter.mutable_field() = "field";
-    filter.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
+    filter.mutable_options()->push_back<irs::by_term_options>().term =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
     std::vector<std::pair<float_t, uint32_t>> expected = {
-      { -1, 0 },
-      { -1, 1 },
-      { -1, 5 },
-      { -1, 7 },
+      {-1, 0},
+      {-1, 1},
+      {-1, 5},
+      {-1, 7},
     };
 
     irs::bytes_ref_input in;
@@ -1045,7 +1093,7 @@ TEST_P(bm25_test_case, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
 
-    while(docs->next()) {
+    while (docs->next()) {
       irs::score_t score_value;
       (*score)(&score_value);
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
@@ -1059,7 +1107,7 @@ TEST_P(bm25_test_case, test_query) {
     ASSERT_EQ(expected.size(), sorted.size());
     size_t i = 0;
 
-    for (auto& entry: sorted) {
+    for (auto& entry : sorted) {
       auto& expected_entry = expected[i++];
       ASSERT_EQ(expected_entry.second, entry.second);
     }
@@ -1081,7 +1129,7 @@ TEST_P(bm25_test_case, test_query) {
     ASSERT_TRUE(bool(score));
 
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
-    while(docs->next()) {
+    while (docs->next()) {
       ASSERT_EQ(doc, docs->value());
       irs::score_t score_value;
       (*score)(&score_value);
@@ -1109,7 +1157,7 @@ TEST_P(bm25_test_case, test_query) {
     ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
     irs::doc_id_t doc = irs::doc_limits::min();
-    while(docs->next()) {
+    while (docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
       irs::score_t score_value;
@@ -1139,7 +1187,7 @@ TEST_P(bm25_test_case, test_query) {
     ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
     irs::doc_id_t doc = irs::doc_limits::min();
-    while(docs->next()) {
+    while (docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
       irs::score_t score_value;
@@ -1170,7 +1218,7 @@ TEST_P(bm25_test_case, test_query) {
     ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
     irs::doc_id_t doc = irs::doc_limits::min();
-    while(docs->next()) {
+    while (docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
       irs::score_t score_value;
@@ -1193,19 +1241,14 @@ TEST_P(bm25_test_case, test_query_norms) {
 TEST_P(bm25_test_case, test_collector_serialization) {
   // initialize test data
   {
-    tests::json_doc_generator gen(
-      resource("simple_sequential.json"),
-      &tests::payloaded_json_field_factory
-    );
+    tests::json_doc_generator gen(resource("simple_sequential.json"),
+                                  &tests::payloaded_json_field_factory);
     auto writer = open_writer(irs::OM_CREATE);
     const document* doc;
 
     while ((doc = gen.next())) {
-      ASSERT_TRUE(insert(
-        *writer,
-        doc->indexed.begin(), doc->indexed.end(),
-        doc->stored.begin(), doc->stored.end()
-      ));
+      ASSERT_TRUE(insert(*writer, doc->indexed.begin(), doc->indexed.end(),
+                         doc->stored.begin(), doc->stored.end()));
     }
 
     writer->commit();
@@ -1218,7 +1261,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
   auto term = field->iterator(irs::SeekMode::NORMAL);
   ASSERT_NE(nullptr, term);
   ASSERT_TRUE(term->next());
-  term->read(); // fill term_meta
+  term->read();  // fill term_meta
   irs::bstring fcollector_out;
   irs::bstring tcollector_out;
 
@@ -1235,21 +1278,27 @@ TEST_P(bm25_test_case, test_collector_serialization) {
     bstring_data_output out1;
     collector->write(out1);
     fcollector_out = out1.out_;
-    ASSERT_TRUE(out0.out_.size() != out1.out_.size() || 0 != std::memcmp(&out0.out_[0], &out1.out_[0], out0.out_.size()));
+    ASSERT_TRUE(out0.out_.size() != out1.out_.size() ||
+                0 !=
+                  std::memcmp(&out0.out_[0], &out1.out_[0], out0.out_.size()));
 
     // identical to default
     collector = prepared_sort->prepare_field_collector();
     collector->collect(out0.out_);
     bstring_data_output out2;
     collector->write(out2);
-    ASSERT_TRUE(out0.out_.size() == out2.out_.size() && 0 == std::memcmp(&out0.out_[0], &out2.out_[0], out0.out_.size()));
+    ASSERT_TRUE(out0.out_.size() == out2.out_.size() &&
+                0 ==
+                  std::memcmp(&out0.out_[0], &out2.out_[0], out0.out_.size()));
 
     // identical to modified
     collector = prepared_sort->prepare_field_collector();
     collector->collect(out1.out_);
     bstring_data_output out3;
     collector->write(out3);
-    ASSERT_TRUE(out1.out_.size() == out3.out_.size() && 0 == std::memcmp(&out1.out_[0], &out3.out_[0], out1.out_.size()));
+    ASSERT_TRUE(out1.out_.size() == out3.out_.size() &&
+                0 ==
+                  std::memcmp(&out1.out_[0], &out3.out_[0], out1.out_.size()));
   }
 
   // default init (term_collector)
@@ -1265,21 +1314,27 @@ TEST_P(bm25_test_case, test_collector_serialization) {
     bstring_data_output out1;
     collector->write(out1);
     tcollector_out = out1.out_;
-    ASSERT_TRUE(out0.out_.size() != out1.out_.size() || 0 != std::memcmp(&out0.out_[0], &out1.out_[0], out0.out_.size()));
+    ASSERT_TRUE(out0.out_.size() != out1.out_.size() ||
+                0 !=
+                  std::memcmp(&out0.out_[0], &out1.out_[0], out0.out_.size()));
 
     // identical to default
     collector = prepared_sort->prepare_term_collector();
     collector->collect(out0.out_);
     bstring_data_output out2;
     collector->write(out2);
-    ASSERT_TRUE(out0.out_.size() == out2.out_.size() && 0 == std::memcmp(&out0.out_[0], &out2.out_[0], out0.out_.size()));
+    ASSERT_TRUE(out0.out_.size() == out2.out_.size() &&
+                0 ==
+                  std::memcmp(&out0.out_[0], &out2.out_[0], out0.out_.size()));
 
     // identical to modified
     collector = prepared_sort->prepare_term_collector();
     collector->collect(out1.out_);
     bstring_data_output out3;
     collector->write(out3);
-    ASSERT_TRUE(out1.out_.size() == out3.out_.size() && 0 == std::memcmp(&out1.out_[0], &out3.out_[0], out1.out_.size()));
+    ASSERT_TRUE(out1.out_.size() == out3.out_.size() &&
+                0 ==
+                  std::memcmp(&out1.out_[0], &out3.out_[0], out1.out_.size()));
   }
 
   // serialized too short (field_collector)
@@ -1289,7 +1344,9 @@ TEST_P(bm25_test_case, test_collector_serialization) {
     ASSERT_NE(nullptr, prepared_sort);
     auto collector = prepared_sort->prepare_field_collector();
     ASSERT_NE(nullptr, collector);
-    ASSERT_THROW(collector->collect(irs::bytes_ref(&fcollector_out[0], fcollector_out.size() - 1)), irs::io_error);
+    ASSERT_THROW(collector->collect(irs::bytes_ref(&fcollector_out[0],
+                                                   fcollector_out.size() - 1)),
+                 irs::io_error);
   }
 
   // serialized too short (term_collector)
@@ -1299,7 +1356,9 @@ TEST_P(bm25_test_case, test_collector_serialization) {
     ASSERT_NE(nullptr, prepared_sort);
     auto collector = prepared_sort->prepare_term_collector();
     ASSERT_NE(nullptr, collector);
-    ASSERT_THROW(collector->collect(irs::bytes_ref(&tcollector_out[0], tcollector_out.size() - 1)), irs::io_error);
+    ASSERT_THROW(collector->collect(irs::bytes_ref(&tcollector_out[0],
+                                                   tcollector_out.size() - 1)),
+                 irs::io_error);
   }
 
   // serialized too long (field_collector)
@@ -1330,7 +1389,8 @@ TEST_P(bm25_test_case, test_collector_serialization) {
 TEST_P(bm25_test_case, test_make) {
   // default values
   {
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+    auto scorer = irs::scorers::get(
+      "bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(0.75f, scr.b());
@@ -1341,7 +1401,9 @@ TEST_P(bm25_test_case, test_make) {
 
   // custom values
   {
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 123.456, \"k\": 78.9 }");
+    auto scorer =
+      irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                        "{\"b\": 123.456, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(123.456f, scr.b());
@@ -1352,7 +1414,9 @@ TEST_P(bm25_test_case, test_make) {
 
   // custom values (integer argument)
   {
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 123.456, \"k\": 78 }");
+    auto scorer =
+      irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                        "{\"b\": 123.456, \"k\": 78 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(123.456f, scr.b());
@@ -1363,7 +1427,9 @@ TEST_P(bm25_test_case, test_make) {
 
   // bm11
   {
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 1.0, \"k\": 78.9 }");
+    auto scorer =
+      irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                        "{\"b\": 1.0, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(1.f, scr.b());
@@ -1374,7 +1440,9 @@ TEST_P(bm25_test_case, test_make) {
 
   // bm11 (integer argument)
   {
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 1, \"k\": 78.9 }");
+    auto scorer =
+      irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                        "{\"b\": 1, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(1.f, scr.b());
@@ -1385,7 +1453,9 @@ TEST_P(bm25_test_case, test_make) {
 
   // bm15
   {
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 0.0, \"k\": 78.9 }");
+    auto scorer =
+      irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                        "{\"b\": 0.0, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(0.f, scr.b());
@@ -1396,7 +1466,9 @@ TEST_P(bm25_test_case, test_make) {
 
   // bm15 (integer argument)
   {
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 0, \"k\": 78.9 }");
+    auto scorer =
+      irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                        "{\"b\": 0, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(0.f, scr.b());
@@ -1407,19 +1479,24 @@ TEST_P(bm25_test_case, test_make) {
 
   // invalid args
   {
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "\"12345");
+    auto scorer = irs::scorers::get(
+      "bm25", irs::type<irs::text_format::json>::get(), "\"12345");
     ASSERT_EQ(nullptr, scorer);
   }
 
   // invalid values (b)
   {
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": false, \"k\": 78.9}");
+    auto scorer =
+      irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                        "{\"b\": false, \"k\": 78.9}");
     ASSERT_EQ(nullptr, scorer);
   }
 
   // invalid values (k)
   {
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 123.456, \"k\": true}");
+    auto scorer =
+      irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                        "{\"b\": 123.456, \"k\": true}");
     ASSERT_EQ(nullptr, scorer);
   }
 }
@@ -1428,14 +1505,16 @@ TEST_P(bm25_test_case, test_order) {
   {
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
-      [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
-        if (data.is_string()) { // field
-          doc.insert(std::make_shared<string_field>(name, data.str), true, false);
-        } else if (data.is_number()) { // seq
+      [](tests::document& doc, const std::string& name,
+         const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {  // field
+          doc.insert(std::make_shared<string_field>(name, data.str), true,
+                     false);
+        } else if (data.is_number()) {  // seq
           const auto value = std::to_string(data.as_number<uint64_t>());
           doc.insert(std::make_shared<string_field>(name, value), false, true);
         }
-    });
+      });
     add_segment(gen);
   }
 
@@ -1462,10 +1541,11 @@ TEST_P(bm25_test_case, test_order) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    query.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
+    query.mutable_options()->term =
+      irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
-    constexpr std::array expected{ 0, 1, 5, 7 };
+    constexpr std::array expected{0, 1, 5, 7};
 
     irs::bytes_ref_input in;
     auto prepared = query.prepare(reader, prepared_order);
@@ -1493,36 +1573,30 @@ TEST_P(bm25_test_case, test_order) {
   }
 }
 
-#endif // IRESEARCH_DLL
+#endif  // IRESEARCH_DLL
 
 INSTANTIATE_TEST_SUITE_P(
-  bm25_test,
-  bm25_test_case,
+  bm25_test, bm25_test_case,
   ::testing::Combine(
-    ::testing::Values(
-      &tests::directory<&tests::memory_directory>,
-      &tests::directory<&tests::fs_directory>,
-      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(&tests::directory<&tests::memory_directory>,
+                      &tests::directory<&tests::fs_directory>,
+                      &tests::directory<&tests::mmap_directory>),
     ::testing::Values("1_0")),
-  bm25_test_case::to_string
-);
+  bm25_test_case::to_string);
 
-class bm25_test_case_14 : public bm25_test_case { };
+class bm25_test_case_14 : public bm25_test_case {};
 
 TEST_P(bm25_test_case_14, test_query_norms) {
   test_query_norms(irs::type<irs::Norm2>::id(), &irs::Norm2::MakeWriter);
 }
 
 INSTANTIATE_TEST_SUITE_P(
-  bm25_test_14,
-  bm25_test_case_14,
+  bm25_test_14, bm25_test_case_14,
   ::testing::Combine(
-    ::testing::Values(
-      &tests::directory<&tests::memory_directory>,
-      &tests::directory<&tests::fs_directory>,
-      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(&tests::directory<&tests::memory_directory>,
+                      &tests::directory<&tests::fs_directory>,
+                      &tests::directory<&tests::mmap_directory>),
     ::testing::Values("1_4", "1_5")),
-  bm25_test_case_14::to_string
-);
+  bm25_test_case_14::to_string);
 
-}
+}  // namespace

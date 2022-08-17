@@ -24,52 +24,52 @@
 #define IRESEARCH_FST_H
 
 #if defined(_MSC_VER)
-  #pragma warning(disable : 4018)
-  #pragma warning(disable : 4100)
-  #pragma warning(disable : 4244)
-  #pragma warning(disable : 4245)
-  #pragma warning(disable : 4267)
-  #pragma warning(disable : 4291)
-  #pragma warning(disable : 4389)
-  #pragma warning(disable : 4396)
-  #pragma warning(disable : 4512)
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wsign-compare"
-  #pragma GCC diagnostic ignored "-Wignored-qualifiers"
+#pragma warning(disable : 4018)
+#pragma warning(disable : 4100)
+#pragma warning(disable : 4244)
+#pragma warning(disable : 4245)
+#pragma warning(disable : 4267)
+#pragma warning(disable : 4291)
+#pragma warning(disable : 4389)
+#pragma warning(disable : 4396)
+#pragma warning(disable : 4512)
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wignored-qualifiers"
 #endif
 
 #include <fst/vector-fst.h>
 
 #if defined(_MSC_VER)
-  #pragma warning(default : 4512)
-  #pragma warning(default : 4396)
-  #pragma warning(default : 4389)
-  #pragma warning(default : 4291)
-  #pragma warning(default : 4267)
-  #pragma warning(default : 4245)
-  #pragma warning(default : 4244)
-  #pragma warning(default : 4100)
-  #pragma warning(default : 4018)
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic pop
+#pragma warning(default : 4512)
+#pragma warning(default : 4396)
+#pragma warning(default : 4389)
+#pragma warning(default : 4291)
+#pragma warning(default : 4267)
+#pragma warning(default : 4245)
+#pragma warning(default : 4244)
+#pragma warning(default : 4100)
+#pragma warning(default : 4018)
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
 #endif
 
 #include <boost/functional/hash.hpp>
 
 #include "shared.hpp"
 #include "utils/fstext/fst_states_map.hpp"
-#include "utils/string.hpp"
 #include "utils/noncopyable.hpp"
+#include "utils/string.hpp"
 
 namespace iresearch {
 
 struct fst_stats {
-  size_t num_states{}; // total number of states
-  size_t num_arcs{};   // total number of arcs
+  size_t num_states{};  // total number of states
+  size_t num_arcs{};    // total number of arcs
 
   template<typename Weight>
-  void operator()(const Weight&) noexcept { }
+  void operator()(const Weight&) noexcept {}
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -161,7 +161,7 @@ class fst_builder : util::noncopyable {
       // set output
       {
         state& s = states_[pref - 1];
-        assert(!s.arcs.empty() && s.arcs.back().label == in[pref-1]);
+        assert(!s.arcs.empty() && s.arcs.back().label == in[pref - 1]);
         s.arcs.back().out = std::move(output);
       }
     } else {
@@ -222,44 +222,30 @@ class fst_builder : util::noncopyable {
   struct state;
 
   struct arc : private util::noncopyable {
-    arc(label_t label, state* target)
-      : target(target),
-        label(label) {
-    }
+    arc(label_t label, state* target) : target(target), label(label) {}
 
     arc(arc&& rhs) noexcept
-      : target(rhs.target),
-        label(rhs.label),
-        out(std::move(rhs.out)) {
-    }
-    
+      : target(rhs.target), label(rhs.label), out(std::move(rhs.out)) {}
+
     bool operator==(const arc_t& rhs) const noexcept {
-      return label == rhs.ilabel
-        && id == rhs.nextstate
-        && out == rhs.weight;
+      return label == rhs.ilabel && id == rhs.nextstate && out == rhs.weight;
     }
 
-    bool operator!=(const arc_t& rhs) const noexcept {
-      return !(*this == rhs);
-    }
+    bool operator!=(const arc_t& rhs) const noexcept { return !(*this == rhs); }
 
     union {
       state* target;
       stateid_t id;
     };
     label_t label;
-    weight_t out{ weight_t::One() };
-  }; // arc
+    weight_t out{weight_t::One()};
+  };  // arc
 
   struct state : private util::noncopyable {
-    explicit state(bool final = false)
-      : final(final) { }
+    explicit state(bool final = false) : final(final) {}
 
     state(state&& rhs) noexcept
-      : arcs(std::move(rhs.arcs)),
-        out(std::move(rhs.out)),
-        final(rhs.final) {
-    }
+      : arcs(std::move(rhs.arcs)), out(std::move(rhs.out)), final(rhs.final) {}
 
     void clear() noexcept {
       arcs.clear();
@@ -268,9 +254,9 @@ class fst_builder : util::noncopyable {
     }
 
     std::vector<arc> arcs;
-    weight_t out{ weight_t::One() };
-    bool final{ false };
-  }; // state
+    weight_t out{weight_t::One()};
+    bool final{false};
+  };  // state
 
   static_assert(std::is_nothrow_move_constructible<state>::value,
                 "default move constructor expected");
@@ -300,7 +286,7 @@ class fst_builder : util::noncopyable {
     size_t operator()(const state& s, const fst_t& /*fst*/) const noexcept {
       size_t hash = 0;
 
-      for (auto& a: s.arcs) {
+      for (auto& a : s.arcs) {
         ::boost::hash_combine(hash, a.label);
         ::boost::hash_combine(hash, a.id);
         ::boost::hash_combine(hash, a.out.Hash());
@@ -325,9 +311,7 @@ class fst_builder : util::noncopyable {
 
   class state_emplace {
    public:
-    explicit state_emplace(stats_t& stats) noexcept
-      : stats_(&stats) {
-    }
+    explicit state_emplace(stats_t& stats) noexcept : stats_(&stats) {}
 
     stateid_t operator()(const state& s, fst_t& fst) const {
       const stateid_t id = fst.AddState();
@@ -352,10 +336,8 @@ class fst_builder : util::noncopyable {
     stats_t* stats_;
   };
 
-  using states_map = fst_states_map<
-    fst_t, state,
-    state_emplace, state_hash,
-    state_equal, fst::kNoStateId>;
+  using states_map = fst_states_map<fst_t, state, state_emplace, state_hash,
+                                    state_equal, fst::kNoStateId>;
 
   void add_states(size_t size) {
     // reserve size + 1 for root state
@@ -373,8 +355,8 @@ class fst_builder : util::noncopyable {
 
       assert(!p.arcs.empty());
       p.arcs.back().id = s.arcs.empty() && s.final
-        ? fst_builder::final
-        : states_map_.insert(s, fst_);
+                           ? fst_builder::final
+                           : states_map_.insert(s, fst_);
 
       s.clear();
     }
@@ -382,12 +364,12 @@ class fst_builder : util::noncopyable {
 
   stats_t stats_;
   states_map states_map_;
-  std::vector<state> states_; // current states
-  weight_t start_out_; // output for "empty" input
+  std::vector<state> states_;  // current states
+  weight_t start_out_;         // output for "empty" input
   key_t last_;
   fst_t& fst_;
-}; // fst_builder
+};  // fst_builder
 
-}
+}  // namespace iresearch
 
 #endif
