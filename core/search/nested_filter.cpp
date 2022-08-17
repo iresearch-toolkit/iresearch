@@ -608,7 +608,7 @@ class ByNestedQuery final : public filter::prepared {
     }
 
     assert(child_);
-    child_->visit(segment, visitor, this->boost() * boost);
+    child_->visit(segment, visitor, boost);
   }
 
  private:

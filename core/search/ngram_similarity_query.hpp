@@ -53,7 +53,7 @@ class NGramSimilarityQuery final : public filter::prepared {
   void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
              score_t boost) const override {
     if (auto* state = states_.find(segment); state) {
-      visitor.Visit(*this, *state, boost);
+      visitor.Visit(*this, *state, boost * this->boost());
     }
   }
 

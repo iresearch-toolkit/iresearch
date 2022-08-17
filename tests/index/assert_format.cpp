@@ -315,9 +315,12 @@ void index_segment::insert_stored(const ifield& f) {
 void index_segment::insert_indexed(const ifield& f) {
   const irs::string_ref field_name = f.name();
 
+  const auto requested_features = f.index_features();
+  const auto features = requested_features & (~(irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY));
+
   const auto res = fields_.emplace(
     field_name,
-    field{field_name, f.index_features(), f.features()});
+    field{field_name, features, f.features()});
 
   field& field = res.first->second;
 
@@ -355,6 +358,13 @@ void index_segment::insert_indexed(const ifield& f) {
   auto* inc = irs::get<irs::increment>(stream);
   assert(inc);
   auto* offs = irs::get<irs::offset>(stream);
+  if (irs::IndexFeatures::OFFS == (requested_features & irs::IndexFeatures::OFFS) && offs) {
+   field.index_features |= irs::IndexFeatures::OFFS;
+  }
+  auto* pay = irs::get<irs::payload>(stream);
+  if (irs::IndexFeatures::PAY == (requested_features & irs::IndexFeatures::PAY) && pay) {
+   field.index_features |= irs::IndexFeatures::PAY;
+  }
 
   bool empty = true;
   const auto doc_id = doc();

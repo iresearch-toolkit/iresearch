@@ -57,7 +57,6 @@ bool string_token_stream::next() noexcept {
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
   offset.end = static_cast<uint32_t>(value_.size());
-  value_ = irs::bytes_ref::NIL;
   in_use_ = true;
   return !in_use;
 }
