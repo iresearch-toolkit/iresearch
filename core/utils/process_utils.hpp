@@ -25,6 +25,8 @@
 
 #ifdef _WIN32
 typedef int pid_t;
+#else
+#include <sys/types.h>
 #endif
 
 namespace iresearch {

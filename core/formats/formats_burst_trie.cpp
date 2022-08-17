@@ -86,7 +86,6 @@
 #include "utils/bitset.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/encryption.hpp"
-#include "utils/fstext/fst_builder.hpp"
 #include "utils/fstext/fst_decl.hpp"
 #include "utils/fstext/fst_matcher.hpp"
 #include "utils/fstext/fst_string_ref_weight.h"
@@ -100,6 +99,10 @@
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 #include "utils/timer_utils.hpp"
+
+// clang-format off
+#include "utils/fstext/fst_builder.hpp"
+// clang-format on
 
 namespace {
 

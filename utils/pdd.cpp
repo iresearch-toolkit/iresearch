@@ -85,7 +85,7 @@ int dump(irs::byte_type distance, bool with_transpositions, size_t line_length,
   // write description to string
   {
     irs::bytes_output out(raw);
-    irs::write(d, static_cast<data_output&>(out));
+    irs::write(d, static_cast<irs::data_output&>(out));
   }
 
   irs::bstring buf;

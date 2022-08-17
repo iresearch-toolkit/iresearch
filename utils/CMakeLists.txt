@@ -36,6 +36,10 @@ add_executable(iresearch-index-util
 add_sanitizers(iresearch-index-util)
 set_ipo(iresearch-index-util)
 
+add_dependencies(iresearch-index-util
+  iresearch-static
+  )
+
 set_target_properties(iresearch-index-util
   PROPERTIES
   OUTPUT_NAME iresearch-index-util
@@ -51,6 +55,7 @@ target_link_libraries(iresearch-index-util
 include_directories(iresearch-index-util
   ${IReSearch_generated_INCLUDE_DIR}
   ${IResearch_INCLUDE_DIR}
+  ${ICU_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
   ${CMDLINE_INCLUDE_DIR}
   )

@@ -23,6 +23,8 @@
 #ifndef IRESEARCH_NETWORK_UTILS_H
 #define IRESEARCH_NETWORK_UTILS_H
 
+#include <cstddef>
+
 namespace iresearch {
 
 int get_host_name(char* name, size_t size);

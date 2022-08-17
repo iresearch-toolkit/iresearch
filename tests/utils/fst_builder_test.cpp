@@ -22,9 +22,6 @@
 
 #ifndef IRESEARCH_DLL
 
-#include "utils/fstext/fst_builder.hpp"
-
-#include <fst/matcher.h>
 #include <fst/vector-fst.h>
 
 #include <fstream>
@@ -35,12 +32,17 @@
 #include "store/mmap_directory.hpp"
 #include "tests_shared.hpp"
 #include "utils/fstext/fst_decl.hpp"
-#include "utils/fstext/fst_matcher.hpp"
 #include "utils/fstext/fst_string_ref_weight.h"
 #include "utils/fstext/fst_string_weight.h"
 #include "utils/fstext/fst_utils.hpp"
 #include "utils/fstext/immutable_fst.h"
 #include "utils/numeric_utils.hpp"
+
+// clang-format off
+#include <fst/matcher.h>
+#include "utils/fstext/fst_matcher.hpp"
+#include "utils/fstext/fst_builder.hpp"
+// clang-format on
 
 namespace {
 
