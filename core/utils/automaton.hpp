@@ -34,10 +34,6 @@
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #endif
 
-#ifndef FST_NO_DYNAMIC_LINKING
-#define FST_NO_DYNAMIC_LINKING
-#endif
-
 #include <fst/connect.h>
 #include <fst/fst.h>
 #include <fst/test-properties.h>

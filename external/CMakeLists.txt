@@ -81,11 +81,6 @@ add_library(
 
 set_ipo(iresearch-ofst)
 
-target_compile_definitions(
-  iresearch-ofst
-  PUBLIC "FST_NO_DYNAMIC_LINKING"
-)
-
 # disable warnings for 3rd-party libs for a cleaner build
 if (MSVC)
   target_compile_options(

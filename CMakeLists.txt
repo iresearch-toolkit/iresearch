@@ -143,6 +143,8 @@ endif ()
 # to follow std::bidirectional_iterator concept
 add_definitions(-DBOOST_TEXT_DISABLE_CONCEPTS)
 
+add_definitions(-DFST_NO_DYNAMIC_LINKING)
+
 ################################################################################
 ### setup clang-tidy
 ################################################################################
