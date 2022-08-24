@@ -25,8 +25,8 @@
 
 #include <vector>
 
-#include "shared.hpp"
 #include "log.hpp"
+#include "shared.hpp"
 #include "string.hpp"
 
 namespace iresearch {
@@ -41,7 +41,8 @@ constexpr uint32_t MIN_4BYTES_CODE_POINT = 0x10000;
 constexpr uint32_t MAX_CODE_POINT = 0x10FFFF;
 constexpr uint32_t INVALID_CODE_POINT = std::numeric_limits<uint32_t>::max();
 
-FORCE_INLINE const byte_type* next(const byte_type* begin, const byte_type* end) noexcept {
+FORCE_INLINE const byte_type* next(const byte_type* begin,
+                                   const byte_type* end) noexcept {
   IRS_ASSERT(begin);
   IRS_ASSERT(end);
 
@@ -61,7 +62,10 @@ FORCE_INLINE const byte_type* next(const byte_type* begin, const byte_type* end)
   return begin > end ? end : begin;
 }
 
-FORCE_INLINE size_t cp_length(const uint32_t cp_start) noexcept {
+// Return Unicode code point length in bytes given the most significant code
+// point byte
+FORCE_INLINE constexpr uint32_t cp_length_msb(
+    const uint32_t cp_start) noexcept {
   if (cp_start < 0x80) {
     return 1;
   } else if ((cp_start >> 5) == 0x06) {
@@ -75,7 +79,26 @@ FORCE_INLINE size_t cp_length(const uint32_t cp_start) noexcept {
   return 0;
 }
 
-inline uint32_t next_checked(const byte_type*& begin, const byte_type* end) noexcept {
+// Return Unicode code point length in bytes given the most significant code
+// point byte
+FORCE_INLINE constexpr uint32_t cp_length(const uint32_t cp) noexcept {
+  if (cp < 0x80) {
+    return 1;
+  }
+
+  if (cp < 0x800) {
+    return 2;
+  }
+
+  if (cp < 0x10000) {
+    return 3;
+  }
+
+  return 4;
+}
+
+inline uint32_t next_checked(const byte_type*& begin,
+                             const byte_type* end) noexcept {
   IRS_ASSERT(begin);
   IRS_ASSERT(end);
 
@@ -88,21 +111,23 @@ inline uint32_t next_checked(const byte_type*& begin, const byte_type* end) noex
 
   begin += size;
 
-  if (begin <= end)  {
+  if (begin <= end) {
     switch (size) {
-     case 1: return cp;
+      case 1:
+        return cp;
 
-     case 2: return ((cp << 6) & 0x7FF) +
-                    (uint32_t(begin[-1]) & 0x3F);
+      case 2:
+        return ((cp << 6) & 0x7FF) + (uint32_t(begin[-1]) & 0x3F);
 
-     case 3: return ((cp << 12) & 0xFFFF) +
-                    ((uint32_t(begin[-2]) << 6) & 0xFFF) +
-                    (uint32_t(begin[-1]) & 0x3F);
+      case 3:
+        return ((cp << 12) & 0xFFFF) + ((uint32_t(begin[-2]) << 6) & 0xFFF) +
+               (uint32_t(begin[-1]) & 0x3F);
 
-     case 4: return ((cp << 18) & 0x1FFFFF) +
-                    ((uint32_t(begin[-3]) << 12) & 0x3FFFF) +
-                    ((uint32_t(begin[-2]) << 6) & 0xFFF) +
-                    (uint32_t(begin[-1]) & 0x3F);
+      case 4:
+        return ((cp << 18) & 0x1FFFFF) +
+               ((uint32_t(begin[-3]) << 12) & 0x3FFFF) +
+               ((uint32_t(begin[-2]) << 6) & 0xFFF) +
+               (uint32_t(begin[-1]) & 0x3F);
     }
   }
 
@@ -131,7 +156,8 @@ inline uint32_t next(const byte_type*& it) noexcept {
   return cp;
 }
 
-FORCE_INLINE constexpr uint32_t utf32_to_utf8(uint32_t cp, byte_type* begin) noexcept {
+FORCE_INLINE constexpr uint32_t utf32_to_utf8(uint32_t cp,
+                                              byte_type* begin) noexcept {
   if (cp < 0x80) {
     begin[0] = static_cast<byte_type>(cp);
     return 1;
@@ -158,7 +184,8 @@ FORCE_INLINE constexpr uint32_t utf32_to_utf8(uint32_t cp, byte_type* begin) noe
 }
 
 template<bool Checked = true>
-inline const byte_type* find(const byte_type* begin, const byte_type* end, uint32_t ch) noexcept {
+inline const byte_type* find(const byte_type* begin, const byte_type* end,
+                             uint32_t ch) noexcept {
   for (const byte_type* char_begin = begin; begin < end; char_begin = begin) {
     const auto cp = Checked ? next_checked(begin, end) : next(begin);
 
@@ -171,7 +198,8 @@ inline const byte_type* find(const byte_type* begin, const byte_type* end, uint3
 }
 
 template<bool Checked = true>
-inline size_t find(const byte_type* begin, const size_t size, uint32_t ch) noexcept {
+inline size_t find(const byte_type* begin, const size_t size,
+                   uint32_t ch) noexcept {
   size_t pos = 0;
   for (auto end = begin + size; begin < end; ++pos) {
     const auto cp = Checked ? next_checked(begin, end) : next(begin);
@@ -185,8 +213,9 @@ inline size_t find(const byte_type* begin, const size_t size, uint32_t ch) noexc
 }
 
 template<bool Checked, typename OutputIterator>
-inline bool utf8_to_utf32(const byte_type* begin, size_t size, OutputIterator out) {
-  for (auto end = begin + size; begin < end; ) {
+inline bool utf8_to_utf32(const byte_type* begin, size_t size,
+                          OutputIterator out) {
+  for (auto end = begin + size; begin < end;) {
     const auto cp = Checked ? next_checked(begin, end) : next(begin);
 
     if constexpr (Checked) {
@@ -220,7 +249,7 @@ FORCE_INLINE size_t utf8_length(bytes_ref in) noexcept {
   return utf8_length(in.c_str(), in.size());
 }
 
-} // utf8_utils
-} // ROOT
+}  // namespace utf8_utils
+}  // namespace iresearch
 
-#endif // IRESEARCH_UTF8_UTILS_H
+#endif  // IRESEARCH_UTF8_UTILS_H

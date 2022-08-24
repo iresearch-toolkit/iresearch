@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "analysis/delimited_token_stream.hpp"
-
 #include "gtest/gtest.h"
 #include "tests_config.hpp"
 #include "velocypack/Parser.h"
@@ -30,17 +29,19 @@
 
 namespace {
 
-class delimited_token_stream_tests: public ::testing::Test {
+class delimited_token_stream_tests : public ::testing::Test {
   virtual void SetUp() {
-    // Code here will be called immediately after the constructor (right before each test).
+    // Code here will be called immediately after the constructor (right before
+    // each test).
   }
 
   virtual void TearDown() {
-    // Code here will be called immediately after each test (right before the destructor).
+    // Code here will be called immediately after each test (right before the
+    // destructor).
   }
 };
 
-} // namespace {
+}  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -49,7 +50,8 @@ class delimited_token_stream_tests: public ::testing::Test {
 #ifndef IRESEARCH_DLL
 
 TEST_F(delimited_token_stream_tests, consts) {
-  static_assert("delimiter" == irs::type<irs::analysis::delimited_token_stream>::name());
+  static_assert("delimiter" ==
+                irs::type<irs::analysis::delimited_token_stream>::name());
 }
 
 TEST_F(delimited_token_stream_tests, test_delimiter) {
@@ -57,7 +59,8 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
   {
     irs::string_ref data("abc,def\"\",\"\"ghi");
     irs::analysis::delimited_token_stream stream(irs::string_ref::NIL);
-    ASSERT_EQ(irs::type<irs::analysis::delimited_token_stream>::id(), stream.type());
+    ASSERT_EQ(irs::type<irs::analysis::delimited_token_stream>::id(),
+              stream.type());
 
     ASSERT_TRUE(stream.reset(data));
 
@@ -73,7 +76,7 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
   // test delimteter ''
   {
-    irs::string_ref data("abc,\"def\""); // quoted terms should be honoured
+    irs::string_ref data("abc,\"def\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream("");
 
     ASSERT_TRUE(stream.reset(data));
@@ -108,7 +111,7 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
   // test delimiter ','
   {
-    irs::string_ref data("abc,\"def,\""); // quoted terms should be honoured
+    irs::string_ref data("abc,\"def,\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream(",");
 
     ASSERT_TRUE(stream.reset(data));
@@ -131,7 +134,7 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
   // test delimiter '\t'
   {
-    irs::string_ref data("abc,\t\"def\t\""); // quoted terms should be honoured
+    irs::string_ref data("abc,\t\"def\t\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream("\t");
 
     ASSERT_TRUE(stream.reset(data));
@@ -154,7 +157,7 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
   // test delimiter '"'
   {
-    irs::string_ref data("abc,\"\"def\t\""); // quoted terms should be honoured
+    irs::string_ref data("abc,\"\"def\t\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream("\"");
 
     ASSERT_TRUE(stream.reset(data));
@@ -185,7 +188,8 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
   // test delimiter 'abc'
   {
-    irs::string_ref data("abc,123\"def123\""); // quoted terms should be honoured
+    irs::string_ref data(
+        "abc,123\"def123\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream("123");
 
     ASSERT_TRUE(stream.reset(data));
@@ -210,15 +214,15 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 TEST_F(delimited_token_stream_tests, test_quote) {
   // test quoted field
   {
-    irs::string_ref data("abc,\"def\",\"\"ghi"); // quoted terms should be honoured
-  
+    irs::string_ref data(
+        "abc,\"def\",\"\"ghi");  // quoted terms should be honoured
 
     auto testFunc = [](irs::string_ref data, irs::analysis::analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* offset = irs::get<irs::offset>(*pStream);
       auto* payload = irs::get<irs::payload>(*pStream);
-    ASSERT_EQ(nullptr, payload);
+      ASSERT_EQ(nullptr, payload);
       auto* term = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
@@ -241,14 +245,17 @@ TEST_F(delimited_token_stream_tests, test_quote) {
       testFunc(data, &stream);
     }
     {
-      auto stream = irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "{\"delimiter\":\",\"}");
+      auto stream = irs::analysis::analyzers::get(
+          "delimiter", irs::type<irs::text_format::json>::get(),
+          "{\"delimiter\":\",\"}");
       testFunc(data, stream.get());
     }
   }
 
   // test unterminated "
   {
-    irs::string_ref data("abc,\"def\",\"ghi"); // quoted terms should be honoured
+    irs::string_ref data(
+        "abc,\"def\",\"ghi");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream(",");
 
     ASSERT_TRUE(stream.reset(data));
@@ -275,7 +282,7 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 
   // test unterminated single "
   {
-    irs::string_ref data("abc,\"def\",\""); // quoted terms should be honoured
+    irs::string_ref data("abc,\"def\",\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream(",");
 
     ASSERT_TRUE(stream.reset(data));
@@ -302,7 +309,8 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 
   // test " escape
   {
-    irs::string_ref data("abc,\"\"\"def\",\"\"ghi"); // quoted terms should be honoured
+    irs::string_ref data(
+        "abc,\"\"\"def\",\"\"ghi");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream(",");
 
     ASSERT_TRUE(stream.reset(data));
@@ -329,7 +337,8 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 
   // test non-quoted field with "
   {
-    irs::string_ref data("abc,\"def\",ghi\""); // quoted terms should be honoured
+    irs::string_ref data(
+        "abc,\"def\",ghi\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream(",");
 
     ASSERT_TRUE(stream.reset(data));
@@ -355,13 +364,14 @@ TEST_F(delimited_token_stream_tests, test_quote) {
   }
 }
 
-#endif // IRESEARCH_DLL
+#endif  // IRESEARCH_DLL
 
 TEST_F(delimited_token_stream_tests, test_load) {
   // load jSON string
   {
-    irs::string_ref data("abc,def,ghi"); // quoted terms should be honoured
-    auto stream = irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "\",\"");
+    irs::string_ref data("abc,def,ghi");  // quoted terms should be honoured
+    auto stream = irs::analysis::analyzers::get(
+        "delimiter", irs::type<irs::text_format::json>::get(), "\",\"");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -388,8 +398,10 @@ TEST_F(delimited_token_stream_tests, test_load) {
 
   // load jSON object
   {
-    irs::string_ref data("abc,def,ghi"); // quoted terms should be honoured
-    auto stream = irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "{\"delimiter\":\",\"}");
+    irs::string_ref data("abc,def,ghi");  // quoted terms should be honoured
+    auto stream = irs::analysis::analyzers::get(
+        "delimiter", irs::type<irs::text_format::json>::get(),
+        "{\"delimiter\":\",\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -416,17 +428,30 @@ TEST_F(delimited_token_stream_tests, test_load) {
 
   // load jSON invalid
   {
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "1"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "[]"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "{}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::json>::get(), "{\"delimiter\":1}"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "delimiter", irs::type<irs::text_format::json>::get(),
+                  irs::string_ref::NIL));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "delimiter", irs::type<irs::text_format::json>::get(), "1"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "delimiter", irs::type<irs::text_format::json>::get(), "[]"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "delimiter", irs::type<irs::text_format::json>::get(), "{}"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "delimiter", irs::type<irs::text_format::json>::get(),
+                  "{\"delimiter\":1}"));
   }
 
   // load text
   {
-    irs::string_ref data("abc,def,ghi"); // quoted terms should be honoured
-    auto stream = irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::text>::get(), ",");
+    irs::string_ref data("abc,def,ghi");  // quoted terms should be honoured
+    auto stream = irs::analysis::analyzers::get(
+        "delimiter", irs::type<irs::text_format::text>::get(), ",");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -450,15 +475,43 @@ TEST_F(delimited_token_stream_tests, test_load) {
     ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
+
+  // load text, wide symbols
+  {
+    irs::string_ref data(
+        "\x61\x62\x63\x2C\xD0\x9F");  // quoted terms should be honoured
+    auto stream = irs::analysis::analyzers::get(
+        "delimiter", irs::type<irs::text_format::text>::get(), ",");
+
+    ASSERT_NE(nullptr, stream);
+    ASSERT_TRUE(stream->reset(data));
+
+    auto* offset = irs::get<irs::offset>(*stream);
+    auto* payload = irs::get<irs::payload>(*stream);
+    ASSERT_EQ(nullptr, payload);
+    auto* term = irs::get<irs::term_attribute>(*stream);
+
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ(0, offset->start);
+    ASSERT_EQ(3, offset->end);
+    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
+    ASSERT_TRUE(stream->next());
+    ASSERT_EQ(4, offset->start);
+    ASSERT_EQ(6, offset->end);
+    ASSERT_EQ("\xD0\x9F", irs::ref_cast<char>(term->value));
+    ASSERT_FALSE(stream->next());
+  }
 }
 
 TEST_F(delimited_token_stream_tests, test_make_config_json) {
-  //with unknown parameter
+  // with unknown parameter
   {
     std::string config = "{\"delimiter\":\",\",\"invalid_parameter\":true}";
     std::string actual;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::type<irs::text_format::json>::get(), config));
-    ASSERT_EQ(VPackParser::fromJson("{\"delimiter\":\",\"}")->toString(), actual);
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+        actual, "delimiter", irs::type<irs::text_format::json>::get(), config));
+    ASSERT_EQ(VPackParser::fromJson("{\"delimiter\":\",\"}")->toString(),
+              actual);
   }
 
   // test vpack
@@ -466,17 +519,22 @@ TEST_F(delimited_token_stream_tests, test_make_config_json) {
     std::string config = "{\"delimiter\":\",\",\"invalid_parameter\":true}";
     auto in_vpack = VPackParser::fromJson(config.c_str(), config.size());
     std::string in_str;
-    in_str.assign(in_vpack->slice().startAs<char>(), in_vpack->slice().byteSize());
+    in_str.assign(in_vpack->slice().startAs<char>(),
+                  in_vpack->slice().byteSize());
     std::string out_str;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(out_str, "delimiter", irs::type<irs::text_format::vpack>::get(), in_str));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+        out_str, "delimiter", irs::type<irs::text_format::vpack>::get(),
+        in_str));
     VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
-    ASSERT_EQ(VPackParser::fromJson("{\"delimiter\":\",\"}")->toString(), out_slice.toString());
+    ASSERT_EQ(VPackParser::fromJson("{\"delimiter\":\",\"}")->toString(),
+              out_slice.toString());
   }
 }
 
 TEST_F(delimited_token_stream_tests, test_make_config_text) {
   std::string config = ",";
   std::string actual;
-  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::type<irs::text_format::text>::get(), config));
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(
+      actual, "delimiter", irs::type<irs::text_format::text>::get(), config));
   ASSERT_EQ(config, actual);
 }
