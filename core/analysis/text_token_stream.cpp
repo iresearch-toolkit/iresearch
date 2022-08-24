@@ -1111,15 +1111,17 @@ bool text_token_stream::next_word() {
     auto utf8_length = [data = &state_->data](uint32_t begin,
                                               uint32_t end) noexcept {
       uint32_t length = 0;
-      for (; begin != end;) {
+      while (begin < end) {
         const auto cp = data->char32At(begin);
+
         // icu::UnicodeString::kInvalidUChar is private
-        assert(cp != 0xFFFF);
+        if (IRS_UNLIKELY(0xFFFF == cp)) {
+          return uint32_t{0};
+        }
 
         length += utf8_utils::cp_length(cp);
         begin += 1U + uint32_t{!U_IS_BMP(cp)};
       }
-
       return length;
     };
 
