@@ -20,10 +20,9 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "analysis/segmentation_token_stream.hpp"
-
 #include <vector>
 
+#include "analysis/segmentation_token_stream.hpp"
 #include "gtest/gtest.h"
 #include "tests_config.hpp"
 #include "velocypack/Parser.h"
@@ -40,9 +39,10 @@ struct analyzer_token {
 
 using analyzer_tokens = std::vector<analyzer_token>;
 
-} // namespace
+}  // namespace
 
-void assert_stream(irs::analysis::analyzer* pipe, std::string_view data, const analyzer_tokens& expected_tokens) {
+void assert_stream(irs::analysis::analyzer* pipe, std::string_view data,
+                   const analyzer_tokens& expected_tokens) {
   SCOPED_TRACE(data);
   auto* offset = irs::get<irs::offset>(*pipe);
   ASSERT_TRUE(offset);
@@ -51,15 +51,18 @@ void assert_stream(irs::analysis::analyzer* pipe, std::string_view data, const a
   auto* inc = irs::get<irs::increment>(*pipe);
   ASSERT_TRUE(inc);
   ASSERT_TRUE(pipe->reset(data));
-  uint32_t pos{ std::numeric_limits<uint32_t>::max() };
+  uint32_t pos{std::numeric_limits<uint32_t>::max()};
   auto expected_token = expected_tokens.begin();
   while (pipe->next()) {
-    auto term_value = std::string(irs::ref_cast<char>(term->value).c_str(), term->value.size());
+    auto term_value = std::string(irs::ref_cast<char>(term->value).c_str(),
+                                  term->value.size());
     SCOPED_TRACE(testing::Message("Term:<") << term_value << ">");
-    SCOPED_TRACE(testing::Message("Expected term:<") << expected_token->value << ">");
+    SCOPED_TRACE(testing::Message("Expected term:<")
+                 << expected_token->value << ">");
     pos += inc->value;
     ASSERT_NE(expected_token, expected_tokens.end());
-    ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value), term->value);
+    ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value),
+              term->value);
     ASSERT_EQ(expected_token->start, offset->start);
     ASSERT_EQ(expected_token->end, offset->end);
     ASSERT_EQ(expected_token->pos, pos);
@@ -69,138 +72,146 @@ void assert_stream(irs::analysis::analyzer* pipe, std::string_view data, const a
   ASSERT_FALSE(pipe->next());
 }
 
-
 TEST(segmentation_token_stream_test, consts) {
-  static_assert("segmentation" == irs::type<irs::analysis::segmentation_token_stream>::name());
+  static_assert("segmentation" ==
+                irs::type<irs::analysis::segmentation_token_stream>::name());
 }
 
 TEST(segmentation_token_stream_test, alpha_no_case_test) {
   irs::analysis::segmentation_token_stream::options_t opt;
-  opt.case_convert = irs::analysis::segmentation_token_stream::options_t::case_convert_t::NONE;
+  opt.case_convert =
+      irs::analysis::segmentation_token_stream::options_t::case_convert_t::NONE;
   irs::analysis::segmentation_token_stream stream(std::move(opt));
-  constexpr std::string_view data = "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) - Istanbul coffee house.png";
-  const analyzer_tokens expected{
-    { "File:Constantinople", 0, 19, 0},
-    { "1878", 20, 24, 1},
-    { "Turkish", 26, 33, 2},
-    { "Goverment", 34, 43, 3},
-    { "information", 44, 55, 4},
-    { "brocure", 56, 63, 5},
-    { "1950s", 65, 70, 6},
-    { "Istanbul", 74, 82, 7},
-    { "coffee", 83, 89, 8},
-    { "house.png", 90, 99, 9}
-  };
+  constexpr std::string_view data =
+      "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) "
+      "- Istanbul coffee house.png";
+  const analyzer_tokens expected{{"File:Constantinople", 0, 19, 0},
+                                 {"1878", 20, 24, 1},
+                                 {"Turkish", 26, 33, 2},
+                                 {"Goverment", 34, 43, 3},
+                                 {"information", 44, 55, 4},
+                                 {"brocure", 56, 63, 5},
+                                 {"1950s", 65, 70, 6},
+                                 {"Istanbul", 74, 82, 7},
+                                 {"coffee", 83, 89, 8},
+                                 {"house.png", 90, 99, 9}};
   assert_stream(&stream, data, expected);
 }
 
 TEST(segmentation_token_stream_test, alpha_lower_case_test) {
-  irs::analysis::segmentation_token_stream::options_t opt; // LOWER is default
+  irs::analysis::segmentation_token_stream::options_t opt;  // LOWER is default
   irs::analysis::segmentation_token_stream stream(std::move(opt));
-  constexpr std::string_view data = "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) - Istanbul coffee house.png";
-  const analyzer_tokens expected{
-    { "file:constantinople", 0, 19, 0},
-    { "1878", 20, 24, 1},
-    { "turkish", 26, 33, 2},
-    { "goverment", 34, 43, 3},
-    { "information", 44, 55, 4},
-    { "brocure", 56, 63, 5},
-    { "1950s", 65, 70, 6},
-    { "istanbul", 74, 82, 7},
-    { "coffee", 83, 89, 8},
-    { "house.png", 90, 99, 9}
-  };
+  constexpr std::string_view data =
+      "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) "
+      "- Istanbul coffee house.png";
+  const analyzer_tokens expected{{"file:constantinople", 0, 19, 0},
+                                 {"1878", 20, 24, 1},
+                                 {"turkish", 26, 33, 2},
+                                 {"goverment", 34, 43, 3},
+                                 {"information", 44, 55, 4},
+                                 {"brocure", 56, 63, 5},
+                                 {"1950s", 65, 70, 6},
+                                 {"istanbul", 74, 82, 7},
+                                 {"coffee", 83, 89, 8},
+                                 {"house.png", 90, 99, 9}};
   assert_stream(&stream, data, expected);
 }
 
 TEST(segmentation_token_stream_test, alpha_upper_case_test) {
   irs::analysis::segmentation_token_stream::options_t opt;
-  opt.case_convert = irs::analysis::segmentation_token_stream::options_t::case_convert_t::UPPER;
+  opt.case_convert = irs::analysis::segmentation_token_stream::options_t::
+      case_convert_t::UPPER;
   irs::analysis::segmentation_token_stream stream(std::move(opt));
-  constexpr std::string_view data = "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) - Istanbul coffee house.png";
-  const analyzer_tokens expected{
-    { "FILE:CONSTANTINOPLE", 0, 19, 0},
-    { "1878", 20, 24, 1},
-    { "TURKISH", 26, 33, 2},
-    { "GOVERMENT", 34, 43, 3},
-    { "INFORMATION", 44, 55, 4},
-    { "BROCURE", 56, 63, 5},
-    { "1950S", 65, 70, 6},
-    { "ISTANBUL", 74, 82, 7},
-    { "COFFEE", 83, 89, 8},
-    { "HOUSE.PNG", 90, 99, 9}
-  };
+  constexpr std::string_view data =
+      "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) "
+      "- Istanbul coffee house.png";
+  const analyzer_tokens expected{{"FILE:CONSTANTINOPLE", 0, 19, 0},
+                                 {"1878", 20, 24, 1},
+                                 {"TURKISH", 26, 33, 2},
+                                 {"GOVERMENT", 34, 43, 3},
+                                 {"INFORMATION", 44, 55, 4},
+                                 {"BROCURE", 56, 63, 5},
+                                 {"1950S", 65, 70, 6},
+                                 {"ISTANBUL", 74, 82, 7},
+                                 {"COFFEE", 83, 89, 8},
+                                 {"HOUSE.PNG", 90, 99, 9}};
   assert_stream(&stream, data, expected);
 }
 
 TEST(segmentation_token_stream_test, graphic_upper_case_test) {
   irs::analysis::segmentation_token_stream::options_t opt;
-  opt.case_convert = irs::analysis::segmentation_token_stream::options_t::case_convert_t::UPPER;
-  opt.word_break = irs::analysis::segmentation_token_stream::options_t::word_break_t::GRAPHIC;
+  opt.case_convert = irs::analysis::segmentation_token_stream::options_t::
+      case_convert_t::UPPER;
+  opt.word_break = irs::analysis::segmentation_token_stream::options_t::
+      word_break_t::GRAPHIC;
   irs::analysis::segmentation_token_stream stream(std::move(opt));
-  constexpr std::string_view data = "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) - Istanbul coffee house.png";
-  const analyzer_tokens expected{
-    { "FILE:CONSTANTINOPLE", 0, 19, 0},
-    { "(", 19, 20, 1},
-    { "1878", 20, 24, 2},
-    { ")", 24, 25, 3},
-    { "-", 25, 26, 4},
-    { "TURKISH", 26, 33, 5},
-    { "GOVERMENT", 34, 43, 6},
-    { "INFORMATION", 44, 55, 7},
-    { "BROCURE", 56, 63, 8},
-    { "(", 64, 65, 9},
-    { "1950S", 65, 70, 10},
-    { ")", 70, 71, 11},
-    { "-", 72, 73, 12},
-    { "ISTANBUL", 74, 82, 13},
-    { "COFFEE", 83, 89, 14},
-    { "HOUSE.PNG", 90, 99, 15}
-  };
+  constexpr std::string_view data =
+      "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) "
+      "- Istanbul coffee house.png";
+  const analyzer_tokens expected{{"FILE:CONSTANTINOPLE", 0, 19, 0},
+                                 {"(", 19, 20, 1},
+                                 {"1878", 20, 24, 2},
+                                 {")", 24, 25, 3},
+                                 {"-", 25, 26, 4},
+                                 {"TURKISH", 26, 33, 5},
+                                 {"GOVERMENT", 34, 43, 6},
+                                 {"INFORMATION", 44, 55, 7},
+                                 {"BROCURE", 56, 63, 8},
+                                 {"(", 64, 65, 9},
+                                 {"1950S", 65, 70, 10},
+                                 {")", 70, 71, 11},
+                                 {"-", 72, 73, 12},
+                                 {"ISTANBUL", 74, 82, 13},
+                                 {"COFFEE", 83, 89, 14},
+                                 {"HOUSE.PNG", 90, 99, 15}};
   assert_stream(&stream, data, expected);
 }
 
 TEST(segmentation_token_stream_test, all_lower_case_test) {
   irs::analysis::segmentation_token_stream::options_t opt;
-  opt.case_convert = irs::analysis::segmentation_token_stream::options_t::case_convert_t::LOWER;
-  opt.word_break = irs::analysis::segmentation_token_stream::options_t::word_break_t::ALL;
+  opt.case_convert = irs::analysis::segmentation_token_stream::options_t::
+      case_convert_t::LOWER;
+  opt.word_break =
+      irs::analysis::segmentation_token_stream::options_t::word_break_t::ALL;
   irs::analysis::segmentation_token_stream stream(std::move(opt));
-  constexpr std::string_view data = "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) - Istanbul coffee house.png";
-  const analyzer_tokens expected{
-    { "file:constantinople", 0, 19, 0},
-    { "(", 19, 20, 1},
-    { "1878", 20, 24, 2},
-    { ")", 24, 25, 3},
-    { "-", 25, 26, 4},
-    { "turkish", 26, 33, 5},
-    { " ", 33, 34, 6},
-    { "goverment", 34, 43, 7},
-    { " ", 43, 44, 8},
-    { "information", 44, 55, 9},
-    { " ", 55, 56, 10},
-    { "brocure", 56, 63, 11},
-    { " ", 63, 64, 12},
-    { "(", 64, 65, 13},
-    { "1950s", 65, 70, 14},
-    { ")", 70, 71, 15},
-    { " ", 71, 72, 16},
-    { "-", 72, 73, 17},
-    { " ", 73, 74, 18},
-    { "istanbul", 74, 82, 19},
-    { " ", 82, 83, 20},
-    { "coffee", 83, 89, 21},
-    { " ", 89, 90, 22},
-    { "house.png", 90, 99, 23}
-  };
+  constexpr std::string_view data =
+      "File:Constantinople(1878)-Turkish Goverment information brocure (1950s) "
+      "- Istanbul coffee house.png";
+  const analyzer_tokens expected{{"file:constantinople", 0, 19, 0},
+                                 {"(", 19, 20, 1},
+                                 {"1878", 20, 24, 2},
+                                 {")", 24, 25, 3},
+                                 {"-", 25, 26, 4},
+                                 {"turkish", 26, 33, 5},
+                                 {" ", 33, 34, 6},
+                                 {"goverment", 34, 43, 7},
+                                 {" ", 43, 44, 8},
+                                 {"information", 44, 55, 9},
+                                 {" ", 55, 56, 10},
+                                 {"brocure", 56, 63, 11},
+                                 {" ", 63, 64, 12},
+                                 {"(", 64, 65, 13},
+                                 {"1950s", 65, 70, 14},
+                                 {")", 70, 71, 15},
+                                 {" ", 71, 72, 16},
+                                 {"-", 72, 73, 17},
+                                 {" ", 73, 74, 18},
+                                 {"istanbul", 74, 82, 19},
+                                 {" ", 82, 83, 20},
+                                 {"coffee", 83, 89, 21},
+                                 {" ", 89, 90, 22},
+                                 {"house.png", 90, 99, 23}};
   assert_stream(&stream, data, expected);
 }
 
 TEST(segmentation_token_stream_test, chinese_glyphs_test) {
-  constexpr std::u8string_view data = u8"\u4ECA\u5929\u4E0B\u5348\u7684\u592A\u9633\u5F88\u6E29\u6696\u3002";
+  constexpr std::u8string_view data =
+      u8"\u4ECA\u5929\u4E0B\u5348\u7684\u592A\u9633\u5F88\u6E29\u6696\u3002";
   irs::analysis::segmentation_token_stream::options_t opt;
   irs::analysis::segmentation_token_stream stream(std::move(opt));
 
-  auto testFunc = [](const irs::string_ref& data, irs::analysis::analyzer* pStream) {
+  auto testFunc = [](const irs::string_ref& data,
+                     irs::analysis::analyzer* pStream) {
     ASSERT_TRUE(pStream->reset(data));
     auto* pOffset = irs::get<irs::offset>(*pStream);
     ASSERT_NE(nullptr, pOffset);
@@ -209,26 +220,41 @@ TEST(segmentation_token_stream_test, chinese_glyphs_test) {
     auto* pValue = irs::get<irs::term_attribute>(*pStream);
     ASSERT_NE(nullptr, pValue);
 
+    auto assert_offset = [pOffset](uint32_t start, uint32_t end) {
+      ASSERT_EQ(start, pOffset->start);
+      ASSERT_EQ(end, pOffset->end);
+    };
+
     ASSERT_TRUE(pStream->next());
     ASSERT_TRUE(u8"\u4ECA" == irs::ref_cast<char8_t>(pValue->value));
+    assert_offset(0, 3);
     ASSERT_TRUE(pStream->next());
     ASSERT_TRUE(u8"\u5929" == irs::ref_cast<char8_t>(pValue->value));
+    assert_offset(3, 6);
     ASSERT_TRUE(pStream->next());
     ASSERT_TRUE(u8"\u4E0B" == irs::ref_cast<char8_t>(pValue->value));
+    assert_offset(6, 9);
     ASSERT_TRUE(pStream->next());
     ASSERT_TRUE(u8"\u5348" == irs::ref_cast<char8_t>(pValue->value));
+    assert_offset(9, 12);
     ASSERT_TRUE(pStream->next());
     ASSERT_TRUE(u8"\u7684" == irs::ref_cast<char8_t>(pValue->value));
+    assert_offset(12, 15);
     ASSERT_TRUE(pStream->next());
     ASSERT_TRUE(u8"\u592A" == irs::ref_cast<char8_t>(pValue->value));
+    assert_offset(15, 18);
     ASSERT_TRUE(pStream->next());
     ASSERT_TRUE(u8"\u9633" == irs::ref_cast<char8_t>(pValue->value));
+    assert_offset(18, 21);
     ASSERT_TRUE(pStream->next());
     ASSERT_TRUE(u8"\u5F88" == irs::ref_cast<char8_t>(pValue->value));
+    assert_offset(21, 24);
     ASSERT_TRUE(pStream->next());
     ASSERT_TRUE(u8"\u6E29" == irs::ref_cast<char8_t>(pValue->value));
+    assert_offset(24, 27);
     ASSERT_TRUE(pStream->next());
     ASSERT_TRUE(u8"\u6696" == irs::ref_cast<char8_t>(pValue->value));
+    assert_offset(27, 30);
     ASSERT_FALSE(pStream->next());
   };
 
@@ -237,135 +263,101 @@ TEST(segmentation_token_stream_test, chinese_glyphs_test) {
 
 TEST(segmentation_token_stream_test, make_empty_object) {
   auto stream = irs::analysis::analyzers::get(
-      "segmentation",
-      irs::type<irs::text_format::json>::get(),
-      "{}");
+      "segmentation", irs::type<irs::text_format::json>::get(), "{}");
   ASSERT_TRUE(stream);
-  const analyzer_tokens expected{
-    { "test", 0, 4, 0},
-    { "retest", 7, 13, 1}
-  };
+  const analyzer_tokens expected{{"test", 0, 4, 0}, {"retest", 7, 13, 1}};
   std::string data = "Test - ReTeSt";
   assert_stream(stream.get(), data, expected);
 }
 
 TEST(segmentation_token_stream_test, make_lowercase) {
   auto stream = irs::analysis::analyzers::get(
-      "segmentation",
-      irs::type<irs::text_format::json>::get(),
+      "segmentation", irs::type<irs::text_format::json>::get(),
       "{\"case\":\"lower\"}");
   ASSERT_TRUE(stream);
-  const analyzer_tokens expected{
-    { "test", 0, 4, 0},
-    { "retest", 7, 13, 1}
-  };
+  const analyzer_tokens expected{{"test", 0, 4, 0}, {"retest", 7, 13, 1}};
   std::string data = "Test - ReTeSt";
   assert_stream(stream.get(), data, expected);
 }
 
 TEST(segmentation_token_stream_test, make_nonecase) {
   auto stream = irs::analysis::analyzers::get(
-      "segmentation",
-      irs::type<irs::text_format::json>::get(),
+      "segmentation", irs::type<irs::text_format::json>::get(),
       "{\"case\":\"none\"}");
   ASSERT_TRUE(stream);
-  const analyzer_tokens expected{
-    { "Test", 0, 4, 0},
-    { "ReTeSt", 7, 13, 1}
-  };
+  const analyzer_tokens expected{{"Test", 0, 4, 0}, {"ReTeSt", 7, 13, 1}};
   std::string data = "Test - ReTeSt";
   assert_stream(stream.get(), data, expected);
 }
 
 TEST(segmentation_token_stream_test, make_uppercase) {
   auto stream = irs::analysis::analyzers::get(
-      "segmentation",
-      irs::type<irs::text_format::json>::get(),
+      "segmentation", irs::type<irs::text_format::json>::get(),
       "{\"case\":\"upper\"}");
   ASSERT_TRUE(stream);
-  const analyzer_tokens expected{
-    { "TEST", 0, 4, 0},
-    { "RETEST", 7, 13, 1}
-  };
+  const analyzer_tokens expected{{"TEST", 0, 4, 0}, {"RETEST", 7, 13, 1}};
   std::string data = "Test - ReTeSt";
   assert_stream(stream.get(), data, expected);
 }
 
 TEST(segmentation_token_stream_test, make_invalidcase) {
   auto stream = irs::analysis::analyzers::get(
-      "segmentation",
-      irs::type<irs::text_format::json>::get(),
+      "segmentation", irs::type<irs::text_format::json>::get(),
       "{\"case\":\"invalid\"}");
   ASSERT_FALSE(stream);
 }
 
-
 TEST(segmentation_token_stream_test, make_numbercase) {
   auto stream = irs::analysis::analyzers::get(
-      "segmentation",
-      irs::type<irs::text_format::json>::get(),
-      "{\"case\":2}");
+      "segmentation", irs::type<irs::text_format::json>::get(), "{\"case\":2}");
   ASSERT_FALSE(stream);
 }
 
 TEST(segmentation_token_stream_test, make_uppercase_alphabreak) {
   auto stream = irs::analysis::analyzers::get(
-      "segmentation",
-      irs::type<irs::text_format::json>::get(),
+      "segmentation", irs::type<irs::text_format::json>::get(),
       "{\"case\":\"upper\", \"break\":\"alpha\"}");
   ASSERT_TRUE(stream);
-  const analyzer_tokens expected{
-    { "TEST", 0, 4, 0},
-    { "RETEST", 7, 13, 1}
-  };
+  const analyzer_tokens expected{{"TEST", 0, 4, 0}, {"RETEST", 7, 13, 1}};
   std::string data = "Test - ReTeSt";
   assert_stream(stream.get(), data, expected);
 }
 
 TEST(segmentation_token_stream_test, make_uppercase_all_break) {
   auto stream = irs::analysis::analyzers::get(
-      "segmentation",
-      irs::type<irs::text_format::json>::get(),
+      "segmentation", irs::type<irs::text_format::json>::get(),
       "{\"case\":\"upper\", \"break\":\"all\"}");
   ASSERT_TRUE(stream);
-  const analyzer_tokens expected{
-    { "TEST", 0, 4, 0},
-    { " ", 4, 5, 1},
-    { "-", 5, 6, 2},
-    { " ", 6, 7, 3},
-    { "RETEST", 7, 13, 4}
-  };
+  const analyzer_tokens expected{{"TEST", 0, 4, 0},
+                                 {" ", 4, 5, 1},
+                                 {"-", 5, 6, 2},
+                                 {" ", 6, 7, 3},
+                                 {"RETEST", 7, 13, 4}};
   std::string data = "Test - ReTeSt";
   assert_stream(stream.get(), data, expected);
 }
 
 TEST(segmentation_token_stream_test, make_uppercase_graphic_break) {
   auto stream = irs::analysis::analyzers::get(
-      "segmentation",
-      irs::type<irs::text_format::json>::get(),
+      "segmentation", irs::type<irs::text_format::json>::get(),
       "{\"case\":\"upper\", \"break\":\"graphic\"}");
   ASSERT_TRUE(stream);
   const analyzer_tokens expected{
-    { "TEST", 0, 4, 0},
-    { "-", 5, 6, 1},
-    { "RETEST", 7, 13, 2}
-  };
+      {"TEST", 0, 4, 0}, {"-", 5, 6, 1}, {"RETEST", 7, 13, 2}};
   std::string data = "Test - ReTeSt";
   assert_stream(stream.get(), data, expected);
 }
 
 TEST(segmentation_token_stream_test, make_uppercase_invalid_break) {
   auto stream = irs::analysis::analyzers::get(
-      "segmentation",
-      irs::type<irs::text_format::json>::get(),
+      "segmentation", irs::type<irs::text_format::json>::get(),
       "{\"case\":\"upper\", \"break\":\"_INVALID_\"}");
   ASSERT_FALSE(stream);
 }
 
 TEST(segmentation_token_stream_test, make_uppercase_invalid_number_break) {
   auto stream = irs::analysis::analyzers::get(
-      "segmentation",
-      irs::type<irs::text_format::json>::get(),
+      "segmentation", irs::type<irs::text_format::json>::get(),
       "{\"case\":\"upper\", \"break\":1}");
   ASSERT_FALSE(stream);
 }
@@ -373,32 +365,47 @@ TEST(segmentation_token_stream_test, make_uppercase_invalid_number_break) {
 TEST(segmentation_token_stream_test, make_invalid_json) {
   // load jSON invalid
   {
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("segmentation", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("segmentation", irs::type<irs::text_format::json>::get(), "1"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("segmentation", irs::type<irs::text_format::json>::get(), "\"abc\""));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("segmentation", irs::type<irs::text_format::json>::get(), "{\"case\":1}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("segmentation", irs::type<irs::text_format::json>::get(), "{\"break\":1}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("segmentation", irs::type<irs::text_format::json>::get(), "{\"case\":1, \"break\":\"all\"}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("segmentation", irs::type<irs::text_format::json>::get(), "{\"case\":\"none\", \"break\":1}"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "segmentation", irs::type<irs::text_format::json>::get(),
+                  irs::string_ref::NIL));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
+                           "segmentation",
+                           irs::type<irs::text_format::json>::get(), "1"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "segmentation", irs::type<irs::text_format::json>::get(),
+                  "\"abc\""));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "segmentation", irs::type<irs::text_format::json>::get(),
+                  "{\"case\":1}"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "segmentation", irs::type<irs::text_format::json>::get(),
+                  "{\"break\":1}"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "segmentation", irs::type<irs::text_format::json>::get(),
+                  "{\"case\":1, \"break\":\"all\"}"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "segmentation", irs::type<irs::text_format::json>::get(),
+                  "{\"case\":\"none\", \"break\":1}"));
   }
 }
 
 TEST(segmentation_token_stream_test, normalize_empty_object) {
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(
-      actual,
-      "segmentation",
-      irs::type<irs::text_format::json>::get(),
-      "{}"));
+      actual, "segmentation", irs::type<irs::text_format::json>::get(), "{}"));
   ASSERT_EQ(actual, "{\n  \"break\" : \"alpha\",\n  \"case\" : \"lower\"\n}");
 }
 
 TEST(segmentation_token_stream_test, normalize_all_none_values) {
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(
-      actual,
-      "segmentation",
-      irs::type<irs::text_format::json>::get(),
+      actual, "segmentation", irs::type<irs::text_format::json>::get(),
       "{\"break\":\"all\", \"case\":\"none\"}"));
   ASSERT_EQ(actual, "{\n  \"break\" : \"all\",\n  \"case\" : \"none\"\n}");
 }
@@ -407,11 +414,10 @@ TEST(segmentation_token_stream_test, normalize_graph_upper_values) {
   {
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
-        actual,
-        "segmentation",
-        irs::type<irs::text_format::json>::get(),
+        actual, "segmentation", irs::type<irs::text_format::json>::get(),
         "{\"break\":\"graphic\", \"case\":\"upper\"}"));
-    ASSERT_EQ(actual, "{\n  \"break\" : \"graphic\",\n  \"case\" : \"upper\"\n}");
+    ASSERT_EQ(actual,
+              "{\n  \"break\" : \"graphic\",\n  \"case\" : \"upper\"\n}");
   }
 
   // test vpack
@@ -419,28 +425,38 @@ TEST(segmentation_token_stream_test, normalize_graph_upper_values) {
     std::string config = "{\"break\":\"graphic\", \"case\":\"upper\"}";
     auto in_vpack = VPackParser::fromJson(config.c_str(), config.size());
     std::string in_str;
-    in_str.assign(in_vpack->slice().startAs<char>(), in_vpack->slice().byteSize());
+    in_str.assign(in_vpack->slice().startAs<char>(),
+                  in_vpack->slice().byteSize());
     std::string out_str;
-    ASSERT_TRUE(irs::analysis::analyzers::normalize(out_str, "segmentation", irs::type<irs::text_format::vpack>::get(), in_str));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(
+        out_str, "segmentation", irs::type<irs::text_format::vpack>::get(),
+        in_str));
     VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
-    ASSERT_EQ("{\n  \"break\" : \"graphic\",\n  \"case\" : \"upper\"\n}", out_slice.toString());
+    ASSERT_EQ("{\n  \"break\" : \"graphic\",\n  \"case\" : \"upper\"\n}",
+              out_slice.toString());
   }
 }
 
 TEST(segmentation_token_stream_test, normalize_invalid) {
   std::string actual;
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "segmentation",
-    irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "segmentation",
-    irs::type<irs::text_format::json>::get(), "1"));
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "segmentation",
-    irs::type<irs::text_format::json>::get(), "\"abc\""));
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "segmentation",
-    irs::type<irs::text_format::json>::get(), "{\"case\":1}"));
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "segmentation",
-    irs::type<irs::text_format::json>::get(), "{\"break\":1}"));
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "segmentation",
-    irs::type<irs::text_format::json>::get(), "{\"case\":1, \"break\":\"all\"}"));
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "segmentation",
-    irs::type<irs::text_format::json>::get(), "{\"case\":\"none\", \"break\":1}"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      actual, "segmentation", irs::type<irs::text_format::json>::get(),
+      irs::string_ref::NIL));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      actual, "segmentation", irs::type<irs::text_format::json>::get(), "1"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      actual, "segmentation", irs::type<irs::text_format::json>::get(),
+      "\"abc\""));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      actual, "segmentation", irs::type<irs::text_format::json>::get(),
+      "{\"case\":1}"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      actual, "segmentation", irs::type<irs::text_format::json>::get(),
+      "{\"break\":1}"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      actual, "segmentation", irs::type<irs::text_format::json>::get(),
+      "{\"case\":1, \"break\":\"all\"}"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(
+      actual, "segmentation", irs::type<irs::text_format::json>::get(),
+      "{\"case\":\"none\", \"break\":1}"));
 }
