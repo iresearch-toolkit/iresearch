@@ -855,15 +855,6 @@ TEST_P(format_10_test_case, ires336) {
   }
 }
 
-TEST_P(format_10_test_case, gggg) {
-  irs::mmap_directory dir{"/home/gnusi/Downloads"};
-  auto rdr = codec()->get_segment_meta_reader();
-  irs::segment_meta m;
-  rdr->read(dir, m, "_2963411.4.sm");
-
-  int it = 5;
-}
-
 TEST_P(format_10_test_case, postings_seek) {
   auto generate_docs = [](size_t count, size_t step) {
     std::vector<std::pair<irs::doc_id_t, uint32_t>> docs;

@@ -107,7 +107,7 @@ inline uint32_t next_checked(const byte_type*& begin,
   }
 
   uint32_t cp = *begin;
-  const size_t size = cp_length(cp);
+  const size_t size = cp_length_msb(cp);
 
   begin += size;
 
