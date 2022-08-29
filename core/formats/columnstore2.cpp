@@ -892,8 +892,7 @@ sparse_column::read_blocks_sparse(const column_header& hdr, index_input& in) {
     block.last_size = in.read_long();
     block.last = column::kBlockSize - 1;
   }
-  blocks.back().last =
-      uint16_t(uint32_t(hdr.docs_count % column::kBlockSize - 1));
+  blocks.back().last = uint16_t(hdr.docs_count % column::kBlockSize - 1U);
 
   return blocks;
 }
