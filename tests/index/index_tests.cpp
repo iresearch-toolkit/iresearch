@@ -15733,6 +15733,49 @@ INSTANTIATE_TEST_SUITE_P(
 
 class index_test_case_11 : public tests::index_test_base {};
 
+TEST_P(index_test_case_11, consolidate_old_format) {
+  tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      [](tests::document& doc, const std::string& name,
+         const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          doc.insert(std::make_shared<tests::string_field>(name, data.str));
+        }
+      });
+  tests::document const* doc1 = gen.next();
+  tests::document const* doc2 = gen.next();
+
+  auto validate_codec = [&](auto codec, size_t size) {
+    auto reader = irs::directory_reader::open(dir());
+    ASSERT_NE(nullptr, reader);
+    ASSERT_EQ(size, reader.size());
+    ASSERT_EQ(size, reader.meta().meta.size());
+    for (auto& meta : reader.meta().meta) {
+      ASSERT_EQ(codec, meta.meta.codec);
+    }
+  };
+
+  irs::index_writer::init_options writer_options;
+  auto writer = open_writer(irs::OM_CREATE, writer_options);
+  // 1st segment
+  ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
+                     doc1->stored.begin(), doc1->stored.end()));
+  writer->commit();
+  validate_codec(codec(), 1);
+  // 2nd segment
+  ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
+                     doc2->stored.begin(), doc2->stored.end()));
+  writer->commit();
+  validate_codec(codec(), 2);
+  // consolidate
+  auto old_codec = irs::formats::get("1_0");
+  irs::index_utils::consolidate_count consolidate_all;
+  ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::consolidation_policy(consolidate_all), old_codec));
+  writer->commit();
+  validate_codec(old_codec, 1);
+}
+
 TEST_P(index_test_case_11, clean_writer_with_payload) {
   tests::json_doc_generator gen(
       resource("simple_sequential.json"),
