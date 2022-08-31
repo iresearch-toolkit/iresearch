@@ -159,17 +159,11 @@ class min_match_disjunction : public doc_iterator,
       return doc_.value;
     }
 
-    /* execute seek for all lead iterators and
-     * move one to head if it doesn't hit the target */
+    // execute seek for all lead iterators and
+    // move one to head if it doesn't hit the target
     for (auto it = lead(), end = heap_.end(); it != end;) {
       assert(*it < itrs_.size());
       const auto doc = itrs_[*it]->seek(target);
-
-      if (doc == target) {
-        // got hit here
-        ++it;
-        continue;
-      }
 
       if (doc_limits::eof(doc)) {
         --lead_;
@@ -179,17 +173,14 @@ class min_match_disjunction : public doc_iterator,
           return (doc_.value = doc_limits::eof());
         }
 
-#ifdef _MSC_VER
-        // Microsoft invalidates iterator
         it = lead();
-#endif
-
-        // update end
         end = heap_.end();
       } else {  // doc != target
-        // move back to head
-        push_head(it);
-        --lead_;
+        if (doc != target) {
+          // move back to head
+          push_head(it);
+          --lead_;
+        }
         ++it;
       }
     }
@@ -334,12 +325,7 @@ class min_match_disjunction : public doc_iterator,
           return false;
         }
 
-#ifdef _MSC_VER
-        // Microsoft invalidates iterator
         it = lead();
-#endif
-
-        // update end
         end = heap_.end();
       } else {
         // push back to head
