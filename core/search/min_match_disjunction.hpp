@@ -175,7 +175,7 @@ class min_match_disjunction : public doc_iterator,
 
         it = lead();
         end = heap_.end();
-      } else {  // doc != target
+      } else {
         if (doc != target) {
           // move back to head
           push_head(it);
