@@ -258,7 +258,7 @@ class min_match_disjunction : public doc_iterator,
   }
 
   // Push all valid iterators to lead.
-  inline void push_valid_to_lead() {
+  void push_valid_to_lead() {
     auto& doc_ = std::get<document>(attrs_);
 
     for (auto lead = this->lead(), begin = heap_.begin();
@@ -272,6 +272,7 @@ class min_match_disjunction : public doc_iterator,
         if (doc_limits::eof(top()->seek(doc_.value))) {
           // iterator exhausted
           remove_top();
+          lead = this->lead();
         } else {
           refresh_top();
         }
@@ -280,7 +281,7 @@ class min_match_disjunction : public doc_iterator,
   }
 
   template<typename Iterator>
-  inline void push(Iterator begin, Iterator end) noexcept {
+  void push(Iterator begin, Iterator end) noexcept {
     // lambda here gives ~20% speedup on GCC
     std::push_heap(begin, end,
                    [this](const size_t lhs, const size_t rhs) noexcept {
@@ -296,7 +297,7 @@ class min_match_disjunction : public doc_iterator,
   }
 
   template<typename Iterator>
-  inline void pop(Iterator begin, Iterator end) noexcept {
+  void pop(Iterator begin, Iterator end) noexcept {
     // lambda here gives ~20% speedup on GCC
     detail::pop_heap(begin, end,
                      [this](const size_t lhs, const size_t rhs) noexcept {
@@ -342,7 +343,7 @@ class min_match_disjunction : public doc_iterator,
   // Returns true - if the min_match_count_ condition still can be satisfied,
   // false - otherwise.
   template<typename Iterator>
-  inline bool remove_lead(Iterator it) noexcept {
+  bool remove_lead(Iterator it) noexcept {
     if (&*it != &heap_.back()) {
       std::swap(*it, heap_.back());
     }
@@ -354,14 +355,14 @@ class min_match_disjunction : public doc_iterator,
   // iterators after the specified iterator.
   // Returns true - if the min_match_count_ condition still can be satisfied,
   // false - otherwise.
-  inline bool remove_top() noexcept {
+  bool remove_top() noexcept {
     auto lead = this->lead();
     pop(heap_.begin(), lead);
     return remove_lead(--lead);
   }
 
   // Refresh the value of the top of the head.
-  inline void refresh_top() noexcept {
+  void refresh_top() noexcept {
     auto lead = this->lead();
     pop(heap_.begin(), lead);
     push(heap_.begin(), lead);
@@ -370,7 +371,7 @@ class min_match_disjunction : public doc_iterator,
   // Push the specified iterator from lead group to the head
   // without movinh iterators after the specified iterator.
   template<typename Iterator>
-  inline void push_head(Iterator it) noexcept {
+  void push_head(Iterator it) noexcept {
     Iterator lead = this->lead();
     if (it != lead) {
       std::swap(*it, *lead);
@@ -381,22 +382,25 @@ class min_match_disjunction : public doc_iterator,
 
   // Returns true - if the min_match_count_ condition still can be satisfied,
   // false - otherwise.
-  inline bool check_size() const noexcept {
+  bool check_size() const noexcept {
     return heap_.size() >= min_match_count_;
   }
 
   // Returns reference to the top of the head
-  inline doc_iterator_t& top() noexcept {
+  doc_iterator_t& top() noexcept {
     assert(!heap_.empty());
     assert(heap_.front() < itrs_.size());
     return itrs_[heap_.front()];
   }
 
   // Returns the first iterator in the lead group
-  inline auto lead() noexcept { return heap_.end() - lead_; }
+  auto lead() noexcept {
+    assert(lead_ <= heap_.size());
+    return heap_.end() - lead_;
+  }
 
   // Adds iterator to the lead group
-  inline void add_lead() {
+  void add_lead() {
     pop(heap_.begin(), lead());
     ++lead_;
   }
