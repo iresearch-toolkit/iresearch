@@ -45,31 +45,29 @@ constexpr std::string_view CASE_CONVERT_PARAM_NAME{"case"};
 constexpr std::string_view BREAK_PARAM_NAME{"break"};
 
 const frozen::unordered_map<
-    string_ref, analysis::segmentation_token_stream::options_t::case_convert_t,
-    3>
-    CASE_CONVERT_MAP = {
-        {"lower",
-         analysis::segmentation_token_stream::options_t::case_convert_t::LOWER},
-        {"none",
-         analysis::segmentation_token_stream::options_t::case_convert_t::NONE},
-        {"upper",
-         analysis::segmentation_token_stream::options_t::case_convert_t::UPPER},
+  string_ref, analysis::segmentation_token_stream::options_t::case_convert_t, 3>
+  CASE_CONVERT_MAP = {
+    {"lower",
+     analysis::segmentation_token_stream::options_t::case_convert_t::LOWER},
+    {"none",
+     analysis::segmentation_token_stream::options_t::case_convert_t::NONE},
+    {"upper",
+     analysis::segmentation_token_stream::options_t::case_convert_t::UPPER},
 };
 
 const frozen::unordered_map<
-    string_ref, analysis::segmentation_token_stream::options_t::word_break_t, 3>
-    BREAK_CONVERT_MAP = {
-        {"all",
-         analysis::segmentation_token_stream::options_t::word_break_t::ALL},
-        {"alpha",
-         analysis::segmentation_token_stream::options_t::word_break_t::ALPHA},
-        {"graphic",
-         analysis::segmentation_token_stream::options_t::word_break_t::GRAPHIC},
+  string_ref, analysis::segmentation_token_stream::options_t::word_break_t, 3>
+  BREAK_CONVERT_MAP = {
+    {"all", analysis::segmentation_token_stream::options_t::word_break_t::ALL},
+    {"alpha",
+     analysis::segmentation_token_stream::options_t::word_break_t::ALPHA},
+    {"graphic",
+     analysis::segmentation_token_stream::options_t::word_break_t::GRAPHIC},
 };
 
 bool parse_vpack_options(
-    const VPackSlice slice,
-    analysis::segmentation_token_stream::options_t& options) {
+  const VPackSlice slice,
+  analysis::segmentation_token_stream::options_t& options) {
   if (!slice.isObject()) {
     IR_FRMT_ERROR("Slice for segmentation_token_stream is not an object");
     return false;
@@ -78,21 +76,21 @@ bool parse_vpack_options(
     auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME);
     if (!case_convert_slice.isString()) {
       IR_FRMT_WARN(
-          "Invalid type '%s' (string expected) for segmentation_token_stream "
-          "from"
-          " VPack arguments",
-          CASE_CONVERT_PARAM_NAME.data());
+        "Invalid type '%s' (string expected) for segmentation_token_stream "
+        "from"
+        " VPack arguments",
+        CASE_CONVERT_PARAM_NAME.data());
       return false;
     }
     auto case_convert = case_convert_slice.stringView();
     auto itr = CASE_CONVERT_MAP.find(
-        string_ref(case_convert.data(), case_convert.size()));
+      string_ref(case_convert.data(), case_convert.size()));
 
     if (itr == CASE_CONVERT_MAP.end()) {
       IR_FRMT_WARN(
-          "Invalid value in '%s' for segmentation_token_stream from"
-          " VPack arguments",
-          CASE_CONVERT_PARAM_NAME.data());
+        "Invalid value in '%s' for segmentation_token_stream from"
+        " VPack arguments",
+        CASE_CONVERT_PARAM_NAME.data());
       return false;
     }
     options.case_convert = itr->second;
@@ -101,21 +99,21 @@ bool parse_vpack_options(
     auto break_type_slice = slice.get(BREAK_PARAM_NAME);
     if (!break_type_slice.isString()) {
       IR_FRMT_WARN(
-          "Invalid type '%s' (string expected) for segmentation_token_stream "
-          "from "
-          "VPack arguments",
-          BREAK_PARAM_NAME.data());
+        "Invalid type '%s' (string expected) for segmentation_token_stream "
+        "from "
+        "VPack arguments",
+        BREAK_PARAM_NAME.data());
       return false;
     }
     auto break_type = break_type_slice.stringView();
-    auto itr = BREAK_CONVERT_MAP.find(
-        string_ref(break_type.data(), break_type.size()));
+    auto itr =
+      BREAK_CONVERT_MAP.find(string_ref(break_type.data(), break_type.size()));
 
     if (itr == BREAK_CONVERT_MAP.end()) {
       IR_FRMT_WARN(
-          "Invalid value in '%s' for segmentation_token_stream from "
-          "VPack arguments",
-          BREAK_PARAM_NAME.data());
+        "Invalid value in '%s' for segmentation_token_stream from "
+        "VPack arguments",
+        BREAK_PARAM_NAME.data());
       return false;
     }
     options.word_break = itr->second;
@@ -124,42 +122,40 @@ bool parse_vpack_options(
 }
 
 bool make_vpack_config(
-    const analysis::segmentation_token_stream::options_t& options,
-    VPackBuilder* builder) {
+  const analysis::segmentation_token_stream::options_t& options,
+  VPackBuilder* builder) {
   VPackObjectBuilder object(builder);
   {
-    auto it =
-        std::find_if(CASE_CONVERT_MAP.begin(), CASE_CONVERT_MAP.end(),
-                     [v = options.case_convert](
-                         const decltype(CASE_CONVERT_MAP)::value_type& m) {
-                       return m.second == v;
-                     });
+    auto it = std::find_if(CASE_CONVERT_MAP.begin(), CASE_CONVERT_MAP.end(),
+                           [v = options.case_convert](
+                             const decltype(CASE_CONVERT_MAP)::value_type& m) {
+                             return m.second == v;
+                           });
     if (it != CASE_CONVERT_MAP.end()) {
       builder->add(CASE_CONVERT_PARAM_NAME, VPackValue(it->first));
     } else {
       IR_FRMT_WARN(
-          "Invalid value in '%s' for normalizing segmentation_token_stream "
-          "from "
-          "Value is : %d",
-          CASE_CONVERT_PARAM_NAME.data(), options.case_convert);
+        "Invalid value in '%s' for normalizing segmentation_token_stream "
+        "from "
+        "Value is : %d",
+        CASE_CONVERT_PARAM_NAME.data(), options.case_convert);
       return false;
     }
   }
   {
-    auto it =
-        std::find_if(BREAK_CONVERT_MAP.begin(), BREAK_CONVERT_MAP.end(),
-                     [v = options.word_break](
-                         const decltype(BREAK_CONVERT_MAP)::value_type& m) {
-                       return m.second == v;
-                     });
+    auto it = std::find_if(BREAK_CONVERT_MAP.begin(), BREAK_CONVERT_MAP.end(),
+                           [v = options.word_break](
+                             const decltype(BREAK_CONVERT_MAP)::value_type& m) {
+                             return m.second == v;
+                           });
     if (it != BREAK_CONVERT_MAP.end()) {
       builder->add(BREAK_PARAM_NAME, VPackValue(it->first));
     } else {
       IR_FRMT_WARN(
-          "Invalid value in '%s' for normalizing segmentation_token_stream "
-          "from "
-          "Value is : %d",
-          BREAK_PARAM_NAME.data(), options.word_break);
+        "Invalid value in '%s' for normalizing segmentation_token_stream "
+        "from "
+        "Value is : %d",
+        BREAK_PARAM_NAME.data(), options.word_break);
       return false;
     }
   }
@@ -178,16 +174,16 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
       return nullptr;
     }
     return memory::make_unique<analysis::segmentation_token_stream>(
-        std::move(options));
+      std::move(options));
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while constructing segmentation_token_stream from "
-        "VPack arguments",
-        ex.what());
+      "Caught error '%s' while constructing segmentation_token_stream from "
+      "VPack arguments",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing segmentation_token_stream from VPack "
-        "arguments");
+      "Caught error while constructing segmentation_token_stream from VPack "
+      "arguments");
   }
   return nullptr;
 }
@@ -208,13 +204,13 @@ bool normalize_vpack_config(const VPackSlice slice,
     }
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while normalizing segmentation_token_stream from "
-        "VPack arguments",
-        ex.what());
+      "Caught error '%s' while normalizing segmentation_token_stream from "
+      "VPack arguments",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while normalizing segmentation_token_stream from VPack "
-        "arguments");
+      "Caught error while normalizing segmentation_token_stream from VPack "
+      "arguments");
   }
   return false;
 }
@@ -233,19 +229,19 @@ analysis::analyzer::ptr make_json(string_ref args) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR(
-          "Null arguments while constructing segmentation_token_stream");
+        "Null arguments while constructing segmentation_token_stream");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while constructing segmentation_token_stream from "
-        "JSON",
-        ex.what());
+      "Caught error '%s' while constructing segmentation_token_stream from "
+      "JSON",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing segmentation_token_stream from JSON");
+      "Caught error while constructing segmentation_token_stream from JSON");
   }
   return nullptr;
 }
@@ -254,7 +250,7 @@ bool normalize_json_config(string_ref args, std::string& definition) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR(
-          "Null arguments while normalizing segmentation_token_stream");
+        "Null arguments while normalizing segmentation_token_stream");
       return false;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
@@ -265,18 +261,18 @@ bool normalize_json_config(string_ref args, std::string& definition) {
     }
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while normalizing segmentation_token_stream from "
-        "JSON",
-        ex.what());
+      "Caught error '%s' while normalizing segmentation_token_stream from "
+      "JSON",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while normalizing segmentation_token_stream from JSON");
+      "Caught error while normalizing segmentation_token_stream from JSON");
   }
   return false;
 }
 
 using word_break_t =
-    analysis::segmentation_token_stream::options_t::word_break_t;
+  analysis::segmentation_token_stream::options_t::word_break_t;
 
 template<typename Iterator>
 bool accept_token(Iterator begin, Iterator end, word_break_t wb) {
@@ -311,7 +307,7 @@ struct segmentation_token_stream::state_t {
 };
 
 void segmentation_token_stream::state_deleter_t::operator()(
-    state_t* p) const noexcept {
+  state_t* p) const noexcept {
   delete p;
 }
 
@@ -328,10 +324,10 @@ REGISTER_ANALYZER_JSON(segmentation_token_stream, make_json,
 }
 
 segmentation_token_stream::segmentation_token_stream(
-    segmentation_token_stream::options_t&& options)
-    : analyzer{irs::type<segmentation_token_stream>::get()},
-      state_{new state_t()},
-      options_{options} {}
+  segmentation_token_stream::options_t&& options)
+  : analyzer{irs::type<segmentation_token_stream>::get()},
+    state_{new state_t()},
+    options_{options} {}
 
 bool segmentation_token_stream::next() {
   while (true) {
@@ -342,7 +338,7 @@ bool segmentation_token_stream::next() {
     const auto end = gr_end.base();
 
     const size_t length =
-        static_cast<size_t>(std::distance(begin.base(), end.base()));
+      static_cast<size_t>(std::distance(begin.base(), end.base()));
 
     if (!length) {
       // eof

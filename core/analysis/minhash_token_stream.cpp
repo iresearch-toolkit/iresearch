@@ -123,7 +123,7 @@ static uint64_t HashLen17to32(const char* s, size_t len) {
 // Return a 16-byte hash for 48 bytes.  Quick and dirty.
 // Callers do best to use "random-looking" values for a and b.
 static std::pair<uint64_t, uint64_t> WeakHashLen32WithSeeds(
-    uint64_t w, uint64_t x, uint64_t y, uint64_t z, uint64_t a, uint64_t b) {
+  uint64_t w, uint64_t x, uint64_t y, uint64_t z, uint64_t a, uint64_t b) {
   a += w;
   b = Rotate(b + a + z, 21);
   uint64_t c = a;
@@ -180,9 +180,9 @@ uint64_t CityHash64(const char* s, size_t len) {
   uint64_t y = Fetch64(s + len - 16) + Fetch64(s + len - 56);
   uint64_t z = HashLen16(Fetch64(s + len - 48) + len, Fetch64(s + len - 24));
   std::pair<uint64_t, uint64_t> v =
-      WeakHashLen32WithSeeds(s + len - 64, len, z);
+    WeakHashLen32WithSeeds(s + len - 64, len, z);
   std::pair<uint64_t, uint64_t> w =
-      WeakHashLen32WithSeeds(s + len - 32, y + k1, x);
+    WeakHashLen32WithSeeds(s + len - 32, y + k1, x);
   x = x * k1 + Fetch64(s);
 
   // Decrease len to the nearest multiple of 64, and operate on 64-byte chunks.
@@ -220,7 +220,7 @@ constexpr std::string_view kNumHashes{"numHashes"};
 const offset kEmptyOffset;
 
 std::pair<string_ref, velocypack::Slice> ParseAnalyzer(
-    velocypack::Slice slice) {
+  velocypack::Slice slice) {
   if (!slice.isObject()) {
     return {};
   }
@@ -229,9 +229,9 @@ std::pair<string_ref, velocypack::Slice> ParseAnalyzer(
 
   if (!typeSlice.isString()) {
     IR_FRMT_ERROR(
-        "Failed to read '%s' attribute of '%s' member as string while "
-        "constructing MinHashTokenStream from VPack arguments",
-        kTypeParam.data(), kAnalyzerParam.data());
+      "Failed to read '%s' attribute of '%s' member as string while "
+      "constructing MinHashTokenStream from VPack arguments",
+      kTypeParam.data(), kAnalyzerParam.data());
     return {};
   }
 
@@ -244,9 +244,9 @@ bool ParseVPack(velocypack::Slice slice, MinHashTokenStream::Options* opts) {
   if (const auto num_hashesSlice = slice.get(kNumHashes);
       !num_hashesSlice.isNumber()) {
     IR_FRMT_ERROR(
-        "Failed to read '%s' attribute as number while "
-        "constructing MinHashTokenStream from VPack arguments",
-        kNumHashes.data());
+      "Failed to read '%s' attribute as number while "
+      "constructing MinHashTokenStream from VPack arguments",
+      kNumHashes.data());
     return false;
   } else {
     opts->num_hashes = num_hashesSlice.getNumber<decltype(opts->num_hashes)>();
@@ -254,9 +254,9 @@ bool ParseVPack(velocypack::Slice slice, MinHashTokenStream::Options* opts) {
 
   if (opts->num_hashes < kMinHashes) {
     IR_FRMT_ERROR(
-        "Number of hashes must be at least 1, failed to "
-        "construct MinHashTokenStream from VPack arguments",
-        kNumHashes.data());
+      "Number of hashes must be at least 1, failed to "
+      "construct MinHashTokenStream from VPack arguments",
+      kNumHashes.data());
     return false;
   }
 
@@ -276,8 +276,8 @@ bool ParseVPack(velocypack::Slice slice, MinHashTokenStream::Options* opts) {
     }
 
     auto analyzer =
-        analyzers::get(type, irs::type<irs::text_format::vpack>::get(),
-                       {props.startAs<char>(), props.byteSize()});
+      analyzers::get(type, irs::type<irs::text_format::vpack>::get(),
+                     {props.startAs<char>(), props.byteSize()});
 
     if (!analyzer) {
       // fallback to json format if vpack isn't available
@@ -290,10 +290,10 @@ bool ParseVPack(velocypack::Slice slice, MinHashTokenStream::Options* opts) {
       return true;
     } else {
       IR_FRMT_ERROR(
-          "Failed to create analyzer of type '%s' with properties '%s' while "
-          "constructing "
-          "MinHashTokenStream pipeline_token_stream from VPack arguments",
-          type.c_str(), irs::slice_to_string(props).c_str());
+        "Failed to create analyzer of type '%s' with properties '%s' while "
+        "constructing "
+        "MinHashTokenStream pipeline_token_stream from VPack arguments",
+        type.c_str(), irs::slice_to_string(props).c_str());
     }
   }
 
@@ -326,8 +326,8 @@ analyzer::ptr MakeJson(irs::string_ref args) {
     return MakeVPack(vpack->slice());
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while constructing MinHashAnalyzer from JSON",
-        ex.what());
+      "Caught error '%s' while constructing MinHashAnalyzer from JSON",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR("Caught error while constructing MinHashAnalyzer from JSON");
   }
@@ -345,8 +345,8 @@ bool MakeVPackOptions(const MinHashTokenStream::Options& opts,
     }
   } else if (!analyzerSlice.isNone()) {
     IR_FRMT_ERROR(
-        "Failed to normalize definition of MinHashAnalyzer, 'properties' field "
-        "must be object");
+      "Failed to normalize definition of MinHashAnalyzer, 'properties' field "
+      "must be object");
     return false;
   }
 
@@ -365,7 +365,7 @@ bool MakeVPackOptions(const MinHashTokenStream::Options& opts,
                              {props.startAs<char>(), props.byteSize()})) {
       out->add(kPropertiesParam,
                velocypack::Slice{
-                   reinterpret_cast<const uint8_t*>(normalized.c_str())});
+                 reinterpret_cast<const uint8_t*>(normalized.c_str())});
 
       return true;
     }
@@ -419,11 +419,11 @@ bool NormalizeJson(irs::string_ref args, std::string& definition) {
     }
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while normalizing MinHashAnalyzer from JSON",
-        ex.what());
+      "Caught error '%s' while normalizing MinHashAnalyzer from JSON",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while normalizing MinHashAnalyzerfrom from JSON");
+      "Caught error while normalizing MinHashAnalyzerfrom from JSON");
   }
   return false;
 }
@@ -445,9 +445,9 @@ namespace iresearch::analysis {
 }
 
 MinHashTokenStream::MinHashTokenStream(Options&& opts)
-    : analysis::analyzer{irs::type<MinHashTokenStream>::get()},
-      opts_{std::move(opts)},
-      minhash_{opts.num_hashes} {
+  : analysis::analyzer{irs::type<MinHashTokenStream>::get()},
+    opts_{std::move(opts)},
+    minhash_{opts.num_hashes} {
   if (!opts_.analyzer) {
     // Fallback to default implementation
     opts_.analyzer = std::make_unique<string_token_stream>();
@@ -462,7 +462,7 @@ MinHashTokenStream::MinHashTokenStream(Options&& opts)
   offset_ = irs::get<offset>(*opts_.analyzer);
 
   std::get<term_attribute>(attrs_).value = {
-      reinterpret_cast<const byte_type*>(buf_.data()), buf_.size()};
+    reinterpret_cast<const byte_type*>(buf_.data()), buf_.size()};
 }
 
 bool MinHashTokenStream::next() {
@@ -479,9 +479,9 @@ bool MinHashTokenStream::next() {
   }();
 
   [[maybe_unused]] const size_t length =
-      absl::strings_internal::Base64EscapeInternal(
-          reinterpret_cast<const byte_type*>(&value), sizeof value, buf_.data(),
-          buf_.size(), absl::strings_internal::kBase64Chars, false);
+    absl::strings_internal::Base64EscapeInternal(
+      reinterpret_cast<const byte_type*>(&value), sizeof value, buf_.data(),
+      buf_.size(), absl::strings_internal::kBase64Chars, false);
   assert(length == buf_.size());
 
   std::get<increment>(attrs_).value = std::exchange(next_inc_.value, 0);

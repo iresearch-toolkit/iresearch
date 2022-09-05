@@ -34,7 +34,7 @@ const string_ref build_date() {
 
 const string_ref build_id() {
   static const std::string value = {
-    #include "utils/build_identifier.csx"
+#include "utils/build_identifier.csx"
   };
 
   return value;
@@ -48,11 +48,11 @@ const string_ref build_time() {
 
 const string_ref build_version() {
   static const std::string value = {
-    #include "utils/build_version.csx"
+#include "utils/build_version.csx"
   };
 
   return value;
 }
 
-}
-}
+}  // namespace version_utils
+}  // namespace iresearch

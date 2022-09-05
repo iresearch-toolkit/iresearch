@@ -139,7 +139,7 @@ TEST(string_ref_tests, assign) {
 TEST(string_ref_tests, compare) {
   using namespace iresearch;
 
-  // empty    
+  // empty
   {
     const std::string s0 = "";
     const string_ref ref0 = "";
@@ -158,7 +158,7 @@ TEST(string_ref_tests, compare) {
     EXPECT_TRUE(0 == compare(ref1, s1.c_str()));
   }
 
-  // same length 
+  // same length
   {
     const std::string s0 = "quck brown fox";
     const string_ref ref0(s0.c_str(), s0.size());
@@ -279,7 +279,7 @@ TEST(string_ref_tests, starts_with) {
 
     EXPECT_FALSE(starts_with(ref, prefix));
     s.insert(0, prefix.c_str(), prefix.size());
-    ref = s.c_str(); // refresh ref
+    ref = s.c_str();  // refresh ref
     EXPECT_TRUE(starts_with(ref, prefix));
   }
 }

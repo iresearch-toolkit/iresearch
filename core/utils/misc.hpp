@@ -56,7 +56,7 @@ class move_on_copy {
  public:
   explicit move_on_copy(T&& value) noexcept : value_(std::forward<T>(value)) {}
   move_on_copy(const move_on_copy& rhs) noexcept
-      : value_(std::move(rhs.value_)) {}
+    : value_(std::move(rhs.value_)) {}
 
   T& value() noexcept { return value_; }
   const T& value() const noexcept { return value_; }
@@ -84,7 +84,7 @@ class cached_func {
   using output_type = std::invoke_result_t<Func, Input>;
 
   constexpr explicit cached_func(input_type offset, Func&& func)
-      : func_{std::forward<Func>(func)} {
+    : func_{std::forward<Func>(func)} {
     for (; offset < Size; ++offset) {
       cache_[offset] = func_(offset);
     }
@@ -92,7 +92,7 @@ class cached_func {
 
   template<bool Checked>
   constexpr FORCE_INLINE output_type get(input_type value) const
-      noexcept(std::is_nothrow_invocable_v<Func, Input>) {
+    noexcept(std::is_nothrow_invocable_v<Func, Input>) {
     if constexpr (Checked) {
       return value < size() ? cache_[value] : func_(value);
     } else {
@@ -118,7 +118,7 @@ constexpr auto* down_cast(From* from) noexcept {
   static_assert(!std::is_pointer_v<To>);
   static_assert(!std::is_reference_v<To>);
   using CastTo =
-      std::conditional_t<std::is_const_v<From>, std::add_const_t<To>, To>;
+    std::conditional_t<std::is_const_v<From>, std::add_const_t<To>, To>;
   assert(from == nullptr || dynamic_cast<CastTo*>(from) != nullptr);
   return static_cast<CastTo*>(from);
 }

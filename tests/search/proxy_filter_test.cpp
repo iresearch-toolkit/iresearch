@@ -38,9 +38,9 @@ class doclist_test_iterator final : public doc_iterator,
                                     private util::noncopyable {
  public:
   doclist_test_iterator(const std::vector<doc_id_t>& documents)
-      : begin_(documents.begin()),
-        end_(documents.end()),
-        cost_(documents.size()) {
+    : begin_(documents.begin()),
+      end_(documents.end()),
+      cost_(documents.size()) {
     reset();
   }
 
@@ -96,7 +96,7 @@ class doclist_test_iterator final : public doc_iterator,
 class doclist_test_query final : public filter::prepared {
  public:
   doclist_test_query(const std::vector<doc_id_t>& documents, score_t)
-      : documents_(documents){};
+    : documents_(documents){};
 
   doc_iterator::ptr execute(const ExecutionContext&) const override {
     ++executes_;
@@ -121,7 +121,7 @@ size_t doclist_test_query::executes_{0};
 class doclist_test_filter final : public filter {
  public:
   doclist_test_filter() noexcept
-      : filter(irs::type<doclist_test_filter>::get()) {}
+    : filter(irs::type<doclist_test_filter>::get()) {}
 
   filter::prepared::ptr prepare(const index_reader&, const Order&,
                                 score_t boost,
@@ -252,12 +252,11 @@ class proxy_filter_real_filter : public tests::FilterTestCaseBase {
     auto writer = open_writer(irs::OM_CREATE);
 
     std::vector<doc_generator_base::ptr> gens;
-    gens.emplace_back(
-        new tests::json_doc_generator(resource("simple_sequential.json"),
-                                      &tests::generic_json_field_factory));
     gens.emplace_back(new tests::json_doc_generator(
-        resource("simple_sequential_common_prefix.json"),
-        &tests::generic_json_field_factory));
+      resource("simple_sequential.json"), &tests::generic_json_field_factory));
+    gens.emplace_back(new tests::json_doc_generator(
+      resource("simple_sequential_common_prefix.json"),
+      &tests::generic_json_field_factory));
     add_segments(*writer, gens);
   }
 };
@@ -269,7 +268,7 @@ TEST_P(proxy_filter_real_filter, with_terms_filter) {
   auto [q, cache] = proxy.set_filter<by_term>();
   *q.mutable_field() = "name";
   q.mutable_options()->term =
-      irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+    irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
   CheckQuery(proxy, Docs{1, 33}, rdr);
 }
 
@@ -281,23 +280,23 @@ TEST_P(proxy_filter_real_filter, with_disjunction_filter) {
   auto& q = root.add<by_term>();
   *q.mutable_field() = "name";
   q.mutable_options()->term =
-      irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+    irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
   auto& q1 = root.add<by_term>();
   *q1.mutable_field() = "name";
   q1.mutable_options()->term =
-      irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+    irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
   CheckQuery(proxy, Docs{1, 2, 33, 34}, rdr);
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    proxy_filter_real_filter, proxy_filter_real_filter,
-    ::testing::Combine(
-        ::testing::Values(&tests::directory<&tests::memory_directory>,
-                          &tests::directory<&tests::fs_directory>,
-                          &tests::directory<&tests::mmap_directory>),
-        ::testing::Values(tests::format_info{"1_0"},
-                          tests::format_info{"1_1", "1_0"},
-                          tests::format_info{"1_2", "1_0"},
-                          tests::format_info{"1_3", "1_0"},
-                          tests::format_info{"1_4", "1_4simd"})));
+  proxy_filter_real_filter, proxy_filter_real_filter,
+  ::testing::Combine(
+    ::testing::Values(&tests::directory<&tests::memory_directory>,
+                      &tests::directory<&tests::fs_directory>,
+                      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(tests::format_info{"1_0"},
+                      tests::format_info{"1_1", "1_0"},
+                      tests::format_info{"1_2", "1_0"},
+                      tests::format_info{"1_3", "1_0"},
+                      tests::format_info{"1_4", "1_4simd"})));
 }  // namespace

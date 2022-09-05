@@ -29,9 +29,9 @@
 #include "shared.hpp"
 
 #ifdef _WIN32
-  #define thread_name_t wchar_t*
+#define thread_name_t wchar_t*
 #else
-  #define thread_name_t char*
+#define thread_name_t char*
 #endif
 
 namespace iresearch {
@@ -42,7 +42,8 @@ template<typename Mutex>
 }
 
 template<typename Mutex, typename Mode>
-[[nodiscard]] inline std::unique_lock<Mutex> make_unique_lock(Mutex& mtx, Mode mode) {
+[[nodiscard]] inline std::unique_lock<Mutex> make_unique_lock(Mutex& mtx,
+                                                              Mode mode) {
   return std::unique_lock<Mutex>(mtx, mode);
 }
 
@@ -52,7 +53,8 @@ template<typename Mutex>
 }
 
 template<typename Mutex, typename Mode>
-[[nodiscard]] inline std::lock_guard<Mutex> make_lock_guard(Mutex& mtx, Mode mode) {
+[[nodiscard]] inline std::lock_guard<Mutex> make_lock_guard(Mutex& mtx,
+                                                            Mode mode) {
   return std::lock_guard<Mutex>(mtx, mode);
 }
 
@@ -62,7 +64,8 @@ template<typename Mutex>
 }
 
 template<typename Mutex, typename Mode>
-[[nodiscard]] inline std::shared_lock<Mutex> make_shared_lock(Mutex& mtx, Mode mode) {
+[[nodiscard]] inline std::shared_lock<Mutex> make_shared_lock(Mutex& mtx,
+                                                              Mode mode) {
   return std::shared_lock<Mutex>(mtx, mode);
 }
 
@@ -72,8 +75,9 @@ template<typename Mutex, typename Mode>
 //////////////////////////////////////////////////////////////////////////////
 bool set_thread_name(const thread_name_t name) noexcept;
 
-bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& name);
+bool get_thread_name(
+  std::basic_string<std::remove_pointer_t<thread_name_t>>& name);
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_THREAD_UTILS_H
+#endif  // IRESEARCH_THREAD_UTILS_H

@@ -47,7 +47,7 @@ struct index_lock : private util::noncopyable {
   static constexpr size_t kLockWaitForever = std::numeric_limits<size_t>::max();
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief destructor 
+  /// @brief destructor
   ////////////////////////////////////////////////////////////////////////////
   virtual ~index_lock() = default;
 
@@ -78,7 +78,7 @@ struct index_lock : private util::noncopyable {
   /// @returns call success
   ////////////////////////////////////////////////////////////////////////////
   virtual bool unlock() noexcept = 0;
-}; // unique_lock
+};  // unique_lock
 
 //////////////////////////////////////////////////////////////////////////////
 /// @enum IOAdvice
@@ -118,9 +118,9 @@ enum class IOAdvice : uint32_t {
   ///        explicitly required for MSVC2013
   ////////////////////////////////////////////////////////////////////////////
   READONCE_RANDOM = 6,
-}; // IOAdvice
+};  // IOAdvice
 
-ENABLE_BITMASK_ENUM(IOAdvice); // enable bitmap operations on the enum
+ENABLE_BITMASK_ENUM(IOAdvice);  // enable bitmap operations on the enum
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct directory
@@ -132,7 +132,7 @@ struct directory : private util::noncopyable {
   using ptr = std::unique_ptr<directory>;
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief destructor 
+  /// @brief destructor
   ////////////////////////////////////////////////////////////////////////////
   virtual ~directory() = default;
 
@@ -149,9 +149,7 @@ struct directory : private util::noncopyable {
   /// @param[in] name name of the file
   /// @returns call success
   ////////////////////////////////////////////////////////////////////////////
-  virtual bool exists(
-    bool& result,
-    std::string_view name) const noexcept = 0;
+  virtual bool exists(bool& result, std::string_view name) const noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief returns the length of the file specified by the given name
@@ -159,12 +157,11 @@ struct directory : private util::noncopyable {
   /// @param[in] name name of the file
   /// @returns call success
   ////////////////////////////////////////////////////////////////////////////
-  virtual bool length(
-    uint64_t& result,
-    std::string_view name) const noexcept = 0;
+  virtual bool length(uint64_t& result,
+                      std::string_view name) const noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief creates an index level lock with the specified name 
+  /// @brief creates an index level lock with the specified name
   /// @param[in] name name of the lock
   /// @returns lock hande
   ////////////////////////////////////////////////////////////////////////////
@@ -176,18 +173,16 @@ struct directory : private util::noncopyable {
   /// @param[in] name name of the file
   /// @returns call success
   ////////////////////////////////////////////////////////////////////////////
-  virtual bool mtime(
-    std::time_t& result,
-    std::string_view name) const noexcept = 0;
+  virtual bool mtime(std::time_t& result,
+                     std::string_view name) const noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief opens input stream associated with the existing file
   /// @param[in] name   name of the file to open
   /// @returns input stream associated with the file with the specified name
   ////////////////////////////////////////////////////////////////////////////
-  virtual index_input::ptr open(
-    std::string_view name,
-    IOAdvice advice) const noexcept = 0;
+  virtual index_input::ptr open(std::string_view name,
+                                IOAdvice advice) const noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief removes the file specified by the given name from directory
@@ -202,9 +197,7 @@ struct directory : private util::noncopyable {
   /// @param[in] dst final name of the file
   /// @returns true if file has been renamed
   ////////////////////////////////////////////////////////////////////////////
-  virtual bool rename(
-    std::string_view src,
-    std::string_view dst) noexcept = 0;
+  virtual bool rename(std::string_view src, std::string_view dst) noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief ensures that all modification have been sucessfully persisted
@@ -214,11 +207,10 @@ struct directory : private util::noncopyable {
   virtual bool sync(std::string_view name) noexcept = 0;
 
   virtual bool sync(std::span<std::string_view> files) noexcept {
-    return std::all_of(
-      std::begin(files), std::end(files),
-      [this](std::string_view name) mutable noexcept {
-        return this->sync(name);
-    });
+    return std::all_of(std::begin(files), std::end(files),
+                       [this](std::string_view name) mutable noexcept {
+                         return this->sync(name);
+                       });
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -240,8 +232,8 @@ struct directory : private util::noncopyable {
   const directory_attributes& attributes() const noexcept {
     return const_cast<directory*>(this)->attributes();
   }
-}; // directory
+};  // directory
 
-}
+}  // namespace iresearch
 
 #endif

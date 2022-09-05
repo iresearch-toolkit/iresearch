@@ -45,8 +45,8 @@ class cost final : public attribute {
   explicit cost(cost_t value) noexcept : value_(value), init_(true) {}
 
   explicit cost(cost_f&& func) noexcept(
-      std::is_nothrow_move_constructible_v<cost_f>)
-      : func_(std::move(func)), init_(false) {}
+    std::is_nothrow_move_constructible_v<cost_f>)
+    : func_(std::move(func)), init_(false) {}
 
   // Returns a value of the "cost" attribute in the specified "src"
   // collection, or "def" value if there is no "cost" attribute in "src".
@@ -67,7 +67,7 @@ class cost final : public attribute {
 
   // Sets the estimation rule.
   void reset(cost_f&& eval) noexcept(
-      std::is_nothrow_move_assignable_v<cost_f>) {
+    std::is_nothrow_move_assignable_v<cost_f>) {
     assert(eval);
     func_ = std::move(eval);
     init_ = false;

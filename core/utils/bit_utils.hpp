@@ -30,12 +30,12 @@ namespace iresearch {
 
 template<typename T>
 inline constexpr uint32_t bits_required() noexcept {
-  return sizeof(T)*8U;
+  return sizeof(T) * 8U;
 }
 
 template<typename T>
 inline constexpr size_t bits_required(size_t n) noexcept {
-  return bits_required<T>()*n;
+  return bits_required<T>() * n;
 }
 
 template<typename T>
@@ -60,11 +60,11 @@ inline constexpr void unset_bit(T& value) noexcept {
 
 template<unsigned Bit, typename T>
 inline constexpr void set_bit(bool set, T& value) noexcept {
-  set ? set_bit< Bit >(value) : unset_bit< Bit >(value);
+  set ? set_bit<Bit>(value) : unset_bit<Bit>(value);
 }
 
 template<typename T>
-inline constexpr void set_bit(T& value, size_t bit, bool set) noexcept{
+inline constexpr void set_bit(T& value, size_t bit, bool set) noexcept {
   set ? set_bit(value, bit) : unset_bit(value, bit);
 }
 
@@ -83,39 +83,38 @@ inline constexpr void unset_bit(T& value, size_t bit, bool unset) noexcept {
 }
 
 template<unsigned Bit, typename T>
-inline constexpr bool check_bit(T value) noexcept{
+inline constexpr bool check_bit(T value) noexcept {
   return (value & (T(1) << (Bit))) != 0;
 }
 
-template< typename T>
+template<typename T>
 inline constexpr bool check_bit(T value, size_t bit) noexcept {
   return (value & (T(1) << bit)) != 0;
 }
 
 template<unsigned Offset, typename T>
-inline constexpr T rol(T value) noexcept{
-  static_assert(Offset >= 0 && Offset <= sizeof(T) * 8,
-                 "Offset out of range");
+inline constexpr T rol(T value) noexcept {
+  static_assert(Offset >= 0 && Offset <= sizeof(T) * 8, "Offset out of range");
 
   return (value << Offset) | (value >> (sizeof(T) * 8 - Offset));
 }
 
 template<unsigned Offset, typename T>
-inline constexpr T ror(T value) noexcept{
-  static_assert(Offset >= 0 && Offset <= sizeof(T) * 8,
-                 "Offset out of range");
+inline constexpr T ror(T value) noexcept {
+  static_assert(Offset >= 0 && Offset <= sizeof(T) * 8, "Offset out of range");
 
   return (value >> Offset) | (value << (sizeof(T) * 8 - Offset));
 }
 
 #if defined(_MSC_VER)
-  #pragma warning( push )
-  #pragma warning(disable : 4146)
+#pragma warning(push)
+#pragma warning(disable : 4146)
 #endif
 
 // assert that signed right shift works as expected
 static_assert(static_cast<uint32_t>(INT32_C(-1) >> 31) == UINT32_C(0xFFFFFFFF));
-static_assert(static_cast<uint64_t>(INT64_C(-1) >> 63) == UINT64_C(0xFFFFFFFFFFFFFFFF));
+static_assert(static_cast<uint64_t>(INT64_C(-1) >> 63) ==
+              UINT64_C(0xFFFFFFFFFFFFFFFF));
 
 // possible fix:
 // return (-(uint32_t(v) >> 31)) ^ (uint32_t(v) << 1);
@@ -140,32 +139,34 @@ constexpr int64_t zig_zag_decode64(uint64_t v) noexcept {
 }
 
 #if defined(_MSC_VER)
-  #pragma warning( pop )
+#pragma warning(pop)
 #endif
 
 template<typename T>
 struct enum_bitwise_traits {
-  typedef typename std::enable_if<
-    std::is_enum<T>::value,
-    typename std::underlying_type<T>::type
-  >::type underlying_type_t;
+  typedef typename std::enable_if<std::is_enum<T>::value,
+                                  typename std::underlying_type<T>::type>::type
+    underlying_type_t;
 
   static constexpr T Or(T lhs, T rhs) noexcept {
-    return static_cast<T>(static_cast<underlying_type_t>(lhs) | static_cast<underlying_type_t>(rhs));
+    return static_cast<T>(static_cast<underlying_type_t>(lhs) |
+                          static_cast<underlying_type_t>(rhs));
   }
 
   static constexpr T Xor(T lhs, T rhs) noexcept {
-    return static_cast<T>(static_cast<underlying_type_t>(lhs) ^ static_cast<underlying_type_t>(rhs));
+    return static_cast<T>(static_cast<underlying_type_t>(lhs) ^
+                          static_cast<underlying_type_t>(rhs));
   }
 
   static constexpr T And(T lhs, T rhs) noexcept {
-    return static_cast<T>(static_cast<underlying_type_t>(lhs) & static_cast<underlying_type_t>(rhs));
+    return static_cast<T>(static_cast<underlying_type_t>(lhs) &
+                          static_cast<underlying_type_t>(rhs));
   }
 
   static constexpr T Not(T v) noexcept {
     return static_cast<T>(~static_cast<underlying_type_t>(v));
   }
-}; // enum_bitwise_traits
+};  // enum_bitwise_traits
 
 template<typename T>
 inline constexpr T enum_bitwise_or(T lhs, T rhs) noexcept {
@@ -187,15 +188,29 @@ inline constexpr T enum_bitwise_not(T v) noexcept {
   return enum_bitwise_traits<T>::Not(v);
 }
 
-}
+}  // namespace iresearch
 
-#define ENABLE_BITMASK_ENUM(x) \
-[[maybe_unused]] inline constexpr x operator&(x lhs, x rhs) noexcept { return irs::enum_bitwise_and(lhs, rhs); } \
-[[maybe_unused]] inline x& operator&=(x& lhs, x rhs)        noexcept { return lhs = irs::enum_bitwise_and(lhs, rhs); }   \
-[[maybe_unused]] inline constexpr x operator|(x lhs, x rhs) noexcept { return irs::enum_bitwise_or(lhs, rhs); }  \
-[[maybe_unused]] inline x& operator|=(x& lhs, x rhs)        noexcept { return lhs = irs::enum_bitwise_or(lhs, rhs); } \
-[[maybe_unused]] inline constexpr x operator^(x lhs, x rhs) noexcept { return irs::enum_bitwise_xor(lhs, rhs); } \
-[[maybe_unused]] inline x& operator^=(x& lhs, x rhs)        noexcept { return lhs = irs::enum_bitwise_xor(lhs, rhs); }   \
-[[maybe_unused]] inline constexpr x operator~(x v)          noexcept { return irs::enum_bitwise_not(v); }
+#define ENABLE_BITMASK_ENUM(x)                                           \
+  [[maybe_unused]] inline constexpr x operator&(x lhs, x rhs) noexcept { \
+    return irs::enum_bitwise_and(lhs, rhs);                              \
+  }                                                                      \
+  [[maybe_unused]] inline x& operator&=(x& lhs, x rhs) noexcept {        \
+    return lhs = irs::enum_bitwise_and(lhs, rhs);                        \
+  }                                                                      \
+  [[maybe_unused]] inline constexpr x operator|(x lhs, x rhs) noexcept { \
+    return irs::enum_bitwise_or(lhs, rhs);                               \
+  }                                                                      \
+  [[maybe_unused]] inline x& operator|=(x& lhs, x rhs) noexcept {        \
+    return lhs = irs::enum_bitwise_or(lhs, rhs);                         \
+  }                                                                      \
+  [[maybe_unused]] inline constexpr x operator^(x lhs, x rhs) noexcept { \
+    return irs::enum_bitwise_xor(lhs, rhs);                              \
+  }                                                                      \
+  [[maybe_unused]] inline x& operator^=(x& lhs, x rhs) noexcept {        \
+    return lhs = irs::enum_bitwise_xor(lhs, rhs);                        \
+  }                                                                      \
+  [[maybe_unused]] inline constexpr x operator~(x v) noexcept {          \
+    return irs::enum_bitwise_not(v);                                     \
+  }
 
 #endif

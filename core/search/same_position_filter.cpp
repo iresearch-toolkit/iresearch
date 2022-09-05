@@ -45,7 +45,7 @@ class same_position_iterator final : public Conjunction {
   same_position_iterator(typename Conjunction::doc_iterators_t&& itrs,
                          typename Conjunction::merger_type&& merger,
                          positions_t&& pos)
-      : Conjunction(std::move(itrs), std::move(merger)), pos_(std::move(pos)) {
+    : Conjunction(std::move(itrs), std::move(merger)), pos_(std::move(pos)) {
     assert(!pos_.empty());
   }
 
@@ -112,7 +112,7 @@ class same_position_query final : public filter::prepared {
 
   explicit same_position_query(states_t&& states, stats_t&& stats,
                                score_t boost)
-      : prepared(boost), states_(std::move(states)), stats_(std::move(stats)) {}
+    : prepared(boost), states_(std::move(states)), stats_(std::move(stats)) {}
 
   using filter::prepared::execute;
 
@@ -133,7 +133,7 @@ class same_position_query final : public filter::prepared {
 
     // get features required for query & order
     const IndexFeatures features =
-        ord.features() | by_same_position::kRequiredFeatures;
+      ord.features() | by_same_position::kRequiredFeatures;
 
     std::vector<score_iterator_adapter<irs::doc_iterator::ptr>> itrs;
     itrs.reserve(query_state->size());
@@ -177,14 +177,14 @@ class same_position_query final : public filter::prepared {
     }
 
     return irs::ResoveMergeType(
-        irs::sort::MergeType::kSum, ord.buckets().size(),
-        [&]<typename Aggregator>(
-            Aggregator&& aggregator) -> irs::doc_iterator::ptr {
-          using conjunction_t = conjunction<doc_iterator::ptr, Aggregator>;
+      irs::sort::MergeType::kSum, ord.buckets().size(),
+      [&]<typename Aggregator>(
+        Aggregator&& aggregator) -> irs::doc_iterator::ptr {
+        using conjunction_t = conjunction<doc_iterator::ptr, Aggregator>;
 
-          return MakeConjunction<same_position_iterator<conjunction_t>>(
-              std::move(itrs), std::move(aggregator), std::move(positions));
-        });
+        return MakeConjunction<same_position_iterator<conjunction_t>>(
+          std::move(itrs), std::move(aggregator), std::move(positions));
+      });
   }
 
  private:
@@ -197,8 +197,8 @@ class same_position_query final : public filter::prepared {
 namespace iresearch {
 
 filter::prepared::ptr by_same_position::prepare(
-    const index_reader& index, const Order& ord, score_t boost,
-    const attribute_provider* /*ctx*/) const {
+  const index_reader& index, const Order& ord, score_t boost,
+  const attribute_provider* /*ctx*/) const {
   auto& terms = options().terms;
   const auto size = terms.size();
 
@@ -227,7 +227,7 @@ filter::prepared::ptr by_same_position::prepare(
 
     for (const auto& branch : terms) {
       auto next_stats =
-          irs::make_finally([&term_idx]() noexcept { ++term_idx; });
+        irs::make_finally([&term_idx]() noexcept { ++term_idx; });
 
       // get term dictionary for field
       const term_reader* field = segment.field(branch.first);
@@ -289,7 +289,7 @@ filter::prepared::ptr by_same_position::prepare(
   }
 
   return memory::make_managed<same_position_query>(
-      std::move(query_states), std::move(stats), this->boost() * boost);
+    std::move(query_states), std::move(stats), this->boost() * boost);
 }
 
 }  // namespace iresearch

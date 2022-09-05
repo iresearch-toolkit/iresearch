@@ -50,7 +50,7 @@ std::vector<std::string> field_reader::features() const {
   std::vector<std::string> result;
   for (const auto* type_id : field_->meta().features) {
     auto& type_name = type_id->name();
-    result.emplace_back(type_name.c_str(), type_name.size())    ;
+    result.emplace_back(type_name.c_str(), type_name.size());
   }
   return result;
 }
@@ -61,14 +61,13 @@ std::vector<std::string> field_reader::features() const {
 
   return std::shared_ptr<const irs::index_reader>(
     static_cast<irs::index_reader::ptr>(index).get(),
-    [dir, index](const irs::index_reader*) { }
-  );
+    [dir, index](const irs::index_reader*) {});
 }
 
 index_reader::index_reader(std::shared_ptr<const irs::index_reader> reader)
   : reader_(std::move(reader)) {
   assert(reader_);
-  segments_.reserve(reader_->size()); 
+  segments_.reserve(reader_->size());
 
   for (auto& segment : *reader_) {
     segments_.push_back(&segment);
@@ -79,13 +78,11 @@ segment_reader index_reader::segment(size_t i) const {
   auto* segment = segments_.at(i);
 
   return std::shared_ptr<const irs::sub_reader>(
-    std::shared_ptr<const irs::sub_reader>(),
-    segment
-  );
+    std::shared_ptr<const irs::sub_reader>(), segment);
 }
 
 doc_iterator term_iterator::postings(
-    const std::vector<std::string>& features /*= std::vector<std::string>()*/
+  const std::vector<std::string>& features /*= std::vector<std::string>()*/
 ) const {
   return it_->postings(to_flags(features));
 }

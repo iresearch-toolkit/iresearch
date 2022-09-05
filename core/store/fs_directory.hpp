@@ -37,10 +37,9 @@ class fs_directory : public directory {
  public:
   static constexpr size_t DEFAULT_POOL_SIZE = 8;
 
-  explicit fs_directory(
-    utf8_path dir,
-    directory_attributes attrs = directory_attributes{},
-    size_t fd_pool_size = DEFAULT_POOL_SIZE);
+  explicit fs_directory(utf8_path dir,
+                        directory_attributes attrs = directory_attributes{},
+                        size_t fd_pool_size = DEFAULT_POOL_SIZE);
 
   using directory::attributes;
   virtual directory_attributes& attributes() noexcept override {
@@ -51,31 +50,24 @@ class fs_directory : public directory {
 
   const utf8_path& directory() const noexcept;
 
-  virtual bool exists(
-    bool& result,
-    std::string_view name) const noexcept override;
+  virtual bool exists(bool& result,
+                      std::string_view name) const noexcept override;
 
-  virtual bool length(
-    uint64_t& result,
-    std::string_view name) const noexcept override;
+  virtual bool length(uint64_t& result,
+                      std::string_view name) const noexcept override;
 
-  virtual index_lock::ptr make_lock(
-    std::string_view name) noexcept override;
+  virtual index_lock::ptr make_lock(std::string_view name) noexcept override;
 
-  virtual bool mtime(
-    std::time_t& result,
-    std::string_view name) const noexcept override;
+  virtual bool mtime(std::time_t& result,
+                     std::string_view name) const noexcept override;
 
-  virtual index_input::ptr open(
-    std::string_view name,
-    IOAdvice advice) const noexcept override;
+  virtual index_input::ptr open(std::string_view name,
+                                IOAdvice advice) const noexcept override;
 
-  virtual bool remove(
-    std::string_view name) noexcept override;
+  virtual bool remove(std::string_view name) noexcept override;
 
-  virtual bool rename(
-    std::string_view src,
-    std::string_view dst) noexcept override;
+  virtual bool rename(std::string_view src,
+                      std::string_view dst) noexcept override;
 
   virtual bool sync(std::string_view name) noexcept override;
 
@@ -85,8 +77,8 @@ class fs_directory : public directory {
   directory_attributes attrs_;
   utf8_path dir_;
   size_t fd_pool_size_;
-}; // fs_directory
+};  // fs_directory
 
-}
+}  // namespace iresearch
 
 #endif

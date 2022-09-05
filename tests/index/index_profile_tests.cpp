@@ -96,10 +96,10 @@ class index_profile_test_case : public tests::index_test_base {
     std::atomic<size_t> parsed_docs_count(0);
     size_t update_skip = 1000;
     size_t writer_batch_size =
-        batch_size ? batch_size : (std::numeric_limits<size_t>::max)();
+      batch_size ? batch_size : (std::numeric_limits<size_t>::max)();
     std::atomic<size_t> local_writer_commit_count(0);
     std::atomic<size_t>& writer_commit_count =
-        commit_count ? *commit_count : local_writer_commit_count;
+      commit_count ? *commit_count : local_writer_commit_count;
     std::atomic<size_t> writer_import_count(0);
     auto thread_count = (std::max)((size_t)1, num_insert_threads);
     auto total_threads = thread_count + num_import_threads + num_update_threads;
@@ -110,21 +110,21 @@ class index_profile_test_case : public tests::index_test_base {
     if (!writer) {
       irs::index_writer::init_options options;
       options.segment_count_max =
-          8;  // match original implementation or may run out of file handles
-              // (e.g. MacOS/Travis)
+        8;  // match original implementation or may run out of file handles
+            // (e.g. MacOS/Travis)
       writer = open_writer(irs::OM_CREATE, options);
     }
 
     // initialize reader data source for import threads
     {
       auto import_writer =
-          irs::index_writer::make(import_dir, codec(), irs::OM_CREATE);
+        irs::index_writer::make(import_dir, codec(), irs::OM_CREATE);
 
       {
         REGISTER_TIMER_NAMED_DETAILED("init - setup");
         tests::json_doc_generator import_gen{
-            resource("simple_sequential.json"),
-            &tests::generic_json_field_factory};
+          resource("simple_sequential.json"),
+          &tests::generic_json_field_factory};
 
         for (const tests::document* doc; (doc = import_gen.next());) {
           REGISTER_TIMER_NAMED_DETAILED("init - insert");
@@ -186,16 +186,15 @@ class index_profile_test_case : public tests::index_test_base {
 
             {
               REGISTER_TIMER_NAMED_DETAILED("load");
-              ASSERT_TRUE(tests::insert(*writer,
-                                        csv_doc_template.indexed.begin(),
-                                        csv_doc_template.indexed.end(),
-                                        csv_doc_template.stored.begin(),
-                                        csv_doc_template.stored.end()));
+              ASSERT_TRUE(tests::insert(
+                *writer, csv_doc_template.indexed.begin(),
+                csv_doc_template.indexed.end(), csv_doc_template.stored.begin(),
+                csv_doc_template.stored.end()));
             }
 
             if (count >= writer_batch_size) {
               auto commit_lock =
-                  irs::make_unique_lock(commit_mutex, std::try_to_lock);
+                irs::make_unique_lock(commit_mutex, std::try_to_lock);
 
               // break commit chains by skipping commit if one is already in
               // progress
@@ -245,7 +244,7 @@ class index_profile_test_case : public tests::index_test_base {
 
             ++writer_import_count;
             std::this_thread::sleep_for(
-                std::chrono::milliseconds(import_interval));
+              std::chrono::milliseconds(import_interval));
           } while (import_again.load());
         });
       }
@@ -299,36 +298,35 @@ class index_profile_test_case : public tests::index_test_base {
               irs::filter::ptr filter = std::make_unique<irs::by_term>();
               auto key_field = csv_doc_template.indexed.begin()->name();
               auto key_term =
-                  csv_doc_template.indexed.get<tests::string_field>(key_field)
-                      ->value();
+                csv_doc_template.indexed.get<tests::string_field>(key_field)
+                  ->value();
               auto value_field = (++(csv_doc_template.indexed.begin()))->name();
-              auto value_term = csv_doc_template.indexed
-                                    .get<tests::string_field>(value_field)
-                                    ->value();
+              auto value_term =
+                csv_doc_template.indexed.get<tests::string_field>(value_field)
+                  ->value();
               std::string updated_term(value_term.c_str(), value_term.size());
 
               auto& filter_impl = static_cast<irs::by_term&>(*filter);
               *filter_impl.mutable_field() = key_field;
               filter_impl.mutable_options()->term =
-                  irs::ref_cast<irs::byte_type>(key_term);
+                irs::ref_cast<irs::byte_type>(key_term);
               updated_term.append(value_term.c_str(),
                                   value_term.size());  // double up term
               csv_doc_template.indexed.get<tests::string_field>(value_field)
-                  ->value(updated_term);
+                ->value(updated_term);
               csv_doc_template.insert(
-                  std::make_shared<tests::string_field>("updated"));
+                std::make_shared<tests::string_field>("updated"));
 
               REGISTER_TIMER_NAMED_DETAILED("update");
-              update(*writer, std::move(filter),
-                     csv_doc_template.indexed.begin(),
-                     csv_doc_template.indexed.end(),
-                     csv_doc_template.stored.begin(),
-                     csv_doc_template.stored.end());
+              update(
+                *writer, std::move(filter), csv_doc_template.indexed.begin(),
+                csv_doc_template.indexed.end(), csv_doc_template.stored.begin(),
+                csv_doc_template.stored.end());
             }
 
             if (count >= writer_batch_size) {
               auto commit_lock =
-                  irs::make_unique_lock(commit_mutex, std::try_to_lock);
+                irs::make_unique_lock(commit_mutex, std::try_to_lock);
 
               // break commit chains by skipping commit if one is already in
               // progress
@@ -376,9 +374,9 @@ class index_profile_test_case : public tests::index_test_base {
 
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(
-        true,
-        1 <= reader.size());  // not all commits might produce a new segment,
-                              // some might merge with concurrent commits
+      true,
+      1 <= reader.size());  // not all commits might produce a new segment,
+                            // some might merge with concurrent commits
     ASSERT_TRUE(writer_commit_count * thread_count + writer_import_count >=
                 reader.size());  // worst case each thread is concurrently
                                  // populating its own segment for every commit
@@ -387,12 +385,12 @@ class index_profile_test_case : public tests::index_test_base {
     size_t imported_docs_count = 0;
     size_t updated_docs_count = 0;
     auto imported_visitor = [&imported_docs_count](
-                                irs::doc_id_t, const irs::bytes_ref&) -> bool {
+                              irs::doc_id_t, const irs::bytes_ref&) -> bool {
       ++imported_docs_count;
       return true;
     };
     auto updated_visitor = [&updated_docs_count](
-                               irs::doc_id_t, const irs::bytes_ref&) -> bool {
+                             irs::doc_id_t, const irs::bytes_ref&) -> bool {
       ++updated_docs_count;
       return true;
     };
@@ -434,13 +432,13 @@ class index_profile_test_case : public tests::index_test_base {
       while (working.load()) {
         irs::directory_cleaner::clean(*directory);
         std::this_thread::sleep_for(
-            std::chrono::milliseconds(cleanup_interval));
+          std::chrono::milliseconds(cleanup_interval));
       }
     });
 
     {
       auto finalizer =
-          irs::make_finally([&working]() noexcept { working = false; });
+        irs::make_finally([&working]() noexcept { working = false; });
       profile_bulk_index(num_threads, 0, 0, batch_size);
     }
 
@@ -463,22 +461,22 @@ class index_profile_test_case : public tests::index_test_base {
 
     for (size_t i = 0; i < commit_threads; ++i) {
       thread_pool.run(
-          [commit_interval, &working, &writer, &writer_commit_count]() -> void {
-            while (working.load()) {
-              {
-                REGISTER_TIMER_NAMED_DETAILED("commit");
-                writer->commit();
-              }
-              ++writer_commit_count;
-              std::this_thread::sleep_for(
-                  std::chrono::milliseconds(commit_interval));
+        [commit_interval, &working, &writer, &writer_commit_count]() -> void {
+          while (working.load()) {
+            {
+              REGISTER_TIMER_NAMED_DETAILED("commit");
+              writer->commit();
             }
-          });
+            ++writer_commit_count;
+            std::this_thread::sleep_for(
+              std::chrono::milliseconds(commit_interval));
+          }
+        });
     }
 
     {
       auto finalizer =
-          irs::make_finally([&working]() noexcept { working = false; });
+        irs::make_finally([&working]() noexcept { working = false; });
       profile_bulk_index(insert_threads, 0, 0, 0, writer, &writer_commit_count);
     }
 
@@ -489,7 +487,7 @@ class index_profile_test_case : public tests::index_test_base {
                                                 size_t batch_size,
                                                 size_t consolidate_interval) {
     const auto policy = irs::index_utils::consolidation_policy(
-        irs::index_utils::consolidate_count());
+      irs::index_utils::consolidate_count());
     irs::index_writer::init_options options;
     std::atomic<bool> working(true);
     irs::async_utils::thread_pool thread_pool(2, 2);
@@ -500,17 +498,17 @@ class index_profile_test_case : public tests::index_test_base {
     auto writer = open_writer(irs::OM_CREATE, options);
 
     thread_pool.run(
-        [consolidate_interval, &working, &writer, &policy]() -> void {
-          while (working.load()) {
-            writer->consolidate(policy);
-            std::this_thread::sleep_for(
-                std::chrono::milliseconds(consolidate_interval));
-          }
-        });
+      [consolidate_interval, &working, &writer, &policy]() -> void {
+        while (working.load()) {
+          writer->consolidate(policy);
+          std::this_thread::sleep_for(
+            std::chrono::milliseconds(consolidate_interval));
+        }
+      });
 
     {
       auto finalizer =
-          irs::make_finally([&working]() noexcept { working = false; });
+        irs::make_finally([&working]() noexcept { working = false; });
       profile_bulk_index(num_threads, 0, 0, batch_size, writer);
     }
 
@@ -522,7 +520,7 @@ class index_profile_test_case : public tests::index_test_base {
     writer->commit();
 
     struct dummy_doc_template_t
-        : public tests::csv_doc_generator::doc_template {
+      : public tests::csv_doc_generator::doc_template {
       virtual void init() {}
       virtual void value(size_t, const irs::string_ref&) {}
     };
@@ -605,14 +603,14 @@ TEST_P(index_profile_test_case,
 
 const auto kValues = ::testing::Values(
 #ifdef IRESEARCH_URING
-               &tests::directory<&tests::async_directory>,
+  &tests::directory<&tests::async_directory>,
 #endif
-               &tests::directory<&tests::memory_directory>,
-               &tests::directory<&tests::fs_directory>,
-               &tests::directory<&tests::mmap_directory>);
+  &tests::directory<&tests::memory_directory>,
+  &tests::directory<&tests::fs_directory>,
+  &tests::directory<&tests::mmap_directory>);
 
 INSTANTIATE_TEST_SUITE_P(
-    index_profile_test, index_profile_test_case,
-    ::testing::Combine(kValues,
-                       ::testing::Values("1_0", "1_2", "1_3", "1_4", "1_5")),
-    index_profile_test_case::to_string);
+  index_profile_test, index_profile_test_case,
+  ::testing::Combine(kValues,
+                     ::testing::Values("1_0", "1_2", "1_3", "1_4", "1_5")),
+  index_profile_test_case::to_string);

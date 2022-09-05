@@ -31,7 +31,8 @@ void stemmer_deleter::operator()(sb_stemmer* p) const noexcept {
 }
 
 stemmer_ptr make_stemmer_ptr(const char* algorithm, const char* charenc) {
-  return std::unique_ptr<sb_stemmer, stemmer_deleter>{sb_stemmer_new(algorithm, charenc)};
+  return std::unique_ptr<sb_stemmer, stemmer_deleter>{
+    sb_stemmer_new(algorithm, charenc)};
 }
 
-} // iresearch
+}  // namespace iresearch

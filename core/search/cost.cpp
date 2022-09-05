@@ -23,6 +23,4 @@
 #include "cost.hpp"
 #include "shared.hpp"
 
-namespace iresearch {
-
-} // ROOT
+namespace iresearch {}  // namespace iresearch

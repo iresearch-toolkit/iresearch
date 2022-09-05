@@ -1,6 +1,6 @@
 find_package(GTestLocal
   REQUIRED
-)
+  )
 
 SOURCE_GROUP("analysis" ./analysis/*)
 SOURCE_GROUP("store" ./store/*)
@@ -11,13 +11,13 @@ SOURCE_GROUP("utils" ./utils/*)
 
 set(IReSearch_generated_INCLUDE_DIR
   ${CMAKE_CURRENT_BINARY_DIR}
-)
+  )
 
 set(IResearchTests_INCLUDE_DIR
   "${PROJECT_SOURCE_DIR}/tests"
   CACHE INTERNAL
   ""
-)
+  )
 
 set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
@@ -123,7 +123,7 @@ set(IReSearch_tests_sources
   ./utils/ngram_match_utils_tests.cpp
   ./tests_param.cpp
   ./tests_main.cpp
-)
+  )
 
 set(IReSearch_tests_headers
   ./index/assert_format.hpp
@@ -133,20 +133,20 @@ set(IReSearch_tests_headers
   ./formats/formats_test_case_base.hpp
   ./tests_config.hpp
   ${IReSearch_generated_INCLUDE_DIR}/tests_config.hpp # auto generated
-)
+  )
 
 if (MSVC)
   # disable "checked iterators" feature
-  add_definitions(-D_SCL_SECURE_NO_WARNINGS) 
+  add_definitions(-D_SCL_SECURE_NO_WARNINGS)
 
   # when compiling or linking against GTEST on MSVC2017 the following
   # definition is required: /D _SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING
   add_definitions(-D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING)
-endif()
+endif ()
 
 add_custom_target(iresearch-tests
   DEPENDS iresearch-tests-static
-)
+  )
 
 add_executable(iresearch-tests-static
   EXCLUDE_FROM_ALL ${IReSearch_sources}
@@ -158,7 +158,7 @@ add_executable(iresearch-tests-static
   ./formats/formats_13_tests.cpp
   ./formats/formats_14_tests.cpp
   ./formats/formats_15_tests.cpp
-)
+  )
 
 set_ipo(iresearch-tests-static)
 add_sanitizers(iresearch-tests-static)
@@ -176,37 +176,37 @@ add_dependencies(iresearch-tests-static
   iresearch-format-1_0-static
   iresearch-scorer-tfidf-static
   iresearch-scorer-bm25-static
-)
+  )
 
 target_include_directories(iresearch-tests-static
   PRIVATE ${PROJECT_BINARY_DIR}/core
-)
+  )
 
-if(MSVC)
+if (MSVC)
   target_compile_options(iresearch-tests-static
     PRIVATE "/bigobj"
-  )
-endif()
+    )
+endif ()
 
 set_target_properties(iresearch-tests-static
   PROPERTIES
   OUTPUT_NAME iresearch-tests-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING"
-)
+  )
 
 target_link_libraries(iresearch-tests-static
   ${GCOV_LIBRARY}
   iresearch-static
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
-)
+  )
 
 # setup CRT
-if(MSVC)
+if (MSVC)
   target_compile_options(iresearch-tests-static
     PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
-  )
-endif()
+    )
+endif ()
 
 include_directories(iresearch-tests-static
   ${EXTERNAL_INCLUDE_DIRS}
@@ -222,4 +222,4 @@ include_directories(iresearch-tests-static
   $<TARGET_PROPERTY:iresearch-rapidjson,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:iresearch-ofst,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:iresearch-utfcpp,INTERFACE_INCLUDE_DIRECTORIES>
-)
+  )

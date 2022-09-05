@@ -38,19 +38,21 @@ namespace {
 
 using namespace irs::analysis;
 
-constexpr std::string_view MODEL_LOCATION_PARAM_NAME {"model_location"};
-constexpr std::string_view TOP_K_PARAM_NAME {"top_k"};
+constexpr std::string_view MODEL_LOCATION_PARAM_NAME{"model_location"};
+constexpr std::string_view TOP_K_PARAM_NAME{"top_k"};
 
 std::atomic<nearest_neighbors_stream::model_provider_f> MODEL_PROVIDER{nullptr};
 
-bool parse_vpack_options(const VPackSlice slice, nearest_neighbors_stream::options& options, const char* action) {
+bool parse_vpack_options(const VPackSlice slice,
+                         nearest_neighbors_stream::options& options,
+                         const char* action) {
   if (VPackValueType::Object == slice.type()) {
     auto model_location_slice = slice.get(MODEL_LOCATION_PARAM_NAME);
     if (!model_location_slice.isString()) {
       IR_FRMT_ERROR(
-        "Invalid vpack while %s nearest_neighbors_stream from VPack arguments. %s value should be a string.",
-        action,
-        MODEL_LOCATION_PARAM_NAME.data());
+        "Invalid vpack while %s nearest_neighbors_stream from VPack arguments. "
+        "%s value should be a string.",
+        action, MODEL_LOCATION_PARAM_NAME.data());
       return false;
     }
     options.model_location = irs::get_string<std::string>(model_location_slice);
@@ -58,17 +60,17 @@ bool parse_vpack_options(const VPackSlice slice, nearest_neighbors_stream::optio
     if (!top_k_slice.isNone()) {
       if (!top_k_slice.isNumber()) {
         IR_FRMT_ERROR(
-          "Invalid vpack while %s nearest_neighbors_stream from VPack arguments. %s value should be an integer.",
-          action,
-          TOP_K_PARAM_NAME.data());
+          "Invalid vpack while %s nearest_neighbors_stream from VPack "
+          "arguments. %s value should be an integer.",
+          action, TOP_K_PARAM_NAME.data());
         return false;
       }
       const auto top_k = top_k_slice.getNumber<size_t>();
       if (top_k > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
         IR_FRMT_ERROR(
-          "Invalid value provided while %s nearest_neighbors_stream from VPack arguments. %s value should be an int32_t.",
-          action,
-          TOP_K_PARAM_NAME.data());
+          "Invalid value provided while %s nearest_neighbors_stream from VPack "
+          "arguments. %s value should be an int32_t.",
+          action, TOP_K_PARAM_NAME.data());
         return false;
       }
       options.top_k = static_cast<uint32_t>(top_k);
@@ -78,7 +80,8 @@ bool parse_vpack_options(const VPackSlice slice, nearest_neighbors_stream::optio
   }
 
   IR_FRMT_ERROR(
-    "Invalid vpack while %s nearest_neighbors_stream from VPack arguments. Object was expected.",
+    "Invalid vpack while %s nearest_neighbors_stream from VPack arguments. "
+    "Object was expected.",
     action);
 
   return false;
@@ -99,20 +102,19 @@ analyzer::ptr construct(const nearest_neighbors_stream::options& options) {
       model = new_model;
     }
   } catch (const std::exception& e) {
-    IR_FRMT_ERROR(
-      "Failed to load fasttext kNN model from '%s', error '%s'",
-      options.model_location.c_str(), e.what());
+    IR_FRMT_ERROR("Failed to load fasttext kNN model from '%s', error '%s'",
+                  options.model_location.c_str(), e.what());
   } catch (...) {
-    IR_FRMT_ERROR(
-      "Failed to load fasttext kNN model from '%s'",
-      options.model_location.c_str());
+    IR_FRMT_ERROR("Failed to load fasttext kNN model from '%s'",
+                  options.model_location.c_str());
   }
 
   if (!model) {
     return nullptr;
   }
 
-  return irs::memory::make_unique<nearest_neighbors_stream>(options, std::move(model));
+  return irs::memory::make_unique<nearest_neighbors_stream>(options,
+                                                            std::move(model));
 }
 
 analyzer::ptr make_vpack(const VPackSlice slice) {
@@ -131,12 +133,13 @@ analyzer::ptr make_vpack(irs::string_ref args) {
 analyzer::ptr make_json(irs::string_ref args) {
   try {
     if (args.null()) {
-      IR_FRMT_ERROR("Null arguments while constructing nearest_neighbors_stream ");
+      IR_FRMT_ERROR(
+        "Null arguments while constructing nearest_neighbors_stream ");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.c_str());
     return make_vpack(vpack->slice());
-  } catch (const VPackException &ex) {
+  } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
       "Caught error '%s' while constructing nearest_neighbors_stream from JSON",
       ex.what());
@@ -147,9 +150,8 @@ analyzer::ptr make_json(irs::string_ref args) {
   return nullptr;
 }
 
-bool make_vpack_config(
-    const nearest_neighbors_stream::options& options,
-    VPackBuilder* builder) {
+bool make_vpack_config(const nearest_neighbors_stream::options& options,
+                       VPackBuilder* builder) {
   VPackObjectBuilder object{builder};
   {
     builder->add(MODEL_LOCATION_PARAM_NAME, VPackValue(options.model_location));
@@ -166,7 +168,6 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   return false;
 }
 
-
 bool normalize_vpack_config(irs::string_ref args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
@@ -180,7 +181,8 @@ bool normalize_vpack_config(irs::string_ref args, std::string& config) {
 bool normalize_json_config(irs::string_ref args, std::string& definition) {
   try {
     if (args.null()) {
-      IR_FRMT_ERROR("Null arguments while normalizing nearest_neighbors_stream ");
+      IR_FRMT_ERROR(
+        "Null arguments while normalizing nearest_neighbors_stream ");
       return false;
     }
     auto vpack = VPackParser::fromJson(args.c_str());
@@ -189,7 +191,7 @@ bool normalize_json_config(irs::string_ref args, std::string& definition) {
       definition = builder.toString();
       return !definition.empty();
     }
-  } catch(const VPackException& ex) {
+  } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
       "Caught error '%s' while normalizing nearest_neighbors_stream from JSON",
       ex.what());
@@ -200,27 +202,31 @@ bool normalize_json_config(irs::string_ref args, std::string& definition) {
   return false;
 }
 
-REGISTER_ANALYZER_VPACK(irs::analysis::nearest_neighbors_stream, make_vpack, normalize_vpack_config);
-REGISTER_ANALYZER_JSON(irs::analysis::nearest_neighbors_stream, make_json, normalize_json_config);
+REGISTER_ANALYZER_VPACK(irs::analysis::nearest_neighbors_stream, make_vpack,
+                        normalize_vpack_config);
+REGISTER_ANALYZER_JSON(irs::analysis::nearest_neighbors_stream, make_json,
+                       normalize_json_config);
 
-} // namespace
+}  // namespace
 
 namespace iresearch {
 namespace analysis {
 
 /*static*/ void nearest_neighbors_stream::init() {
-  REGISTER_ANALYZER_JSON(nearest_neighbors_stream, make_json, normalize_json_config);
-  REGISTER_ANALYZER_VPACK(nearest_neighbors_stream, make_vpack, normalize_vpack_config);
+  REGISTER_ANALYZER_JSON(nearest_neighbors_stream, make_json,
+                         normalize_json_config);
+  REGISTER_ANALYZER_VPACK(nearest_neighbors_stream, make_vpack,
+                          normalize_vpack_config);
 }
 
-/*static*/ nearest_neighbors_stream::model_provider_f nearest_neighbors_stream::set_model_provider(
-    model_provider_f provider) noexcept {
+/*static*/ nearest_neighbors_stream::model_provider_f
+nearest_neighbors_stream::set_model_provider(
+  model_provider_f provider) noexcept {
   return ::MODEL_PROVIDER.exchange(provider, std::memory_order_relaxed);
 }
 
-nearest_neighbors_stream::nearest_neighbors_stream(
-    const options& options,
-    model_ptr model) noexcept
+nearest_neighbors_stream::nearest_neighbors_stream(const options& options,
+                                                   model_ptr model) noexcept
   : analyzer{irs::type<nearest_neighbors_stream>::get()},
     model_{std::move(model)},
     neighbors_it_{neighbors_.end()},
@@ -238,15 +244,16 @@ bool nearest_neighbors_stream::next() {
     if (current_token_ind_ == n_tokens_) {
       return false;
     }
-    neighbors_ = model_->getNN(model_dict_->getWord(line_token_ids_[current_token_ind_]), top_k_);
+    neighbors_ = model_->getNN(
+      model_dict_->getWord(line_token_ids_[current_token_ind_]), top_k_);
     neighbors_it_ = neighbors_.begin();
     ++current_token_ind_;
   }
 
   auto& term = std::get<term_attribute>(attrs_);
   term.value = {
-    reinterpret_cast<const byte_type *>(neighbors_it_->second.c_str()),
-    neighbors_it_->second.size() };
+    reinterpret_cast<const byte_type*>(neighbors_it_->second.c_str()),
+    neighbors_it_->second.size()};
 
   auto& inc = std::get<increment>(attrs_);
   inc.value = uint32_t(neighbors_it_ == neighbors_.begin());
@@ -274,5 +281,5 @@ bool nearest_neighbors_stream::reset(string_ref data) {
   return true;
 }
 
-}
-}
+}  // namespace analysis
+}  // namespace iresearch

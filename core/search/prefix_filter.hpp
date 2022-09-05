@@ -41,10 +41,8 @@ struct by_prefix_filter_options {
     return term == rhs.term;
   }
 
-  size_t hash() const noexcept {
-    return std::hash<bstring>()(term);
-  }
-}; // by_prefix_options
+  size_t hash() const noexcept { return std::hash<bstring>()(term); }
+};  // by_prefix_options
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct by_prefix_options
@@ -61,13 +59,13 @@ struct by_prefix_options : by_prefix_filter_options {
 
   bool operator==(const by_prefix_options& rhs) const noexcept {
     return filter_options::operator==(rhs) &&
-        scored_terms_limit == rhs.scored_terms_limit;
+           scored_terms_limit == rhs.scored_terms_limit;
   }
 
   size_t hash() const noexcept {
     return hash_combine(filter_options::hash(), scored_terms_limit);
   }
-}; // by_prefix_options
+};  // by_prefix_options
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_prefix
@@ -75,34 +73,24 @@ struct by_prefix_options : by_prefix_filter_options {
 ////////////////////////////////////////////////////////////////////////////////
 class by_prefix : public filter_base<by_prefix_options> {
  public:
-  static prepared::ptr prepare(
-    const index_reader& index,
-    const Order& ord,
-    score_t boost,
-    string_ref field,
-    bytes_ref prefix,
-    size_t scored_terms_limit);
+  static prepared::ptr prepare(const index_reader& index, const Order& ord,
+                               score_t boost, string_ref field,
+                               bytes_ref prefix, size_t scored_terms_limit);
 
-  static void visit(
-    const sub_reader& segment,
-    const term_reader& reader,
-    bytes_ref prefix,
-    filter_visitor& visitor);
+  static void visit(const sub_reader& segment, const term_reader& reader,
+                    bytes_ref prefix, filter_visitor& visitor);
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& index,
-      const Order& ord,
-      score_t boost,
-      const attribute_provider* /*ctx*/) const override {
-    return prepare(index, ord, this->boost()*boost,
-                   field(), options().term,
+    const index_reader& index, const Order& ord, score_t boost,
+    const attribute_provider* /*ctx*/) const override {
+    return prepare(index, ord, this->boost() * boost, field(), options().term,
                    options().scored_terms_limit);
   }
-}; // by_prefix
+};  // by_prefix
 
-}
+}  // namespace iresearch
 
 namespace std {
 
@@ -113,6 +101,6 @@ struct hash<::iresearch::by_prefix_options> {
   }
 };
 
-}
+}  // namespace std
 
 #endif

@@ -35,22 +35,17 @@ namespace iresearch {
 template<typename ReaderType>
 class composite_reader : public index_reader {
  public:
-  typedef typename std::enable_if<
-    std::is_base_of<index_reader, ReaderType>::value,
-    ReaderType
-  >::type reader_type;
+  typedef
+    typename std::enable_if<std::is_base_of<index_reader, ReaderType>::value,
+                            ReaderType>::type reader_type;
 
   typedef std::vector<reader_type> readers_t;
 
-  composite_reader(
-      readers_t&& readers,
-      uint64_t docs_count,
-      uint64_t docs_max
-  ) noexcept
+  composite_reader(readers_t&& readers, uint64_t docs_count,
+                   uint64_t docs_max) noexcept
     : readers_(std::move(readers)),
       docs_count_(docs_count),
-      docs_max_(docs_max) {
-  }
+      docs_max_(docs_max) {}
 
   // returns corresponding sub-reader
   virtual const reader_type& operator[](size_t i) const noexcept override {
@@ -59,9 +54,7 @@ class composite_reader : public index_reader {
   }
 
   // maximum number of documents
-  virtual uint64_t docs_count() const noexcept override {
-    return docs_max_;
-  }
+  virtual uint64_t docs_count() const noexcept override { return docs_max_; }
 
   // number of live documents
   virtual uint64_t live_docs_count() const noexcept override {
@@ -69,16 +62,14 @@ class composite_reader : public index_reader {
   }
 
   // returns total number of opened writers
-  virtual size_t size() const noexcept override {
-    return readers_.size();
-  }
+  virtual size_t size() const noexcept override { return readers_.size(); }
 
  private:
   readers_t readers_;
   uint64_t docs_count_;
   uint64_t docs_max_;
-}; // composite_reader
+};  // composite_reader
 
-}
+}  // namespace iresearch
 
 #endif

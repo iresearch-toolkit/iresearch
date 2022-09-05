@@ -46,13 +46,13 @@ struct by_column_existence_options {
 
 // User-side column existence filter
 class by_column_existence final
-    : public filter_base<by_column_existence_options> {
+  : public filter_base<by_column_existence_options> {
  public:
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& rdr, const Order& ord, score_t boost,
-      const attribute_provider* ctx) const override;
+    const index_reader& rdr, const Order& ord, score_t boost,
+    const attribute_provider* ctx) const override;
 };
 
 }  // namespace iresearch

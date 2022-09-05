@@ -37,7 +37,7 @@ namespace {
 struct ChildIterator : irs::doc_iterator {
  public:
   ChildIterator(irs::doc_iterator::ptr&& it, std::set<irs::doc_id_t> parents)
-      : it_{std::move(it)}, parents_{std::move(parents)} {
+    : it_{std::move(it)}, parents_{std::move(parents)} {
     EXPECT_NE(nullptr, it_);
   }
 
@@ -78,7 +78,7 @@ struct ChildIterator : irs::doc_iterator {
 class PrevDocWrapper : public irs::doc_iterator {
  public:
   explicit PrevDocWrapper(doc_iterator::ptr&& it) noexcept
-      : it_{std::move(it)} {
+    : it_{std::move(it)} {
     // Actual implementation doesn't matter
     prev_doc_.reset([](const void*) { return irs::doc_limits::eof(); },
                     nullptr);
@@ -114,8 +114,8 @@ struct DocIdScorer : irs::sort {
     }
 
     virtual irs::ScoreFunction prepare_scorer(
-        const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*,
-        const irs::attribute_provider& attrs, irs::score_t) const override {
+      const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*,
+      const irs::attribute_provider& attrs, irs::score_t) const override {
       struct ScorerContext final : irs::score_ctx {
         explicit ScorerContext(const irs::document* doc) noexcept : doc{doc} {}
 
@@ -145,9 +145,9 @@ auto MakeParentProvider(std::string_view name) {
   return [name](const irs::sub_reader& segment) {
     const auto* col = segment.column(name);
 
-    return col ? col->iterator(irs::ColumnHint::kMask |
-                               irs::ColumnHint::kPrevDoc)
-               : nullptr;
+    return col
+             ? col->iterator(irs::ColumnHint::kMask | irs::ColumnHint::kPrevDoc)
+             : nullptr;
   };
 }
 
@@ -175,21 +175,21 @@ auto MakeByNumericTerm(std::string_view name, int32_t value) {
 }
 
 irs::filter::ptr MakeOr(
-    std::span<std::pair<std::string_view, std::string_view>> parts) {
+  std::span<std::pair<std::string_view, std::string_view>> parts) {
   auto filter = std::make_unique<irs::Or>();
   for (const auto& [name, value] : parts) {
     filter->add<irs::by_term>() =
-        std::move(static_cast<irs::by_term&>(*MakeByTerm(name, value)));
+      std::move(static_cast<irs::by_term&>(*MakeByTerm(name, value)));
   }
   return filter;
 }
 
 irs::filter::ptr MakeAnd(
-    std::span<std::pair<std::string_view, std::string_view>> parts) {
+  std::span<std::pair<std::string_view, std::string_view>> parts) {
   auto filter = std::make_unique<irs::And>();
   for (const auto& [name, value] : parts) {
     filter->add<irs::by_term>() =
-        std::move(static_cast<irs::by_term&>(*MakeByTerm(name, value)));
+      std::move(static_cast<irs::by_term&>(*MakeByTerm(name, value)));
   }
   return filter;
 }
@@ -229,7 +229,7 @@ auto MakeOptions(std::string_view parent, std::string_view child,
   auto& child_filter = static_cast<irs::by_term&>(*opts.child);
   *child_filter.mutable_field() = child;
   child_filter.mutable_options()->term =
-      irs::ref_cast<irs::byte_type>(child_value);
+    irs::ref_cast<irs::byte_type>(child_value);
 
   return opts;
 }
@@ -264,8 +264,8 @@ TEST(NestedFilterTest, CheckOptions) {
     ASSERT_EQ(opts0.hash(), opts2.hash());
 
     ASSERT_NE(opts0, MakeOptions("parent", "child", "443"));
-    ASSERT_NE(opts0, MakeOptions("parent", "child", "442",
-                                 irs::sort::MergeType::kMax));
+    ASSERT_NE(
+      opts0, MakeOptions("parent", "child", "442", irs::sort::MergeType::kMax));
     ASSERT_NE(opts0, MakeOptions("parent", "child", "442",
                                  irs::sort::MergeType::kSum, irs::kMatchNone));
   }
@@ -292,7 +292,7 @@ class NestedFilterTestCase : public tests::FilterTestCaseBase {
   };
 
   static constexpr auto kIndexAndStore =
-      irs::Action::INDEX | irs::Action::STORE;
+    irs::Action::INDEX | irs::Action::STORE;
 
   static void InsertItemDocument(irs::index_writer::documents_context& trx,
                                  std::string_view item, int32_t price,
@@ -300,9 +300,9 @@ class NestedFilterTestCase : public tests::FilterTestCaseBase {
     auto doc = trx.insert();
     ASSERT_TRUE(doc.insert<kIndexAndStore>(tests::string_field{"item", item}));
     ASSERT_TRUE(doc.insert<kIndexAndStore>(tests::int_field{
-        "price", price, irs::type<irs::granularity_prefix>::id()}));
+      "price", price, irs::type<irs::granularity_prefix>::id()}));
     ASSERT_TRUE(doc.insert<kIndexAndStore>(tests::int_field{
-        "count", count, irs::type<irs::granularity_prefix>::id()}));
+      "count", count, irs::type<irs::granularity_prefix>::id()}));
     ASSERT_TRUE(doc);
   }
 
@@ -311,8 +311,8 @@ class NestedFilterTestCase : public tests::FilterTestCaseBase {
                                   std::string_view date) {
     auto doc = trx.insert();
     if (!customer.empty()) {
-      ASSERT_TRUE(doc.insert<kIndexAndStore>(
-          tests::string_field{"customer", customer}));
+      ASSERT_TRUE(
+        doc.insert<kIndexAndStore>(tests::string_field{"customer", customer}));
     }
     ASSERT_TRUE(doc.insert<kIndexAndStore>(tests::string_field{"date", date}));
     ASSERT_TRUE(doc);
@@ -333,10 +333,10 @@ void NestedFilterTestCase::InitDataSet() {
   irs::index_writer::init_options opts;
   opts.column_info = [](irs::string_ref name) {
     return irs::column_info{
-        .compression = irs::type<irs::compression::none>::get(),
-        .options = {},
-        .encryption = false,
-        .track_prev_doc = (name == "customer")};
+      .compression = irs::type<irs::compression::none>::get(),
+      .options = {},
+      .encryption = false,
+      .track_prev_doc = (name == "customer")};
   };
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
@@ -429,7 +429,7 @@ TEST_P(NestedFilterTestCase, JoinAny1) {
 
   {
     const Tests tests = {
-        {Seek{6}, 6}, {Seek{7}, 13}, {Seek{7}, 13}, {Seek{16}, 20}};
+      {Seek{6}, 6}, {Seek{7}, 13}, {Seek{7}, 13}, {Seek{16}, 20}};
 
     CheckQuery(filter, {}, {tests}, reader, SOURCE_LOCATION);
   }
@@ -438,10 +438,10 @@ TEST_P(NestedFilterTestCase, JoinAny1) {
     std::array<irs::sort::ptr, 1> scorers{std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Seek{6}, 6, {2.f}}, {Seek{7}, 13, {9.f}},
-        // FIXME(gnusi): should be 9, currently
-        // fails due to we don't cache score
-        /*{Seek{6}, 13, {25.f}}*/
+      {Seek{6}, 6, {2.f}}, {Seek{7}, 13, {9.f}},
+      // FIXME(gnusi): should be 9, currently
+      // fails due to we don't cache score
+      /*{Seek{6}, 13, {25.f}}*/
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -452,10 +452,10 @@ TEST_P(NestedFilterTestCase, JoinAny1) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {2.f, 2.f}},
-        {Next{}, 13, {9.f, 9.f}},
-        {Next{}, 20, {14.f, 14.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {2.f, 2.f}},
+      {Next{}, 13, {9.f, 9.f}},
+      {Next{}, 20, {14.f, 14.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -470,14 +470,14 @@ TEST_P(NestedFilterTestCase, JoinAny1) {
 
   {
     const Tests tests = {
-        // Seek to doc_limits::invalid() is implementation specific
-        {Seek{irs::doc_limits::invalid()}, irs::doc_limits::invalid()},
-        {Seek{2}, 6},
-        {Next{}, 13},
-        {Next{}, 20},
-        {Next{}, irs::doc_limits::eof()},
-        {Seek{2}, irs::doc_limits::eof()},
-        {Next{}, irs::doc_limits::eof()}};
+      // Seek to doc_limits::invalid() is implementation specific
+      {Seek{irs::doc_limits::invalid()}, irs::doc_limits::invalid()},
+      {Seek{2}, 6},
+      {Next{}, 13},
+      {Next{}, 20},
+      {Next{}, irs::doc_limits::eof()},
+      {Seek{2}, irs::doc_limits::eof()},
+      {Next{}, irs::doc_limits::eof()}};
     CheckQuery(filter, {}, {tests}, reader, SOURCE_LOCATION);
   }
 
@@ -521,10 +521,10 @@ TEST_P(NestedFilterTestCase, JoinAny3) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {3.f, 3.f}},
-        {Next{}, 13, {12.f, 12.f}},
-        {Next{}, 20, {19.f, 19.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {3.f, 3.f}},
+      {Next{}, 13, {12.f, 12.f}},
+      {Next{}, 20, {19.f, 19.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -537,10 +537,10 @@ TEST_P(NestedFilterTestCase, JoinAny3) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {2.f, 2.f}},
-        {Next{}, 13, {9.f, 9.f}},
-        {Next{}, 20, {14.f, 14.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {2.f, 2.f}},
+      {Next{}, 13, {9.f, 9.f}},
+      {Next{}, 20, {14.f, 14.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -553,10 +553,10 @@ TEST_P(NestedFilterTestCase, JoinAny3) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {}},
-        {Next{}, 13, {}},
-        {Next{}, 20, {}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {}},
+      {Next{}, 13, {}},
+      {Next{}, 20, {}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -573,8 +573,8 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
   opts.parent = MakeParentProvider("customer");
   opts.match = [](const irs::sub_reader& segment) -> irs::doc_iterator::ptr {
     return irs::memory::make_managed<ChildIterator>(
-        irs::all().prepare(segment)->execute(segment),
-        std::set{6U, 13U, 15U, 20U});
+      irs::all().prepare(segment)->execute(segment),
+      std::set{6U, 13U, 15U, 20U});
   };
 
   CheckQuery(filter, Docs{13, 20}, Costs{11}, reader, SOURCE_LOCATION);
@@ -586,9 +586,9 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 13, {12.f, 12.f}},
-        {Next{}, 20, {19.f, 19.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 13, {12.f, 12.f}},
+      {Next{}, 20, {19.f, 19.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -601,9 +601,9 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 13, {9.f, 9.f}},
-        {Next{}, 20, {14.f, 14.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 13, {9.f, 9.f}},
+      {Next{}, 20, {14.f, 14.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -616,9 +616,9 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 13, {}},
-        {Next{}, 20, {}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 13, {}},
+      {Next{}, 20, {}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -644,9 +644,9 @@ TEST_P(NestedFilterTestCase, JoinMin0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 13, {12.f, 12.f}},
-        {Next{}, 20, {19.f, 19.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 13, {12.f, 12.f}},
+      {Next{}, 20, {19.f, 19.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -659,9 +659,9 @@ TEST_P(NestedFilterTestCase, JoinMin0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 13, {9.f, 9.f}},
-        {Next{}, 20, {14.f, 14.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 13, {9.f, 9.f}},
+      {Next{}, 20, {14.f, 14.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -674,9 +674,9 @@ TEST_P(NestedFilterTestCase, JoinMin0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 13, {}},
-        {Next{}, 20, {}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 13, {}},
+      {Next{}, 20, {}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -702,8 +702,8 @@ TEST_P(NestedFilterTestCase, JoinMin1) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {5.f, 5.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {5.f, 5.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -716,8 +716,8 @@ TEST_P(NestedFilterTestCase, JoinMin1) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {1.f, 1.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {1.f, 1.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -730,8 +730,8 @@ TEST_P(NestedFilterTestCase, JoinMin1) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -757,9 +757,9 @@ TEST_P(NestedFilterTestCase, JoinMin2) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {5.f, 5.f}},          {Next{}, 8, {0.f, 0.f}},
-        {Next{}, 13, {0.f, 0.f}},         {Next{}, 20, {0.f, 0.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {5.f, 5.f}},          {Next{}, 8, {0.f, 0.f}},
+      {Next{}, 13, {0.f, 0.f}},         {Next{}, 20, {0.f, 0.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -772,9 +772,9 @@ TEST_P(NestedFilterTestCase, JoinMin2) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {0.f, 0.f}},          {Next{}, 8, {0.f, 0.f}},
-        {Next{}, 13, {0.f, 0.f}},         {Next{}, 20, {0.f, 0.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {0.f, 0.f}},          {Next{}, 8, {0.f, 0.f}},
+      {Next{}, 13, {0.f, 0.f}},         {Next{}, 20, {0.f, 0.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -787,11 +787,11 @@ TEST_P(NestedFilterTestCase, JoinMin2) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {}},
-        {Next{}, 8, {}},
-        {Next{}, 13, {}},
-        {Next{}, 20, {}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {}},
+      {Next{}, 8, {}},
+      {Next{}, 13, {}},
+      {Next{}, 20, {}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -817,9 +817,9 @@ TEST_P(NestedFilterTestCase, JoinMin3) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {0.f, 0.f}},          {Next{}, 8, {0.f, 0.f}},
-        {Next{}, 13, {0.f, 0.f}},         {Next{}, 20, {0.f, 0.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {0.f, 0.f}},          {Next{}, 8, {0.f, 0.f}},
+      {Next{}, 13, {0.f, 0.f}},         {Next{}, 20, {0.f, 0.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -832,9 +832,9 @@ TEST_P(NestedFilterTestCase, JoinMin3) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {0.f, 0.f}},          {Next{}, 8, {0.f, 0.f}},
-        {Next{}, 13, {0.f, 0.f}},         {Next{}, 20, {0.f, 0.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {0.f, 0.f}},          {Next{}, 8, {0.f, 0.f}},
+      {Next{}, 13, {0.f, 0.f}},         {Next{}, 20, {0.f, 0.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -847,11 +847,11 @@ TEST_P(NestedFilterTestCase, JoinMin3) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {}},
-        {Next{}, 8, {}},
-        {Next{}, 13, {}},
-        {Next{}, 20, {}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {}},
+      {Next{}, 8, {}},
+      {Next{}, 13, {}},
+      {Next{}, 20, {}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -877,9 +877,9 @@ TEST_P(NestedFilterTestCase, JoinRange0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 13, {12.f, 12.f}},
-        {Next{}, 20, {19.f, 19.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 13, {12.f, 12.f}},
+      {Next{}, 20, {19.f, 19.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -892,9 +892,9 @@ TEST_P(NestedFilterTestCase, JoinRange0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 13, {9.f, 9.f}},
-        {Next{}, 20, {14.f, 14.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 13, {9.f, 9.f}},
+      {Next{}, 20, {14.f, 14.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -907,9 +907,9 @@ TEST_P(NestedFilterTestCase, JoinRange0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 13, {}},
-        {Next{}, 20, {}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 13, {}},
+      {Next{}, 20, {}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -935,8 +935,8 @@ TEST_P(NestedFilterTestCase, JoinRange1) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {5.f, 5.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {5.f, 5.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -949,8 +949,8 @@ TEST_P(NestedFilterTestCase, JoinRange1) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {1.f, 1.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {1.f, 1.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -963,8 +963,8 @@ TEST_P(NestedFilterTestCase, JoinRange1) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -990,9 +990,9 @@ TEST_P(NestedFilterTestCase, JoinRange2) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {3.f, 3.f}},          {Next{}, 8, {0.f, 0.f}},
-        {Next{}, 13, {12.f, 12.f}},       {Next{}, 20, {19.f, 19.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {3.f, 3.f}},          {Next{}, 8, {0.f, 0.f}},
+      {Next{}, 13, {12.f, 12.f}},       {Next{}, 20, {19.f, 19.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -1005,9 +1005,9 @@ TEST_P(NestedFilterTestCase, JoinRange2) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {2.f, 2.f}},          {Next{}, 8, {0.f, 0.f}},
-        {Next{}, 13, {9.f, 9.f}},         {Next{}, 20, {14.f, 14.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {2.f, 2.f}},          {Next{}, 8, {0.f, 0.f}},
+      {Next{}, 13, {9.f, 9.f}},         {Next{}, 20, {14.f, 14.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -1020,11 +1020,11 @@ TEST_P(NestedFilterTestCase, JoinRange2) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {}},
-        {Next{}, 8, {}},
-        {Next{}, 13, {}},
-        {Next{}, 20, {}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {}},
+      {Next{}, 8, {}},
+      {Next{}, 13, {}},
+      {Next{}, 20, {}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -1050,8 +1050,8 @@ TEST_P(NestedFilterTestCase, JoinNone0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 8, {1.f, 1.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 8, {1.f, 1.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -1064,8 +1064,8 @@ TEST_P(NestedFilterTestCase, JoinNone0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 8, {1.f, 1.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 8, {1.f, 1.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -1078,8 +1078,8 @@ TEST_P(NestedFilterTestCase, JoinNone0) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 8, {}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 8, {}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -1106,8 +1106,8 @@ TEST_P(NestedFilterTestCase, JoinNone1) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 8, {0.5f, 0.5f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 8, {0.5f, 0.5f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -1120,8 +1120,8 @@ TEST_P(NestedFilterTestCase, JoinNone1) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 8, {0.5f, 0.5f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 8, {0.5f, 0.5f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -1134,8 +1134,8 @@ TEST_P(NestedFilterTestCase, JoinNone1) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 8, {}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 8, {}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -1162,9 +1162,9 @@ TEST_P(NestedFilterTestCase, JoinNone2) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {1.f, 1.f}},          {Next{}, 8, {1.f, 1.f}},
-        {Next{}, 13, {1.f, 1.f}},         {Next{}, 20, {1.f, 1.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {1.f, 1.f}},          {Next{}, 8, {1.f, 1.f}},
+      {Next{}, 13, {1.f, 1.f}},         {Next{}, 20, {1.f, 1.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -1177,9 +1177,9 @@ TEST_P(NestedFilterTestCase, JoinNone2) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {1.f, 1.f}},          {Next{}, 8, {1.f, 1.f}},
-        {Next{}, 13, {1.f, 1.f}},         {Next{}, 20, {1.f, 1.f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {1.f, 1.f}},          {Next{}, 8, {1.f, 1.f}},
+      {Next{}, 13, {1.f, 1.f}},         {Next{}, 20, {1.f, 1.f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -1192,11 +1192,11 @@ TEST_P(NestedFilterTestCase, JoinNone2) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {}},
-        {Next{}, 8, {}},
-        {Next{}, 13, {}},
-        {Next{}, 20, {}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {}},
+      {Next{}, 8, {}},
+      {Next{}, 13, {}},
+      {Next{}, 20, {}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -1213,13 +1213,13 @@ TEST_P(NestedFilterTestCase, JoinNone3) {
 
   // Bitset iterator doesn't provide score, check that wrapper works correctly
   opts.parent = [word = irs::bitset::word_t{}](
-                    const irs::sub_reader&) mutable -> irs::doc_iterator::ptr {
+                  const irs::sub_reader&) mutable -> irs::doc_iterator::ptr {
     irs::set_bit<6>(word);
     irs::set_bit<8>(word);
     irs::set_bit<13>(word);
     irs::set_bit<20>(word);
     return irs::memory::make_managed<PrevDocWrapper>(
-        irs::memory::make_managed<irs::bitset_doc_iterator>(&word, &word + 1));
+      irs::memory::make_managed<irs::bitset_doc_iterator>(&word, &word + 1));
   };
 
   MakeParentProvider("customer");
@@ -1235,9 +1235,9 @@ TEST_P(NestedFilterTestCase, JoinNone3) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {0.5f, 0.5f}},        {Next{}, 8, {0.5f, 0.5f}},
-        {Next{}, 13, {0.5f, 0.5f}},       {Next{}, 20, {0.5f, 0.5f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {0.5f, 0.5f}},        {Next{}, 8, {0.5f, 0.5f}},
+      {Next{}, 13, {0.5f, 0.5f}},       {Next{}, 20, {0.5f, 0.5f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -1250,9 +1250,9 @@ TEST_P(NestedFilterTestCase, JoinNone3) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {0.5f, 0.5f}},        {Next{}, 8, {0.5f, 0.5f}},
-        {Next{}, 13, {0.5f, 0.5f}},       {Next{}, 20, {0.5f, 0.5f}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {0.5f, 0.5f}},        {Next{}, 8, {0.5f, 0.5f}},
+      {Next{}, 13, {0.5f, 0.5f}},       {Next{}, 20, {0.5f, 0.5f}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -1265,11 +1265,11 @@ TEST_P(NestedFilterTestCase, JoinNone3) {
                                           std::make_unique<DocIdScorer>()};
 
     const Tests tests = {
-        {Next{}, 6, {}},
-        {Next{}, 8, {}},
-        {Next{}, 13, {}},
-        {Next{}, 20, {}},
-        {Next{}, irs::doc_limits::eof()},
+      {Next{}, 6, {}},
+      {Next{}, 8, {}},
+      {Next{}, 13, {}},
+      {Next{}, 20, {}},
+      {Next{}, irs::doc_limits::eof()},
     };
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
@@ -1277,16 +1277,16 @@ TEST_P(NestedFilterTestCase, JoinNone3) {
 }
 
 const auto kDirectories =
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>);
+  ::testing::Values(&tests::directory<&tests::memory_directory>,
+                    &tests::directory<&tests::fs_directory>,
+                    &tests::directory<&tests::mmap_directory>);
 
 INSTANTIATE_TEST_SUITE_P(
-    NestedFilterTest, NestedFilterTestCase,
-    ::testing::Combine(kDirectories,
-                       ::testing::Values(tests::format_info{"1_4", "1_0"},
-                                         tests::format_info{"1_5", "1_0"})),
-    NestedFilterTestCase::to_string);
+  NestedFilterTest, NestedFilterTestCase,
+  ::testing::Combine(kDirectories,
+                     ::testing::Values(tests::format_info{"1_4", "1_0"},
+                                       tests::format_info{"1_5", "1_0"})),
+  NestedFilterTestCase::to_string);
 
 class NestedFilterFormatsTestCase : public NestedFilterTestCase {
  protected:
@@ -1315,14 +1315,14 @@ TEST_P(NestedFilterFormatsTestCase, JoinAny0) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    NestedFilterFormatsTest, NestedFilterFormatsTestCase,
-    ::testing::Combine(kDirectories,
-                       ::testing::Values(tests::format_info{"1_0"},
-                                         tests::format_info{"1_1", "1_0"},
-                                         tests::format_info{"1_2", "1_0"},
-                                         tests::format_info{"1_3", "1_0"},
-                                         tests::format_info{"1_4", "1_0"},
-                                         tests::format_info{"1_5", "1_0"})),
-    NestedFilterFormatsTestCase::to_string);
+  NestedFilterFormatsTest, NestedFilterFormatsTestCase,
+  ::testing::Combine(kDirectories,
+                     ::testing::Values(tests::format_info{"1_0"},
+                                       tests::format_info{"1_1", "1_0"},
+                                       tests::format_info{"1_2", "1_0"},
+                                       tests::format_info{"1_3", "1_0"},
+                                       tests::format_info{"1_4", "1_0"},
+                                       tests::format_info{"1_5", "1_0"})),
+  NestedFilterFormatsTestCase::to_string);
 
 }  // namespace

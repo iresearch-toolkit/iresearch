@@ -31,11 +31,11 @@
 #include <string>
 #include <bit>
 
-#include "types.hpp" // iresearch types
+#include "types.hpp"  // iresearch types
 
 #if (defined(__GNUC__) && __GNUC__ == 8 && __GNUC_MINOR__ < 1)
-  // protection against broken GCC 8.0 from Ubuntu 18.04 official repository
-  #error "GCC 8.0 isn't officially supported (https://gcc.gnu.org/releases.html)"
+// protection against broken GCC 8.0 from Ubuntu 18.04 official repository
+#error "GCC 8.0 isn't officially supported (https://gcc.gnu.org/releases.html)"
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,31 +43,31 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef __cplusplus
-  #error C++ is required
+#error C++ is required
 #endif
 
-#define IRESEARCH_CXX_98 199711L // c++03/c++98
-#define IRESEARCH_CXX_11 201103L // c++11
-#define IRESEARCH_CXX_14 201402L // c++14
-#define IRESEARCH_CXX_17 201703L // c++17
+#define IRESEARCH_CXX_98 199711L  // c++03/c++98
+#define IRESEARCH_CXX_11 201103L  // c++11
+#define IRESEARCH_CXX_14 201402L  // c++14
+#define IRESEARCH_CXX_17 201703L  // c++17
 
 #if defined(_MSC_VER)
-  // MSVC doesn't honor __cplusplus macro,
-  // it always equals to IRESEARCH_CXX_98
-  // therefore we use _MSC_VER
-  #if _MSC_VER < 1910                       // before MSVC2017
-    #error "at least C++17 is required"
-  #elif _MSC_VER >= 1910 && _MSC_VER < 1920 // MSVC2017 and later
-    #define IRESEARCH_CXX IRESEARCH_CXX_17
-  #elif _MSC_VER >= 1920                    // MSVC2019 and later
-    #define IRESEARCH_CXX IRESEARCH_CXX_17
-  #endif
-#else // GCC/Clang
-  #if __cplusplus < IRESEARCH_CXX_17
-    #error "at least C++17 is required"
-  #endif
+// MSVC doesn't honor __cplusplus macro,
+// it always equals to IRESEARCH_CXX_98
+// therefore we use _MSC_VER
+#if _MSC_VER < 1910  // before MSVC2017
+#error "at least C++17 is required"
+#elif _MSC_VER >= 1910 && _MSC_VER < 1920  // MSVC2017 and later
+#define IRESEARCH_CXX IRESEARCH_CXX_17
+#elif _MSC_VER >= 1920  // MSVC2019 and later
+#define IRESEARCH_CXX IRESEARCH_CXX_17
+#endif
+#else  // GCC/Clang
+#if __cplusplus < IRESEARCH_CXX_17
+#error "at least C++17 is required"
+#endif
 
-  #define IRESEARCH_CXX IRESEARCH_CXX_17
+#define IRESEARCH_CXX IRESEARCH_CXX_17
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,164 +76,180 @@
 
 // Generic helper definitions for shared library support
 #if defined _MSC_VER || defined __CYGWIN__
-  #define IRESEARCH_HELPER_DLL_IMPORT __declspec(dllimport)
-  #define IRESEARCH_HELPER_DLL_EXPORT __declspec(dllexport)
-  #define IRESEARCH_HELPER_DLL_LOCAL
-  #define IRESEARCH_HELPER_TEMPLATE_IMPORT 
-  #define IRESEARCH_HELPER_TEMPLATE_EXPORT
+#define IRESEARCH_HELPER_DLL_IMPORT __declspec(dllimport)
+#define IRESEARCH_HELPER_DLL_EXPORT __declspec(dllexport)
+#define IRESEARCH_HELPER_DLL_LOCAL
+#define IRESEARCH_HELPER_TEMPLATE_IMPORT
+#define IRESEARCH_HELPER_TEMPLATE_EXPORT
 
-  #if _MSC_VER < 1900 // before msvc2015
-    #error "compiler is not supported"
-  #else
-    // MSVC2017.1 - MSVC2017.7 does not correctly support alignas()
-    // FIXME TODO find a workaround or do not use alignas(...) and remove definition from CMakeLists.txt
-    static_assert(_MSC_VER <= 1910 || _MSC_VER >= 1916, "_MSC_VER > 1910 && _MSC_VER < 1915");
-  #endif
-
-  #define FORCE_INLINE inline __forceinline
-  #define NO_INLINE __declspec(noinline)
-  #define RESTRICT __restrict 
-  #define IRESEARCH_IGNORE_UNUSED /* unused */
+#if _MSC_VER < 1900  // before msvc2015
+#error "compiler is not supported"
 #else
-  #if (defined(__GNUC__) && (__GNUC__ >= 4))
-    #define IRESEARCH_HELPER_DLL_IMPORT __attribute__ ((visibility ("default")))
-    #define IRESEARCH_HELPER_DLL_EXPORT __attribute__ ((visibility ("default")))
-    #define IRESEARCH_HELPER_DLL_LOCAL  __attribute__ ((visibility ("hidden")))
-  #else
-    #error "compiler is not supported"
-  #endif
-  #define IRESEARCH_HELPER_TEMPLATE_IMPORT IRESEARCH_HELPER_DLL_IMPORT 
-  #define IRESEARCH_HELPER_TEMPLATE_EXPORT IRESEARCH_HELPER_DLL_EXPORT 
+// MSVC2017.1 - MSVC2017.7 does not correctly support alignas()
+// FIXME TODO find a workaround or do not use alignas(...) and remove definition
+// from CMakeLists.txt
+static_assert(_MSC_VER <= 1910 || _MSC_VER >= 1916,
+              "_MSC_VER > 1910 && _MSC_VER < 1915");
+#endif
 
-  #define FORCE_INLINE inline __attribute__ ((always_inline))
-  #define NO_INLINE __attribute__ ((noinline))
-  #define RESTRICT __restrict__
-  #define IRESEARCH_IGNORE_UNUSED __attribute__ ((unused))
+#define FORCE_INLINE inline __forceinline
+#define NO_INLINE __declspec(noinline)
+#define RESTRICT __restrict
+#define IRESEARCH_IGNORE_UNUSED /* unused */
+#else
+#if (defined(__GNUC__) && (__GNUC__ >= 4))
+#define IRESEARCH_HELPER_DLL_IMPORT __attribute__((visibility("default")))
+#define IRESEARCH_HELPER_DLL_EXPORT __attribute__((visibility("default")))
+#define IRESEARCH_HELPER_DLL_LOCAL __attribute__((visibility("hidden")))
+#else
+#error "compiler is not supported"
+#endif
+#define IRESEARCH_HELPER_TEMPLATE_IMPORT IRESEARCH_HELPER_DLL_IMPORT
+#define IRESEARCH_HELPER_TEMPLATE_EXPORT IRESEARCH_HELPER_DLL_EXPORT
+
+#define FORCE_INLINE inline __attribute__((always_inline))
+#define NO_INLINE __attribute__((noinline))
+#define RESTRICT __restrict__
+#define IRESEARCH_IGNORE_UNUSED __attribute__((unused))
 #endif
 
 // hook for GCC 8.1/8.2 optimized code
 // these versions produce incorrect code when inlining optimizations are enabled
-#if defined(__OPTIMIZE__) && defined(__GNUC__) \
-    && ((__GNUC__ == 8 && __GNUC_MINOR__ == 1) \
-        || (__GNUC__ == 8 && __GNUC_MINOR__ == 2))
-  #define GCC8_12_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
+#if defined(__OPTIMIZE__) && defined(__GNUC__) && \
+  ((__GNUC__ == 8 && __GNUC_MINOR__ == 1) ||      \
+   (__GNUC__ == 8 && __GNUC_MINOR__ == 2))
+#define GCC8_12_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
 #else
-  #define GCC8_12_OPTIMIZED_WORKAROUND(...)
+#define GCC8_12_OPTIMIZED_WORKAROUND(...)
 #endif
 
 // hook for MSVC2017.3-9 optimized code
 // these versions produce incorrect code when inlining optimizations are enabled
-// for versions @see https://github.com/lordmulder/MUtilities/blob/master/include/MUtils/Version.h
+// for versions @see
+// https://github.com/lordmulder/MUtilities/blob/master/include/MUtils/Version.h
 // and https://dev.to/yumetodo/list-of-mscver-and-mscfullver-8nd
 // seems MSVC2019.0+ also have this problem
-#if defined(_MSC_VER) \
-    && !defined(_DEBUG) \
-    && (((_MSC_FULL_VER >= 191125506) && (_MSC_FULL_VER <= 191125508)) \
-        || ((_MSC_FULL_VER >= 191125542) && (_MSC_FULL_VER <= 191125547)) \
-        || ((_MSC_FULL_VER >= 191225830) && (_MSC_FULL_VER <= 191225835)) \
-        || ((_MSC_FULL_VER >= 191326128) && (_MSC_FULL_VER <= 191326132)) \
-        || ((_MSC_FULL_VER >= 191426430) && (_MSC_FULL_VER <= 191426433)) \
-        || ((_MSC_FULL_VER >= 191526726) && (_MSC_FULL_VER <= 191526732)) \
-        || ((_MSC_FULL_VER >= 191627023) && (_MSC_FULL_VER <= 191627034)) \
-        || (_MSC_FULL_VER >= 192027508))
-  #define MSVC2017_3456789_MSVC2019_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
+#if defined(_MSC_VER) && !defined(_DEBUG) &&                         \
+  (((_MSC_FULL_VER >= 191125506) && (_MSC_FULL_VER <= 191125508)) || \
+   ((_MSC_FULL_VER >= 191125542) && (_MSC_FULL_VER <= 191125547)) || \
+   ((_MSC_FULL_VER >= 191225830) && (_MSC_FULL_VER <= 191225835)) || \
+   ((_MSC_FULL_VER >= 191326128) && (_MSC_FULL_VER <= 191326132)) || \
+   ((_MSC_FULL_VER >= 191426430) && (_MSC_FULL_VER <= 191426433)) || \
+   ((_MSC_FULL_VER >= 191526726) && (_MSC_FULL_VER <= 191526732)) || \
+   ((_MSC_FULL_VER >= 191627023) && (_MSC_FULL_VER <= 191627034)) || \
+   (_MSC_FULL_VER >= 192027508))
+#define MSVC2017_3456789_MSVC2019_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
 #else
-  #define MSVC2017_3456789_MSVC2019_OPTIMIZED_WORKAROUND(...)
+#define MSVC2017_3456789_MSVC2019_OPTIMIZED_WORKAROUND(...)
 #endif
 
 // hook for MSVC-only code
 #if defined(_MSC_VER) && !defined(__clang__)
 #define MSVC_ONLY(...) __VA_ARGS__
 #else
-  #define MSVC_ONLY(...)
+#define MSVC_ONLY(...)
 #endif
 
 // hook for MSVC2015-only code
 #if defined(_MSC_VER) && _MSC_VER == 1900
-  #define MSVC2015_ONLY(...) __VA_ARGS__
+#define MSVC2015_ONLY(...) __VA_ARGS__
 #else
-  #define MSVC2015_ONLY(...)
+#define MSVC2015_ONLY(...)
 #endif
 
 // hook for GCC-only code
 #if defined(__GNUC__)
-  #define GCC_ONLY(...) __VA_ARGS__
+#define GCC_ONLY(...) __VA_ARGS__
 #else
-  #define GCC_ONLY(...)
+#define GCC_ONLY(...)
 #endif
 
 // check if sizeof(float_t) == sizeof(double_t)
-#if defined(FLT_EVAL_METHOD) && ((FLT_EVAL_METHOD == 1) || (FLT_EVAL_METHOD == 2))
-  static_assert(sizeof(float_t) == sizeof(double_t), "sizeof(float_t) != sizeof(double_t)");
-  #define FLOAT_T_IS_DOUBLE_T
+#if defined(FLT_EVAL_METHOD) && \
+  ((FLT_EVAL_METHOD == 1) || (FLT_EVAL_METHOD == 2))
+static_assert(sizeof(float_t) == sizeof(double_t),
+              "sizeof(float_t) != sizeof(double_t)");
+#define FLOAT_T_IS_DOUBLE_T
 #else
-  static_assert(sizeof(float_t) != sizeof(double_t), "sizeof(float_t) == sizeof(double_t)");
-  #undef FLOAT_T_IS_DOUBLE_T
+static_assert(sizeof(float_t) != sizeof(double_t),
+              "sizeof(float_t) == sizeof(double_t)");
+#undef FLOAT_T_IS_DOUBLE_T
 #endif
 
 // Windows uses wchar_t for unicode handling
 #if defined(_WIN32)
-  #define IR_NATIVE_STRING(s) L##s
+#define IR_NATIVE_STRING(s) L##s
 #else
-  #define IR_NATIVE_STRING(s) s
+#define IR_NATIVE_STRING(s) s
 #endif
 
-// IRESEARCH_API is used for the public API symbols. It either DLL imports or DLL exports (or does nothing for static build)
+// IRESEARCH_API is used for the public API symbols. It either DLL imports or
+// DLL exports (or does nothing for static build)
 #ifdef IRESEARCH_DLL
-  #ifdef IRESEARCH_DLL_EXPORTS
-    #define IRESEARCH_API IRESEARCH_HELPER_DLL_EXPORT    
-  #else
-    #define IRESEARCH_API IRESEARCH_HELPER_DLL_IMPORT
-  #endif // IRESEARCH_DLL_EXPORTS
-  #ifdef IRESEARCH_DLL_PLUGIN
-    #define IRESEARCH_PLUGIN_EXPORT extern "C" IRESEARCH_HELPER_DLL_EXPORT
-  #else
-    #define IRESEARCH_PLUGIN_EXPORT
-  #endif // IRESEARCH_DLL_PLUGIN
-#else // IRESEARCH_DLL is not defined: this means IRESEARCH is a static lib.
-  #define IRESEARCH_API 
-#endif // IRESEARCH_DLL
+#ifdef IRESEARCH_DLL_EXPORTS
+#define IRESEARCH_API IRESEARCH_HELPER_DLL_EXPORT
+#else
+#define IRESEARCH_API IRESEARCH_HELPER_DLL_IMPORT
+#endif  // IRESEARCH_DLL_EXPORTS
+#ifdef IRESEARCH_DLL_PLUGIN
+#define IRESEARCH_PLUGIN_EXPORT extern "C" IRESEARCH_HELPER_DLL_EXPORT
+#else
+#define IRESEARCH_PLUGIN_EXPORT
+#endif  // IRESEARCH_DLL_PLUGIN
+#else   // IRESEARCH_DLL is not defined: this means IRESEARCH is a static lib.
+#define IRESEARCH_API
+#endif  // IRESEARCH_DLL
 
 // MSVC 2015 does not define __cpp_lib_generic_associative_lookup macro
-#if (defined(__cpp_lib_generic_associative_lookup) || (defined(_MSC_VER) && _MSC_VER >= 1900))
-  #define IRESEARCH_GENERIC_ASSOCIATIVE_LOOKUP
+#if (defined(__cpp_lib_generic_associative_lookup) || \
+     (defined(_MSC_VER) && _MSC_VER >= 1900))
+#define IRESEARCH_GENERIC_ASSOCIATIVE_LOOKUP
 #endif
 
 #if defined(__GNUC__)
-  #define IRESEARCH_INIT(f) \
-    static void f(void) __attribute__((constructor)); \
-    static void f(void)
-  #define RESEARCH_FINI(f) \
-    static void f(void) __attribute__((destructor)); \
-    static void f(void)
+#define IRESEARCH_INIT(f)                           \
+  static void f(void) __attribute__((constructor)); \
+  static void f(void)
+#define RESEARCH_FINI(f)                           \
+  static void f(void) __attribute__((destructor)); \
+  static void f(void)
 #elif defined(_MSC_VER)
-  #define IRESEARCH_INIT(f) \
-    static void __cdecl f(void); \
-    static int f ## _init_wrapper(void) { f(); return 0; } \
-    __declspec(allocate(".CRT$XCU")) void (__cdecl*f##_)(void) = f ## _init_wrapper; \
-    static void __cdecl f(void)
-  #define RESEARCH_FINI(f) \
-    static void __cdecl f(void); \
-    static int f ## _fini_wrapper(void) { atexit(f); return 0; } \
-    __declspec(allocate(".CRT$XCU")) static int (__cdecl*f##_)(void) = f ## _fini_wrapper; \
-    static void __cdecl f(void)
+#define IRESEARCH_INIT(f)                                       \
+  static void __cdecl f(void);                                  \
+  static int f##_init_wrapper(void) {                           \
+    f();                                                        \
+    return 0;                                                   \
+  }                                                             \
+  __declspec(allocate(".CRT$XCU")) void(__cdecl * f##_)(void) = \
+    f##_init_wrapper;                                           \
+  static void __cdecl f(void)
+#define RESEARCH_FINI(f)                                              \
+  static void __cdecl f(void);                                        \
+  static int f##_fini_wrapper(void) {                                 \
+    atexit(f);                                                        \
+    return 0;                                                         \
+  }                                                                   \
+  __declspec(allocate(".CRT$XCU")) static int(__cdecl * f##_)(void) = \
+    f##_fini_wrapper;                                                 \
+  static void __cdecl f(void)
 #endif
 
 // define function name used for pretty printing
 // NOTE: the alias points to a compile time finction not a preprocessor macro
 #if defined(__FUNCSIG__) || _MSC_FULL_VER >= 193000000
-  #define IRESEARCH_CURRENT_FUNCTION __FUNCSIG__
+#define IRESEARCH_CURRENT_FUNCTION __FUNCSIG__
 #elif defined(__PRETTY_FUNCTION__) || defined(__GNUC__) || defined(__clang__)
-  #define IRESEARCH_CURRENT_FUNCTION __PRETTY_FUNCTION__
+#define IRESEARCH_CURRENT_FUNCTION __PRETTY_FUNCTION__
 #else
-  #error "compiler is not supported"
+#error "compiler is not supported"
 #endif
 
 // IRESEARCH_COMPILER_HAS_FEATURE
 #ifndef __has_feature
-  #define IRESEARCH_COMPILER_HAS_FEATURE(x) 0 // Compatibility with non-clang compilers.
+#define IRESEARCH_COMPILER_HAS_FEATURE(x) \
+  0  // Compatibility with non-clang compilers.
 #else
-  #define IRESEARCH_COMPILER_HAS_FEATURE(x) __has_feature(x)
+#define IRESEARCH_COMPILER_HAS_FEATURE(x) __has_feature(x)
 #endif
 
 // IRESEARCH_HAS_ATTRIBUTE
@@ -244,8 +260,10 @@
 #endif
 
 // IRESEARCH_ATTRIBUTE_NONNULL
-#if IRESEARCH_HAS_ATTRIBUTE(nonnull) || (defined(__GNUC__) && !defined(__clang__))
-#define IRESEARCH_ATTRIBUTE_NONNULL(arg_index) __attribute__((nonnull(arg_index)))
+#if IRESEARCH_HAS_ATTRIBUTE(nonnull) || \
+  (defined(__GNUC__) && !defined(__clang__))
+#define IRESEARCH_ATTRIBUTE_NONNULL(arg_index) \
+  __attribute__((nonnull(arg_index)))
 #else
 #define IRESEARCH_ATTRIBUTE_NONNULL(...)
 #endif
@@ -255,7 +273,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // for MSVC on x64 architecture SSE2 is always enabled
-#if defined(__SSE2__) || defined(__ARM_NEON) || defined(__ARM_NEON__) || (defined(_MSC_VER) && (defined(_M_AMD64) || defined(_M_X64)))
+#if defined(__SSE2__) || defined(__ARM_NEON) || defined(__ARM_NEON__) || \
+  (defined(_MSC_VER) && (defined(_M_AMD64) || defined(_M_X64)))
 #define IRESEARCH_SSE2
 #endif
 
@@ -289,8 +308,7 @@
 #endif
 
 #ifdef IRESEARCH_DEBUG
-#define IRS_ASSERT(CHECK) \
-    ( (CHECK) ? void(0) : []{assert(!#CHECK);}() )
+#define IRS_ASSERT(CHECK) ((CHECK) ? void(0) : [] { assert(!#CHECK); }())
 #else
 #define IRS_ASSERT(CHECK) void(0)
 #endif
@@ -301,7 +319,7 @@ namespace iresearch {
 consteval bool is_big_endian() noexcept {
   return std::endian::native == std::endian::big;
 }
-}
+}  // namespace iresearch
 namespace irs = ::iresearch;
 
 #define STRINGIFY(x) #x
@@ -311,4 +329,4 @@ namespace irs = ::iresearch;
 // (memory) operand be 16-byte aligned
 #define IRESEARCH_CMPXCHG16B_ALIGNMENT 16
 
-#endif // IRESEARCH_SHARED_H
+#endif  // IRESEARCH_SHARED_H

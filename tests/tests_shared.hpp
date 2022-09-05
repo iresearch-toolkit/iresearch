@@ -72,7 +72,7 @@ class test_env {
   static irs::utf8_path resource_dir_;  // resource directory
 
   static irs::utf8_path
-      res_dir_;  // output_dir_/test_name_YYYY_mm_dd_HH_mm_ss_XXXXXX
+    res_dir_;  // output_dir_/test_name_YYYY_mm_dd_HH_mm_ss_XXXXXX
   static irs::utf8_path res_path_;  // res_dir_/test_detail.xml
 };
 

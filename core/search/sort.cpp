@@ -55,8 +55,8 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
     // cppcheck-suppress shadowFunction
     const auto [bucket_stats_size, bucket_stats_align] = prepared->stats_size();
     assert(bucket_stats_align <= alignof(std::max_align_t));
-    assert(math::is_power2(
-        bucket_stats_align));  // math::is_power2(0) returns true
+    assert(
+      math::is_power2(bucket_stats_align));  // math::is_power2(0) returns true
 
     stats_align = std::max(stats_align, bucket_stats_align);
 
@@ -127,7 +127,7 @@ REGISTER_ATTRIBUTE(filter_boost);
 ScoreFunction::ScoreFunction() noexcept : func_{kDefault} {}
 
 ScoreFunction::ScoreFunction(ScoreFunction&& rhs) noexcept
-    : ctx_(std::move(rhs.ctx_)), func_(std::exchange(rhs.func_, kDefault)) {}
+  : ctx_(std::move(rhs.ctx_)), func_(std::exchange(rhs.func_, kDefault)) {}
 
 ScoreFunction& ScoreFunction::operator=(ScoreFunction&& rhs) noexcept {
   if (this != &rhs) {
@@ -141,20 +141,16 @@ sort::sort(const type_info& type) noexcept : type_(type.id()) {}
 
 Order Order::Prepare(std::span<const sort::ptr> order) {
   return std::apply(
-      [](auto&&... args) {
-        return Order{std::forward<decltype(args)>(args)...};
-      },
-      ::Prepare<OrderBuckets>(ptr_iterator{std::begin(order)},
-                              ptr_iterator{std::end(order)}));
+    [](auto&&... args) { return Order{std::forward<decltype(args)>(args)...}; },
+    ::Prepare<OrderBuckets>(ptr_iterator{std::begin(order)},
+                            ptr_iterator{std::end(order)}));
 }
 
 Order Order::Prepare(std::span<const sort*> order) {
   return std::apply(
-      [](auto&&... args) {
-        return Order{std::forward<decltype(args)>(args)...};
-      },
-      ::Prepare<OrderBuckets>(ptr_iterator{std::begin(order)},
-                              ptr_iterator{std::end(order)}));
+    [](auto&&... args) { return Order{std::forward<decltype(args)>(args)...}; },
+    ::Prepare<OrderBuckets>(ptr_iterator{std::begin(order)},
+                            ptr_iterator{std::end(order)}));
 }
 
 const Order Order::kUnordered;

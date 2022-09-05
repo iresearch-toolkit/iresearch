@@ -2124,15 +2124,16 @@ TEST(bitvector_tests, resize) {
   words = 2;
   size = 89;
 
-  bv.resize(size); // reset to smaller size
+  bv.resize(size);  // reset to smaller size
   ASSERT_NE(nullptr, bv.data());
   ASSERT_EQ(size, bv.size());
-  ASSERT_NE(prev_data, bv.data()); // storage was reallocated
-  ASSERT_EQ(words * irs::bits_required<irs::bitset::word_t>(), bv.capacity());;
+  ASSERT_NE(prev_data, bv.data());  // storage was reallocated
+  ASSERT_EQ(words * irs::bits_required<irs::bitset::word_t>(), bv.capacity());
+  ;
   ASSERT_EQ(2, bv.count());
-  ASSERT_FALSE(bv.none()); // content not cleared
-  ASSERT_TRUE(bv.any()); // content not cleared
-  ASSERT_FALSE(bv.all()); // content not cleared
+  ASSERT_FALSE(bv.none());  // content not cleared
+  ASSERT_TRUE(bv.any());    // content not cleared
+  ASSERT_FALSE(bv.all());   // content not cleared
   bv.set(43);
   ASSERT_EQ(3, bv.count());
   bv.set(43);
@@ -2148,15 +2149,15 @@ TEST(bitvector_tests, resize) {
   words = 5;
   size = 319;
 
-  bv.resize(size); // reset to bigger size
+  bv.resize(size);  // reset to bigger size
   ASSERT_NE(nullptr, bv.data());
   ASSERT_EQ(size, bv.size());
-  ASSERT_NE(prev_data, bv.data()); // storage was reallocated
+  ASSERT_NE(prev_data, bv.data());  // storage was reallocated
   ASSERT_EQ(words * irs::bits_required<irs::bitset::word_t>(), bv.capacity());
   ASSERT_EQ(4, bv.count());
-  ASSERT_FALSE(bv.none()); // content not cleared
-  ASSERT_TRUE(bv.any()); // content not cleared
-  ASSERT_FALSE(bv.all()); // content not cleared
+  ASSERT_FALSE(bv.none());  // content not cleared
+  ASSERT_TRUE(bv.any());    // content not cleared
+  ASSERT_FALSE(bv.all());   // content not cleared
   bv.set(44);
   ASSERT_EQ(5, bv.count());
   bv.set(44);
@@ -2172,15 +2173,16 @@ TEST(bitvector_tests, resize) {
   words = 5;
   size = 73;
 
-  bv.resize(size, true); // reset to smaller size while preserving capacity
+  bv.resize(size, true);  // reset to smaller size while preserving capacity
   ASSERT_NE(nullptr, bv.data());
   ASSERT_EQ(size, bv.size());
-  ASSERT_EQ(prev_data, bv.data()); // storage was not reallocated
-  ASSERT_EQ(words * irs::bits_required<irs::bitset::word_t>(), bv.capacity());;
+  ASSERT_EQ(prev_data, bv.data());  // storage was not reallocated
+  ASSERT_EQ(words * irs::bits_required<irs::bitset::word_t>(), bv.capacity());
+  ;
   ASSERT_EQ(3, bv.count());
-  ASSERT_FALSE(bv.none()); // content not cleared
-  ASSERT_TRUE(bv.any()); // content not cleared
-  ASSERT_FALSE(bv.all()); // content not cleared
+  ASSERT_FALSE(bv.none());  // content not cleared
+  ASSERT_TRUE(bv.any());    // content not cleared
+  ASSERT_FALSE(bv.all());   // content not cleared
   bv.set(45);
   ASSERT_EQ(4, bv.count());
   bv.set(45);
@@ -2196,15 +2198,16 @@ TEST(bitvector_tests, resize) {
   words = 5;
   size = 73;
 
-  bv.resize(size, true); // reset to smaller size while preserving capacity
+  bv.resize(size, true);  // reset to smaller size while preserving capacity
   ASSERT_NE(nullptr, bv.data());
   ASSERT_EQ(size, bv.size());
-  ASSERT_EQ(prev_data, bv.data()); // storage was not reallocated
-  ASSERT_EQ(words * irs::bits_required<irs::bitset::word_t>(), bv.capacity());;
+  ASSERT_EQ(prev_data, bv.data());  // storage was not reallocated
+  ASSERT_EQ(words * irs::bits_required<irs::bitset::word_t>(), bv.capacity());
+  ;
   ASSERT_EQ(5, bv.count());
-  ASSERT_FALSE(bv.none()); // content not cleared
-  ASSERT_TRUE(bv.any()); // content not cleared
-  ASSERT_FALSE(bv.all()); // content not cleared
+  ASSERT_FALSE(bv.none());  // content not cleared
+  ASSERT_TRUE(bv.any());    // content not cleared
+  ASSERT_FALSE(bv.all());   // content not cleared
   bv.set(46);
   ASSERT_EQ(6, bv.count());
   bv.set(46);
@@ -2220,15 +2223,15 @@ TEST(bitvector_tests, resize) {
   words = 6;
   size = 383;
 
-  bv.resize(size, true); // reset to bigger size
+  bv.resize(size, true);  // reset to bigger size
   ASSERT_NE(nullptr, bv.data());
   ASSERT_EQ(size, bv.size());
-  ASSERT_NE(prev_data, bv.data()); // storage was reallocated
+  ASSERT_NE(prev_data, bv.data());  // storage was reallocated
   ASSERT_EQ(words * irs::bits_required<irs::bitset::word_t>(), bv.capacity());
   ASSERT_EQ(7, bv.count());
-  ASSERT_FALSE(bv.none()); // content not cleared
-  ASSERT_TRUE(bv.any()); // content not cleared
-  ASSERT_FALSE(bv.all()); // content not cleared
+  ASSERT_FALSE(bv.none());  // content not cleared
+  ASSERT_TRUE(bv.any());    // content not cleared
+  ASSERT_FALSE(bv.all());   // content not cleared
   bv.set(47);
   ASSERT_EQ(8, bv.count());
   bv.set(47);
@@ -2330,7 +2333,7 @@ TEST(bitvector_tests, memset) {
     irs::bitset::word_t value = 0x723423;
     bv.memset(&value, 2);
 
-    ASSERT_EQ(6, bv.count()); // only first 16 bits from 'value' are set
+    ASSERT_EQ(6, bv.count());  // only first 16 bits from 'value' are set
     ASSERT_EQ(*bv.begin(), value & 0x7FFF);
     ASSERT_FALSE(bv.none());
     ASSERT_TRUE(bv.any());
@@ -2338,25 +2341,25 @@ TEST(bitvector_tests, memset) {
 
     bv.memset(value);
 
-    ASSERT_EQ(10, bv.count()); // only first 64 bits from 'value' are set
+    ASSERT_EQ(10, bv.count());  // only first 64 bits from 'value' are set
     ASSERT_EQ(*bv.begin(), value);
     ASSERT_FALSE(bv.none());
     ASSERT_TRUE(bv.any());
     ASSERT_FALSE(bv.all());
 
     value = 0xFFFFFFFFFFFFFFFF;
-    bv.memset(value); // set another value
+    bv.memset(value);  // set another value
 
-    ASSERT_EQ(64, bv.count()); // only first 64 bits from 'value' are set
+    ASSERT_EQ(64, bv.count());  // only first 64 bits from 'value' are set
     ASSERT_EQ(*bv.begin(), value);
     ASSERT_FALSE(bv.none());
     ASSERT_TRUE(bv.any());
     ASSERT_TRUE(bv.all());
 
     value = 0x42;
-    bv.memset(&value, 1); // memset another value less that size
+    bv.memset(&value, 1);  // memset another value less that size
 
-    ASSERT_EQ(58, bv.count()); // only first 8 bits from 'value' are set
+    ASSERT_EQ(58, bv.count());  // only first 8 bits from 'value' are set
     ASSERT_EQ(irs::bitset::word_t(0xFFFFFFFFFFFFFF42), *bv.begin());
     ASSERT_FALSE(bv.none());
     ASSERT_TRUE(bv.any());
@@ -2381,9 +2384,9 @@ TEST(bitvector_tests, memset) {
     const uint64_t value = UINT64_C(0x14FFFFFFFFFFFFFF);
     bv.memset(value);
 
-    ASSERT_EQ(58, bv.count()); // only first 64 bits from 'value' are set
-    ASSERT_EQ(*(bv.begin() + irs::bitset::word(0)), value); // 1st word
-    ASSERT_EQ(*(bv.begin() + irs::bitset::word(64)), 0); // 2nd word
+    ASSERT_EQ(58, bv.count());  // only first 64 bits from 'value' are set
+    ASSERT_EQ(*(bv.begin() + irs::bitset::word(0)), value);  // 1st word
+    ASSERT_EQ(*(bv.begin() + irs::bitset::word(64)), 0);     // 2nd word
     ASSERT_FALSE(bv.none());
     ASSERT_TRUE(bv.any());
     ASSERT_FALSE(bv.all());
@@ -2392,7 +2395,8 @@ TEST(bitvector_tests, memset) {
   // multiple words bitvector (all set)
   {
     const irs::bitset::index_t words = 2;
-    const irs::bitset::index_t size = 2 * irs::bits_required<irs::bitset::word_t>();
+    const irs::bitset::index_t size =
+      2 * irs::bits_required<irs::bitset::word_t>();
 
     irs::bitvector bv(size);
     ASSERT_FALSE(bv.empty());
@@ -2412,10 +2416,11 @@ TEST(bitvector_tests, memset) {
     value.value1 = UINT64_C(0xFFFFFFFFFFFFFFFF);
     bv.memset(value);
 
-    ASSERT_EQ(sizeof(value_t) * irs::bits_required<uint8_t>(), bv.size()); // full size of bitset
-    ASSERT_EQ(128, bv.count()); // all 128 from 'value' are set
-    ASSERT_EQ(*(bv.begin() + irs::bitset::word(0)), value.value0); // 1st word
-    ASSERT_EQ(*(bv.begin() + irs::bitset::word(64)), value.value1); // 2nd word
+    ASSERT_EQ(sizeof(value_t) * irs::bits_required<uint8_t>(),
+              bv.size());        // full size of bitset
+    ASSERT_EQ(128, bv.count());  // all 128 from 'value' are set
+    ASSERT_EQ(*(bv.begin() + irs::bitset::word(0)), value.value0);   // 1st word
+    ASSERT_EQ(*(bv.begin() + irs::bitset::word(64)), value.value1);  // 2nd word
     ASSERT_FALSE(bv.none());
     ASSERT_TRUE(bv.any());
     ASSERT_TRUE(bv.all());

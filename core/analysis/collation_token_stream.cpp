@@ -43,9 +43,9 @@ constexpr std::string_view LOCALE_PARAM_NAME{"locale"};
 bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   if (!slice.isString()) {
     IR_FRMT_WARN(
-        "Non-string value in '%s' while constructing "
-        "collation_token_stream from VPack arguments",
-        LOCALE_PARAM_NAME.data());
+      "Non-string value in '%s' while constructing "
+      "collation_token_stream from VPack arguments",
+      LOCALE_PARAM_NAME.data());
 
     return false;
   }
@@ -56,9 +56,9 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
 
   if (locale.isBogus()) {
     IR_FRMT_WARN(
-        "Failed to instantiate locale from the supplied string '%s' "
-        "while constructing collation_token_stream from VPack arguments",
-        locale_name.c_str());
+      "Failed to instantiate locale from the supplied string '%s' "
+      "while constructing collation_token_stream from VPack arguments",
+      locale_name.c_str());
 
     return false;
   }
@@ -66,7 +66,7 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   // validate creation of icu::Collator
   auto err = UErrorCode::U_ZERO_ERROR;
   std::unique_ptr<icu::Collator> collator{
-      icu::Collator::createInstance(locale, err)};
+    icu::Collator::createInstance(locale, err)};
 
   if (!collator) {
     IR_FRMT_WARN("Can't instantiate icu::Collator from locale '%s'",
@@ -77,8 +77,8 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   // print warn message
   if (err != UErrorCode::U_ZERO_ERROR) {
     IR_FRMT_WARN(
-        "Warning while instantiation of icu::Collator from locale '%s' : '%s'",
-        locale_name.c_str(), u_errorName(err));
+      "Warning while instantiation of icu::Collator from locale '%s' : '%s'",
+      locale_name.c_str(), u_errorName(err));
   }
 
   return U_SUCCESS(err);
@@ -96,9 +96,9 @@ bool parse_vpack_options(const VPackSlice slice,
 
     if (locale_slice.isNone()) {
       IR_FRMT_ERROR(
-          "Missing '%s' while constructing collation_token_stream "
-          "from VPack arguments",
-          LOCALE_PARAM_NAME.data());
+        "Missing '%s' while constructing collation_token_stream "
+        "from VPack arguments",
+        LOCALE_PARAM_NAME.data());
 
       return false;
     }
@@ -106,13 +106,13 @@ bool parse_vpack_options(const VPackSlice slice,
     return locale_from_slice(locale_slice, options.locale);
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while constructing collation_token_stream from "
-        "VPack",
-        ex.what());
+      "Caught error '%s' while constructing collation_token_stream from "
+      "VPack",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing collation_token_stream from "
-        "VPack arguments");
+      "Caught error while constructing collation_token_stream from "
+      "VPack arguments");
   }
   return false;
 }
@@ -125,7 +125,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   analysis::collation_token_stream::options_t options;
   if (parse_vpack_options(slice, options)) {
     return memory::make_unique<analysis::collation_token_stream>(
-        std::move(options));
+      std::move(options));
   } else {
     return nullptr;
   }
@@ -141,8 +141,8 @@ analysis::analyzer::ptr make_vpack(string_ref args) {
 /// @param definition string for storing json document with config
 ///////////////////////////////////////////////////////////////////////////////
 bool make_vpack_config(
-    const analysis::collation_token_stream::options_t& options,
-    VPackBuilder* builder) {
+  const analysis::collation_token_stream::options_t& options,
+  VPackBuilder* builder) {
   VPackObjectBuilder object{builder};
 
   const auto locale_name = options.locale.getName();
@@ -179,11 +179,11 @@ analysis::analyzer::ptr make_json(string_ref args) {
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while constructing collation_token_stream from JSON",
-        ex.what());
+      "Caught error '%s' while constructing collation_token_stream from JSON",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while constructing collation_token_stream from JSON");
+      "Caught error while constructing collation_token_stream from JSON");
   }
   return nullptr;
 }
@@ -202,11 +202,11 @@ bool normalize_json_config(string_ref args, std::string& definition) {
     }
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
-        "Caught error '%s' while normalizing collation_token_stream from JSON",
-        ex.what());
+      "Caught error '%s' while normalizing collation_token_stream from JSON",
+      ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-        "Caught error while normalizing collation_token_stream from JSON");
+      "Caught error while normalizing collation_token_stream from JSON");
   }
   return false;
 }
@@ -239,20 +239,20 @@ struct collation_token_stream::state_t {
 }
 
 void collation_token_stream::state_deleter_t::operator()(
-    state_t* p) const noexcept {
+  state_t* p) const noexcept {
   delete p;
 }
 
 collation_token_stream::collation_token_stream(const options_t& options)
-    : analyzer{irs::type<collation_token_stream>::get()},
-      state_{new state_t(options)},
-      term_eof_{true} {}
+  : analyzer{irs::type<collation_token_stream>::get()},
+    state_{new state_t(options)},
+    term_eof_{true} {}
 
 bool collation_token_stream::reset(string_ref data) {
   if (!state_->collator) {
     auto err = UErrorCode::U_ZERO_ERROR;
     state_->collator.reset(
-        icu::Collator::createInstance(state_->options.locale, err));
+      icu::Collator::createInstance(state_->options.locale, err));
 
     if (!U_SUCCESS(err) || !state_->collator) {
       state_->collator.reset();
@@ -267,14 +267,14 @@ bool collation_token_stream::reset(string_ref data) {
   }
 
   const icu::UnicodeString icu_token = icu::UnicodeString::fromUTF8(
-      icu::StringPiece(data.c_str(), static_cast<int32_t>(data.size())));
+    icu::StringPiece(data.c_str(), static_cast<int32_t>(data.size())));
 
   byte_type raw_term_buf[MAX_TOKEN_SIZE];
   static_assert(sizeof raw_term_buf == sizeof state_->term_buf);
 
   auto buf = state_->options.forceUtf8 ? raw_term_buf : state_->term_buf;
   int32_t term_size =
-      state_->collator->getSortKey(icu_token, buf, sizeof raw_term_buf);
+    state_->collator->getSortKey(icu_token, buf, sizeof raw_term_buf);
 
   // https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/classicu_1_1Collator.html
   // according to ICU docs sort keys are always zero-terminated,
@@ -284,9 +284,9 @@ bool collation_token_stream::reset(string_ref data) {
   assert(0 == buf[term_size]);
   if (term_size > static_cast<int32_t>(sizeof raw_term_buf)) {
     IR_FRMT_ERROR(
-        "Collated token is %d bytes length which exceeds maximum allowed "
-        "length of %d bytes",
-        term_size, static_cast<int32_t>(sizeof raw_term_buf));
+      "Collated token is %d bytes length which exceeds maximum allowed "
+      "length of %d bytes",
+      term_size, static_cast<int32_t>(sizeof raw_term_buf));
     return false;
   }
   size_t termBufIdx = static_cast<size_t>(term_size);
@@ -300,8 +300,8 @@ bool collation_token_stream::reset(string_ref data) {
       const auto [offset, size] = kRecalcMap[raw_term_buf[i]];
       if ((termBufIdx + size) > sizeof state_->term_buf) {
         IR_FRMT_ERROR(
-            "Collated token is more than %d bytes length after encoding.",
-            static_cast<int32_t>(sizeof state_->term_buf));
+          "Collated token is more than %d bytes length after encoding.",
+          static_cast<int32_t>(sizeof state_->term_buf));
         return false;
       }
       assert(size <= 2);

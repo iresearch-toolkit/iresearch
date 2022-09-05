@@ -43,10 +43,10 @@ namespace container_utils {
 //////////////////////////////////////////////////////////////////////////////
 template<typename T, size_t Size>
 class array
-  : private irs::memory::aligned_storage<sizeof(T)*Size, alignof(T)>,
+  : private irs::memory::aligned_storage<sizeof(T) * Size, alignof(T)>,
     private util::noncopyable {
  private:
-  typedef irs::memory::aligned_storage<sizeof(T)*Size, alignof(T)> buffer_t;
+  typedef irs::memory::aligned_storage<sizeof(T) * Size, alignof(T)> buffer_t;
 
  public:
   typedef T value_type;
@@ -64,8 +64,8 @@ class array
     auto begin = this->begin();
     auto end = this->end();
 
-    for (;begin != end; ++begin) {
-      new(begin) T(std::forward<Args>(args)...);
+    for (; begin != end; ++begin) {
+      new (begin) T(std::forward<Args>(args)...);
     }
   }
 
@@ -87,17 +87,13 @@ class array
     return const_cast<array&>(*this)[i];
   }
 
-  constexpr reference back() noexcept {
-    return *(end()-1);
-  }
+  constexpr reference back() noexcept { return *(end() - 1); }
 
   constexpr const_reference back() const noexcept {
     return const_cast<array*>(this)->back();
   }
 
-  constexpr reference front() noexcept {
-    return *begin();
-  }
+  constexpr reference front() noexcept { return *begin(); }
 
   constexpr const_reference front() const noexcept {
     return const_cast<array*>(this)->front();
@@ -107,9 +103,7 @@ class array
     return reinterpret_cast<T*>(buffer_t::data);
   }
 
-  constexpr iterator end() noexcept {
-    return this->begin() + Size;
-  }
+  constexpr iterator end() noexcept { return this->begin() + Size; }
 
   constexpr const_iterator begin() const noexcept {
     return const_cast<array*>(this)->begin();
@@ -135,21 +129,17 @@ class array
     return const_reverse_iterator(begin());
   }
 
-  constexpr size_t size() const noexcept {
-    return Size;
-  }
+  constexpr size_t size() const noexcept { return Size; }
 
-  constexpr bool empty() const noexcept {
-    return 0 == size();
-  }
-}; // array
+  constexpr bool empty() const noexcept { return 0 == size(); }
+};  // array
 
 struct bucket_size_t {
-  bucket_size_t* next; // next bucket
-  size_t offset; // sum of bucket sizes up to but excluding this bucket
-  size_t size; // size of this bucket
-  size_t index; // bucket index
-}; // bucket_size_t
+  bucket_size_t* next;  // next bucket
+  size_t offset;        // sum of bucket sizes up to but excluding this bucket
+  size_t size;          // size of this bucket
+  size_t index;         // bucket index
+};                      // bucket_size_t
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief compute individual sizes and offsets of exponentially sized buckets
@@ -158,8 +148,9 @@ struct bucket_size_t {
 ///        the number of bits from a 'position' value to place into 1st bucket
 //////////////////////////////////////////////////////////////////////////////
 
-MSVC_ONLY(__pragma(warning(push))) // cppcheck-suppress unknownMacro
-MSVC_ONLY(__pragma(warning(disable:4127))) // constexp conditionals are intended to be optimized out
+MSVC_ONLY(__pragma(warning(push)))  // cppcheck-suppress unknownMacro
+MSVC_ONLY(__pragma(warning(
+  disable : 4127)))  // constexp conditionals are intended to be optimized out
 template<size_t NumBuckets, size_t SkipBits>
 class bucket_meta {
  public:
@@ -196,7 +187,9 @@ MSVC_ONLY(__pragma(warning(pop)))
 namespace memory {
 
 template<typename BucketFactory, size_t Size>
-class bucket_allocator: private util::noncopyable { // noncopyable because of 'pools_' (declaration required by MSVC2017)
+class bucket_allocator
+  : private util::noncopyable {  // noncopyable because of 'pools_' (declaration
+                                 // required by MSVC2017)
  public:
   // number of pools
   static const size_t SIZE = Size;
@@ -204,9 +197,7 @@ class bucket_allocator: private util::noncopyable { // noncopyable because of 'p
   using pool_type = unbounded_object_pool<BucketFactory>;
   using value_type = typename pool_type::ptr;
 
-  explicit bucket_allocator(size_t pool_size)
-    : pools_(pool_size) {
-  }
+  explicit bucket_allocator(size_t pool_size) : pools_(pool_size) {}
 
   value_type allocate(const bucket_size_t& bucket) {
     assert(bucket.index < pools_.size());
@@ -221,7 +212,7 @@ class bucket_allocator: private util::noncopyable { // noncopyable because of 'p
 
  private:
   array<pool_type, Size> pools_;
-}; // bucket_allocator
+};  // bucket_allocator
 
 // default stateless allocator
 struct default_allocator {
@@ -230,9 +221,9 @@ struct default_allocator {
   value_type allocate(const bucket_size_t& bucket) {
     return irs::memory::make_unique<byte_type[]>(bucket.size);
   }
-}; // default_allocator
+};  // default_allocator
 
-} // memory
+}  // namespace memory
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a function to calculate the bucket offset of the reqested position
@@ -242,63 +233,49 @@ struct default_allocator {
 //////////////////////////////////////////////////////////////////////////////
 template<size_t SkipBits>
 size_t compute_bucket_offset(size_t position) noexcept {
-  // 63 == 64 bits per size_t - 1 for allignment, +1 == align first value to start of bucket
+  // 63 == 64 bits per size_t - 1 for allignment, +1 == align first value to
+  // start of bucket
   return 63 - std::countl_zero((position >> SkipBits) + 1);
 }
 
 template<typename Allocator>
-class raw_block_vector_base
-    : public compact_ref<0, Allocator>,
-      private util::noncopyable {
+class raw_block_vector_base : public compact_ref<0, Allocator>,
+                              private util::noncopyable {
  public:
   typedef compact_ref<0, Allocator> allocator_ref_t;
   typedef typename allocator_ref_t::type allocator_type;
 
   struct buffer_t {
-    byte_type* data; // pointer at the actual data
-    size_t offset; // sum of bucket sizes up to but excluding this buffer
-    size_t size; // total buffer size
+    byte_type* data;  // pointer at the actual data
+    size_t offset;    // sum of bucket sizes up to but excluding this buffer
+    size_t size;      // total buffer size
   };
 
   explicit raw_block_vector_base(const Allocator& alloc) noexcept
-    : allocator_ref_t(alloc) {
-  }
+    : allocator_ref_t(alloc) {}
 
   raw_block_vector_base(raw_block_vector_base&& rhs) noexcept
     : allocator_ref_t(std::move((allocator_ref_t&)rhs)),
-      buffers_(std::move(rhs.buffers_)) {
-  }
+      buffers_(std::move(rhs.buffers_)) {}
 
-  FORCE_INLINE size_t buffer_count() const noexcept {
-    return buffers_.size();
-  }
+  FORCE_INLINE size_t buffer_count() const noexcept { return buffers_.size(); }
 
-  FORCE_INLINE bool empty() const noexcept {
-    return buffers_.empty();
-  }
+  FORCE_INLINE bool empty() const noexcept { return buffers_.empty(); }
 
-  FORCE_INLINE void clear() noexcept {
-    buffers_.clear();
-  }
+  FORCE_INLINE void clear() noexcept { buffers_.clear(); }
 
   FORCE_INLINE const buffer_t& get_buffer(size_t i) const noexcept {
     return buffers_[i];
   }
 
-  FORCE_INLINE buffer_t& get_buffer(size_t i) noexcept {
-    return buffers_[i];
-  }
+  FORCE_INLINE buffer_t& get_buffer(size_t i) noexcept { return buffers_[i]; }
 
-  FORCE_INLINE void pop_buffer() {
-    buffers_.pop_back();
-  }
+  FORCE_INLINE void pop_buffer() { buffers_.pop_back(); }
 
  protected:
   struct buffer_entry_t : buffer_t, util::noncopyable {
-    buffer_entry_t(
-        size_t bucket_offset,
-        size_t bucket_size,
-        typename Allocator::value_type&& ptr) noexcept
+    buffer_entry_t(size_t bucket_offset, size_t bucket_size,
+                   typename Allocator::value_type&& ptr) noexcept
       : ptr(std::move(ptr)) {
       buffer_t::data = this->ptr.get();
       buffer_t::offset = bucket_offset;
@@ -306,9 +283,7 @@ class raw_block_vector_base
     }
 
     buffer_entry_t(buffer_entry_t&& other) noexcept
-      : buffer_t(std::move(other)),
-        ptr(std::move(other.ptr)) {
-    }
+      : buffer_t(std::move(other)), ptr(std::move(other.ptr)) {}
 
     typename Allocator::value_type ptr;
   };
@@ -323,49 +298,55 @@ class raw_block_vector_base
   }
 
   std::vector<buffer_entry_t> buffers_;
-}; // raw_block_vector_base
+};  // raw_block_vector_base
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a container allowing raw access to internal storage, and
 ///        using an allocation strategy similar to an std::deque
 //////////////////////////////////////////////////////////////////////////////
-template<
-  size_t NumBuckets,
-  size_t SkipBits,
-  typename Allocator = memory::default_allocator
-> class raw_block_vector : public raw_block_vector_base<Allocator> {
+template<size_t NumBuckets, size_t SkipBits,
+         typename Allocator = memory::default_allocator>
+class raw_block_vector : public raw_block_vector_base<Allocator> {
  public:
-  static const size_t NUM_BUCKETS = NumBuckets; // total number of buckets
-  static const size_t FIRST_BUCKET_SIZE = 1 << SkipBits; // size of the first bucket
+  static const size_t NUM_BUCKETS = NumBuckets;  // total number of buckets
+  static const size_t FIRST_BUCKET_SIZE =
+    1 << SkipBits;  // size of the first bucket
 
   typedef raw_block_vector_base<Allocator> base_t;
   typedef typename base_t::allocator_ref_t allocator_ref_t;
   typedef typename base_t::allocator_type allocator_type;
 
-  explicit raw_block_vector(const Allocator& alloc /*= Allocator()*/) noexcept // MSVC fails to build 'shared' if the allocator does not define a no-arg constructor
-    : base_t(alloc) {
-  }
+  explicit raw_block_vector(
+    const Allocator&
+      alloc /*= Allocator()*/) noexcept  // MSVC fails to build 'shared' if the
+                                         // allocator does not define a no-arg
+                                         // constructor
+    : base_t(alloc) {}
 
   raw_block_vector(raw_block_vector&& other) noexcept
-    : base_t(std::move(other)) {
-  }
+    : base_t(std::move(other)) {}
 
   FORCE_INLINE size_t buffer_offset(size_t position) const noexcept {
-    // non-precomputed bucket size is the same as the last precomputed bucket size
+    // non-precomputed bucket size is the same as the last precomputed bucket
+    // size
     return position < LAST_BUFFER.offset
-      ? compute_bucket_offset<SkipBits>(position)
-      : (LAST_BUFFER_ID + (position - LAST_BUFFER.offset) / LAST_BUFFER.size);
+             ? compute_bucket_offset<SkipBits>(position)
+             : (LAST_BUFFER_ID +
+                (position - LAST_BUFFER.offset) / LAST_BUFFER.size);
   }
 
   typename base_t::buffer_t& push_buffer() {
-    if (base_t::buffers_.size() < META.size()) { // one of the precomputed buckets
+    if (base_t::buffers_.size() <
+        META.size()) {  // one of the precomputed buckets
       const auto& bucket = META[base_t::buffers_.size()];
       return base_t::push_buffer(bucket.offset, bucket);
     }
 
     // non-precomputed buckets, offset is the sum of previous buckets
-    assert(!base_t::buffers_.empty()); // otherwise do not know what size buckets to create
-    const auto& bucket = base_t::buffers_.back(); // most of the meta from last computed bucket
+    assert(!base_t::buffers_
+              .empty());  // otherwise do not know what size buckets to create
+    const auto& bucket =
+      base_t::buffers_.back();  // most of the meta from last computed bucket
     return base_t::push_buffer(bucket.offset + bucket.size, META.back());
   }
 
@@ -377,20 +358,20 @@ template<
 
 template<size_t NumBuckets, size_t SkipBits, typename Allocator>
 /*static*/ const std::array<bucket_size_t, NumBuckets>&
-raw_block_vector<NumBuckets, SkipBits, Allocator>::META
-  = bucket_meta<NumBuckets, SkipBits>::get();
+  raw_block_vector<NumBuckets, SkipBits, Allocator>::META =
+    bucket_meta<NumBuckets, SkipBits>::get();
 
 template<size_t NumBuckets, size_t SkipBits, typename Allocator>
 /*static*/ const bucket_size_t&
-raw_block_vector<NumBuckets, SkipBits, Allocator>::LAST_BUFFER
-  = bucket_meta<NumBuckets, SkipBits>::get().back();
+  raw_block_vector<NumBuckets, SkipBits, Allocator>::LAST_BUFFER =
+    bucket_meta<NumBuckets, SkipBits>::get().back();
 
 template<size_t NumBuckets, size_t SkipBits, typename Allocator>
 /*static*/ const size_t
-raw_block_vector<NumBuckets, SkipBits, Allocator>::LAST_BUFFER_ID
-  = bucket_meta<NumBuckets, SkipBits>::get().size() - 1;
+  raw_block_vector<NumBuckets, SkipBits, Allocator>::LAST_BUFFER_ID =
+    bucket_meta<NumBuckets, SkipBits>::get().size() - 1;
 
-} // container_utils
-} // namespace iresearch {
+}  // namespace container_utils
+}  // namespace iresearch
 
 #endif

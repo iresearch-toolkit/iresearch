@@ -120,7 +120,7 @@ class int_field : public field_base {
 
   explicit int_field(std::string_view name = "", int32_t value = 0,
                      irs::type_info::type_id extra_feature = {})
-      : stream_(std::make_shared<irs::numeric_token_stream>()), value_{value} {
+    : stream_(std::make_shared<irs::numeric_token_stream>()), value_{value} {
     this->name(std::string{name});
     if (extra_feature) {
       this->features_.emplace_back(extra_feature);
@@ -229,8 +229,9 @@ class particle : irs::util::noncopyable {
 
   template<typename T>
   T& back() const {
-    typedef typename std::enable_if<std::is_base_of<tests::ifield, T>::value,
-                                    T>::type type;
+    typedef
+      typename std::enable_if<std::is_base_of<tests::ifield, T>::value, T>::type
+        type;
 
     return static_cast<type&>(*fields_.back());
   }
@@ -239,16 +240,18 @@ class particle : irs::util::noncopyable {
 
   template<typename T>
   T& get(size_t i) const {
-    typedef typename std::enable_if<std::is_base_of<tests::ifield, T>::value,
-                                    T>::type type;
+    typedef
+      typename std::enable_if<std::is_base_of<tests::ifield, T>::value, T>::type
+        type;
 
     return static_cast<type&>(*fields_[i]);
   }
 
   template<typename T>
   T* get(const irs::string_ref& name) const {
-    typedef typename std::enable_if<std::is_base_of<tests::ifield, T>::value,
-                                    T>::type type;
+    typedef
+      typename std::enable_if<std::is_base_of<tests::ifield, T>::value, T>::type
+        type;
 
     return static_cast<type*>(get(name));
   }
@@ -303,7 +306,7 @@ struct doc_generator_base {
 class limiting_doc_generator : public doc_generator_base {
  public:
   limiting_doc_generator(doc_generator_base& gen, size_t offset, size_t limit)
-      : gen_(&gen), begin_(offset), end_(offset + limit) {}
+    : gen_(&gen), begin_(offset), end_(offset + limit) {}
 
   virtual const tests::document* next() override {
     while (pos_ < begin_) {
@@ -480,7 +483,7 @@ class json_doc_generator : public doc_generator_base {
 
   typedef std::function<void(tests::document&, const std::string&,
                              const json_value&)>
-      factory_f;
+    factory_f;
 
   json_doc_generator(const irs::utf8_path& file, const factory_f& factory);
 
@@ -519,9 +522,9 @@ class text_field : public tests::field_base {
  public:
   text_field(const std::string& name, bool payload = false,
              std::vector<irs::type_info::type_id> features = {})
-      : token_stream_(irs::analysis::analyzers::get(
-            "text", irs::type<irs::text_format::json>::get(),
-            "{\"locale\":\"C\", \"stopwords\":[]}")) {
+    : token_stream_(irs::analysis::analyzers::get(
+        "text", irs::type<irs::text_format::json>::get(),
+        "{\"locale\":\"C\", \"stopwords\":[]}")) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
         throw irs::illegal_state{"Failed to reset stream."};
@@ -536,10 +539,10 @@ class text_field : public tests::field_base {
 
   text_field(const std::string& name, const T& value, bool payload = false,
              std::vector<irs::type_info::type_id> features = {})
-      : token_stream_(irs::analysis::analyzers::get(
-            "text", irs::type<irs::text_format::json>::get(),
-            "{\"locale\":\"C\", \"stopwords\":[]}")),
-        value_(value) {
+    : token_stream_(irs::analysis::analyzers::get(
+        "text", irs::type<irs::text_format::json>::get(),
+        "{\"locale\":\"C\", \"stopwords\":[]}")),
+      value_(value) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
         throw irs::illegal_state{"Failed to reset stream."};
@@ -577,13 +580,13 @@ class text_field : public tests::field_base {
 class string_field : public tests::field_base {
  public:
   string_field(
-      std::string_view name,
-      irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
-      const std::vector<irs::type_info::type_id>& extra_features = {});
+    std::string_view name,
+    irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
+    const std::vector<irs::type_info::type_id>& extra_features = {});
   string_field(
-      std::string_view name, irs::string_ref value,
-      irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
-      const std::vector<irs::type_info::type_id>& extra_features = {});
+    std::string_view name, irs::string_ref value,
+    irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
+    const std::vector<irs::type_info::type_id>& extra_features = {});
 
   void value(const irs::string_ref& str);
   irs::string_ref value() const { return value_; }
@@ -600,13 +603,13 @@ class string_field : public tests::field_base {
 class string_ref_field : public tests::field_base {
  public:
   string_ref_field(
-      const std::string& name,
-      irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
-      const std::vector<irs::type_info::type_id>& extra_features = {});
+    const std::string& name,
+    irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
+    const std::vector<irs::type_info::type_id>& extra_features = {});
   string_ref_field(
-      const std::string& name, const irs::string_ref& value,
-      irs::IndexFeatures index_features = irs::IndexFeatures::NONE,
-      const std::vector<irs::type_info::type_id>& extra_features = {});
+    const std::string& name, const irs::string_ref& value,
+    irs::IndexFeatures index_features = irs::IndexFeatures::NONE,
+    const std::vector<irs::type_info::type_id>& extra_features = {});
 
   void value(const irs::string_ref& str);
   irs::string_ref value() const { return value_; }
@@ -642,8 +645,8 @@ void payloaded_json_field_factory(tests::document& doc, const std::string& name,
                                   const json_doc_generator::json_value& data);
 
 void normalized_string_json_field_factory(
-    tests::document& doc, const std::string& name,
-    const json_doc_generator::json_value& data);
+  tests::document& doc, const std::string& name,
+  const json_doc_generator::json_value& data);
 
 template<typename Indexed>
 bool insert(irs::index_writer& writer, Indexed ibegin, Indexed iend) {

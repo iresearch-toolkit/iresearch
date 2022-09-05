@@ -288,7 +288,7 @@ void utf8_transitions_builder::insert(automaton& a, const byte_type* label,
   assert(label && size < 5);
 
   const size_t prefix =
-      1 + common_prefix_length(last_.c_str(), last_.size(), label, size);
+    1 + common_prefix_length(last_.c_str(), last_.size(), label, size);
   minimize(a, prefix);  // minimize suffix
 
   // add current word suffix
@@ -297,7 +297,7 @@ void utf8_transitions_builder::insert(automaton& a, const byte_type* label,
     auto& p = states_[i - 1];
     assert(i == 1 ||
            p.id ==
-               fst::kNoStateId);  // root state is already a part of automaton
+             fst::kNoStateId);  // root state is already a part of automaton
 
     if (p.id == fst::kNoStateId) {
       // here we deal with rho transition only for
@@ -349,8 +349,8 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
   a.ReserveArcs(from, root.arcs.size());
 
   auto add_arcs = [&a, from, arc = root.arcs.begin(), end = root.arcs.end()](
-                      uint32_t min, uint32_t max,
-                      automaton::StateId rho_state) mutable {
+                    uint32_t min, uint32_t max,
+                    automaton::StateId rho_state) mutable {
     assert(min < max);
 
     for (; arc != end && arc->max <= max; ++arc) {
@@ -389,23 +389,23 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
 }
 
 filter::prepared::ptr prepare_automaton_filter(
-    string_ref field, const automaton& acceptor, size_t scored_terms_limit,
-    const index_reader& index, const Order& order, score_t boost) {
+  string_ref field, const automaton& acceptor, size_t scored_terms_limit,
+  const index_reader& index, const Order& order, score_t boost) {
   auto matcher = make_automaton_matcher(acceptor);
 
   if (fst::kError == matcher.Properties(0)) {
     IR_FRMT_ERROR(
-        "Expected deterministic, epsilon-free acceptor, "
-        "got the following properties " IR_UINT64_T_SPECIFIER,
-        matcher.GetFst().Properties(automaton_table_matcher::FST_PROPERTIES,
-                                    false));
+      "Expected deterministic, epsilon-free acceptor, "
+      "got the following properties " IR_UINT64_T_SPECIFIER,
+      matcher.GetFst().Properties(automaton_table_matcher::FST_PROPERTIES,
+                                  false));
 
     return filter::prepared::empty();
   }
 
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector(
-      order.empty() ? 0 : scored_terms_limit);
+    order.empty() ? 0 : scored_terms_limit);
   MultiTermQuery::States states{index};
   multiterm_visitor mtv{collector, states};
 
@@ -424,7 +424,7 @@ filter::prepared::ptr prepare_automaton_filter(
   collector.score(index, order, stats);
 
   return memory::make_managed<MultiTermQuery>(
-      std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
+    std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
 }
 
 }  // namespace iresearch

@@ -38,21 +38,17 @@ class type_info {
   /// @brief unique type identifier
   /// @note can be used to get an instance of underlying type
   //////////////////////////////////////////////////////////////////////////////
-  using type_id = type_info(*)() noexcept;
+  using type_id = type_info (*)() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief default constructor produces invalid type identifier
   //////////////////////////////////////////////////////////////////////////////
-  constexpr type_info() noexcept
-    : type_info{nullptr, {}} {
-  }
+  constexpr type_info() noexcept : type_info{nullptr, {}} {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return true if type_info is valid, false - otherwise
   //////////////////////////////////////////////////////////////////////////////
-  constexpr explicit operator bool() const noexcept {
-    return nullptr != id_;
-  }
+  constexpr explicit operator bool() const noexcept { return nullptr != id_; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return true if current object is equal to a denoted by 'rhs'
@@ -83,14 +79,13 @@ class type_info {
   friend struct type;
 
   constexpr type_info(type_id id, string_ref name) noexcept
-    : id_(id), name_(name) {
-  }
+    : id_(id), name_(name) {}
 
   type_id id_;
   string_ref name_;
-}; // type_info
+};  // type_info
 
-}
+}  // namespace iresearch
 
 namespace std {
 
@@ -101,8 +96,6 @@ struct hash<::iresearch::type_info> {
   }
 };
 
-} // std
+}  // namespace std
 
-#endif // IRESEARCH_TYPE_INDEX_H
-
-
+#endif  // IRESEARCH_TYPE_INDEX_H

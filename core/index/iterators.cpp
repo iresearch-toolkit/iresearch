@@ -32,10 +32,7 @@ namespace {
 
 // Represents an iterator with no documents
 struct empty_doc_iterator final : irs::doc_iterator {
-  empty_doc_iterator() noexcept
-    : cost(0),
-      doc{irs::doc_limits::eof()} {
-  }
+  empty_doc_iterator() noexcept : cost(0), doc{irs::doc_limits::eof()} {}
 
   virtual irs::doc_id_t value() const override {
     return irs::doc_limits::eof();
@@ -44,14 +41,13 @@ struct empty_doc_iterator final : irs::doc_iterator {
   virtual irs::doc_id_t seek(irs::doc_id_t) override {
     return irs::doc_limits::eof();
   }
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  virtual irs::attribute* get_mutable(
+    irs::type_info::type_id type) noexcept override {
     if (irs::type<irs::document>::id() == type) {
       return &doc;
     }
 
-    return irs::type<irs::cost>::id() == type
-      ? &cost
-      : nullptr;
+    return irs::type<irs::cost>::id() == type ? &cost : nullptr;
   }
 
   irs::cost cost;
@@ -65,12 +61,14 @@ struct empty_term_iterator : irs::term_iterator {
   virtual const irs::bytes_ref& value() const noexcept override final {
     return irs::bytes_ref::NIL;
   }
-  virtual irs::doc_iterator::ptr postings(irs::IndexFeatures) const noexcept override final {
+  virtual irs::doc_iterator::ptr postings(
+    irs::IndexFeatures) const noexcept override final {
     return irs::doc_iterator::empty();
   }
-  virtual void read() noexcept override final { }
+  virtual void read() noexcept override final {}
   virtual bool next() noexcept override final { return false; }
-  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override final {
+  virtual irs::attribute* get_mutable(
+    irs::type_info::type_id) noexcept override final {
     return nullptr;
   }
 };
@@ -82,20 +80,20 @@ struct empty_seek_term_iterator final : irs::seek_term_iterator {
   virtual const irs::bytes_ref& value() const noexcept override final {
     return irs::bytes_ref::NIL;
   }
-  virtual irs::doc_iterator::ptr postings(irs::IndexFeatures) const noexcept override final {
+  virtual irs::doc_iterator::ptr postings(
+    irs::IndexFeatures) const noexcept override final {
     return irs::doc_iterator::empty();
   }
-  virtual void read() noexcept override final { }
+  virtual void read() noexcept override final {}
   virtual bool next() noexcept override final { return false; }
-  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override final {
+  virtual irs::attribute* get_mutable(
+    irs::type_info::type_id) noexcept override final {
     return nullptr;
   }
   virtual irs::SeekResult seek_ge(const irs::bytes_ref&) noexcept override {
     return irs::SeekResult::END;
   }
-  virtual bool seek(const irs::bytes_ref&) noexcept override {
-    return false;
-  }
+  virtual bool seek(const irs::bytes_ref&) noexcept override { return false; }
   virtual irs::seek_cookie::ptr cookie() const noexcept override {
     return nullptr;
   }
@@ -112,30 +110,31 @@ struct empty_field_iterator final : irs::field_iterator {
     return kEmptyTermReader;
   }
 
-  virtual bool seek(irs::string_ref) override {
-    return false;
-  }
+  virtual bool seek(irs::string_ref) override { return false; }
 
-  virtual bool next() override {
-    return false;
-  }
+  virtual bool next() override { return false; }
 };
 
 empty_field_iterator kEmptyFieldIterator;
 
 struct empty_column_reader final : irs::column_reader {
-  virtual irs::field_id id() const override { return irs::field_limits::invalid(); }
+  virtual irs::field_id id() const override {
+    return irs::field_limits::invalid();
+  }
 
   // Returns optional column name.
   virtual irs::string_ref name() const override { return irs::string_ref::NIL; }
 
   // Returns column header.
-  virtual irs::bytes_ref payload() const override { return irs::bytes_ref::NIL; }
+  virtual irs::bytes_ref payload() const override {
+    return irs::bytes_ref::NIL;
+  }
 
   // Returns the corresponding column iterator.
   // If the column implementation supports document payloads then it
   // can be accessed via the 'payload' attribute.
-  virtual irs::doc_iterator::ptr iterator(irs::ColumnHint /*hint*/) const override {
+  virtual irs::doc_iterator::ptr iterator(
+    irs::ColumnHint /*hint*/) const override {
     return irs::doc_iterator::empty();
   }
 
@@ -150,18 +149,14 @@ struct empty_column_iterator final : irs::column_iterator {
     return kEmptyColumnReader;
   }
 
-  virtual bool seek(irs::string_ref) override {
-    return false;
-  }
+  virtual bool seek(irs::string_ref) override { return false; }
 
-  virtual bool next() override {
-    return false;
-  }
+  virtual bool next() override { return false; }
 };
 
 empty_column_iterator kEmptyColumnIterator;
 
-} // LOCAL
+}  // namespace
 
 namespace iresearch {
 
@@ -170,7 +165,8 @@ term_iterator::ptr term_iterator::empty() {
 }
 
 seek_term_iterator::ptr seek_term_iterator::empty() {
-  return memory::to_managed<irs::seek_term_iterator, false>(&kEmptySeekIterator);
+  return memory::to_managed<irs::seek_term_iterator, false>(
+    &kEmptySeekIterator);
 }
 
 doc_iterator::ptr doc_iterator::empty() {
@@ -185,4 +181,4 @@ column_iterator::ptr column_iterator::empty() {
   return memory::to_managed<irs::column_iterator, false>(&kEmptyColumnIterator);
 }
 
-} // ROOT 
+}  // namespace iresearch

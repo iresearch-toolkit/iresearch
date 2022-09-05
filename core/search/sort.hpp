@@ -88,12 +88,12 @@ class ScoreFunction : util::noncopyable {
   ScoreFunction() noexcept;
   ScoreFunction(memory::managed_ptr<score_ctx>&& ctx,
                 const score_f func) noexcept
-      : ctx_(std::move(ctx)), func_(func) {}
+    : ctx_(std::move(ctx)), func_(func) {}
   ScoreFunction(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept
-      : ScoreFunction(memory::to_managed<score_ctx>(std::move(ctx)), func) {}
+    : ScoreFunction(memory::to_managed<score_ctx>(std::move(ctx)), func) {}
   ScoreFunction(score_ctx* ctx, const score_f func) noexcept
-      : ScoreFunction(memory::to_managed<score_ctx, false>(std::move(ctx)),
-                      func) {}
+    : ScoreFunction(memory::to_managed<score_ctx, false>(std::move(ctx)),
+                    func) {}
   ScoreFunction(ScoreFunction&& rhs) noexcept;
   ScoreFunction& operator=(ScoreFunction&& rhs) noexcept;
 
@@ -296,7 +296,7 @@ class sort {
 
 struct OrderBucket : util::noncopyable {
   OrderBucket(sort::prepared::ptr&& bucket, size_t stats_offset) noexcept
-      : bucket(std::move(bucket)), stats_offset{stats_offset} {
+    : bucket(std::move(bucket)), stats_offset{stats_offset} {
     assert(this->bucket);
   }
 
@@ -339,10 +339,10 @@ class Order final : private util::noncopyable {
 
   Order(OrderBuckets&& buckets, size_t stats_size,
         IndexFeatures features) noexcept
-      : buckets_{std::move(buckets)},
-        score_size_(buckets_.size() * sizeof(score_t)),
-        stats_size_{stats_size},
-        features_{features} {}
+    : buckets_{std::move(buckets)},
+      score_size_(buckets_.size() * sizeof(score_t)),
+      stats_size_{stats_size},
+      features_{features} {}
 
   OrderBuckets buckets_;
   size_t score_size_{};
@@ -521,7 +521,7 @@ class PreparedSortBase<void> : public sort::prepared {
   }
 
   virtual inline std::pair<size_t, size_t> stats_size()
-      const noexcept override final {
+    const noexcept override final {
     return std::make_pair(size_t(0), size_t(0));
   }
 };

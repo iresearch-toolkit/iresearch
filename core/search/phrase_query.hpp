@@ -41,14 +41,14 @@ class PhraseQuery : public filter::prepared {
 
   // Returns features required for phrase filter
   static constexpr IndexFeatures kRequiredFeatures =
-      IndexFeatures::FREQ | IndexFeatures::POS;
+    IndexFeatures::FREQ | IndexFeatures::POS;
 
   PhraseQuery(states_t&& states, positions_t&& positions, bstring&& stats,
               score_t boost) noexcept
-      : prepared{boost},
-        states_{std::move(states)},
-        positions_{std::move(positions)},
-        stats_{std::move(stats)} {}
+    : prepared{boost},
+      states_{std::move(states)},
+      positions_{std::move(positions)},
+      stats_{std::move(stats)} {}
 
   void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
              score_t boost) const final {
@@ -76,8 +76,8 @@ class FixedPhraseQuery final : public PhraseQuery<FixedPhraseState> {
  public:
   FixedPhraseQuery(states_t&& states, positions_t&& positions, bstring&& stats,
                    score_t boost) noexcept
-      : PhraseQuery{std::move(states), std::move(positions), std::move(stats),
-                    boost} {}
+    : PhraseQuery{std::move(states), std::move(positions), std::move(stats),
+                  boost} {}
 
   using filter::prepared::execute;
 
@@ -90,8 +90,8 @@ class VariadicPhraseQuery final : public PhraseQuery<VariadicPhraseState> {
  public:
   VariadicPhraseQuery(states_t&& states, positions_t&& positions,
                       bstring&& stats, score_t boost) noexcept
-      : PhraseQuery{std::move(states), std::move(positions), std::move(stats),
-                    boost} {}
+    : PhraseQuery{std::move(states), std::move(positions), std::move(stats),
+                  boost} {}
 
   using filter::prepared::execute;
 

@@ -26,7 +26,7 @@
 namespace {
 
 struct empty_position final : irs::position {
-  virtual void reset() override { }
+  virtual void reset() override {}
   virtual bool next() override { return false; }
   virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
@@ -35,7 +35,7 @@ struct empty_position final : irs::position {
 
 empty_position NO_POSITION;
 
-}
+}  // namespace
 
 namespace iresearch {
 
@@ -50,4 +50,4 @@ REGISTER_ATTRIBUTE(offset);
 REGISTER_ATTRIBUTE(payload);
 REGISTER_ATTRIBUTE(iresearch::granularity_prefix);
 
-}
+}  // namespace iresearch

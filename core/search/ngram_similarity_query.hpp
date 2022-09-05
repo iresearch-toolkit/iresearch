@@ -37,14 +37,14 @@ class NGramSimilarityQuery final : public filter::prepared {
  public:
   // returns set of features required for filter
   static constexpr IndexFeatures kRequiredFeatures =
-      IndexFeatures::FREQ | IndexFeatures::POS;
+    IndexFeatures::FREQ | IndexFeatures::POS;
 
   NGramSimilarityQuery(size_t min_match_count, NGramStates&& states,
                        bstring&& stats, score_t boost = kNoBoost)
-      : prepared{boost},
-        min_match_count_{min_match_count},
-        states_{std::move(states)},
-        stats_{std::move(stats)} {}
+    : prepared{boost},
+      min_match_count_{min_match_count},
+      states_{std::move(states)},
+      stats_{std::move(stats)} {}
 
   using filter::prepared::execute;
 

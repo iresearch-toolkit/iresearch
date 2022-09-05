@@ -53,7 +53,7 @@ class concurrent_stack : private util::noncopyable {
   };
 
   explicit concurrent_stack(node_type* head = nullptr) noexcept
-      : head_{concurrent_node{head}} {}
+    : head_{concurrent_node{head}} {}
 
   concurrent_stack(concurrent_stack&& rhs) noexcept {
     move_unsynchronized(std::move(rhs));
@@ -82,7 +82,7 @@ class concurrent_stack : private util::noncopyable {
       new_head.node = head.node->next.load(std::memory_order_relaxed);
       new_head.version = head.version + 1;
     } while (!head_.compare_exchange_weak(
-        head, new_head, std::memory_order_acquire, std::memory_order_relaxed));
+      head, new_head, std::memory_order_acquire, std::memory_order_relaxed));
 
     return head.node;
   }
@@ -96,7 +96,7 @@ class concurrent_stack : private util::noncopyable {
 
       new_head.version = head.version + 1;
     } while (!head_.compare_exchange_weak(
-        head, new_head, std::memory_order_release, std::memory_order_relaxed));
+      head, new_head, std::memory_order_release, std::memory_order_relaxed));
   }
 
  private:
@@ -104,7 +104,7 @@ class concurrent_stack : private util::noncopyable {
   // (memory) operand be 16-byte aligned
   struct alignas(IRESEARCH_CMPXCHG16B_ALIGNMENT) concurrent_node {
     explicit concurrent_node(node_type* node = nullptr) noexcept
-        : version{0}, node{node} {}
+      : version{0}, node{node} {}
 
     uintptr_t version;  // avoid aba problem
     node_type* node;
@@ -148,7 +148,7 @@ template<typename T, typename D>
 class pool_control_ptr final : public std::unique_ptr<T, D> {
  public:
   using std::unique_ptr<T, D>::unique_ptr;
-  
+
   pool_control_ptr() = default;
 
   // Intentionally hides std::unique_ptr<...>::reset() as we
@@ -310,8 +310,8 @@ class bounded_object_pool {
 // Base class for all unbounded object pool implementations
 template<typename T,
          typename =
-             std::enable_if_t<is_unique_ptr_v<typename T::ptr> &&
-                              std::is_empty_v<typename T::ptr::deleter_type>>>
+           std::enable_if_t<is_unique_ptr_v<typename T::ptr> &&
+                            std::is_empty_v<typename T::ptr::deleter_type>>>
 class unbounded_object_pool_base : private util::noncopyable {
  public:
   using deleter_type = typename T::ptr::deleter_type;
@@ -331,7 +331,7 @@ class unbounded_object_pool_base : private util::noncopyable {
   using node = typename stack::node_type;
 
   explicit unbounded_object_pool_base(size_t size)
-      : pool_(size), free_slots_{pool_.data()} {
+    : pool_(size), free_slots_{pool_.data()} {
     // build up linked list
     for (auto begin = pool_.begin(), end = pool_.end(),
               next = begin < end ? (begin + 1) : end;
@@ -372,13 +372,13 @@ class unbounded_object_pool_base : private util::noncopyable {
     }
 
     [[maybe_unused]] const auto old_value =
-        std::exchange(slot->value.value, value);
+      std::exchange(slot->value.value, value);
     assert(!old_value);
     free_objects_.push(*slot);
   }
 
   unbounded_object_pool_base(unbounded_object_pool_base&& rhs) noexcept
-      : pool_{std::move(rhs.pool_)} {
+    : pool_{std::move(rhs.pool_)} {
     // need for volatile pool only
   }
   unbounded_object_pool_base& operator=(unbounded_object_pool_base&&) = delete;
@@ -413,7 +413,7 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
   class releaser final {
    public:
     explicit releaser(unbounded_object_pool& owner) noexcept : owner_{&owner} {}
-    
+
     releaser() noexcept : owner_{nullptr} {}
 
     void operator()(pointer p) const noexcept {
@@ -492,7 +492,7 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
  private:
   struct generation {
     explicit generation(unbounded_object_pool_volatile* owner) noexcept
-        : owner{owner} {}
+      : owner{owner} {}
 
     // current owner (null == stale generation)
     unbounded_object_pool_volatile* owner;
@@ -543,7 +543,7 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
   using ptr = pool_control_ptr<element_type, releaser>;
 
   explicit unbounded_object_pool_volatile(size_t size = 0)
-      : base_t{size}, gen_{memory::make_shared<generation_t>(this)} {}
+    : base_t{size}, gen_{memory::make_shared<generation_t>(this)} {}
 
   // FIXME check what if
   //
@@ -551,7 +551,7 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
   // thread0: p0.clear();
   // thread1: unbounded_object_pool_volatile p1(std::move(p0));
   unbounded_object_pool_volatile(unbounded_object_pool_volatile&& rhs) noexcept
-      : base_t{std::move(rhs)} {
+    : base_t{std::move(rhs)} {
     gen_ = std::atomic_load(&rhs.gen_);
 
     auto lock = gen_->lock_write();
@@ -628,7 +628,7 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
  private:
   // disallow move assignment
   unbounded_object_pool_volatile& operator=(unbounded_object_pool_volatile&&) =
-      delete;
+    delete;
 
   generation_ptr_t gen_;  // current generation
 };

@@ -28,13 +28,13 @@
 namespace iresearch {
 
 enum class WildcardType {
-  INVALID  = 0,   // invalid input sequence
-  TERM_ESCAPED,   // f\*o
-  TERM,           // foo
-  MATCH_ALL,      // *
-  PREFIX_ESCAPED, // fo\*
-  PREFIX,         // foo*
-  WILDCARD        // f_o*
+  INVALID = 0,     // invalid input sequence
+  TERM_ESCAPED,    // f\*o
+  TERM,            // foo
+  MATCH_ALL,       // *
+  PREFIX_ESCAPED,  // fo\*
+  PREFIX,          // foo*
+  WILDCARD         // f_o*
 };
 
 WildcardType wildcard_type(bytes_ref pattern) noexcept;
@@ -63,7 +63,6 @@ inline automaton from_wildcard(string_ref expr) {
   return from_wildcard(ref_cast<byte_type>(expr));
 }
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_WILDCARD_UTILS_H
-
+#endif  // IRESEARCH_WILDCARD_UTILS_H

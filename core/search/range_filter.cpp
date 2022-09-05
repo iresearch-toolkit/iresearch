@@ -132,7 +132,7 @@ filter::prepared::ptr by_range::prepare(const index_reader& index,
 
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector(
-      ord.empty() ? 0 : scored_terms_limit);
+    ord.empty() ? 0 : scored_terms_limit);
   MultiTermQuery::States states{index};
   multiterm_visitor mtv{collector, states};
 
@@ -153,7 +153,7 @@ filter::prepared::ptr by_range::prepare(const index_reader& index,
   collector.score(index, ord, stats);
 
   return memory::make_managed<MultiTermQuery>(
-      std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
+    std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
 }
 
 void by_range::visit(const sub_reader& segment, const term_reader& reader,

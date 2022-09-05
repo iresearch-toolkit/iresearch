@@ -62,29 +62,43 @@ static_assert(std::is_nothrow_move_constructible_v<scoped_timer>);
 
 timer_stat_t& get_stat(const std::string& key);
 
-// Note: MSVC sometimes initializes the static variable and sometimes leaves it as *(nullptr)
-//       therefore for MSVC before use, check if the static variable has been initialized
-#define REGISTER_TIMER__(timer_name, line) \
-  static auto& timer_state ## _ ## line = ::iresearch::timer_utils::get_stat(timer_name); \
-  ::iresearch::timer_utils::scoped_timer timer_stat ## _ ## line( \
-    MSVC_ONLY(&timer_state ## _ ## line == nullptr ? ::iresearch::timer_utils::get_stat(timer_name) :) \
-    timer_state ## _ ## line \
-  );
-#define REGISTER_TIMER_EXPANDER__(timer_name, line) REGISTER_TIMER__(timer_name, line)
+// Note: MSVC sometimes initializes the static variable and sometimes leaves it
+// as *(nullptr)
+//       therefore for MSVC before use, check if the static variable has been
+//       initialized
+#define REGISTER_TIMER__(timer_name, line)                       \
+  static auto& timer_state##_##line =                            \
+    ::iresearch::timer_utils::get_stat(timer_name);              \
+  ::iresearch::timer_utils::scoped_timer timer_stat##_##line(    \
+    MSVC_ONLY(&timer_state##_##line == nullptr                   \
+                ? ::iresearch::timer_utils::get_stat(timer_name) \
+                :) timer_state##_##line);
+#define REGISTER_TIMER_EXPANDER__(timer_name, line) \
+  REGISTER_TIMER__(timer_name, line)
 #define SCOPED_TIMER(timer_name) REGISTER_TIMER_EXPANDER__(timer_name, __LINE__)
 
 #if defined(IRESEARCH_DEBUG) && !defined(IRESEARCH_VALGRIND)
-  #define REGISTER_TIMER(timer_name) REGISTER_TIMER_EXPANDER__(timer_name, __LINE__)
-  #define REGISTER_TIMER_DETAILED() REGISTER_TIMER(std::string(IRESEARCH_CURRENT_FUNCTION) + ":" + TOSTRING(__LINE__))
-  #define REGISTER_TIMER_DETAILED_VERBOSE() REGISTER_TIMER(std::string(__FILE__) + ":" + TOSTRING(__LINE__) + " -> " + std::string(IRESEARCH_CURRENT_FUNCTION))
-  #define REGISTER_TIMER_NAMED_DETAILED(timer_name) REGISTER_TIMER(std::string(IRESEARCH_CURRENT_FUNCTION) + " \"" + timer_name + "\"")
-  #define REGISTER_TIMER_NAMED_DETAILED_VERBOSE(timer_name) REGISTER_TIMER(std::string(__FILE__) + ":" + TOSTRING(__LINE__) + " -> " + std::string(IRESEARCH_CURRENT_FUNCTION) + " \"" + timer_name + "\"")
+#define REGISTER_TIMER(timer_name) \
+  REGISTER_TIMER_EXPANDER__(timer_name, __LINE__)
+#define REGISTER_TIMER_DETAILED()                                \
+  REGISTER_TIMER(std::string(IRESEARCH_CURRENT_FUNCTION) + ":" + \
+                 TOSTRING(__LINE__))
+#define REGISTER_TIMER_DETAILED_VERBOSE()                                    \
+  REGISTER_TIMER(std::string(__FILE__) + ":" + TOSTRING(__LINE__) + " -> " + \
+                 std::string(IRESEARCH_CURRENT_FUNCTION))
+#define REGISTER_TIMER_NAMED_DETAILED(timer_name)                  \
+  REGISTER_TIMER(std::string(IRESEARCH_CURRENT_FUNCTION) + " \"" + \
+                 timer_name + "\"")
+#define REGISTER_TIMER_NAMED_DETAILED_VERBOSE(timer_name)                    \
+  REGISTER_TIMER(std::string(__FILE__) + ":" + TOSTRING(__LINE__) + " -> " + \
+                 std::string(IRESEARCH_CURRENT_FUNCTION) + " \"" +           \
+                 timer_name + "\"")
 #else
-  #define REGISTER_TIMER(timer_name)
-  #define REGISTER_TIMER_DETAILED()
-  #define REGISTER_TIMER_DETAILED_VERBOSE()
-  #define REGISTER_TIMER_NAMED_DETAILED(timer_name)
-  #define REGISTER_TIMER_NAMED_DETAILED_VERBOSE(timer_name)
+#define REGISTER_TIMER(timer_name)
+#define REGISTER_TIMER_DETAILED()
+#define REGISTER_TIMER_DETAILED_VERBOSE()
+#define REGISTER_TIMER_NAMED_DETAILED(timer_name)
+#define REGISTER_TIMER_NAMED_DETAILED_VERBOSE(timer_name)
 #endif
 
 // -----------------------------------------------------------------------------
@@ -95,25 +109,24 @@ timer_stat_t& get_stat(const std::string& key);
 /// @brief initialize stat tracking of specific keys
 ///        all previous timer stats are invalid after this call
 ///        NOTE: this method call must be externally synchronized with
-///              get_stat(...) and visit(...), i.e. do not call both concurrently
+///              get_stat(...) and visit(...), i.e. do not call both
+///              concurrently
 ////////////////////////////////////////////////////////////////////////////////
-void init_stats(
-  bool track_all_keys = false,
-  const absl::flat_hash_set<std::string>& tracked_keys = {});
+void init_stats(bool track_all_keys = false,
+                const absl::flat_hash_set<std::string>& tracked_keys = {});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visit all tracked keys
 ////////////////////////////////////////////////////////////////////////////////
-bool visit(
-  const std::function<bool(const std::string& key, size_t count, size_t time_us)>& visitor
-);
+bool visit(const std::function<bool(const std::string& key, size_t count,
+                                    size_t time_us)>& visitor);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush formatted timer stats to a specified stream
 ////////////////////////////////////////////////////////////////////////////////
-void flush_stats(std::ostream &out);
+void flush_stats(std::ostream& out);
 
-} // timer_utils
-} // namespace iresearch {
+}  // namespace timer_utils
+}  // namespace iresearch
 
 #endif

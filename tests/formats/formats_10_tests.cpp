@@ -97,20 +97,20 @@ class format_10_test_case : public tests::format_test_case {
   }
 
   void postings_seek(
-      const std::vector<std::pair<irs::doc_id_t, uint32_t>>& docs,
-      irs::IndexFeatures features) {
+    const std::vector<std::pair<irs::doc_id_t, uint32_t>>& docs,
+    irs::IndexFeatures features) {
     irs::field_meta field;
     field.index_features = features;
     auto dir = get_directory(*this);
 
     // attributes for term
     auto codec =
-        std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
+      std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
     ASSERT_NE(nullptr, codec);
     auto writer = codec->get_postings_writer(false);
     ASSERT_NE(nullptr, writer);
     irs::postings_writer::state
-        term_meta;  // must be destroyed before the writer
+      term_meta;  // must be destroyed before the writer
 
     // write postings for field
     {
@@ -171,7 +171,7 @@ class format_10_test_case : public tests::format_test_case {
         // check term_meta
         {
           auto& typed_meta =
-              static_cast<irs::version10::term_meta&>(*term_meta);
+            static_cast<irs::version10::term_meta&>(*term_meta);
           ASSERT_EQ(typed_meta.docs_count, read_meta.docs_count);
           ASSERT_EQ(typed_meta.doc_start, read_meta.doc_start);
           ASSERT_EQ(typed_meta.pos_start, read_meta.pos_start);
@@ -185,7 +185,7 @@ class format_10_test_case : public tests::format_test_case {
           postings expected_postings{docs, field.index_features};
 
           auto actual =
-              reader->iterator(field.index_features, features, read_meta);
+            reader->iterator(field.index_features, features, read_meta);
           ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
 
           postings expected(docs, field.index_features);
@@ -195,9 +195,9 @@ class format_10_test_case : public tests::format_test_case {
             ASSERT_EQ(doc.first,
                       actual->seek(doc.first));  // seek to the same doc
             ASSERT_EQ(
-                doc.first,
-                actual->seek(
-                    irs::doc_limits::invalid()));  // seek to the smaller doc
+              doc.first,
+              actual->seek(
+                irs::doc_limits::invalid()));  // seek to the smaller doc
 
             ASSERT_EQ(doc.first, expected.seek(doc.first));
             assert_frequency_and_positions(expected, *actual);
@@ -209,7 +209,7 @@ class format_10_test_case : public tests::format_test_case {
 
             // seek after the existing documents
             ASSERT_TRUE(
-                irs::doc_limits::eof(actual->seek(docs.back().first + 42)));
+              irs::doc_limits::eof(actual->seek(docs.back().first + 42)));
           }
         };
 
@@ -242,7 +242,7 @@ class format_10_test_case : public tests::format_test_case {
           for (auto doc = docs.rbegin(), end = docs.rend(); doc != end; ++doc) {
             postings expected(docs, field.index_features);
             auto it =
-                reader->iterator(field.index_features, features, read_meta);
+              reader->iterator(field.index_features, features, read_meta);
             ASSERT_FALSE(irs::doc_limits::valid(it->value()));
             ASSERT_EQ(doc->first, it->seek(doc->first));
 
@@ -265,7 +265,7 @@ class format_10_test_case : public tests::format_test_case {
                                      irs::IndexFeatures::NONE, read_meta);
           ASSERT_FALSE(irs::doc_limits::valid(it->value()));
           ASSERT_FALSE(
-              irs::doc_limits::valid(it->seek(irs::doc_limits::invalid())));
+            irs::doc_limits::valid(it->seek(irs::doc_limits::invalid())));
           ASSERT_TRUE(it->next());
           ASSERT_EQ(docs.front().first, it->value());
         }
@@ -297,7 +297,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
   const std::vector<std::pair<irs::doc_id_t, uint32_t>> docs1{{6, 10}};
 
   auto codec =
-      std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
+    std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
   ASSERT_NE(nullptr, codec);
   auto writer = codec->get_postings_writer(false);
   irs::postings_writer::state meta0, meta1;
@@ -396,7 +396,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
       // check term_meta for term0
       {
         auto& typed_meta0 =
-            static_cast<const irs::version10::term_meta&>(*meta0);
+          static_cast<const irs::version10::term_meta&>(*meta0);
         ASSERT_EQ(typed_meta0.docs_count, read_meta.docs_count);
         ASSERT_EQ(typed_meta0.doc_start, read_meta.doc_start);
         ASSERT_EQ(typed_meta0.pos_start, read_meta.pos_start);
@@ -421,7 +421,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
 
       {
         auto& typed_meta1 =
-            static_cast<const irs::version10::term_meta&>(*meta1);
+          static_cast<const irs::version10::term_meta&>(*meta1);
         ASSERT_EQ(typed_meta1.docs_count, read_meta.docs_count);
         ASSERT_EQ(0, read_meta.doc_start); /* we don't read doc start in case of
                                               singleton */
@@ -452,14 +452,14 @@ TEST_P(format_10_test_case, postings_read_write) {
 
   // docs & attributes for term0
   const std::vector<std::pair<irs::doc_id_t, uint32_t>> docs0{
-      {1, 10}, {3, 10}, {5, 10}, {7, 10}, {79, 10}, {101, 10}, {124, 10}};
+    {1, 10}, {3, 10}, {5, 10}, {7, 10}, {79, 10}, {101, 10}, {124, 10}};
 
   // docs & attributes for term1
   const std::vector<std::pair<irs::doc_id_t, uint32_t>> docs1{
-      {2, 10}, {7, 10}, {9, 10}, {19, 10}};
+    {2, 10}, {7, 10}, {9, 10}, {19, 10}};
 
   auto codec =
-      std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
+    std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
   ASSERT_NE(nullptr, codec);
   auto writer = codec->get_postings_writer(false);
   ASSERT_NE(nullptr, writer);
@@ -588,7 +588,7 @@ TEST_P(format_10_test_case, postings_read_write) {
 
 TEST_P(format_10_test_case, postings_writer_reuse) {
   auto codec =
-      std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
+    std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
   ASSERT_NE(nullptr, codec);
   auto writer = codec->get_postings_writer(false);
   ASSERT_NE(nullptr, writer);
@@ -608,8 +608,8 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
   // write docs 'segment0' with all possible streams
   {
     constexpr irs::IndexFeatures features =
-        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::field_meta field;
     field.name = "field";
@@ -620,7 +620,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.doc_count = 10000;
     state.name = "0";
     state.index_features =
-        field.index_features;  // all possible features in segment
+      field.index_features;  // all possible features in segment
 
     auto out = dir().create(std::string("postings") + state.name.c_str());
     ASSERT_FALSE(!out);
@@ -648,7 +648,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.doc_count = 10000;
     state.name = "1";
     state.index_features =
-        field.index_features;  // all possible features in segment
+      field.index_features;  // all possible features in segment
 
     auto out = dir().create(std::string("postings") + state.name.c_str());
     ASSERT_FALSE(!out);
@@ -676,7 +676,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.doc_count = 10000;
     state.name = "2";
     state.index_features =
-        field.index_features;  // all possible features in segment
+      field.index_features;  // all possible features in segment
 
     auto out = dir().create(std::string("postings") + state.name.c_str());
     ASSERT_FALSE(!out);
@@ -692,7 +692,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
   // write docs 'segment3' with position
   {
     constexpr irs::IndexFeatures features =
-        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
 
     irs::field_meta field;
     field.name = "field";
@@ -703,7 +703,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.doc_count = 10000;
     state.name = "3";
     state.index_features =
-        field.index_features;  // all possible features in segment
+      field.index_features;  // all possible features in segment
 
     auto out = dir().create(std::string("postings") + state.name.c_str());
     ASSERT_FALSE(!out);
@@ -729,7 +729,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.doc_count = 10000;
     state.name = "4";
     state.index_features =
-        field.index_features;  // all possible features in segment
+      field.index_features;  // all possible features in segment
 
     auto out = dir().create(std::string("postings") + state.name.c_str());
     ASSERT_FALSE(!out);
@@ -773,7 +773,7 @@ TEST_P(format_10_test_case, ires336) {
   const irs::string_ref segment_name = "bug";
   const irs::string_ref field = "sbiotype";
   const irs::bytes_ref term =
-      irs::ref_cast<irs::byte_type>(irs::string_ref("protein_coding"));
+    irs::ref_cast<irs::byte_type>(irs::string_ref("protein_coding"));
 
   std::vector<std::pair<irs::doc_id_t, uint32_t>> docs;
   {
@@ -786,7 +786,7 @@ TEST_P(format_10_test_case, ires336) {
   }
   std::vector<irs::bytes_ref> terms{term};
   tests::format_test_case::terms<decltype(terms.begin())> trms(
-      terms.begin(), terms.end(), docs.begin(), docs.end());
+    terms.begin(), terms.end(), docs.begin(), docs.end());
 
   irs::flush_state flush_state;
   flush_state.dir = dir.get();
@@ -950,10 +950,10 @@ TEST_P(format_10_test_case, postings_seek) {
 }
 
 const auto kTestValues = ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values(tests::format_info{"1_0"}));
+  ::testing::Values(&tests::directory<&tests::memory_directory>,
+                    &tests::directory<&tests::fs_directory>,
+                    &tests::directory<&tests::mmap_directory>),
+  ::testing::Values(tests::format_info{"1_0"}));
 
 // 1.0 specific tests
 INSTANTIATE_TEST_SUITE_P(format_10_test, format_10_test_case, kTestValues,

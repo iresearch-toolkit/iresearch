@@ -38,7 +38,8 @@ bool set_thread_name(const thread_name_t name) noexcept {
   return 0 == prctl(PR_SET_NAME, name, 0, 0, 0);
 }
 
-bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& name) {
+bool get_thread_name(
+  std::basic_string<std::remove_pointer_t<thread_name_t>>& name) {
   name.resize(MAX_THREAD_NAME_LENGTH, 0);
   if (0 == prctl(PR_GET_NAME, const_cast<char*>(name.data()), 0, 0, 0)) {
     name.resize(std::strlen(name.c_str()));
@@ -47,7 +48,7 @@ bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& na
   return false;
 }
 
-} // iresearch
+}  // namespace iresearch
 
 #elif defined(_WIN32)
 
@@ -55,17 +56,13 @@ bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& na
 
 namespace {
 
-typedef HRESULT (WINAPI *name_set_ptr)(HANDLE, PCWSTR);
+typedef HRESULT(WINAPI* name_set_ptr)(HANDLE, PCWSTR);
 
-typedef HRESULT (WINAPI *name_get_ptr)(HANDLE, PWSTR*);
+typedef HRESULT(WINAPI* name_get_ptr)(HANDLE, PWSTR*);
 
-HRESULT WINAPI set_thread_description_noop(HANDLE, PCWSTR) {
-  return E_NOTIMPL;
-}
+HRESULT WINAPI set_thread_description_noop(HANDLE, PCWSTR) { return E_NOTIMPL; }
 
-HRESULT WINAPI get_thread_description_noop(HANDLE, PWSTR*) {
-  return E_NOTIMPL;
-}
+HRESULT WINAPI get_thread_description_noop(HANDLE, PWSTR*) { return E_NOTIMPL; }
 
 std::atomic<name_get_ptr> get_thread_description;
 std::atomic<name_set_ptr> set_thread_description;
@@ -78,8 +75,10 @@ void init_thread_name_api() {
     if (!get_thread_description.load() && !set_thread_description.load()) {
       auto kernel32 = LoadLibraryW(L"KERNEL32.DLL");
       if (kernel32) {
-        get_thread_description = reinterpret_cast<name_get_ptr>(GetProcAddress(kernel32, "GetThreadDescription"));
-        set_thread_description = reinterpret_cast<name_set_ptr>(GetProcAddress(kernel32, "SetThreadDescription"));
+        get_thread_description = reinterpret_cast<name_get_ptr>(
+          GetProcAddress(kernel32, "GetThreadDescription"));
+        set_thread_description = reinterpret_cast<name_set_ptr>(
+          GetProcAddress(kernel32, "SetThreadDescription"));
       }
       if (!get_thread_description) {
         get_thread_description = get_thread_description_noop;
@@ -90,14 +89,12 @@ void init_thread_name_api() {
     }
   }
 }
-} // namespace
+}  // namespace
 
 namespace iresearch {
 
 struct local_deleter {
-  void operator()(void* p) const noexcept {
-    LocalFree(p);
-  }
+  void operator()(void* p) const noexcept { LocalFree(p); }
 };
 
 bool set_thread_name(const thread_name_t name) noexcept {
@@ -105,7 +102,8 @@ bool set_thread_name(const thread_name_t name) noexcept {
   return SUCCEEDED(set_thread_description.load()(GetCurrentThread(), name));
 }
 
-bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& name) {
+bool get_thread_name(
+  std::basic_string<std::remove_pointer_t<thread_name_t>>& name) {
   init_thread_name_api();
   std::unique_ptr<void, local_deleter> guard;
   thread_name_t tmp;
@@ -118,7 +116,7 @@ bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& na
   return false;
 }
 
-} // iresearch
+}  // namespace iresearch
 
 #elif defined(__APPLE__)
 
@@ -134,29 +132,29 @@ bool set_thread_name(const thread_name_t name) noexcept {
   return 0 == pthread_setname_np(name);
 }
 
-bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& name) {
+bool get_thread_name(
+  std::basic_string<std::remove_pointer_t<thread_name_t>>& name) {
   name.resize(MAX_THREAD_NAME_LENGTH, 0);
-  if (0 == pthread_getname_np(pthread_self(), const_cast<char*>(name.data()), name.size())) {
+  if (0 == pthread_getname_np(pthread_self(), const_cast<char*>(name.data()),
+                              name.size())) {
     name.resize(std::strlen(name.c_str()));
     return true;
   }
   return false;
 }
 
-} // iresearch
+}  // namespace iresearch
 
 #else
 
 namespace iresearch {
 
-bool set_thread_name(const thread_name_t name) noexcept {
-  return false;
-}
+bool set_thread_name(const thread_name_t name) noexcept { return false; }
 
 bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>&) {
   return false;
 }
 
-} // iresearch
+}  // namespace iresearch
 
 #endif

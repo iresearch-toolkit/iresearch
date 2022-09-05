@@ -28,8 +28,12 @@ DEFINE_HAS_MEMBER(foo);
 DEFINE_HAS_MEMBER(bar);
 
 TEST(type_utils_tests, sfinae) {
-  struct A { void foo() { } };
-  struct B { int bar; };
+  struct A {
+    void foo() {}
+  };
+  struct B {
+    int bar;
+  };
 
   static_assert(HAS_MEMBER(A, foo));
   static_assert(!HAS_MEMBER(B, foo));
@@ -38,7 +42,7 @@ TEST(type_utils_tests, sfinae) {
 }
 
 TEST(type_utils_tests, is_convertible) {
-  struct A { };
+  struct A {};
   struct B : A {};
   struct C {};
 
@@ -49,7 +53,7 @@ TEST(type_utils_tests, is_convertible) {
 }
 
 TEST(type_utils_tests, in_list) {
-  struct A { };
+  struct A {};
   struct B : A {};
   struct C {};
 
@@ -65,7 +69,8 @@ TEST(type_utils_tests, template_traits) {
     ASSERT_EQ(1, (irs::template_traits_t<int32_t>::count()));
     ASSERT_EQ(2, (irs::template_traits_t<int32_t, bool>::count()));
     ASSERT_EQ(3, (irs::template_traits_t<int32_t, bool, int64_t>::count()));
-    ASSERT_EQ(4, (irs::template_traits_t<int32_t, bool, int64_t, short>::count()));
+    ASSERT_EQ(4,
+              (irs::template_traits_t<int32_t, bool, int64_t, short>::count()));
   }
 
   // test size
@@ -74,7 +79,8 @@ TEST(type_utils_tests, template_traits) {
     ASSERT_EQ(4, (irs::template_traits_t<int32_t>::size()));
     ASSERT_EQ(5, (irs::template_traits_t<int32_t, bool>::size()));
     ASSERT_EQ(13, (irs::template_traits_t<int32_t, bool, int64_t>::size()));
-    ASSERT_EQ(15, (irs::template_traits_t<int32_t, bool, int64_t, short>::size()));
+    ASSERT_EQ(15,
+              (irs::template_traits_t<int32_t, bool, int64_t, short>::size()));
   }
 
   // test size_aligned
@@ -82,8 +88,11 @@ TEST(type_utils_tests, template_traits) {
     ASSERT_EQ(0, (irs::template_traits_t<>::size_aligned()));
     ASSERT_EQ(4, (irs::template_traits_t<int32_t>::size_aligned()));
     ASSERT_EQ(5, (irs::template_traits_t<int32_t, bool>::size_aligned()));
-    ASSERT_EQ(16, (irs::template_traits_t<int32_t, bool, int64_t>::size_aligned()));
-    ASSERT_EQ(18, (irs::template_traits_t<int32_t, bool, int64_t, short>::size_aligned()));
+    ASSERT_EQ(16,
+              (irs::template_traits_t<int32_t, bool, int64_t>::size_aligned()));
+    ASSERT_EQ(
+      18,
+      (irs::template_traits_t<int32_t, bool, int64_t, short>::size_aligned()));
   }
 
   // test size_aligned with offset
@@ -91,49 +100,41 @@ TEST(type_utils_tests, template_traits) {
     ASSERT_EQ(3, (irs::template_traits_t<>::size_aligned(3)));
     ASSERT_EQ(8, (irs::template_traits_t<int32_t>::size_aligned(3)));
     ASSERT_EQ(9, (irs::template_traits_t<int32_t, bool>::size_aligned(3)));
-    ASSERT_EQ(24, (irs::template_traits_t<int32_t, bool, int64_t>::size_aligned(3)));
-    ASSERT_EQ(26, (irs::template_traits_t<int32_t, bool, int64_t, short>::size_aligned(3)));
+    ASSERT_EQ(
+      24, (irs::template_traits_t<int32_t, bool, int64_t>::size_aligned(3)));
+    ASSERT_EQ(
+      26,
+      (irs::template_traits_t<int32_t, bool, int64_t, short>::size_aligned(3)));
   }
 
   // test align_max
   {
     ASSERT_EQ(0, (irs::template_traits_t<>::align_max()));
 
-    ASSERT_EQ(
-      std::alignment_of<int32_t>::value,
-      irs::template_traits_t<int32_t>::align_max()
-    );
+    ASSERT_EQ(std::alignment_of<int32_t>::value,
+              irs::template_traits_t<int32_t>::align_max());
 
-    ASSERT_EQ(
-      std::max(std::alignment_of<int32_t>::value, std::alignment_of<bool>::value),
-      (irs::template_traits_t<int32_t, bool>::size_max())
-    );
+    ASSERT_EQ(std::max(std::alignment_of<int32_t>::value,
+                       std::alignment_of<bool>::value),
+              (irs::template_traits_t<int32_t, bool>::size_max()));
 
     {
-      static const size_t alignments[] {
-        std::alignment_of<int32_t>::value,
-        std::alignment_of<bool>::value,
-        std::alignment_of<int64_t>::value
-      };
+      static const size_t alignments[]{std::alignment_of<int32_t>::value,
+                                       std::alignment_of<bool>::value,
+                                       std::alignment_of<int64_t>::value};
 
-      ASSERT_EQ(
-        *std::max_element(std::begin(alignments), std::end(alignments)),
-        (irs::template_traits_t<int32_t, bool, int64_t>::size_max())
-      );
+      ASSERT_EQ(*std::max_element(std::begin(alignments), std::end(alignments)),
+                (irs::template_traits_t<int32_t, bool, int64_t>::size_max()));
     }
 
     {
-      static const size_t alignments[] {
-        std::alignment_of<int32_t>::value,
-        std::alignment_of<bool>::value,
-        std::alignment_of<int64_t>::value,
-        std::alignment_of<short>::value
-      };
+      static const size_t alignments[]{
+        std::alignment_of<int32_t>::value, std::alignment_of<bool>::value,
+        std::alignment_of<int64_t>::value, std::alignment_of<short>::value};
 
       ASSERT_EQ(
         *std::max_element(std::begin(alignments), std::end(alignments)),
-        (irs::template_traits_t<int32_t, bool, int64_t, short>::size_max())
-      );
+        (irs::template_traits_t<int32_t, bool, int64_t, short>::size_max()));
     }
   }
 
@@ -143,7 +144,8 @@ TEST(type_utils_tests, template_traits) {
     ASSERT_EQ(4, (irs::template_traits_t<int32_t>::size_max()));
     ASSERT_EQ(4, (irs::template_traits_t<int32_t, bool>::size_max()));
     ASSERT_EQ(8, (irs::template_traits_t<int32_t, bool, int64_t>::size_max()));
-    ASSERT_EQ(8, (irs::template_traits_t<int32_t, bool, int64_t, short>::size_max()));
+    ASSERT_EQ(
+      8, (irs::template_traits_t<int32_t, bool, int64_t, short>::size_max()));
   }
 
   // test size_max_aligned
@@ -151,8 +153,10 @@ TEST(type_utils_tests, template_traits) {
     ASSERT_EQ(0, (irs::template_traits_t<>::size_max_aligned()));
     ASSERT_EQ(4, (irs::template_traits_t<int32_t>::size_max_aligned()));
     ASSERT_EQ(4, (irs::template_traits_t<int32_t, bool>::size_max_aligned()));
-    ASSERT_EQ(8, (irs::template_traits_t<int32_t, bool, int64_t>::size_max_aligned()));
-    ASSERT_EQ(8, (irs::template_traits_t<int32_t, bool, int64_t, short>::size_max_aligned()));
+    ASSERT_EQ(
+      8, (irs::template_traits_t<int32_t, bool, int64_t>::size_max_aligned()));
+    ASSERT_EQ(8, (irs::template_traits_t<int32_t, bool, int64_t,
+                                         short>::size_max_aligned()));
   }
 
   // test size_max_aligned with offset
@@ -160,7 +164,12 @@ TEST(type_utils_tests, template_traits) {
     ASSERT_EQ(3, (irs::template_traits_t<>::size_max_aligned(3)));
     ASSERT_EQ(8, (irs::template_traits_t<int32_t>::size_max_aligned(3)));
     ASSERT_EQ(8, (irs::template_traits_t<int32_t, bool>::size_max_aligned(3)));
-    ASSERT_EQ(16, (irs::template_traits_t<int32_t, bool, int64_t>::size_max_aligned(3)));
-    ASSERT_EQ(16, (irs::template_traits_t<int32_t, bool, int64_t, short>::size_max_aligned(3)));
+    ASSERT_EQ(
+      16,
+      (irs::template_traits_t<int32_t, bool, int64_t>::size_max_aligned(3)));
+    ASSERT_EQ(
+      16,
+      (irs::template_traits_t<int32_t, bool, int64_t, short>::size_max_aligned(
+        3)));
   }
 }

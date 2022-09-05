@@ -26,34 +26,30 @@
 
 namespace {
 
-class empty_filter_test_case : public tests::FilterTestCaseBase { };
+class empty_filter_test_case : public tests::FilterTestCaseBase {};
 
 TEST_P(empty_filter_test_case, empty) {
-   // add segment
-   {
-     tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
-        &tests::generic_json_field_factory);
-     add_segment(gen);
-   }
+  // add segment
+  {
+    tests::json_doc_generator gen(resource("simple_sequential.json"),
+                                  &tests::generic_json_field_factory);
+    add_segment(gen);
+  }
 
-   auto rdr = open_reader();
+  auto rdr = open_reader();
 
-   std::vector<irs::cost::cost_t> cost{ 0 };
+  std::vector<irs::cost::cost_t> cost{0};
 
-   CheckQuery(irs::empty(), Docs{}, cost, rdr);
+  CheckQuery(irs::empty(), Docs{}, cost, rdr);
 }
 
 INSTANTIATE_TEST_SUITE_P(
-  empty_filter_test,
-  empty_filter_test_case,
+  empty_filter_test, empty_filter_test_case,
   ::testing::Combine(
-    ::testing::Values(
-      &tests::directory<&tests::memory_directory>,
-      &tests::directory<&tests::fs_directory>,
-      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(&tests::directory<&tests::memory_directory>,
+                      &tests::directory<&tests::fs_directory>,
+                      &tests::directory<&tests::mmap_directory>),
     ::testing::Values("1_0")),
-  empty_filter_test_case::to_string
-);
+  empty_filter_test_case::to_string);
 
-}
+}  // namespace

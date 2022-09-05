@@ -66,11 +66,11 @@ void visit(const sub_reader& segment, const term_reader& reader,
 namespace iresearch {
 
 /*static*/ filter::prepared::ptr by_prefix::prepare(
-    const index_reader& index, const Order& ord, score_t boost,
-    string_ref field, bytes_ref prefix, size_t scored_terms_limit) {
+  const index_reader& index, const Order& ord, score_t boost, string_ref field,
+  bytes_ref prefix, size_t scored_terms_limit) {
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector(
-      ord.empty() ? 0 : scored_terms_limit);
+    ord.empty() ? 0 : scored_terms_limit);
   MultiTermQuery::States states{index};
   multiterm_visitor mtv{collector, states};
 
@@ -90,7 +90,7 @@ namespace iresearch {
   collector.score(index, ord, stats);
 
   return memory::make_managed<MultiTermQuery>(
-      std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
+    std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
 }
 
 /*static*/ void by_prefix::visit(const sub_reader& segment,
