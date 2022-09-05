@@ -49,6 +49,14 @@ using update_contexts_ref = std::span<const segment_writer::update_context>;
 
 constexpr size_t kNonUpdateRecord = std::numeric_limits<size_t>::max();
 
+// do-nothing progress reporter, used as fallback if no other progress
+// reporter is used
+const index_writer::progress_report_callback no_progress = 
+    [](std::string_view /*phase*/, size_t /*current*/, size_t /*total*/) {
+  // intentionally do nothing
+};
+
+
 const column_info_provider_t kDefaultColumnInfo = [](string_ref) {
   // no compression, no encryption
   return column_info{ irs::type<compression::none>::get(), {}, false };
@@ -1973,9 +1981,10 @@ std::pair<std::vector<std::unique_lock<std::mutex>>, uint64_t> index_writer::flu
   return { std::move(segment_flush_locks), max_tick };
 }
 
-index_writer::pending_context_t index_writer::flush_all() {
+index_writer::pending_context_t index_writer::flush_all(progress_report_callback const& progress) {
   REGISTER_TIMER_DETAILED();
 
+  assert(progress);
   bool modified = !type_limits<type_t::index_gen_t>::valid(meta_.last_gen_);
   sync_context to_sync;
   document_mask docs_mask;
@@ -1990,7 +1999,7 @@ index_writer::pending_context_t index_writer::flush_all() {
   // register consolidating segments cleanup.
   // we need raw ptr as ctx may be moved
   auto unregister_segments = make_finally([ctx_raw = ctx.get(), this]() noexcept {
-    // FIXME make me noexcept as I'm begin called from within ~finally()
+    // FIXME make me noexcept as I'm being called from within ~finally()
     assert(ctx_raw);
     if (ctx_raw->pending_segments_.empty()) {
       return;
@@ -2020,7 +2029,14 @@ index_writer::pending_context_t index_writer::flush_all() {
 
   auto& segment_mask = ctx->segment_mask_;
 
+  // only used for progress reporting
+  size_t current_segment_index = 0;
+
   for (auto& existing_segment : meta_) {
+    // report progress
+    progress("stage1", current_segment_index, meta_.size());
+    ++current_segment_index;
+
     // skip already masked segments
     if (segment_mask.contains(existing_segment.meta)) {
       continue;
@@ -2054,6 +2070,8 @@ index_writer::pending_context_t index_writer::flush_all() {
         segment.meta
       );
     }
+      
+    ++current_segment_index;
 
     // write docs_mask if masks added, if all docs are masked then mask segment
     if (mask_modified) {
@@ -2078,8 +2096,13 @@ index_writer::pending_context_t index_writer::flush_all() {
   /////////////////////////////////////////////////////////////////////////////
   // number of candidates that have been registered for
   // pending consolidation
+  size_t current_pending_segments_index = 0;
   size_t pending_candidates_count = 0;
   for (auto& pending_segment : ctx->pending_segments_) {
+    // report progress
+    progress("stage2", current_pending_segments_index, ctx->pending_segments_.size());
+    ++current_pending_segments_index;
+
     // pending consolidation
     auto& candidates = pending_segment.consolidation_ctx.candidates;
     docs_mask.clear();
@@ -2247,14 +2270,23 @@ index_writer::pending_context_t index_writer::flush_all() {
   /////////////////////////////////////////////////////////////////////////////
 
   {
+    // count total number of segments once
+    size_t total_pending_segment_context_segments = 0;
+    for (auto& pending_segment_context: ctx->pending_segment_contexts_) {
+      if (pending_segment_context.segment_) {
+        total_pending_segment_context_segments += pending_segment_context.segment_->flushed_.size();
+      }
+    }
+
     std::vector<flush_segment_context> segment_ctxs;
+    size_t current_pending_segment_context_segments = 0;
 
     // proces all segments that have been seen by the current flush_context
     for (auto& pending_segment_context: ctx->pending_segment_contexts_) {
       if (!pending_segment_context.segment_) {
         continue; // skip empty segments
       }
-
+      
       size_t flushed_docs_count = 0;
       auto flushed_doc_id_end = pending_segment_context.doc_id_end_; // was updated after flush
       assert(pending_segment_context.doc_id_begin_ <= flushed_doc_id_end);
@@ -2262,6 +2294,10 @@ index_writer::pending_context_t index_writer::flush_all() {
 
       // process individually each flushed segment_meta from the segment_context
       for (auto& flushed: pending_segment_context.segment_->flushed_) {
+        // report progress
+        progress("stage3", current_pending_segment_context_segments, total_pending_segment_context_segments);
+        ++current_pending_segment_context_segments;
+
         auto flushed_docs_start = flushed_docs_count;
 
         flushed_docs_count += flushed.meta.docs_count; // sum of all previous segment_meta::docs_count including this meta
@@ -2328,7 +2364,7 @@ index_writer::pending_context_t index_writer::flush_all() {
             --flush_segment_ctx.segment_.meta.live_docs_count; // decrement count of live docs
           }
         }
-
+          
         // add tail doc_ids not part of this flush_context to documents_mask (including truncated)
         for (size_t doc_id = valid_doc_id_end,
              doc_id_end = flushed.meta.docs_count + doc_limits::min();
@@ -2364,7 +2400,13 @@ index_writer::pending_context_t index_writer::flush_all() {
     }
 
     // write docs_mask if !empty(), if all docs are masked then remove segment altogether
+    size_t current_segment_ctxs = 0;
     for (auto& segment_ctx: segment_ctxs) {
+      // report progress - note: from the code, we are still a part of stage 3, but we need
+      // to report something different here, i.e. "stage 4"
+      progress("stage4", current_segment_ctxs, segment_ctxs.size());
+      ++current_segment_ctxs;
+
       // if have a writer with potential update-replacement records then check if they were seen
       add_document_mask_unused_updates(segment_ctx);
 
@@ -2416,7 +2458,7 @@ index_writer::pending_context_t index_writer::flush_all() {
   return pending_context;
 }
 
-bool index_writer::start() {
+bool index_writer::start(progress_report_callback const& progress) {
   assert(!commit_lock_.try_lock()); // already locked
 
   REGISTER_TIMER_DETAILED();
@@ -2427,7 +2469,7 @@ bool index_writer::start() {
     return false;
   }
 
-  auto to_commit = flush_all();
+  auto to_commit = flush_all(progress != nullptr ? progress : no_progress);
 
   if (!to_commit) {
     // nothing to commit, no transaction started

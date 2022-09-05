@@ -25,6 +25,8 @@
 #define IRESEARCH_INDEX_WRITER_H
 
 #include <atomic>
+#include <functional>
+#include <string_view>
 
 #include <absl/container/flat_hash_map.h>
 
@@ -377,6 +379,9 @@ class index_writer : private util::noncopyable {
     flush_context_ptr update_segment(bool disable_flush);
   };
 
+  // progress report callback types for commits.
+  using progress_report_callback = std::function<void(std::string_view phase, size_t current, size_t total)>;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief additional information required for removal/update requests
   //////////////////////////////////////////////////////////////////////////////
@@ -683,11 +688,11 @@ class index_writer : private util::noncopyable {
   /// @note that if begin() has been already called commit() is
   /// relatively lightweight operation 
   ////////////////////////////////////////////////////////////////////////////
-  bool commit() {
+  bool commit(progress_report_callback const& progress = nullptr) {
     // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(commit_lock_);
 
-    const bool modified = start();
+    const bool modified = start(progress);
     finish();
     return modified;
   }
@@ -1104,12 +1109,12 @@ class index_writer : private util::noncopyable {
     flush_context& ctx,
     std::unique_lock<std::mutex>& ctx_lock);
 
-  pending_context_t flush_all();
+  pending_context_t flush_all(progress_report_callback const& progress);
 
   flush_context_ptr get_flush_context(bool shared = true);
   active_segment_context get_segment_context(flush_context& ctx); // return a usable segment or a nullptr segment if retry is required (e.g. no free segments available)
 
-  bool start(); // starts transaction
+  bool start(progress_report_callback const& progress = nullptr); // starts transaction
   void finish(); // finishes transaction
   void abort(); // aborts transaction
 
