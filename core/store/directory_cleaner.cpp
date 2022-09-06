@@ -31,14 +31,14 @@ namespace iresearch {
 // --SECTION--                                                 directory_cleaner
 // -----------------------------------------------------------------------------
 
-/*static*/ size_t directory_cleaner::clean(
-    directory& dir, const removal_acceptor_t& acceptor) {
+/*static*/ size_t directory_cleaner::clean(directory& dir,
+                                           const removal_acceptor_t& acceptor) {
   auto& refs = dir.attributes().refs().refs();
 
   size_t remove_count = 0;
   index_file_refs::ref_t tmp_ref;
   auto visitor = [&dir, &refs, &acceptor, &remove_count, &tmp_ref](
-      std::string_view filename, size_t count )->bool {
+                   std::string_view filename, size_t count) -> bool {
     // for retained files add a temporary reference to avoid removal
     if (!acceptor(filename)) {
       tmp_ref = refs.add(filename);
@@ -54,4 +54,4 @@ namespace iresearch {
   return remove_count;
 }
 
-}
+}  // namespace iresearch

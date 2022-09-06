@@ -59,8 +59,8 @@ struct sort : irs::sort {
   struct prepared final : irs::sort::prepared {
     struct field_collector final : irs::sort::field_collector {
       uint64_t docs_with_field =
-          0;  // number of documents containing the matched field (possibly
-              // without matching terms)
+        0;  // number of documents containing the matched field (possibly
+            // without matching terms)
       uint64_t total_term_freq = 0;  // number of terms for processed field
 
       virtual void collect(const irs::sub_reader&,
@@ -85,7 +85,7 @@ struct sort : irs::sort {
 
     struct term_collector final : irs::sort::term_collector {
       uint64_t docs_with_term =
-          0;  // number of documents containing the matched term
+        0;  // number of documents containing the matched term
 
       virtual void collect(const irs::sub_reader&, const irs::term_reader&,
                            const irs::attribute_provider& term_attrs) override {
@@ -111,20 +111,20 @@ struct sort : irs::sort {
     }
 
     virtual irs::sort::field_collector::ptr prepare_field_collector()
-        const override {
+      const override {
       return irs::memory::make_unique<field_collector>();
     }
 
     virtual irs::sort::term_collector::ptr prepare_term_collector()
-        const override {
+      const override {
       return irs::memory::make_unique<term_collector>();
     }
 
     virtual irs::ScoreFunction prepare_scorer(
-        const irs::sub_reader& /*segment*/, const irs::term_reader& /*field*/,
-        const irs::byte_type* /*stats*/,
-        const irs::attribute_provider& /*doc_attrs*/,
-        irs::score_t /*boost*/) const override {
+      const irs::sub_reader& /*segment*/, const irs::term_reader& /*field*/,
+      const irs::byte_type* /*stats*/,
+      const irs::attribute_provider& /*doc_attrs*/,
+      irs::score_t /*boost*/) const override {
       return {nullptr, nullptr};
     }
 
@@ -143,7 +143,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
   typedef const std::pair<irs::string_ref, term_meta>* iterator_type;
 
   seek_term_iterator(iterator_type begin, iterator_type end)
-      : begin_(begin), end_(end), cookie_ptr_(begin) {}
+    : begin_(begin), end_(end), cookie_ptr_(begin) {}
 
   virtual irs::SeekResult seek_ge(const irs::bytes_ref&) override {
     return irs::SeekResult::NOT_FOUND;
@@ -156,7 +156,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
   }
 
   virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+    irs::type_info::type_id type) noexcept override {
     if (type == irs::type<decltype(meta_)>::id()) {
       return &meta_;
     }
@@ -182,7 +182,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
   virtual void read() override {}
 
   virtual irs::doc_iterator::ptr postings(
-      irs::IndexFeatures /*features*/) const override {
+    irs::IndexFeatures /*features*/) const override {
     return irs::doc_iterator::empty();
   }
 
@@ -265,7 +265,7 @@ struct state_visitor {
 
   void operator()(irs::seek_cookie::ptr& cookie) const {
     auto* cookie_impl =
-        static_cast<const ::seek_term_iterator::seek_ptr*>(cookie.get());
+      static_cast<const ::seek_term_iterator::seek_ptr*>(cookie.get());
 
     ASSERT_EQ(*expected_cookie, cookie_impl->ptr);
 
@@ -273,7 +273,7 @@ struct state_visitor {
   }
 
   mutable decltype(state::segment_state::cookies)::const_iterator
-      expected_cookie;
+    expected_cookie;
   const struct state& expected_state;
 };
 
@@ -281,16 +281,16 @@ struct state_visitor {
 
 TEST(top_terms_collector_test, test_top_k) {
   using collector_type =
-      irs::top_terms_collector<irs::top_term_state<irs::byte_type>>;
+    irs::top_terms_collector<irs::top_term_state<irs::byte_type>>;
   collector_type collector(5);
 
   // segment 0
   irs::empty_term_reader term_reader0(42);
   sub_reader segment0(100);
   const std::pair<irs::string_ref, term_meta> TERMS0[]{
-      {"F", {1, 1}}, {"G", {2, 2}},   {"H", {3, 3}},  {"B", {3, 3}},
-      {"C", {3, 3}}, {"A", {3, 3}},   {"H", {2, 2}},  {"D", {5, 5}},
-      {"E", {5, 5}}, {"I", {15, 15}}, {"J", {5, 25}}, {"K", {15, 35}},
+    {"F", {1, 1}}, {"G", {2, 2}},   {"H", {3, 3}},  {"B", {3, 3}},
+    {"C", {3, 3}}, {"A", {3, 3}},   {"H", {2, 2}},  {"D", {5, 5}},
+    {"E", {5, 5}}, {"I", {15, 15}}, {"J", {5, 25}}, {"K", {15, 35}},
   };
 
   {
@@ -306,8 +306,8 @@ TEST(top_terms_collector_test, test_top_k) {
   irs::empty_term_reader term_reader1(42);
   sub_reader segment1(100);
   const std::pair<irs::string_ref, term_meta> TERMS1[]{
-      {"F", {1, 1}}, {"G", {2, 2}}, {"H", {3, 3}},   {"B", {3, 3}},
-      {"C", {3, 3}}, {"A", {3, 3}}, {"K", {15, 35}},
+    {"F", {1, 1}}, {"G", {2, 2}}, {"H", {3, 3}},   {"B", {3, 3}},
+    {"C", {3, 3}}, {"A", {3, 3}}, {"K", {15, 35}},
   };
 
   {
@@ -320,15 +320,15 @@ TEST(top_terms_collector_test, test_top_k) {
   }
 
   std::map<char, state> expected_states{
-      {'J', {{{&segment0, {&term_reader0, 5, {TERMS0 + 10}}}}}},
-      {'K',
-       {{{&segment0, {&term_reader0, 15, {TERMS0 + 11}}},
-         {&segment1, {&term_reader1, 15, {TERMS1 + 6}}}}}},
-      {'I', {{{&segment0, {&term_reader0, 15, {TERMS0 + 9}}}}}},
-      {'H',
-       {{{&segment0, {&term_reader0, 5, {TERMS0 + 2, TERMS0 + 6}}},
-         {&segment1, {&term_reader1, 3, {TERMS1 + 2}}}}}},
-      {'G', {{{&segment0, {&term_reader0, 2, {TERMS0 + 1}}}}}},
+    {'J', {{{&segment0, {&term_reader0, 5, {TERMS0 + 10}}}}}},
+    {'K',
+     {{{&segment0, {&term_reader0, 15, {TERMS0 + 11}}},
+       {&segment1, {&term_reader1, 15, {TERMS1 + 6}}}}}},
+    {'I', {{{&segment0, {&term_reader0, 15, {TERMS0 + 9}}}}}},
+    {'H',
+     {{{&segment0, {&term_reader0, 5, {TERMS0 + 2, TERMS0 + 6}}},
+       {&segment1, {&term_reader1, 3, {TERMS1 + 2}}}}}},
+    {'G', {{{&segment0, {&term_reader0, 2, {TERMS0 + 1}}}}}},
   };
 
   auto visitor = [&expected_states](collector_type::state_type& state) {
@@ -347,16 +347,16 @@ TEST(top_terms_collector_test, test_top_k) {
 
 TEST(top_terms_collector_test, test_top_0) {
   using collector_type =
-      irs::top_terms_collector<irs::top_term_state<irs::byte_type>>;
+    irs::top_terms_collector<irs::top_term_state<irs::byte_type>>;
   collector_type collector(0);  // same as collector(1)
 
   // segment 0
   irs::empty_term_reader term_reader0(42);
   sub_reader segment0(100);
   const std::pair<irs::string_ref, term_meta> TERMS0[]{
-      {"F", {1, 1}}, {"G", {2, 2}},   {"H", {3, 3}},  {"B", {3, 3}},
-      {"C", {3, 3}}, {"A", {3, 3}},   {"H", {2, 2}},  {"D", {5, 5}},
-      {"E", {5, 5}}, {"I", {15, 15}}, {"J", {5, 25}}, {"K", {15, 35}},
+    {"F", {1, 1}}, {"G", {2, 2}},   {"H", {3, 3}},  {"B", {3, 3}},
+    {"C", {3, 3}}, {"A", {3, 3}},   {"H", {2, 2}},  {"D", {5, 5}},
+    {"E", {5, 5}}, {"I", {15, 15}}, {"J", {5, 25}}, {"K", {15, 35}},
   };
 
   {
@@ -372,8 +372,8 @@ TEST(top_terms_collector_test, test_top_0) {
   irs::empty_term_reader term_reader1(42);
   sub_reader segment1(100);
   const std::pair<irs::string_ref, term_meta> TERMS1[]{
-      {"F", {1, 1}}, {"G", {2, 2}}, {"H", {3, 3}},   {"B", {3, 3}},
-      {"C", {3, 3}}, {"A", {3, 3}}, {"K", {15, 35}},
+    {"F", {1, 1}}, {"G", {2, 2}}, {"H", {3, 3}},   {"B", {3, 3}},
+    {"C", {3, 3}}, {"A", {3, 3}}, {"K", {15, 35}},
   };
 
   {
@@ -386,9 +386,9 @@ TEST(top_terms_collector_test, test_top_0) {
   }
 
   std::map<char, state> expected_states{
-      {'K',
-       {{{&segment0, {&term_reader0, 15, {TERMS0 + 11}}},
-         {&segment1, {&term_reader1, 15, {TERMS1 + 6}}}}}},
+    {'K',
+     {{{&segment0, {&term_reader0, 15, {TERMS0 + 11}}},
+       {&segment1, {&term_reader1, 15, {TERMS1 + 6}}}}}},
   };
 
   auto visitor = [&expected_states](collector_type::state_type& state) {

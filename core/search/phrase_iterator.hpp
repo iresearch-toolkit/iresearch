@@ -32,8 +32,8 @@ template<typename Frequency>
 class PhrasePosition final : public position, public Frequency {
  public:
   explicit PhrasePosition(
-      std::vector<typename Frequency::TermPosition>&& pos) noexcept
-      : Frequency{std::move(pos)} {
+    std::vector<typename Frequency::TermPosition>&& pos) noexcept
+    : Frequency{std::move(pos)} {
     std::tie(start_, end_) = self().GetOffsets();
   }
 
@@ -86,7 +86,7 @@ class FixedPhraseFrequency {
   using TermPosition = FixedTermPosition;
 
   explicit FixedPhraseFrequency(std::vector<TermPosition>&& pos) noexcept
-      : pos_{std::move(pos)} {
+    : pos_{std::move(pos)} {
     assert(!pos_.empty());             // must not be empty
     assert(0 == pos_.front().second);  // lead offset is always 0
   }
@@ -169,9 +169,9 @@ class FixedPhraseFrequency {
 struct VariadicPhraseAdapter : score_iterator_adapter<doc_iterator::ptr> {
   VariadicPhraseAdapter() = default;
   VariadicPhraseAdapter(doc_iterator::ptr&& it, score_t boost) noexcept
-      : score_iterator_adapter<doc_iterator::ptr>(std::move(it)),
-        position(irs::get_mutable<irs::position>(this->it.get())),
-        boost(boost) {}
+    : score_iterator_adapter<doc_iterator::ptr>(std::move(it)),
+      position(irs::get_mutable<irs::position>(this->it.get())),
+      boost(boost) {}
 
   irs::position* position{};
   score_t boost{kNoBoost};
@@ -183,22 +183,22 @@ static_assert(std::is_nothrow_move_assignable_v<VariadicPhraseAdapter>);
 struct VariadicPhraseOffsetAdapter final : VariadicPhraseAdapter {
   VariadicPhraseOffsetAdapter() = default;
   VariadicPhraseOffsetAdapter(doc_iterator::ptr&& it, score_t boost) noexcept
-      : VariadicPhraseAdapter{std::move(it), boost},
-        offset{this->position ? irs::get<irs::offset>(*this->position)
-                              // FIXME(gnusi): use constant
-                              : nullptr} {}
+    : VariadicPhraseAdapter{std::move(it), boost},
+      offset{this->position ? irs::get<irs::offset>(*this->position)
+                            // FIXME(gnusi): use constant
+                            : nullptr} {}
 
   const irs::offset* offset{};
 };
 
 static_assert(
-    std::is_nothrow_move_constructible_v<VariadicPhraseOffsetAdapter>);
+  std::is_nothrow_move_constructible_v<VariadicPhraseOffsetAdapter>);
 static_assert(std::is_nothrow_move_assignable_v<VariadicPhraseOffsetAdapter>);
 
 template<typename Adapter>
 using VariadicTermPosition =
-    std::pair<compound_doc_iterator<Adapter>*,
-              position::value_t>;  // desired offset in the phrase
+  std::pair<compound_doc_iterator<Adapter>*,
+            position::value_t>;  // desired offset in the phrase
 
 // Helper for variadic phrase frequency evaluation for cases when
 // only one term may be at a single position in a phrase (e.g. synonyms)
@@ -208,7 +208,7 @@ class VariadicPhraseFrequency {
   using TermPosition = VariadicTermPosition<Adapter>;
 
   explicit VariadicPhraseFrequency(std::vector<TermPosition>&& pos) noexcept
-      : pos_{std::move(pos)}, phrase_size_{pos_.size()} {
+    : pos_{std::move(pos)}, phrase_size_{pos_.size()} {
     assert(!pos_.empty() && phrase_size_);  // must not be empty
     assert(0 == pos_.front().second);       // lead offset is always 0
   }
@@ -240,7 +240,7 @@ class VariadicPhraseFrequency {
     if constexpr (VolatileBoost) {
       if (phrase_freq_.value) {
         phrase_boost_.value =
-            phrase_boost_.value / (phrase_size_ * phrase_freq_.value);
+          phrase_boost_.value / (phrase_size_ * phrase_freq_.value);
       }
     }
 
@@ -377,8 +377,8 @@ class VariadicPhraseFrequencyOverlapped {
   using TermPosition = VariadicTermPosition<Adapter>;
 
   explicit VariadicPhraseFrequencyOverlapped(
-      std::vector<TermPosition>&& pos) noexcept
-      : pos_(std::move(pos)), phrase_size_(pos_.size()) {
+    std::vector<TermPosition>&& pos) noexcept
+    : pos_(std::move(pos)), phrase_size_(pos_.size()) {
     assert(!pos_.empty() && phrase_size_);  // must not be empty
     assert(0 == pos_.front().second);       // lead offset is always 0
   }
@@ -413,7 +413,7 @@ class VariadicPhraseFrequencyOverlapped {
     if constexpr (VolatileBoost) {
       if (lead_freq_) {
         phrase_boost_.value =
-            (phrase_boost_.value + (lead_boost_ / lead_freq_)) / phrase_size_;
+          (phrase_boost_.value + (lead_boost_ / lead_freq_)) / phrase_size_;
       }
     }
 
@@ -552,20 +552,20 @@ class PhraseIterator : public doc_iterator {
 
   PhraseIterator(typename Conjunction::doc_iterators_t&& itrs,
                  std::vector<TermPosition>&& pos)
-      : approx_{std::move(itrs), NoopAggregator{}}, freq_{std::move(pos)} {
+    : approx_{std::move(itrs), NoopAggregator{}}, freq_{std::move(pos)} {
     std::get<attribute_ptr<document>>(attrs_) =
-        irs::get_mutable<document>(&approx_);
+      irs::get_mutable<document>(&approx_);
 
     // FIXME find a better estimation
     std::get<irs::cost>(attrs_).reset(
-        [this]() { return cost::extract(approx_); });
+      [this]() { return cost::extract(approx_); });
   }
 
   PhraseIterator(typename Conjunction::doc_iterators_t&& itrs,
                  std::vector<typename Frequency::TermPosition>&& pos,
                  const sub_reader& segment, const term_reader& field,
                  const byte_type* stats, const Order& ord, score_t boost)
-      : PhraseIterator{std::move(itrs), std::move(pos)} {
+    : PhraseIterator{std::move(itrs), std::move(pos)} {
     if (!ord.empty()) {
       auto& score = std::get<irs::score>(attrs_);
       score = CompileScore(ord.buckets(), segment, field, stats, *this, boost);

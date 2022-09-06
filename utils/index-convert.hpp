@@ -27,5 +27,4 @@
 
 int convert(int argc, char* argv[]);
 
-#endif // IRESEARCH_INDEX_CONVERT_H
-
+#endif  // IRESEARCH_INDEX_CONVERT_H

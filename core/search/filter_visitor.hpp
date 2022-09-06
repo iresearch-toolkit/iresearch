@@ -41,16 +41,15 @@ struct filter_visitor {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief makes preparations for a visitor
   //////////////////////////////////////////////////////////////////////////////
-  virtual void prepare(const sub_reader& segment,
-                       const term_reader& field,
+  virtual void prepare(const sub_reader& segment, const term_reader& field,
                        const seek_term_iterator& terms) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief applies actions to a current term iterator
   //////////////////////////////////////////////////////////////////////////////
   virtual void visit(score_t boost) = 0;
-}; // filter_visitor
+};  // filter_visitor
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_FILTER_VISITOR_H
+#endif  // IRESEARCH_FILTER_VISITOR_H

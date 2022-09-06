@@ -31,10 +31,14 @@ namespace iresearch {
 // Writer for storing skip-list in a directory
 // Example (skip_0 = skip_n = 3):
 //
-//                                                        c         (skip level 2)
-//                    c                 c                 c         (skip level 1)
-//        x     x     x     x     x     x     x     x     x     x   (skip level 0)
-//  d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d (posting list)
+//                                                        c         (skip level
+//                                                        2)
+//                    c                 c                 c         (skip level
+//                    1)
+//        x     x     x     x     x     x     x     x     x     x   (skip level
+//        0)
+//  d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d (posting
+//  list)
 //        3     6     9     12    15    18    21    24    27    30  (doc_count)
 //
 // d - document
@@ -60,10 +64,8 @@ class SkipWriter : util::noncopyable {
 
   // Prepares skip_writer capable of writing up to `max_levels` skip levels and
   // `count` elements.
-  void Prepare(
-    size_t max_levels,
-    size_t count,
-    const memory_allocator& alloc = memory_allocator::global());
+  void Prepare(size_t max_levels, size_t count,
+               const memory_allocator& alloc = memory_allocator::global());
 
   // Flushes all internal data into the specified output stream
   void Flush(index_output& out);
@@ -84,8 +86,8 @@ class SkipWriter : util::noncopyable {
  protected:
   std::vector<memory_output> levels_;
   size_t max_levels_;
-  doc_id_t skip_0_; // skip interval for 0 level
-  doc_id_t skip_n_; // skip interval for 1..n levels
+  doc_id_t skip_0_;  // skip interval for 0 level
+  doc_id_t skip_n_;  // skip interval for 1..n levels
 };
 
 template<typename Writer>
@@ -104,8 +106,7 @@ void SkipWriter::Skip(doc_id_t count, Writer&& write) {
     }
 
     // write levels from 1 to n
-    for (size_t i = 1;
-         0 == count % skip_n_ && i < max_levels_;
+    for (size_t i = 1; 0 == count % skip_n_ && i < max_levels_;
          ++i, count /= skip_n_) {
       auto& stream = levels_[i].stream;
       write(i, stream);
@@ -139,11 +140,8 @@ class SkipReaderBase : util::noncopyable {
   static constexpr size_t kUndefined = std::numeric_limits<size_t>::max();
 
   struct Level final {
-    Level(
-      index_input::ptr&& stream,
-      doc_id_t step,
-      doc_id_t left,
-      uint64_t begin) noexcept;
+    Level(index_input::ptr&& stream, doc_id_t step, doc_id_t left,
+          uint64_t begin) noexcept;
     Level(Level&&) = default;
     Level& operator=(Level&&) = delete;
 
@@ -177,13 +175,11 @@ class SkipReaderBase : util::noncopyable {
   }
 
   SkipReaderBase(doc_id_t skip_0, doc_id_t skip_n) noexcept
-    : skip_0_{skip_0},
-      skip_n_{skip_n} {
-  }
+    : skip_0_{skip_0}, skip_n_{skip_n} {}
 
-  std::vector<Level> levels_; // input streams for skip-list levels
-  const doc_id_t skip_0_; // skip interval for 0 level
-  const doc_id_t skip_n_; // skip interval for 1..n levels
+  std::vector<Level> levels_;  // input streams for skip-list levels
+  const doc_id_t skip_0_;      // skip interval for 0 level
+  const doc_id_t skip_n_;      // skip interval for 1..n levels
   doc_id_t docs_count_{};
 };
 
@@ -199,18 +195,14 @@ class SkipReader final : public SkipReaderBase {
   // skip_n: skip interval for levels 1..n
   template<typename T>
   SkipReader(doc_id_t skip_0, doc_id_t skip_n, T&& reader)
-    : SkipReaderBase{skip_0, skip_n},
-      reader_{std::forward<T>(reader)} {
-  }
+    : SkipReaderBase{skip_0, skip_n}, reader_{std::forward<T>(reader)} {}
 
   // Seeks to the specified target.
   // Returns Number of elements skipped from upper bound
   // to the next lower bound.
   doc_id_t Seek(doc_id_t target);
 
-  ReaderType& Reader() noexcept {
-    return reader_;
-  }
+  ReaderType& Reader() noexcept { return reader_; }
 
  private:
   ReaderType reader_;
@@ -263,6 +255,6 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
   return level_0.left + step_0;
 }
 
-} // iresearch
+}  // namespace iresearch
 
 #endif

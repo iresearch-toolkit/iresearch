@@ -27,28 +27,24 @@ namespace {
 using namespace irs;
 
 struct noop_field_collector final : sort::field_collector {
-  virtual void collect(const sub_reader&, const term_reader&) override {
-
-  }
-  virtual void reset() override { }
-  virtual void collect(bytes_ref) override { }
-  virtual void write(data_output&) const override { }
+  virtual void collect(const sub_reader&, const term_reader&) override {}
+  virtual void reset() override {}
+  virtual void collect(bytes_ref) override {}
+  virtual void write(data_output&) const override {}
 };
 
 struct noop_term_collector final : sort::term_collector {
-  virtual void collect(const sub_reader&,
-                       const term_reader&,
-                       const attribute_provider&) override {
-  }
-  virtual void reset() override { }
-  virtual void collect(bytes_ref) override { }
-  virtual void write(data_output&) const override { }
+  virtual void collect(const sub_reader&, const term_reader&,
+                       const attribute_provider&) override {}
+  virtual void reset() override {}
+  virtual void collect(bytes_ref) override {}
+  virtual void write(data_output&) const override {}
 };
 
 static noop_field_collector NOOP_FIELD_STATS;
 static noop_term_collector NOOP_TERM_STATS;
 
-}
+}  // namespace
 
 namespace iresearch {
 
@@ -56,7 +52,8 @@ namespace iresearch {
 // --SECTION--                                           field_collector_wrapper
 // -----------------------------------------------------------------------------
 
-/*static*/ field_collector_wrapper::collector_type& field_collector_wrapper::noop() noexcept {
+/*static*/ field_collector_wrapper::collector_type&
+field_collector_wrapper::noop() noexcept {
   return NOOP_FIELD_STATS;
 }
 
@@ -69,7 +66,7 @@ field_collectors::field_collectors(const Order& order)
   auto collectors = collectors_.begin();
   for (auto& bucket : order.buckets()) {
     *collectors = bucket.bucket->prepare_field_collector();
-    assert(*collectors); // ensured by wrapper
+    assert(*collectors);  // ensured by wrapper
     ++collectors;
   }
   assert(collectors == collectors_.end());
@@ -94,21 +91,19 @@ void field_collectors::collect(const sub_reader& segment,
   }
 }
 
-void field_collectors::finish(byte_type* stats_buf, const index_reader& index) const {
+void field_collectors::finish(byte_type* stats_buf,
+                              const index_reader& index) const {
   // special case where term statistics collection is not applicable
   // e.g. by_column_existence filter
   assert(buckets_.size() == collectors_.size());
 
   for (size_t i = 0, count = collectors_.size(); i < count; ++i) {
     auto& sort = buckets_[i];
-    assert(sort.bucket); // ensured by order::prepare
+    assert(sort.bucket);  // ensured by order::prepare
 
     sort.bucket->collect(
-      stats_buf + sort.stats_offset, // where stats for bucket start
-      index,
-      collectors_[i].get(),
-      nullptr
-    );
+      stats_buf + sort.stats_offset,  // where stats for bucket start
+      index, collectors_[i].get(), nullptr);
   }
 }
 
@@ -116,7 +111,8 @@ void field_collectors::finish(byte_type* stats_buf, const index_reader& index) c
 // --SECTION--                                            term_collector_wrapper
 // -----------------------------------------------------------------------------
 
-/*static*/ term_collector_wrapper::collector_type& term_collector_wrapper::noop() noexcept {
+/*static*/ term_collector_wrapper::collector_type&
+term_collector_wrapper::noop() noexcept {
   return NOOP_TERM_STATS;
 }
 
@@ -125,29 +121,29 @@ void field_collectors::finish(byte_type* stats_buf, const index_reader& index) c
 // -----------------------------------------------------------------------------
 
 term_collectors::term_collectors(const Order& buckets, size_t size)
-  : collectors_base<term_collector_wrapper>(buckets.buckets().size()*size, buckets) {
+  : collectors_base<term_collector_wrapper>(buckets.buckets().size() * size,
+                                            buckets) {
   // add term collectors from each bucket
   // layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
   // cppcheck-suppress shadowFunction
   auto begin = collectors_.begin();
   // cppcheck-suppress shadowFunction
   auto end = collectors_.end();
-  for (; begin != end; ) {
+  for (; begin != end;) {
     for (auto& entry : buckets.buckets()) {
-      assert(entry.bucket); // ensured by order::prepare
+      assert(entry.bucket);  // ensured by order::prepare
 
       *begin = entry.bucket->prepare_term_collector();
-      assert(*begin); // ensured by wrapper
+      assert(*begin);  // ensured by wrapper
       ++begin;
     }
   }
   assert(begin == collectors_.end());
 }
 
-
-void term_collectors::collect(
-    const sub_reader& segment, const term_reader& field,
-    size_t term_idx, const attribute_provider& attrs) const {
+void term_collectors::collect(const sub_reader& segment,
+                              const term_reader& field, size_t term_idx,
+                              const attribute_provider& attrs) const {
   const size_t count = buckets_.size();
 
   switch (count) {
@@ -155,24 +151,26 @@ void term_collectors::collect(
       return;
     case 1: {
       assert(term_idx < collectors_.size());
-      assert(collectors_[term_idx]); // enforced by wrapper
+      assert(collectors_[term_idx]);  // enforced by wrapper
       collectors_[term_idx]->collect(segment, field, attrs);
       return;
     }
     case 2: {
       assert(term_idx + 1 < collectors_.size());
-      assert(collectors_[term_idx]); // enforced by wrapper
-      assert(collectors_[term_idx+1]); // enforced by wrapper
+      assert(collectors_[term_idx]);      // enforced by wrapper
+      assert(collectors_[term_idx + 1]);  // enforced by wrapper
       collectors_[term_idx]->collect(segment, field, attrs);
-      collectors_[term_idx+1]->collect(segment, field, attrs);
+      collectors_[term_idx + 1]->collect(segment, field, attrs);
       return;
     }
     default: {
       const size_t term_offset_count = term_idx * count;
       for (size_t i = 0; i < count; ++i) {
         const auto idx = term_offset_count + i;
-        assert(idx < collectors_.size()); // enforced by allocation in the constructor
-        assert(collectors_[idx]); // enforced by wrapper
+        assert(
+          idx <
+          collectors_.size());     // enforced by allocation in the constructor
+        assert(collectors_[idx]);  // enforced by wrapper
 
         collectors_[idx]->collect(segment, field, attrs);
       }
@@ -180,7 +178,6 @@ void term_collectors::collect(
     }
   }
 }
-
 
 size_t term_collectors::push_back() {
   // cppcheck-suppress shadowFunction
@@ -192,23 +189,26 @@ size_t term_collectors::push_back() {
       return 0;
     case 1: {
       const auto term_offset = collectors_.size();
-      assert(buckets_.front().bucket); // ensured by order::prepare
-      collectors_.emplace_back(buckets_.front().bucket->prepare_term_collector());
+      assert(buckets_.front().bucket);  // ensured by order::prepare
+      collectors_.emplace_back(
+        buckets_.front().bucket->prepare_term_collector());
       return term_offset;
     }
     case 2: {
       const auto term_offset = collectors_.size() / 2;
-      assert(buckets_.front().bucket); // ensured by order::prepare
-      collectors_.emplace_back(buckets_.front().bucket->prepare_term_collector());
-      assert(buckets_.back().bucket); // ensured by order::prepare
-      collectors_.emplace_back(buckets_.back().bucket->prepare_term_collector());
+      assert(buckets_.front().bucket);  // ensured by order::prepare
+      collectors_.emplace_back(
+        buckets_.front().bucket->prepare_term_collector());
+      assert(buckets_.back().bucket);  // ensured by order::prepare
+      collectors_.emplace_back(
+        buckets_.back().bucket->prepare_term_collector());
       return term_offset;
     }
     default: {
       const auto term_offset = collectors_.size() / size;
       collectors_.reserve(collectors_.size() + size);
-      for (auto& entry: buckets_) {
-        assert(entry.bucket); // ensured by order::prepare
+      for (auto& entry : buckets_) {
+        assert(entry.bucket);  // ensured by order::prepare
         collectors_.emplace_back(entry.bucket->prepare_term_collector());
       }
       return term_offset;
@@ -216,11 +216,9 @@ size_t term_collectors::push_back() {
   }
 }
 
-void term_collectors::finish(
-    byte_type* stats_buf,
-    size_t term_idx,
-    const field_collectors& field_collectors,
-    const index_reader& index) const {
+void term_collectors::finish(byte_type* stats_buf, size_t term_idx,
+                             const field_collectors& field_collectors,
+                             const index_reader& index) const {
   const auto bucket_count = buckets_.size();
 
   switch (bucket_count) {
@@ -230,9 +228,8 @@ void term_collectors::finish(
       assert(field_collectors.front());
       assert(buckets_.front().bucket);
       buckets_.front().bucket->collect(
-        stats_buf + buckets_.front().stats_offset,
-        index, field_collectors.front(),
-        collectors_[term_idx].get());
+        stats_buf + buckets_.front().stats_offset, index,
+        field_collectors.front(), collectors_[term_idx].get());
     } break;
     case 2: {
       term_idx *= bucket_count;
@@ -240,16 +237,14 @@ void term_collectors::finish(
       assert(field_collectors.front());
       assert(buckets_.front().bucket);
       buckets_.front().bucket->collect(
-        stats_buf + buckets_.front().stats_offset,
-        index, field_collectors.front(),
-        collectors_[term_idx].get());
+        stats_buf + buckets_.front().stats_offset, index,
+        field_collectors.front(), collectors_[term_idx].get());
 
       assert(field_collectors.back());
       assert(buckets_.back().bucket);
-      buckets_.back().bucket->collect(
-        stats_buf + buckets_.back().stats_offset,
-        index, field_collectors.back(),
-        collectors_[term_idx + 1].get());
+      buckets_.back().bucket->collect(stats_buf + buckets_.back().stats_offset,
+                                      index, field_collectors.back(),
+                                      collectors_[term_idx + 1].get());
     } break;
     default: {
       term_idx *= bucket_count;
@@ -257,14 +252,12 @@ void term_collectors::finish(
       // cppcheck-suppress shadowFunction
       auto begin = field_collectors.begin();
       for (auto& bucket : buckets_) {
-        bucket.bucket->collect(
-          stats_buf + bucket.stats_offset,
-          index, begin->get(),
-          collectors_[term_idx++].get());
+        bucket.bucket->collect(stats_buf + bucket.stats_offset, index,
+                               begin->get(), collectors_[term_idx++].get());
         ++begin;
       }
     } break;
   }
 }
 
-}
+}  // namespace iresearch

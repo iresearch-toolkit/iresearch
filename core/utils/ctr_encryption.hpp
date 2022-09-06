@@ -38,7 +38,7 @@ struct cipher {
   virtual bool encrypt(byte_type* data) const = 0;
 
   virtual bool decrypt(byte_type* data) const = 0;
-}; // cipher
+};  // cipher
 
 ////////////////////////////////////////////////////////////////////////////////
 ///// @class ctr_encryption
@@ -48,29 +48,22 @@ class ctr_encryption : public encryption {
   static const size_t DEFAULT_HEADER_LENGTH = 4096;
   static const size_t MIN_HEADER_LENGTH = sizeof(uint64_t);
 
-  explicit ctr_encryption(const cipher& cipher) noexcept
-   : cipher_(&cipher) {
-  }
+  explicit ctr_encryption(const cipher& cipher) noexcept : cipher_(&cipher) {}
 
   virtual size_t header_length() noexcept override {
     return DEFAULT_HEADER_LENGTH;
   }
 
-  virtual bool create_header(
-    std::string_view filename,
-    byte_type* header
-  ) override;
+  virtual bool create_header(std::string_view filename,
+                             byte_type* header) override;
 
-  virtual stream::ptr create_stream(
-    std::string_view filename,
-    byte_type* header
-  ) override;
+  virtual stream::ptr create_stream(std::string_view filename,
+                                    byte_type* header) override;
 
  private:
   const cipher* cipher_;
-}; // ctr_encryption
+};  // ctr_encryption
 
-} // ROOT
+}  // namespace iresearch
 
-#endif // IRESEARCH_CTR_ENCRYPTION_H
-
+#endif  // IRESEARCH_CTR_ENCRYPTION_H

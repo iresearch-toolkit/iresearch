@@ -43,7 +43,7 @@ Scorers PrepareScorers(std::span<const OrderBucket> buckets,
     }
 
     auto scorer = bucket.prepare_scorer(
-        segment, field, stats_buf + entry.stats_offset, doc, boost);
+      segment, field, stats_buf + entry.stats_offset, doc, boost);
 
     if (IRS_LIKELY(scorer)) {
       scorers.emplace_back(std::move(scorer));
@@ -68,7 +68,7 @@ ScoreFunction CompileScorers(Scorers&& scorers) {
     case 2: {
       struct ctx : score_ctx {
         ctx(ScoreFunction&& func0, ScoreFunction&& func1) noexcept
-            : func0{std::move(func0)}, func1{std::move(func1)} {}
+          : func0{std::move(func0)}, func1{std::move(func1)} {}
 
         ScoreFunction func0;
         ScoreFunction func1;
@@ -85,7 +85,7 @@ ScoreFunction CompileScorers(Scorers&& scorers) {
     default: {
       struct ctx : score_ctx {
         explicit ctx(Scorers&& scorers) noexcept
-            : scorers{std::move(scorers)} {}
+          : scorers{std::move(scorers)} {}
 
         Scorers scorers;
       };

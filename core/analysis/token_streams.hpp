@@ -37,37 +37,30 @@ namespace iresearch {
 //////////////////////////////////////////////////////////////////////////////
 class basic_token_stream : public analysis::analyzer {
  public:
+  explicit basic_token_stream(const type_info& type)
+    : analysis::analyzer(type) {}
 
-  explicit basic_token_stream(const type_info& type) : analysis::analyzer(type) {}
-
-  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
+  virtual attribute* get_mutable(
+    irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
 
-  bool reset(string_ref) override {
-    return false;
-  }
+  bool reset(string_ref) override { return false; }
 
  protected:
   std::tuple<term_attribute, increment> attrs_;
-}; // basic_token_stream
+};  // basic_token_stream
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class null_token_stream
 /// @brief token_stream implementation for boolean field, a single bool term.
 //////////////////////////////////////////////////////////////////////////////
-class boolean_token_stream final
-    : public basic_token_stream,
-      private util::noncopyable {
+class boolean_token_stream final : public basic_token_stream,
+                                   private util::noncopyable {
  public:
+  static constexpr string_ref value_true() noexcept { return {"\xFF", 1}; }
 
-  static constexpr string_ref value_true() noexcept {
-    return { "\xFF", 1 };
-  }
-
-  static constexpr string_ref value_false() noexcept {
-    return { "\x00", 1 };
-  }
+  static constexpr string_ref value_false() noexcept { return {"\x00", 1}; }
 
   static constexpr string_ref value(bool val) noexcept {
     return val ? value_true() : value_false();
@@ -91,7 +84,7 @@ class boolean_token_stream final
 
   bool in_use_;
   bool value_;
-}; // boolean_token_stream
+};  // boolean_token_stream
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class string_token_stream
@@ -99,13 +92,10 @@ class boolean_token_stream final
 ///        it does not tokenize or analyze field, just set attributes based
 ///        on initial string length
 //////////////////////////////////////////////////////////////////////////////
-class string_token_stream
-    : public analysis::analyzer,
-      private util::noncopyable {
+class string_token_stream : public analysis::analyzer,
+                            private util::noncopyable {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
-    return "identity";
-  }
+  static constexpr irs::string_ref type_name() noexcept { return "identity"; }
 
   string_token_stream() noexcept;
 
@@ -130,7 +120,7 @@ class string_token_stream
   std::tuple<offset, increment, term_attribute> attrs_;
   bytes_ref value_;
   bool in_use_;
-}; // string_token_stream
+};  // string_token_stream
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class numeric_token_stream
@@ -138,11 +128,9 @@ class string_token_stream
 ///        step it produces several terms representing ranges of the input
 ///        term
 //////////////////////////////////////////////////////////////////////////////
-class numeric_token_stream final
-    : public basic_token_stream,
-      private util::noncopyable {
+class numeric_token_stream final : public basic_token_stream,
+                                   private util::noncopyable {
  public:
-
   explicit numeric_token_stream()
     : basic_token_stream(irs::type<numeric_token_stream>::get()) {}
 
@@ -154,17 +142,17 @@ class numeric_token_stream final
   void reset(int32_t value, uint32_t step = PRECISION_STEP_DEF);
   void reset(int64_t value, uint32_t step = PRECISION_STEP_DEF);
 
-  #ifndef FLOAT_T_IS_DOUBLE_T
+#ifndef FLOAT_T_IS_DOUBLE_T
   void reset(float_t value, uint32_t step = PRECISION_STEP_DEF);
-  #endif
+#endif
 
   void reset(double_t value, uint32_t step = PRECISION_STEP_DEF);
   static bytes_ref value(bstring& buf, int32_t value);
   static bytes_ref value(bstring& buf, int64_t value);
 
-  #ifndef FLOAT_T_IS_DOUBLE_T
-    static bytes_ref value(bstring& buf, float_t value);
-  #endif
+#ifndef FLOAT_T_IS_DOUBLE_T
+  static bytes_ref value(bstring& buf, float_t value);
+#endif
 
   static bytes_ref value(bstring& buf, double_t value);
 
@@ -259,44 +247,37 @@ class numeric_token_stream final
       uint32_t i32;
     };
 
-    static irs::bytes_ref value(
-      byte_type* buf,
-      NumericType type,
-      value_t val,
-      uint32_t shift);
+    static irs::bytes_ref value(byte_type* buf, NumericType type, value_t val,
+                                uint32_t shift);
 
     byte_type data_[numeric_utils::numeric_traits<double_t>::size()];
     value_t val_;
     NumericType type_;
     uint32_t step_;
     uint32_t shift_;
-  }; // numeric_term
+  };  // numeric_term
 
   numeric_term num_;
-}; // numeric_token_stream
+};  // numeric_token_stream
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class null_token_stream
 /// @brief token_stream implementation for null field, a single null term.
 //////////////////////////////////////////////////////////////////////////////
-class null_token_stream final
-    : public basic_token_stream,
-      private util::noncopyable {
+class null_token_stream final : public basic_token_stream,
+                                private util::noncopyable {
  public:
-
   explicit null_token_stream()
     : basic_token_stream(irs::type<null_token_stream>::get()) {}
 
   static constexpr string_ref value_null() noexcept {
     // data pointer != nullptr or assert failure in bytes_hash::insert(...)
-    return { "\x00", 0 };
+    return {"\x00", 0};
   }
 
   virtual bool next() noexcept override;
 
-  void reset() noexcept {
-    in_use_ = false;
-  }
+  void reset() noexcept { in_use_ = false; }
 
   static constexpr irs::string_ref type_name() noexcept {
     return "null_token_stream";
@@ -306,8 +287,8 @@ class null_token_stream final
   using basic_token_stream::reset;
 
   bool in_use_{false};
-}; // null_token_stream
+};  // null_token_stream
 
-}
+}  // namespace iresearch
 
 #endif

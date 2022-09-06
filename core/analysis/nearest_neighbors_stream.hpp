@@ -31,38 +31,40 @@
 namespace fasttext {
 class ImmutableFastText;
 class Dictionary;
-}
+}  // namespace fasttext
 
 namespace iresearch {
 namespace analysis {
 
-class nearest_neighbors_stream final
-  : public analyzer,
-    private util::noncopyable {
+class nearest_neighbors_stream final : public analyzer,
+                                       private util::noncopyable {
  public:
   using model_ptr = std::shared_ptr<const fasttext::ImmutableFastText>;
-  using model_provider_f = model_ptr(*)(std::string_view);
+  using model_provider_f = model_ptr (*)(std::string_view);
 
-  static model_provider_f set_model_provider(model_provider_f provider) noexcept;
+  static model_provider_f set_model_provider(
+    model_provider_f provider) noexcept;
 
   struct options {
-    explicit options(std::string model_location = "", int32_t top_k = 1) noexcept
-      : model_location{std::move(model_location)}, top_k{top_k} {
-    }
+    explicit options(std::string model_location = "",
+                     int32_t top_k = 1) noexcept
+      : model_location{std::move(model_location)}, top_k{top_k} {}
 
     std::string model_location;
     int32_t top_k;
   };
 
-  static constexpr string_ref type_name() noexcept { return "nearest_neighbors"; }
+  static constexpr string_ref type_name() noexcept {
+    return "nearest_neighbors";
+  }
 
-  static void init(); // for registration in a static build
+  static void init();  // for registration in a static build
 
-  explicit nearest_neighbors_stream(
-    const options& options,
-    model_ptr model_provider) noexcept;
+  explicit nearest_neighbors_stream(const options& options,
+                                    model_ptr model_provider) noexcept;
 
-  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  virtual attribute* get_mutable(
+    irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
 
@@ -70,10 +72,7 @@ class nearest_neighbors_stream final
   virtual bool reset(string_ref data) override;
 
  private:
-  using attributes = std::tuple<
-    increment,
-    offset,
-    term_attribute>;
+  using attributes = std::tuple<increment, offset, term_attribute>;
 
   model_ptr model_;
   std::shared_ptr<const fasttext::Dictionary> model_dict_;
@@ -87,8 +86,7 @@ class nearest_neighbors_stream final
   int32_t top_k_;
 };
 
-} // analysis
-} // iresearch
+}  // namespace analysis
+}  // namespace iresearch
 
-
-#endif //IRESEARCH_NEAREST_NEIGHBORS_STREAM_H
+#endif  // IRESEARCH_NEAREST_NEIGHBORS_STREAM_H

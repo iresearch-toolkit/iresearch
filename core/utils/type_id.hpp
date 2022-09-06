@@ -30,7 +30,7 @@ namespace iresearch {
 
 namespace detail {
 DEFINE_HAS_MEMBER(type_name);
-} // detail
+}  // namespace detail
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class type
@@ -43,9 +43,7 @@ struct type {
   /// @returns an instance of "type_info" object holding meta information of
   ///          type denoted by template parameter "T"
   //////////////////////////////////////////////////////////////////////////////
-  static constexpr type_info get() noexcept {
-    return type_info{id(), name()};
-  }
+  static constexpr type_info get() noexcept { return type_info{id(), name()}; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns type name of a type denoted by template parameter "T"
@@ -63,11 +61,9 @@ struct type {
   //////////////////////////////////////////////////////////////////////////////
   /// @returns type identifier of a type denoted by template parameter "T"
   //////////////////////////////////////////////////////////////////////////////
-  static constexpr type_info::type_id id() noexcept {
-    return &get;
-  }
-}; // type
+  static constexpr type_info::type_id id() noexcept { return &get; }
+};  // type
 
-}
+}  // namespace iresearch
 
 #endif

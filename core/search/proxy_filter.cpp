@@ -94,7 +94,7 @@ class lazy_filter_bitset_iterator final : public doc_iterator,
                                           private util::noncopyable {
  public:
   explicit lazy_filter_bitset_iterator(lazy_filter_bitset& bitset) noexcept
-      : bitset_(bitset), cost_(bitset_.get_cost()) {
+    : bitset_(bitset), cost_(bitset_.get_cost()) {
     reset();
   }
 
@@ -121,7 +121,7 @@ class lazy_filter_bitset_iterator final : public doc_iterator,
     word_idx_ = target / bits_required<lazy_filter_bitset::word_t>();
     if (bitset_.get(word_idx_, &word_)) {
       const doc_id_t bit_idx =
-          target % bits_required<lazy_filter_bitset::word_t>();
+        target % bits_required<lazy_filter_bitset::word_t>();
       base_ = word_idx_ * bits_required<lazy_filter_bitset::word_t>();
       word_ >>= bit_idx;
       doc_.value = base_ - 1 + bit_idx;
@@ -165,10 +165,10 @@ class lazy_filter_bitset_iterator final : public doc_iterator,
 
 struct proxy_query_cache {
   explicit proxy_query_cache(filter::ptr&& ptr)
-      : real_filter_(std::move(ptr)) {}
+    : real_filter_(std::move(ptr)) {}
 
   absl::flat_hash_map<const sub_reader*, std::unique_ptr<lazy_filter_bitset>>
-      readers_;
+    readers_;
   filter::prepared::ptr prepared_real_filter_;
   filter::ptr real_filter_;
 };
@@ -182,11 +182,11 @@ class proxy_query final : public filter::prepared {
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
     // first try to find segment in cache.
     auto& [unused, cached] =
-        *cache_->readers_.emplace(&ctx.segment, nullptr).first;
+      *cache_->readers_.emplace(&ctx.segment, nullptr).first;
 
     if (!cached) {
       cached = std::make_unique<lazy_filter_bitset>(
-          ctx, *cache_->prepared_real_filter_);
+        ctx, *cache_->prepared_real_filter_);
     }
 
     assert(cached);
@@ -202,11 +202,11 @@ class proxy_query final : public filter::prepared {
 };
 
 proxy_filter::proxy_filter() noexcept
-    : filter(irs::type<proxy_filter>::get()) {}
+  : filter(irs::type<proxy_filter>::get()) {}
 
 filter::prepared::ptr proxy_filter::prepare(
-    const index_reader& rdr, const Order& ord, score_t boost,
-    const attribute_provider* ctx) const {
+  const index_reader& rdr, const Order& ord, score_t boost,
+  const attribute_provider* ctx) const {
   if (!cache_ || !cache_->real_filter_) {
     assert(false);
     return filter::prepared::empty();
@@ -219,7 +219,7 @@ filter::prepared::ptr proxy_filter::prepare(
   }
   if (!cache_->prepared_real_filter_) {
     cache_->prepared_real_filter_ =
-        cache_->real_filter_->prepare(rdr, ord, boost, ctx);
+      cache_->real_filter_->prepare(rdr, ord, boost, ctx);
   }
   return memory::make_managed<proxy_query>(cache_);
 }

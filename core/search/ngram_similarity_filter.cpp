@@ -30,8 +30,8 @@
 namespace iresearch {
 
 filter::prepared::ptr by_ngram_similarity::prepare(
-    const index_reader& rdr, const Order& ord, score_t boost,
-    const attribute_provider* ctx) const {
+  const index_reader& rdr, const Order& ord, score_t boost,
+  const attribute_provider* ctx) const {
   const auto threshold = std::max(0.f, std::min(1.f, options().threshold));
   const auto& ngrams = options().ngrams;
 
@@ -41,9 +41,9 @@ filter::prepared::ptr by_ngram_similarity::prepare(
   }
 
   const size_t min_match_count =
-      std::max(static_cast<size_t>(
-                   std::ceil(static_cast<double>(ngrams.size()) * threshold)),
-               size_t{1});
+    std::max(static_cast<size_t>(
+               std::ceil(static_cast<double>(ngrams.size()) * threshold)),
+             size_t{1});
 
   if (ord.empty() && 1 == min_match_count) {
     irs::by_terms disj;
@@ -125,8 +125,8 @@ filter::prepared::ptr by_ngram_similarity::prepare(
   }
 
   return memory::make_managed<NGramSimilarityQuery>(
-      min_match_count, std::move(query_states), std::move(stats),
-      this->boost() * boost);
+    min_match_count, std::move(query_states), std::move(stats),
+    this->boost() * boost);
 }
 
 }  // namespace iresearch

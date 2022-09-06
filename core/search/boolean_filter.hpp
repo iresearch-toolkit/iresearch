@@ -52,7 +52,7 @@ class boolean_filter : public filter, private util::noncopyable {
     static_assert(std::is_base_of_v<filter, T>);
 
     return static_cast<T&>(*filters_.emplace_back(
-        memory::make_unique<T>(std::forward<Args>(args)...)));
+      memory::make_unique<T>(std::forward<Args>(args)...)));
   }
 
   virtual size_t hash() const noexcept override;
@@ -62,17 +62,17 @@ class boolean_filter : public filter, private util::noncopyable {
   size_t size() const { return filters_.size(); }
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& rdr, const Order& ord, score_t boost,
-      const attribute_provider* ctx) const override final;
+    const index_reader& rdr, const Order& ord, score_t boost,
+    const attribute_provider* ctx) const override final;
 
  protected:
   explicit boolean_filter(const type_info& type) noexcept;
   virtual bool equals(const filter& rhs) const noexcept override;
 
   virtual filter::prepared::ptr prepare(
-      std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-      const index_reader& rdr, const Order& ord, score_t boost,
-      const attribute_provider* ctx) const = 0;
+    std::vector<const filter*>& incl, std::vector<const filter*>& excl,
+    const index_reader& rdr, const Order& ord, score_t boost,
+    const attribute_provider* ctx) const = 0;
 
  private:
   void group_filters(std::vector<const filter*>& incl,
@@ -91,9 +91,9 @@ class And final : public boolean_filter {
 
  protected:
   virtual filter::prepared::ptr prepare(
-      std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-      const index_reader& rdr, const Order& ord, score_t boost,
-      const attribute_provider* ctx) const override;
+    std::vector<const filter*>& incl, std::vector<const filter*>& excl,
+    const index_reader& rdr, const Order& ord, score_t boost,
+    const attribute_provider* ctx) const override;
 };
 
 // Represents disjunction
@@ -114,9 +114,9 @@ class Or final : public boolean_filter {
 
  protected:
   virtual filter::prepared::ptr prepare(
-      std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-      const index_reader& rdr, const Order& ord, score_t boost,
-      const attribute_provider* ctx) const override;
+    std::vector<const filter*>& incl, std::vector<const filter*>& excl,
+    const index_reader& rdr, const Order& ord, score_t boost,
+    const attribute_provider* ctx) const override;
 
  private:
   size_t min_match_count_;
@@ -132,7 +132,7 @@ class Not : public filter {
   template<typename T>
   const T* filter() const {
     using type =
-        typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
+      typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
 
     return static_cast<const type*>(filter_.get());
   }
@@ -140,7 +140,7 @@ class Not : public filter {
   template<typename T, typename... Args>
   T& filter(Args&&... args) {
     using type =
-        typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
+      typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
 
     filter_ = memory::make_unique<type>(std::forward<Args>(args)...);
     return static_cast<type&>(*filter_);
@@ -152,8 +152,8 @@ class Not : public filter {
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& rdr, const Order& ord, score_t boost,
-      const attribute_provider* ctx) const override;
+    const index_reader& rdr, const Order& ord, score_t boost,
+    const attribute_provider* ctx) const override;
 
   virtual size_t hash() const noexcept override;
 

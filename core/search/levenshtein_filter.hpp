@@ -36,7 +36,7 @@ struct by_edit_distance_filter_options {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parametric description provider
   //////////////////////////////////////////////////////////////////////////////
-  using pdp_f = const parametric_description&(*)(byte_type, bool);
+  using pdp_f = const parametric_description& (*)(byte_type, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief target value
@@ -68,15 +68,16 @@ struct by_edit_distance_filter_options {
   bool with_transpositions{false};
 
   bool operator==(const by_edit_distance_filter_options& rhs) const noexcept {
-    return term == rhs.term &&
-      max_distance == rhs.max_distance &&
-      with_transpositions == rhs.with_transpositions;
+    return term == rhs.term && max_distance == rhs.max_distance &&
+           with_transpositions == rhs.with_transpositions;
   }
 
   size_t hash() const noexcept {
-    const auto hash0 = hash_combine(std::hash<bool>()(with_transpositions), std::hash<bstring>()(term));
-    const auto hash1 = hash_combine(std::hash<byte_type>()(max_distance), std::hash<bstring>()(prefix));
-    return hash_combine(hash0, hash1); 
+    const auto hash0 = hash_combine(std::hash<bool>()(with_transpositions),
+                                    std::hash<bstring>()(term));
+    const auto hash1 = hash_combine(std::hash<byte_type>()(max_distance),
+                                    std::hash<bstring>()(prefix));
+    return hash_combine(hash0, hash1);
   }
 };
 
@@ -94,64 +95,54 @@ struct by_edit_distance_options : by_edit_distance_filter_options {
   size_t max_terms{};
 
   bool operator==(const by_edit_distance_options& rhs) const noexcept {
-    return filter_options::operator==(rhs) &&
-      max_terms == rhs.max_terms;
+    return filter_options::operator==(rhs) && max_terms == rhs.max_terms;
   }
 
   size_t hash() const noexcept {
     return hash_combine(filter_options::hash(), max_terms);
   }
-}; // by_edit_distance_options
+};  // by_edit_distance_options
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_edit_distance
 /// @brief user-side levenstein filter
 ////////////////////////////////////////////////////////////////////////////////
-class by_edit_distance final
-    : public filter_base<by_edit_distance_options> {
+class by_edit_distance final : public filter_base<by_edit_distance_options> {
  public:
   static ptr make();
 
-  static prepared::ptr prepare(
-    const index_reader& index,
-    const Order& order,
-    score_t boost,
-    string_ref field,
-    bytes_ref term,
-    size_t terms_limit,
-    byte_type max_distance,
-    options_type::pdp_f provider,
-    bool with_transpositions,
-    bytes_ref prefix);
+  static prepared::ptr prepare(const index_reader& index, const Order& order,
+                               score_t boost, string_ref field, bytes_ref term,
+                               size_t terms_limit, byte_type max_distance,
+                               options_type::pdp_f provider,
+                               bool with_transpositions, bytes_ref prefix);
 
-  static field_visitor visitor(
-    const options_type::filter_options& options);
+  static field_visitor visitor(const options_type::filter_options& options);
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& index,
-      const Order& order,
-      score_t boost,
-      const attribute_provider* /*ctx*/) const override {
-    return prepare(index, order, this->boost()*boost,
-                   field(), options().term, options().max_terms,
-                   options().max_distance, options().provider,
-                   options().with_transpositions, options().prefix);
+    const index_reader& index, const Order& order, score_t boost,
+    const attribute_provider* /*ctx*/) const override {
+    return prepare(index, order, this->boost() * boost, field(), options().term,
+                   options().max_terms, options().max_distance,
+                   options().provider, options().with_transpositions,
+                   options().prefix);
   }
-}; // by_edit_distance
+};  // by_edit_distance
 
-}
+}  // namespace iresearch
 
 namespace std {
 
 template<>
 struct hash<::iresearch::by_edit_distance_filter_options> {
-  size_t operator()(const ::iresearch::by_edit_distance_filter_options& v) const noexcept {
+  size_t operator()(
+    const ::iresearch::by_edit_distance_filter_options& v) const noexcept {
     return v.hash();
   }
 };
 
-}
+}  // namespace std
 
-#endif // IRESEARCH_LEVENSHTEIN_FILTER_H
+#endif  // IRESEARCH_LEVENSHTEIN_FILTER_H

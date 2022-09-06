@@ -33,6 +33,6 @@ bool free_library(void* handle);
 void load_libraries(std::string_view path, std::string_view prefix,
                     std::string_view suffix);
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_SO_UTILS_H
+#endif  // IRESEARCH_SO_UTILS_H

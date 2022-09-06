@@ -38,28 +38,23 @@ namespace analysis {
 ///        token as per specified locale
 /// @note expects UTF-8 encoded input
 ////////////////////////////////////////////////////////////////////////////////
-class collation_token_stream final
-  : public analyzer,
-    private util::noncopyable {
+class collation_token_stream final : public analyzer,
+                                     private util::noncopyable {
  public:
   struct options_t {
     icu::Locale locale;
     bool forceUtf8;
 
-    options_t() : locale{"C"}, forceUtf8{true} {
-      locale.setToBogus();
-    }
+    options_t() : locale{"C"}, forceUtf8{true} { locale.setToBogus(); }
   };
 
-  static constexpr string_ref type_name() noexcept { 
-    return "collation";
-  }
-  static void init(); // for trigering registration in a static build
+  static constexpr string_ref type_name() noexcept { return "collation"; }
+  static void init();  // for trigering registration in a static build
 
   explicit collation_token_stream(const options_t& options);
 
   virtual attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override final {
+    irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() noexcept override {
@@ -75,17 +70,16 @@ class collation_token_stream final
     void operator()(state_t*) const noexcept;
   };
 
-  using attributes = std::tuple<
-    increment,
-    offset,
-    term_attribute>; // token value with evaluated quotes
+  using attributes =
+    std::tuple<increment, offset,
+               term_attribute>;  // token value with evaluated quotes
 
   attributes attrs_;
   std::unique_ptr<state_t, state_deleter_t> state_;
   bool term_eof_;
-}; // collation_token_stream
+};  // collation_token_stream
 
-} // analysis
-} // iresearch
+}  // namespace analysis
+}  // namespace iresearch
 
-#endif // IRESEARCH_COLLATION_TOKEN_STREAM_H
+#endif  // IRESEARCH_COLLATION_TOKEN_STREAM_H

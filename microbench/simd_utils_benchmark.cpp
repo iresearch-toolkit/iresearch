@@ -35,7 +35,7 @@ namespace {
 
 constexpr size_t BLOCK_SIZE = 65536;
 
-struct HWY_ALIGN aligned_type { };
+struct HWY_ALIGN aligned_type {};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             delta
@@ -259,7 +259,8 @@ void BM_maxbits32_lemire(benchmark::State& state) {
 
   for (auto _ : state) {
     uint32_t bits = 0;
-    for (auto begin = values; begin != std::end(values); begin += SIMDBlockSize) {
+    for (auto begin = values; begin != std::end(values);
+         begin += SIMDBlockSize) {
       bits = std::max(maxbits(begin), bits);
     }
     benchmark::DoNotOptimize(bits);
@@ -313,7 +314,8 @@ void BM_all_equal32_simd_unaligned(benchmark::State& state) {
   std::fill_n(std::begin(values), std::size(values), ::rand());
 
   for (auto _ : state) {
-    auto res = irs::simd::all_equal<false>(std::begin(values), std::size(values));
+    auto res =
+      irs::simd::all_equal<false>(std::begin(values), std::size(values));
     benchmark::DoNotOptimize(res);
   }
 }
@@ -337,7 +339,8 @@ void BM_all_equal32_small_simd_unaligned(benchmark::State& state) {
   std::fill_n(std::begin(values), std::size(values), ::rand());
 
   for (auto _ : state) {
-    auto res = irs::simd::all_equal<false>(std::begin(values), std::size(values));
+    auto res =
+      irs::simd::all_equal<false>(std::begin(values), std::size(values));
     benchmark::DoNotOptimize(res);
   }
 }
@@ -365,7 +368,8 @@ void BM_all_equal64_simd_unaligned(benchmark::State& state) {
   std::fill_n(std::begin(values), std::size(values), ::rand());
 
   for (auto _ : state) {
-    auto res = irs::simd::all_equal<false>(std::begin(values), std::size(values));
+    auto res =
+      irs::simd::all_equal<false>(std::begin(values), std::size(values));
     benchmark::DoNotOptimize(res);
   }
 }
@@ -389,11 +393,12 @@ void BM_all_equal64_small_simd_unaligned(benchmark::State& state) {
   std::fill_n(std::begin(values), std::size(values), ::rand());
 
   for (auto _ : state) {
-    auto res = irs::simd::all_equal<false>(std::begin(values), std::size(values));
+    auto res =
+      irs::simd::all_equal<false>(std::begin(values), std::size(values));
     benchmark::DoNotOptimize(res);
   }
 }
 
 BENCHMARK(BM_all_equal64_small_simd_unaligned);
 
-}
+}  // namespace

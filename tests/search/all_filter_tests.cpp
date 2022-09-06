@@ -94,21 +94,20 @@ TEST_P(all_filter_test_case, all_order) {
     auto* sort = static_cast<tests::sort::custom_sort*>(bucket.get());
 
     sort->collector_collect_field = [&collector_collect_field_count](
-                                        const irs::sub_reader&,
-                                        const irs::term_reader&) -> void {
+                                      const irs::sub_reader&,
+                                      const irs::term_reader&) -> void {
       ++collector_collect_field_count;
     };
     sort->collector_collect_term = [&collector_collect_term_count](
-                                       const irs::sub_reader&,
-                                       const irs::term_reader&,
-                                       const irs::attribute_provider&) -> void {
+                                     const irs::sub_reader&,
+                                     const irs::term_reader&,
+                                     const irs::attribute_provider&) -> void {
       ++collector_collect_term_count;
     };
-    sort->collectors_collect_ = [&collector_finish_count](
-                                    const irs::byte_type*,
-                                    const irs::index_reader&,
-                                    const irs::sort::field_collector*,
-                                    const irs::sort::term_collector*) -> void {
+    sort->collectors_collect_ =
+      [&collector_finish_count](const irs::byte_type*, const irs::index_reader&,
+                                const irs::sort::field_collector*,
+                                const irs::sort::term_collector*) -> void {
       ++collector_finish_count;
     };
     sort->scorer_score = [&scorer_score_count](irs::doc_id_t doc,
@@ -135,10 +134,9 @@ TEST_P(all_filter_test_case, all_order) {
     sort.prepare_field_collector_ = []() -> irs::sort::field_collector::ptr {
       return nullptr;
     };
-    sort.prepare_scorer = [](const irs::sub_reader&, const irs::term_reader&,
-                             const irs::byte_type*,
-                             const irs::attribute_provider&,
-                             irs::score_t) -> irs::ScoreFunction {
+    sort.prepare_scorer =
+      [](const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*,
+         const irs::attribute_provider&, irs::score_t) -> irs::ScoreFunction {
       return {nullptr, nullptr};
     };
     sort.prepare_term_collector_ = []() -> irs::sort::term_collector::ptr {
@@ -163,7 +161,7 @@ TEST_P(all_filter_test_case, all_order) {
               17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32};
 
     auto sort = irs::scorers::get(
-        "bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+      "bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
     CheckQuery(irs::all(), std::span{&sort, 1}, docs, rdr);
   }
@@ -173,20 +171,19 @@ TEST_P(all_filter_test_case, all_order) {
     Docs docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
               17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32};
 
-    auto sort =
-        irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
-                          irs::string_ref::NIL);
+    auto sort = irs::scorers::get(
+      "tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     CheckQuery(irs::all(), std::span{&sort, 1}, docs, rdr);
   }
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    all_filter_test, all_filter_test_case,
-    ::testing::Combine(
-        ::testing::Values(&tests::directory<&tests::memory_directory>,
-                          &tests::directory<&tests::fs_directory>,
-                          &tests::directory<&tests::mmap_directory>),
-        ::testing::Values("1_0")),
-    all_filter_test_case::to_string);
+  all_filter_test, all_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(&tests::directory<&tests::memory_directory>,
+                      &tests::directory<&tests::fs_directory>,
+                      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values("1_0")),
+  all_filter_test_case::to_string);
 
 }  // namespace

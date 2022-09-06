@@ -42,10 +42,10 @@ struct by_terms_options {
     search_term() = default;
 
     explicit search_term(bstring&& term, score_t boost = kNoBoost) noexcept
-        : term(std::move(term)), boost(boost) {}
+      : term(std::move(term)), boost(boost) {}
 
     explicit search_term(bytes_ref term, score_t boost = kNoBoost)
-        : term(term.c_str(), term.size()), boost(boost) {}
+      : term(term.c_str(), term.size()), boost(boost) {}
 
     bool operator==(const search_term& rhs) const noexcept {
       return term == rhs.term && boost == rhs.boost;
@@ -92,8 +92,8 @@ class by_terms final : public filter_base<by_terms_options> {
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& index, const Order& order, score_t boost,
-      const attribute_provider* /*ctx*/) const override;
+    const index_reader& index, const Order& order, score_t boost,
+    const attribute_provider* /*ctx*/) const override;
 };
 
 }  // namespace iresearch

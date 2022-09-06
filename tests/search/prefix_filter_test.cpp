@@ -64,35 +64,35 @@ class prefix_filter_test_case : public tests::FilterTestCaseBase {
       size_t finish_count = 0;
 
       std::array<irs::sort::ptr, 1> order{
-          std::make_unique<tests::sort::custom_sort>()};
+        std::make_unique<tests::sort::custom_sort>()};
 
       auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
       scorer.collector_collect_field = [&collect_field_count](
-                                           const irs::sub_reader&,
-                                           const irs::term_reader&) -> void {
+                                         const irs::sub_reader&,
+                                         const irs::term_reader&) -> void {
         ++collect_field_count;
       };
       scorer.collector_collect_term =
-          [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
-                                const irs::attribute_provider&) -> void {
+        [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
+                              const irs::attribute_provider&) -> void {
         ++collect_term_count;
       };
-      scorer.collectors_collect_ =
-          [&finish_count](irs::byte_type*, const irs::index_reader&,
-                          const irs::sort::field_collector*,
-                          const irs::sort::term_collector*) -> void {
+      scorer.collectors_collect_ = [&finish_count](
+                                     irs::byte_type*, const irs::index_reader&,
+                                     const irs::sort::field_collector*,
+                                     const irs::sort::term_collector*) -> void {
         ++finish_count;
       };
       scorer.prepare_field_collector_ =
-          [&scorer]() -> irs::sort::field_collector::ptr {
+        [&scorer]() -> irs::sort::field_collector::ptr {
         return irs::memory::make_unique<
-            tests::sort::custom_sort::prepared::field_collector>(scorer);
+          tests::sort::custom_sort::prepared::field_collector>(scorer);
       };
       scorer.prepare_term_collector_ =
-          [&scorer]() -> irs::sort::term_collector::ptr {
+        [&scorer]() -> irs::sort::term_collector::ptr {
         return irs::memory::make_unique<
-            tests::sort::custom_sort::prepared::term_collector>(scorer);
+          tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
       CheckQuery(make_filter("prefix", ""), order, docs, rdr);
       ASSERT_EQ(9, collect_field_count);  // 9 fields (1 per term since treated
@@ -129,7 +129,7 @@ class prefix_filter_test_case : public tests::FilterTestCaseBase {
       Costs costs{docs.size()};
 
       std::array<irs::sort::ptr, 1> order{
-          std::make_unique<tests::sort::frequency_sort>()};
+        std::make_unique<tests::sort::frequency_sort>()};
 
       CheckQuery(make_filter("prefix", "a"), order, docs, rdr);
     }
@@ -140,8 +140,8 @@ class prefix_filter_test_case : public tests::FilterTestCaseBase {
       Costs costs{docs.size()};
 
       std::array<irs::sort::ptr, 2> order{
-          std::make_unique<tests::sort::frequency_sort>(),
-          std::make_unique<tests::sort::frequency_sort>()};
+        std::make_unique<tests::sort::frequency_sort>(),
+        std::make_unique<tests::sort::frequency_sort>()};
 
       CheckQuery(make_filter("prefix", "a"), order, docs, rdr);
     }
@@ -173,8 +173,8 @@ class prefix_filter_test_case : public tests::FilterTestCaseBase {
     {
       Docs result;
       for (size_t i = 0; i < 32; ++i) {
-        result.push_back(irs::doc_id_t(
-            (irs::type_limits<irs::type_t::doc_id_t>::min)() + i));
+        result.push_back(
+          irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i));
       }
 
       Costs costs{result.size()};
@@ -234,15 +234,15 @@ class prefix_filter_test_case : public tests::FilterTestCaseBase {
 
       std::vector<tests::doc_generator_base::ptr> gens;
       gens.emplace_back(
-          new tests::json_doc_generator(resource("AdventureWorks2014.json"),
-                                        &tests::generic_json_field_factory));
+        new tests::json_doc_generator(resource("AdventureWorks2014.json"),
+                                      &tests::generic_json_field_factory));
+      gens.emplace_back(
+        new tests::json_doc_generator(resource("AdventureWorks2014Edges.json"),
+                                      &tests::generic_json_field_factory));
       gens.emplace_back(new tests::json_doc_generator(
-          resource("AdventureWorks2014Edges.json"),
-          &tests::generic_json_field_factory));
+        resource("Northwnd.json"), &tests::generic_json_field_factory));
       gens.emplace_back(new tests::json_doc_generator(
-          resource("Northwnd.json"), &tests::generic_json_field_factory));
-      gens.emplace_back(new tests::json_doc_generator(
-          resource("NorthwndEdges.json"), &tests::generic_json_field_factory));
+        resource("NorthwndEdges.json"), &tests::generic_json_field_factory));
       add_segments(*writer, gens);
     }
 
@@ -322,7 +322,7 @@ TEST_P(prefix_filter_test_case, visit) {
 
   const irs::string_ref field = "prefix";
   const irs::bytes_ref term =
-      irs::ref_cast<irs::byte_type>(irs::string_ref("ab"));
+    irs::ref_cast<irs::byte_type>(irs::string_ref("ab"));
 
   tests::empty_filter_visitor visitor;
   // read segment
@@ -336,27 +336,27 @@ TEST_P(prefix_filter_test_case, visit) {
   ASSERT_EQ(1, visitor.prepare_calls_counter());
   ASSERT_EQ(6, visitor.visit_calls_counter());
   ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{
-                {"abc", irs::kNoBoost},
-                {"abcd", irs::kNoBoost},
-                {"abcde", irs::kNoBoost},
-                {"abcdrer", irs::kNoBoost},
-                {"abcy", irs::kNoBoost},
-                {"abde", irs::kNoBoost}}),
+              {"abc", irs::kNoBoost},
+              {"abcd", irs::kNoBoost},
+              {"abcde", irs::kNoBoost},
+              {"abcdrer", irs::kNoBoost},
+              {"abcy", irs::kNoBoost},
+              {"abde", irs::kNoBoost}}),
             visitor.term_refs<char>());
 
   visitor.reset();
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    prefix_filter_test, prefix_filter_test_case,
-    ::testing::Combine(
-        ::testing::Values(&tests::directory<&tests::memory_directory>,
-                          &tests::directory<&tests::fs_directory>,
-                          &tests::directory<&tests::mmap_directory>),
-        ::testing::Values(tests::format_info{"1_0"},
-                          tests::format_info{"1_1", "1_0"},
-                          tests::format_info{"1_2", "1_0"},
-                          tests::format_info{"1_3", "1_0"})),
-    prefix_filter_test_case::to_string);
+  prefix_filter_test, prefix_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(&tests::directory<&tests::memory_directory>,
+                      &tests::directory<&tests::fs_directory>,
+                      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(tests::format_info{"1_0"},
+                      tests::format_info{"1_1", "1_0"},
+                      tests::format_info{"1_2", "1_0"},
+                      tests::format_info{"1_3", "1_0"})),
+  prefix_filter_test_case::to_string);
 
 }  // namespace

@@ -24,6 +24,4 @@
 #include "tests_shared.hpp"
 #include "search/filter.hpp"
 
-TEST(boost_attribute_test, consts) {
-  static_assert(1.f == irs::kNoBoost);
-}
+TEST(boost_attribute_test, consts) { static_assert(1.f == irs::kNoBoost); }

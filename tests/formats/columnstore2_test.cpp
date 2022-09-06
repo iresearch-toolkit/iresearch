@@ -29,8 +29,8 @@
 using namespace irs::columnstore2;
 
 class columnstore2_test_case
-    : public virtual tests::directory_test_case_base<
-          irs::ColumnHint, irs::columnstore2::Version> {
+  : public virtual tests::directory_test_case_base<irs::ColumnHint,
+                                                   irs::columnstore2::Version> {
  public:
   static std::string to_string(const testing::TestParamInfo<ParamType>& info) {
     auto [factory, hint, version] = info.param;
@@ -137,7 +137,7 @@ TEST_P(columnstore2_test_case, empty_columnstore) {
   };
 
   irs::columnstore2::writer writer(
-      version(), this->hint() == irs::ColumnHint::kConsolidation);
+    version(), this->hint() == irs::ColumnHint::kConsolidation);
   writer.prepare(dir(), meta);
   writer.push_column({irs::type<irs::compression::none>::get(), {}, false},
                      finalizer);
@@ -158,26 +158,26 @@ TEST_P(columnstore2_test_case, empty_column) {
   state.name = meta.name;
 
   irs::columnstore2::writer writer(
-      version(), this->hint() == irs::ColumnHint::kConsolidation);
+    version(), this->hint() == irs::ColumnHint::kConsolidation);
   writer.prepare(dir(), meta);
   [[maybe_unused]] auto [id0, handle0] =
-      writer.push_column(column_info(), [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 1;
-        return "foobar";
-      });
+    writer.push_column(column_info(), [](irs::bstring& out) {
+      EXPECT_TRUE(out.empty());
+      out += 1;
+      return "foobar";
+    });
   [[maybe_unused]] auto [id1, handle1] =
-      writer.push_column(column_info(), [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 2;
-        return irs::string_ref::NIL;
-      });
+    writer.push_column(column_info(), [](irs::bstring& out) {
+      EXPECT_TRUE(out.empty());
+      out += 2;
+      return irs::string_ref::NIL;
+    });
   [[maybe_unused]] auto [id2, handle2] =
-      writer.push_column(column_info(), [](auto&) {
-        // Must no be called
-        EXPECT_TRUE(false);
-        return irs::string_ref::NIL;
-      });
+    writer.push_column(column_info(), [](auto&) {
+      // Must no be called
+      EXPECT_TRUE(false);
+      return irs::string_ref::NIL;
+    });
   handle1(42).write_byte(42);
   ASSERT_TRUE(writer.commit(state));
 
@@ -265,15 +265,15 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
 
   {
     irs::columnstore2::writer writer(
-        version(), this->hint() == irs::ColumnHint::kConsolidation);
+      version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-        writer.push_column(column_info(), [](irs::bstring& out) {
-          EXPECT_TRUE(out.empty());
-          out += 42;
-          return irs::string_ref::NIL;
-        });
+      writer.push_column(column_info(), [](irs::bstring& out) {
+        EXPECT_TRUE(out.empty());
+        out += 42;
+        return irs::string_ref::NIL;
+      });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; doc += 2) {
       column(doc);
@@ -411,15 +411,15 @@ TEST_P(columnstore2_test_case, sparse_column) {
 
   {
     irs::columnstore2::writer writer(
-        version(), this->hint() == irs::ColumnHint::kConsolidation);
+      version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-        writer.push_column(column_info(), [](irs::bstring& out) {
-          EXPECT_TRUE(out.empty());
-          out += 42;
-          return "foobaz";
-        });
+      writer.push_column(column_info(), [](irs::bstring& out) {
+        EXPECT_TRUE(out.empty());
+        out += 42;
+        return "foobaz";
+      });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; doc += 2) {
       auto& stream = column(doc);
@@ -628,15 +628,15 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
 
   {
     irs::columnstore2::writer writer(
-        version(), this->hint() == irs::ColumnHint::kConsolidation);
+      version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-        writer.push_column(column_info(), [](irs::bstring& out) {
-          EXPECT_TRUE(out.empty());
-          out += 42;
-          return "foobarbaz";
-        });
+      writer.push_column(column_info(), [](irs::bstring& out) {
+        EXPECT_TRUE(out.empty());
+        out += 42;
+        return "foobarbaz";
+      });
 
     auto write_payload = [](irs::doc_id_t doc, irs::data_output& stream) {
       if (doc <= kGapBegin || doc > (kGapBegin + kBlockSize)) {
@@ -659,7 +659,7 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
           (doc <= kGapBegin || doc > (kGapBegin + kBlockSize))) {
         ASSERT_EQ(sizeof doc, payload.size());
         const irs::doc_id_t actual_doc =
-            *reinterpret_cast<const irs::doc_id_t*>(payload.c_str());
+          *reinterpret_cast<const irs::doc_id_t*>(payload.c_str());
         ASSERT_EQ(doc, actual_doc);
       } else {
         ASSERT_TRUE(payload.empty());
@@ -817,15 +817,15 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
     };
 
     irs::columnstore2::writer writer(
-        version(), this->hint() == irs::ColumnHint::kConsolidation);
+      version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-        writer.push_column(column_info(), [](irs::bstring& out) {
-          EXPECT_TRUE(out.empty());
-          out += 42;
-          return irs::string_ref::NIL;
-        });
+      writer.push_column(column_info(), [](irs::bstring& out) {
+        EXPECT_TRUE(out.empty());
+        out += 42;
+        return irs::string_ref::NIL;
+      });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
       write_payload(doc, column(doc));
@@ -870,13 +870,13 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
       if (doc > kTailBegin) {
         ASSERT_EQ(2 * sizeof doc, payload.size());
         const irs::doc_id_t* actual_doc =
-            reinterpret_cast<const irs::doc_id_t*>(payload.c_str());
+          reinterpret_cast<const irs::doc_id_t*>(payload.c_str());
         ASSERT_EQ(doc, actual_doc[0]);
         ASSERT_EQ(doc, actual_doc[1]);
       } else {
         ASSERT_EQ(sizeof doc, payload.size());
         const irs::doc_id_t actual_doc =
-            *reinterpret_cast<const irs::doc_id_t*>(payload.c_str());
+          *reinterpret_cast<const irs::doc_id_t*>(payload.c_str());
         ASSERT_EQ(doc, actual_doc);
       }
     };
@@ -1000,15 +1000,15 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
     };
 
     irs::columnstore2::writer writer(
-        version(), this->hint() == irs::ColumnHint::kConsolidation);
+      version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-        writer.push_column(column_info(), [](irs::bstring& out) {
-          EXPECT_TRUE(out.empty());
-          out += 42;
-          return irs::string_ref::NIL;
-        });
+      writer.push_column(column_info(), [](irs::bstring& out) {
+        EXPECT_TRUE(out.empty());
+        out += 42;
+        return irs::string_ref::NIL;
+      });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
       write_payload(doc, column(doc));
@@ -1053,13 +1053,13 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
       if (doc > kTailBegin) {
         ASSERT_EQ(1 + sizeof doc, payload.size());
         const irs::doc_id_t actual_doc =
-            *reinterpret_cast<const irs::doc_id_t*>(payload.c_str());
+          *reinterpret_cast<const irs::doc_id_t*>(payload.c_str());
         ASSERT_EQ(doc, actual_doc);
         ASSERT_EQ(42, payload[sizeof doc]);
       } else {
         ASSERT_EQ(sizeof doc, payload.size());
         const irs::doc_id_t actual_doc =
-            *reinterpret_cast<const irs::doc_id_t*>(payload.c_str());
+          *reinterpret_cast<const irs::doc_id_t*>(payload.c_str());
         ASSERT_EQ(doc, actual_doc);
       }
     };
@@ -1189,15 +1189,15 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks) {
     };
 
     irs::columnstore2::writer writer(
-        version(), this->hint() == irs::ColumnHint::kConsolidation);
+      version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-        writer.push_column(column_info(), [](irs::bstring& out) {
-          EXPECT_TRUE(out.empty());
-          out += 42;
-          return irs::string_ref::NIL;
-        });
+      writer.push_column(column_info(), [](irs::bstring& out) {
+        EXPECT_TRUE(out.empty());
+        out += 42;
+        return irs::string_ref::NIL;
+      });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
       write_payload(doc, column(doc));
@@ -1376,15 +1376,15 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks_all_equal) {
     };
 
     irs::columnstore2::writer writer(
-        version(), this->hint() == irs::ColumnHint::kConsolidation);
+      version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-        writer.push_column(column_info(), [](irs::bstring& out) {
-          EXPECT_TRUE(out.empty());
-          out += 42;
-          return irs::string_ref::NIL;
-        });
+      writer.push_column(column_info(), [](irs::bstring& out) {
+        EXPECT_TRUE(out.empty());
+        out += 42;
+        return irs::string_ref::NIL;
+      });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
       write_payload(doc, column(doc));
@@ -1548,15 +1548,15 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
 
   {
     irs::columnstore2::writer writer(
-        version(), this->hint() == irs::ColumnHint::kConsolidation);
+      version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-        writer.push_column(column_info(), [](irs::bstring& out) {
-          EXPECT_TRUE(out.empty());
-          out += 42;
-          return "foobar";
-        });
+      writer.push_column(column_info(), [](irs::bstring& out) {
+        EXPECT_TRUE(out.empty());
+        out += 42;
+        return "foobar";
+      });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
       column(doc);
@@ -1704,15 +1704,15 @@ TEST_P(columnstore2_test_case, dense_column) {
 
   {
     irs::columnstore2::writer writer(
-        version(), this->hint() == irs::ColumnHint::kConsolidation);
+      version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-        writer.push_column(column_info(), [](irs::bstring& out) {
-          EXPECT_TRUE(out.empty());
-          out += 42;
-          return "foobar";
-        });
+      writer.push_column(column_info(), [](irs::bstring& out) {
+        EXPECT_TRUE(out.empty());
+        out += 42;
+        return "foobar";
+      });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
       auto& stream = column(doc);
@@ -1907,15 +1907,15 @@ TEST_P(columnstore2_test_case, dense_column_range) {
 
   {
     irs::columnstore2::writer writer(
-        version(), this->hint() == irs::ColumnHint::kConsolidation);
+      version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-        writer.push_column(column_info(), [](irs::bstring& out) {
-          EXPECT_TRUE(out.empty());
-          out += 42;
-          return irs::string_ref::NIL;
-        });
+      writer.push_column(column_info(), [](irs::bstring& out) {
+        EXPECT_TRUE(out.empty());
+        out += 42;
+        return irs::string_ref::NIL;
+      });
 
     for (irs::doc_id_t doc = kMin; doc <= kMax; ++doc) {
       auto& stream = column(doc);
@@ -2084,16 +2084,16 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
 
   {
     irs::columnstore2::writer writer(
-        version(), this->hint() == irs::ColumnHint::kConsolidation);
+      version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     {
       auto [id, column] =
-          writer.push_column(column_info(), [](irs::bstring& out) {
-            EXPECT_TRUE(out.empty());
-            out += 42;
-            return irs::string_ref::NIL;
-          });
+        writer.push_column(column_info(), [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 42;
+          return irs::string_ref::NIL;
+        });
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
         auto& stream = column(doc);
@@ -2104,11 +2104,11 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
 
     {
       auto [id, column] =
-          writer.push_column(column_info(), [](irs::bstring& out) {
-            EXPECT_TRUE(out.empty());
-            out += 43;
-            return irs::string_ref::NIL;
-          });
+        writer.push_column(column_info(), [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 43;
+          return irs::string_ref::NIL;
+        });
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
         auto& stream = column(doc);
@@ -2130,7 +2130,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
         if (has_payload()) {
           ASSERT_EQ(sizeof doc, payload.value.size());
           const irs::doc_id_t actual_doc =
-              *reinterpret_cast<const irs::doc_id_t*>(payload.value.c_str());
+            *reinterpret_cast<const irs::doc_id_t*>(payload.value.c_str());
           EXPECT_EQ(doc, actual_doc);
         } else {
           ASSERT_TRUE(payload.value.empty());
@@ -2145,8 +2145,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
       ASSERT_EQ(0, header->docs_index);
       ASSERT_EQ(irs::doc_limits::min(), header->min);
       ASSERT_EQ(this->hint() == irs::ColumnHint::kConsolidation
-                    ? ColumnType::kDenseFixed
-                    : ColumnType::kFixed,
+                  ? ColumnType::kDenseFixed
+                  : ColumnType::kFixed,
                 header->type);
       ASSERT_EQ(column_property(ColumnProperty::kNoName), header->props);
 
@@ -2276,8 +2276,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
       ASSERT_EQ(0, header->docs_index);
       ASSERT_EQ(irs::doc_limits::min(), header->min);
       ASSERT_EQ(this->hint() == irs::ColumnHint::kConsolidation
-                    ? ColumnType::kDenseFixed
-                    : ColumnType::kFixed,
+                  ? ColumnType::kDenseFixed
+                  : ColumnType::kFixed,
                 header->type);
       ASSERT_EQ(column_property(ColumnProperty::kNoName), header->props);
 
@@ -2402,16 +2402,16 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
 
   {
     irs::columnstore2::writer writer(
-        version(), this->hint() == irs::ColumnHint::kConsolidation);
+      version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     {
       auto [id, column] =
-          writer.push_column(column_info(), [](irs::bstring& out) {
-            EXPECT_TRUE(out.empty());
-            out += 42;
-            return irs::string_ref::NIL;
-          });
+        writer.push_column(column_info(), [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 42;
+          return irs::string_ref::NIL;
+        });
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
         auto& stream = column(doc);
@@ -2423,11 +2423,11 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
     {
       // empty column has to be removed
       [[maybe_unused]] auto [id, column] =
-          writer.push_column(column_info(), [](auto&) {
-            // Must not be called
-            EXPECT_FALSE(true);
-            return irs::string_ref::NIL;
-          });
+        writer.push_column(column_info(), [](auto&) {
+          // Must not be called
+          EXPECT_FALSE(true);
+          return irs::string_ref::NIL;
+        });
     }
 
     ASSERT_TRUE(writer.commit(state));
@@ -2444,7 +2444,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
         if (has_payload()) {
           ASSERT_EQ(sizeof doc, payload.value.size());
           const irs::doc_id_t actual_doc =
-              *reinterpret_cast<const irs::doc_id_t*>(payload.value.c_str());
+            *reinterpret_cast<const irs::doc_id_t*>(payload.value.c_str());
           EXPECT_EQ(doc, actual_doc);
         } else {
           ASSERT_TRUE(payload.value.empty());
@@ -2459,8 +2459,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
       ASSERT_EQ(0, header->docs_index);
       ASSERT_EQ(irs::doc_limits::min(), header->min);
       ASSERT_EQ(this->hint() == irs::ColumnHint::kConsolidation
-                    ? ColumnType::kDenseFixed
-                    : ColumnType::kFixed,
+                  ? ColumnType::kDenseFixed
+                  : ColumnType::kFixed,
                 header->type);
       ASSERT_EQ(column_property(ColumnProperty::kNoName), header->props);
 
@@ -2585,27 +2585,27 @@ TEST_P(columnstore2_test_case, empty_columns) {
 
   {
     irs::columnstore2::writer writer(
-        version(), this->hint() == irs::ColumnHint::kConsolidation);
+      version(), this->hint() == irs::ColumnHint::kConsolidation);
     writer.prepare(dir(), meta);
 
     {
       // empty column must be removed
       [[maybe_unused]] auto [id, column] =
-          writer.push_column(column_info(), [](auto&) {
-            // Must not be called
-            EXPECT_FALSE(true);
-            return irs::string_ref::NIL;
-          });
+        writer.push_column(column_info(), [](auto&) {
+          // Must not be called
+          EXPECT_FALSE(true);
+          return irs::string_ref::NIL;
+        });
     }
 
     {
       // empty column must be removed
       [[maybe_unused]] auto [id, column] =
-          writer.push_column(column_info(), [](auto&) {
-            // Must not be called
-            EXPECT_FALSE(true);
-            return irs::string_ref::NIL;
-          });
+        writer.push_column(column_info(), [](auto&) {
+          // Must not be called
+          EXPECT_FALSE(true);
+          return irs::string_ref::NIL;
+        });
     }
 
     ASSERT_FALSE(writer.commit(state));
@@ -2621,16 +2621,15 @@ TEST_P(columnstore2_test_case, empty_columns) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    columnstore2_test, columnstore2_test_case,
-    ::testing::Combine(
-        ::testing::Values(&tests::directory<&tests::memory_directory>,
-                          &tests::directory<&tests::fs_directory>,
-                          &tests::directory<&tests::mmap_directory>,
-                          &tests::rot13_directory<&tests::memory_directory, 16>,
-                          &tests::rot13_directory<&tests::fs_directory, 16>,
-                          &tests::rot13_directory<&tests::mmap_directory, 16>),
-        ::testing::Values(irs::ColumnHint::kNormal,
-                          irs::ColumnHint::kConsolidation,
-                          irs::ColumnHint::kMask, irs::ColumnHint::kPrevDoc),
-        ::testing::Values(irs::columnstore2::Version::kMin)),
-    &columnstore2_test_case::to_string);
+  columnstore2_test, columnstore2_test_case,
+  ::testing::Combine(
+    ::testing::Values(&tests::directory<&tests::memory_directory>,
+                      &tests::directory<&tests::fs_directory>,
+                      &tests::directory<&tests::mmap_directory>,
+                      &tests::rot13_directory<&tests::memory_directory, 16>,
+                      &tests::rot13_directory<&tests::fs_directory, 16>,
+                      &tests::rot13_directory<&tests::mmap_directory, 16>),
+    ::testing::Values(irs::ColumnHint::kNormal, irs::ColumnHint::kConsolidation,
+                      irs::ColumnHint::kMask, irs::ColumnHint::kPrevDoc),
+    ::testing::Values(irs::columnstore2::Version::kMin)),
+  &columnstore2_test_case::to_string);

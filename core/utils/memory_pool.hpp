@@ -50,10 +50,7 @@ class freelist : private util::noncopyable {
   static const size_t MIN_ALIGN = alignof(slot*);
 
   freelist() = default;
-  freelist(freelist&& rhs) noexcept
-    : head_(rhs.head_) {
-    rhs.head_ = nullptr;
-  }
+  freelist(freelist&& rhs) noexcept : head_(rhs.head_) { rhs.head_ = nullptr; }
   freelist& operator=(freelist&& rhs) noexcept {
     if (this != &rhs) {
       head_ = rhs.head_;
@@ -70,12 +67,14 @@ class freelist : private util::noncopyable {
     head_ = free;
   }
 
-  FORCE_INLINE void assign(void* p, const size_t slot_size, const size_t count) noexcept {
+  FORCE_INLINE void assign(void* p, const size_t slot_size,
+                           const size_t count) noexcept {
     segregate(p, slot_size, count);
     head_ = static_cast<slot*>(p);
   }
 
-  FORCE_INLINE void push_n(void* p, const size_t slot_size, const size_t count) noexcept {
+  FORCE_INLINE void push_n(void* p, const size_t slot_size,
+                           const size_t count) noexcept {
     assert(p);
 
     auto* end = segregate(p, slot_size, count);
@@ -83,9 +82,7 @@ class freelist : private util::noncopyable {
     head_ = static_cast<slot*>(p);
   }
 
-  FORCE_INLINE bool empty() const noexcept {
-    return !head_;
-  }
+  FORCE_INLINE bool empty() const noexcept { return !head_; }
 
   // pops an element from the stack denoted by 'head'
   FORCE_INLINE void* pop() noexcept {
@@ -110,30 +107,32 @@ class freelist : private util::noncopyable {
   }
 
  private:
-  static slot* segregate(void* p, const size_t slot_size, const size_t count) noexcept {
+  static slot* segregate(void* p, const size_t slot_size,
+                         const size_t count) noexcept {
     assert(p);
 
     auto* head = static_cast<slot*>(p);
     auto* begin = static_cast<char*>(p);
-    auto* const end = begin + slot_size*count;
+    auto* const end = begin + slot_size * count;
     while ((begin += slot_size) < end) {
       head = head->next = reinterpret_cast<slot*>(begin);
     }
     assert(begin == end);
 
-    head->next = nullptr; // mark last element
-    return head; // return last element
+    head->next = nullptr;  // mark last element
+    return head;           // return last element
   }
 
-  // tries to find 'n' sequential slots of size 'slot_size' starting from the pointer
-  // denoted by 'begin'
-  // on success, puts the beginning of the found range into the 'begin'
-  // and retuns 'n-1'th element starting from 'begin'
-  // on fail, puts failed element into the 'begin' and returns nullptr
-  static slot* try_pop_n(slot*& begin, const size_t slot_size, size_t count) noexcept {
+  // tries to find 'n' sequential slots of size 'slot_size' starting from the
+  // pointer denoted by 'begin' on success, puts the beginning of the found
+  // range into the 'begin' and retuns 'n-1'th element starting from 'begin' on
+  // fail, puts failed element into the 'begin' and returns nullptr
+  static slot* try_pop_n(slot*& begin, const size_t slot_size,
+                         size_t count) noexcept {
     auto* it = begin->next;
     while (it && --count) {
-      if ((reinterpret_cast<char*>(it) + slot_size) != reinterpret_cast<char*>(it->next)) {
+      if ((reinterpret_cast<char*>(it) + slot_size) !=
+          reinterpret_cast<char*>(it->next)) {
         begin = it->next;
         return nullptr;
       }
@@ -143,7 +142,7 @@ class freelist : private util::noncopyable {
   }
 
   slot* head_{};
-}; // freelist
+};  // freelist
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief BlockAllocator concept
@@ -170,10 +169,8 @@ struct malloc_free_allocator {
     return static_cast<char*>(std::malloc(size));
   }
 
-  void deallocate(char* const ptr, size_t /*size*/) noexcept {
-    std::free(ptr);
-  }
-}; // malloc_free_allocator
+  void deallocate(char* const ptr, size_t /*size*/) noexcept { std::free(ptr); }
+};  // malloc_free_allocator
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class new_delete_allocator
@@ -187,10 +184,8 @@ struct new_delete_allocator {
     return new (std::nothrow) char[size];
   }
 
-  void deallocate(const char* ptr, size_t /*size*/) noexcept {
-    delete[] ptr;
-  }
-}; // new_delete_allocator
+  void deallocate(const char* ptr, size_t /*size*/) noexcept { delete[] ptr; }
+};  // new_delete_allocator
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief GrowPolicy concept
@@ -206,10 +201,8 @@ struct new_delete_allocator {
 /// @brief policy allows unbounded exponential grow (1 -> 2 -> 4 -> 8 -> ... )
 ///////////////////////////////////////////////////////////////////////////////
 struct log2_grow {
-  size_t operator()(size_t size) const {
-    return size << 1;
-  }
-}; // log2_grow
+  size_t operator()(size_t size) const { return size << 1; }
+};  // log2_grow
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class bounded_log2_grow
@@ -218,27 +211,21 @@ struct log2_grow {
 ///////////////////////////////////////////////////////////////////////////////
 class bounded_log2_grow {
  public:
-  bounded_log2_grow(size_t max)
-    : max_(max) {
-  }
+  bounded_log2_grow(size_t max) : max_(max) {}
 
-  size_t operator()(size_t size) const {
-    return std::min(size << 1, max_);
-  }
+  size_t operator()(size_t size) const { return std::min(size << 1, max_); }
 
  private:
   size_t max_;
-}; // bounded_log2_grow
+};  // bounded_log2_grow
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class identity_grow
 /// @brief policy just returns the provided size
 ///////////////////////////////////////////////////////////////////////////////
 struct identity_grow {
-  size_t operator()(size_t size) const {
-    return size;
-  }
-}; // identity_grow
+  size_t operator()(size_t size) const { return size; }
+};  // identity_grow
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pool_base
@@ -257,19 +244,16 @@ class pool_base : private compact_ref<0, BlockAllocator>,
   typedef compact_ref<0, BlockAllocator> block_allocator_store_t;
 
   pool_base(const grow_policy_t& policy, const block_allocator_t& allocator)
-    : block_allocator_store_t(allocator),
-      grow_policy_store_t(policy) {
-  }
+    : block_allocator_store_t(allocator), grow_policy_store_t(policy) {}
 
   pool_base(pool_base&& rhs)
     : block_allocator_store_t(std::move(rhs)),
-      grow_policy_store_t(std::move(rhs)) {
-  }
+      grow_policy_store_t(std::move(rhs)) {}
 
   pool_base& operator=(pool_base&& rhs) {
     if (this != &rhs) {
       block_allocator_store_t::operator=(std::move(rhs));
-      grow_policy_store_t::operator =(std::move(rhs));
+      grow_policy_store_t::operator=(std::move(rhs));
     }
     return *this;
   }
@@ -278,28 +262,23 @@ class pool_base : private compact_ref<0, BlockAllocator>,
     return grow_policy_store_t::get();
   }
 
-  grow_policy_t& grow_policy() {
-    return grow_policy_store_t::get();
-  }
+  grow_policy_t& grow_policy() { return grow_policy_store_t::get(); }
 
   const block_allocator_t& allocator() const {
     return block_allocator_store_t::get();
   }
 
-  block_allocator_t& allocator() {
-    return block_allocator_store_t::get();
-  }
-}; // pool_base
+  block_allocator_t& allocator() { return block_allocator_store_t::get(); }
+};  // pool_base
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class memory_pool
 /// @brief a fast free-list based memory allocator, gurantees proper alignment
 ///        of all allocated slots
 ///////////////////////////////////////////////////////////////////////////////
-template<
-  typename GrowPolicy = log2_grow,
-  typename BlockAllocator = malloc_free_allocator
-> class memory_pool : public pool_base<GrowPolicy, BlockAllocator> {
+template<typename GrowPolicy = log2_grow,
+         typename BlockAllocator = malloc_free_allocator>
+class memory_pool : public pool_base<GrowPolicy, BlockAllocator> {
  public:
   typedef pool_base<GrowPolicy, BlockAllocator> pool_base_t;
   typedef typename pool_base_t::grow_policy_t grow_policy_t;
@@ -307,14 +286,12 @@ template<
   typedef typename block_allocator_t::size_type size_type;
 
   explicit memory_pool(
-      const size_t slot_min_size = 0,
-      size_t initial_size = 32,
-      const block_allocator_t& alloc = block_allocator_t(),
-      const grow_policy_t& grow_policy = grow_policy_t()) noexcept
+    const size_t slot_min_size = 0, size_t initial_size = 32,
+    const block_allocator_t& alloc = block_allocator_t(),
+    const grow_policy_t& grow_policy = grow_policy_t()) noexcept
     : pool_base_t(grow_policy, alloc),
       slot_size_(adjust_slot_size(slot_min_size)),
-      next_size_(adjust_initial_size(initial_size)) {
-  }
+      next_size_(adjust_initial_size(initial_size)) {}
 
   memory_pool(memory_pool&& rhs) noexcept
     : pool_base_t(std::move(rhs)),
@@ -348,8 +325,8 @@ template<
       auto* block = blocks_.pop();
 
       this->allocator().deallocate(
-        reinterpret_cast<char*>(block), // begin of the allocated block
-        *reinterpret_cast<size_t*>(block) // size of the block
+        reinterpret_cast<char*>(block),    // begin of the allocated block
+        *reinterpret_cast<size_t*>(block)  // size of the block
       );
     }
   }
@@ -362,17 +339,14 @@ template<
       return p;
     }
 
-    if (n <= next_size_) { // have enough items in the next block
+    if (n <= next_size_) {  // have enough items in the next block
       const auto block_size = next_size_;
 
       p = allocate_block(block_size);
 
       // add rest of the allocated block to the free list
-      free_.push_n(
-        reinterpret_cast<char*>(p) + n*slot_size_,
-        slot_size_,
-        block_size - n
-      );
+      free_.push_n(reinterpret_cast<char*>(p) + n * slot_size_, slot_size_,
+                   block_size - n);
 
       return p;
     }
@@ -395,39 +369,28 @@ template<
     free_.push_n(p, slot_size_, n);
   }
 
-  void deallocate(void* p) noexcept {
-    free_.push(p);
-  }
+  void deallocate(void* p) noexcept { free_.push(p); }
 
-  size_t capacity() const noexcept {
-    return capacity_;
-  }
+  size_t capacity() const noexcept { return capacity_; }
 
-  size_t slot_size() const noexcept {
-    return slot_size_;
-  }
+  size_t slot_size() const noexcept { return slot_size_; }
 
-  size_t next_size() const noexcept {
-    return next_size_;
-  }
+  size_t next_size() const noexcept { return next_size_; }
 
-  bool empty() const noexcept {
-    return blocks_.empty();
-  }
+  bool empty() const noexcept { return blocks_.empty(); }
 
  private:
   static size_t adjust_initial_size(size_t next_size) noexcept {
-    return (std::max)(next_size, size_t(2)); // block chain + 1 slot
+    return (std::max)(next_size, size_t(2));  // block chain + 1 slot
   }
 
   static size_t adjust_slot_size(size_t slot_size) noexcept {
     using namespace iresearch::math;
-    static_assert(is_power2(freelist::MIN_ALIGN), "MIN_ALIGN must be a power of 2");
+    static_assert(is_power2(freelist::MIN_ALIGN),
+                  "MIN_ALIGN must be a power of 2");
 
-    slot_size = align_up(
-      (std::max)(slot_size, size_t(freelist::MIN_SIZE)),
-      freelist::MIN_ALIGN
-    );
+    slot_size = align_up((std::max)(slot_size, size_t(freelist::MIN_SIZE)),
+                         freelist::MIN_ALIGN);
 
     assert(slot_size >= freelist::MIN_SIZE);
     assert(!(slot_size % freelist::MIN_ALIGN));
@@ -439,14 +402,16 @@ template<
     assert(block_size && slot_size_);
 
     // allocate memory block
-    const auto size_in_bytes = block_size*slot_size_ + sizeof(size_t) + freelist::MIN_SIZE;
+    const auto size_in_bytes =
+      block_size * slot_size_ + sizeof(size_t) + freelist::MIN_SIZE;
     char* begin = this->allocator().allocate(size_in_bytes);
 
     if (!begin) {
       throw std::bad_alloc();
     }
 
-    *reinterpret_cast<size_t*>(begin) = size_in_bytes; // remember size of the block
+    *reinterpret_cast<size_t*>(begin) =
+      size_in_bytes;  // remember size of the block
 
     // noexcept
     capacity_ += block_size;
@@ -479,14 +444,14 @@ template<
   }
 
   size_t slot_size_;
-  size_t capacity_{}; // number of allocated slots
+  size_t capacity_{};  // number of allocated slots
   size_t next_size_;
-  freelist free_; // list of free slots in the allocated blocks
-  freelist blocks_; // list of the allocated blocks
+  freelist free_;    // list of free slots in the allocated blocks
+  freelist blocks_;  // list of the allocated blocks
 
   template<typename, typename, typename>
   friend class memory_pool_allocator;
-}; // memory_pool
+};  // memory_pool
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class template<typename T> allocator_base
@@ -494,15 +459,13 @@ template<
 ///////////////////////////////////////////////////////////////////////////////
 template<typename T>
 struct allocator_base {
-  typedef T               value_type;
-  typedef T*              pointer;
-  typedef T&              reference;
-  typedef const T*        const_pointer;
-  typedef const T&        const_reference;
+  typedef T value_type;
+  typedef T* pointer;
+  typedef T& reference;
+  typedef const T* const_pointer;
+  typedef const T& const_reference;
 
-  pointer address(reference x) const noexcept {
-    return std::addressof(x);
-  }
+  pointer address(reference x) const noexcept { return std::addressof(x); }
 
   const_pointer address(const_reference x) const noexcept {
     return std::addressof(x);
@@ -510,16 +473,16 @@ struct allocator_base {
 
   template<typename... Args>
   void construct(pointer p, Args&&... args) {
-    new (p) value_type(std::forward<Args>(args)...); // call ctor
+    new (p) value_type(std::forward<Args>(args)...);  // call ctor
   }
 
   void destroy(pointer p) noexcept {
-    p->~value_type(); // call dtor
+    p->~value_type();  // call dtor
   }
-}; // allocator_base
+};  // allocator_base
 
-struct single_allocator_tag { };
-struct bulk_allocator_tag { };
+struct single_allocator_tag {};
+struct bulk_allocator_tag {};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class template<typename T> memory_pool_allocator
@@ -527,11 +490,8 @@ struct bulk_allocator_tag { };
 /// @note single_allocator_tag is used for optimizations for node-based
 ///        memory allocations (e.g. std::map, std::set, std::list)
 ///////////////////////////////////////////////////////////////////////////////
-template<
-  typename T,
-  typename MemoryPool,
-  typename Tag = single_allocator_tag
-> class memory_pool_allocator : public allocator_base<T> {
+template<typename T, typename MemoryPool, typename Tag = single_allocator_tag>
+class memory_pool_allocator : public allocator_base<T> {
  public:
   typedef MemoryPool memory_pool_t;
   typedef typename MemoryPool::size_type size_type;
@@ -541,21 +501,22 @@ template<
   typedef typename allocator_base_t::const_pointer const_pointer;
 
   typedef std::false_type propagate_on_container_copy_assignment;
-  typedef std::true_type  propagate_on_container_move_assignment;
-  typedef std::true_type  propagate_on_container_swap;
+  typedef std::true_type propagate_on_container_move_assignment;
+  typedef std::true_type propagate_on_container_swap;
 
-  template <typename U> struct rebind {
+  template<typename U>
+  struct rebind {
     typedef memory_pool_allocator<U, MemoryPool, Tag> other;
   };
 
   template<typename U>
-  memory_pool_allocator(const memory_pool_allocator<U, memory_pool_t, Tag>& rhs) noexcept
+  memory_pool_allocator(
+    const memory_pool_allocator<U, memory_pool_t, Tag>& rhs) noexcept
     : pool_(rhs.pool_) {
     pool_->rebind(sizeof(T));
   }
 
-  explicit memory_pool_allocator(memory_pool_t& pool) noexcept
-    : pool_(&pool) {
+  explicit memory_pool_allocator(memory_pool_t& pool) noexcept : pool_(&pool) {
     pool_->rebind(sizeof(T));
   }
 
@@ -593,17 +554,16 @@ template<
 
   template<typename U, typename, typename>
   friend class memory_pool_allocator;
-}; // memory_pool_allocator
+};  // memory_pool_allocator
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class memory_multi_size_pool
 /// @brief an allocator that can handle allocations of slots with different
 ///        sizes
 ///////////////////////////////////////////////////////////////////////////////
-template<
-  typename GrowPolicy = log2_grow,
-  typename BlockAllocator = malloc_free_allocator
-> class memory_multi_size_pool : public pool_base<GrowPolicy, BlockAllocator> {
+template<typename GrowPolicy = log2_grow,
+         typename BlockAllocator = malloc_free_allocator>
+class memory_multi_size_pool : public pool_base<GrowPolicy, BlockAllocator> {
  public:
   typedef pool_base<GrowPolicy, BlockAllocator> pool_base_t;
   typedef typename pool_base_t::grow_policy_t grow_policy_t;
@@ -611,12 +571,10 @@ template<
   typedef memory_pool<grow_policy_t, block_allocator_t> memory_pool_t;
 
   explicit memory_multi_size_pool(
-      size_t initial_size = 32,
-      const block_allocator_t& block_alloc = block_allocator_t(),
-      const grow_policy_t& grow_policy = grow_policy_t()) noexcept
-    : pool_base_t(grow_policy, block_alloc),
-      initial_size_(initial_size) {
-  }
+    size_t initial_size = 32,
+    const block_allocator_t& block_alloc = block_allocator_t(),
+    const grow_policy_t& grow_policy = grow_policy_t()) noexcept
+    : pool_base_t(grow_policy, block_alloc), initial_size_(initial_size) {}
 
   void* allocate(const size_t slot_size) {
     return this->pool(slot_size).allocate();
@@ -635,17 +593,16 @@ template<
   }
 
   memory_pool_t& pool(const size_t size) const {
-    const auto res = pools_.try_emplace(
-      size, size, initial_size_,
-      this->allocator(), this->grow_policy());
+    const auto res = pools_.try_emplace(size, size, initial_size_,
+                                        this->allocator(), this->grow_policy());
 
     return res.first->second;
   }
 
  private:
   mutable std::map<size_t, memory_pool_t> pools_;
-  const size_t initial_size_; // initial size for all sub-allocators
-}; // memory_multi_size_pool
+  const size_t initial_size_;  // initial size for all sub-allocators
+};                             // memory_multi_size_pool
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class template<typename T> memory_pool_multi_size_allocator
@@ -653,11 +610,9 @@ template<
 /// @note single_allocator_tag is used for optimizations for node-based
 ///        memory allocations (e.g. std::map, std::set, std::list)
 ///////////////////////////////////////////////////////////////////////////////
-template<
-  typename T,
-  typename AllocatorsPool,
-  typename Tag = single_allocator_tag
-> class memory_pool_multi_size_allocator : public allocator_base<T> {
+template<typename T, typename AllocatorsPool,
+         typename Tag = single_allocator_tag>
+class memory_pool_multi_size_allocator : public allocator_base<T> {
  public:
   typedef AllocatorsPool allocators_t;
   typedef typename allocators_t::memory_pool_t memory_pool_t;
@@ -667,22 +622,23 @@ template<
   typedef typename allocator_base_t::pointer pointer;
   typedef typename allocator_base_t::const_pointer const_pointer;
 
-  typedef std::true_type  propagate_on_container_copy_assignment;
-  typedef std::true_type  propagate_on_container_move_assignment;
-  typedef std::true_type  propagate_on_container_swap;
+  typedef std::true_type propagate_on_container_copy_assignment;
+  typedef std::true_type propagate_on_container_move_assignment;
+  typedef std::true_type propagate_on_container_swap;
 
-  template <typename U> struct rebind {
-    typedef memory_pool_multi_size_allocator <U, AllocatorsPool, Tag> other;
+  template<typename U>
+  struct rebind {
+    typedef memory_pool_multi_size_allocator<U, AllocatorsPool, Tag> other;
   };
 
   template<typename U>
-  memory_pool_multi_size_allocator(const memory_pool_multi_size_allocator<U, AllocatorsPool, Tag>& rhs) noexcept
-    : allocators_(rhs.allocators_), pool_(&allocators_->pool(sizeof(T))) {
-  }
+  memory_pool_multi_size_allocator(
+    const memory_pool_multi_size_allocator<U, AllocatorsPool, Tag>&
+      rhs) noexcept
+    : allocators_(rhs.allocators_), pool_(&allocators_->pool(sizeof(T))) {}
 
   memory_pool_multi_size_allocator(allocators_t& pool) noexcept
-    : allocators_(&pool), pool_(&allocators_->pool(sizeof(T))) {
-  }
+    : allocators_(&pool), pool_(&allocators_->pool(sizeof(T))) {}
 
   pointer allocate(size_type n, const_pointer hint = 0) {
     UNUSED(hint);
@@ -719,31 +675,23 @@ template<
 
   template<typename U, typename, typename>
   friend class memory_pool_multi_size_allocator;
-}; // memory_pool_multi_size_allocator
+};  // memory_pool_multi_size_allocator
 
-template<
-  typename T,
-  typename U,
-  typename AllocatorsPool,
-  typename Tag
-> constexpr inline bool operator==(
-    const memory_pool_multi_size_allocator<T, AllocatorsPool, Tag>& lhs,
-    const memory_pool_multi_size_allocator<U, AllocatorsPool, Tag>& rhs) {
+template<typename T, typename U, typename AllocatorsPool, typename Tag>
+constexpr inline bool operator==(
+  const memory_pool_multi_size_allocator<T, AllocatorsPool, Tag>& lhs,
+  const memory_pool_multi_size_allocator<U, AllocatorsPool, Tag>& rhs) {
   return lhs.allocators_ == rhs.allocators_ && sizeof(T) == sizeof(U);
 }
 
-template<
-  typename T,
-  typename U,
-  typename AllocatorsPool,
-  typename Tag
-> constexpr inline bool operator!=(
-    const memory_pool_multi_size_allocator<T, AllocatorsPool, Tag>& lhs,
-    const memory_pool_multi_size_allocator<U, AllocatorsPool, Tag>& rhs) {
+template<typename T, typename U, typename AllocatorsPool, typename Tag>
+constexpr inline bool operator!=(
+  const memory_pool_multi_size_allocator<T, AllocatorsPool, Tag>& lhs,
+  const memory_pool_multi_size_allocator<U, AllocatorsPool, Tag>& rhs) {
   return !(lhs == rhs);
 }
 
-} // memory
-} // ROOT
+}  // namespace memory
+}  // namespace iresearch
 
-#endif // IRESEARCH_MEMORY_POOL_H
+#endif  // IRESEARCH_MEMORY_POOL_H

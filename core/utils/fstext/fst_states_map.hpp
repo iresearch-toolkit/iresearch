@@ -36,12 +36,8 @@ namespace iresearch {
 /// @brief helper class for deduplication of fst states while building
 ///        minimal acyclic subsequential transducer
 //////////////////////////////////////////////////////////////////////////////
-template<typename Fst,
-         typename State,
-         typename PushState,
-         typename Hash,
-         typename StateEq,
-         typename Fst::StateId NoStateId>
+template<typename Fst, typename State, typename PushState, typename Hash,
+         typename StateEq, typename Fst::StateId NoStateId>
 class fst_states_map : private compact<0, Hash>,
                        private compact<1, StateEq>,
                        private compact<2, PushState>,
@@ -54,16 +50,14 @@ class fst_states_map : private compact<0, Hash>,
   using hasher = Hash;
   using state_equal = StateEq;
 
-  explicit fst_states_map(
-      size_t capacity = 16,
-      const push_state state_emplace = {},
-      const hasher& hash_function = {},
-      const state_equal& state_eq = {})
-    : compact<0, hasher>{ hash_function },
-      compact<1, state_equal>{ state_eq },
-      compact<2, push_state>{ state_emplace },
-      states_(capacity, NoStateId) {
-  }
+  explicit fst_states_map(size_t capacity = 16,
+                          const push_state state_emplace = {},
+                          const hasher& hash_function = {},
+                          const state_equal& state_eq = {})
+    : compact<0, hasher>{hash_function},
+      compact<1, state_equal>{state_eq},
+      compact<2, push_state>{state_emplace},
+      states_(capacity, NoStateId) {}
 
   state_id insert(const state_type& s, fst_type& fst) {
     const auto state_equal = state_eq();
@@ -71,7 +65,7 @@ class fst_states_map : private compact<0, Hash>,
 
     const size_t mask = states_.size() - 1;
     size_t pos = hasher(s, fst) % mask;
-    for (;;++pos, pos %= mask) {
+    for (;; ++pos, pos %= mask) {
       auto& bucket = states_[pos];
 
       if (NoStateId == bucket) {
@@ -98,9 +92,7 @@ class fst_states_map : private compact<0, Hash>,
     std::fill(states_.begin(), states_.end(), NoStateId);
   }
 
-  hasher hash_function() const noexcept {
-    return compact<0, hasher>::get();
-  }
+  hasher hash_function() const noexcept { return compact<0, hasher>::get(); }
 
   state_equal state_eq() const noexcept {
     return compact<1, state_equal>::get();
@@ -122,7 +114,7 @@ class fst_states_map : private compact<0, Hash>,
       }
 
       size_t pos = hasher(id, fst) % mask;
-      for (;;++pos, pos %= mask) {
+      for (;; ++pos, pos %= mask) {
         auto& bucket = states[pos];
 
         if (NoStateId == bucket) {
@@ -137,8 +129,8 @@ class fst_states_map : private compact<0, Hash>,
 
   std::vector<state_id> states_;
   size_t count_{};
-}; // fst_states_map
+};  // fst_states_map
 
-}
+}  // namespace iresearch
 
 #endif

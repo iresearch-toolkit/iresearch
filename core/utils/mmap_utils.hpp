@@ -66,7 +66,7 @@
 #else
 #error "System does not support mapping anonymous pages?"
 #endif
-#endif // MAP_ANON
+#endif  // MAP_ANON
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constants for madvice
@@ -77,7 +77,7 @@
 #define IR_MADVICE_WILLNEED MADV_WILLNEED
 #define IR_MADVICE_DONTNEED MADV_DONTNEED
 
-#endif // _MSC_VER
+#endif  // _MSC_VER
 
 namespace iresearch {
 namespace mmap_utils {
@@ -92,49 +92,39 @@ int flush(int fd, void* addr, size_t size, int flags) noexcept;
 //////////////////////////////////////////////////////////////////////////////
 class mmap_handle : private util::noncopyable {
  public:
-  mmap_handle() noexcept {
-    init();
-  }
+  mmap_handle() noexcept { init(); }
 
-  ~mmap_handle() noexcept {
-    close();
-  }
+  ~mmap_handle() noexcept { close(); }
 
   bool open(const file_path_t file) noexcept;
   void close() noexcept;
 
-  explicit operator bool() const noexcept {
-    return fd_ >= 0;
-  }
+  explicit operator bool() const noexcept { return fd_ >= 0; }
 
   void* addr() const noexcept { return addr_; }
   size_t size() const noexcept { return size_; }
   ptrdiff_t fd() const noexcept { return fd_; }
 
   bool flush(int flags) noexcept {
-    return !mmap_utils::flush(
-      static_cast<int>(fd_), addr_, size_, flags
-    );
+    return !mmap_utils::flush(static_cast<int>(fd_), addr_, size_, flags);
   }
 
   bool advise(int advice) noexcept {
     return 0 == ::madvise(addr_, size_, advice);
   }
 
-  void dontneed(bool value) noexcept {
-    dontneed_ = value;
-  }
+  void dontneed(bool value) noexcept { dontneed_ = value; }
 
  private:
   void init() noexcept;
 
-  void* addr_; // the beginning of mmapped region
-  size_t size_; // file size
-  ptrdiff_t fd_; // file descriptor
-  bool dontneed_; // request to free pages on close
-}; // mmap_handle
+  void* addr_;     // the beginning of mmapped region
+  size_t size_;    // file size
+  ptrdiff_t fd_;   // file descriptor
+  bool dontneed_;  // request to free pages on close
+};                 // mmap_handle
 
-} // mmap_utils
-} // ROOT
+}  // namespace mmap_utils
+}  // namespace iresearch
 
-#endif // IRESEARCH_MMAP_UTILS_H
+#endif  // IRESEARCH_MMAP_UTILS_H

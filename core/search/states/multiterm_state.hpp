@@ -34,7 +34,7 @@ struct MultiTermState {
   struct ScoredTermState {
     ScoredTermState(seek_cookie::ptr&& cookie, uint32_t stat_offset,
                     score_t boost = kNoBoost) noexcept
-        : cookie{std::move(cookie)}, stat_offset{stat_offset}, boost{boost} {}
+      : cookie{std::move(cookie)}, stat_offset{stat_offset}, boost{boost} {}
 
     seek_cookie::ptr cookie;
     uint32_t stat_offset{};

@@ -42,7 +42,7 @@ struct top_term {
 
   template<typename U = key_type>
   top_term(const bytes_ref& term, U&& key)
-      : term(term.c_str(), term.size()), key(std::forward<U>(key)) {}
+    : term(term.c_str(), term.size()), key(std::forward<U>(key)) {}
 
   template<typename CollectorState>
   void emplace(const CollectorState& /*state*/) {
@@ -76,7 +76,7 @@ struct top_term_state : top_term<T> {
   struct segment_state {
     segment_state(const sub_reader& segment, const term_reader& field,
                   uint32_t docs_count) noexcept
-        : segment(&segment), field(&field), docs_count(docs_count) {}
+      : segment(&segment), field(&field), docs_count(docs_count) {}
 
     const sub_reader* segment;
     const term_reader* field;
@@ -86,7 +86,7 @@ struct top_term_state : top_term<T> {
 
   template<typename U = T>
   top_term_state(const bytes_ref& term, U&& key)
-      : top_term<T>(term, std::forward<U>(key)) {}
+    : top_term<T>(term, std::forward<U>(key)) {}
 
   template<typename CollectorState>
   void emplace(const CollectorState& state) {
@@ -135,7 +135,7 @@ class top_terms_collector : private compact<0, Comparer>,
   // We disallow 0 size collectors for consistency since we're not
   // interested in this use case and don't want to burden "collect(...)"
   explicit top_terms_collector(size_t size, const Comparer& comp = {})
-      : comparer_rep(comp), size_(std::max(size_t(1), size)) {
+    : comparer_rep(comp), size_(std::max(size_t(1), size)) {
     heap_.reserve(size);
     terms_.reserve(size);  // ensure all iterators remain valid
   }
@@ -247,16 +247,16 @@ class top_terms_collector : private compact<0, Comparer>,
   }
 
   std::pair<typename states_map_t::iterator, bool> emplace(
-      const hashed_bytes_ref& term, const key_type& key) {
+    const hashed_bytes_ref& term, const key_type& key) {
     // replace original reference to 'name' provided by the caller
     // with a reference to the cached copy in 'value'
     return map_utils::try_emplace_update_key(
-        terms_,
-        [](const hashed_bytes_ref& key, const state_type& value) noexcept {
-          // reuse hash but point ref at value
-          return hashed_bytes_ref(key.hash(), value.term);
-        },
-        term, term, key);
+      terms_,
+      [](const hashed_bytes_ref& key, const state_type& value) noexcept {
+        // reuse hash but point ref at value
+        return hashed_bytes_ref(key.hash(), value.term);
+      },
+      term, term, key);
   }
 
   const comparer_type& comparer() const noexcept { return comparer_rep::get(); }

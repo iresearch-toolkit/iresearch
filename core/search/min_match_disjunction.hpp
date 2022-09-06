@@ -46,7 +46,7 @@ class min_match_disjunction : public doc_iterator,
  public:
   struct cost_iterator_adapter : score_iterator_adapter<DocIterator> {
     cost_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
-        : score_iterator_adapter<DocIterator>(std::move(it)) {
+      : score_iterator_adapter<DocIterator>(std::move(it)) {
       est = cost::extract(*this->it, cost::kMax);
     }
 
@@ -57,19 +57,19 @@ class min_match_disjunction : public doc_iterator,
   };
 
   static_assert(
-      std::is_nothrow_move_constructible<cost_iterator_adapter>::value,
-      "default move constructor expected");
+    std::is_nothrow_move_constructible<cost_iterator_adapter>::value,
+    "default move constructor expected");
 
   typedef cost_iterator_adapter doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
 
   min_match_disjunction(doc_iterators_t&& itrs, size_t min_match_count,
                         Merger&& merger = Merger{})
-      : Merger{std::move(merger)},
-        itrs_(std::move(itrs)),
-        min_match_count_(
-            std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
-        lead_(itrs_.size()) {
+    : Merger{std::move(merger)},
+      itrs_(std::move(itrs)),
+      min_match_count_(
+        std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
+      lead_(itrs_.size()) {
     assert(!itrs_.empty());
     assert(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
 
@@ -120,10 +120,9 @@ class min_match_disjunction : public doc_iterator,
 
       // make step for all head iterators less or equal current doc (doc_)
       while (top().value() <= doc_.value) {
-        const bool exhausted =
-            top().value() == doc_.value
-                ? !top()->next()
-                : doc_limits::eof(top()->seek(doc_.value + 1));
+        const bool exhausted = top().value() == doc_.value
+                                 ? !top()->next()
+                                 : doc_limits::eof(top()->seek(doc_.value + 1));
 
         if (exhausted && !remove_top()) {
           doc_.value = doc_limits::eof();
@@ -382,9 +381,7 @@ class min_match_disjunction : public doc_iterator,
 
   // Returns true - if the min_match_count_ condition still can be satisfied,
   // false - otherwise.
-  bool check_size() const noexcept {
-    return heap_.size() >= min_match_count_;
-  }
+  bool check_size() const noexcept { return heap_.size() >= min_match_count_; }
 
   // Returns reference to the top of the head
   doc_iterator_t& top() noexcept {
@@ -414,8 +411,8 @@ class min_match_disjunction : public doc_iterator,
 
 template<typename DocIterator, typename Merger>
 struct RebindIterator<min_match_disjunction<DocIterator, Merger>> {
-  using Adapter = typename min_match_disjunction<DocIterator,
-                                                 Merger>::cost_iterator_adapter;
+  using Adapter =
+    typename min_match_disjunction<DocIterator, Merger>::cost_iterator_adapter;
 
   using Disjunction = disjunction<DocIterator, Merger, Adapter>;
   using Conjunction = conjunction<DocIterator, Merger>;

@@ -112,26 +112,26 @@ bool reference(const directory& dir, const index_meta& meta,
   auto& refs = dir.attributes().refs();
 
   return meta.visit_files(
-      [include_missing, &refs, &dir, &visitor](std::string_view file) {
-        if (include_missing) {
-          return visitor(refs.add(file));
-        }
+    [include_missing, &refs, &dir, &visitor](std::string_view file) {
+      if (include_missing) {
+        return visitor(refs.add(file));
+      }
 
-        bool exists;
+      bool exists;
 
-        // do not add an attribute if the file definitly does not exist
-        if (!dir.exists(exists, file) || !exists) {
-          return true;
-        }
-
-        auto ref = refs.add(file);
-
-        if (dir.exists(exists, file) && exists) {
-          return visitor(std::move(ref));
-        }
-
+      // do not add an attribute if the file definitly does not exist
+      if (!dir.exists(exists, file) || !exists) {
         return true;
-      });
+      }
+
+      auto ref = refs.add(file);
+
+      if (dir.exists(exists, file) && exists) {
+        return visitor(std::move(ref));
+      }
+
+      return true;
+    });
 }
 
 // return success, visitor gets passed references to files registered with
@@ -189,7 +189,7 @@ bool remove_all_unreferenced(directory& dir) {
 
 tracking_directory::tracking_directory(directory& impl,
                                        bool track_open /*= false*/) noexcept
-    : impl_(impl), track_open_(track_open) {}
+  : impl_(impl), track_open_(track_open) {}
 
 index_output::ptr tracking_directory::create(std::string_view name) noexcept {
   try {
@@ -265,16 +265,16 @@ void tracking_directory::flush_tracked(file_set& other) noexcept {
 
 ref_tracking_directory::ref_tracking_directory(directory& impl,
                                                bool track_open /*= false*/)
-    : attribute_(impl.attributes().refs()),
-      impl_(impl),
-      track_open_(track_open) {}
+  : attribute_(impl.attributes().refs()),
+    impl_(impl),
+    track_open_(track_open) {}
 
 ref_tracking_directory::ref_tracking_directory(
-    ref_tracking_directory&& other) noexcept
-    : attribute_(other.attribute_),  // references do not require std::move(...)
-      impl_(other.impl_),            // references do not require std::move(...)
-      refs_(std::move(other.refs_)),
-      track_open_(std::move(other.track_open_)) {}
+  ref_tracking_directory&& other) noexcept
+  : attribute_(other.attribute_),  // references do not require std::move(...)
+    impl_(other.impl_),            // references do not require std::move(...)
+    refs_(std::move(other.refs_)),
+    track_open_(std::move(other.track_open_)) {}
 
 void ref_tracking_directory::clear_refs() const {
   // cppcheck-suppress unreadVariable
@@ -283,7 +283,7 @@ void ref_tracking_directory::clear_refs() const {
 }
 
 index_output::ptr ref_tracking_directory::create(
-    std::string_view name) noexcept {
+  std::string_view name) noexcept {
   try {
     // Do not change the order of calls!
     // The cleaner should "see" the file in directory
@@ -377,7 +377,7 @@ bool ref_tracking_directory::rename(std::string_view src,
 }
 
 bool ref_tracking_directory::visit_refs(
-    const std::function<bool(const index_file_refs::ref_t&)>& visitor) const {
+  const std::function<bool(const index_file_refs::ref_t&)>& visitor) const {
   // cppcheck-suppress unreadVariable
   std::lock_guard lock{mutex_};
 

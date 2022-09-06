@@ -37,23 +37,19 @@ namespace {
 // step skip_0 for 0 level, step skip_n for other levels
 constexpr size_t max_levels(size_t skip_0, size_t skip_n,
                             size_t count) noexcept {
-  return skip_0 < count
-    ? 1 + irs::math::log(count/skip_0, skip_n)
-    : 0;
+  return skip_0 < count ? 1 + irs::math::log(count / skip_0, skip_n) : 0;
 }
 
-} // LOCAL
+}  // namespace
 
 namespace iresearch {
 
 void SkipWriter::Prepare(
-    size_t max_levels, 
-    size_t count,
-    const memory_allocator& alloc /* = memory_allocator::global() */) {
-  max_levels_ = std::clamp(max_levels, size_t{1},
-                           ::max_levels(skip_0_, skip_n_, count));
+  size_t max_levels, size_t count,
+  const memory_allocator& alloc /* = memory_allocator::global() */) {
+  max_levels_ =
+    std::clamp(max_levels, size_t{1}, ::max_levels(skip_0_, skip_n_, count));
   levels_.reserve(max_levels_);
-
 
   // reset existing skip levels
   for (auto& level : levels_) {
@@ -67,14 +63,14 @@ void SkipWriter::Prepare(
 }
 
 void SkipWriter::Flush(index_output& out) {
-  const auto rbegin = std::make_reverse_iterator(std::begin(levels_) + max_levels_);
+  const auto rbegin =
+    std::make_reverse_iterator(std::begin(levels_) + max_levels_);
   const auto rend = std::rend(levels_);
 
   // find first filled level
-  auto level = std::find_if(
-    rbegin, rend,
-    [](const memory_output& level) {
-      return level.stream.file_pointer(); });
+  auto level = std::find_if(rbegin, rend, [](const memory_output& level) {
+    return level.stream.file_pointer();
+  });
 
   // write number of levels
   const auto num_levels = static_cast<uint32_t>(std::distance(level, rend));
@@ -83,7 +79,7 @@ void SkipWriter::Flush(index_output& out) {
   // write levels from n downto 0
   for (; level != rend; ++level) {
     auto& stream = level->stream;
-    stream.flush(); // update length of each buffer
+    stream.flush();  // update length of each buffer
 
     const uint64_t length = stream.file_pointer();
     assert(length);
@@ -92,16 +88,12 @@ void SkipWriter::Flush(index_output& out) {
   }
 }
 
-SkipReaderBase::Level::Level(
-    index_input::ptr&& stream,
-    doc_id_t step,
-    doc_id_t left,
-    uint64_t begin) noexcept
-  : stream{std::move(stream)}, // thread-safe input
+SkipReaderBase::Level::Level(index_input::ptr&& stream, doc_id_t step,
+                             doc_id_t left, uint64_t begin) noexcept
+  : stream{std::move(stream)},  // thread-safe input
     begin{begin},
     left{left},
-    step{step} {
-}
+    step{step} {}
 
 void SkipReaderBase::Reset() {
   for (auto& level : levels_) {
@@ -120,8 +112,7 @@ void SkipReaderBase::Prepare(index_input::ptr&& in, doc_id_t left) {
     decltype(levels_) levels;
     levels.reserve(max_levels);
 
-    auto load_level = [&levels, left](index_input::ptr stream,
-                                      doc_id_t step) {
+    auto load_level = [&levels, left](index_input::ptr stream, doc_id_t step) {
       assert(stream);
 
       // read level length
@@ -139,7 +130,8 @@ void SkipReaderBase::Prepare(index_input::ptr&& in, doc_id_t left) {
     };
 
     // skip step of the level
-    size_t step = skip_0_ * static_cast<size_t>(std::pow(skip_n_, --max_levels));
+    size_t step =
+      skip_0_ * static_cast<size_t>(std::pow(skip_n_, --max_levels));
 
     // load levels from n down to 1
     for (; max_levels; --max_levels) {
@@ -160,4 +152,4 @@ void SkipReaderBase::Prepare(index_input::ptr&& in, doc_id_t left) {
   }
 }
 
-}
+}  // namespace iresearch

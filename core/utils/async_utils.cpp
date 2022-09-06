@@ -35,10 +35,10 @@ using namespace std::chrono_literals;
 namespace iresearch {
 namespace async_utils {
 
-busywait_mutex::busywait_mutex(): owner_(std::thread::id()) {}
+busywait_mutex::busywait_mutex() : owner_(std::thread::id()) {}
 
 busywait_mutex::~busywait_mutex() {
-  assert(try_lock()); // ensure destroying an unlocked mutex
+  assert(try_lock());  // ensure destroying an unlocked mutex
 }
 
 void busywait_mutex::lock() {
@@ -47,7 +47,7 @@ void busywait_mutex::lock() {
   for (auto expected = std::thread::id();
        !owner_.compare_exchange_strong(expected, this_thread_id);
        expected = std::thread::id()) {
-    assert(this_thread_id != expected); // recursive lock acquisition attempted
+    assert(this_thread_id != expected);  // recursive lock acquisition attempted
     std::this_thread::yield();
   }
 }
@@ -63,29 +63,29 @@ void busywait_mutex::unlock() {
   auto expected = std::this_thread::get_id();
 
   if (!owner_.compare_exchange_strong(expected, std::thread::id())) {
-    // try again since std::thread::id is garanteed to be '==' but may not be bit equal
-    if (expected == std::this_thread::get_id() && owner_.compare_exchange_strong(expected, std::thread::id())) {
+    // try again since std::thread::id is garanteed to be '==' but may not be
+    // bit equal
+    if (expected == std::this_thread::get_id() &&
+        owner_.compare_exchange_strong(expected, std::thread::id())) {
       return;
     }
 
-    assert(false); // lock not owned by current thread
+    assert(false);  // lock not owned by current thread
   }
 }
 
-thread_pool::thread_pool(
-    size_t max_threads /*= 0*/,
-    size_t max_idle /*= 0*/,
-    basic_string_ref<native_char_t> worker_name /*= ""*/)
+thread_pool::thread_pool(size_t max_threads /*= 0*/, size_t max_idle /*= 0*/,
+                         basic_string_ref<native_char_t> worker_name /*= ""*/)
   : shared_state_(std::make_shared<shared_state>()),
     max_idle_(max_idle),
     max_threads_(max_threads),
-    worker_name_(worker_name) {
-}
+    worker_name_(worker_name) {}
 
 thread_pool::~thread_pool() {
   try {
     stop(true);
-  } catch (...) { }
+  } catch (...) {
+  }
 }
 
 size_t thread_pool::max_idle() const {
@@ -105,7 +105,7 @@ void thread_pool::max_idle(size_t value) {
     max_idle_ = value;
   }
 
-  state.cond.notify_all(); // wake any idle threads if they need termination
+  state.cond.notify_all();  // wake any idle threads if they need termination
 }
 
 void thread_pool::max_idle_delta(int delta) {
@@ -125,7 +125,7 @@ void thread_pool::max_idle_delta(int delta) {
     }
   }
 
-  state.cond.notify_all(); // wake any idle threads if they need termination
+  state.cond.notify_all();  // wake any idle threads if they need termination
 }
 
 size_t thread_pool::max_threads() const {
@@ -149,7 +149,7 @@ void thread_pool::max_threads(size_t value) {
     }
   }
 
-  state.cond.notify_all(); // wake any idle threads if they need termination
+  state.cond.notify_all();  // wake any idle threads if they need termination
 }
 
 void thread_pool::max_threads_delta(int delta) {
@@ -173,10 +173,11 @@ void thread_pool::max_threads_delta(int delta) {
     }
   }
 
-  state.cond.notify_all(); // wake any idle threads if they need termination
+  state.cond.notify_all();  // wake any idle threads if they need termination
 }
 
-bool thread_pool::run(std::function<void()>&& fn, clock_t::duration delay /*=0*/) {
+bool thread_pool::run(std::function<void()>&& fn,
+                      clock_t::duration delay /*=0*/) {
   if (!fn) {
     return false;
   }
@@ -187,7 +188,7 @@ bool thread_pool::run(std::function<void()>&& fn, clock_t::duration delay /*=0*/
     auto lock = make_lock_guard(state.lock);
 
     if (State::RUN != state.state.load()) {
-      return false; // pool not active
+      return false;  // pool not active
     }
 
     queue_.emplace(std::move(fn), clock_t::now() + delay);
@@ -217,7 +218,7 @@ void thread_pool::stop(bool skip_pending /*= false*/) {
 
     // wait for all threads to terminate
     while (threads_.load()) {
-      shared_state_->cond.notify_all(); // wake all threads
+      shared_state_->cond.notify_all();  // wake all threads
       shared_state_->cond.wait_for(lock, 50ms);
     }
 
@@ -240,11 +241,11 @@ void thread_pool::limits(size_t max_threads, size_t max_idle) {
     }
   }
 
-  state.cond.notify_all(); // wake any idle threads if they need termination
+  state.cond.notify_all();  // wake any idle threads if they need termination
 }
 
 bool thread_pool::maybe_spawn_worker() {
-  assert(!shared_state_->lock.try_lock()); // lock must be held
+  assert(!shared_state_->lock.try_lock());  // lock must be held
 
   // create extra thread if all threads are busy and can grow pool
   const size_t pool_size = threads_.load();
@@ -265,14 +266,14 @@ std::pair<size_t, size_t> thread_pool::limits() const {
   // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(shared_state_->lock);
 
-  return { max_threads_, max_idle_ };
+  return {max_threads_, max_idle_};
 }
 
 std::tuple<size_t, size_t, size_t> thread_pool::stats() const {
   // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(shared_state_->lock);
 
-  return { active_, queue_.size(), threads_.load() };
+  return {active_, queue_.size(), threads_.load()};
 }
 
 size_t thread_pool::tasks_active() const {
@@ -315,7 +316,7 @@ void thread_pool::worker(std::shared_ptr<shared_state> shared_state) noexcept {
   }
 
   if (State::RUN != shared_state->state.load()) {
-    shared_state->cond.notify_all(); // wake up thread_pool::stop(...)
+    shared_state->cond.notify_all();  // wake up thread_pool::stop(...)
   }
 }
 
@@ -367,20 +368,20 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
         (idle <= max_idle_ || (!queue_.empty() && threads_.load() == 1))) {
       if (const auto run_state = state.load();
           !queue_.empty() && State::ABORT != run_state) {
-        const auto at = queue_.top().at; // queue_ might be modified
+        const auto at = queue_.top().at;  // queue_ might be modified
         shared_state->cond.wait_until(lock, at);
       } else if (State::RUN == run_state) {
         assert(queue_.empty());
         shared_state->cond.wait(lock);
       } else {
         assert(State::RUN != run_state);
-        return; // termination requested
+        return;  // termination requested
       }
     } else {
-      return; // too many idle threads
+      return;  // too many idle threads
     }
   }
 }
 
-}
-}
+}  // namespace async_utils
+}  // namespace iresearch

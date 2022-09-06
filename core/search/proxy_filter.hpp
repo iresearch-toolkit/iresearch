@@ -54,7 +54,7 @@ class proxy_filter final : public filter {
   std::pair<T&, cache_ptr> set_filter(Args&&... args) {
     static_assert(std::is_base_of_v<filter, T>);
     auto& ptr =
-        cache_filter(memory::make_unique<T>(std::forward<Args>(args)...));
+      cache_filter(memory::make_unique<T>(std::forward<Args>(args)...));
     return {static_cast<T&>(ptr), cache_};
   }
 

@@ -36,7 +36,7 @@ struct FixedPhraseState {
   // Mimic std::pair interface
   struct TermState {
     TermState(seek_cookie::ptr&& first, score_t /*second*/) noexcept
-        : first{std::move(first)} {}
+      : first{std::move(first)} {}
 
     seek_cookie::ptr first;
   };

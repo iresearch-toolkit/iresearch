@@ -30,9 +30,9 @@
 #include "utils/version_defines.hpp"
 
 #ifdef IResearch_int_version
-  #define IRESEARCH_VERSION IResearch_int_version
+#define IRESEARCH_VERSION IResearch_int_version
 #else
-  #define IRESEARCH_VERSION 0
+#define IRESEARCH_VERSION 0
 #endif
 
 namespace iresearch {
@@ -43,7 +43,7 @@ const string_ref build_id();
 const string_ref build_time();
 const string_ref build_version();
 
-}
-}
+}  // namespace version_utils
+}  // namespace iresearch
 
 #endif

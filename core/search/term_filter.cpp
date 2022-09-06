@@ -35,7 +35,7 @@ using namespace irs;
 class term_visitor : private util::noncopyable {
  public:
   term_visitor(const term_collectors& term_stats, TermQuery::States& states)
-      : term_stats_(term_stats), states_(states) {}
+    : term_stats_(term_stats), states_(states) {}
 
   void prepare(const sub_reader& segment, const term_reader& field,
                const seek_term_iterator& terms) noexcept {
@@ -122,7 +122,7 @@ filter::prepared::ptr by_term::prepare(const index_reader& index,
   term_stats.finish(stats_buf, 0, field_stats, index);
 
   return memory::make_managed<TermQuery>(std::move(states), std::move(stats),
-                                          boost);
+                                         boost);
 }
 
 }  // namespace iresearch

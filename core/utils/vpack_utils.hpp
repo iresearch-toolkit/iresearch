@@ -31,15 +31,17 @@
 namespace iresearch {
 
 // return slice as string
-inline std::string slice_to_string(const VPackSlice slice,
-                                   VPackOptions const* options = &VPackOptions::Defaults) noexcept {
+inline std::string slice_to_string(
+  const VPackSlice slice,
+  VPackOptions const* options = &VPackOptions::Defaults) noexcept {
   std::string str;
   try {
     str = slice.toString(options);
-  } catch(...) {
+  } catch (...) {
     try {
       str = "<non-representable type>";
-    }  catch (...) { }
+    } catch (...) {
+    }
   }
 
   return str;
@@ -52,9 +54,9 @@ T get_string(VPackSlice slice) {
   VPackValueLength length;
   const char* ptr = slice.getString(length);
 
-  return { ptr, length };
+  return {ptr, length};
 }
 
-} // iresearch
+}  // namespace iresearch
 
-#endif // IRESEARCH_VPACK_UTILS_H
+#endif  // IRESEARCH_VPACK_UTILS_H

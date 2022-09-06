@@ -65,7 +65,7 @@ class sorting_doc_iterator;
 struct cached_column {
   cached_column(field_id* id, column_info info,
                 columnstore_writer::column_finalizer_f finalizer) noexcept
-      : id{id}, stream{info}, finalizer{std::move(finalizer)} {}
+    : id{id}, stream{info}, finalizer{std::move(finalizer)} {}
 
   field_id* id;
   sorted_column stream;
@@ -118,7 +118,7 @@ class field_data : util::noncopyable {
   struct feature_info {
     feature_info(feature_writer::ptr handler,
                  columnstore_writer::values_writer_f writer)
-        : handler{std::move(handler)}, writer{std::move(writer)} {}
+      : handler{std::move(handler)}, writer{std::move(writer)} {}
 
     feature_writer::ptr handler;
     columnstore_writer::values_writer_f writer;
