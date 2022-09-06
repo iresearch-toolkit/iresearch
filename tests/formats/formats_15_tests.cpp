@@ -162,7 +162,7 @@ SkipList SkipList::Make(irs::doc_iterator& it, irs::doc_id_t skip_0,
 }
 
 void AssertSkipList(const SkipList& expected_freqs, irs::doc_id_t doc,
-                    std::span<const uint32_t> actual_freqs) {
+                    std::span<const irs::score_t> actual_freqs) {
   ASSERT_EQ(expected_freqs.Size(), actual_freqs.size());
   for (size_t i = 0, size = expected_freqs.Size(); i < size; ++i) {
     const auto expected_freq = expected_freqs.At(i, doc);
@@ -254,8 +254,12 @@ void Format15TestCase::PostingsWandSeek(
         FreqThresholdDocIterator expected{expected_postings, threshold};
         SkipList skip_list;
 
-        auto actual =
-          reader->wanderator(field.index_features, features, read_meta);
+        auto factory = [](const irs::attribute_provider&) {
+          return irs::ScoreFunction{};
+        };
+
+        auto actual = reader->wanderator(field.index_features, features,
+                                         factory, read_meta);
         ASSERT_NE(nullptr, actual);
 
         auto* threshold_value =
@@ -303,8 +307,12 @@ void Format15TestCase::PostingsWandSeek(
         postings expected_postings{docs, field.index_features};
         FreqThresholdDocIterator expected{expected_postings, threshold};
 
-        auto actual =
-          reader->wanderator(field.index_features, features, read_meta);
+        auto factory = [](const irs::attribute_provider&) {
+          return irs::ScoreFunction{};
+        };
+
+        auto actual = reader->wanderator(field.index_features, features,
+                                         factory, read_meta);
         ASSERT_NE(nullptr, actual);
 
         auto* threshold_value =
@@ -343,8 +351,11 @@ void Format15TestCase::PostingsWandSeek(
 
       // next + seek to eof
       {
-        auto it = reader->wanderator(field.index_features,
-                                     irs::IndexFeatures::NONE, read_meta);
+        auto factory = [](const irs::attribute_provider&) {
+          return irs::ScoreFunction{};
+        };
+        auto it = reader->wanderator(
+          field.index_features, irs::IndexFeatures::NONE, factory, read_meta);
         ASSERT_FALSE(irs::doc_limits::valid(it->value()));
         ASSERT_TRUE(it->next());
         ASSERT_EQ(docs.front().first, it->value());
@@ -377,8 +388,12 @@ void Format15TestCase::PostingsWandSeek(
           postings expected_postings{docs, field.index_features};
           FreqThresholdDocIterator expected{expected_postings, threshold};
 
-          auto actual =
-            reader->wanderator(field.index_features, features, read_meta);
+          auto factory = [](const irs::attribute_provider&) {
+            return irs::ScoreFunction{};
+          };
+
+          auto actual = reader->wanderator(field.index_features, features,
+                                           factory, read_meta);
           ASSERT_NE(nullptr, actual);
 
           auto* threshold_value =
@@ -411,8 +426,12 @@ void Format15TestCase::PostingsWandSeek(
 
       // seek to irs::doc_limits::invalid()
       {
-        auto it = reader->wanderator(field.index_features,
-                                     irs::IndexFeatures::NONE, read_meta);
+        auto factory = [](const irs::attribute_provider&) {
+          return irs::ScoreFunction{};
+        };
+
+        auto it = reader->wanderator(
+          field.index_features, irs::IndexFeatures::NONE, factory, read_meta);
         ASSERT_FALSE(irs::doc_limits::valid(it->value()));
         ASSERT_FALSE(
           irs::doc_limits::valid(it->seek(irs::doc_limits::invalid())));
@@ -422,8 +441,12 @@ void Format15TestCase::PostingsWandSeek(
 
       // seek to irs::doc_limits::eof()
       {
-        auto it = reader->wanderator(field.index_features,
-                                     irs::IndexFeatures::NONE, read_meta);
+        auto factory = [](const irs::attribute_provider&) {
+          return irs::ScoreFunction{};
+        };
+
+        auto it = reader->wanderator(
+          field.index_features, irs::IndexFeatures::NONE, factory, read_meta);
         ASSERT_FALSE(irs::doc_limits::valid(it->value()));
         ASSERT_TRUE(irs::doc_limits::eof(it->seek(irs::doc_limits::eof())));
         ASSERT_FALSE(it->next());

@@ -32,7 +32,7 @@
 #include "index/index_meta.hpp"
 #include "index/index_reader_options.hpp"
 #include "index/iterators.hpp"
-#include "shared.hpp"
+#include "search/score_function.hpp"
 #include "store/data_output.hpp"
 #include "store/directory.hpp"
 #include "utils/attribute_provider.hpp"
@@ -58,12 +58,12 @@ using document_mask = absl::flat_hash_set<doc_id_t>;
 using doc_map = std::vector<doc_id_t>;
 using callback_f = std::function<bool(doc_iterator&)>;
 
+using ScoreFunctionFactory =
+  std::function<ScoreFunction(const attribute_provider&)>;
+
 constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class term_meta
-/// @brief represents metadata associated with the term
-//////////////////////////////////////////////////////////////////////////////
+// Represents metadata associated with the term
 struct term_meta : attribute {
   static constexpr std::string_view type_name() noexcept {
     return "irs::term_meta";
@@ -74,20 +74,13 @@ struct term_meta : attribute {
     freq = 0;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief how many documents a particular term contains
-  //////////////////////////////////////////////////////////////////////////////
+  // How many documents a particular term contains
   uint32_t docs_count = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief how many times a particular term occur in documents
-  //////////////////////////////////////////////////////////////////////////////
+  // How many times a particular term occur in documents
   uint32_t freq = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct postings_writer
-////////////////////////////////////////////////////////////////////////////////
 struct postings_writer : attribute_provider {
   using ptr = std::unique_ptr<postings_writer>;
 
@@ -128,9 +121,6 @@ void postings_writer::releaser::operator()(term_meta* meta) const noexcept {
   owner_->release(meta);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct field_writer
-////////////////////////////////////////////////////////////////////////////////
 struct field_writer {
   using ptr = std::unique_ptr<field_writer>;
 
@@ -142,128 +132,95 @@ struct field_writer {
   virtual void end() = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct postings_reader
-////////////////////////////////////////////////////////////////////////////////
 struct postings_reader {
   using ptr = std::unique_ptr<postings_reader>;
   using term_provider_f = std::function<const term_meta*()>;
 
   virtual ~postings_reader() = default;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @arg in - corresponding stream
-  /// @arg features - the set of features available for segment
-  //////////////////////////////////////////////////////////////////////////////
+  // in - corresponding stream
+  // features - the set of features available for segment
   virtual void prepare(index_input& in, const reader_state& state,
                        IndexFeatures features) = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief parses input block "in" and populate "attrs" collection with
-  /// attributes
-  /// @returns number of bytes read from in
-  //////////////////////////////////////////////////////////////////////////////
+  // Parses input block "in" and populate "attrs" collection with
+  // attributes.
+  // Returns number of bytes read from in.
   virtual size_t decode(const byte_type* in, IndexFeatures features,
                         term_meta& state) = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns a document iterator for a specified 'cookie' and 'features'
-  //////////////////////////////////////////////////////////////////////////////
+  // Returns document iterator for a specified 'cookie' and 'features'
   virtual doc_iterator::ptr iterator(IndexFeatures field_features,
                                      IndexFeatures required_features,
                                      const term_meta& meta) = 0;
 
   virtual doc_iterator::ptr wanderator(IndexFeatures field_features,
                                        IndexFeatures required_features,
+                                       const ScoreFunctionFactory& factory,
                                        const term_meta& meta) = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief evaluates a union of all docs denoted by attribute supplied via a
-  ///        speciified 'provider'. Each doc is represented by a bit in a
-  ///        specified 'bitset'.
-  /// @returns a number of bits set
-  /// @note it's up to the caller to allocate enough space for a bitset
-  /// @note this API is experimental
-  //////////////////////////////////////////////////////////////////////////////
+  // Evaluates a union of all docs denoted by attribute supplied via a
+  // speciified 'provider'. Each doc is represented by a bit in a
+  // specified 'bitset'.
+  // Returns a number of bits set.
+  // It's up to the caller to allocate enough space for a bitset.
+  // This API is experimental.
   virtual size_t bit_union(IndexFeatures field_features,
                            const term_provider_f& provider, size_t* set) = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct basic_term_reader
-////////////////////////////////////////////////////////////////////////////////
 struct basic_term_reader : public attribute_provider {
   virtual ~basic_term_reader() = default;
 
   virtual term_iterator::ptr iterator() const = 0;
 
-  // returns field metadata
+  // Returns field metadata
   virtual const field_meta& meta() const = 0;
 
-  // least significant term
+  // Returns the least significant term
   virtual bytes_view(min)() const = 0;
 
-  // most significant term
+  // Returns the most significant term
   virtual bytes_view(max)() const = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @enum SeekMode
-/// @brief an expected usage pattern of seek_term_iterator
-////////////////////////////////////////////////////////////////////////////////
+// Expected usage pattern of seek_term_iterator
 enum class SeekMode : uint32_t {
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief default mode, e.g. multiple consequent seeks are expected
-  //////////////////////////////////////////////////////////////////////////////
+  /// Default mode, e.g. multiple consequent seeks are expected
   NORMAL = 0,
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief only random exact seeks are supported
-  //////////////////////////////////////////////////////////////////////////////
+  // Only random exact seeks are supported
   RANDOM_ONLY
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct term_reader
-////////////////////////////////////////////////////////////////////////////////
 struct term_reader : public attribute_provider {
   using ptr = std::unique_ptr<term_reader>;
   using cookie_provider = std::function<const seek_cookie*()>;
 
   virtual ~term_reader() = default;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @param mode seek mode for term iterator
-  /// @returns an iterator over terms for a field
-  //////////////////////////////////////////////////////////////////////////////
+  // `mode` argument defines seek mode for term iterator
+  // Returns an iterator over terms for a field.
   virtual seek_term_iterator::ptr iterator(SeekMode mode) const = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read 'count' number of documents containing 'term' to 'docs'
-  /// @returns number of read documents
-  //////////////////////////////////////////////////////////////////////////////
+  // Read 'count' number of documents containing 'term' to 'docs'
+  // Returns number of read documents
   virtual size_t read_documents(bytes_view term,
                                 std::span<doc_id_t> docs) const = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns term metadata for a given 'term'
-  //////////////////////////////////////////////////////////////////////////////
+  // Returns term metadata for a given 'term'
   virtual term_meta term(bytes_view term) const = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns an intersection of a specified automaton and term reader
-  //////////////////////////////////////////////////////////////////////////////
+  // Returns an intersection of a specified automaton and term reader.
   virtual seek_term_iterator::ptr iterator(
     automaton_table_matcher& matcher) const = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief evaluates a union of all docs denoted by cookies supplied via a
-  ///        speciified 'provider'. Each doc is represented by a bit in a
-  ///        specified 'bitset'.
-  /// @returns a number of bits set
-  /// @note it's up to the caller to allocate enough space for a bitset
-  /// @note this API is experimental
-  //////////////////////////////////////////////////////////////////////////////
+  // Evaluates a union of all docs denoted by cookies supplied via a
+  // speciified 'provider'. Each doc is represented by a bit in a
+  // specified 'bitset'.
+  // A number of bits set.
+  // It's up to the caller to allocate enough space for a bitset.
+  // This API is experimental.
   virtual size_t bit_union(const cookie_provider& provider,
                            size_t* bitset) const = 0;
 
@@ -271,37 +228,25 @@ struct term_reader : public attribute_provider {
                                      IndexFeatures features) const = 0;
 
   virtual doc_iterator::ptr wanderator(const seek_cookie& cookie,
+                                       const ScoreFunctionFactory& factory,
                                        IndexFeatures features) const = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns field metadata
-  //////////////////////////////////////////////////////////////////////////////
+  // Returns field metadata.
   virtual const field_meta& meta() const = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns total number of terms
-  //////////////////////////////////////////////////////////////////////////////
+  // Returns total number of terms.
   virtual size_t size() const = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns total number of documents with at least 1 term in a field
-  //////////////////////////////////////////////////////////////////////////////
+  // Returns total number of documents with at least 1 term in a field.
   virtual uint64_t docs_count() const = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns the least significant term
-  //////////////////////////////////////////////////////////////////////////////
+  // Returns the least significant term.
   virtual bytes_view(min)() const = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns the most significant term
-  //////////////////////////////////////////////////////////////////////////////
+  // Returns the most significant term.
   virtual bytes_view(max)() const = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct field_reader
-////////////////////////////////////////////////////////////////////////////////
 struct field_reader {
   using ptr = std::unique_ptr<field_reader>;
 
@@ -315,17 +260,11 @@ struct field_reader {
   virtual size_t size() const = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct column_output
-////////////////////////////////////////////////////////////////////////////////
 struct column_output : data_output {
-  // resets stream to previous persisted state
+  // Resets stream to previous persisted state
   virtual void reset() = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct columnstore_writer
-////////////////////////////////////////////////////////////////////////////////
 struct columnstore_writer {
   using ptr = std::unique_ptr<columnstore_writer>;
 
@@ -345,13 +284,10 @@ struct columnstore_writer {
   virtual column_t push_column(const ColumnInfo& info,
                                column_finalizer_f header_writer) = 0;
   virtual void rollback() noexcept = 0;
-  virtual bool commit(
-    const flush_state& state) = 0;  // @return was anything actually flushed
-};                                  // columnstore_writer
 
-}  // namespace irs
-
-namespace irs {
+  // Return was anything actually flushed.
+  virtual bool commit(const flush_state& state) = 0;
+};
 
 enum class ColumnHint : uint32_t {
   // Nothing special
@@ -388,9 +324,6 @@ struct column_reader {
   virtual doc_id_t size() const = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct columnstore_reader
-////////////////////////////////////////////////////////////////////////////////
 struct columnstore_reader {
   using ptr = std::unique_ptr<columnstore_reader>;
 
@@ -418,9 +351,6 @@ struct columnstore_reader {
   virtual size_t size() const = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct document_mask_writer
-////////////////////////////////////////////////////////////////////////////////
 struct document_mask_writer : memory::Managed {
   using ptr = memory::managed_ptr<document_mask_writer>;
 
@@ -431,16 +361,12 @@ struct document_mask_writer : memory::Managed {
                        const document_mask& docs_mask) = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct document_mask_reader
-////////////////////////////////////////////////////////////////////////////////
 struct document_mask_reader : memory::Managed {
   using ptr = memory::managed_ptr<document_mask_reader>;
 
-  /// @returns true if there are any deletes in a segment,
-  ///          false - otherwise
-  /// @throws io_error
-  /// @throws index_error
+  // Returns true if there are any deletes in a segment,
+  // false - otherwise.
+  // May throw io_error or index_error
   virtual bool read(const directory& dir, const SegmentMeta& meta,
                     document_mask& docs_mask) = 0;
 };
@@ -459,9 +385,6 @@ struct segment_meta_reader : memory::Managed {
                     std::string_view filename = {}) = 0;  // null == use meta
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct index_meta_writer
-////////////////////////////////////////////////////////////////////////////////
 struct index_meta_writer {
   using ptr = std::unique_ptr<index_meta_writer>;
 
@@ -473,22 +396,17 @@ struct index_meta_writer {
   virtual void rollback() noexcept = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct index_meta_reader
-////////////////////////////////////////////////////////////////////////////////
 struct index_meta_reader : memory::Managed {
   using ptr = memory::managed_ptr<index_meta_reader>;
 
   virtual bool last_segments_file(const directory& dir,
                                   std::string& name) const = 0;
 
+  // null == use meta
   virtual void read(const directory& dir, IndexMeta& meta,
                     std::string_view filename) = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct format
-////////////////////////////////////////////////////////////////////////////////
 class format {
  public:
   using ptr = std::shared_ptr<const format>;
@@ -518,10 +436,6 @@ class format {
   type_info type_;
 };
 
-}  // namespace irs
-
-namespace irs {
-
 struct flush_state {
   directory* dir{};
   const doc_map* docmap{};
@@ -536,42 +450,27 @@ struct reader_state {
   const SegmentMeta* meta;
 };
 
-class formats {
- public:
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief checks whether a format with the specified name is registered
-  ////////////////////////////////////////////////////////////////////////////////
-  static bool exists(std::string_view name, bool load_library = true);
+namespace formats {
+// Checks whether a format with the specified name is registered.
+bool exists(std::string_view name, bool load_library = true);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief find a format by name, or nullptr if not found
-  ///        indirect call to <class>::make(...)
-  ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
-  //////////////////////////////////////////////////////////////////////////////
-  static format::ptr get(std::string_view name, std::string_view module = {},
-                         bool load_library = true) noexcept;
+// Find a format by name, or nullptr if not found
+// indirect call to <class>::make(...)
+// NOTE: make(...) MUST be defined in CPP to ensire proper code scope
+format::ptr get(std::string_view name, std::string_view moduleName = {},
+                bool load_library = true) noexcept;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief for static lib reference all known formats in lib
-  ///        for shared lib NOOP
-  ///        no explicit call of fn is required, existence of fn is sufficient
-  ////////////////////////////////////////////////////////////////////////////////
-  static void init();
+// For static lib reference all known formats in lib
+// no explicit call of fn is required, existence of fn is sufficient.
+void init();
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief load all formats from plugins directory
-  ////////////////////////////////////////////////////////////////////////////////
-  static void load_all(std::string_view path);
+// Load all formats from plugins directory.
+void load_all(std::string_view path);
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief visit all loaded formats, terminate early if visitor returns false
-  ////////////////////////////////////////////////////////////////////////////////
-  static bool visit(const std::function<bool(std::string_view)>& visitor);
+// Visit all loaded formats, terminate early if visitor returns false.
+bool visit(const std::function<bool(std::string_view)>& visitor);
 
- private:
-  formats() = delete;
-};
-
+}  // namespace formats
 class format_registrar {
  public:
   format_registrar(const type_info& type, std::string_view module,

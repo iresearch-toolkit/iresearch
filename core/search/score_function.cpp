@@ -1,0 +1,63 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Andrey Abramov
+////////////////////////////////////////////////////////////////////////////////
+
+#include "search/score_function.hpp"
+
+#include <absl/base/casts.h>
+
+namespace irs {
+
+ScoreFunction ScoreFunction::Constant(score_t value) noexcept {
+  static_assert(sizeof(score_t) <= sizeof(uintptr_t));
+  uintptr_t boost = 0;
+  std::memcpy(&boost, &value, sizeof(score_t));
+  static_assert(sizeof(score_ctx*) == sizeof(uintptr_t));
+  return {reinterpret_cast<score_ctx*>(boost),
+          [](score_ctx* ctx, score_t* res) noexcept {
+            IRS_ASSERT(res != nullptr);
+            const auto boost = reinterpret_cast<uintptr_t>(ctx);
+            std::memcpy(res, &boost, sizeof(score_t));
+          },
+          &Noop};
+}
+
+ScoreFunction ScoreFunction::Constant(score_t value, uint32_t count) noexcept {
+  if (0 == count) {
+    return {};
+  } else if (1 == count) {
+    return Constant(value);
+  } else {
+    struct ScoreCtx {
+      score_t value;
+      uint32_t count;
+    };
+    return {absl::bit_cast<score_ctx*>(ScoreCtx{value, count}),
+            [](score_ctx* ctx, score_t* res) noexcept {
+              IRS_ASSERT(res != nullptr);
+              const auto score_ctx = absl::bit_cast<ScoreCtx>(ctx);
+              std::fill_n(res, score_ctx.count, score_ctx.value);
+            },
+            &Noop};
+  }
+}
+
+}  // namespace irs

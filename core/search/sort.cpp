@@ -74,39 +74,6 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
 
 REGISTER_ATTRIBUTE(filter_boost);
 
-ScoreFunction ScoreFunction::Constant(score_t value) noexcept {
-  static_assert(sizeof(score_t) <= sizeof(uintptr_t));
-  uintptr_t boost = 0;
-  std::memcpy(&boost, &value, sizeof(score_t));
-  return {absl::bit_cast<score_ctx*>(boost),
-          [](score_ctx* ctx, score_t* res) noexcept {
-            IRS_ASSERT(res != nullptr);
-            const auto boost = absl::bit_cast<uintptr_t>(ctx);
-            std::memcpy(res, &boost, sizeof(score_t));
-          },
-          &Noop};
-}
-
-ScoreFunction ScoreFunction::Constant(score_t value, uint32_t count) noexcept {
-  if (0 == count) {
-    return {};
-  } else if (1 == count) {
-    return Constant(value);
-  } else {
-    struct ScoreCtx {
-      score_t value;
-      uint32_t count;
-    };
-    return {absl::bit_cast<score_ctx*>(ScoreCtx{value, count}),
-            [](score_ctx* ctx, score_t* res) noexcept {
-              IRS_ASSERT(res != nullptr);
-              const auto score_ctx = absl::bit_cast<ScoreCtx>(ctx);
-              std::fill_n(res, score_ctx.count, score_ctx.value);
-            },
-            &Noop};
-  }
-}
-
 sort::sort(const type_info& type) noexcept : type_{type.id()} {}
 
 Order Order::Prepare(std::span<const sort::ptr> order) {
