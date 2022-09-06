@@ -23,8 +23,15 @@
 #ifndef IRESEARCH_BIT_UTILS_H
 #define IRESEARCH_BIT_UTILS_H
 
-#include "shared.hpp"
 #include <numeric>
+
+#ifdef __has_include
+#if __has_include(<version>)
+#include <version>
+#endif
+#endif
+
+#include "shared.hpp"
 
 namespace iresearch {
 
@@ -187,6 +194,27 @@ template<typename T>
 inline constexpr T enum_bitwise_not(T v) noexcept {
   return enum_bitwise_traits<T>::Not(v);
 }
+
+#ifdef __cpp_lib_bit_cast
+
+using std::bit_cast;
+
+#else
+
+// Apple Clang doesn't support bit_cast
+template<typename To, typename From>
+inline To bit_cast(const From& from) noexcept {
+  static_assert(sizeof(To) == sizeof(From));
+  static_assert(std::is_trivially_copyable_v<From>);
+  static_assert(std::is_trivially_copyable_v<To>);
+
+  To dst;
+  std::memcpy(static_cast<void*>(&dst), static_cast<const void*>(&from),
+              sizeof(To));
+  return dst;
+}
+
+#endif
 
 }  // namespace iresearch
 

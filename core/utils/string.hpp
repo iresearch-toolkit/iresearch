@@ -24,16 +24,13 @@
 #define IRESEARCH_STRING_H
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstring>
-#include <cassert>
 #include <vector>
 
+#include "bit_utils.hpp"
 #include "shared.hpp"
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                   std extensions
-// ----------------------------------------------------------------------------
 
 namespace std {
 
@@ -147,15 +144,9 @@ struct char_traits<::iresearch::byte_type> {
 
 namespace iresearch {
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                               binary std::string
-// ----------------------------------------------------------------------------
+// Binary std::string
+using bstring = std::basic_string<byte_type>;
 
-typedef std::basic_string<byte_type> bstring;
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class basic_string_ref
-//////////////////////////////////////////////////////////////////////////////
 template<typename Elem, typename Traits = std::char_traits<Elem>>
 class basic_string_ref {
  public:
@@ -165,14 +156,16 @@ class basic_string_ref {
   // beware of performing comparison against NIL value,
   // it may cause undefined behaviour in std::char_traits<Elem>
   // (e.g. becuase of memcmp function)
-  IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref NIL;  // null string
-  IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref
-    EMPTY;  // empty string
 
-  constexpr basic_string_ref() noexcept : data_(nullptr), size_(0) {}
+  // null string
+  static const basic_string_ref NIL;
+  // empty string
+  static const basic_string_ref EMPTY;
+
+  constexpr basic_string_ref() noexcept = default;
 
   // Constructs a string reference object from a ref and a size.
-  constexpr basic_string_ref(const basic_string_ref& ref, size_t size) noexcept
+  constexpr basic_string_ref(basic_string_ref ref, size_t size) noexcept
     : data_(ref.data_), size_(size) {
     IRS_ASSERT(size <= ref.size_);
   }
@@ -193,7 +186,7 @@ class basic_string_ref {
 
   // Constructs a string reference object from a std::basic_string_view<Elem>
   // cppcheck-suppress noExplicitConstructor
-  constexpr basic_string_ref(const std::basic_string_view<Elem>& str) noexcept
+  constexpr basic_string_ref(std::basic_string_view<Elem> str) noexcept
     : data_(str.data()), size_(str.size()) {}
 
   constexpr basic_string_ref(const std::basic_string<char_type>& str,
@@ -240,8 +233,8 @@ class basic_string_ref {
   }
 
   // friends
-  friend constexpr int compare(const basic_string_ref& lhs,
-                               const char_type* rhs, size_t rhs_size) {
+  friend constexpr int compare(basic_string_ref lhs, const char_type* rhs,
+                               size_t rhs_size) {
     const size_t lhs_size = lhs.size();
     int r =
       traits_type::compare(lhs.c_str(), rhs, (std::min)(lhs_size, rhs_size));
@@ -253,54 +246,46 @@ class basic_string_ref {
     return r;
   }
 
-  friend constexpr int compare(const basic_string_ref& lhs,
+  friend constexpr int compare(basic_string_ref lhs,
                                const std::basic_string<char_type>& rhs) {
     return compare(lhs, rhs.c_str(), rhs.size());
   }
 
-  friend constexpr int compare(const basic_string_ref& lhs,
-                               const char_type* rhs) {
+  friend constexpr int compare(basic_string_ref lhs, const char_type* rhs) {
     return compare(lhs, rhs, traits_type::length(rhs));
   }
 
-  friend constexpr int compare(const basic_string_ref& lhs,
-                               const basic_string_ref& rhs) {
+  friend constexpr int compare(basic_string_ref lhs, basic_string_ref rhs) {
     return compare(lhs, rhs.c_str(), rhs.size());
   }
 
-  friend constexpr bool operator<(const basic_string_ref& lhs,
-                                  const basic_string_ref& rhs) {
+  friend constexpr bool operator<(basic_string_ref lhs, basic_string_ref rhs) {
     return compare(lhs, rhs) < 0;
   }
 
   friend bool operator<(const std::basic_string<char_type>& lhs,
-                        const basic_string_ref& rhs) {
+                        basic_string_ref rhs) {
     return lhs.compare(0, std::basic_string<char_type>::npos, rhs.c_str(),
                        rhs.size()) < 0;
   }
 
-  friend constexpr bool operator>=(const basic_string_ref& lhs,
-                                   const basic_string_ref& rhs) {
+  friend constexpr bool operator>=(basic_string_ref lhs, basic_string_ref rhs) {
     return !(lhs < rhs);
   }
 
-  friend constexpr bool operator>(const basic_string_ref& lhs,
-                                  const basic_string_ref& rhs) {
+  friend constexpr bool operator>(basic_string_ref lhs, basic_string_ref rhs) {
     return compare(lhs, rhs) > 0;
   }
 
-  friend constexpr bool operator<=(const basic_string_ref& lhs,
-                                   const basic_string_ref& rhs) {
+  friend constexpr bool operator<=(basic_string_ref lhs, basic_string_ref rhs) {
     return !(lhs > rhs);
   }
 
-  friend constexpr bool operator==(const basic_string_ref& lhs,
-                                   const basic_string_ref& rhs) {
+  friend constexpr bool operator==(basic_string_ref lhs, basic_string_ref rhs) {
     return 0 == compare(lhs, rhs);
   }
 
-  friend constexpr bool operator!=(const basic_string_ref& lhs,
-                                   const basic_string_ref& rhs) {
+  friend constexpr bool operator!=(basic_string_ref lhs, basic_string_ref rhs) {
     return !(lhs == rhs);
   }
 
@@ -311,8 +296,8 @@ class basic_string_ref {
   }
 
  protected:
-  const char_type* data_;
-  size_t size_;
+  const char_type* data_{};
+  size_t size_{};
 };  // basic_string_ref
 
 template<typename Elem, typename Traits>
@@ -326,7 +311,7 @@ template<typename Elem, typename Traits>
   );
 
 template<typename _Elem, typename _Traits>
-inline constexpr bool starts_with(const basic_string_ref<_Elem, _Traits>& first,
+inline constexpr bool starts_with(basic_string_ref<_Elem, _Traits> first,
                                   const _Elem* second, size_t second_size) {
   typedef typename basic_string_ref<_Elem, _Traits>::traits_type traits_type;
 
@@ -336,7 +321,7 @@ inline constexpr bool starts_with(const basic_string_ref<_Elem, _Traits>& first,
 
 template<typename _Elem, typename _Traits>
 inline bool starts_with(const std::basic_string<_Elem>& first,
-                        const basic_string_ref<_Elem, _Traits>& second) {
+                        basic_string_ref<_Elem, _Traits> second) {
   return 0 == first.compare(0, second.size(), second.c_str(), second.size());
 }
 
@@ -376,8 +361,8 @@ inline size_t common_prefix_length(const Char* lhs, size_t lhs_size,
 
 template<typename Char, typename Traits>
 inline size_t common_prefix_length(
-  const basic_string_ref<Char, Traits>& lhs,
-  const basic_string_ref<Char, Traits>& rhs) noexcept {
+  basic_string_ref<Char, Traits> lhs,
+  basic_string_ref<Char, Traits> rhs) noexcept {
   return common_prefix_length(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
 }
 
@@ -388,51 +373,45 @@ inline void assign(std::basic_string<T>& str, const basic_string_ref<U>& ref) {
 }
 
 template<typename _Elem, typename _Traits>
-inline constexpr bool starts_with(const basic_string_ref<_Elem, _Traits>& first,
+inline constexpr bool starts_with(basic_string_ref<_Elem, _Traits> first,
                                   const _Elem* second) {
   return starts_with(first, second, _Traits::length(second));
 }
 
 template<typename Elem, typename Traits>
-inline bool starts_with(const basic_string_ref<Elem, Traits>& first,
+inline bool starts_with(basic_string_ref<Elem, Traits> first,
                         const std::basic_string<Elem>& second) {
   return starts_with(first, second.c_str(), second.size());
 }
 
 template<typename _Elem, typename _Traits>
-inline constexpr bool starts_with(
-  const basic_string_ref<_Elem, _Traits>& first,
-  const basic_string_ref<_Elem, _Traits>& second) {
+inline constexpr bool starts_with(basic_string_ref<_Elem, _Traits> first,
+                                  basic_string_ref<_Elem, _Traits> second) {
   return starts_with(first, second.c_str(), second.size());
 }
 
-typedef basic_string_ref<char> string_ref;
-typedef basic_string_ref<byte_type> bytes_ref;
+using string_ref = basic_string_ref<char>;
+using bytes_ref = basic_string_ref<byte_type>;
 
-template<typename _ElemDst, typename _ElemSrc>
-constexpr inline basic_string_ref<_ElemDst> ref_cast(
-  const basic_string_ref<_ElemSrc>& src) {
-  return basic_string_ref<_ElemDst>(
-    reinterpret_cast<const _ElemDst*>(src.c_str()), src.size());
+template<typename ElemDst, typename ElemSrc>
+constexpr basic_string_ref<ElemDst> ref_cast(
+  basic_string_ref<ElemSrc> src) noexcept {
+  return irs::bit_cast<basic_string_ref<ElemDst>>(src);
 }
 
 template<typename ElemDst, typename ElemSrc>
-constexpr inline basic_string_ref<ElemDst> ref_cast(
-  const std::basic_string<ElemSrc>& src) {
-  return basic_string_ref<ElemDst>(
-    reinterpret_cast<const ElemDst*>(src.c_str()), src.size());
+constexpr basic_string_ref<ElemDst> ref_cast(
+  std::basic_string_view<ElemSrc> src) noexcept {
+  return irs::bit_cast<basic_string_ref<ElemDst>>(
+    basic_string_ref<ElemSrc>{src});
 }
 
 template<typename ElemDst, typename ElemSrc>
-constexpr inline basic_string_ref<ElemDst> ref_cast(
-  const std::basic_string_view<ElemSrc>& src) {
-  return basic_string_ref<ElemDst>(reinterpret_cast<const ElemDst*>(src.data()),
-                                   src.size());
+constexpr basic_string_ref<ElemDst> ref_cast(
+  const std::basic_string<ElemSrc>& src) noexcept {
+  return irs::bit_cast<basic_string_ref<ElemDst>>(
+    basic_string_ref<ElemSrc>{src});
 }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                        String hashing algorithms
-// ----------------------------------------------------------------------------
 
 namespace hash_utils {
 
@@ -464,16 +443,12 @@ FORCE_INLINE constexpr irs::string_ref operator"" _sr(const char* src,
 
 FORCE_INLINE constexpr irs::bytes_ref operator"" _bsr(const char* src,
                                                       size_t size) noexcept {
-  return irs::ref_cast<irs::byte_type>(irs::string_ref(src, size));
+  return irs::ref_cast<irs::byte_type>(irs::string_ref{src, size});
 }
 
 }  // namespace literals
 
 }  // namespace iresearch
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                   std extensions
-// ----------------------------------------------------------------------------
 
 namespace std {
 
@@ -482,35 +457,35 @@ struct hash<char*> {
   size_t operator()(const char* value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
-};  // hash
+};
 
 template<>
 struct hash<wchar_t*> {
   size_t operator()(const wchar_t* value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
-};  // hash
+};
 
 template<>
 struct hash<::iresearch::bstring> {
   size_t operator()(const ::iresearch::bstring& value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
-};  // hash
+};
 
 template<>
 struct hash<::iresearch::bytes_ref> {
   size_t operator()(const ::iresearch::bytes_ref& value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
-};  // hash
+};
 
 template<>
 struct hash<::iresearch::string_ref> {
   size_t operator()(const ::iresearch::string_ref& value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
-};  // hash
+};
 
 }  // namespace std
 

@@ -111,6 +111,7 @@ set(IResearch_core_sources
   ./search/granular_range_filter.cpp
   ./search/scorers.cpp
   ./search/sort.cpp
+  ./search/score_function.cpp
   ./search/cost.cpp
   ./search/collectors.cpp
   ./search/score.cpp

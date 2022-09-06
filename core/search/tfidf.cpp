@@ -132,7 +132,7 @@ irs::sort::ptr make_vpack(irs::string_ref args) {
     // default args
     return irs::memory::make_unique<irs::tfidf_sort>();
   } else {
-    VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+    VPackSlice slice(irs::bit_cast<const uint8_t*>(args.c_str()));
     return make_vpack(slice);
   }
 }

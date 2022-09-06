@@ -23,16 +23,14 @@
 #ifndef IRESEARCH_TOKEN_ATTRIBUTES_H
 #define IRESEARCH_TOKEN_ATTRIBUTES_H
 
-#include "store/data_input.hpp"
-
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
-
+#include "store/data_input.hpp"
 #include "utils/attribute_provider.hpp"
 #include "utils/attributes.hpp"
+#include "utils/iterator.hpp"
 #include "utils/string.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/iterator.hpp"
 
 namespace iresearch {
 
@@ -165,15 +163,13 @@ class attribute_provider_change final : public attribute {
 
 // Score threshold can be set by document consumers
 struct score_threshold final : public attribute {
-  using value_type = uint32_t;
-
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept {
     return "iresearch::score_threshold";
   }
 
-  value_type value;
-  std::span<const value_type> skip_scores;
+  score_t value;
+  std::span<const score_t> skip_scores;
 };
 
 }  // namespace iresearch

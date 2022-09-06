@@ -21,20 +21,21 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
+#include "search/tfidf.hpp"
+
 #include "index/index_tests.hpp"
 #include "index/norm.hpp"
 #include "search/all_filter.hpp"
-#include "search/column_existence_filter.hpp"
 #include "search/boolean_filter.hpp"
+#include "search/column_existence_filter.hpp"
 #include "search/phrase_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
+#include "search/score.hpp"
 #include "search/scorers.hpp"
 #include "search/sort.hpp"
-#include "search/score.hpp"
 #include "search/term_filter.hpp"
-#include "search/tfidf.hpp"
+#include "tests_shared.hpp"
 #include "utils/type_limits.hpp"
 
 namespace {
@@ -49,32 +50,24 @@ struct bstring_data_output : public irs::data_output {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
+// Freq | Term
+// -----------
+// 4    | 0
+// 3    | 1
+// 10   | 2
+// 7    | 3
+// 5    | 4
+// 4    | 5
+// 3    | 6
+// 7    | 7
+// 2    | 8
+// 7    | 9
 
-/////////////////
-// Freq | Term //
-/////////////////
-// 4    | 0    //
-// 3    | 1    //
-// 10   | 2    //
-// 7    | 3    //
-// 5    | 4    //
-// 4    | 5    //
-// 3    | 6    //
-// 7    | 7    //
-// 2    | 8    //
-// 7    | 9    //
-/////////////////
-
-//////////////////////////////////////////////////
-// Stats                                        //
-//////////////////////////////////////////////////
-// TotalFreq = 52                               //
-// DocsCount = 8                                //
-// AverageDocLength (TotalFreq/DocsCount) = 6.5 //
-//////////////////////////////////////////////////
+// Stats
+// ---------------------------------------------
+// TotalFreq = 52
+// DocsCount = 8
+// AverageDocLength (TotalFreq/DocsCount) = 6.5
 
 class tfidf_test_case : public index_test_base {
  protected:
@@ -506,6 +499,28 @@ TEST_P(tfidf_test_case, test_phrase) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+}
+
+TEST_P(tfidf_test_case, term_query_wand) {
+  {
+    tests::json_doc_generator gen(
+      resource("simple_single_column_multi_term.json"),
+      &tests::payloaded_json_field_factory);
+    add_segment(gen);
+  }
+
+  auto prepared_order = irs::Order::Prepare(irs::tfidf_sort{false, false});
+
+  auto reader = irs::directory_reader::open(dir(), codec());
+  ASSERT_NE(nullptr, reader);
+  auto& segment = *(reader.begin());
+  const auto* column = segment.column("seq");
+  ASSERT_NE(nullptr, column);
+
+  irs::by_term filter;
+  *filter.mutable_field() = "name";
+  filter.mutable_options()->term =
+    irs::ref_cast<irs::byte_type>(irs::string_ref("tempor"));
 }
 
 TEST_P(tfidf_test_case, test_query) {
@@ -1006,14 +1021,7 @@ TEST_P(tfidf_test_case, test_query) {
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     std::multimap<irs::score_t, uint64_t, std::greater<>> sorted;
-    std::vector<uint64_t> expected{
-      // FIXME the following calculation is based on old formula
-      7,  // 3.45083 = sqrt(1)*(log(8/(4+1))+1) + sqrt(1)*(log(8/(2+1))+1)
-      0,  // 2.54612 = sqrt(3)*(log(8/(4+1))+1) + sqrt(0)*(log(8/(2+1))+1)
-      1,  // 2.0789  = sqrt(2)*(log(8/(4+1))+1) + sqrt(0)*(log(8/(2+1))+1)
-      3,  // 1.98083 = sqrt(0)*(log(8/(4+1))+1) + sqrt(1)*(log(8/(2+1))+1)
-      5,  // 1.47    = sqrt(1)*(log(8/(4+1))+1) + sqrt(0)*(log(8/(2+1))+1)
-    };
+    std::vector<uint64_t> expected{7, 0, 1, 3, 5};
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
@@ -1056,21 +1064,7 @@ TEST_P(tfidf_test_case, test_query) {
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     std::multimap<irs::score_t, uint64_t, std::greater<>> sorted;
-    std::vector<uint64_t> expected{
-      // FIXME the following calculation is based on old formula
-      0,  // 4.239268 = sqrt(1)*(log(8/(3+1))+1) + sqrt(3)*(log(8/(4+1))+1) +
-          // sqrt(0)*(log(8/(2+1))+1)
-      7,  // 3.450832 = sqrt(0)*(log(8/(3+1))+1) + sqrt(1)*(log(8/(4+1))+1) +
-          // sqrt(1)*(log(8/(2+1))+1)
-      5,  // 3.163150 = sqrt(1)*(log(8/(3+1))+1) + sqrt(1)*(log(8/(4+1))+1) +
-          // sqrt(0)*(log(8/(2+1))+1)
-      1,  // 2.078899 = sqrt(0)*(log(8/(3+1))+1) + sqrt(2)*(log(8/(4+1))+1) +
-          // sqrt(0)*(log(8/(2+1))+1)
-      3,  // 1.980829 = sqrt(0)*(log(8/(3+1))+1) + sqrt(0)*(log(8/(4+1))+1) +
-          // sqrt(1)*(log(8/(2+1))+1)
-      2,  // 1.693147 = sqrt(1)*(log(8/(3+1))+1) + sqrt(0)*(log(8/(4+1))+1) +
-          // sqrt(0)*(log(8/(2+1))+1)
-    };
+    std::vector<uint64_t> expected{0, 7, 5, 1, 3, 2};
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);

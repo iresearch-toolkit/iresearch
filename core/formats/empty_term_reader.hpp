@@ -57,6 +57,7 @@ class empty_term_reader final : public irs::term_reader {
   }
 
   virtual doc_iterator::ptr wanderator(const seek_cookie&,
+                                       const ScoreFunctionFactory&,
                                        IndexFeatures) const noexcept override {
     return doc_iterator::empty();
   }

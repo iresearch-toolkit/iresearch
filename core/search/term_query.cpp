@@ -47,8 +47,15 @@ doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
   auto* reader = state->reader;
   assert(reader);
 
-  auto docs = (ctx.mode == ExecutionMode::kTop)
-                ? reader->wanderator(*state->cookie, ord.features())
+  auto docs = (ctx.mode == ExecutionMode::kTop && !ctx.scorers.empty())
+                ? reader->wanderator(
+                    *state->cookie,
+                    [&, bucket = ord.buckets().front().bucket.get()](
+                      const attribute_provider& attrs) -> ScoreFunction {
+                      return bucket->prepare_scorer(
+                        rdr, *state->reader, stats_.c_str(), attrs, boost());
+                    },
+                    ord.features())
                 : reader->postings(*state->cookie, ord.features());
 
   if (IRS_UNLIKELY(!docs)) {

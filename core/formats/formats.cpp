@@ -29,8 +29,8 @@
 
 #include "analysis/token_attributes.hpp"
 #include "utils/hash_utils.hpp"
-#include "utils/type_limits.hpp"
 #include "utils/register.hpp"
+#include "utils/type_limits.hpp"
 
 namespace {
 
@@ -97,14 +97,15 @@ namespace iresearch {
   }
 }
 
-/*static*/ bool formats::exists(string_ref name, bool load_library /*= true*/) {
+namespace formats {
+
+bool exists(string_ref name, bool load_library /*= true*/) {
   auto const key = std::make_pair(name, string_ref::NIL);
   return nullptr != format_register::instance().get(key, load_library);
 }
 
-/*static*/ format::ptr formats::get(string_ref name,
-                                    string_ref module /*= string_ref::NIL*/,
-                                    bool load_library /*= true*/) noexcept {
+format::ptr get(string_ref name, string_ref module /*= string_ref::NIL*/,
+                bool load_library /*= true*/) noexcept {
   try {
     auto const key = std::make_pair(name, module);
     auto* factory = format_register::instance().get(key, load_library);
@@ -117,17 +118,17 @@ namespace iresearch {
   return nullptr;
 }
 
-/*static*/ void formats::init() {
+void init() {
 #ifndef IRESEARCH_DLL
   irs::version10::init();
 #endif
 }
 
-/*static*/ void formats::load_all(std::string_view path) {
+void load_all(std::string_view path) {
   load_libraries(path, kFileNamePrefix, "");
 }
 
-/*static*/ bool formats::visit(const std::function<bool(string_ref)>& visitor) {
+bool visit(const std::function<bool(string_ref)>& visitor) {
   auto visit_all = [&visitor](const format_register::key_type& key) {
     if (!visitor(key.first)) {
       return false;
@@ -138,9 +139,7 @@ namespace iresearch {
   return format_register::instance().visit(visit_all);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               format registration
-// -----------------------------------------------------------------------------
+}  // namespace formats
 
 format_registrar::format_registrar(const type_info& type, string_ref module,
                                    format::ptr (*factory)(),
@@ -159,23 +158,23 @@ format_registrar::format_registrar(const type_info& type, string_ref module,
 
     if (source && registered_source) {
       IR_FRMT_WARN(
-        "type name collision detected while registering format, ignoring: type "
-        "'%s' from %s, previously from %s",
+        "type name collision detected while registering format, ignoring: "
+        "type '%s' from %s, previously from %s",
         type.name().c_str(), source, registered_source->c_str());
     } else if (source) {
       IR_FRMT_WARN(
-        "type name collision detected while registering format, ignoring: type "
-        "'%s' from %s",
+        "type name collision detected while registering format, ignoring: "
+        "type '%s' from %s",
         type.name().c_str(), source);
     } else if (registered_source) {
       IR_FRMT_WARN(
-        "type name collision detected while registering format, ignoring: type "
-        "'%s', previously from %s",
+        "type name collision detected while registering format, ignoring: "
+        "type '%s', previously from %s",
         type.name().c_str(), registered_source->c_str());
     } else {
       IR_FRMT_WARN(
-        "type name collision detected while registering format, ignoring: type "
-        "'%s'",
+        "type name collision detected while registering format, ignoring: "
+        "type '%s'",
         type.name().c_str());
     }
   }
