@@ -297,7 +297,7 @@ struct frequency_sort : public irs::sort {
                          const irs::sort::term_collector* term) const override {
       auto* term_ptr = dynamic_cast<const term_collector*>(term);
       if (term_ptr) {  // may be null e.g. 'all' filter
-        stats_cast(stats_buf).count = term_ptr->docs_count;
+        stats_cast(stats_buf).count = static_cast<irs::doc_id_t>(term_ptr->docs_count);
         const_cast<term_collector*>(term_ptr)->docs_count = 0;
       }
     }
