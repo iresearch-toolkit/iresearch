@@ -226,39 +226,6 @@ struct container_iterator<BT_DENSE, false> {
       const size_t index_block =
         target_block / kDenseBlockIndexBlockSize;
 
-      // test valid
-      if constexpr (AT_STREAM != Access) {
-        doc_id_t popcnt{0};
-        const size_t* start = ctx.u64data;
-        const size_t* end = ctx.u64data + target_word_idx + 1;
-        size_t word;
-        for (; start < end; ++start) {
-          if constexpr (AT_DIRECT_ALIGNED == Access) {
-            word = *ctx.u64data;
-          } else {
-            static_assert(AT_DIRECT == Access);
-            std::memcpy(&word, start, sizeof word);
-          }
-          auto wordIdx = std::distance(ctx.u64data, start);
-          if ((wordIdx * bits_required<size_t>()) % kDenseBlockIndexBlockSize ==
-              0) {
-            auto pop_idx =
-              (wordIdx * bits_required<size_t>()) / kDenseBlockIndexBlockSize;
-            uint16_t popcnt2;
-            std::memcpy(&popcnt2, &ctx.index.u16data[pop_idx], sizeof popcnt2);
-            if constexpr (!is_big_endian()) {
-              popcnt2 = (popcnt2 >> 8) | ((popcnt2 & 0xFF) << 8);
-            }
-            if (popcnt != popcnt2) {
-              std::cout << "Mismatch at index " << wordIdx << " Expected "
-                        << popcnt << " got " << popcnt2 << std::endl;
-            }
-          }
-          popcnt += std::popcount(word);
-        }
-      }
-
-
       uint16_t popcnt;
       std::memcpy(&popcnt, &ctx.index.u16data[index_block], sizeof popcnt);
       if constexpr (!is_big_endian()) {
@@ -275,7 +242,15 @@ struct container_iterator<BT_DENSE, false> {
         ctx.word = self->in_->read_long();
       } else {
         ctx.u64data += delta;
-        ctx.word = ctx.u64data[-1];
+        if constexpr (AT_DIRECT_ALIGNED == Access) {
+          ctx.word = ctx.u64data[-1];
+        } else {
+          static_assert(AT_DIRECT == Access);
+          std::memcpy(&ctx.word, &ctx.u64data[-1], sizeof ctx.word);
+        }
+        if constexpr (!is_big_endian()) {
+          ctx.word = numeric_utils::numeric_traits<size_t>::ntoh(ctx.word);
+        }
       }
       ctx.popcnt = self->index_ + popcnt + std::popcount(ctx.word);
       ctx.word_idx = word_idx;
