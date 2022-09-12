@@ -416,9 +416,8 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
     } else {
       freq = 1;
       if constexpr (HasPosition) {
-        if (last_state) {
-          static_cast<NGramPosition&>(*this).PushOffset(*last_state);
-        }
+        assert(last_state);
+        static_cast<NGramPosition&>(*this).PushOffset(*last_state);
       }
     }
     seq_freq_.value = freq;
