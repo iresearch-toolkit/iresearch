@@ -223,8 +223,7 @@ struct container_iterator<BT_DENSE, false> {
 
     if (ctx.index.u16data && uint32_t(target_word_idx - ctx.word_idx) >=
                                kDenseBlockIndexWordsPerBlock) {
-      const size_t index_block =
-        target_block / kDenseBlockIndexBlockSize;
+      const size_t index_block = target_block / kDenseBlockIndexBlockSize;
 
       uint16_t popcnt;
       std::memcpy(&popcnt, &ctx.index.u16data[index_block], sizeof popcnt);

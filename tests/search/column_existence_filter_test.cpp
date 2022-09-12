@@ -21,13 +21,13 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
+#include "search/column_existence_filter.hpp"
+
 #include "filter_test_case_base.hpp"
 #include "index/doc_generator.hpp"
-#include "search/column_existence_filter.hpp"
 #include "search/sort.hpp"
+#include "tests_shared.hpp"
 #include "utils/lz4compression.hpp"
-
 
 namespace {
 
@@ -1038,7 +1038,6 @@ TEST(by_column_existence, equal) {
 class column_existence_long_filter_test_case
   : public tests::FilterTestCaseBase {};
 
-
 TEST_P(column_existence_long_filter_test_case, mixed_seeks) {
   // need that many docs as in "some_docs" should be at least 4096 docs
   // and should be sparse
@@ -1388,13 +1387,13 @@ TEST_P(column_existence_long_filter_test_case, mixed_seeks) {
 
   class pattern_doc_generator : public tests::doc_generator_base {
    public:
-    pattern_doc_generator(std::string_view all_docs_field, std::string_view some_docs_field, size_t total_docs,
-           std::span<irs::doc_id_t> with_field)
-      : all_docs_field_{all_docs_field}, some_docs_field_{some_docs_field},
-        with_field_ {with_field},
-        max_doc_id_(total_docs + 1) {
-
-    }
+    pattern_doc_generator(std::string_view all_docs_field,
+                          std::string_view some_docs_field, size_t total_docs,
+                          std::span<irs::doc_id_t> with_field)
+      : all_docs_field_{all_docs_field},
+        some_docs_field_{some_docs_field},
+        with_field_{with_field},
+        max_doc_id_(total_docs + 1) {}
     const tests::document* next() override {
       if (produced_docs_ >= max_doc_id_) {
         return nullptr;
@@ -1406,7 +1405,8 @@ TEST_P(column_existence_long_filter_test_case, mixed_seeks) {
       if (span_index_ < with_field_.size() &&
           with_field_[span_index_] == produced_docs_) {
         doc_.insert(
-          std::make_shared<tests::string_field>(some_docs_field_, "some"), false, true);
+          std::make_shared<tests::string_field>(some_docs_field_, "some"),
+          false, true);
         span_index_++;
       }
       return &doc_;
@@ -1431,8 +1431,7 @@ TEST_P(column_existence_long_filter_test_case, mixed_seeks) {
   {
     pattern_doc_generator gen("all_docs", target, max_doc_id, with_fields);
     irs::index_writer::init_options opts;
-    opts.column_info =
-      [target](irs::string_ref name) -> irs::column_info {
+    opts.column_info = [target](irs::string_ref name) -> irs::column_info {
       // std::string to avoid ambigous comparison operator
       if (std::string(target) == name) {
         return {.compression = irs::type<irs::compression::lz4>::id()(),
