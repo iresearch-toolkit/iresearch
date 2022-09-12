@@ -33,7 +33,7 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 
 void postings::get_sorted_postings(
-    std::vector<const posting*>& postings) const {
+  std::vector<const posting*>& postings) const {
   postings.resize(map_.size());
 
   auto begin = postings.begin();
@@ -42,19 +42,18 @@ void postings::get_sorted_postings(
     ++begin;
   }
 
-  std::sort(
-    postings.begin(), postings.end(),
-    [](const auto lhs, const auto rhs) {
-      return memcmp_less(lhs->term, rhs->term);
-  });
+  std::sort(postings.begin(), postings.end(),
+            [](const auto lhs, const auto rhs) {
+              return memcmp_less(lhs->term, rhs->term);
+            });
 }
 
 std::pair<posting*, bool> postings::emplace(bytes_ref term) {
   REGISTER_TIMER_DETAILED();
   auto& parent = writer_.parent();
- 
+
   // maximum number to bytes needed for storage of term length and data
-  const auto max_term_len = term.size(); // + vencode_size(term.size());
+  const auto max_term_len = term.size();  // + vencode_size(term.size());
 
   if (writer_t::container::block_type::SIZE < max_term_len) {
     // TODO: maybe move big terms it to a separate storage
@@ -63,27 +62,29 @@ std::pair<posting*, bool> postings::emplace(bytes_ref term) {
   }
 
   const auto slice_end = writer_.pool_offset() + max_term_len;
-  const auto next_block_start = writer_.pool_offset() < parent.value_count()
-                        ? writer_.position().block_offset() + writer_t::container::block_type::SIZE
-                        : writer_t::container::block_type::SIZE * parent.block_count();
+  const auto next_block_start =
+    writer_.pool_offset() < parent.value_count()
+      ? writer_.position().block_offset() +
+          writer_t::container::block_type::SIZE
+      : writer_t::container::block_type::SIZE * parent.block_count();
 
   // do not span slice over 2 blocks, start slice at the start of the next block
   if (slice_end > next_block_start) {
     writer_.seek(next_block_start);
   }
 
-  assert(size() < doc_limits::eof()); // not larger then the static flag
+  assert(size() < doc_limits::eof());  // not larger then the static flag
   assert(map_.size() == postings_.size());
 
   const auto hashed_term = make_hashed_ref(term);
 
   bool is_new = false;
   const auto it = map_.lazy_emplace(
-    hashed_term,
-    [&is_new, hash = hashed_term.hash(), id = map_.size()](const map_t::constructor& ctor){
+    hashed_term, [&is_new, hash = hashed_term.hash(),
+                  id = map_.size()](const map_t::constructor& ctor) {
       is_new = true;
       ctor(hash, id);
-  });
+    });
 
   if (is_new) {
     // for new terms also write out their value
@@ -96,12 +97,11 @@ std::pair<posting*, bool> postings::emplace(bytes_ref term) {
       throw;
     }
 
-    postings_.back().term = {
-      (writer_.position() - term.size()).buffer(),
-      term.size() };
+    postings_.back().term = {(writer_.position() - term.size()).buffer(),
+                             term.size()};
   }
 
-  return { &postings_[it->second], is_new };
+  return {&postings_[it->second], is_new};
 }
 
-}
+}  // namespace iresearch

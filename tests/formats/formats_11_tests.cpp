@@ -86,7 +86,7 @@ TEST_P(format_11_test_case, open_10_with_11) {
          docsItr->next();) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str())));
+                     actual_value->value.c_str())));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -158,7 +158,7 @@ TEST_P(format_11_test_case, formats_10_11) {
          docsItr->next();) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str())));
+                     actual_value->value.c_str())));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -189,7 +189,7 @@ TEST_P(format_11_test_case, formats_10_11) {
          docsItr->next();) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str())));
+                     actual_value->value.c_str())));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -204,8 +204,8 @@ TEST_P(format_11_test_case, write_zero_block_encryption) {
 
   // replace encryption
   ASSERT_NE(nullptr, dir().attributes().encryption());
-  dir().attributes() = irs::directory_attributes{
-      0, std::make_unique<tests::rot13_encryption>(0)};
+  dir().attributes() =
+    irs::directory_attributes{0, std::make_unique<tests::rot13_encryption>(0)};
 
   auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
   ASSERT_NE(nullptr, writer);
@@ -217,13 +217,13 @@ TEST_P(format_11_test_case, write_zero_block_encryption) {
 }
 
 const auto kTestValues = ::testing::Combine(
-    ::testing::Values(&tests::rot13_directory<&tests::memory_directory, 16>,
-                      &tests::rot13_directory<&tests::fs_directory, 16>,
-                      &tests::rot13_directory<&tests::mmap_directory, 16>,
-                      &tests::rot13_directory<&tests::memory_directory, 7>,
-                      &tests::rot13_directory<&tests::fs_directory, 7>,
-                      &tests::rot13_directory<&tests::mmap_directory, 7>),
-    ::testing::Values(tests::format_info{"1_1", "1_0"}));
+  ::testing::Values(&tests::rot13_directory<&tests::memory_directory, 16>,
+                    &tests::rot13_directory<&tests::fs_directory, 16>,
+                    &tests::rot13_directory<&tests::mmap_directory, 16>,
+                    &tests::rot13_directory<&tests::memory_directory, 7>,
+                    &tests::rot13_directory<&tests::fs_directory, 7>,
+                    &tests::rot13_directory<&tests::mmap_directory, 7>),
+  ::testing::Values(tests::format_info{"1_1", "1_0"}));
 
 // 1.1 specific tests
 INSTANTIATE_TEST_SUITE_P(format_11_test, format_11_test_case, kTestValues,

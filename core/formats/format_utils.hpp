@@ -45,11 +45,8 @@ void write_footer(index_output& out);
 
 size_t header_length(string_ref format) noexcept;
 
-int32_t check_header(
-  index_input& in,
-  string_ref format,
-  int32_t min_ver,
-  int32_t max_ver);
+int32_t check_header(index_input& in, string_ref format, int32_t min_ver,
+                     int32_t max_ver);
 
 inline int64_t read_checksum(index_input& in) {
   in.seek(in.length() - FOOTER_LEN);
@@ -62,9 +59,9 @@ inline int64_t check_footer(index_input& in, int64_t checksum) {
 
   if (checksum != in.read_long()) {
     throw index_error(string_utils::to_string(
-      "while checking footer, error: invalid checksum '" IR_UINT64_T_SPECIFIER "'",
-      checksum
-    ));
+      "while checking footer, error: invalid checksum '" IR_UINT64_T_SPECIFIER
+      "'",
+      checksum));
   }
 
   return checksum;
@@ -72,7 +69,7 @@ inline int64_t check_footer(index_input& in, int64_t checksum) {
 
 int64_t checksum(const index_input& in);
 
-}
-}
+}  // namespace format_utils
+}  // namespace iresearch
 
 #endif

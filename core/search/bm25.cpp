@@ -36,7 +36,7 @@
 namespace {
 
 const auto kSQRT = irs::cache_func<uint32_t, 2048>(
-    0, [](uint32_t i) noexcept { return std::sqrt(static_cast<float_t>(i)); });
+  0, [](uint32_t i) noexcept { return std::sqrt(static_cast<float_t>(i)); });
 
 irs::sort::ptr make_from_object(const VPackSlice slice) {
   assert(slice.isObject());
@@ -50,9 +50,9 @@ irs::sort::ptr make_from_object(const VPackSlice slice) {
     if (slice.hasKey(key)) {
       if (!slice.get(key).isNumber()) {
         IR_FRMT_ERROR(
-            "Non-float value in '%s' while constructing bm25 scorer from VPack "
-            "arguments",
-            key);
+          "Non-float value in '%s' while constructing bm25 scorer from VPack "
+          "arguments",
+          key);
 
         return nullptr;
       }
@@ -68,9 +68,9 @@ irs::sort::ptr make_from_object(const VPackSlice slice) {
     if (slice.hasKey(key)) {
       if (!slice.get(key).isNumber()) {
         IR_FRMT_ERROR(
-            "Non-float value in '%s' while constructing bm25 scorer from VPack "
-            "arguments",
-            key);
+          "Non-float value in '%s' while constructing bm25 scorer from VPack "
+          "arguments",
+          key);
 
         return nullptr;
       }
@@ -90,8 +90,8 @@ irs::sort::ptr make_from_array(const VPackSlice slice) {
   if (size > 2) {
     // wrong number of arguments
     IR_FRMT_ERROR(
-        "Wrong number of arguments while constructing bm25 scorer from VPack "
-        "arguments (must be <= 2)");
+      "Wrong number of arguments while constructing bm25 scorer from VPack "
+      "arguments (must be <= 2)");
     return nullptr;
   }
 
@@ -104,9 +104,9 @@ irs::sort::ptr make_from_array(const VPackSlice slice) {
       case 0:  // parse `k` coefficient
         if (!arg_slice.isNumber<decltype(k)>()) {
           IR_FRMT_ERROR(
-              "Non-float value at position '%u' while constructing bm25 scorer "
-              "from VPack arguments",
-              i);
+            "Non-float value at position '%u' while constructing bm25 scorer "
+            "from VPack arguments",
+            i);
           return nullptr;
         }
 
@@ -116,9 +116,9 @@ irs::sort::ptr make_from_array(const VPackSlice slice) {
       case 1:  // parse `b` coefficient
         if (!arg_slice.isNumber<decltype(b)>()) {
           IR_FRMT_ERROR(
-              "Non-float value at position '%u' while constructing bm25 scorer "
-              "from VPack arguments",
-              i);
+            "Non-float value at position '%u' while constructing bm25 scorer "
+            "from VPack arguments",
+            i);
           return nullptr;
         }
 
@@ -138,7 +138,7 @@ irs::sort::ptr make_vpack(const VPackSlice slice) {
       return make_from_array(slice);
     default:  // wrong type
       IR_FRMT_ERROR(
-          "Invalid VPack arguments passed while constructing bm25 scorer");
+        "Invalid VPack arguments passed while constructing bm25 scorer");
       return nullptr;
   }
 }
@@ -163,12 +163,12 @@ irs::sort::ptr make_json(irs::string_ref args) {
       return make_vpack(vpack->slice());
     } catch (const VPackException& ex) {
       IR_FRMT_ERROR(
-          "Caught error '%s' while constructing VPack from JSON for bm25 "
-          "scorer",
-          ex.what());
+        "Caught error '%s' while constructing VPack from JSON for bm25 "
+        "scorer",
+        ex.what());
     } catch (...) {
       IR_FRMT_ERROR(
-          "Caught error while constructing VPack from JSON for bm25 scorer");
+        "Caught error while constructing VPack from JSON for bm25 scorer");
     }
     return nullptr;
   }
@@ -188,7 +188,7 @@ struct byte_ref_iterator {
   const irs::byte_type* pos_;
 
   explicit byte_ref_iterator(irs::bytes_ref in)
-      : end_(in.c_str() + in.size()), pos_(in.c_str()) {}
+    : end_(in.c_str() + in.size()), pos_(in.c_str()) {}
 
   irs::byte_type operator*() {
     if (pos_ >= end_) {
@@ -317,10 +317,10 @@ struct stats final {
 struct BM15Context : public irs::score_ctx {
   BM15Context(float_t k, irs::score_t boost, const bm25::stats& stats,
               const frequency* freq, const filter_boost* fb = nullptr) noexcept
-      : freq{freq ? freq : &kEmptyFreq},
-        filter_boost{fb},
-        num{boost * (k + 1) * stats.idf},
-        norm_const{k} {
+    : freq{freq ? freq : &kEmptyFreq},
+      filter_boost{fb},
+      num{boost * (k + 1) * stats.idf},
+      norm_const{k} {
     assert(this->freq);
   }
 
@@ -335,10 +335,10 @@ struct BM25Context final : public BM15Context {
   BM25Context(float_t k, irs::score_t boost, const bm25::stats& stats,
               const frequency* freq, Norm&& norm,
               const irs::filter_boost* filter_boost = nullptr) noexcept
-      : BM15Context{k, boost, stats, freq, filter_boost},
-        norm{std::move(norm)},
-        norm_length{stats.norm_length},
-        norm_cache{stats.norm_cache} {
+    : BM15Context{k, boost, stats, freq, filter_boost},
+      norm{std::move(norm)},
+      norm_length{stats.norm_length},
+      norm_cache{stats.norm_cache} {
     assert(stats.norm_const);
     norm_const = stats.norm_const;
   }
@@ -446,12 +446,12 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
               if constexpr (NormType::kNorm2Tiny == Norm::kType) {
                 static_assert(std::is_same_v<uint32_t, decltype(state.norm())>);
                 const float_t inv_c1 =
-                    state.norm_cache[state.norm() & uint32_t{0xFF}];
+                  state.norm_cache[state.norm() & uint32_t{0xFF}];
 
                 *res = c0 - c0 / (1.f + tf * inv_c1);
               } else {
                 const float_t c1 =
-                    state.norm_const + state.norm_length * state.norm();
+                  state.norm_const + state.norm_length * state.norm();
 
                 *res = c0 - c0 * c1 / (c1 + tf);
               }
@@ -464,17 +464,17 @@ ScoreFunction MakeScoreFunction(const filter_boost* filter_boost,
                                 Args&&... args) noexcept {
   if (filter_boost) {
     return MakeScoreFunctionImpl<Ctx>::template Make<true>(
-        std::forward<Args>(args)..., filter_boost);
+      std::forward<Args>(args)..., filter_boost);
   }
 
   return MakeScoreFunctionImpl<Ctx>::template Make<false>(
-      std::forward<Args>(args)...);
+    std::forward<Args>(args)...);
 }
 
 class sort final : public irs::PreparedSortBase<bm25::stats> {
  public:
   sort(float_t k, float_t b, bool boost_as_score) noexcept
-      : k_{k}, b_{b}, boost_as_score_{boost_as_score} {}
+    : k_{k}, b_{b}, boost_as_score_{boost_as_score} {}
 
   virtual void collect(byte_type* stats_buf, const irs::index_reader& /*index*/,
                        const irs::sort::field_collector* field,
@@ -556,9 +556,9 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
       }
 
       auto prepare_norm_scorer =
-          [&]<typename Norm>(Norm&& norm) -> ScoreFunction {
+        [&]<typename Norm>(Norm&& norm) -> ScoreFunction {
         return MakeScoreFunction<BM25Context<Norm>>(
-            filter_boost, k_, boost, stats, freq, std::move(norm));
+          filter_boost, k_, boost, stats, freq, std::move(norm));
       };
 
       const auto& features = field.meta().features;
@@ -569,13 +569,13 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
           if (ctx.max_num_bytes == sizeof(byte_type)) {
             return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
               return prepare_norm_scorer(
-                  MakeNormAdapter<NormType::kNorm2Tiny>(std::move(reader)));
+                MakeNormAdapter<NormType::kNorm2Tiny>(std::move(reader)));
             });
           }
 
           return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
             return prepare_norm_scorer(
-                MakeNormAdapter<NormType::kNorm2>(std::move(reader)));
+              MakeNormAdapter<NormType::kNorm2>(std::move(reader)));
           });
         }
       }
@@ -583,14 +583,14 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
       if (auto it = features.find(irs::type<Norm>::id());
           it != features.end()) {
         if (NormReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
-          return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm>(
-              Norm::MakeReader(std::move(ctx))));
+          return prepare_norm_scorer(
+            MakeNormAdapter<NormType::kNorm>(Norm::MakeReader(std::move(ctx))));
         }
       }
 
       // No norms, pretend all fields have the same length 1.
       return prepare_norm_scorer(
-          MakeNormAdapter<NormType::kNorm2Tiny>([]() { return 1U; }));
+        MakeNormAdapter<NormType::kNorm2Tiny>([]() { return 1U; }));
     }
 
     // BM15
@@ -611,10 +611,10 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
 
 bm25_sort::bm25_sort(float_t k /*= 1.2f*/, float_t b /*= 0.75f*/,
                      bool boost_as_score /*= false*/) noexcept
-    : sort{irs::type<bm25_sort>::get()},
-      k_{k},
-      b_{b},
-      boost_as_score_{boost_as_score} {}
+  : sort{irs::type<bm25_sort>::get()},
+    k_{k},
+    b_{b},
+    boost_as_score_{boost_as_score} {}
 
 /*static*/ void bm25_sort::init() {
   REGISTER_SCORER_JSON(bm25_sort, make_json);    // match registration above

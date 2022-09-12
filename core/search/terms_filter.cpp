@@ -62,7 +62,7 @@ template<typename Collector>
 class terms_visitor {
  public:
   explicit terms_visitor(Collector& collector) noexcept
-      : collector_(collector) {}
+    : collector_(collector) {}
 
   void prepare(const sub_reader& segment, const term_reader& field,
                const seek_term_iterator& terms) {
@@ -164,7 +164,7 @@ filter::prepared::ptr by_terms::prepare(const index_reader& index,
   }
 
   return memory::make_managed<MultiTermQuery>(
-      std::move(states), std::move(stats), boost, merge_type, min_match);
+    std::move(states), std::move(stats), boost, merge_type, min_match);
 }
 
 }  // namespace iresearch

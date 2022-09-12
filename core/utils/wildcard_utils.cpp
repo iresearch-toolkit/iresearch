@@ -192,8 +192,7 @@ automaton from_wildcard(bytes_ref expr) {
 #ifdef IRESEARCH_DEBUG
   // ensure nfa is sorted
   static constexpr auto EXPECTED_NFA_PROPERTIES =
-      fst::kILabelSorted | fst::kOLabelSorted | fst::kAcceptor |
-      fst::kUnweighted;
+    fst::kILabelSorted | fst::kOLabelSorted | fst::kAcceptor | fst::kUnweighted;
 
   assert(EXPECTED_NFA_PROPERTIES ==
          nfa.Properties(EXPECTED_NFA_PROPERTIES, true));
@@ -212,7 +211,7 @@ automaton from_wildcard(bytes_ref expr) {
 #ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic
   static constexpr auto EXPECTED_DFA_PROPERTIES =
-      fst::kIDeterministic | EXPECTED_NFA_PROPERTIES;
+    fst::kIDeterministic | EXPECTED_NFA_PROPERTIES;
 
   assert(EXPECTED_DFA_PROPERTIES ==
          dfa.Properties(EXPECTED_DFA_PROPERTIES, true));

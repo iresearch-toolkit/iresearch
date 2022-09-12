@@ -105,8 +105,8 @@ class ref_counter : public util::noncopyable {
     auto itr = refs_.find(std::forward<T>(key));
 
     return itr == refs_.end()
-               ? 0
-               : (itr->use_count() - 1);  // -1 for usage by refs_ itself
+             ? 0
+             : (itr->use_count() - 1);  // -1 for usage by refs_ itself
   }
 
   bool empty() const noexcept {

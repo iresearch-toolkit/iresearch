@@ -95,7 +95,7 @@ bool Norm2ReaderContext::Reset(const sub_reader& reader, field_id column_id,
 }
 
 /*static*/ feature_writer::ptr Norm::MakeWriter(
-    std::span<const bytes_ref> /*payload*/) {
+  std::span<const bytes_ref> /*payload*/) {
   return memory::to_managed<feature_writer, false>(&kNormWriter);
 }
 
@@ -116,7 +116,7 @@ void Norm2Header::Reset(const Norm2Header& hdr) noexcept {
 }
 
 /*static*/ std::optional<Norm2Header> Norm2Header::Read(
-    bytes_ref payload) noexcept {
+  bytes_ref payload) noexcept {
   if (IRS_UNLIKELY(payload.size() != ByteSize())) {
     IR_FRMT_ERROR("Invalid 'norm2' header size " IR_SIZE_T_SPECIFIER "",
                   payload.size());
@@ -148,7 +148,7 @@ void Norm2Header::Reset(const Norm2Header& hdr) noexcept {
 }
 
 /*static*/ feature_writer::ptr Norm2::MakeWriter(
-    std::span<const bytes_ref> headers) {
+  std::span<const bytes_ref> headers) {
   size_t max_bytes{sizeof(ValueType)};
 
   if (!headers.empty()) {

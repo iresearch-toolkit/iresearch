@@ -73,7 +73,7 @@ class format_test_case : public index_test_base {
 
       const auto written = sprintf(pay_data_, "%d", value_);
       pay_.value = irs::bytes_ref(
-          reinterpret_cast<const irs::byte_type*>(pay_data_), written);
+        reinterpret_cast<const irs::byte_type*>(pay_data_), written);
 
       offs_.start = value_;
       offs_.end = offs_.start + written;
@@ -103,11 +103,11 @@ class format_test_case : public index_test_base {
   class postings : public irs::doc_iterator {
    public:
     // DocId + Freq
-    using docs_t = std::span<const std::pair<irs::doc_id_t, uint32_t>> ;
+    using docs_t = std::span<const std::pair<irs::doc_id_t, uint32_t>>;
 
     postings(std::span<const std::pair<irs::doc_id_t, uint32_t>> docs,
              irs::IndexFeatures features = irs::IndexFeatures::NONE)
-        : next_(std::begin(docs)), end_(std::end(docs)), pos_(features) {
+      : next_(std::begin(docs)), end_(std::end(docs)), pos_(features) {
       attrs_[irs::type<irs::document>::id()] = &doc_;
       attrs_[irs::type<irs::attribute_provider_change>::id()] = &callback_;
       if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::FREQ)) {
@@ -149,7 +149,7 @@ class format_test_case : public index_test_base {
     }
 
     irs::attribute* get_mutable(
-        irs::type_info::type_id type) noexcept override {
+      irs::type_info::type_id type) noexcept override {
       const auto it = attrs_.find(type);
       return it == attrs_.end() ? nullptr : it->second;
     }
@@ -192,14 +192,14 @@ class format_test_case : public index_test_base {
     using docs_type = std::vector<std::pair<irs::doc_id_t, uint32_t>>;
 
     terms(const Iterator& begin, const Iterator& end)
-        : next_(begin), end_(end) {
+      : next_(begin), end_(end) {
       docs_.emplace_back((irs::type_limits<irs::type_t::doc_id_t>::min)(), 0);
     }
 
     terms(const Iterator& begin, const Iterator& end,
           docs_type::const_iterator doc_begin,
           docs_type::const_iterator doc_end)
-        : docs_(doc_begin, doc_end), next_(begin), end_(end) {}
+      : docs_(doc_begin, doc_end), next_(begin), end_(end) {}
 
     bool next() {
       if (next_ == end_) {
@@ -230,12 +230,12 @@ class format_test_case : public index_test_base {
     Iterator end_;
   };  // terms
 
-  void assert_frequency_and_positions(
-      irs::doc_iterator& expected, irs::doc_iterator& actual);
+  void assert_frequency_and_positions(irs::doc_iterator& expected,
+                                      irs::doc_iterator& actual);
 
   void assert_no_directory_artifacts(
-      const iresearch::directory& dir, const iresearch::format& codec,
-      const std::unordered_set<std::string>& expect_additional = {});
+    const iresearch::directory& dir, const iresearch::format& codec,
+    const std::unordered_set<std::string>& expect_additional = {});
 };
 
 class format_test_case_with_encryption : public format_test_case {};

@@ -38,35 +38,34 @@ namespace analysis {
 /// @brief an analyzer capable of masking the input, treated as a single token,
 ///        if it is present in the configured list
 ////////////////////////////////////////////////////////////////////////////////
-class token_stopwords_stream final
-  : public analyzer,
-    private util::noncopyable {
+class token_stopwords_stream final : public analyzer,
+                                     private util::noncopyable {
  public:
-  using stopwords_set  = absl::flat_hash_set<std::string>;
+  using stopwords_set = absl::flat_hash_set<std::string>;
 
   static constexpr string_ref type_name() noexcept { return "stopwords"; }
 
-  static void init(); // for trigering registration in a static build
+  static void init();  // for trigering registration in a static build
 
   explicit token_stopwords_stream(stopwords_set&& mask);
-  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  virtual attribute* get_mutable(
+    irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() override;
   virtual bool reset(string_ref data) override;
 
  private:
-  using attributes = std::tuple<
-    increment,
-    offset,
-    term_attribute>; // token value with evaluated quotes
+  using attributes =
+    std::tuple<increment, offset,
+               term_attribute>;  // token value with evaluated quotes
 
   stopwords_set stopwords_;
   attributes attrs_;
   bool term_eof_;
 };
 
-} // analysis
-} // ROOT
+}  // namespace analysis
+}  // namespace iresearch
 
-#endif // IRESEARCH_TOKEN_STOPWORDS_STREAM_H
+#endif  // IRESEARCH_TOKEN_STOPWORDS_STREAM_H

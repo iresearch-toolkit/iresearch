@@ -39,7 +39,8 @@ struct bytes_io<T, sizeof(uint8_t)> {
 
   template<typename InputIterator>
   static T read(InputIterator& in, std::input_iterator_tag) {
-    T out = static_cast<T>(*in);       ++in;
+    T out = static_cast<T>(*in);
+    ++in;
 
     return out;
   }
@@ -52,12 +53,14 @@ struct bytes_io<T, sizeof(uint8_t)> {
   template<typename InputIterator>
   static T vread(InputIterator& in, std::input_iterator_tag) {
     // read direct same as writen in vwrite(...)
-    return read(in, typename std::iterator_traits<InputIterator>::iterator_category());
+    return read(
+      in, typename std::iterator_traits<InputIterator>::iterator_category());
   }
 
   template<typename OutputIterator>
   static void write(OutputIterator& out, T value) {
-    *out = static_cast<irs::byte_type>(value);       ++out;
+    *out = static_cast<irs::byte_type>(value);
+    ++out;
   }
 
   template<typename OutputIterator>
@@ -65,7 +68,7 @@ struct bytes_io<T, sizeof(uint8_t)> {
     // write direct since no benefit from variable-size encoding
     write(out, value);
   }
-}; // bytes_io<T, sizeof(uint8_t)>
+};  // bytes_io<T, sizeof(uint8_t)>
 
 template<typename T>
 struct bytes_io<T, sizeof(uint16_t)> {
@@ -73,8 +76,10 @@ struct bytes_io<T, sizeof(uint16_t)> {
 
   template<typename InputIterator>
   static T read(InputIterator& in, std::input_iterator_tag) {
-    T out = static_cast<T>(*in) << 8; ++in;
-    out |= static_cast<T>(*in);       ++in;
+    T out = static_cast<T>(*in) << 8;
+    ++in;
+    out |= static_cast<T>(*in);
+    ++in;
 
     return out;
   }
@@ -94,13 +99,16 @@ struct bytes_io<T, sizeof(uint16_t)> {
   template<typename InputIterator>
   static T vread(InputIterator& in, std::input_iterator_tag) {
     // read direct same as writen in vwrite(...)
-    return read(in, typename std::iterator_traits<InputIterator>::iterator_category());
+    return read(
+      in, typename std::iterator_traits<InputIterator>::iterator_category());
   }
 
   template<typename OutputIterator>
   static void write(OutputIterator& out, T value) {
-    *out = static_cast<irs::byte_type>(value >> 8);  ++out;
-    *out = static_cast<irs::byte_type>(value);       ++out;
+    *out = static_cast<irs::byte_type>(value >> 8);
+    ++out;
+    *out = static_cast<irs::byte_type>(value);
+    ++out;
   }
 
   template<typename OutputIterator>
@@ -108,7 +116,7 @@ struct bytes_io<T, sizeof(uint16_t)> {
     // write direct since no benefit from variable-size encoding
     write(out, value);
   }
-}; // bytes_io<T, sizeof(uint16_t)>
+};  // bytes_io<T, sizeof(uint16_t)>
 
 template<typename T>
 struct bytes_io<T, sizeof(uint32_t)> {
@@ -117,19 +125,25 @@ struct bytes_io<T, sizeof(uint32_t)> {
   template<typename OutputIterator>
   static void vwrite(OutputIterator& out, T in) {
     while (in >= 0x80) {
-      *out = static_cast<irs::byte_type>(in | 0x80); ++out;
+      *out = static_cast<irs::byte_type>(in | 0x80);
+      ++out;
       in >>= 7;
     }
 
-    *out = static_cast<irs::byte_type>(in); ++out;
+    *out = static_cast<irs::byte_type>(in);
+    ++out;
   }
 
   template<typename OutputIterator>
   static void write(OutputIterator& out, T in) {
-    *out = static_cast<irs::byte_type>(in >> 24); ++out;
-    *out = static_cast<irs::byte_type>(in >> 16); ++out;
-    *out = static_cast<irs::byte_type>(in >> 8);  ++out;
-    *out = static_cast<irs::byte_type>(in);       ++out;
+    *out = static_cast<irs::byte_type>(in >> 24);
+    ++out;
+    *out = static_cast<irs::byte_type>(in >> 16);
+    ++out;
+    *out = static_cast<irs::byte_type>(in >> 8);
+    ++out;
+    *out = static_cast<irs::byte_type>(in);
+    ++out;
   }
 
   static void write(byte_type*& out, T in) {
@@ -143,38 +157,65 @@ struct bytes_io<T, sizeof(uint32_t)> {
 
   template<typename InputIterator>
   static void vskip(InputIterator& in) {
-    T v = *in; ++in; if (!(v & 0x80)) return;
-      v = *in; ++in; if (!(v & 0x80)) return;
-      v = *in; ++in; if (!(v & 0x80)) return;
-      v = *in; ++in; if (!(v & 0x80)) return;
-               ++in;                  return;
+    T v = *in;
+    ++in;
+    if (!(v & 0x80)) return;
+    v = *in;
+    ++in;
+    if (!(v & 0x80)) return;
+    v = *in;
+    ++in;
+    if (!(v & 0x80)) return;
+    v = *in;
+    ++in;
+    if (!(v & 0x80)) return;
+    ++in;
+    return;
   }
 
   template<typename InputIterator>
   static T vread(InputIterator& in, std::input_iterator_tag) {
     constexpr T MASK = 0x80;
-    T out = *in; ++in; if (!(out & MASK)) return out;
+    T out = *in;
+    ++in;
+    if (!(out & MASK)) return out;
 
     T b;
     out -= MASK;
-    b = *in; ++in; out += b << 7; if (!(b & MASK)) return out;
+    b = *in;
+    ++in;
+    out += b << 7;
+    if (!(b & MASK)) return out;
     out -= MASK << 7;
-    b = *in; ++in; out += b << 14; if (!(b & MASK)) return out;
+    b = *in;
+    ++in;
+    out += b << 14;
+    if (!(b & MASK)) return out;
     out -= MASK << 14;
-    b = *in; ++in; out += b << 21; if (!(b & MASK)) return out;
+    b = *in;
+    ++in;
+    out += b << 21;
+    if (!(b & MASK)) return out;
     out -= MASK << 21;
-    b = *in; ++in; out += b << 28;
-    // last byte always has MSB == 0, so we don't need to check and subtract 0x80
+    b = *in;
+    ++in;
+    out += b << 28;
+    // last byte always has MSB == 0, so we don't need to check and subtract
+    // 0x80
 
     return out;
   }
 
   template<typename InputIterator>
   static T read(InputIterator& in, std::input_iterator_tag) {
-    T out = static_cast<T>(*in) << 24; ++in;
-    out |= static_cast<T>(*in) << 16;  ++in;
-    out |= static_cast<T>(*in) << 8;   ++in;
-    out |= static_cast<T>(*in);        ++in;
+    T out = static_cast<T>(*in) << 24;
+    ++in;
+    out |= static_cast<T>(*in) << 16;
+    ++in;
+    out |= static_cast<T>(*in) << 8;
+    ++in;
+    out |= static_cast<T>(*in);
+    ++in;
 
     return out;
   }
@@ -201,21 +242,20 @@ struct bytes_io<T, sizeof(uint32_t)> {
     const uint32_t log2 = math::log2_floor_32(value | 0x1);
 
     // division within range [1;31]
-    return (73 + 9*log2) >> 6;
+    return (73 + 9 * log2) >> 6;
   }
 
   template<typename InputIterator>
   static int32_t zvread(InputIterator& in, std::input_iterator_tag) {
     return irs::zig_zag_decode32(vread(
-      in, typename std::iterator_traits<InputIterator>::iterator_category()
-    ));
+      in, typename std::iterator_traits<InputIterator>::iterator_category()));
   }
 
   template<typename OutputIterator>
   static void zvwrite(OutputIterator& out, int32_t value) {
     vwrite(out, zig_zag_encode32(value));
   }
-}; // bytes_io<T, sizeof(uint32_t)>
+};  // bytes_io<T, sizeof(uint32_t)>
 
 template<typename T>
 struct bytes_io<T, sizeof(uint64_t)> {
@@ -224,11 +264,13 @@ struct bytes_io<T, sizeof(uint64_t)> {
   template<typename OutputIterator>
   static void vwrite(OutputIterator& out, T in) {
     while (in >= T(0x80)) {
-      *out = static_cast<irs::byte_type>(in | T(0x80)); ++out;
+      *out = static_cast<irs::byte_type>(in | T(0x80));
+      ++out;
       in >>= 7;
     }
 
-    *out = static_cast<irs::byte_type>(in); ++out;
+    *out = static_cast<irs::byte_type>(in);
+    ++out;
   }
 
   template<typename OutputIterator>
@@ -251,43 +293,91 @@ struct bytes_io<T, sizeof(uint64_t)> {
   template<typename InputIterator>
   static void vskip(InputIterator& in) {
     constexpr T MASK = 0x80;
-    T v = *in; ++in; if (!(v & MASK)) return;
-      v = *in; ++in; if (!(v & MASK)) return;
-      v = *in; ++in; if (!(v & MASK)) return;
-      v = *in; ++in; if (!(v & MASK)) return;
-      v = *in; ++in; if (!(v & MASK)) return;
-      v = *in; ++in; if (!(v & MASK)) return;
-      v = *in; ++in; if (!(v & MASK)) return;
-      v = *in; ++in; if (!(v & MASK)) return;
-      v = *in; ++in; if (!(v & MASK)) return;
-               ++in;                  return;
+    T v = *in;
+    ++in;
+    if (!(v & MASK)) return;
+    v = *in;
+    ++in;
+    if (!(v & MASK)) return;
+    v = *in;
+    ++in;
+    if (!(v & MASK)) return;
+    v = *in;
+    ++in;
+    if (!(v & MASK)) return;
+    v = *in;
+    ++in;
+    if (!(v & MASK)) return;
+    v = *in;
+    ++in;
+    if (!(v & MASK)) return;
+    v = *in;
+    ++in;
+    if (!(v & MASK)) return;
+    v = *in;
+    ++in;
+    if (!(v & MASK)) return;
+    v = *in;
+    ++in;
+    if (!(v & MASK)) return;
+    ++in;
+    return;
   }
 
   template<typename InputIterator>
   static T vread(InputIterator& in, std::input_iterator_tag) {
     constexpr T MASK = 0x80;
-    T out = *in; ++in; if (!(out & MASK)) return out;
+    T out = *in;
+    ++in;
+    if (!(out & MASK)) return out;
 
     T b;
     out -= MASK;
-    b = *in; ++in; out += b << 7; if (!(b & MASK)) return out;
+    b = *in;
+    ++in;
+    out += b << 7;
+    if (!(b & MASK)) return out;
     out -= MASK << 7;
-    b = *in; ++in; out += b << 14; if (!(b & MASK)) return out;
+    b = *in;
+    ++in;
+    out += b << 14;
+    if (!(b & MASK)) return out;
     out -= MASK << 14;
-    b = *in; ++in; out += b << 21; if (!(b & MASK)) return out;
+    b = *in;
+    ++in;
+    out += b << 21;
+    if (!(b & MASK)) return out;
     out -= MASK << 21;
-    b = *in; ++in; out += b << 28; if (!(b & MASK)) return out;
+    b = *in;
+    ++in;
+    out += b << 28;
+    if (!(b & MASK)) return out;
     out -= MASK << 28;
-    b = *in; ++in; out += b << 35; if (!(b & MASK)) return out;
+    b = *in;
+    ++in;
+    out += b << 35;
+    if (!(b & MASK)) return out;
     out -= MASK << 35;
-    b = *in; ++in; out += b << 42; if (!(b & MASK)) return out;
+    b = *in;
+    ++in;
+    out += b << 42;
+    if (!(b & MASK)) return out;
     out -= MASK << 42;
-    b = *in; ++in; out += b << 49; if (!(b & MASK)) return out;
+    b = *in;
+    ++in;
+    out += b << 49;
+    if (!(b & MASK)) return out;
     out -= MASK << 49;
-    b = *in; ++in; out += b << 56; if (!(b & MASK)) return out;
+    b = *in;
+    ++in;
+    out += b << 56;
+    if (!(b & MASK)) return out;
     out -= MASK << 56;
-    b = *in; ++in; out += b << 63;
-    // last byte always has MSB == 0, so we don't need to check and subtract 0x80
+    b = *in;
+    ++in;
+    out += b << 63;
+    // last byte always has MSB == 0, so we don't need to check and subtract
+    // 0x80
 
     return out;
   }
@@ -296,8 +386,10 @@ struct bytes_io<T, sizeof(uint64_t)> {
   static T read(InputIterator& in, std::input_iterator_tag) {
     typedef bytes_io<uint32_t, sizeof(uint32_t)> bytes_io_t;
 
-    T out = static_cast<T>(bytes_io_t::read(in, std::input_iterator_tag{})) << 32;
-    return out | static_cast<T>(bytes_io_t::read(in, std::input_iterator_tag{}));
+    T out = static_cast<T>(bytes_io_t::read(in, std::input_iterator_tag{}))
+            << 32;
+    return out |
+           static_cast<T>(bytes_io_t::read(in, std::input_iterator_tag{}));
   }
 
   static T read(const byte_type*& in) {
@@ -322,21 +414,20 @@ struct bytes_io<T, sizeof(uint64_t)> {
     const uint64_t log2 = math::log2_floor_64(value | 0x1);
 
     // division within range [1;63]
-    return (73 + 9*log2) >> 6;
+    return (73 + 9 * log2) >> 6;
   }
 
   template<typename InputIterator>
   static int64_t zvread(InputIterator& in, std::input_iterator_tag) {
     return zig_zag_decode64(vread(
-      in, typename std::iterator_traits<InputIterator>::iterator_category()
-    ));
+      in, typename std::iterator_traits<InputIterator>::iterator_category()));
   }
 
   template<typename OutputIterator>
   static void zvwrite(OutputIterator& out, int64_t value) {
     vwrite(out, zig_zag_encode64(value));
   }
-}; // bytes_io<T, sizeof(uint64_t)>
+};  // bytes_io<T, sizeof(uint64_t)>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             exported functions for skipping bytes
@@ -417,6 +508,6 @@ inline void zvwrite(Iterator& out, T value) {
   bytes_io<T, sizeof(T)>::zvwrite(out, value);
 }
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_BYTES_UTILS_H
+#endif  // IRESEARCH_BYTES_UTILS_H

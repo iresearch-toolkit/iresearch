@@ -28,10 +28,9 @@
 #include <unordered_map>
 #include <functional>
 
-typedef std::unordered_map<
-  std::string,
-  std::function<int(int argc, char* argv[])>
-> handlers_t;
+typedef std::unordered_map<std::string,
+                           std::function<int(int argc, char* argv[])>>
+  handlers_t;
 
 const std::string MODE_PUT = "put";
 const std::string MODE_SEARCH = "search";

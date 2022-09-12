@@ -97,8 +97,8 @@ class filter {
 
   // boost - external boost
   virtual filter::prepared::ptr prepare(
-      const index_reader& rdr, const Order& ord, score_t boost,
-      const attribute_provider* ctx) const = 0;
+    const index_reader& rdr, const Order& ord, score_t boost,
+    const attribute_provider* ctx) const = 0;
 
   filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
                                 const attribute_provider* ctx) const {
@@ -198,13 +198,13 @@ class empty final : public filter {
   empty();
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& rdr, const Order& ord, score_t boost,
-      const attribute_provider* ctx) const override;
+    const index_reader& rdr, const Order& ord, score_t boost,
+    const attribute_provider* ctx) const override;
 };
 
 struct filter_visitor;
 using field_visitor =
-    std::function<void(const sub_reader&, const term_reader&, filter_visitor&)>;
+  std::function<void(const sub_reader&, const term_reader&, filter_visitor&)>;
 
 }  // namespace iresearch
 

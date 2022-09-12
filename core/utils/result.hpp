@@ -44,7 +44,9 @@ class result {
   };
 
   template<Code code>
-  static result make() { return result(code); }
+  static result make() {
+    return result(code);
+  }
 
   template<Code code>
   static result make(irs::string_ref const& msg,
@@ -52,16 +54,14 @@ class result {
     return result(code, msg, msg2);
   }
 
-  result() noexcept : code_(OK) { }
+  result() noexcept : code_(OK) {}
 
   result(const result& rhs)
     : code_(rhs.code_),
-      state_(rhs.state_ ? copyState(rhs.state_.get()) : nullptr) {
-  }
+      state_(rhs.state_ ? copyState(rhs.state_.get()) : nullptr) {}
 
   result(result&& rhs) noexcept
-    : code_(rhs.code_),
-      state_(std::move(rhs.state_)) {
+    : code_(rhs.code_), state_(std::move(rhs.state_)) {
     rhs.code_ = OK;
   }
 
@@ -87,12 +87,8 @@ class result {
   Code code() const noexcept { return code_; }
   const char* c_str() const noexcept { return state_.get(); }
 
-  bool operator==(const result& rhs) noexcept {
-    return code_ == rhs.code_;
-  }
-  bool operator!=(const result& rhs) noexcept {
-    return !(*this == rhs);
-  }
+  bool operator==(const result& rhs) noexcept { return code_ == rhs.code_; }
+  bool operator!=(const result& rhs) noexcept { return !(*this == rhs); }
 
  private:
   std::unique_ptr<char[]> copyState(const char* rhs);
@@ -102,9 +98,8 @@ class result {
 
   Code code_;
   std::unique_ptr<char[]> state_;
-}; // result
+};  // result
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_STATUS_H
-
+#endif  // IRESEARCH_STATUS_H

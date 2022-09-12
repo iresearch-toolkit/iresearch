@@ -27,11 +27,7 @@
 
 namespace iresearch {
 
-enum class BoundType {
-  UNBOUNDED,
-  INCLUSIVE,
-  EXCLUSIVE
-};
+enum class BoundType { UNBOUNDED, INCLUSIVE, EXCLUSIVE };
 
 template<typename T>
 struct search_range {
@@ -43,26 +39,25 @@ struct search_range {
   size_t hash() const noexcept {
     using bound_type = typename std::underlying_type<BoundType>::type;
 
-    const auto hash0 = hash_combine(
-      std::hash<decltype(min)>()(min),
-      std::hash<decltype(max)>()(max));
-    const auto hash1 = hash_combine(
-      std::hash<bound_type>()(static_cast<bound_type>(min_type)),
-      std::hash<bound_type>()(static_cast<bound_type>(max_type)));
+    const auto hash0 = hash_combine(std::hash<decltype(min)>()(min),
+                                    std::hash<decltype(max)>()(max));
+    const auto hash1 =
+      hash_combine(std::hash<bound_type>()(static_cast<bound_type>(min_type)),
+                   std::hash<bound_type>()(static_cast<bound_type>(max_type)));
     return hash_combine(hash0, hash1);
   }
 
   bool operator==(const search_range& rhs) const noexcept {
-    return min == rhs.min && min_type == rhs.min_type
-      && max == rhs.max && max_type == rhs.max_type;
+    return min == rhs.min && min_type == rhs.min_type && max == rhs.max &&
+           max_type == rhs.max_type;
   }
 
   bool operator!=(const search_range& rhs) const noexcept {
     return !(*this == rhs);
   }
-}; // search_range
+};  // search_range
 
-}
+}  // namespace iresearch
 
 namespace std {
 
@@ -73,6 +68,6 @@ struct hash<::iresearch::search_range<T>> {
   }
 };
 
-}
+}  // namespace std
 
-#endif // IRESEARCH_SEARCH_RANGE_H
+#endif  // IRESEARCH_SEARCH_RANGE_H

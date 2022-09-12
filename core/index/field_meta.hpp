@@ -61,9 +61,7 @@ struct field_meta {
   field_meta& operator=(const field_meta&) = default;
 
   bool operator==(const field_meta& rhs) const;
-  bool operator!=(const field_meta& rhs) const {
-    return !(*this == rhs);
-  }
+  bool operator!=(const field_meta& rhs) const { return !(*this == rhs); }
 
   feature_map_t features;
   std::string name;
@@ -73,6 +71,6 @@ struct field_meta {
 static_assert(std::is_move_constructible<field_meta>::value,
               "default move constructor expected");
 
-}
+}  // namespace iresearch
 
 #endif

@@ -29,7 +29,7 @@ namespace math = iresearch::math;
 TEST(math_utils_test, is_power2) {
   using namespace iresearch::math;
 
-  //static_assert(!is_power2(0), "Invalid answer"); // 0 gives false negative
+  // static_assert(!is_power2(0), "Invalid answer"); // 0 gives false negative
   static_assert(is_power2(1), "Invalid answer");
   static_assert(is_power2(2), "Invalid answer");
   static_assert(!is_power2(3), "Invalid answer");
@@ -37,7 +37,8 @@ TEST(math_utils_test, is_power2) {
   static_assert(!is_power2(999), "Invalid answer");
   static_assert(is_power2(1024), "Invalid answer");
   static_assert(is_power2(UINT64_C(1) << 63), "Invalid answer");
-  static_assert(!is_power2(std::numeric_limits<size_t>::max()), "Invalid answer");
+  static_assert(!is_power2(std::numeric_limits<size_t>::max()),
+                "Invalid answer");
 }
 
 TEST(math_utils_test, roundup_power2) {
@@ -49,7 +50,9 @@ TEST(math_utils_test, roundup_power2) {
   ASSERT_EQ(8, math::roundup_power2(5));
   ASSERT_EQ(16, math::roundup_power2(11));
   ASSERT_EQ(1024, math::roundup_power2(900));
-  ASSERT_EQ(std::numeric_limits<size_t>::max(), math::roundup_power2(std::numeric_limits<size_t>::max())-1); // round to the max possible value
+  ASSERT_EQ(std::numeric_limits<size_t>::max(),
+            math::roundup_power2(std::numeric_limits<size_t>::max()) -
+              1);  // round to the max possible value
   ASSERT_EQ(0, math::roundup_power2(std::numeric_limits<size_t>::max()));
 }
 
@@ -83,12 +86,12 @@ TEST(math_utils_test, log2_floor_64) {
 }
 
 TEST(math_utils_test, log) {
-  ASSERT_EQ(0, math::log(1,2));
-  ASSERT_EQ(1, math::log(235,235));
-  ASSERT_EQ(2, math::log(49,7));
-  ASSERT_EQ(3, math::log(8,2));
-  ASSERT_EQ(4, math::log(12341, 7)); 
-  ASSERT_EQ(6, math::log(34563456, 17)); 
+  ASSERT_EQ(0, math::log(1, 2));
+  ASSERT_EQ(1, math::log(235, 235));
+  ASSERT_EQ(2, math::log(49, 7));
+  ASSERT_EQ(3, math::log(8, 2));
+  ASSERT_EQ(4, math::log(12341, 7));
+  ASSERT_EQ(6, math::log(34563456, 17));
   ASSERT_EQ(31, math::log(std::numeric_limits<uint32_t>::max(), 2));
 }
 
@@ -114,34 +117,39 @@ TEST(math_utils_test, log2_64) {
 }
 
 TEST(math_utils, div_ceil32) {
-  ASSERT_EQ(7, math::div_ceil32(49,7));
-  ASSERT_EQ(7, math::div_ceil32(48,7));
-  ASSERT_EQ(6, math::div_ceil32(41,7));
-  ASSERT_EQ(6, math::div_ceil32(42,7));
-  ASSERT_EQ(1, math::div_ceil32(2,2));
-  ASSERT_EQ(2, math::div_ceil32(3,2));
-  ASSERT_EQ(1, math::div_ceil32(5,7));
-  ASSERT_EQ(0, math::div_ceil32(0,7));
-  ASSERT_EQ(0, math::div_ceil32(0,1));
-  ASSERT_EQ(7, math::div_ceil32(7,1));
-  ASSERT_EQ(1, math::div_ceil32(std::numeric_limits<uint32_t>::max()/2,std::numeric_limits<uint32_t>::max()/2));
-  ASSERT_EQ(1, math::div_ceil32(std::numeric_limits<uint32_t>::max()/2,std::numeric_limits<uint32_t>::max()/2));
-  ASSERT_EQ(1, math::div_ceil32(-1+std::numeric_limits<uint32_t>::max()/2,1+std::numeric_limits<uint32_t>::max()/2));
+  ASSERT_EQ(7, math::div_ceil32(49, 7));
+  ASSERT_EQ(7, math::div_ceil32(48, 7));
+  ASSERT_EQ(6, math::div_ceil32(41, 7));
+  ASSERT_EQ(6, math::div_ceil32(42, 7));
+  ASSERT_EQ(1, math::div_ceil32(2, 2));
+  ASSERT_EQ(2, math::div_ceil32(3, 2));
+  ASSERT_EQ(1, math::div_ceil32(5, 7));
+  ASSERT_EQ(0, math::div_ceil32(0, 7));
+  ASSERT_EQ(0, math::div_ceil32(0, 1));
+  ASSERT_EQ(7, math::div_ceil32(7, 1));
+  ASSERT_EQ(1, math::div_ceil32(std::numeric_limits<uint32_t>::max() / 2,
+                                std::numeric_limits<uint32_t>::max() / 2));
+  ASSERT_EQ(1, math::div_ceil32(std::numeric_limits<uint32_t>::max() / 2,
+                                std::numeric_limits<uint32_t>::max() / 2));
+  ASSERT_EQ(1, math::div_ceil32(-1 + std::numeric_limits<uint32_t>::max() / 2,
+                                1 + std::numeric_limits<uint32_t>::max() / 2));
 }
 
 TEST(math_utils, div_ceil64) {
-  ASSERT_EQ(7, math::div_ceil64(49,7));
-  ASSERT_EQ(7, math::div_ceil64(48,7));
-  ASSERT_EQ(6, math::div_ceil64(41,7));
-  ASSERT_EQ(6, math::div_ceil64(42,7));
-  ASSERT_EQ(1, math::div_ceil64(2,2));
-  ASSERT_EQ(2, math::div_ceil64(3,2));
-  ASSERT_EQ(1, math::div_ceil64(5,7));
-  ASSERT_EQ(0, math::div_ceil64(0,7));
-  ASSERT_EQ(0, math::div_ceil64(0,1));
-  ASSERT_EQ(7, math::div_ceil64(7,1));
-  ASSERT_EQ(1, math::div_ceil64(std::numeric_limits<uint64_t>::max()/2,std::numeric_limits<uint64_t>::max()/2));
-  ASSERT_EQ(1, math::div_ceil64(-1+std::numeric_limits<uint64_t>::max()/2,1+std::numeric_limits<uint64_t>::max()/2));
+  ASSERT_EQ(7, math::div_ceil64(49, 7));
+  ASSERT_EQ(7, math::div_ceil64(48, 7));
+  ASSERT_EQ(6, math::div_ceil64(41, 7));
+  ASSERT_EQ(6, math::div_ceil64(42, 7));
+  ASSERT_EQ(1, math::div_ceil64(2, 2));
+  ASSERT_EQ(2, math::div_ceil64(3, 2));
+  ASSERT_EQ(1, math::div_ceil64(5, 7));
+  ASSERT_EQ(0, math::div_ceil64(0, 7));
+  ASSERT_EQ(0, math::div_ceil64(0, 1));
+  ASSERT_EQ(7, math::div_ceil64(7, 1));
+  ASSERT_EQ(1, math::div_ceil64(std::numeric_limits<uint64_t>::max() / 2,
+                                std::numeric_limits<uint64_t>::max() / 2));
+  ASSERT_EQ(1, math::div_ceil64(-1 + std::numeric_limits<uint64_t>::max() / 2,
+                                1 + std::numeric_limits<uint64_t>::max() / 2));
 }
 
 TEST(math_utils, ceil32) {
@@ -150,8 +158,10 @@ TEST(math_utils, ceil32) {
   ASSERT_EQ(42, math::ceil32(41, 7));
   ASSERT_EQ(42, math::ceil32(42, 7));
   ASSERT_EQ(49, math::ceil32(43, 7));
-  ASSERT_EQ(uint32_t(std::numeric_limits<uint32_t>::max()-3), math::ceil32(std::numeric_limits<uint32_t>::max()-3, 2));
-  ASSERT_EQ(uint32_t(std::numeric_limits<uint32_t>::max()-3), math::ceil32(std::numeric_limits<uint32_t>::max()-4, 2));
+  ASSERT_EQ(uint32_t(std::numeric_limits<uint32_t>::max() - 3),
+            math::ceil32(std::numeric_limits<uint32_t>::max() - 3, 2));
+  ASSERT_EQ(uint32_t(std::numeric_limits<uint32_t>::max() - 3),
+            math::ceil32(std::numeric_limits<uint32_t>::max() - 4, 2));
 }
 
 TEST(math_utils, ceil64) {
@@ -160,6 +170,8 @@ TEST(math_utils, ceil64) {
   ASSERT_EQ(42, math::ceil64(41, 7));
   ASSERT_EQ(42, math::ceil64(42, 7));
   ASSERT_EQ(49, math::ceil64(43, 7));
-  ASSERT_EQ(uint64_t(std::numeric_limits<uint64_t>::max()-3), math::ceil64(std::numeric_limits<uint64_t>::max()-3, 2));
-  ASSERT_EQ(uint64_t(std::numeric_limits<uint64_t>::max()-3), math::ceil64(std::numeric_limits<uint64_t>::max()-4, 2));
+  ASSERT_EQ(uint64_t(std::numeric_limits<uint64_t>::max() - 3),
+            math::ceil64(std::numeric_limits<uint64_t>::max() - 3, 2));
+  ASSERT_EQ(uint64_t(std::numeric_limits<uint64_t>::max() - 3),
+            math::ceil64(std::numeric_limits<uint64_t>::max() - 4, 2));
 }

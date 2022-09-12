@@ -106,7 +106,7 @@ struct term_iterator : iterator<const bytes_ref&>, public attribute_provider {
   // Return iterator over the associated posting list with the requested
   // features.
   [[nodiscard]] virtual doc_iterator::ptr postings(
-      IndexFeatures features) const = 0;
+    IndexFeatures features) const = 0;
 };
 
 // Represents a result of seek operation

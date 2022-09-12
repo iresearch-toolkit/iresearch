@@ -24,7 +24,7 @@
 #define IRESEARCH_PROCESS_UTILS_H
 
 #ifdef _WIN32
-  typedef int pid_t;
+typedef int pid_t;
 #endif
 
 namespace iresearch {
@@ -33,6 +33,6 @@ pid_t get_pid();
 bool is_running(pid_t pid);
 bool is_valid_pid(const char* buf);
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_PROCESS_UTILS_H
+#endif  // IRESEARCH_PROCESS_UTILS_H

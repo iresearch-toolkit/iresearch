@@ -65,7 +65,7 @@ struct by_granular_range_options {
   size_t hash() const noexcept {
     return hash_combine(scored_terms_limit, range);
   }
-}; // by_granular_range_options
+};  // by_granular_range_options
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief convenient helper for setting granular term at a specified range
@@ -82,9 +82,8 @@ void set_granular_term(by_granular_range_options::terms& boundary, T&& value) {
 /// @brief convenient helper for setting granular term at a specified range
 ///        boundary
 //////////////////////////////////////////////////////////////////////////////
-void set_granular_term(
-  by_granular_range_options::terms& boundary,
-  numeric_token_stream& term);
+void set_granular_term(by_granular_range_options::terms& boundary,
+                       numeric_token_stream& term);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_granular_range
@@ -97,36 +96,28 @@ void set_granular_term(
 ///              termA@0 + termA@2 + termA@5 + termA@10
 ///              termB@0 + termB@2 + termB@6 + termB@10
 //////////////////////////////////////////////////////////////////////////////
-class by_granular_range
-    : public filter_base<by_granular_range_options> {
+class by_granular_range : public filter_base<by_granular_range_options> {
  public:
-  static filter::prepared::ptr prepare(
-    const index_reader& index,
-    const Order& ord,
-    score_t boost,
-    string_ref field,
-    const options_type::range_type& rng,
-    size_t scored_terms_limit);
+  static filter::prepared::ptr prepare(const index_reader& index,
+                                       const Order& ord, score_t boost,
+                                       string_ref field,
+                                       const options_type::range_type& rng,
+                                       size_t scored_terms_limit);
 
-  static void visit(
-    const sub_reader& segment,
-    const term_reader& reader,
-    const options_type::range_type& rng,
-    filter_visitor& visitor);
+  static void visit(const sub_reader& segment, const term_reader& reader,
+                    const options_type::range_type& rng,
+                    filter_visitor& visitor);
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-      const index_reader& index,
-      const Order& ord,
-      score_t boost,
-      const attribute_provider* /*ctx*/) const override {
-    return prepare(index, ord, this->boost()*boost,
-                   field(), options().range,
+    const index_reader& index, const Order& ord, score_t boost,
+    const attribute_provider* /*ctx*/) const override {
+    return prepare(index, ord, this->boost() * boost, field(), options().range,
                    options().scored_terms_limit);
   }
-}; // by_granular_range
+};  // by_granular_range
 
-} // ROOT
+}  // namespace iresearch
 
 #endif

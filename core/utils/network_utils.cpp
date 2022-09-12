@@ -25,19 +25,19 @@
 #include "log.hpp"
 
 #ifdef _WIN32
-  #include <WinSock2.h>
-  #pragma comment(lib, "Ws2_32.lib")
+#include <WinSock2.h>
+#pragma comment(lib, "Ws2_32.lib")
 #else
-  #include <unistd.h>
-#endif // _WIN32
+#include <unistd.h>
+#endif  // _WIN32
 
 #include <cstring>
 
 namespace iresearch {
 
 #ifdef _WIN32
-  #pragma warning(disable : 4706)
-#endif // _WIN32
+#pragma warning(disable : 4706)
+#endif  // _WIN32
 
 int get_host_name(char* name, size_t size) {
 #ifdef _WIN32
@@ -48,7 +48,7 @@ int get_host_name(char* name, size_t size) {
     IR_FRMT_ERROR("WSAStartup failed with error: %d", err);
     return -1;
   }
-  
+
   if (err = ::gethostname(name, static_cast<int>(size))) {
     err = ::WSAGetLastError();
   }
@@ -57,12 +57,12 @@ int get_host_name(char* name, size_t size) {
   return err;
 #else
   return gethostname(name, size);
-#endif // _WIN32
+#endif  // _WIN32
 }
 
 #ifdef _WIN32
-  #pragma warning(default: 4706)
-#endif // _WIN32
+#pragma warning(default : 4706)
+#endif  // _WIN32
 
 bool is_same_hostname(const char* rhs, size_t size) {
   char name[256] = {};
@@ -78,4 +78,4 @@ bool is_same_hostname(const char* rhs, size_t size) {
   return std::equal(name, name + size, rhs);
 }
 
-} // ROOT
+}  // namespace iresearch

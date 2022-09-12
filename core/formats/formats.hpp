@@ -88,7 +88,7 @@ struct postings_writer : attribute_provider {
   class releaser {
    public:
     explicit releaser(postings_writer* owner = nullptr) noexcept
-        : owner_(owner) {}
+      : owner_(owner) {}
 
     inline void operator()(term_meta* meta) const noexcept;
 
@@ -236,7 +236,7 @@ struct term_reader : public attribute_provider {
   /// @returns an intersection of a specified automaton and term reader
   //////////////////////////////////////////////////////////////////////////////
   virtual seek_term_iterator::ptr iterator(
-      automaton_table_matcher& matcher) const = 0;
+    automaton_table_matcher& matcher) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief evaluates a union of all docs denoted by cookies supplied via a
@@ -328,8 +328,8 @@ struct columnstore_writer {
                                column_finalizer_f header_writer) = 0;
   virtual void rollback() noexcept = 0;
   virtual bool commit(
-      const flush_state& state) = 0;  // @return was anything actually flushed
-};                                    // columnstore_writer
+    const flush_state& state) = 0;  // @return was anything actually flushed
+};                                  // columnstore_writer
 
 }  // namespace iresearch
 
@@ -447,9 +447,9 @@ struct segment_meta_reader {
   virtual ~segment_meta_reader() = default;
 
   virtual void read(
-      const directory& dir, segment_meta& meta,
-      string_ref filename = string_ref::NIL) = 0;  // null == use meta
-};                                                 // segment_meta_reader
+    const directory& dir, segment_meta& meta,
+    string_ref filename = string_ref::NIL) = 0;  // null == use meta
+};                                               // segment_meta_reader
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct index_meta_writer
@@ -480,8 +480,8 @@ struct index_meta_reader {
                                   std::string& name) const = 0;
 
   virtual void read(
-      const directory& dir, index_meta& meta,
-      string_ref filename = string_ref::NIL) = 0;  // null == use meta
+    const directory& dir, index_meta& meta,
+    string_ref filename = string_ref::NIL) = 0;  // null == use meta
 
  protected:
   static void complete(index_meta& meta, uint64_t generation, uint64_t counter,
@@ -512,7 +512,7 @@ class format {
   virtual field_reader::ptr get_field_reader() const = 0;
 
   virtual columnstore_writer::ptr get_columnstore_writer(
-      bool consolidation) const = 0;
+    bool consolidation) const = 0;
   virtual columnstore_reader::ptr get_columnstore_reader() const = 0;
 
   const type_info& type() const { return type_; }
@@ -586,10 +586,10 @@ class format_registrar {
   bool registered_;
 };
 
-#define REGISTER_FORMAT__(format_name, mudule_name, line, source)             \
-  static ::iresearch::format_registrar format_registrar##_##line(             \
-      ::iresearch::type<format_name>::get(), mudule_name, &format_name::make, \
-      source)
+#define REGISTER_FORMAT__(format_name, mudule_name, line, source)           \
+  static ::iresearch::format_registrar format_registrar##_##line(           \
+    ::iresearch::type<format_name>::get(), mudule_name, &format_name::make, \
+    source)
 #define REGISTER_FORMAT_EXPANDER__(format_name, mudule_name, file, line) \
   REGISTER_FORMAT__(format_name, mudule_name, line, file ":" TOSTRING(line))
 #define REGISTER_FORMAT_MODULE(format_name, module_name) \

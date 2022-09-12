@@ -30,10 +30,10 @@ namespace iresearch {
 class all_query final : public filter::prepared {
  public:
   explicit all_query(bstring&& stats, score_t boost)
-      : filter::prepared(boost), stats_(std::move(stats)) {}
+    : filter::prepared(boost), stats_(std::move(stats)) {}
 
   virtual doc_iterator::ptr execute(
-      const ExecutionContext& ctx) const override {
+    const ExecutionContext& ctx) const override {
     auto& rdr = ctx.segment;
 
     return memory::make_managed<all_iterator>(rdr, stats_.c_str(), ctx.scorers,

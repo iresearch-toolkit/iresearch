@@ -37,8 +37,8 @@ TEST_P(format_14_test_case, write_zero_block_encryption) {
 
   // replace encryption
   ASSERT_NE(nullptr, dir().attributes().encryption());
-  dir().attributes() = irs::directory_attributes{
-      0, std::make_unique<tests::rot13_encryption>(0)};
+  dir().attributes() =
+    irs::directory_attributes{0, std::make_unique<tests::rot13_encryption>(0)};
 
   auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
   ASSERT_NE(nullptr, writer);
@@ -49,17 +49,17 @@ TEST_P(format_14_test_case, write_zero_block_encryption) {
 }
 
 const auto kDirectoriesWithEncryption =
-    ::testing::Values(&tests::rot13_directory<&tests::memory_directory, 16>,
-                      &tests::rot13_directory<&tests::fs_directory, 16>,
-                      &tests::rot13_directory<&tests::mmap_directory, 16>,
-                      &tests::rot13_directory<&tests::memory_directory, 7>,
-                      &tests::rot13_directory<&tests::fs_directory, 7>,
-                      &tests::rot13_directory<&tests::mmap_directory, 7>);
+  ::testing::Values(&tests::rot13_directory<&tests::memory_directory, 16>,
+                    &tests::rot13_directory<&tests::fs_directory, 16>,
+                    &tests::rot13_directory<&tests::mmap_directory, 16>,
+                    &tests::rot13_directory<&tests::memory_directory, 7>,
+                    &tests::rot13_directory<&tests::fs_directory, 7>,
+                    &tests::rot13_directory<&tests::mmap_directory, 7>);
 
 const auto kDirectories =
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>);
+  ::testing::Values(&tests::directory<&tests::memory_directory>,
+                    &tests::directory<&tests::fs_directory>,
+                    &tests::directory<&tests::mmap_directory>);
 
 const auto kFormats = ::testing::Values(tests::format_info{"1_4", "1_0"},
                                         tests::format_info{"1_4simd", "1_0"});

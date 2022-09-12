@@ -58,10 +58,10 @@ class merge_writer : public util::noncopyable {
                         const column_info_provider_t& column_info,
                         const feature_info_provider_t& feature_info,
                         const comparer* comparator = nullptr) noexcept
-      : dir_(dir),
-        column_info_(&column_info),
-        feature_info_(&feature_info),
-        comparator_(comparator) {
+    : dir_(dir),
+      column_info_(&column_info),
+      feature_info_(&feature_info),
+      comparator_(comparator) {
     assert(column_info);
   }
   merge_writer(merge_writer&&) = default;

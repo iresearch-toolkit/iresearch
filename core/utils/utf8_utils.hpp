@@ -65,7 +65,7 @@ FORCE_INLINE const byte_type* next(const byte_type* begin,
 // Return Unicode code point length in bytes given the most significant code
 // point byte
 FORCE_INLINE constexpr uint32_t cp_length_msb(
-    const uint32_t cp_start) noexcept {
+  const uint32_t cp_start) noexcept {
   if (cp_start < 0x80) {
     return 1;
   } else if ((cp_start >> 5) == 0x06) {

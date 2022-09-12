@@ -46,7 +46,7 @@ struct empty_query final : public filter::prepared,
 namespace iresearch {
 
 filter::filter(const type_info& type) noexcept
-    : boost_(irs::kNoBoost), type_(type.id()) {}
+  : boost_(irs::kNoBoost), type_(type.id()) {}
 
 filter::prepared::ptr filter::prepared::empty() {
   return memory::to_managed<filter::prepared, false>(&empty_query::instance());

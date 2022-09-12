@@ -37,38 +37,34 @@ irs::compression::lz4::lz4compressor LZ4_BASIC_COMPRESSOR;
 irs::compression::lz4::lz4decompressor LZ4_BASIC_DECOMPRESSOR;
 
 inline int acceleration(const irs::compression::options::Hint hint) noexcept {
-  static const int FACTORS[] { 0, 2, 0 };
+  static const int FACTORS[]{0, 2, 0};
   assert(static_cast<size_t>(hint) < std::size(FACTORS));
 
   return FACTORS[static_cast<size_t>(hint)];
 }
 
-}
+}  // namespace
 
 namespace iresearch {
 
-static_assert(
-  sizeof(char) == sizeof(byte_type),
-  "sizeof(char) != sizeof(byte_type)"
-);
+static_assert(sizeof(char) == sizeof(byte_type),
+              "sizeof(char) != sizeof(byte_type)");
 
 namespace compression {
 
-void LZ4_streamDecode_deleter::operator()(void *p) noexcept {
+void LZ4_streamDecode_deleter::operator()(void* p) noexcept {
   if (p) {
     LZ4_freeStreamDecode(reinterpret_cast<LZ4_streamDecode_t*>(p));
   }
 }
 
-void LZ4_stream_deleter::operator()(void *p) noexcept {
+void LZ4_stream_deleter::operator()(void* p) noexcept {
   if (p) {
     LZ4_freeStream(reinterpret_cast<LZ4_stream_t*>(p));
   }
 }
 
-lz4stream lz4_make_stream() {
-  return lz4stream(LZ4_createStream());
-}
+lz4stream lz4_make_stream() { return lz4stream(LZ4_createStream()); }
 
 lz4stream_decode lz4_make_stream_decode() {
   return lz4stream_decode(LZ4_createStreamDecode());
@@ -78,8 +74,10 @@ lz4stream_decode lz4_make_stream_decode() {
 // --SECTION--                                                   lz4 compression
 // -----------------------------------------------------------------------------
 
-bytes_ref lz4::lz4compressor::compress(byte_type* src, size_t size, bstring& out) {
-  assert(size <= static_cast<unsigned>(std::numeric_limits<int>::max())); // LZ4 API uses int
+bytes_ref lz4::lz4compressor::compress(byte_type* src, size_t size,
+                                       bstring& out) {
+  assert(size <= static_cast<unsigned>(
+                   std::numeric_limits<int>::max()));  // LZ4 API uses int
   const auto src_size = static_cast<int>(size);
 
   // ensure we have enough space to store compressed data
@@ -88,7 +86,8 @@ bytes_ref lz4::lz4compressor::compress(byte_type* src, size_t size, bstring& out
   const auto* src_data = reinterpret_cast<const char*>(src);
   auto* buf = reinterpret_cast<char*>(&out[0]);
   const auto buf_size = static_cast<int>(out.size());
-  const auto lz4_size = LZ4_compress_fast(src_data, buf, src_size, buf_size, acceleration_);
+  const auto lz4_size =
+    LZ4_compress_fast(src_data, buf, src_size, buf_size, acceleration_);
 
   if (IRS_UNLIKELY(lz4_size < 0)) {
     throw index_error("while compressing, error: LZ4 returned negative size");
@@ -97,20 +96,22 @@ bytes_ref lz4::lz4compressor::compress(byte_type* src, size_t size, bstring& out
   return bytes_ref(reinterpret_cast<const byte_type*>(buf), size_t(lz4_size));
 }
 
-bytes_ref lz4::lz4decompressor::decompress(
-    const byte_type* src,  size_t src_size,
-    byte_type* dst,  size_t dst_size) {
-  assert(src_size <= static_cast<unsigned>(std::numeric_limits<int>::max())); // LZ4 API uses int
+bytes_ref lz4::lz4decompressor::decompress(const byte_type* src,
+                                           size_t src_size, byte_type* dst,
+                                           size_t dst_size) {
+  assert(src_size <= static_cast<unsigned>(
+                       std::numeric_limits<int>::max()));  // LZ4 API uses int
 
   const auto lz4_size = LZ4_decompress_safe(
-    reinterpret_cast<const char*>(src),
-    reinterpret_cast<char*>(dst),
+    reinterpret_cast<const char*>(src), reinterpret_cast<char*>(dst),
     static_cast<int>(src_size),  // LZ4 API uses int
-    static_cast<int>(std::min(dst_size, static_cast<size_t>(std::numeric_limits<int>::max()))) // LZ4 API uses int
+    static_cast<int>(std::min(
+      dst_size, static_cast<size_t>(
+                  std::numeric_limits<int>::max())))  // LZ4 API uses int
   );
 
   if (IRS_UNLIKELY(lz4_size < 0)) {
-    return bytes_ref::NIL; // corrupted index
+    return bytes_ref::NIL;  // corrupted index
   }
 
   return bytes_ref(dst, size_t(lz4_size));
@@ -137,5 +138,5 @@ void lz4::init() {
 
 REGISTER_COMPRESSION(lz4, &lz4::compressor, &lz4::decompressor);
 
-} // compression
-}
+}  // namespace compression
+}  // namespace iresearch

@@ -36,10 +36,9 @@ class parametric_description;
 ///       the exception for distance 4: can only build description wihtout
 ///       transpositions
 ////////////////////////////////////////////////////////////////////////////////
-const parametric_description& default_pdp(
-  byte_type max_distance,
-  bool with_transpositions);
+const parametric_description& default_pdp(byte_type max_distance,
+                                          bool with_transpositions);
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_LEVENSHTEIN_DEFAULT_PDP_H
+#endif  // IRESEARCH_LEVENSHTEIN_DEFAULT_PDP_H

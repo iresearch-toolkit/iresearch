@@ -33,15 +33,11 @@ namespace tests {
 class posting {
  public:
   struct position {
-    position(uint32_t pos, uint32_t start,
-             uint32_t end, const irs::bytes_ref& pay)
-      : pos{pos}, start{start},
-        end{end}, payload{pay} {
-    }
+    position(uint32_t pos, uint32_t start, uint32_t end,
+             const irs::bytes_ref& pay)
+      : pos{pos}, start{start}, end{end}, payload{pay} {}
 
-    bool operator<(const position& rhs) const {
-      return pos < rhs.pos;
-    }
+    bool operator<(const position& rhs) const { return pos < rhs.pos; }
 
     uint32_t pos;
     uint32_t start;
@@ -49,20 +45,16 @@ class posting {
     irs::bstring payload;
   };
 
-  explicit posting(irs::doc_id_t id)
-    : id_{id} {
-  }
+  explicit posting(irs::doc_id_t id) : id_{id} {}
   posting(irs::doc_id_t id, std::set<position>&& positions)
-    : positions_(std::move(positions)), id_(id) {
-  }
+    : positions_(std::move(positions)), id_(id) {}
   posting(posting&& rhs) noexcept = default;
   posting& operator=(posting&& rhs) noexcept = default;
 
-  void insert(uint32_t pos, uint32_t offs_start, const irs::attribute_provider& attrs);
+  void insert(uint32_t pos, uint32_t offs_start,
+              const irs::attribute_provider& attrs);
 
-  bool operator<(const posting& rhs) const {
-    return id_ < rhs.id_;
-  }
+  bool operator<(const posting& rhs) const { return id_ < rhs.id_; }
 
   const auto& positions() const { return positions_; }
   irs::doc_id_t id() const { return id_; }
@@ -102,8 +94,7 @@ struct field : public irs::field_meta {
     uint32_t offs{};
   };
 
-  field(const irs::string_ref& name,
-        irs::IndexFeatures index_features,
+  field(const irs::string_ref& name, irs::IndexFeatures index_features,
         const irs::features_t& features);
   field(field&& rhs) = default;
   field& operator=(field&& rhs) = default;
@@ -130,12 +121,10 @@ class column_values {
   explicit column_values(irs::field_id id,
                          irs::feature_writer_factory_t factory,
                          irs::feature_writer* writer)
-    : id_{id}, factory_{factory}, writer_{writer} {
-  }
+    : id_{id}, factory_{factory}, writer_{writer} {}
 
   column_values(std::string name, irs::field_id id)
-    : id_{id}, name_{std::move(name)} {
-  }
+    : id_{id}, name_{std::move(name)} {}
 
   void insert(irs::doc_id_t key, irs::bytes_ref value);
 
@@ -163,15 +152,14 @@ class column_values {
   irs::feature_writer* writer_{};
 };
 
-class index_segment: irs::util::noncopyable {
+class index_segment : irs::util::noncopyable {
  public:
   using field_map_t = std::map<irs::string_ref, field>;
-  using columns_t = std::deque<column_values>; // pointers remain valid
+  using columns_t = std::deque<column_values>;  // pointers remain valid
   using named_columns_t = std::map<std::string, column_values*>;
 
   explicit index_segment(const irs::feature_info_provider_t& features)
-    : field_features_{features} {
-  }
+    : field_features_{features} {}
   index_segment(index_segment&& rhs) = default;
   index_segment& operator=(index_segment&& rhs) = default;
 
@@ -186,15 +174,14 @@ class index_segment: irs::util::noncopyable {
   auto& pk() const noexcept { return sort_; };
 
   template<typename IndexedFieldIterator, typename StoredFieldIterator>
-  void insert(
-      IndexedFieldIterator indexed_begin, IndexedFieldIterator indexed_end,
-      StoredFieldIterator stored_begin, StoredFieldIterator stored_end,
-      const ifield* sorted = nullptr);
+  void insert(IndexedFieldIterator indexed_begin,
+              IndexedFieldIterator indexed_end,
+              StoredFieldIterator stored_begin, StoredFieldIterator stored_end,
+              const ifield* sorted = nullptr);
 
   void insert(const document& doc) {
     insert(std::begin(doc.indexed), std::end(doc.indexed),
-           std::begin(doc.stored), std::end(doc.stored),
-           doc.sorted.get());
+           std::begin(doc.stored), std::end(doc.stored), doc.sorted.get());
   }
 
   void sort(const irs::comparer& comparator);
@@ -208,9 +195,7 @@ class index_segment: irs::util::noncopyable {
   index_segment(const index_segment& rhs) noexcept = delete;
   index_segment& operator=(const index_segment& rhs) noexcept = delete;
 
-  irs::doc_id_t doc() const noexcept {
-    return count_ + irs::doc_limits::min();
-  }
+  irs::doc_id_t doc() const noexcept { return count_ + irs::doc_limits::min(); }
 
   void insert_indexed(const ifield& field);
   void insert_stored(const ifield& field);
@@ -230,10 +215,11 @@ class index_segment: irs::util::noncopyable {
 };
 
 template<typename IndexedFieldIterator, typename StoredFieldIterator>
-void index_segment::insert(
-    IndexedFieldIterator indexed_begin, IndexedFieldIterator indexed_end,
-    StoredFieldIterator stored_begin, StoredFieldIterator stored_end,
-    const ifield* sorted /*= nullptr*/) {
+void index_segment::insert(IndexedFieldIterator indexed_begin,
+                           IndexedFieldIterator indexed_end,
+                           StoredFieldIterator stored_begin,
+                           StoredFieldIterator stored_end,
+                           const ifield* sorted /*= nullptr*/) {
   // reset field per-document state
   doc_fields_.clear();
   for (auto it = indexed_begin; it != indexed_end; ++it) {
@@ -264,31 +250,24 @@ void index_segment::insert(
 using index_t = std::vector<index_segment>;
 
 void assert_columnstore(
-  const irs::directory& dir,
-  irs::format::ptr codec,
+  const irs::directory& dir, irs::format::ptr codec,
   const index_t& expected_index,
-  size_t skip = 0); // do not validate the first 'skip' segments
+  size_t skip = 0);  // do not validate the first 'skip' segments
 
 void assert_columnstore(
-  irs::index_reader::ptr actual_index,
-  const index_t& expected_index,
-  size_t skip = 0); // do not validate the first 'skip' segments
+  irs::index_reader::ptr actual_index, const index_t& expected_index,
+  size_t skip = 0);  // do not validate the first 'skip' segments
 
-void assert_index(
-  irs::index_reader::ptr actual_index,
-  const index_t& expected_index,
-  irs::IndexFeatures features,
-  size_t skip = 0, // do not validate the first 'skip' segments
-  irs::automaton_table_matcher* matcher = nullptr);
+void assert_index(irs::index_reader::ptr actual_index,
+                  const index_t& expected_index, irs::IndexFeatures features,
+                  size_t skip = 0,  // do not validate the first 'skip' segments
+                  irs::automaton_table_matcher* matcher = nullptr);
 
-void assert_index(
-  const irs::directory& dir,
-  irs::format::ptr codec,
-  const index_t& index,
-  irs::IndexFeatures features,
-  size_t skip = 0, // no not validate the first 'skip' segments
-  irs::automaton_table_matcher* matcher = nullptr);
+void assert_index(const irs::directory& dir, irs::format::ptr codec,
+                  const index_t& index, irs::IndexFeatures features,
+                  size_t skip = 0,  // no not validate the first 'skip' segments
+                  irs::automaton_table_matcher* matcher = nullptr);
 
-} // tests
+}  // namespace tests
 
 #endif

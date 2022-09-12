@@ -37,7 +37,7 @@ namespace {
 
 using namespace irs;
 
-constexpr std::string_view LOCALE_PARAM_NAME {"locale"};
+constexpr std::string_view LOCALE_PARAM_NAME{"locale"};
 
 bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   if (!slice.isString()) {
@@ -79,7 +79,9 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   return true;
 }
 
-bool parse_vpack_options(const VPackSlice slice, irs::analysis::stemming_token_stream::options_t& opts) {
+bool parse_vpack_options(
+  const VPackSlice slice,
+  irs::analysis::stemming_token_stream::options_t& opts) {
   if (!slice.isObject()) {
     IR_FRMT_ERROR("Slice for text_token_stemming_stream  is not an object");
     return false;
@@ -100,16 +102,18 @@ bool parse_vpack_options(const VPackSlice slice, irs::analysis::stemming_token_s
     return locale_from_slice(locale_slice, opts.locale);
   } catch (const std::exception& ex) {
     IR_FRMT_ERROR(
-      "Caught error '%s' while constructing text_token_stemming_stream from VPack",
+      "Caught error '%s' while constructing text_token_stemming_stream from "
+      "VPack",
       ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while constructing text_token_stemming_stream from VPack arguments");
+      "Caught error while constructing text_token_stemming_stream from VPack "
+      "arguments");
   }
 
   return false;
 }
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "locale"(string): the locale to use for stemming <required>
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,9 +134,10 @@ analysis::analyzer::ptr make_vpack(string_ref args) {
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief builds analyzer config from internal options in json format
 /// @param locale reference to analyzer`s locale
-/// @param definition string for storing json document with config 
+/// @param definition string for storing json document with config
 ///////////////////////////////////////////////////////////////////////////////
-bool make_vpack_config(const analysis::stemming_token_stream::options_t& opts, VPackBuilder* builder) {
+bool make_vpack_config(const analysis::stemming_token_stream::options_t& opts,
+                       VPackBuilder* builder) {
   VPackObjectBuilder object(builder);
   {
     // locale
@@ -165,18 +170,21 @@ bool normalize_vpack_config(string_ref args, std::string& config) {
 analysis::analyzer::ptr make_json(string_ref args) {
   try {
     if (args.null()) {
-      IR_FRMT_ERROR("Null arguments while constructing text_token_normalizing_stream");
+      IR_FRMT_ERROR(
+        "Null arguments while constructing text_token_normalizing_stream");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
     return make_vpack(vpack->slice());
-  } catch(const VPackException& ex) {
+  } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
-      "Caught error '%s' while constructing text_token_normalizing_stream from JSON",
+      "Caught error '%s' while constructing text_token_normalizing_stream from "
+      "JSON",
       ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while constructing text_token_normalizing_stream from JSON");
+      "Caught error while constructing text_token_normalizing_stream from "
+      "JSON");
   }
   return nullptr;
 }
@@ -184,7 +192,8 @@ analysis::analyzer::ptr make_json(string_ref args) {
 bool normalize_json_config(string_ref args, std::string& definition) {
   try {
     if (args.null()) {
-      IR_FRMT_ERROR("Null arguments while normalizing text_token_normalizing_stream");
+      IR_FRMT_ERROR(
+        "Null arguments while normalizing text_token_normalizing_stream");
       return false;
     }
     auto vpack = VPackParser::fromJson(args.c_str(), args.size());
@@ -193,9 +202,10 @@ bool normalize_json_config(string_ref args, std::string& definition) {
       definition = builder.toString();
       return !definition.empty();
     }
-  } catch(const VPackException& ex) {
+  } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
-      "Caught error '%s' while normalizing text_token_normalizing_stream from JSON",
+      "Caught error '%s' while normalizing text_token_normalizing_stream from "
+      "JSON",
       ex.what());
   } catch (...) {
     IR_FRMT_ERROR(
@@ -207,9 +217,9 @@ bool normalize_json_config(string_ref args, std::string& definition) {
 REGISTER_ANALYZER_JSON(analysis::stemming_token_stream, make_json,
                        normalize_json_config);
 REGISTER_ANALYZER_VPACK(analysis::stemming_token_stream, make_vpack,
-                       normalize_vpack_config);
+                        normalize_vpack_config);
 
-}
+}  // namespace
 
 namespace iresearch {
 namespace analysis {
@@ -217,14 +227,13 @@ namespace analysis {
 stemming_token_stream::stemming_token_stream(const options_t& options)
   : analyzer{irs::type<stemming_token_stream>::get()},
     options_{options},
-    term_eof_{true} {
-}
+    term_eof_{true} {}
 
 /*static*/ void stemming_token_stream::init() {
   REGISTER_ANALYZER_JSON(stemming_token_stream, make_json,
-                         normalize_json_config); // match registration above
+                         normalize_json_config);  // match registration above
   REGISTER_ANALYZER_VPACK(analysis::stemming_token_stream, make_vpack,
-                         normalize_vpack_config); // match registration above
+                          normalize_vpack_config);  // match registration above
 }
 
 bool stemming_token_stream::next() {
@@ -245,7 +254,7 @@ bool stemming_token_stream::reset(string_ref data) {
 
   auto& term = std::get<term_attribute>(attrs_);
 
-  term.value = bytes_ref::NIL; // reset
+  term.value = bytes_ref::NIL;  // reset
 
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
@@ -257,19 +266,21 @@ bool stemming_token_stream::reset(string_ref data) {
   string_ref utf8_data{data};
 
   if (stemmer_) {
-    if (utf8_data.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
+    if (utf8_data.size() >
+        static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
       return false;
     }
 
     static_assert(sizeof(sb_symbol) == sizeof(char));
     const auto* value = reinterpret_cast<const sb_symbol*>(utf8_data.c_str());
 
-    value = sb_stemmer_stem(stemmer_.get(), value, static_cast<int>(utf8_data.size()));
+    value = sb_stemmer_stem(stemmer_.get(), value,
+                            static_cast<int>(utf8_data.size()));
 
     if (value) {
       static_assert(sizeof(byte_type) == sizeof(sb_symbol));
       term.value = bytes_ref(reinterpret_cast<const byte_type*>(value),
-                                   sb_stemmer_length(stemmer_.get()));
+                             sb_stemmer_length(stemmer_.get()));
 
       return true;
     }
@@ -282,6 +293,5 @@ bool stemming_token_stream::reset(string_ref data) {
   return true;
 }
 
-
-} // analysis
-} // ROOT
+}  // namespace analysis
+}  // namespace iresearch

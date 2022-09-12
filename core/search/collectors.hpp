@@ -44,16 +44,14 @@ class collector_wrapper {
   pointer get() const noexcept { return collector_.get(); }
   pointer operator->() const noexcept { return get(); }
   element_type& operator*() const noexcept { return *collector_; }
-  explicit operator bool() const noexcept { return static_cast<bool>(collector_); }
+  explicit operator bool() const noexcept {
+    return static_cast<bool>(collector_);
+  }
 
  protected:
-  collector_wrapper() noexcept
-    : collector_(&Wrapper::noop()) {
-  }
+  collector_wrapper() noexcept : collector_(&Wrapper::noop()) {}
 
-  ~collector_wrapper() {
-    reset(nullptr);
-  }
+  ~collector_wrapper() { reset(nullptr); }
 
   explicit collector_wrapper(pointer collector) noexcept
     : collector_(!collector ? &Wrapper::noop() : collector) {
@@ -109,23 +107,16 @@ class collectors_base {
   using iterator_type = typename std::vector<Collector>::const_iterator;
 
   explicit collectors_base(size_t size, const Order& order)
-    : collectors_(size), buckets_{order.buckets()} {
-  }
+    : collectors_(size), buckets_{order.buckets()} {}
 
   collectors_base(collectors_base&&) = default;
   collectors_base& operator=(collectors_base&&) = default;
 
-  iterator_type begin() const noexcept {
-    return collectors_.begin();
-  }
+  iterator_type begin() const noexcept { return collectors_.begin(); }
 
-  iterator_type end() const noexcept {
-    return collectors_.end();
-  }
+  iterator_type end() const noexcept { return collectors_.end(); }
 
-  bool empty() const noexcept {
-    return collectors_.empty();
-  }
+  bool empty() const noexcept { return collectors_.empty(); }
 
   void reset() {
     for (auto& collector : collectors_) {
@@ -151,7 +142,7 @@ class collectors_base {
  protected:
   std::vector<Collector> collectors_;
   std::span<const OrderBucket> buckets_;
-}; // collectors_base
+};  // collectors_base
 
 ////////////////////////////////////////////////////////////////////////////
 /// @class field_collector_wrapper
@@ -159,7 +150,7 @@ class collectors_base {
 ///        is not nullptr
 ////////////////////////////////////////////////////////////////////////////
 class field_collector_wrapper
-    : public collector_wrapper<field_collector_wrapper, sort::field_collector> {
+  : public collector_wrapper<field_collector_wrapper, sort::field_collector> {
  public:
   using collector_type = sort::field_collector;
   using base_type = collector_wrapper<field_collector_wrapper, collector_type>;
@@ -170,13 +161,12 @@ class field_collector_wrapper
   field_collector_wrapper(field_collector_wrapper&&) = default;
   field_collector_wrapper& operator=(field_collector_wrapper&&) = default;
   explicit field_collector_wrapper(collector_type::ptr&& collector) noexcept
-    : base_type(collector.release()) {
-  }
+    : base_type(collector.release()) {}
   field_collector_wrapper& operator=(collector_type::ptr&& collector) noexcept {
     base_type::operator=(collector.release());
     return *this;
   }
-}; // field_collector_wrapper
+};  // field_collector_wrapper
 
 static_assert(std::is_nothrow_move_constructible_v<field_collector_wrapper>);
 static_assert(std::is_nothrow_move_assignable_v<field_collector_wrapper>);
@@ -192,9 +182,7 @@ class field_collectors : public collectors_base<field_collector_wrapper> {
   field_collectors(field_collectors&&) = default;
   field_collectors& operator=(field_collectors&&) = default;
 
-  size_t size() const noexcept {
-    return collectors_.size();
-  }
+  size_t size() const noexcept { return collectors_.size(); }
 
   //////////////////////////////////////////////////////////////////////////
   /// @brief collect field related statistics, i.e. field used in the filter
@@ -217,7 +205,7 @@ class field_collectors : public collectors_base<field_collector_wrapper> {
   /// @note if not matched terms then called exactly once
   //////////////////////////////////////////////////////////////////////////
   void finish(byte_type* stats_buf, const index_reader& index) const;
-}; // field_collectors
+};  // field_collectors
 
 static_assert(std::is_nothrow_move_constructible_v<field_collectors>);
 static_assert(std::is_nothrow_move_assignable_v<field_collectors>);
@@ -228,7 +216,7 @@ static_assert(std::is_nothrow_move_assignable_v<field_collectors>);
 ///         is not nullptr
 ////////////////////////////////////////////////////////////////////////////
 class term_collector_wrapper
-    : public collector_wrapper<term_collector_wrapper, sort::term_collector> {
+  : public collector_wrapper<term_collector_wrapper, sort::term_collector> {
  public:
   using collector_type = sort::term_collector;
   using base_type = collector_wrapper<term_collector_wrapper, collector_type>;
@@ -239,13 +227,12 @@ class term_collector_wrapper
   term_collector_wrapper(term_collector_wrapper&&) = default;
   term_collector_wrapper& operator=(term_collector_wrapper&&) = default;
   explicit term_collector_wrapper(collector_type::ptr&& collector) noexcept
-    : base_type(collector.release()) {
-  }
+    : base_type(collector.release()) {}
   term_collector_wrapper& operator=(collector_type::ptr&& collector) noexcept {
     base_type::operator=(collector.release());
     return *this;
   }
-}; // term_collector_wrapper
+};  // term_collector_wrapper
 
 static_assert(std::is_nothrow_move_constructible_v<term_collector_wrapper>);
 static_assert(std::is_nothrow_move_assignable_v<term_collector_wrapper>);
@@ -282,10 +269,8 @@ class term_collectors : public collectors_base<term_collector_wrapper> {
   ///       per each segment
   /// @note only called on a matched 'term' in the 'field' in the 'segment'
   //////////////////////////////////////////////////////////////////////////
-  void collect(const sub_reader& segment,
-               const term_reader& field,
-               size_t term_idx,
-               const attribute_provider& attrs) const;
+  void collect(const sub_reader& segment, const term_reader& field,
+               size_t term_idx, const attribute_provider& attrs) const;
 
   //////////////////////////////////////////////////////////////////////////
   /// @brief store collected index statistics into 'stats' of the
@@ -298,8 +283,7 @@ class term_collectors : public collectors_base<term_collector_wrapper> {
   ///       calling collect(...) on each of its segments
   /// @note if not matched terms then called exactly once
   //////////////////////////////////////////////////////////////////////////
-  void finish(byte_type* stats_buf,
-              size_t term_idx,
+  void finish(byte_type* stats_buf, size_t term_idx,
               const field_collectors& field_collectors,
               const index_reader& index) const;
 };
@@ -307,6 +291,6 @@ class term_collectors : public collectors_base<term_collector_wrapper> {
 static_assert(std::is_nothrow_move_constructible_v<term_collectors>);
 static_assert(std::is_nothrow_move_assignable_v<term_collectors>);
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_COLLECTORS_H
+#endif  // IRESEARCH_COLLECTORS_H

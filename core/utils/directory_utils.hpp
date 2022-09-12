@@ -38,37 +38,32 @@ struct segment_meta;
 namespace directory_utils {
 
 // return a reference to a file or empty() if not found
-index_file_refs::ref_t reference(
-  const directory& dir,
-  std::string_view name,
-  bool include_missing = false);
+index_file_refs::ref_t reference(const directory& dir, std::string_view name,
+                                 bool include_missing = false);
 
 // return success, visitor gets passed references to files retrieved from source
-bool reference(
-  const directory& dir,
-  const std::function<std::optional<std::string_view>()>& source,
-  const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-  bool include_missing = false);
+bool reference(const directory& dir,
+               const std::function<std::optional<std::string_view>()>& source,
+               const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
+               bool include_missing = false);
 
-// return success, visitor gets passed references to files registered with index_meta
-bool reference(
-  const directory& dir,
-  const index_meta& meta,
-  const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-  bool include_missing = false);
+// return success, visitor gets passed references to files registered with
+// index_meta
+bool reference(const directory& dir, const index_meta& meta,
+               const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
+               bool include_missing = false);
 
-// return success, visitor gets passed references to files registered with segment_meta
-bool reference(
-  const directory& dir,
-  const segment_meta& meta,
-  const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-  bool include_missing = false);
+// return success, visitor gets passed references to files registered with
+// segment_meta
+bool reference(const directory& dir, const segment_meta& meta,
+               const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
+               bool include_missing = false);
 
 // remove all (tracked and non-tracked) files if they are unreferenced
 // return success
 bool remove_all_unreferenced(directory& dir);
 
-}
+}  // namespace directory_utils
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class tracking_directory
@@ -78,13 +73,10 @@ struct tracking_directory final : public directory {
   using file_set = absl::flat_hash_set<std::string>;
 
   // @param track_open - track file refs for calls to open(...)
-  explicit tracking_directory(
-    directory& impl,
-    bool track_open = false) noexcept;
+  explicit tracking_directory(directory& impl,
+                              bool track_open = false) noexcept;
 
-  directory& operator*() noexcept {
-    return impl_;
-  }
+  directory& operator*() noexcept { return impl_; }
 
   virtual directory_attributes& attributes() noexcept override {
     return impl_.attributes();
@@ -94,42 +86,34 @@ struct tracking_directory final : public directory {
 
   void clear_tracked() noexcept;
 
-  virtual bool exists(
-      bool& result,
-      std::string_view name) const noexcept override {
+  virtual bool exists(bool& result,
+                      std::string_view name) const noexcept override {
     return impl_.exists(result, name);
   }
 
   void flush_tracked(file_set& other) noexcept;
 
-  virtual bool length(
-      uint64_t& result,
-      std::string_view name) const noexcept override {
+  virtual bool length(uint64_t& result,
+                      std::string_view name) const noexcept override {
     return impl_.length(result, name);
   }
 
-  virtual index_lock::ptr make_lock(
-      std::string_view name
-  ) noexcept override {
+  virtual index_lock::ptr make_lock(std::string_view name) noexcept override {
     return impl_.make_lock(name);
   }
 
-  virtual bool mtime(
-      std::time_t& result,
-      std::string_view name) const noexcept override {
+  virtual bool mtime(std::time_t& result,
+                     std::string_view name) const noexcept override {
     return impl_.mtime(result, name);
   }
 
-  virtual index_input::ptr open(
-    std::string_view name,
-    IOAdvice advice
-  ) const noexcept override;
+  virtual index_input::ptr open(std::string_view name,
+                                IOAdvice advice) const noexcept override;
 
   virtual bool remove(std::string_view name) noexcept override;
 
-  virtual bool rename(
-    std::string_view src,
-    std::string_view dst) noexcept override;
+  virtual bool rename(std::string_view src,
+                      std::string_view dst) noexcept override;
 
   virtual bool sync(std::string_view name) noexcept override {
     return impl_.sync(name);
@@ -143,13 +127,13 @@ struct tracking_directory final : public directory {
   mutable file_set files_;
   directory& impl_;
   bool track_open_;
-}; // tracking_directory
+};  // tracking_directory
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class ref_tracking_directory
 /// @brief track files created/opened via file refs instead of file names
 //////////////////////////////////////////////////////////////////////////////
-struct ref_tracking_directory: public directory {
+struct ref_tracking_directory : public directory {
  public:
   using ptr = std::unique_ptr<ref_tracking_directory>;
 
@@ -157,9 +141,7 @@ struct ref_tracking_directory: public directory {
   explicit ref_tracking_directory(directory& impl, bool track_open = false);
   ref_tracking_directory(ref_tracking_directory&& other) noexcept;
 
-  directory& operator*() noexcept {
-    return impl_;
-  }
+  directory& operator*() noexcept { return impl_; }
 
   virtual directory_attributes& attributes() noexcept override {
     return impl_.attributes();
@@ -169,15 +151,13 @@ struct ref_tracking_directory: public directory {
 
   virtual index_output::ptr create(std::string_view name) noexcept override;
 
-  virtual bool exists(
-      bool& result,
-      std::string_view name) const noexcept override {
+  virtual bool exists(bool& result,
+                      std::string_view name) const noexcept override {
     return impl_.exists(result, name);
   }
 
-  virtual bool length(
-      uint64_t& result,
-      std::string_view name) const noexcept override {
+  virtual bool length(uint64_t& result,
+                      std::string_view name) const noexcept override {
     return impl_.length(result, name);
   }
 
@@ -185,19 +165,18 @@ struct ref_tracking_directory: public directory {
     return impl_.make_lock(name);
   }
 
-  virtual bool mtime(
-      std::time_t& result,
-      std::string_view name) const noexcept override {
+  virtual bool mtime(std::time_t& result,
+                     std::string_view name) const noexcept override {
     return impl_.mtime(result, name);
   }
 
-  virtual index_input::ptr open(
-    std::string_view name,
-    IOAdvice advice) const noexcept override;
+  virtual index_input::ptr open(std::string_view name,
+                                IOAdvice advice) const noexcept override;
 
   virtual bool remove(std::string_view name) noexcept override;
 
-  virtual bool rename(std::string_view src, std::string_view dst) noexcept override;
+  virtual bool rename(std::string_view src,
+                      std::string_view dst) noexcept override;
 
   virtual bool sync(std::span<std::string_view> names) noexcept override {
     return impl_.sync(names);
@@ -211,21 +190,21 @@ struct ref_tracking_directory: public directory {
     return impl_.visit(visitor);
   }
 
-  bool visit_refs(const std::function<bool(const index_file_refs::ref_t& ref)>& visitor) const;
+  bool visit_refs(const std::function<bool(const index_file_refs::ref_t& ref)>&
+                    visitor) const;
 
  private:
-  using refs_t = absl::flat_hash_set<
-    index_file_refs::ref_t,
-    index_file_refs::counter_t::hash,
-    index_file_refs::counter_t::equal_to> ;
+  using refs_t = absl::flat_hash_set<index_file_refs::ref_t,
+                                     index_file_refs::counter_t::hash,
+                                     index_file_refs::counter_t::equal_to>;
 
   index_file_refs& attribute_;
   directory& impl_;
-  mutable std::mutex mutex_; // for use with refs_
+  mutable std::mutex mutex_;  // for use with refs_
   mutable refs_t refs_;
   bool track_open_;
-}; // ref_tracking_directory
+};  // ref_tracking_directory
 
-}
+}  // namespace iresearch
 
 #endif

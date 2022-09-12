@@ -36,11 +36,11 @@ class MultiTermQuery final : public filter::prepared {
 
   explicit MultiTermQuery(States&& states, Stats&& stats, score_t boost,
                           sort::MergeType merge_type, size_t min_match)
-      : prepared{boost},
-        states_{std::move(states)},
-        stats_{std::move(stats)},
-        merge_type_{merge_type},
-        min_match_{min_match} {}
+    : prepared{boost},
+      states_{std::move(states)},
+      stats_{std::move(stats)},
+      merge_type_{merge_type},
+      min_match_{min_match} {}
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
 

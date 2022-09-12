@@ -41,8 +41,8 @@ struct ILabelArc;
 template<typename Arc>
 class ImmutableFst;
 
-} // fstext
-} // fst
+}  // namespace fstext
+}  // namespace fst
 
 namespace iresearch {
 
@@ -57,6 +57,6 @@ using immutable_byte_fst = fst::fstext::ImmutableFst<byte_ref_arc>;
 template<typename Key, typename Weight, typename Stats>
 class fst_builder;
 
-}
+}  // namespace iresearch
 
 #endif

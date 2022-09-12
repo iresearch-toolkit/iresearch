@@ -53,10 +53,9 @@ namespace bitpack {
 
 constexpr uint32_t ALL_EQUAL = 0U;
 
-// returns true if one can use run length encoding for the specified numberof bits
-constexpr bool rl(const uint32_t bits) noexcept {
-  return ALL_EQUAL == bits;
-}
+// returns true if one can use run length encoding for the specified numberof
+// bits
+constexpr bool rl(const uint32_t bits) noexcept { return ALL_EQUAL == bits; }
 
 // skip block of the specified size that was previously
 // written with the corresponding 'write_block' function
@@ -89,12 +88,9 @@ inline void skip_block64(index_input& in, uint64_t size) {
 //   otherwise            -> bit packing
 // returns number of bits used to encoded the block (0 == RL)
 template<typename PackFunc>
-uint32_t write_block32(
-    PackFunc&& pack,
-    data_output& out,
-    const uint32_t* RESTRICT decoded,
-    uint32_t size,
-    uint32_t* RESTRICT encoded) {
+uint32_t write_block32(PackFunc&& pack, data_output& out,
+                       const uint32_t* RESTRICT decoded, uint32_t size,
+                       uint32_t* RESTRICT encoded) {
   assert(size);
   assert(encoded);
   assert(decoded);
@@ -128,11 +124,9 @@ uint32_t write_block32(
 //   otherwise            -> bit packing
 // returns number of bits used to encoded the block (0 == RL)
 template<size_t Size, typename PackFunc>
-uint32_t write_block32(
-    PackFunc&& pack,
-    data_output& out,
-    const uint32_t* RESTRICT decoded,
-    uint32_t* RESTRICT encoded) {
+uint32_t write_block32(PackFunc&& pack, data_output& out,
+                       const uint32_t* RESTRICT decoded,
+                       uint32_t* RESTRICT encoded) {
   static_assert(Size);
   assert(encoded);
   assert(decoded);
@@ -166,12 +160,9 @@ uint32_t write_block32(
 //   otherwise            -> bit packing
 // returns number of bits used to encoded the block (0 == RL)
 template<typename PackFunc>
-uint32_t write_block64(
-    PackFunc&& pack,
-    data_output& out,
-    const uint64_t* RESTRICT decoded,
-    uint64_t size,
-    uint64_t* RESTRICT encoded) {
+uint32_t write_block64(PackFunc&& pack, data_output& out,
+                       const uint64_t* RESTRICT decoded, uint64_t size,
+                       uint64_t* RESTRICT encoded) {
   assert(size);
   assert(encoded);
   assert(decoded);
@@ -200,25 +191,20 @@ uint32_t write_block64(
 //   otherwise            -> bit packing
 // returns number of bits used to encoded the block (0 == RL)
 template<size_t Size, typename PackFunc>
-uint32_t write_block64(
-    PackFunc&& pack,
-    data_output& out,
-    const uint64_t* RESTRICT decoded,
-    uint64_t* RESTRICT encoded) {
+uint32_t write_block64(PackFunc&& pack, data_output& out,
+                       const uint64_t* RESTRICT decoded,
+                       uint64_t* RESTRICT encoded) {
   static_assert(Size);
-  return write_block64(std::forward<PackFunc>(pack), out,
-                       decoded, Size, encoded);
+  return write_block64(std::forward<PackFunc>(pack), out, decoded, Size,
+                       encoded);
 }
 
 // reads block of 'Size' 32 bit integers from the stream
 // that was previously encoded with the corresponding
 // 'write_block32' function
 template<size_t Size, typename UnpackFunc>
-void read_block32(
-    UnpackFunc&& unpack,
-    data_input& in,
-    uint32_t* RESTRICT encoded,
-    uint32_t* RESTRICT decoded) {
+void read_block32(UnpackFunc&& unpack, data_input& in,
+                  uint32_t* RESTRICT encoded, uint32_t* RESTRICT decoded) {
   static_assert(Size);
   assert(encoded);
   assert(decoded);
@@ -237,16 +223,13 @@ void read_block32(
     }
 
 #ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(
-      reinterpret_cast<byte_type*>(encoded),
-      required);
+    const auto read =
+      in.read_bytes(reinterpret_cast<byte_type*>(encoded), required);
     assert(read == required);
     UNUSED(read);
 #else
-    in.read_bytes(
-      reinterpret_cast<byte_type*>(encoded),
-      required);
-#endif // IRESEARCH_DEBUG
+    in.read_bytes(reinterpret_cast<byte_type*>(encoded), required);
+#endif  // IRESEARCH_DEBUG
 
     unpack(decoded, encoded, bits);
   }
@@ -256,12 +239,9 @@ void read_block32(
 // that was previously encoded with the corresponding
 // 'write_block32' function
 template<typename UnpackFunc>
-void read_block32(
-    UnpackFunc&& unpack,
-    data_input& in,
-    uint32_t* RESTRICT encoded,
-    uint32_t size,
-    uint32_t* RESTRICT decoded) {
+void read_block32(UnpackFunc&& unpack, data_input& in,
+                  uint32_t* RESTRICT encoded, uint32_t size,
+                  uint32_t* RESTRICT decoded) {
   assert(size);
   assert(encoded);
   assert(decoded);
@@ -280,16 +260,13 @@ void read_block32(
     }
 
 #ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(
-      reinterpret_cast<byte_type*>(encoded),
-      required);
+    const auto read =
+      in.read_bytes(reinterpret_cast<byte_type*>(encoded), required);
     assert(read == required);
     UNUSED(read);
 #else
-    in.read_bytes(
-      reinterpret_cast<byte_type*>(encoded),
-      required);
-#endif // IRESEARCH_DEBUG
+    in.read_bytes(reinterpret_cast<byte_type*>(encoded), required);
+#endif  // IRESEARCH_DEBUG
 
     unpack(decoded, encoded, size, bits);
   }
@@ -299,11 +276,8 @@ void read_block32(
 // that was previously encoded with the corresponding
 // 'write_block64' function
 template<size_t Size, typename UnpackFunc>
-void read_block64(
-    UnpackFunc&& unpack,
-    data_input& in,
-    uint64_t* RESTRICT encoded,
-    uint64_t* RESTRICT decoded) {
+void read_block64(UnpackFunc&& unpack, data_input& in,
+                  uint64_t* RESTRICT encoded, uint64_t* RESTRICT decoded) {
   static_assert(Size);
   assert(encoded);
   assert(decoded);
@@ -322,22 +296,19 @@ void read_block64(
     }
 
 #ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(
-      reinterpret_cast<byte_type*>(encoded),
-      required);
+    const auto read =
+      in.read_bytes(reinterpret_cast<byte_type*>(encoded), required);
     assert(read == required);
     UNUSED(read);
 #else
-    in.read_bytes(
-      reinterpret_cast<byte_type*>(encoded),
-      required);
-#endif // IRESEARCH_DEBUG
+    in.read_bytes(reinterpret_cast<byte_type*>(encoded), required);
+#endif  // IRESEARCH_DEBUG
 
     unpack(decoded, encoded, bits);
   }
 }
 
-} // bitpack
-} // iresearch
+}  // namespace bitpack
+}  // namespace iresearch
 
-#endif // IRESEARCH_BITPACK_H
+#endif  // IRESEARCH_BITPACK_H

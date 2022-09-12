@@ -34,7 +34,7 @@ class ByNestedFilter;
 
 struct Match {
   constexpr explicit Match(doc_id_t value) noexcept
-      : Match{value, doc_limits::eof()} {}
+    : Match{value, doc_limits::eof()} {}
 
   constexpr Match(doc_id_t min, doc_id_t max) noexcept : Min(min), Max(max) {}
 
@@ -52,7 +52,7 @@ static constexpr Match kMatchNone{0, 0};
 static constexpr Match kMatchAny{1};
 
 using DocIteratorProvider =
-    std::function<doc_iterator::ptr(const irs::sub_reader&)>;
+  std::function<doc_iterator::ptr(const irs::sub_reader&)>;
 
 // Options for ByNestedFilter filter
 struct ByNestedOptions {
@@ -79,26 +79,26 @@ struct ByNestedOptions {
 
     return match.index() == rhs.match.index() &&
            std::visit(
-               [&]<typename T>(const T& v) noexcept -> bool {
-                 if constexpr (std::is_same_v<T, Match>) {
-                   return v == std::get<T>(rhs.match);
-                 }
-                 return true;
-               },
-               match) &&
+             [&]<typename T>(const T& v) noexcept -> bool {
+               if constexpr (std::is_same_v<T, Match>) {
+                 return v == std::get<T>(rhs.match);
+               }
+               return true;
+             },
+             match) &&
            merge_type == rhs.merge_type && equal(child.get(), rhs.child.get());
   }
 
   size_t hash() const noexcept {
     size_t hash = std::visit(
-        []<typename T>(const T& v) noexcept -> size_t {
-          if constexpr (std::is_same_v<T, Match>) {
-            return hash_combine(std::hash<doc_id_t>{}(v.Min),
-                                std::hash<doc_id_t>{}(v.Max));
-          }
-          return 0;
-        },
-        match);
+      []<typename T>(const T& v) noexcept -> size_t {
+        if constexpr (std::is_same_v<T, Match>) {
+          return hash_combine(std::hash<doc_id_t>{}(v.Min),
+                              std::hash<doc_id_t>{}(v.Max));
+        }
+        return 0;
+      },
+      match);
     if (child) {
       hash = hash_combine(hash, child->hash());
     }

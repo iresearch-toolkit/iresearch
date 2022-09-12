@@ -5,7 +5,7 @@ find_package(Git 1.5.3 REQUIRED)
 # we use of xxx_ROOT variables for modules sources search
 if (POLICY CMP0074)
   cmake_policy(SET CMP0074 OLD)
-endif()
+endif ()
 
 ################################################################################
 ### set required standard version
@@ -25,7 +25,7 @@ if (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} VERSION_GREATER 3.8)
   set_property(CACHE USE_IPO PROPERTY STRINGS AUTO ON OFF)
 
   # Determine value if IPO_ENABLED from USE_IPO and CMAKE_BUILD_TYPE
-  if(USE_IPO STREQUAL "AUTO")
+  if (USE_IPO STREQUAL "AUTO")
     # When USE_IPO=AUTO, enable IPO for optimized / release builds.
     # But to work around a g++ segfault triggered by using both -flto and
     # -fno-devirtualize-functions, we disable IPO when using google tests, because
@@ -35,18 +35,18 @@ if (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} VERSION_GREATER 3.8)
     # So this check may be removed later as soon as we use fixed gcc versions.
     # - Tobias, 2019-08-08
     if (CMAKE_BUILD_TYPE STREQUAL "Release"
-        OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
-        OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
+      OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
+      OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
       set(IPO_ENABLED True)
-    else()
+    else ()
       set(IPO_ENABLED False)
     endif ()
-  elseif(USE_IPO)
+  elseif (USE_IPO)
     set(IPO_ENABLED True)
-  else()
+  else ()
     set(IPO_ENABLED False)
-  endif()
-endif()
+  endif ()
+endif ()
 
 if (IPO_ENABLED)
   cmake_minimum_required(VERSION 3.9 FATAL_ERROR) # ensured by check above
@@ -54,11 +54,11 @@ if (IPO_ENABLED)
   macro(SET_IPO _target)
     set_property(TARGET ${_target} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
   endmacro()
-else()
+else ()
   macro(SET_IPO _target)
     # NOOP
   endmacro()
-endif()
+endif ()
 
 message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
 
@@ -74,7 +74,7 @@ include(PVS-Studio)
 if (NOT MSVC)
   # put GCC version into GCC_VERSION variable
   execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
-endif()
+endif ()
 
 ################################################################################
 ### compile options
@@ -97,11 +97,11 @@ add_option_gprof(FALSE)
 # test for ARM
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*|arm64.*|ARM64.*|armv8.*|ARMV8.*)")
   set(IS_ARM ON)
-endif()
+endif ()
 
 if (USE_VALGRIND)
   add_definitions(-DIRESEARCH_VALGRIND)
-endif()
+endif ()
 
 if (MSVC)
   # FIXME TODO find a workaround or do not use alignas(...)
@@ -124,20 +124,20 @@ if (MSVC)
   if (MSVC_BUILD_THREADS)
     set(CMAKE_C_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_CXX_FLAGS}")
-  else()
+  else ()
     set(CMAKE_C_FLAGS "/MP ${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}")
-  endif()
-  
+  endif ()
+
   if (${MSVC_VERSION} STRGREATER_EQUAL 1930)
     # see https://docs.microsoft.com/en-us/cpp/overview/cpp-conformance-improvements?view=msvc-170#error-on-a-non-dependent-static_assert
     set(CMAKE_C_FLAGS "/Zc:static_assert- ${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "/Zc:static_assert- ${CMAKE_CXX_FLAGS}")
-  endif()
+  endif ()
 elseif (NOT IS_ARM)
   # allow 16 byte compare-exchange
   add_compile_options(-mcx16)
-endif()
+endif ()
 
 # fix strange issue with utf_8_to_32_iterator failing
 # to follow std::bidirectional_iterator concept
@@ -156,12 +156,12 @@ if (USE_CLANG_TIDY)
     DOC "Path to clang-tidy executable"
   )
 
-  if(CLANG_TIDY_EXE)
+  if (CLANG_TIDY_EXE)
     message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
-  else()
+  else ()
     message(STATUS "clang-tidy not found.")
-  endif()
-endif()
+  endif ()
+endif ()
 
 ################################################################################
 ### setup IWYU
@@ -172,10 +172,10 @@ unset(IWYU_PATH)
 if (USE_IWYU)
   find_program(IWYU_PATH NAMES include-what-you-use iwyu)
 
-  if(NOT IWYU_PATH)
+  if (NOT IWYU_PATH)
     message(FATAL_ERROR "Could not find the program include-what-you-use")
-  endif()
-endif()
+  endif ()
+endif ()
 
 ################################################################################
 ### setup ccache
@@ -184,10 +184,10 @@ endif()
 if (USE_CCACHE)
   find_program(CCACHE_FOUND ccache)
 
-  if(CCACHE_FOUND)
+  if (CCACHE_FOUND)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-  endif(CCACHE_FOUND)
-endif()
+  endif (CCACHE_FOUND)
+endif ()
 
 ################################################################################
 ### setup platform dependent optimizations
@@ -208,8 +208,8 @@ if (USE_URING AND NOT MSVC)
 
   if (${uring_FOUND})
     add_definitions(-DIRESEARCH_URING)
-  endif()
-endif()
+  endif ()
+endif ()
 
 # find Boost
 find_package(BoostLocal REQUIRED)
@@ -217,12 +217,12 @@ find_package(BoostLocal REQUIRED)
 # set pthread library
 if (NOT MSVC)
   set(PTHREAD_LIBRARY pthread)
-endif()
+endif ()
 
 # set gcov library
 if (NOT MSVC AND (CMAKE_BUILD_TYPE STREQUAL "Coverage"))
   set(GCOV_LIBRARY gcov)
-endif()
+endif ()
 
 # set sanitizers
 find_package(Sanitizers)
@@ -231,12 +231,12 @@ find_package(BFD) # optional
 
 if (BFD_FOUND)
   add_definitions(-DUSE_LIBBFD)
-else()
+else ()
   set(BFD_INCLUDE_DIR "")
   set(BFD_SHARED_LIBS "")
   set(BFD_STATIC_LIBS "")
   set(BFD_SHARED_LIB_RESOURCES "")
-endif()
+endif ()
 
 find_package(Lz4 REQUIRED)
 find_package(ICU REQUIRED)
@@ -245,41 +245,41 @@ find_package(Unwind) # optional
 
 if (Unwind_FOUND)
   add_definitions(-DUSE_LIBUNWIND)
-else()
+else ()
   set(Unwind_INCLUDE_DIR "")
   set(Unwind_SHARED_LIBS "")
   set(Unwind_STATIC_LIBS "")
   set(Unwind_SHARED_LIB_RESOURCES "")
-endif()
+endif ()
 
 # set external dirs
-set(EXTERNAL_INCLUDE_DIRS 
+set(EXTERNAL_INCLUDE_DIRS
   ${PROJECT_SOURCE_DIR}/external
-  CACHE INTERNAL 
+  CACHE INTERNAL
   ""
-)
+  )
 
-set(IResearch_INCLUDE_DIR 
+set(IResearch_INCLUDE_DIR
   "${PROJECT_SOURCE_DIR}/core"
   CACHE INTERNAL
   ""
-)
+  )
 
 # set output directories
 set(EXECUTABLE_OUTPUT_PATH
   ${CMAKE_BINARY_DIR}/bin
   CACHE PATH
   "Executable output path"
-)
+  )
 
 set(LIBRARY_OUTPUT_PATH
   ${CMAKE_BINARY_DIR}/bin
-  CACHE PATH 
+  CACHE PATH
   "Library output path"
-)
+  )
 
-mark_as_advanced( 
-  EXECUTABLE_OUTPUT_PATH 
+mark_as_advanced(
+  EXECUTABLE_OUTPUT_PATH
   LIBRARY_OUTPUT_PATH
 )
 
@@ -288,7 +288,7 @@ add_definitions(-DUNICODE -D_UNICODE)
 # set test resource directory
 set(IResearch_test_resource_dir
   ${CMAKE_CURRENT_SOURCE_DIR}/tests/resources
-)
+  )
 
 # generate tests_config.hpp here instead of inside 'tests' to make available externally
 configure_file(
@@ -299,9 +299,9 @@ configure_file(
 # copy pre-built files over to the build directory
 set(IRESEARCH_PREBUILT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt)
 file(GLOB_RECURSE IRESEARCH_PREBUILT_LIST RELATIVE "${IRESEARCH_PREBUILT_DIR}" FOLLOW_SYMLINKS "${IRESEARCH_PREBUILT_DIR}/*")
-foreach(ELEMENT ${IRESEARCH_PREBUILT_LIST})
+foreach (ELEMENT ${IRESEARCH_PREBUILT_LIST})
   configure_file("${IRESEARCH_PREBUILT_DIR}/${ELEMENT}" "${CMAKE_CURRENT_BINARY_DIR}/${ELEMENT}" COPYONLY)
-endforeach()
+endforeach ()
 
 add_subdirectory(external)
 add_subdirectory(core)
@@ -309,13 +309,13 @@ add_subdirectory(utils)
 
 if (USE_PYRESEARCH)
   add_subdirectory(python)
-endif()
+endif ()
 
 if (USE_PVS_STUDIO)
   set(PVS_STUDIO_ANALYZE iresearch-static
-                         ${IResearchUtil_TARGET_NAME}
-                         ${IResearchBenchmarks_TARGET_NAME}
-                         ${IResearchPython_TARGET_NAME})
+    ${IResearchUtil_TARGET_NAME}
+    ${IResearchBenchmarks_TARGET_NAME}
+    ${IResearchPython_TARGET_NAME})
 
   pvs_studio_add_target(
     TARGET iresearch-pvs-check ALL
@@ -361,11 +361,11 @@ if (USE_PVS_STUDIO)
     PROPERTIES
     COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
-endif()
+endif ()
 
 if (USE_MICROBENCH)
   add_subdirectory(microbench)
-endif()
+endif ()
 
 if (USE_TESTS)
   add_subdirectory(tests)
@@ -385,9 +385,9 @@ if (USE_TESTS)
     )
     add_dependencies(iresearch-coverage
       iresearch-tests-static
-    )
+      )
 
-    if (PYTHON_EXECUTABLE AND GCOVR_PATH)   
+    if (PYTHON_EXECUTABLE AND GCOVR_PATH)
       # exclude directories from coverage report
       SET(GCOVR_EXTRA_ARGS "-e;${PROJECT_SOURCE_DIR}/external/;${GCOVR_EXTRA_ARGS}")
 
@@ -403,9 +403,9 @@ if (USE_TESTS)
       )
       add_dependencies(iresearch-coverage-cobertura-collect
         iresearch-tests-static
-      )
-    endif()
-  endif()
+        )
+    endif ()
+  endif ()
 
   # testing
   enable_testing()
@@ -419,9 +419,9 @@ if (USE_TESTS)
   # http://public.kitware.com/Bug/view.php?id=8774
   # here is the workaround:
   add_custom_target(iresearch-check
-    COMMAND ${CMAKE_CTEST_COMMAND} 
+    COMMAND ${CMAKE_CTEST_COMMAND}
     DEPENDS iresearch-tests
-  )
+    )
 
   # setup target for memory allocation profiling
   add_custom_target(iresearch-tests-malloc
@@ -430,7 +430,7 @@ if (USE_TESTS)
     COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
     COMMAND ms_print --x=500 --y=100 massif.out > massif.log
     DEPENDS iresearch-tests
-  )
+    )
 
   # setup target for memory allocation profiling
   add_custom_target(iresearch-tests-malloc-s
@@ -439,7 +439,7 @@ if (USE_TESTS)
     COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
     COMMAND ms_print --x=500 --y=100 massif.out > massif.log
     DEPENDS iresearch-tests
-  )
+    )
 
   # setup target for memory leak detection
   add_custom_target(iresearch-tests-memleak
@@ -447,7 +447,7 @@ if (USE_TESTS)
     COMMAND ${CMAKE_COMMAND} -E echo "Arguments to iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} may be provided via an environment variable 'EXTRA_VALGRIND_PROG_ARGS'"
     COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
     DEPENDS iresearch-tests
-  )
+    )
 
   # setup target for memory leak detection
   add_custom_target(iresearch-tests-memleak-s
@@ -455,7 +455,7 @@ if (USE_TESTS)
     COMMAND ${CMAKE_COMMAND} -E echo "Arguments to iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} may be provided via an environment variable 'EXTRA_VALGRIND_PROG_ARGS'"
     COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
     DEPENDS iresearch-tests-static
-  )
+    )
 
   # setup target for thread race detection
   add_custom_target(iresearch-tests-threadrace
@@ -463,7 +463,7 @@ if (USE_TESTS)
     COMMAND ${CMAKE_COMMAND} -E echo "Arguments to iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} may be provided via an environment variable 'EXTRA_VALGRIND_PROG_ARGS'"
     COMMAND valgrind --xml=yes --xml-file=valgrind.xml --tool=helgrind --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
     DEPENDS iresearch-tests
-  )
+    )
 
   # setup target for thread race detection
   add_custom_target(iresearch-tests-threadrace-s
@@ -471,6 +471,6 @@ if (USE_TESTS)
     COMMAND ${CMAKE_COMMAND} -E echo "Arguments to iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} may be provided via an environment variable 'EXTRA_VALGRIND_PROG_ARGS'"
     COMMAND valgrind --xml=yes --xml-file=valgrind.xml --tool=helgrind --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
     DEPENDS iresearch-tests-static
-  )
+    )
 
-endif() # USE_TESTS
+endif () # USE_TESTS

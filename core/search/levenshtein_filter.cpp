@@ -82,7 +82,7 @@ template<typename StatesType>
 struct aggregated_stats_visitor : util::noncopyable {
   aggregated_stats_visitor(StatesType& states,
                            const term_collectors& term_stats) noexcept
-      : term_stats(term_stats), states(states) {}
+    : term_stats(term_stats), states(states) {}
 
   void operator()(const irs::sub_reader& segment, const irs::term_reader& field,
                   uint32_t docs_count) const {
@@ -109,12 +109,12 @@ struct aggregated_stats_visitor : util::noncopyable {
 };
 
 class top_terms_collector
-    : public irs::top_terms_collector<top_term_state<score_t>> {
+  : public irs::top_terms_collector<top_term_state<score_t>> {
  public:
   using base_type = irs::top_terms_collector<top_term_state<score_t>>;
 
   top_terms_collector(size_t size, field_collectors& field_stats)
-      : base_type(size), field_stats_(field_stats) {}
+    : base_type(size), field_stats_(field_stats) {}
 
   void prepare(const sub_reader& segment, const term_reader& field,
                const seek_term_iterator& terms) {
@@ -158,9 +158,9 @@ void visit(const sub_reader& segment, const term_reader& reader,
       terms->read();
 
       const auto utf8_value_size =
-          static_cast<uint32_t>(utf8_utils::utf8_length(terms->value()));
+        static_cast<uint32_t>(utf8_utils::utf8_length(terms->value()));
       const auto boost =
-          ::similarity(*distance, std::min(utf8_value_size, utf8_target_size));
+        ::similarity(*distance, std::min(utf8_value_size, utf8_target_size));
 
       visitor.visit(boost);
     } while (terms->next());
@@ -179,8 +179,8 @@ bool collect_terms(const index_reader& index, string_ref field,
 
   auto matcher = make_automaton_matcher(acceptor);
   const uint32_t utf8_term_size =
-      std::max(1U, uint32_t(utf8_utils::utf8_length(prefix)) +
-                       uint32_t(utf8_utils::utf8_length(term)));
+    std::max(1U, uint32_t(utf8_utils::utf8_length(prefix)) +
+                   uint32_t(utf8_utils::utf8_length(term)));
   const byte_type max_distance = d.max_distance() + 1;
 
   for (auto& segment : index) {
@@ -197,9 +197,9 @@ bool collect_terms(const index_reader& index, string_ref field,
 }
 
 filter::prepared::ptr prepare_levenshtein_filter(
-    const index_reader& index, const Order& order, score_t boost,
-    string_ref field, bytes_ref prefix, bytes_ref term, size_t terms_limit,
-    const parametric_description& d) {
+  const index_reader& index, const Order& order, score_t boost,
+  string_ref field, bytes_ref prefix, bytes_ref term, size_t terms_limit,
+  const parametric_description& d) {
   field_collectors field_stats(order);
   term_collectors term_stats(order, 1);
   MultiTermQuery::States states{index};
@@ -231,7 +231,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
   term_stats.finish(stats_buf, 0, field_stats, index);
 
   return memory::make_managed<MultiTermQuery>(
-      std::move(states), std::move(stats), boost, sort::MergeType::kMax, 1);
+    std::move(states), std::move(stats), boost, sort::MergeType::kMax, 1);
 }
 
 }  // namespace
@@ -239,80 +239,79 @@ filter::prepared::ptr prepare_levenshtein_filter(
 namespace iresearch {
 
 /*static*/ field_visitor by_edit_distance::visitor(
-    const options_type::filter_options& opts) {
+  const options_type::filter_options& opts) {
   return executeLevenshtein(
-      opts.max_distance, opts.provider, opts.with_transpositions, opts.prefix,
-      opts.term,
-      []() -> field_visitor {
+    opts.max_distance, opts.provider, opts.with_transpositions, opts.prefix,
+    opts.term,
+    []() -> field_visitor {
+      return [](const sub_reader&, const term_reader&, filter_visitor&) {};
+    },
+    [&opts]() -> field_visitor {
+      // must copy term as it may point to temporary string
+      return [target = opts.prefix + opts.term](const sub_reader& segment,
+                                                const term_reader& field,
+                                                filter_visitor& visitor) {
+        return by_term::visit(segment, field, target, visitor);
+      };
+    },
+    [](const parametric_description& d, const bytes_ref prefix,
+       const bytes_ref term) -> field_visitor {
+      struct automaton_context : util::noncopyable {
+        automaton_context(const parametric_description& d, bytes_ref prefix,
+                          bytes_ref term)
+          : acceptor(make_levenshtein_automaton(d, prefix, term)),
+            matcher(make_automaton_matcher(acceptor)) {}
+
+        automaton acceptor;
+        automaton_table_matcher matcher;
+      };
+
+      auto ctx = memory::make_shared<automaton_context>(d, prefix, term);
+
+      if (!validate(ctx->acceptor)) {
         return [](const sub_reader&, const term_reader&, filter_visitor&) {};
-      },
-      [&opts]() -> field_visitor {
-        // must copy term as it may point to temporary string
-        return [target = opts.prefix + opts.term](const sub_reader& segment,
-                                                  const term_reader& field,
-                                                  filter_visitor& visitor) {
-          return by_term::visit(segment, field, target, visitor);
-        };
-      },
-      [](const parametric_description& d, const bytes_ref prefix,
-         const bytes_ref term) -> field_visitor {
-        struct automaton_context : util::noncopyable {
-          automaton_context(const parametric_description& d, bytes_ref prefix,
-                            bytes_ref term)
-              : acceptor(make_levenshtein_automaton(d, prefix, term)),
-                matcher(make_automaton_matcher(acceptor)) {}
+      }
 
-          automaton acceptor;
-          automaton_table_matcher matcher;
-        };
+      const uint32_t utf8_term_size =
+        std::max(1U, uint32_t(utf8_utils::utf8_length(prefix) +
+                              utf8_utils::utf8_length(term)));
+      const byte_type max_distance = d.max_distance() + 1;
 
-        auto ctx = memory::make_shared<automaton_context>(d, prefix, term);
-
-        if (!validate(ctx->acceptor)) {
-          return [](const sub_reader&, const term_reader&, filter_visitor&) {};
-        }
-
-        const uint32_t utf8_term_size =
-            std::max(1U, uint32_t(utf8_utils::utf8_length(prefix) +
-                                  utf8_utils::utf8_length(term)));
-        const byte_type max_distance = d.max_distance() + 1;
-
-        return [ctx = std::move(ctx), utf8_term_size, max_distance](
-                   const sub_reader& segment, const term_reader& field,
-                   filter_visitor& visitor) mutable {
-          return ::visit(segment, field, max_distance, utf8_term_size,
-                         ctx->matcher, visitor);
-        };
-      });
+      return [ctx = std::move(ctx), utf8_term_size, max_distance](
+               const sub_reader& segment, const term_reader& field,
+               filter_visitor& visitor) mutable {
+        return ::visit(segment, field, max_distance, utf8_term_size,
+                       ctx->matcher, visitor);
+      };
+    });
 }
 
 /*static*/ filter::prepared::ptr by_edit_distance::prepare(
-    const index_reader& index, const Order& order, score_t boost,
-    string_ref field, bytes_ref term, size_t scored_terms_limit,
-    byte_type max_distance, options_type::pdp_f provider,
-    bool with_transpositions, bytes_ref prefix) {
+  const index_reader& index, const Order& order, score_t boost,
+  string_ref field, bytes_ref term, size_t scored_terms_limit,
+  byte_type max_distance, options_type::pdp_f provider,
+  bool with_transpositions, bytes_ref prefix) {
   return executeLevenshtein(
-      max_distance, provider, with_transpositions, prefix, term,
-      []() -> filter::prepared::ptr { return prepared::empty(); },
-      [&index, &order, boost, &field, &prefix,
-       &term]() -> filter::prepared::ptr {
-        if (!prefix.empty() && !term.empty()) {
-          bstring target;
-          target.reserve(prefix.size() + term.size());
-          target += prefix;
-          target += term;
-          return by_term::prepare(index, order, boost, field, target);
-        }
+    max_distance, provider, with_transpositions, prefix, term,
+    []() -> filter::prepared::ptr { return prepared::empty(); },
+    [&index, &order, boost, &field, &prefix, &term]() -> filter::prepared::ptr {
+      if (!prefix.empty() && !term.empty()) {
+        bstring target;
+        target.reserve(prefix.size() + term.size());
+        target += prefix;
+        target += term;
+        return by_term::prepare(index, order, boost, field, target);
+      }
 
-        return by_term::prepare(index, order, boost, field,
-                                prefix.empty() ? term : prefix);
-      },
-      [&field, scored_terms_limit, &index, &order, boost](
-          const parametric_description& d, const bytes_ref prefix,
-          const bytes_ref term) -> filter::prepared::ptr {
-        return prepare_levenshtein_filter(index, order, boost, field, prefix,
-                                          term, scored_terms_limit, d);
-      });
+      return by_term::prepare(index, order, boost, field,
+                              prefix.empty() ? term : prefix);
+    },
+    [&field, scored_terms_limit, &index, &order, boost](
+      const parametric_description& d, const bytes_ref prefix,
+      const bytes_ref term) -> filter::prepared::ptr {
+      return prepare_levenshtein_filter(index, order, boost, field, prefix,
+                                        term, scored_terms_limit, d);
+    });
 }
 
 }  // namespace iresearch

@@ -43,7 +43,7 @@ namespace math {
 // Sum two unsigned integral values with overflow check
 // Returns false if sum is overflowed, true - otherwise
 template<typename T, typename = typename std::enable_if_t<
-                         std::is_integral_v<T> && std::is_unsigned_v<T>>>
+                       std::is_integral_v<T> && std::is_unsigned_v<T>>>
 inline bool sum_check_overflow(T lhs, T rhs, T& sum) noexcept {
   sum = lhs + rhs;
   return sum >= lhs && sum >= rhs;
@@ -78,14 +78,14 @@ inline bool approx_equals(double_t lhs, double_t rhs) noexcept {
 
 constexpr uint64_t ceil64(double_t v) noexcept {
   return (static_cast<double_t>(static_cast<size_t>(v)) == v)
-             ? static_cast<size_t>(v)
-             : static_cast<size_t>(v) + ((v > 0) ? 1 : 0);
+           ? static_cast<size_t>(v)
+           : static_cast<size_t>(v) + ((v > 0) ? 1 : 0);
 }
 
 constexpr uint32_t ceil32(float_t v) noexcept {
   return (static_cast<float_t>(static_cast<uint32_t>(v)) == v)
-             ? static_cast<uint32_t>(v)
-             : static_cast<uint32_t>(v) + ((v > 0) ? 1 : 0);
+           ? static_cast<uint32_t>(v)
+           : static_cast<uint32_t>(v) + ((v > 0) ? 1 : 0);
 }
 
 // Rounds the result of division (num/den) to

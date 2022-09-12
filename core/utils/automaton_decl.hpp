@@ -27,10 +27,10 @@
 
 namespace fst {
 
-template <class Arc, class Allocator>
+template<class Arc, class Allocator>
 class VectorState;
 
-template <class Arc, class State>
+template<class Arc, class State>
 class VectorFst;
 
 template<typename F, size_t CacheSize, bool MatchInput, bool ByteLabel>
@@ -46,13 +46,14 @@ template<typename W>
 struct Transition;
 
 template<typename W>
-using AutomatonState = VectorState<Transition<W>, std::allocator<Transition<W>>>;
+using AutomatonState =
+  VectorState<Transition<W>, std::allocator<Transition<W>>>;
 
 template<typename W>
 using Automaton = VectorFst<Transition<W>, AutomatonState<W>>;
 
-} // fsa
-} // fst
+}  // namespace fsa
+}  // namespace fst
 
 namespace iresearch {
 
@@ -61,7 +62,6 @@ using range_label = fst::fsa::RangeLabel;
 
 using automaton_table_matcher = fst::TableMatcher<automaton, 256, true, true>;
 
-}
+}  // namespace iresearch
 
-#endif // IRESEARCH_AUTOMATON_DECL_H
-
+#endif  // IRESEARCH_AUTOMATON_DECL_H

@@ -38,8 +38,8 @@ class MinHash {
   // threshold.
   static constexpr size_t MaxSize(double_t err) noexcept {
     return err > 0. && err < 1.
-               ? math::ceil64(1. / (err * err))
-               : (err < 1. ? std::numeric_limits<size_t>::max() : 0);
+             ? math::ceil64(1. / (err * err))
+             : (err < 1. ? std::numeric_limits<size_t>::max() : 0);
   }
 
   // Returns expected probabilistic error according
@@ -50,7 +50,7 @@ class MinHash {
   }
 
   explicit MinHash(size_t size)
-      : max_size_{std::max(size, size_t{1})}, left_{max_size_} {
+    : max_size_{std::max(size, size_t{1})}, left_{max_size_} {
     min_hashes_.reserve(left_);
 
     // +1 because we insert a new hash
@@ -92,10 +92,10 @@ class MinHash {
   // `rhs` members are meant to be unique.
   double Jaccard(std::span<const size_t> rhs) const noexcept {
     const size_t intersect =
-        std::accumulate(std::begin(rhs), std::end(rhs), size_t{0},
-                        [&](size_t acc, size_t hash_value) noexcept {
-                          return acc + size_t{dedup_.contains(hash_value)};
-                        });
+      std::accumulate(std::begin(rhs), std::end(rhs), size_t{0},
+                      [&](size_t acc, size_t hash_value) noexcept {
+                        return acc + size_t{dedup_.contains(hash_value)};
+                      });
     const size_t cardinality = Size() + rhs.size() - intersect;
 
     return cardinality ? static_cast<double_t>(intersect) / cardinality : 1.0;

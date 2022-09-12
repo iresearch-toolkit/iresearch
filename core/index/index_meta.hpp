@@ -42,10 +42,11 @@ namespace iresearch {
 class format;
 typedef std::shared_ptr<const format> format_ptr;
 
-}
+}  // namespace iresearch
 
 // format_ptr
-MSVC_ONLY(template class std::shared_ptr<const irs::format>;) // cppcheck-suppress unknownMacro
+MSVC_ONLY(                                             // cppcheck-suppress
+  template class std::shared_ptr<const irs::format>;)  // unknownMacro
 
 namespace iresearch {
 
@@ -57,20 +58,16 @@ struct segment_meta {
 
   segment_meta() = default;
   segment_meta(const segment_meta&) = default;
-  segment_meta(segment_meta&& rhs)
-      noexcept(noexcept(std::is_nothrow_move_constructible_v<file_set>));
+  segment_meta(segment_meta&& rhs) noexcept(
+    noexcept(std::is_nothrow_move_constructible_v<file_set>));
   segment_meta(string_ref name, format_ptr codec);
-  segment_meta(std::string&& name,
-               format_ptr codec,
-               uint64_t docs_count,
-               uint64_t live_docs_count,
-               bool column_store,
-               file_set&& files,
+  segment_meta(std::string&& name, format_ptr codec, uint64_t docs_count,
+               uint64_t live_docs_count, bool column_store, file_set&& files,
                size_t size = 0,
                field_id sort = field_limits::invalid()) noexcept;
 
-  segment_meta& operator=(segment_meta&& rhs)
-    noexcept(noexcept(std::is_nothrow_move_assignable_v<file_set>));
+  segment_meta& operator=(segment_meta&& rhs) noexcept(
+    noexcept(std::is_nothrow_move_assignable_v<file_set>));
   segment_meta& operator=(const segment_meta&) = default;
 
   bool operator==(const segment_meta& other) const noexcept;
@@ -78,12 +75,12 @@ struct segment_meta {
 
   file_set files;
   std::string name;
-  uint64_t docs_count{}; // Total number of documents in a segment
-  uint64_t live_docs_count{}; // Total number of live documents in a segment
+  uint64_t docs_count{};       // Total number of documents in a segment
+  uint64_t live_docs_count{};  // Total number of live documents in a segment
   format_ptr codec;
-  size_t size{}; // Size of a segment in bytes
+  size_t size{};  // Size of a segment in bytes
   uint64_t version{};
-  field_id sort{ field_limits::invalid() };
+  field_id sort{field_limits::invalid()};
   bool column_store{};
 };
 
@@ -116,7 +113,7 @@ class index_meta {
 
     std::string filename;
     segment_meta meta;
-  }; // index_segment_t
+  };  // index_segment_t
 
   static_assert(std::is_nothrow_move_constructible_v<index_segment_t>);
   static_assert(std::is_nothrow_move_assignable_v<index_segment_t>);
@@ -214,13 +211,9 @@ class index_meta {
     return segments_[i];
   }
 
-  const index_segments_t& segments() const noexcept {
-    return segments_;
-  }
+  const index_segments_t& segments() const noexcept { return segments_; }
 
-  const bytes_ref& payload() const noexcept {
-    return payload_;
-  }
+  const bytes_ref& payload() const noexcept { return payload_; }
 
  private:
   friend class index_writer;
@@ -250,8 +243,8 @@ class index_meta {
       payload_ = payload_buf_;
     }
   }
-}; // index_meta
+};  // index_meta
 
-}
+}  // namespace iresearch
 
 #endif

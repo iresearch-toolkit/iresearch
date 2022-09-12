@@ -67,7 +67,7 @@ void FilterTestCaseBase::GetQueryResult(const irs::filter::prepared::ptr& q,
 
     // seek to eof
     ASSERT_TRUE(
-        irs::doc_limits::eof(q->execute(sub)->seek(irs::doc_limits::eof())));
+      irs::doc_limits::eof(q->execute(sub)->seek(irs::doc_limits::eof())));
   }
 }
 
@@ -130,7 +130,7 @@ void FilterTestCaseBase::GetQueryResult(const irs::filter::prepared::ptr& q,
 
     // seek to eof
     ASSERT_TRUE(
-        irs::doc_limits::eof(q->execute(sub)->seek(irs::doc_limits::eof())));
+      irs::doc_limits::eof(q->execute(sub)->seek(irs::doc_limits::eof())));
   }
 }
 
@@ -180,18 +180,18 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
     auto* doc = irs::get<irs::document>(it);
     ASSERT_NE(nullptr, doc);
     std::visit(
-        [&it, expected = test.expected]<typename A>(A action) {
-          if constexpr (std::is_same_v<A, Seek>) {
-            ASSERT_EQ(expected, it.seek(action.target));
-          } else if constexpr (std::is_same_v<A, Next>) {
-            ASSERT_EQ(!irs::doc_limits::eof(expected), it.next());
-          } else if constexpr (std::is_same_v<A, Skip>) {
-            for (auto count = action.count; count; --count) {
-              it.next();
-            }
+      [&it, expected = test.expected]<typename A>(A action) {
+        if constexpr (std::is_same_v<A, Seek>) {
+          ASSERT_EQ(expected, it.seek(action.target));
+        } else if constexpr (std::is_same_v<A, Next>) {
+          ASSERT_EQ(!irs::doc_limits::eof(expected), it.next());
+        } else if constexpr (std::is_same_v<A, Skip>) {
+          for (auto count = action.count; count; --count) {
+            it.next();
           }
-        },
-        test.action);
+        }
+      },
+      test.action);
     ASSERT_EQ(test.expected, it.value());
     ASSERT_EQ(test.expected, doc->value);
     if (!irs::doc_limits::eof(test.expected)) {
@@ -247,9 +247,9 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
   auto prepared_order = irs::Order::Prepare(order);
   auto prepared_filter = filter.prepare(rdr, prepared_order);
   auto score_less =
-      [reverse, size = prepared_order.buckets().size()](
-          const std::pair<irs::bstring, irs::doc_id_t>& lhs,
-          const std::pair<irs::bstring, irs::doc_id_t>& rhs) -> bool {
+    [reverse, size = prepared_order.buckets().size()](
+      const std::pair<irs::bstring, irs::doc_id_t>& lhs,
+      const std::pair<irs::bstring, irs::doc_id_t>& rhs) -> bool {
     const auto& [lhs_buf, lhs_doc] = lhs;
     const auto& [rhs_buf, rhs_doc] = rhs;
 
@@ -272,7 +272,7 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
   };
 
   std::multiset<std::pair<irs::bstring, irs::doc_id_t>, decltype(score_less)>
-      scored_result{score_less};
+    scored_result{score_less};
 
   for (const auto& sub : rdr) {
     auto docs = prepared_filter->execute(sub, prepared_order);

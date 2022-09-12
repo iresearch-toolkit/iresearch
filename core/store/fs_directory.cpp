@@ -34,7 +34,7 @@
 #include "utils/crc.hpp"
 
 #ifdef _WIN32
-#include <Windows.h> // for GetLastError()
+#include <Windows.h>  // for GetLastError()
 #endif
 
 namespace {
@@ -65,11 +65,12 @@ inline int get_posix_fadvice(irs::IOAdvice advice) noexcept {
   return IR_FADVICE_NORMAL;
 }
 
-}
+}  // namespace
 
 namespace iresearch {
 MSVC_ONLY(__pragma(warning(push)))
-MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprecated declaration
+MSVC_ONLY(__pragma(warning(
+  disable : 4996)))  // the compiler encountered a deprecated declaration
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class fs_lock
@@ -78,8 +79,7 @@ MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprec
 class fs_lock : public index_lock {
  public:
   fs_lock(const irs::utf8_path& dir, std::string_view file)
-    : dir_{dir}, file_{file} {
-  }
+    : dir_{dir}, file_{file} {}
 
   virtual bool lock() override {
     if (handle_) {
@@ -89,11 +89,10 @@ class fs_lock : public index_lock {
 
     bool exists;
 
-
     if (!file_utils::exists(exists, dir_.c_str())) {
       IR_FRMT_ERROR("Error caught in: %s", __FUNCTION__);
       return false;
-    } 
+    }
 
     // create directory if it is not exists
     if (!exists && !file_utils::mkdir(dir_.c_str(), true)) {
@@ -105,7 +104,8 @@ class fs_lock : public index_lock {
 
     // create lock file
     if (!file_utils::verify_lock_file(path.c_str())) {
-      if (!file_utils::exists(exists, path.c_str()) || (exists && !file_utils::remove(path.c_str()))) {
+      if (!file_utils::exists(exists, path.c_str()) ||
+          (exists && !file_utils::remove(path.c_str()))) {
         IR_FRMT_ERROR("Error caught in: %s", __FUNCTION__);
         return false;
       }
@@ -153,29 +153,28 @@ class fs_lock : public index_lock {
   irs::utf8_path dir_;
   std::string file_;
   file_utils::lock_handle_t handle_;
-}; // fs_lock
+};  // fs_lock
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class fs_index_output
 //////////////////////////////////////////////////////////////////////////////
 class fs_index_output : public buffered_index_output {
  public:
-  DEFINE_FACTORY_INLINE(index_output) // cppcheck-suppress unknownMacro
+  DEFINE_FACTORY_INLINE(index_output)  // cppcheck-suppress unknownMacro
 
   static index_output::ptr open(const file_path_t name) noexcept {
     assert(name);
 
-    file_utils::handle_t handle(file_utils::open(name,
-                                                 file_utils::OpenMode::Write,
-                                                 IR_FADVICE_NORMAL));
+    file_utils::handle_t handle(
+      file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL));
 
     if (nullptr == handle) {
 #ifdef _WIN32
       IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
                     GetLastError(), irs::utf8_path{name}.c_str());
 #else
-      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
-                    errno, irs::utf8_path{name}.c_str());
+      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno,
+                    irs::utf8_path{name}.c_str());
 #endif
 
       return nullptr;
@@ -183,7 +182,7 @@ class fs_index_output : public buffered_index_output {
 
     try {
       return fs_index_output::make<fs_index_output>(std::move(handle));
-    } catch(...) {
+    } catch (...) {
     }
 
     return nullptr;
@@ -203,12 +202,14 @@ class fs_index_output : public buffered_index_output {
   virtual void flush_buffer(const byte_type* b, size_t len) override {
     assert(handle);
 
-    const auto len_written = irs::file_utils::fwrite(handle.get(), b, sizeof(byte_type) * len);
+    const auto len_written =
+      irs::file_utils::fwrite(handle.get(), b, sizeof(byte_type) * len);
     crc.process_bytes(b, len_written);
 
     if (len && len_written != len) {
       throw io_error(string_utils::to_string(
-        "failed to write buffer, written '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' bytes",
+        "failed to write buffer, written '" IR_SIZE_T_SPECIFIER
+        "' out of '" IR_SIZE_T_SPECIFIER "' bytes",
         len_written, len));
     }
   }
@@ -222,20 +223,19 @@ class fs_index_output : public buffered_index_output {
   byte_type buf_[1024];
   file_utils::handle_t handle;
   crc32c crc;
-}; // fs_index_output
+};  // fs_index_output
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class fs_index_input
 //////////////////////////////////////////////////////////////////////////////
-class pooled_fs_index_input; // predeclaration used by fs_index_input
+class pooled_fs_index_input;  // predeclaration used by fs_index_input
 class fs_index_input : public buffered_index_input {
  public:
   using buffered_index_input::read_internal;
 
   virtual int64_t checksum(size_t offset) const override final {
     // "read_internal" modifies pos_
-    auto restore_position = make_finally(
-        [pos = this->pos_, this]() noexcept {
+    auto restore_position = make_finally([pos = this->pos_, this]() noexcept {
       const_cast<fs_index_input*>(this)->pos_ = pos;
     });
 
@@ -245,7 +245,7 @@ class fs_index_input : public buffered_index_input {
     crc32c crc;
     byte_type buf[sizeof buf_];
 
-    for (auto pos = begin; pos < end; ) {
+    for (auto pos = begin; pos < end;) {
       const auto to_read = (std::min)(end - pos, sizeof buf);
       pos += const_cast<fs_index_input*>(this)->read_internal(buf, to_read);
       crc.process_bytes(buf, to_read);
@@ -254,25 +254,24 @@ class fs_index_input : public buffered_index_input {
     return crc.checksum();
   }
 
-  virtual ptr dup() const override {
-    return ptr(new fs_index_input(*this));
-  }
+  virtual ptr dup() const override { return ptr(new fs_index_input(*this)); }
 
-  static index_input::ptr open(
-      const file_path_t name, size_t pool_size, IOAdvice advice) noexcept {
+  static index_input::ptr open(const file_path_t name, size_t pool_size,
+                               IOAdvice advice) noexcept {
     assert(name);
 
     auto handle = file_handle::make();
     handle->posix_open_advice = get_posix_fadvice(advice);
-    handle->handle = irs::file_utils::open(name, irs::file_utils::OpenMode::Read, handle->posix_open_advice);
+    handle->handle = irs::file_utils::open(
+      name, irs::file_utils::OpenMode::Read, handle->posix_open_advice);
 
     if (nullptr == handle->handle) {
 #ifdef _WIN32
       IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s",
                     GetLastError(), irs::utf8_path{name}.c_str());
 #else
-      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s",
-                    errno, irs::utf8_path{name}.c_str());
+      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", errno,
+                    irs::utf8_path{name}.c_str());
 #endif
 
       return nullptr;
@@ -280,11 +279,11 @@ class fs_index_input : public buffered_index_input {
 
     uint64_t size;
     if (!file_utils::byte_size(size, *handle)) {
-      #ifdef _WIN32
-        auto error = GetLastError();
-      #else
-        auto error = errno;
-      #endif
+#ifdef _WIN32
+      auto error = GetLastError();
+#else
+      auto error = errno;
+#endif
 
       IR_FRMT_ERROR("Failed to get stat for input file, error: %d, path: %s",
                     error, irs::utf8_path{name}.c_str());
@@ -295,18 +294,14 @@ class fs_index_input : public buffered_index_input {
     handle->size = size;
 
     try {
-      return ptr(new fs_index_input(
-        std::move(handle),
-        pool_size));
-    } catch(...) {
+      return ptr(new fs_index_input(std::move(handle), pool_size));
+    } catch (...) {
     }
 
     return nullptr;
   }
 
-  virtual size_t length() const override {
-    return handle_->size;
-  }
+  virtual size_t length() const override { return handle_->size; }
 
   virtual ptr reopen() const override;
 
@@ -314,7 +309,8 @@ class fs_index_input : public buffered_index_input {
   virtual void seek_internal(size_t pos) override final {
     if (pos > handle_->size) {
       throw io_error(string_utils::to_string(
-        "seek out of range for input file, length '" IR_SIZE_T_SPECIFIER "', position '" IR_SIZE_T_SPECIFIER "'",
+        "seek out of range for input file, length '" IR_SIZE_T_SPECIFIER
+        "', position '" IR_SIZE_T_SPECIFIER "'",
         handle_->size, pos));
     }
 
@@ -329,9 +325,10 @@ class fs_index_input : public buffered_index_input {
 
     if (handle_->pos != pos_) {
       if (irs::file_utils::fseek(fd, static_cast<long>(pos_), SEEK_SET) != 0) {
-        throw io_error(string_utils::to_string(
-          "failed to seek to '" IR_SIZE_T_SPECIFIER "' for input file, error '%d'",
-          pos_, irs::file_utils::ferror(fd)));
+        throw io_error(
+          string_utils::to_string("failed to seek to '" IR_SIZE_T_SPECIFIER
+                                  "' for input file, error '%d'",
+                                  pos_, irs::file_utils::ferror(fd)));
       }
       handle_->pos = pos_;
     }
@@ -347,29 +344,23 @@ class fs_index_input : public buffered_index_input {
   friend pooled_fs_index_input;
 
   /* use shared wrapper here since we don't want to
-  * call "ftell" every time we need to know current 
-  * position */
+   * call "ftell" every time we need to know current
+   * position */
   struct file_handle {
     using ptr = std::shared_ptr<file_handle>;
 
-    static ptr make() {
-      return std::make_shared<file_handle>();
-    }
+    static ptr make() { return std::make_shared<file_handle>(); }
 
     operator void*() const { return handle.get(); }
 
     file_utils::handle_t handle; /* native file handle */
-    size_t size{}; /* file size */
-    size_t pos{}; /* current file position*/
-    int posix_open_advice{ IR_FADVICE_NORMAL };
-  }; // file_handle
+    size_t size{};               /* file size */
+    size_t pos{};                /* current file position*/
+    int posix_open_advice{IR_FADVICE_NORMAL};
+  };  // file_handle
 
-  fs_index_input(
-      file_handle::ptr&& handle,
-      size_t pool_size) noexcept
-    : handle_(std::move(handle)),
-      pool_size_(pool_size),
-      pos_(0) {
+  fs_index_input(file_handle::ptr&& handle, size_t pool_size) noexcept
+    : handle_(std::move(handle)), pool_size_(pool_size), pos_(0) {
     assert(handle_);
     buffered_index_input::reset(buf_, sizeof buf_, 0);
   }
@@ -384,10 +375,10 @@ class fs_index_input : public buffered_index_input {
   fs_index_input& operator=(const fs_index_input&) = delete;
 
   byte_type buf_[1024];
-  file_handle::ptr handle_; // shared file handle
-  size_t pool_size_; // size of pool for instances of pooled_fs_index_input
-  size_t pos_; // current input stream position
-}; // fs_index_input
+  file_handle::ptr handle_;  // shared file handle
+  size_t pool_size_;  // size of pool for instances of pooled_fs_index_input
+  size_t pos_;        // current input stream position
+};                    // fs_index_input
 
 class pooled_fs_index_input final : public fs_index_input {
  public:
@@ -412,20 +403,19 @@ class pooled_fs_index_input final : public fs_index_input {
 
   pooled_fs_index_input(const pooled_fs_index_input& in) = default;
   file_handle::ptr reopen(const file_handle& src) const;
-}; // pooled_fs_index_input
+};  // pooled_fs_index_input
 
 index_input::ptr fs_index_input::reopen() const {
   return memory::make_unique<pooled_fs_index_input>(*this);
 }
 
 pooled_fs_index_input::pooled_fs_index_input(const fs_index_input& in)
-  : fs_index_input(in),
-    fd_pool_(memory::make_shared<fd_pool_t>(pool_size_)) {
+  : fs_index_input(in), fd_pool_(memory::make_shared<fd_pool_t>(pool_size_)) {
   handle_ = reopen(*handle_);
 }
 
 pooled_fs_index_input::~pooled_fs_index_input() noexcept {
-  handle_.reset(); // release handle before the fs_pool_ is deallocated
+  handle_.reset();  // release handle before the fs_pool_ is deallocated
 }
 
 index_input::ptr pooled_fs_index_input::reopen() const {
@@ -433,19 +423,23 @@ index_input::ptr pooled_fs_index_input::reopen() const {
   assert(ptr);
 
   auto& in = static_cast<pooled_fs_index_input&>(*ptr);
-  in.handle_ = reopen(*handle_); // reserve a new handle from pool
+  in.handle_ = reopen(*handle_);  // reserve a new handle from pool
   assert(in.handle_ && in.handle_->handle);
 
   return ptr;
 }
 
-fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(const file_handle& src) const {
+fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
+  const file_handle& src) const {
   // reserve a new handle from the pool
   std::shared_ptr<fs_index_input::file_handle> handle{
     const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace()};
 
   if (!handle->handle) {
-    handle->handle = irs::file_utils::open(src, irs::file_utils::OpenMode::Read, src.posix_open_advice); // same permission as in fs_index_input::open(...)
+    handle->handle = irs::file_utils::open(
+      src, irs::file_utils::OpenMode::Read,
+      src
+        .posix_open_advice);  // same permission as in fs_index_input::open(...)
 
     if (!handle->handle) {
       // even win32 uses 'errno' for error codes in calls to file_open(...)
@@ -456,12 +450,13 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(const file_handle
 #else
         errno
 #endif
-      ));
+          ));
     }
     handle->posix_open_advice = src.posix_open_advice;
   }
 
-  const auto pos = irs::file_utils::ftell(handle->handle.get()); // match position of file descriptor
+  const auto pos = irs::file_utils::ftell(
+    handle->handle.get());  // match position of file descriptor
 
   if (pos < 0) {
     throw io_error(string_utils::to_string(
@@ -471,7 +466,7 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(const file_handle
 #else
       errno
 #endif
-    ));
+        ));
   }
 
   handle->pos = pos;
@@ -484,14 +479,11 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(const file_handle
 // --SECTION--                                       fs_directory implementation
 // -----------------------------------------------------------------------------
 
-fs_directory::fs_directory(
-    irs::utf8_path dir,
-    directory_attributes attrs,
-    size_t fd_pool_size)
+fs_directory::fs_directory(irs::utf8_path dir, directory_attributes attrs,
+                           size_t fd_pool_size)
   : attrs_{std::move(attrs)},
     dir_{std::move(dir)},
-    fd_pool_size_{fd_pool_size} {
-}
+    fd_pool_size_{fd_pool_size} {}
 
 index_output::ptr fs_directory::create(std::string_view name) noexcept {
   try {
@@ -501,30 +493,28 @@ index_output::ptr fs_directory::create(std::string_view name) noexcept {
     auto out = fs_index_output::open(path.c_str());
 
     if (!out) {
-      IR_FRMT_ERROR("Failed to open output file, path: %s", std::string{name}.c_str());
+      IR_FRMT_ERROR("Failed to open output file, path: %s",
+                    std::string{name}.c_str());
     }
 
     return out;
-  } catch(...) {
+  } catch (...) {
   }
 
   return nullptr;
 }
 
-const irs::utf8_path& fs_directory::directory() const noexcept {
-  return dir_;
-}
+const irs::utf8_path& fs_directory::directory() const noexcept { return dir_; }
 
-bool fs_directory::exists(
-    bool& result, std::string_view name) const noexcept {
+bool fs_directory::exists(bool& result, std::string_view name) const noexcept {
   auto path = dir_;
   path /= name;
 
   return file_utils::exists(result, path.c_str());
 }
 
-bool fs_directory::length(
-    uint64_t& result, std::string_view name) const noexcept {
+bool fs_directory::length(uint64_t& result,
+                          std::string_view name) const noexcept {
   auto path = dir_;
   path /= name;
 
@@ -535,9 +525,8 @@ index_lock::ptr fs_directory::make_lock(std::string_view name) noexcept {
   return index_lock::make<fs_lock>(dir_, name);
 }
 
-bool fs_directory::mtime(
-    std::time_t& result,
-    std::string_view name) const noexcept {
+bool fs_directory::mtime(std::time_t& result,
+                         std::string_view name) const noexcept {
   auto path = dir_;
   path /= name;
 
@@ -556,23 +545,20 @@ bool fs_directory::remove(std::string_view name) noexcept {
   return false;
 }
 
-index_input::ptr fs_directory::open(
-    std::string_view name,
-    IOAdvice advice) const noexcept {
+index_input::ptr fs_directory::open(std::string_view name,
+                                    IOAdvice advice) const noexcept {
   try {
     auto path = dir_;
     path /= name;
 
     return fs_index_input::open(path.c_str(), fd_pool_size_, advice);
-  } catch(...) {
+  } catch (...) {
   }
 
   return nullptr;
 }
 
-bool fs_directory::rename(
-    std::string_view src,
-    std::string_view dst) noexcept {
+bool fs_directory::rename(std::string_view src, std::string_view dst) noexcept {
   try {
     auto src_path = dir_;
     src_path /= src;
@@ -604,7 +590,7 @@ bool fs_directory::visit(const directory::visitor_f& visitor) const {
   };
 #else
   std::string filename;
-  auto dir_visitor = [&filename, &visitor] (const file_path_t name) {
+  auto dir_visitor = [&filename, &visitor](const file_path_t name) {
     filename.assign(name);
     return visitor(filename);
   };
@@ -622,13 +608,14 @@ bool fs_directory::sync(std::string_view name) noexcept {
       return true;
     }
 
-    #ifdef _WIN32
-      auto error = GetLastError();
-    #else
-      auto error = errno;
-    #endif
+#ifdef _WIN32
+    auto error = GetLastError();
+#else
+    auto error = errno;
+#endif
 
-    IR_FRMT_ERROR("Failed to sync file, error: %d, path: %s", error, path.u8string().c_str());
+    IR_FRMT_ERROR("Failed to sync file, error: %d, path: %s", error,
+                  path.u8string().c_str());
   } catch (...) {
     IR_FRMT_ERROR("Failed to sync file, name : %s", std::string{name}.c_str());
   }
@@ -638,4 +625,4 @@ bool fs_directory::sync(std::string_view name) noexcept {
 
 MSVC_ONLY(__pragma(warning(pop)))
 
-}
+}  // namespace iresearch
