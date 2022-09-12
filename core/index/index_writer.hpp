@@ -1190,7 +1190,7 @@ class index_writer : private util::noncopyable {
                           // retry is required (e.g. no free segments available)
 
   bool start(
-    progress_report_backback const& progress = nullptr);  // starts transaction
+    progress_report_callback const& progress = nullptr);  // starts transaction
   void finish();  // finishes transaction
   void abort();   // aborts transaction
 
