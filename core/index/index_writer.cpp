@@ -23,16 +23,16 @@
 
 #include "index_writer.hpp"
 
-#include <sstream>
-
 #include <absl/container/flat_hash_map.h>
 
-#include "shared.hpp"
+#include <sstream>
+
 #include "formats/format_utils.hpp"
 #include "index/comparer.hpp"
 #include "index/file_names.hpp"
 #include "index/merge_writer.hpp"
 #include "search/exclusion.hpp"
+#include "shared.hpp"
 #include "utils/bitvector.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
@@ -51,11 +51,10 @@ constexpr size_t kNonUpdateRecord = std::numeric_limits<size_t>::max();
 
 // do-nothing progress reporter, used as fallback if no other progress
 // reporter is used
-const index_writer::progress_report_callback no_progress = 
-    [](std::string_view /*phase*/, size_t /*current*/, size_t /*total*/) {
-  // intentionally do nothing
-};
-
+const index_writer::progress_report_callback no_progress =
+  [](std::string_view /*phase*/, size_t /*current*/, size_t /*total*/) {
+    // intentionally do nothing
+  };
 
 const column_info_provider_t kDefaultColumnInfo = [](string_ref) {
   // no compression, no encryption
@@ -2119,10 +2118,13 @@ index_writer::flush_pending(flush_context& ctx,
   return {std::move(segment_flush_locks), max_tick};
 }
 
-index_writer::pending_context_t index_writer::flush_all(progress_report_callback const& progress) {
+index_writer::pending_context_t index_writer::flush_all(
+  progress_report_callback const& progress_callback) {
   REGISTER_TIMER_DETAILED();
 
-  assert(progress);
+  auto const& progress =
+    (progress_callback != nullptr ? progress_callback : no_progress);
+
   bool modified = !type_limits<type_t::index_gen_t>::valid(meta_.last_gen_);
   sync_context to_sync;
   document_mask docs_mask;
@@ -2174,7 +2176,8 @@ index_writer::pending_context_t index_writer::flush_all(progress_report_callback
 
   for (auto& existing_segment : meta_) {
     // report progress
-    progress("stage1", current_segment_index, meta_.size());
+    progress("Stage 1: Apply removals to the existing segments",
+             current_segment_index, meta_.size());
     ++current_segment_index;
 
     // skip already masked segments
@@ -2213,7 +2216,7 @@ index_writer::pending_context_t index_writer::flush_all(progress_report_callback
         cached_readers_,  // reader cache for segments
         segment.meta);
     }
-      
+
     ++current_segment_index;
 
     // write docs_mask if masks added, if all docs are masked then mask segment
@@ -2247,7 +2250,8 @@ index_writer::pending_context_t index_writer::flush_all(progress_report_callback
   size_t pending_candidates_count = 0;
   for (auto& pending_segment : ctx->pending_segments_) {
     // report progress
-    progress("stage2", current_pending_segments_index, ctx->pending_segments_.size());
+    progress("Stage 2: Handling consolidated/imported segments",
+             current_pending_segments_index, ctx->pending_segments_.size());
     ++current_pending_segments_index;
 
     // pending consolidation
@@ -2423,9 +2427,10 @@ index_writer::pending_context_t index_writer::flush_all(progress_report_callback
   {
     // count total number of segments once
     size_t total_pending_segment_context_segments = 0;
-    for (auto& pending_segment_context: ctx->pending_segment_contexts_) {
+    for (auto& pending_segment_context : ctx->pending_segment_contexts_) {
       if (pending_segment_context.segment_) {
-        total_pending_segment_context_segments += pending_segment_context.segment_->flushed_.size();
+        total_pending_segment_context_segments +=
+          pending_segment_context.segment_->flushed_.size();
       }
     }
 
@@ -2437,7 +2442,7 @@ index_writer::pending_context_t index_writer::flush_all(progress_report_callback
       if (!pending_segment_context.segment_) {
         continue;  // skip empty segments
       }
-      
+
       size_t flushed_docs_count = 0;
       auto flushed_doc_id_end =
         pending_segment_context.doc_id_end_;  // was updated after flush
@@ -2448,7 +2453,9 @@ index_writer::pending_context_t index_writer::flush_all(progress_report_callback
       // process individually each flushed segment_meta from the segment_context
       for (auto& flushed : pending_segment_context.segment_->flushed_) {
         // report progress
-        progress("stage3", current_pending_segment_context_segments, total_pending_segment_context_segments);
+        progress("Stage 3: Creating new segments",
+                 current_pending_segment_context_segments,
+                 total_pending_segment_context_segments);
         ++current_pending_segment_context_segments;
 
         auto flushed_docs_start = flushed_docs_count;
@@ -2561,9 +2568,10 @@ index_writer::pending_context_t index_writer::flush_all(progress_report_callback
     // altogether
     size_t current_segment_ctxs = 0;
     for (auto& segment_ctx : segment_ctxs) {
-      // report progress - note: from the code, we are still a part of stage 3, but we need
-      // to report something different here, i.e. "stage 4"
-      progress("stage4", current_segment_ctxs, segment_ctxs.size());
+      // report progress - note: from the code, we are still a part of stage 3,
+      // but we need to report something different here, i.e. "stage 4"
+      progress("Stage 4: Applying removals for new segmets",
+               current_segment_ctxs, segment_ctxs.size());
       ++current_segment_ctxs;
 
       // if have a writer with potential update-replacement records then check
@@ -2632,7 +2640,7 @@ bool index_writer::start(progress_report_callback const& progress) {
     return false;
   }
 
-  auto to_commit = flush_all(progress != nullptr ? progress : no_progress);
+  auto to_commit = flush_all(progress);
 
   if (!to_commit) {
     // nothing to commit, no transaction started
