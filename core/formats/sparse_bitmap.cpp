@@ -241,9 +241,16 @@ struct container_iterator<BT_DENSE, false> {
         ctx.word = self->in_->read_long();
       } else {
         ctx.u64data += delta;
-        ctx.word = ctx.u64data[-1];
+        if constexpr (AT_DIRECT_ALIGNED == Access) {
+          ctx.word = ctx.u64data[-1];
+        } else {
+          static_assert(AT_DIRECT == Access);
+          std::memcpy(&ctx.word, &ctx.u64data[-1], sizeof ctx.word);
+        }
+        if constexpr (!is_big_endian()) {
+          ctx.word = numeric_utils::numeric_traits<size_t>::ntoh(ctx.word);
+        }
       }
-
       ctx.popcnt = self->index_ + popcnt + std::popcount(ctx.word);
       ctx.word_idx = word_idx;
     }
