@@ -1,6 +1,11 @@
 master
 -------------------------
 
+* Allow specifying progress report callback for
+  `index_writer::commit`/`index_writer::start`.
+
+* Allow getting offsets from phrase and ngram similarity queries.
+
 * Allow specifying minimum number of matches for `by_terms` filter.
 
 * Add `MinHashAnalyzer` capable of producing tokens composing a MinHash
