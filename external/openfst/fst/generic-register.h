@@ -18,14 +18,15 @@
 #ifndef FST_GENERIC_REGISTER_H_
 #define FST_GENERIC_REGISTER_H_
 
-#include <fst/compat.h>
-#include <fst/lock.h>
-#include <fst/log.h>
-
 #include <functional>
+
+#include <fst/compat.h>
+#include <string_view>
+#include <fst/lock.h>
 #include <map>
 #include <string>
-#include <string_view>
+
+#include <fst/log.h>
 
 // Generic class representing a globally-stored correspondence between
 // objects of KeyType and EntryType.
@@ -43,18 +44,18 @@
 namespace fst {
 
 namespace internal {
-template<class T>
+template <class T>
 struct KeyLookupReferenceType {
   using type = const T &;
 };
 
-template<>
+template <>
 struct KeyLookupReferenceType<std::string> {
   using type = std::string_view;
 };
 }  // namespace internal
 
-template<class KeyType, class EntryType, class RegisterType>
+template <class KeyType, class EntryType, class RegisterType>
 class GenericRegister {
  public:
   using Key = KeyType;
@@ -85,7 +86,7 @@ class GenericRegister {
  protected:
   // Override this if you want to be able to load missing definitions from
   // shared object files.
-  virtual EntryType LoadEntryFromSharedObject(const KeyType &key) const {
+  virtual EntryType LoadEntryFromSharedObject(KeyLookupRef key) const {
     return EntryType();
   }
 
@@ -112,7 +113,7 @@ class GenericRegister {
 // Entry, and have appropriate static GetRegister() and instance SetEntry()
 // functions. An easy way to accomplish this is to have RegisterType be the
 // type of a subclass of GenericRegister.
-template<class RegisterType>
+template <class RegisterType>
 class GenericRegisterer {
  public:
   using Key = typename RegisterType::Key;
