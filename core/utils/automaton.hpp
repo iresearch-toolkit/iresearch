@@ -62,7 +62,7 @@ class BooleanWeight {
   static constexpr BooleanWeight One() noexcept { return true; }
   static constexpr BooleanWeight NoWeight() noexcept { return {}; }
 
-  static constexpr uint64 Properties() noexcept {
+  static constexpr std::uint64_t Properties() noexcept {
     return kLeftSemiring | kRightSemiring | kCommutative | kIdempotent | kPath;
   }
 
@@ -257,8 +257,9 @@ struct Transition : RangeLabel {
 }  // namespace fsa
 
 template<typename W>
-uint64 ComputeProperties(const Fst<fsa::Transition<W>>& fst, uint64 mask,
-                         uint64* known, bool use_stored) {
+std::uint64_t ComputeProperties(const Fst<fsa::Transition<W>>& fst,
+                                std::uint64_t mask, std::uint64_t* known,
+                                bool use_stored) {
   using Arc = fsa::Transition<W>;
   using Label = typename Arc::Label;
   using StateId = typename Arc::StateId;
@@ -277,13 +278,13 @@ uint64 ComputeProperties(const Fst<fsa::Transition<W>>& fst, uint64 mask,
   }
   // Computes (trinary) properties explicitly.
   // Initialize with binary properties (already known).
-  uint64 comp_props = fst_props & kBinaryProperties;
+  std::uint64_t comp_props = fst_props & kBinaryProperties;
   // Computes these trinary properties with a DFS. We compute only those that
   // need a DFS here, since we otherwise would like to avoid a DFS since its
   // stack could grow large.
-  uint64 dfs_props = kCyclic | kAcyclic | kInitialCyclic | kInitialAcyclic |
-                     kAccessible | kNotAccessible | kCoAccessible |
-                     kNotCoAccessible;
+  std::uint64_t dfs_props = kCyclic | kAcyclic | kInitialCyclic |
+                            kInitialAcyclic | kAccessible | kNotAccessible |
+                            kCoAccessible | kNotCoAccessible;
   std::vector<StateId> scc;
   if (mask & (dfs_props | kWeightedCycles | kUnweightedCycles)) {
     SccVisitor<Arc> scc_visitor(&scc, nullptr, nullptr, &comp_props);
@@ -416,7 +417,7 @@ uint64 ComputeProperties(const Fst<fsa::Transition<W>>& fst, uint64 mask,
     }
   }
   if (known) {
-    *known = KnownProperties(comp_props);
+    *known = internal::KnownProperties(comp_props);
   }
   return comp_props;
 }

@@ -144,7 +144,7 @@ class SortedRangeExplicitMatcher : public MatcherBase<typename F::Arc> {
 
   const FST &GetFst() const override { return fst_; }
 
-  uint64 Properties(uint64 inprops) const override {
+  std::uint64_t Properties(std::uint64_t inprops) const override {
     return inprops | (error_ ? kError : 0);
   }
 

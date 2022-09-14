@@ -103,7 +103,7 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
   std::istream& Read(std::istream& strm) {
     // read size
     // use varlen encoding since weights are usually small
-    uint32 size;
+    std::uint32_t size;
     {
       auto it = irs::irstd::make_istream_iterator(strm);
       size = irs::vread<uint32_t>(it);
@@ -119,7 +119,7 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
   std::ostream& Write(std::ostream& strm) const {
     // write size
     // use varlen encoding since weights are usually small
-    const uint32 size = static_cast<uint32_t>(Size());
+    const std::uint32_t size = static_cast<uint32_t>(Size());
     {
       auto it = irs::irstd::make_ostream_iterator(strm);
       irs::vwrite(it, size);
@@ -142,7 +142,7 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     return ReverseWeight(str_.rbegin(), str_.rend());
   }
 
-  static uint64 Properties() noexcept {
+  static std::uint64_t Properties() noexcept {
     static constexpr auto props = kLeftSemiring | kIdempotent;
     return props;
   }
