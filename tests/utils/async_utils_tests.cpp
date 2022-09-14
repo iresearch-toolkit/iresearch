@@ -71,7 +71,6 @@ using namespace std::chrono_literals;
 
 TEST_F(async_utils_tests, test_busywait_mutex_mt) {
   typedef irs::async_utils::busywait_mutex mutex_t;
-  // lock + unlock
   {
     mutex_t mutex;
     std::lock_guard<mutex_t> lock(mutex);
@@ -79,19 +78,12 @@ TEST_F(async_utils_tests, test_busywait_mutex_mt) {
     thread.join();
   }
 
-  // recursive lock
   {
     mutex_t mutex;
     std::lock_guard<mutex_t> lock(mutex);
     ASSERT_FALSE(mutex.try_lock());
-#ifdef IRESEARCH_DEBUG
-    ASSERT_DEATH(mutex.lock(), "");
-#else
-    // for non-debug mutex.lock() will never return
-#endif
   }
 
-  // unlock not owned
   {
     std::condition_variable cond;
     std::mutex ctrl_mtx;
@@ -106,11 +98,6 @@ TEST_F(async_utils_tests, test_busywait_mutex_mt) {
     });
 
     ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 1000ms));
-#ifdef IRESEARCH_DEBUG
-    ASSERT_DEATH(mutex.unlock(), "");
-#else
-    // for non-debug this will be a NOOP
-#endif
     lock.unlock();
     cond.notify_all();
     thread.join();

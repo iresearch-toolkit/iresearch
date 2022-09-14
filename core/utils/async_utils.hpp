@@ -44,15 +44,12 @@ namespace async_utils {
 //////////////////////////////////////////////////////////////////////////////
 class busywait_mutex final {
  public:
-  busywait_mutex();
-  ~busywait_mutex();
-
-  void lock();
-  bool try_lock();
-  void unlock();
+  void lock() noexcept;
+  bool try_lock() noexcept;
+  void unlock() noexcept;
 
  private:
-  std::atomic<std::thread::id> owner_;
+  std::atomic<bool> locked_{false};
 };
 
 class thread_pool {

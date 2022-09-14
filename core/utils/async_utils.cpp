@@ -35,43 +35,22 @@ using namespace std::chrono_literals;
 namespace iresearch {
 namespace async_utils {
 
-busywait_mutex::busywait_mutex() : owner_(std::thread::id()) {}
-
-busywait_mutex::~busywait_mutex() {
-  assert(try_lock());  // ensure destroying an unlocked mutex
-}
-
-void busywait_mutex::lock() {
-  auto this_thread_id = std::this_thread::get_id();
-
-  for (auto expected = std::thread::id();
-       !owner_.compare_exchange_strong(expected, this_thread_id);
-       expected = std::thread::id()) {
-    assert(this_thread_id != expected);  // recursive lock acquisition attempted
+void busywait_mutex::lock() noexcept {
+  while (!try_lock()) {
     std::this_thread::yield();
   }
 }
 
-bool busywait_mutex::try_lock() {
-  auto this_thread_id = std::this_thread::get_id();
-  auto expected = std::thread::id();
-
-  return owner_.compare_exchange_strong(expected, this_thread_id);
+bool busywait_mutex::try_lock() noexcept {
+  bool expected = false;
+  return locked_.load(std::memory_order_relaxed) == expected &&
+         locked_.compare_exchange_strong(expected, true,
+                                         std::memory_order_acquire,
+                                         std::memory_order_relaxed);
 }
 
-void busywait_mutex::unlock() {
-  auto expected = std::this_thread::get_id();
-
-  if (!owner_.compare_exchange_strong(expected, std::thread::id())) {
-    // try again since std::thread::id is garanteed to be '==' but may not be
-    // bit equal
-    if (expected == std::this_thread::get_id() &&
-        owner_.compare_exchange_strong(expected, std::thread::id())) {
-      return;
-    }
-
-    assert(false);  // lock not owned by current thread
-  }
+void busywait_mutex::unlock() noexcept {
+  locked_.store(false, std::memory_order_release);
 }
 
 thread_pool::thread_pool(size_t max_threads /*= 0*/, size_t max_idle /*= 0*/,
