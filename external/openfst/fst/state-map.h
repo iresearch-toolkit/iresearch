@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -9,6 +23,8 @@
 #define FST_STATE_MAP_H_
 
 #include <algorithm>
+#include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -18,7 +34,6 @@
 #include <fst/cache.h>
 #include <fst/mutable-fst.h>
 
-
 namespace fst {
 
 // StateMapper Interface. The class determines how states are mapped; useful for
@@ -26,31 +41,31 @@ namespace fst {
 //
 // class StateMapper {
 //  public:
-//   using FromArc = A;
-//   using ToArc = B;
+//   using FromArc = ...;
+//   using ToArc = ...;
 //
 //   // Typical constructor.
-//   StateMapper(const Fst<A> &fst);
+//   StateMapper(const Fst<FromArc> &fst);
 //
 //   // Required copy constructor that allows updating FST argument;
 //   // pass only if relevant and changed.
-//   StateMapper(const StateMapper &mapper, const Fst<A> *fst = 0);
+//   StateMapper(const StateMapper &mapper, const Fst<FromArc> *fst = 0);
 //
 //   // Specifies initial state of result.
-//   B::StateId Start() const;
+//   ToArc::StateId Start() const;
 //   // Specifies state's final weight in result.
-//   B::Weight Final(B::StateId state) const;
+//   ToArc::Weight Final(ToArc::StateId state) const;
 //
 //   // These methods iterate through a state's arcs in result.
 //
 //   // Specifies state to iterate over.
-//   void SetState(B::StateId state);
+//   void SetState(ToArc::StateId state);
 //
 //   // End of arcs?
 //   bool Done() const;
 //
 //   // Current arc.
-//   const B &Value() const;
+//   const ToArc &Value() const;
 //
 //   // Advances to next arc (when !Done)
 //   void Next();
@@ -63,7 +78,7 @@ namespace fst {
 //
 //   // This specifies the known properties of an FST mapped by this
 //   // mapper. It takes as argument the input FST's known properties.
-//   uint64 Properties(uint64 props) const;
+//   uint64_t Properties(uint64_t props) const;
 // };
 //
 // We include a various state map versions below. One dimension of variation is
@@ -162,8 +177,8 @@ class StateMapStateIteratorBase : public StateIteratorBase<B> {
   using Arc = B;
   using StateId = typename Arc::StateId;
 
-  explicit StateMapStateIteratorBase(StateIteratorBase<A> *base)
-      : base_(base) {}
+  explicit StateMapStateIteratorBase(std::unique_ptr<StateIteratorBase<A>> base)
+      : base_(std::move(base)) {}
 
   bool Done() const final { return base_->Done(); }
 
@@ -261,8 +276,9 @@ class StateMapFstImpl : public CacheImpl<B> {
   void InitStateIterator(StateIteratorData<B> *datb) const {
     StateIteratorData<A> data;
     fst_->InitStateIterator(&data);
-    datb->base = data.base ? new StateMapStateIteratorBase<A, B>(data.base)
-        : nullptr;
+    datb->base = data.base ? std::make_unique<StateMapStateIteratorBase<A, B>>(
+                                 std::move(data.base))
+                           : nullptr;
     datb->nstates = data.nstates;
   }
 
@@ -271,9 +287,9 @@ class StateMapFstImpl : public CacheImpl<B> {
     CacheImpl<B>::InitArcIterator(state, data);
   }
 
-  uint64 Properties() const override { return Properties(kFstProperties); }
+  uint64_t Properties() const override { return Properties(kFstProperties); }
 
-  uint64 Properties(uint64 mask) const override {
+  uint64_t Properties(uint64_t mask) const override {
     if ((mask & kError) && (fst_->Properties(kError, false) ||
                             (mapper_->Properties(0) & kError))) {
       SetProperties(kError, kError);
@@ -345,12 +361,12 @@ class StateMapFst : public ImplToFst<internal::StateMapFstImpl<A, B, C>> {
             std::make_shared<Impl>(fst, mapper, StateMapFstOptions())) {}
 
   // See Fst<>::Copy() for doc.
-  StateMapFst(const StateMapFst<A, B, C> &fst, bool safe = false)
+  StateMapFst(const StateMapFst &fst, bool safe = false)
       : ImplToFst<Impl>(fst, safe) {}
 
   // Get a copy of this StateMapFst. See Fst<>::Copy() for further doc.
-  StateMapFst<A, B, C> *Copy(bool safe = false) const override {
-    return new StateMapFst<A, B, C>(*this, safe);
+  StateMapFst *Copy(bool safe = false) const override {
+    return new StateMapFst(*this, safe);
   }
 
   void InitStateIterator(StateIteratorData<B> *data) const override {
@@ -406,7 +422,7 @@ class IdentityStateMapper {
   Weight Final(StateId state) const { return fst_.Final(state); }
 
   void SetState(StateId state) {
-    aiter_.reset(new ArcIterator<Fst<Arc>>(fst_, state));
+    aiter_ = std::make_unique<ArcIterator<Fst<Arc>>>(fst_, state);
   }
 
   bool Done() const { return aiter_->Done(); }
@@ -423,7 +439,7 @@ class IdentityStateMapper {
     return MAP_COPY_SYMBOLS;
   }
 
-  uint64 Properties(uint64 props) const { return props; }
+  uint64_t Properties(uint64_t props) const { return props; }
 
  private:
   const Fst<Arc> &fst_;
@@ -487,7 +503,7 @@ class ArcSumMapper {
     return MAP_COPY_SYMBOLS;
   }
 
-  uint64 Properties(uint64 props) const {
+  uint64_t Properties(uint64_t props) const {
     return props & kArcSortProperties & kDeleteArcsProperties &
            kWeightInvariantProperties;
   }
@@ -569,7 +585,7 @@ class ArcUniqueMapper {
     return MAP_COPY_SYMBOLS;
   }
 
-  uint64 Properties(uint64 props) const {
+  uint64_t Properties(uint64_t props) const {
     return props & kArcSortProperties & kDeleteArcsProperties;
   }
 

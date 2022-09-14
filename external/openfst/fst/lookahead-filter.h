@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -7,6 +21,7 @@
 #ifndef FST_LOOKAHEAD_FILTER_H_
 #define FST_LOOKAHEAD_FILTER_H_
 
+#include <cstdint>
 #include <vector>
 
 #include <fst/log.h>
@@ -217,13 +232,13 @@ class LookAheadComposeFilter {
     return selector_;
   }
 
-  uint64 Properties(uint64 inprops) const {
+  uint64_t Properties(uint64_t inprops) const {
     auto outprops = filter_.Properties(inprops);
     if (lookahead_type_ == MATCH_NONE) outprops |= kError;
     return outprops;
   }
 
-  uint32 LookAheadFlags() const { return flags_; }
+  uint32_t LookAheadFlags() const { return flags_; }
 
   bool LookAheadArc() const { return lookahead_arc_; }
 
@@ -256,7 +271,7 @@ class LookAheadComposeFilter {
   Filter filter_;             // Underlying filter.
   MatchType lookahead_type_;  // Lookahead match type.
   LookAheadSelector<Matcher1, Matcher2, MT> selector_;
-  uint32 flags_;                // Lookahead flags.
+  uint32_t flags_;              // Lookahead flags.
   mutable bool lookahead_arc_;  // Look-ahead performed at last FilterArc()?
 
   LookAheadComposeFilter &operator=(const LookAheadComposeFilter &) = delete;
@@ -308,7 +323,7 @@ class PushWeightsComposeFilter {
     if (!(LookAheadFlags() & kLookAheadWeight)) {
       return FilterState(fs1, FilterState2(Weight::One()));
     }
-    const auto &lweight = filter_.LookAheadArc()
+    const auto &lweight = LookAheadArc()
                               ? Selector().GetMatcher()->LookAheadWeight()
                               : Weight::One();
     const auto &fs2 = fs_.GetState2();
@@ -339,13 +354,13 @@ class PushWeightsComposeFilter {
     return filter_.Selector();
   }
 
-  uint32 LookAheadFlags() const { return filter_.LookAheadFlags(); }
+  uint32_t LookAheadFlags() const { return filter_.LookAheadFlags(); }
 
   bool LookAheadArc() const { return filter_.LookAheadArc(); }
 
   bool LookAheadOutput() const { return filter_.LookAheadOutput(); }
 
-  uint64 Properties(uint64 props) const {
+  uint64_t Properties(uint64_t props) const {
     return filter_.Properties(props) & kWeightInvariantProperties;
   }
 
@@ -387,10 +402,10 @@ class PushLabelsComposeFilter {
         fst2_(filter_.GetMatcher2()->GetFst()),
         matcher1_(fst1_, MATCH_OUTPUT,
                   filter_.LookAheadOutput() ? kMultiEpsList : kMultiEpsLoop,
-                  filter_.GetMatcher1(), false),
+                  filter_.GetMatcher1(), /*own_matcher=*/false),
         matcher2_(fst2_, MATCH_INPUT,
                   filter_.LookAheadOutput() ? kMultiEpsLoop : kMultiEpsList,
-                  filter_.GetMatcher2(), false) {}
+                  filter_.GetMatcher2(), /*own_matcher=*/false) {}
 
   PushLabelsComposeFilter(
       const PushLabelsComposeFilter<Filter, M1, M2, MT> &filter,
@@ -401,10 +416,10 @@ class PushLabelsComposeFilter {
         fst2_(filter_.GetMatcher2()->GetFst()),
         matcher1_(fst1_, MATCH_OUTPUT,
                   filter_.LookAheadOutput() ? kMultiEpsList : kMultiEpsLoop,
-                  filter_.GetMatcher1(), false),
+                  filter_.GetMatcher1(), /*own_matcher=*/false),
         matcher2_(fst2_, MATCH_INPUT,
                   filter_.LookAheadOutput() ? kMultiEpsLoop : kMultiEpsList,
-                  filter_.GetMatcher2(), false) {}
+                  filter_.GetMatcher2(), /*own_matcher=*/false) {}
 
   FilterState Start() const {
     return FilterState(filter_.Start(), FilterState2(kNoLabel));
@@ -438,8 +453,7 @@ class PushLabelsComposeFilter {
     }
     const auto &fs1 = filter_.FilterArc(arc1, arc2);
     if (fs1 == FilterState1::NoState()) return FilterState::NoState();
-    if (!filter_.LookAheadArc())
-      return FilterState(fs1, FilterState2(kNoLabel));
+    if (!LookAheadArc()) return FilterState(fs1, FilterState2(kNoLabel));
     return LookAheadOutput() ? PushLabelFilterArc(arc1, arc2, fs1)
                              : PushLabelFilterArc(arc2, arc1, fs1);
   }
@@ -460,7 +474,7 @@ class PushLabelsComposeFilter {
 
   Matcher2 *GetMatcher2() { return &matcher2_; }
 
-  uint64 Properties(uint64 iprops) const {
+  uint64_t Properties(uint64_t iprops) const {
     const auto oprops = filter_.Properties(iprops);
     if (LookAheadOutput()) {
       return oprops & kOLabelInvariantProperties;
@@ -523,7 +537,7 @@ class PushLabelsComposeFilter {
     }
   }
 
-  uint32 LookAheadFlags() const { return filter_.LookAheadFlags(); }
+  uint32_t LookAheadFlags() const { return filter_.LookAheadFlags(); }
 
   bool LookAheadArc() const { return filter_.LookAheadArc(); }
 

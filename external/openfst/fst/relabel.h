@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -6,8 +20,8 @@
 #ifndef FST_RELABEL_H_
 #define FST_RELABEL_H_
 
+#include <cstdint>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -15,7 +29,6 @@
 
 #include <fst/cache.h>
 #include <fst/test-properties.h>
-
 
 #include <unordered_map>
 
@@ -44,6 +57,10 @@ void Relabel(
     for (MutableArcIterator<MutableFst<Arc>> aiter(fst, siter.Value());
          !aiter.Done(); aiter.Next()) {
       auto arc = aiter.Value();
+      // dense_hash_map does not support find on the empty_key_val.
+      // These labels should never be in an FST anyway.
+      DCHECK_NE(arc.ilabel, kNoLabel);
+      DCHECK_NE(arc.olabel, kNoLabel);
       // Relabels input.
       auto it = input_map.find(arc.ilabel);
       if (it != input_map.end()) {
@@ -98,11 +115,10 @@ void Relabel(MutableFst<Arc> *fst, const SymbolTable *old_isymbols,
       }
     }
 
-    for (SymbolTableIterator siter(*old_isymbols); !siter.Done();
-         siter.Next()) {
-      const auto old_index = siter.Value();
-      const auto symbol = siter.Symbol();
-      auto new_index = new_isymbols->Find(siter.Symbol());
+    for (const auto &sitem : *old_isymbols) {
+      const auto old_index = sitem.Label();
+      const auto symbol = sitem.Symbol();
+      auto new_index = new_isymbols->Find(symbol);
       if (new_index == kNoLabel) {
         if (unknown_ilabel != kNoLabel) {
           new_index = unknown_ilabel;
@@ -133,11 +149,10 @@ void Relabel(MutableFst<Arc> *fst, const SymbolTable *old_isymbols,
         ++num_missing_syms;
       }
     }
-    for (SymbolTableIterator siter(*old_osymbols); !siter.Done();
-         siter.Next()) {
-      const auto old_index = siter.Value();
-      const auto symbol = siter.Symbol();
-      auto new_index = new_osymbols->Find(siter.Symbol());
+    for (const auto &sitem : *old_osymbols) {
+      const auto old_index = sitem.Label();
+      const auto symbol = sitem.Symbol();
+      auto new_index = new_osymbols->Find(symbol);
       if (new_index == kNoLabel) {
         if (unknown_olabel != kNoLabel) {
           new_index = unknown_olabel;
@@ -166,13 +181,10 @@ void Relabel(MutableFst<Arc> *fst, const SymbolTable *old_isymbols,
              const SymbolTable *new_isymbols, bool attach_new_isymbols,
              const SymbolTable *old_osymbols, const SymbolTable *new_osymbols,
              bool attach_new_osymbols) {
-  Relabel(fst,
-          old_isymbols, new_isymbols, "" /* no unknown isymbol */,
-          attach_new_isymbols,
-          old_osymbols, new_osymbols, "" /* no unknown ioymbol */,
-          attach_new_osymbols);
+  Relabel(fst, old_isymbols, new_isymbols, "" /* no unknown isymbol */,
+          attach_new_isymbols, old_osymbols, new_osymbols,
+          "" /* no unknown osymbol */, attach_new_osymbols);
 }
-
 
 // Relabels either the input labels or output labels. The old to
 // new labels are specified using symbol tables. Any label associations not
@@ -235,12 +247,10 @@ class RelabelFstImpl : public CacheImpl<Arc> {
     SetType("relabel");
   }
 
-  RelabelFstImpl(const Fst<Arc> &fst,
-                 const SymbolTable *old_isymbols,
+  RelabelFstImpl(const Fst<Arc> &fst, const SymbolTable *old_isymbols,
                  const SymbolTable *new_isymbols,
                  const SymbolTable *old_osymbols,
-                 const SymbolTable *new_osymbols,
-                 const RelabelFstOptions &opts)
+                 const SymbolTable *new_osymbols, const RelabelFstOptions &opts)
       : CacheImpl<Arc>(opts),
         fst_(fst.Copy()),
         relabel_input_(false),
@@ -251,18 +261,16 @@ class RelabelFstImpl : public CacheImpl<Arc> {
     SetOutputSymbols(old_osymbols);
     if (old_isymbols && new_isymbols &&
         old_isymbols->LabeledCheckSum() != new_isymbols->LabeledCheckSum()) {
-      for (SymbolTableIterator siter(*old_isymbols); !siter.Done();
-           siter.Next()) {
-        input_map_[siter.Value()] = new_isymbols->Find(siter.Symbol());
+      for (const auto &sitem : *old_isymbols) {
+        input_map_[sitem.Label()] = new_isymbols->Find(sitem.Symbol());
       }
       SetInputSymbols(new_isymbols);
       relabel_input_ = true;
     }
     if (old_osymbols && new_osymbols &&
         old_osymbols->LabeledCheckSum() != new_osymbols->LabeledCheckSum()) {
-      for (SymbolTableIterator siter(*old_osymbols); !siter.Done();
-           siter.Next()) {
-        output_map_[siter.Value()] = new_osymbols->Find(siter.Symbol());
+      for (const auto &sitem : *old_osymbols) {
+        output_map_[sitem.Label()] = new_osymbols->Find(sitem.Symbol());
       }
       SetOutputSymbols(new_osymbols);
       relabel_output_ = true;
@@ -307,10 +315,10 @@ class RelabelFstImpl : public CacheImpl<Arc> {
     return CacheImpl<Arc>::NumOutputEpsilons(s);
   }
 
-  uint64 Properties() const override { return Properties(kFstProperties); }
+  uint64_t Properties() const override { return Properties(kFstProperties); }
 
   // Sets error if found, and returns other FST impl properties.
-  uint64 Properties(uint64 mask) const override {
+  uint64_t Properties(uint64_t mask) const override {
     if ((mask & kError) && fst_->Properties(kError, false)) {
       SetProperties(kError, kError);
     }
@@ -390,12 +398,12 @@ class RelabelFst : public ImplToFst<internal::RelabelFstImpl<A>> {
                                                opts)) {}
 
   // See Fst<>::Copy() for doc.
-  RelabelFst(const RelabelFst<Arc> &fst, bool safe = false)
+  RelabelFst(const RelabelFst &fst, bool safe = false)
       : ImplToFst<Impl>(fst, safe) {}
 
   // Gets a copy of this RelabelFst. See Fst<>::Copy() for further doc.
-  RelabelFst<Arc> *Copy(bool safe = false) const override {
-    return new RelabelFst<Arc>(*this, safe);
+  RelabelFst *Copy(bool safe = false) const override {
+    return new RelabelFst(*this, safe);
   }
 
   void InitStateIterator(StateIteratorData<Arc> *data) const override;
@@ -437,7 +445,7 @@ class StateIterator<RelabelFst<Arc>> : public StateIteratorBase<Arc> {
   }
 
  private:
-  const internal::RelabelFstImpl<Arc>* impl_;
+  const internal::RelabelFstImpl<Arc> *impl_;
   StateIterator<Fst<Arc>> siter_;
   StateId s_;
 
@@ -460,7 +468,7 @@ class ArcIterator<RelabelFst<Arc>> : public CacheArcIterator<RelabelFst<Arc>> {
 template <class Arc>
 inline void RelabelFst<Arc>::InitStateIterator(
     StateIteratorData<Arc> *data) const {
-  data->base = new StateIterator<RelabelFst<Arc>>(*this);
+  data->base = std::make_unique<StateIterator<RelabelFst<Arc>>>(*this);
 }
 
 // Useful alias when using StdArc.

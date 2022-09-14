@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -23,15 +37,15 @@ namespace fst {
 namespace internal {
 
 // Orders weights for equality checking; delta is ignored.
-template <class Weight, typename std::enable_if<
-                            IsIdempotent<Weight>::value>::type * = nullptr>
+template <class Weight,
+          typename std::enable_if_t<IsIdempotent<Weight>::value> * = nullptr>
 bool WeightCompare(const Weight &w1, const Weight &w2, float, bool *) {
   static const NaturalLess<Weight> less;
   return less(w1, w2);
 }
 
-template <class Weight, typename std::enable_if<
-                            !IsIdempotent<Weight>::value>::type * = nullptr>
+template <class Weight,
+          typename std::enable_if_t<!IsIdempotent<Weight>::value> * = nullptr>
 bool WeightCompare(const Weight &w1, const Weight &w2, float delta,
                    bool *error) {
   // No natural order; use hash.
@@ -71,11 +85,11 @@ class Isomorphism {
     }
     PairState(fst1_->Start(), fst2_->Start());
     while (!queue_.empty()) {
-      const auto &pr = queue_.front();
-      if (!IsIsomorphicState(pr.first, pr.second)) {
+      const auto &[state1, state2] = queue_.front();
+      if (!IsIsomorphicState(state1, state2)) {
         if (nondet_) {
           VLOG(1) << "Isomorphic: Non-determinism as an unweighted automaton. "
-                  << "state1: " << pr.first << " state2: " << pr.second;
+                  << "state1: " << state1 << " state2: " << state2;
           error_ = true;
         }
         return false;
@@ -129,19 +143,25 @@ class Isomorphism {
 
   std::unique_ptr<Fst<Arc>> fst1_;
   std::unique_ptr<Fst<Arc>> fst2_;
-  float delta_;                          // Weight equality delta.
-  std::vector<Arc> arcs1_;               // For sorting arcs on FST1.
-  std::vector<Arc> arcs2_;               // For sorting arcs on FST2.
-  std::vector<StateId> state_pairs_;     // Maintains state correspondences.
+  float delta_;                       // Weight equality delta.
+  std::vector<Arc> arcs1_;            // For sorting arcs on FST1.
+  std::vector<Arc> arcs2_;            // For sorting arcs on FST2.
+  std::vector<StateId> state_pairs_;  // Maintains state correspondences.
   std::queue<std::pair<StateId, StateId>> queue_;  // Queue of state pairs.
-  bool error_;                           // Error flag.
-  bool nondet_;                          // Nondeterminism detected.
+  bool error_;                                     // Error flag.
+  bool nondet_;                                    // Nondeterminism detected.
   ArcCompare comp_;
 };
 
 template <class Arc>
 bool Isomorphism<Arc>::IsIsomorphicState(StateId s1, StateId s2) {
-  if (!ApproxEqual(fst1_->Final(s1), fst2_->Final(s2), delta_)) return false;
+  if (!ApproxEqual(fst1_->Final(s1), fst2_->Final(s2), delta_)) {
+    VLOG(1) << "Isomorphic: Final weights not equal to within delta=" << delta_
+            << ": "
+            << "fst1.Final(" << s1 << ") = " << fst1_->Final(s1) << ", "
+            << "fst2.Final(" << s2 << ") = " << fst2_->Final(s2);
+    return false;
+  }
   const auto narcs1 = fst1_->NumArcs(s1);
   const auto narcs2 = fst2_->NumArcs(s2);
   if (narcs1 != narcs2) {
@@ -167,34 +187,36 @@ bool Isomorphism<Arc>::IsIsomorphicState(StateId s1, StateId s2) {
     const auto &arc2 = arcs2_[i];
     if (arc1.ilabel != arc2.ilabel) {
       VLOG(1) << "Isomorphic: ilabels not equal. "
-              << "arc1: *" << arc1.ilabel << "* " << arc1.olabel
-              << " " << arc1.weight << " " << arc1.nextstate
-              << "arc2: *" << arc2.ilabel << "* " << arc2.olabel
-              << " " << arc2.weight << " " << arc2.nextstate;
+              << "state1: " << s1 << " arc1: *" << arc1.ilabel << "* "
+              << arc1.olabel << " " << arc1.weight << " " << arc1.nextstate
+              << " state2: " << s2 << " arc2: *" << arc2.ilabel << "* "
+              << arc2.olabel << " " << arc2.weight << " " << arc2.nextstate;
       return false;
     }
     if (arc1.olabel != arc2.olabel) {
       VLOG(1) << "Isomorphic: olabels not equal. "
-              << "arc1: " << arc1.ilabel << " *" << arc1.olabel
-              << "* " << arc1.weight << " " << arc1.nextstate
-              << "arc2: " << arc2.ilabel << " *" << arc2.olabel
-              << "* " << arc2.weight << " " << arc2.nextstate;
+              << "state1: " << s1 << " arc1: " << arc1.ilabel << " *"
+              << arc1.olabel << "* " << arc1.weight << " " << arc1.nextstate
+              << " state2: " << s2 << " arc2: " << arc2.ilabel << " *"
+              << arc2.olabel << "* " << arc2.weight << " " << arc2.nextstate;
       return false;
     }
     if (!ApproxEqual(arc1.weight, arc2.weight, delta_)) {
       VLOG(1) << "Isomorphic: weights not ApproxEqual. "
-              << "arc1: " << arc1.ilabel << " " << arc1.olabel
-              << " *" << arc1.weight << "* " << arc1.nextstate
-              << "arc2: " << arc2.ilabel << " " << arc2.olabel
-              << " *" << arc2.weight << "* " << arc2.nextstate;
+              << "state1: " << s1 << " arc1: " << arc1.ilabel << " "
+              << arc1.olabel << " *" << arc1.weight << "* " << arc1.nextstate
+              << " state2: " << s2 << " arc2: " << arc2.ilabel << " "
+              << arc2.olabel << " *" << arc2.weight << "* " << arc2.nextstate;
       return false;
     }
     if (!PairState(arc1.nextstate, arc2.nextstate)) {
       VLOG(1) << "Isomorphic: nextstates could not be paired. "
-              << "arc1: " << arc1.ilabel << " " << arc1.olabel
-              << " " << arc1.weight << " *" << arc1.nextstate
-              << "* arc2: " << arc2.ilabel << " " << arc2.olabel
-              << " " << arc2.weight << " *" << arc2.nextstate << "*";
+              << "state1: " << s1 << " arc1: " << arc1.ilabel << " "
+              << arc1.olabel << " " << arc1.weight << " *" << arc1.nextstate
+              << "* "
+              << "state2: " << s2 << " arc2: " << arc2.ilabel << " "
+              << arc2.olabel << " " << arc2.weight << " *" << arc2.nextstate
+              << "*";
       return false;
     }
     if (i > 0) {  // Checks for non-determinism.
@@ -206,10 +228,10 @@ bool Isomorphism<Arc>::IsIsomorphicState(StateId s1, StateId s2) {
         // states of nondeterministic transitions.
         VLOG(1) << "Isomorphic: Detected non-determinism as an unweighted "
                 << "automaton; deferring error. "
-                << "arc1: " << arc1.ilabel << " " << arc1.olabel
-                << " " << arc1.weight << " " << arc1.nextstate
-                << "arc2: " << arc2.ilabel << " " << arc2.olabel
-                << " " << arc2.weight << " " << arc2.nextstate;
+                << "state: " << s1 << " arc1: " << arc1.ilabel << " "
+                << arc1.olabel << " " << arc1.weight << " " << arc1.nextstate
+                << " arc2: " << arc2.ilabel << " " << arc2.olabel << " "
+                << arc2.weight << " " << arc2.nextstate;
         nondet_ = true;
       }
     }
@@ -220,7 +242,7 @@ bool Isomorphism<Arc>::IsIsomorphicState(StateId s1, StateId s2) {
 }  // namespace internal
 
 // Tests if two FSTs have the same states and arcs up to a reordering.
-// Inputs should be nondeterministic when viewed as unweighted automata.
+// Inputs should be deterministic when viewed as unweighted automata.
 // When the inputs are nondeterministic, the algorithm only considers one
 // permutation for each set of equivalent nondeterministic transitions
 // (the permutation that preserves state ID ordering) and hence might return

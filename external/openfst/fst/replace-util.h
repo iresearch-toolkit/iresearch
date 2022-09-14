@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -6,9 +20,8 @@
 #ifndef FST_REPLACE_UTIL_H_
 #define FST_REPLACE_UTIL_H_
 
+#include <cstdint>
 #include <map>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -19,6 +32,8 @@
 #include <fst/topsort.h>
 #include <fst/vector-fst.h>
 
+#include <unordered_map>
+#include <unordered_set>
 
 namespace fst {
 
@@ -40,39 +55,38 @@ enum ReplaceLabelType {
 // The call_label_type and return_label_type options specify how to manage
 // the labels of the call arc and the return arc of the replace FST
 struct ReplaceUtilOptions {
-  int64 root;                          // Root rule for expansion.
+  int64_t root;                        // Root rule for expansion.
   ReplaceLabelType call_label_type;    // How to label call arc.
   ReplaceLabelType return_label_type;  // How to label return arc.
-  int64 return_label;                  // Label to put on return arc.
+  int64_t return_label;                // Label to put on return arc.
 
   explicit ReplaceUtilOptions(
-      int64 root = kNoLabel,
+      int64_t root = kNoLabel,
       ReplaceLabelType call_label_type = REPLACE_LABEL_INPUT,
       ReplaceLabelType return_label_type = REPLACE_LABEL_NEITHER,
-      int64 return_label = 0)
+      int64_t return_label = 0)
       : root(root),
         call_label_type(call_label_type),
         return_label_type(return_label_type),
         return_label(return_label) {}
 
   // For backwards compatibility.
-  ReplaceUtilOptions(int64 root, bool epsilon_replace_arc)
-      : ReplaceUtilOptions(root,
-                           epsilon_replace_arc ? REPLACE_LABEL_NEITHER
-                                               : REPLACE_LABEL_INPUT) {}
+  ReplaceUtilOptions(int64_t root, bool epsilon_replace_arc)
+      : ReplaceUtilOptions(root, epsilon_replace_arc ? REPLACE_LABEL_NEITHER
+                                                     : REPLACE_LABEL_INPUT) {}
 };
 
 // Every non-terminal on a path appears as the first label on that path in every
 // FST associated with a given SCC of the replace dependency graph. This would
 // be true if the SCC were formed from left-linear grammar rules.
-constexpr uint8 kReplaceSCCLeftLinear = 0x01;
+inline constexpr uint8_t kReplaceSCCLeftLinear = 0x01;
 // Every non-terminal on a path appears as the final label on that path in every
 // FST associated with a given SCC of the replace dependency graph. This would
 // be true if the SCC were formed from right-linear grammar rules.
-constexpr uint8 kReplaceSCCRightLinear = 0x02;
+inline constexpr uint8_t kReplaceSCCRightLinear = 0x02;
 // The SCC in the replace dependency graph has more than one state or a
 // self-loop.
-constexpr uint8 kReplaceSCCNonTrivial = 0x04;
+inline constexpr uint8_t kReplaceSCCNonTrivial = 0x04;
 
 // Defined in replace.h.
 template <class Arc>
@@ -135,7 +149,7 @@ class ReplaceUtil {
   // kReplaceSCCRightLinear, that SCC can be represented as finite-state despite
   // any cyclic dependencies, but not by the usual replacement operation (see
   // fst/extensions/pdt/replace.h).
-  uint8 SCCProperties(StateId scc_id) {
+  uint8_t SCCProperties(StateId scc_id) {
     GetSCCProperties();
     return depsccprops_[scc_id];
   }
@@ -144,7 +158,7 @@ class ReplaceUtil {
   // RTN.
   bool Connected() const {
     GetDependencies(false);
-    uint64 props = kAccessible | kCoAccessible;
+    uint64_t props = kAccessible | kCoAccessible;
     for (Label i = 0; i < fst_array_.size(); ++i) {
       if (!fst_array_[i]) continue;
       if (fst_array_[i]->Properties(props, true) != props || !depaccess_[i]) {
@@ -227,7 +241,7 @@ class ReplaceUtil {
   Label root_fst_;                                    // Root FST ID.
   ReplaceLabelType call_label_type_;                  // See Replace().
   ReplaceLabelType return_label_type_;                // See Replace().
-  int64 return_label_;                                // See Replace().
+  int64_t return_label_;                              // See Replace().
   std::vector<const Fst<Arc> *> fst_array_;           // FST per ID.
   std::vector<MutableFst<Arc> *> mutable_fst_array_;  // Mutable FST per ID.
   std::vector<Label> nonterminal_array_;              // FST ID to non-terminal.
@@ -235,10 +249,10 @@ class ReplaceUtil {
   mutable VectorFst<Arc> depfst_;                     // FST ID dependencies.
   mutable std::vector<StateId> depscc_;               // FST SCC ID.
   mutable std::vector<bool> depaccess_;               // FST ID accessibility.
-  mutable uint64 depprops_;                           // Dependency FST props.
+  mutable uint64_t depprops_;                         // Dependency FST props.
   mutable bool have_stats_;                  // Have dependency statistics?
   mutable std::vector<ReplaceStats> stats_;  // Per-FST statistics.
-  mutable std::vector<uint8> depsccprops_;   // SCC properties.
+  mutable std::vector<uint8_t> depsccprops_;  // SCC properties.
   ReplaceUtil(const ReplaceUtil &) = delete;
   ReplaceUtil &operator=(const ReplaceUtil &) = delete;
 };
@@ -343,8 +357,7 @@ void ReplaceUtil<Arc>::GetDependencies(bool stats) const {
         ++stats_[ilabel].nstates;
         if (ifst->Final(s) != Weight::Zero()) ++stats_[ilabel].nfinal;
       }
-      for (ArcIterator<Fst<Arc>> aiter(*ifst, s); !aiter.Done();
-           aiter.Next()) {
+      for (ArcIterator<Fst<Arc>> aiter(*ifst, s); !aiter.Done(); aiter.Next()) {
         if (have_stats_) ++stats_[ilabel].narcs;
         const auto &arc = aiter.Value();
         auto it = nonterminal_hash_.find(arc.olabel);
@@ -582,8 +595,8 @@ void ReplaceUtil<Arc>::GetSCCProperties() const {
   if (!(depprops_ & kCyclic)) return;  // No cyclic dependencies.
   // Checks for self-loops in the dependency graph.
   for (StateId scc = 0; scc < depscc_.size(); ++scc) {
-    for (ArcIterator<Fst<Arc> > aiter(depfst_, scc);
-         !aiter.Done(); aiter.Next()) {
+    for (ArcIterator<Fst<Arc>> aiter(depfst_, scc); !aiter.Done();
+         aiter.Next()) {
       const auto &arc = aiter.Value();
       if (arc.nextstate == scc) {  // SCC has a self loop.
         depsccprops_[scc] |= kReplaceSCCNonTrivial;
@@ -600,7 +613,7 @@ void ReplaceUtil<Arc>::GetSCCProperties() const {
     }
     depscc_visited[depscc] = true;
     std::vector<StateId> fstscc;  // SCCs of the current FST.
-    uint64 fstprops;
+    uint64_t fstprops;
     SccVisitor<Arc> scc_visitor(&fstscc, nullptr, nullptr, &fstprops);
     DfsVisit(*fst, &scc_visitor);
     for (StateIterator<Fst<Arc>> siter(*fst); !siter.Done(); siter.Next()) {

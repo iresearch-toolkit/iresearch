@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -7,6 +21,7 @@
 #define FST_COMPOSE_H_
 
 #include <algorithm>
+#include <cstdint>
 #include <memory>
 #include <utility>
 
@@ -24,7 +39,7 @@
 namespace fst {
 
 // Delayed composition options templated on the arc type, the matcher,
-// the composition filter, and the composition state table.  By
+// the composition filter, and the composition state table. By
 // default, the matchers, filter, and state table are constructed by
 // composition. If set below, the user can instead pass in these
 // objects; in that case, ComposeFst takes their ownership. This
@@ -77,8 +92,8 @@ struct ComposeFstImplOptions : public CacheImplOptions<CacheStore> {
   M2 *matcher2;    // FST2 matcher.
   Filter *filter;  // Composition filter (see compose-filter.h).
   StateTable
-    *state_table;        // Composition state table (see compose-state-table.h).
-  bool own_state_table;   // ComposeFstImpl takes ownership of 'state_table'?
+      *state_table;      // Composition state table (see compose-state-table.h).
+  bool own_state_table;  // ComposeFstImpl takes ownership of 'state_table'?
   bool allow_noncommute;  // Allow non-commutative weights
 
   explicit ComposeFstImplOptions(const CacheOptions &opts,
@@ -137,16 +152,16 @@ class ComposeFstImplBase
   using FstImpl<Arc>::SetInputSymbols;
   using FstImpl<Arc>::SetOutputSymbols;
 
-  using CacheImpl::HasStart;
-  using CacheImpl::HasFinal;
   using CacheImpl::HasArcs;
+  using CacheImpl::HasFinal;
+  using CacheImpl::HasStart;
   using CacheImpl::SetFinal;
   using CacheImpl::SetStart;
 
-  ComposeFstImplBase(const CacheImplOptions<CacheStore> &opts)
+  explicit ComposeFstImplBase(const CacheImplOptions<CacheStore> &opts)
       : CacheImpl(opts) {}
 
-  ComposeFstImplBase(const CacheOptions &opts) : CacheImpl(opts) {}
+  explicit ComposeFstImplBase(const CacheOptions &opts) : CacheImpl(opts) {}
 
   ComposeFstImplBase(const ComposeFstImplBase &impl) : CacheImpl(impl, true) {
     SetType(impl.Type());
@@ -259,10 +274,10 @@ class ComposeFstImpl
 
   ComposeFstImpl *Copy() const override { return new ComposeFstImpl(*this); }
 
-  uint64 Properties() const override { return Properties(kFstProperties); }
+  uint64_t Properties() const override { return Properties(kFstProperties); }
 
   // Sets error if found, and returns other FST impl properties.
-  uint64 Properties(uint64 mask) const override {
+  uint64_t Properties(uint64_t mask) const override {
     if ((mask & kError) &&
         (fst1_.Properties(kError, false) || fst2_.Properties(kError, false) ||
          (matcher1_->Properties(0) & kError) ||
@@ -320,8 +335,8 @@ class ComposeFstImpl
     if ((matcher1_->Type(false) == match_type) &&
         (matcher2_->Type(false) == match_type) &&
         (filter_->Properties(test_props) == test_props)) {
-      return new ComposeFstMatcher<
-        CacheStore, Filter, StateTable>(&fst, match_type);
+      return new ComposeFstMatcher<CacheStore, Filter, StateTable>(&fst,
+                                                                   match_type);
     }
     return nullptr;
   }
@@ -370,9 +385,9 @@ class ComposeFstImpl
   void AddArc(StateId s, const Arc &arc1, const Arc &arc2,
               const FilterState &f) {
     const StateTuple tuple(arc1.nextstate, arc2.nextstate, f);
-    CacheImpl::EmplaceArc(
-        s, arc1.ilabel, arc2.olabel, Times(arc1.weight, arc2.weight),
-        state_table_->FindState(tuple));
+    CacheImpl::EmplaceArc(s, arc1.ilabel, arc2.olabel,
+                          Times(arc1.weight, arc2.weight),
+                          state_table_->FindState(tuple));
   }
 
   StateId ComputeStart() override {
@@ -561,7 +576,8 @@ class ComposeFst
 
   friend class ArcIterator<ComposeFst<Arc, CacheStore>>;
   friend class StateIterator<ComposeFst<Arc, CacheStore>>;
-  template <class, class, class> friend class ComposeFstMatcher;
+  template <class, class, class>
+  friend class ComposeFstMatcher;
 
   // Compose specifying only caching options.
   ComposeFst(const Fst<Arc> &fst1, const Fst<Arc> &fst2,
@@ -589,13 +605,13 @@ class ComposeFst
       : ImplToFst<Impl>(CreateBase2(fst1, fst2, opts)) {}
 
   // See Fst<>::Copy() for doc.
-  ComposeFst(const ComposeFst<A, CacheStore> &fst, bool safe = false)
+  ComposeFst(const ComposeFst &fst, bool safe = false)
       : ImplToFst<Impl>(safe ? std::shared_ptr<Impl>(fst.GetImpl()->Copy())
                              : fst.GetSharedImpl()) {}
 
   // Get a copy of this ComposeFst. See Fst<>::Copy() for further doc.
-  ComposeFst<A, CacheStore> *Copy(bool safe = false) const override {
-    return new ComposeFst<A, CacheStore>(*this, safe);
+  ComposeFst *Copy(bool safe = false) const override {
+    return new ComposeFst(*this, safe);
   }
 
   inline void InitStateIterator(StateIteratorData<Arc> *data) const override;
@@ -702,7 +718,8 @@ class ArcIterator<ComposeFst<Arc, CacheStore>>
 template <class Arc, class CacheStore>
 inline void ComposeFst<Arc, CacheStore>::InitStateIterator(
     StateIteratorData<Arc> *data) const {
-  data->base = new StateIterator<ComposeFst<Arc, CacheStore>>(*this);
+  data->base =
+      std::make_unique<StateIterator<ComposeFst<Arc, CacheStore>>>(*this);
 }
 
 // Specialized matcher for ComposeFst. Supports MATCH_INPUT or MATCH_OUTPUT,
@@ -729,7 +746,7 @@ class ComposeFstMatcher : public MatcherBase<typename CacheStore::Arc> {
                     MatchType match_type)
       : owned_fst_(fst.Copy()),
         fst_(*owned_fst_),
-        impl_(static_cast<const Impl *>(fst_.GetImpl())),
+        impl_(down_cast<const Impl *>(fst_.GetImpl())),
         s_(kNoStateId),
         match_type_(match_type),
         matcher1_(impl_->matcher1_->Copy()),
@@ -744,7 +761,7 @@ class ComposeFstMatcher : public MatcherBase<typename CacheStore::Arc> {
   ComposeFstMatcher(const ComposeFst<Arc, CacheStore> *fst,
                     MatchType match_type)
       : fst_(*fst),
-        impl_(static_cast<const Impl *>(fst_.GetImpl())),
+        impl_(down_cast<const Impl *>(fst_.GetImpl())),
         s_(kNoStateId),
         match_type_(match_type),
         matcher1_(impl_->matcher1_->Copy()),
@@ -760,7 +777,7 @@ class ComposeFstMatcher : public MatcherBase<typename CacheStore::Arc> {
       bool safe = false)
       : owned_fst_(matcher.fst_.Copy(safe)),
         fst_(*owned_fst_),
-        impl_(static_cast<const Impl *>(fst_.GetImpl())),
+        impl_(down_cast<const Impl *>(fst_.GetImpl())),
         s_(kNoStateId),
         match_type_(matcher.match_type_),
         matcher1_(matcher.matcher1_->Copy(safe)),
@@ -770,9 +787,8 @@ class ComposeFstMatcher : public MatcherBase<typename CacheStore::Arc> {
     if (match_type_ == MATCH_OUTPUT) std::swap(loop_.ilabel, loop_.olabel);
   }
 
-  ComposeFstMatcher<CacheStore, Filter, StateTable> *Copy(
-      bool safe = false) const override {
-    return new ComposeFstMatcher<CacheStore, Filter, StateTable>(*this, safe);
+  ComposeFstMatcher *Copy(bool safe = false) const override {
+    return new ComposeFstMatcher(*this, safe);
   }
 
   MatchType Type(bool test) const override {
@@ -797,9 +813,7 @@ class ComposeFstMatcher : public MatcherBase<typename CacheStore::Arc> {
 
   const Fst<Arc> &GetFst() const override { return fst_; }
 
-  uint64 Properties(uint64 inprops) const override {
-    return inprops;
-  }
+  uint64_t Properties(uint64_t inprops) const override { return inprops; }
 
   void SetState(StateId s) final {
     if (s_ == s) return;
@@ -845,14 +859,13 @@ class ComposeFstMatcher : public MatcherBase<typename CacheStore::Arc> {
 
  private:
   // Processes a match with the filter and creates resulting arc.
-  bool MatchArc(StateId s, Arc arc1,
-                Arc arc2) {  // FIXME(kbg): copy but not assignment.
-    const auto &fs = impl_->filter_->FilterArc(&arc1, &arc2);
+  bool MatchArc(StateId s, Arc *arc1, Arc *arc2) {
+    const auto &fs = impl_->filter_->FilterArc(arc1, arc2);
     if (fs == FilterState::NoState()) return false;
-    const StateTuple tuple(arc1.nextstate, arc2.nextstate, fs);
-    arc_.ilabel = arc1.ilabel;
-    arc_.olabel = arc2.olabel;
-    arc_.weight = Times(arc1.weight, arc2.weight);
+    const StateTuple tuple(arc1->nextstate, arc2->nextstate, fs);
+    arc_.ilabel = arc1->ilabel;
+    arc_.olabel = arc2->olabel;
+    arc_.weight = Times(arc1->weight, arc2->weight);
     arc_.nextstate = impl_->state_table_->FindState(tuple);
     return true;
   }
@@ -894,16 +907,17 @@ class ComposeFstMatcher : public MatcherBase<typename CacheStore::Arc> {
         // allowed by the filter (hence resulting in an arc x, z') return true.
         // Position 'matcherb' on the next potential match for y' before
         // returning.
-        const auto &arca = matchera->Value();
-        const auto &arcb = matcherb->Value();
+        auto arca = matchera->Value();
+        auto arcb = matcherb->Value();
         // Position 'matcherb' on the next potential match for y'.
         matcherb->Next();
         // Returns true If combining these two arcs is allowed by the filter
         // (hence resulting in an arc x, z'); otherwise consider next match
         // for y' on 'matcherb'.
-        if (MatchArc(s_, match_type_ == MATCH_INPUT ? arca : arcb,
-                     match_type_ == MATCH_INPUT ? arcb : arca)) {
-          return true;
+        if (match_type_ == MATCH_INPUT) {
+          return MatchArc(s_, &arca, &arcb);
+        } else {
+          return MatchArc(s_, &arcb, &arca);
         }
       }
     }
@@ -949,10 +963,10 @@ struct ComposeOptions {
 // the composed FST into a MutableFst. If FST1 transduces string x to
 // y with weight a and FST2 transduces y to z with weight b, then
 // their composition transduces string x to z with weight
-// Times(x, z).
+// Times(a, b).
 //
 // The output labels of the first transducer or the input labels of
-// the second transducer must be sorted.  The weights need to form a
+// the second transducer must be sorted. The weights need to form a
 // commutative semiring (valid for TropicalWeight and LogWeight).
 //
 // Complexity:

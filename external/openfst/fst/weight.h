@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -8,6 +22,7 @@
 
 #include <cctype>
 #include <cmath>
+#include <cstdint>
 #include <iostream>
 #include <sstream>
 #include <type_traits>
@@ -73,7 +88,7 @@ namespace fst {
 //          Divide(c, a, DIVIDE_ANY) = Divide(c, a, DIVIDE_LEFT)
 //           = Divide(c, a, DIVIDE_RIGHT)
 //        * for all a, b, b', c:
-//          if Times(a, b), Divide(c, a, DIVIDE_ANY) = b' and b'.Member(),
+//          if Times(a, b) = c, Divide(c, a, DIVIDE_ANY) = b' and b'.Member(),
 //          then Times(a, b') = c
 //     - In the case where there exist no b such that c = Times(a, b), the
 //       return value of Divide(c, a, DIVIDE_LEFT) is unspecified. Returning
@@ -99,74 +114,50 @@ namespace fst {
 //   Properties: specifies additional properties that hold:
 //      LeftSemiring: indicates weights form a left semiring.
 //      RightSemiring: indicates weights form a right semiring.
-//      Commutative: for all a,b: Times(a,b) == Times(b,a)
+//      Commutative: for all a, b: Times(a,b) == Times(b, a)
 //      Idempotent: for all a: Plus(a, a) == a.
 //      Path: for all a, b: Plus(a, b) == a or Plus(a, b) == b.
+//
+// User-defined weights and their corresponding operations SHOULD be
+// defined in the same namespace, but SHOULD NOT defined in the fst
+// namespace. Defining them in fst would make the user code fragile
+// to additions in fst. They will be found in another namespace
+// via argument-dependent lookup.
 
 // CONSTANT DEFINITIONS
 
 // A representable float near .001.
-constexpr float kDelta = 1.0F / 1024.0F;
+inline constexpr float kDelta = 1.0F / 1024.0F;
 
 // For all a, b, c: Times(c, Plus(a, b)) = Plus(Times(c, a), Times(c, b)).
-constexpr uint64 kLeftSemiring = 0x0000000000000001ULL;
+inline constexpr uint64_t kLeftSemiring = 0x0000000000000001ULL;
 
 // For all a, b, c: Times(Plus(a, b), c) = Plus(Times(a, c), Times(b, c)).
-constexpr uint64 kRightSemiring = 0x0000000000000002ULL;
+inline constexpr uint64_t kRightSemiring = 0x0000000000000002ULL;
 
-constexpr uint64 kSemiring = kLeftSemiring | kRightSemiring;
+inline constexpr uint64_t kSemiring = kLeftSemiring | kRightSemiring;
 
 // For all a, b: Times(a, b) = Times(b, a).
-constexpr uint64 kCommutative = 0x0000000000000004ULL;
+inline constexpr uint64_t kCommutative = 0x0000000000000004ULL;
 
 // For all a: Plus(a, a) = a.
-constexpr uint64 kIdempotent = 0x0000000000000008ULL;
+inline constexpr uint64_t kIdempotent = 0x0000000000000008ULL;
 
 // For all a, b: Plus(a, b) = a or Plus(a, b) = b.
-constexpr uint64 kPath = 0x0000000000000010ULL;
+inline constexpr uint64_t kPath = 0x0000000000000010ULL;
 
 // For random weight generation: default number of distinct weights.
 // This is also used for a few other weight generation defaults.
-constexpr size_t kNumRandomWeights = 5;
+inline constexpr size_t kNumRandomWeights = 5;
 
 // Weight property boolean constants needed for SFINAE.
 
-// MSVC compiler bug workaround: an expression containing W::Properties() cannot
-
-// be directly used as a value argument to std::enable_if or integral_constant.
-
-// WeightPropertiesThunk<W>::Properties works instead, however.
-#ifdef _MSC_VER
-// MSVC compiler bug workaround: an expression containing W::Properties() cannot
-// be directly used as a value argument to std::enable_if or integral_constant.
-// WeightPropertiesThunk<W>::Properties works instead, however.
-namespace bug {
 template <class W>
-struct WeightPropertiesThunk {
-  WeightPropertiesThunk() = delete;
-  constexpr static const uint64 Properties = W::Properties();
-};
-
-template <class W, uint64 props>
-using TestWeightProperties = std::integral_constant<bool,
-        (WeightPropertiesThunk<W>::Properties & props) == props>;
-}  // namespace bug
+using IsIdempotent = std::bool_constant<(W::Properties() & kIdempotent) != 0>;
 
 template <class W>
-using IsIdempotent = bug::TestWeightProperties<W, kIdempotent>;
-template <class W>
-using IsPath = bug::TestWeightProperties<W, kPath>;
+using IsPath = std::bool_constant<(W::Properties() & kPath) != 0>;
 
-#else
-
-template <class W>
-using IsIdempotent = std::integral_constant<bool,
-    (W::Properties() & kIdempotent) != 0>;
-
-template <class W>
-using IsPath = std::integral_constant<bool, (W::Properties() & kPath) != 0>;
-
-#endif // _MSC_VER
 // Determines direction of division.
 enum DivideType {
   DIVIDE_LEFT,   // left division
@@ -194,37 +185,17 @@ enum DivideType {
 //
 // We define the strict version of this order below.
 
-// Declares the template with a second parameter determining whether or not it
-// can actually be constructed.
-template <class W, class IdempotentType = void>
-class NaturalLess;
-
-// Variant for idempotent weights.
+// Requires W is idempotent.
 template <class W>
-class NaturalLess<W, typename std::enable_if<IsIdempotent<W>::value>::type> {
- public:
+struct NaturalLess {
   using Weight = W;
+  static_assert(IsIdempotent<W>::value, "W must be idempotent.");
 
-  NaturalLess() {}
+  NaturalLess() = default;  // Work-around possible GCC bug
 
   bool operator()(const Weight &w1, const Weight &w2) const {
     return w1 != w2 && Plus(w1, w2) == w1;
   }
-};
-
-// Non-constructible variant for non-idempotent weights.
-template <class W>
-class NaturalLess<W, typename std::enable_if<!IsIdempotent<W>::value>::type> {
- public:
-  using Weight = W;
-
-  // TODO(kbg): Trace down anywhere this is being instantiated, then add a
-  // static_assert to prevent this from being instantiated.
-  NaturalLess() {
-    FSTERROR() << "NaturalLess: Weight type is not idempotent: " << W::Type();
-  }
-
-  bool operator()(const Weight &, const Weight &) const { return false; }
 };
 
 // Power is the iterated product for arbitrary semirings such that Power(w, 0)
@@ -261,8 +232,8 @@ class Adder {
 template <class W1, class W2>
 struct WeightConvert {
   W2 operator()(W1 w1) const {
-    FSTERROR() << "WeightConvert: Can't convert weight from \"" << W1::Type()
-               << "\" to \"" << W2::Type();
+    FSTERROR() << "WeightConvert: Can't convert weight from " << W1::Type()
+               << " to " << W2::Type();
     return W2::NoWeight();
   }
 };
@@ -274,6 +245,21 @@ struct WeightConvert<W, W> {
 };
 
 // General random weight generator: raises error.
+//
+// The standard interface is roughly:
+//
+// class WeightGenerate<MyWeight> {
+//  public:
+//   explicit WeightGenerate(uint64_t seed = std::random_device()(),
+//                           bool allow_zero = true,
+//                           ...);
+//
+//   MyWeight operator()() const;
+// };
+//
+// Many weight generators also take trailing constructor arguments specifying
+// the number of random (unique) weights, the length of weights (e.g., for
+// string-based weights), etc. with sensible defaults
 template <class W>
 struct WeightGenerate {
   W operator()() const {
@@ -310,8 +296,8 @@ class CompositeWeightIO {
 // Helper class for writing textual composite weights.
 class CompositeWeightWriter : public internal::CompositeWeightIO {
  public:
-  // Uses configuration from flags (FLAGS_fst_weight_separator,
-  // FLAGS_fst_weight_parentheses).
+  // Uses configuration from flags (FST_FLAGS_fst_weight_separator,
+  // FST_FLAGS_fst_weight_parentheses).
   explicit CompositeWeightWriter(std::ostream &ostrm);
 
   // parentheses defines the opening and closing parenthesis characters.
@@ -342,12 +328,12 @@ class CompositeWeightWriter : public internal::CompositeWeightIO {
 
 // Helper class for reading textual composite weights. Elements are separated by
 // a separator character. There must be at least one element per textual
-// representation.  Parentheses characters should be set if the composite
+// representation. Parentheses characters should be set if the composite
 // weights themselves contain composite weights to ensure proper parsing.
 class CompositeWeightReader : public internal::CompositeWeightIO {
  public:
-  // Uses configuration from flags (FLAGS_fst_weight_separator,
-  // FLAGS_fst_weight_parentheses).
+  // Uses configuration from flags (FST_FLAGS_fst_weight_separator,
+  // FST_FLAGS_fst_weight_parentheses).
   explicit CompositeWeightReader(std::istream &istrm);
 
   // parentheses defines the opening and closing parenthesis characters.
