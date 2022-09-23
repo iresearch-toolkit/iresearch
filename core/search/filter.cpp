@@ -22,6 +22,7 @@
 
 #include "filter.hpp"
 
+#include "search/all_filter.hpp"
 #include "utils/singleton.hpp"
 
 namespace {
@@ -50,6 +51,21 @@ filter::filter(const type_info& type) noexcept
 
 filter::prepared::ptr filter::prepared::empty() {
   return memory::to_managed<filter::prepared, false>(&empty_query::instance());
+}
+
+irs::filter::ptr FilterWithAllDocsProvider::DefaultProvider(
+  irs::score_t boost) {
+  auto filter = std::make_unique<irs::all>();
+  filter->boost(boost);
+  return filter;
+}
+
+FilterWithAllDocsProvider::FilterWithAllDocsProvider(
+  irs::type_info type) noexcept
+  : filter{type}, all_docs_{DefaultProvider} {}
+
+void FilterWithAllDocsProvider::SetProvider(AllDocsProvider&& provider) {
+  all_docs_ = provider ? std::move(provider) : std::function{DefaultProvider};
 }
 
 empty::empty() : filter(irs::type<empty>::get()) {}

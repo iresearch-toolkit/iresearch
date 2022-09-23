@@ -129,21 +129,6 @@ irs::doc_iterator::ptr make_conjunction(const irs::ExecutionContext& ctx,
 
 namespace iresearch {
 
-irs::filter::ptr FilterWithAllDocsProvider::DefaultProvider(
-  irs::score_t boost) {
-  auto filter = std::make_unique<irs::all>();
-  filter->boost(boost);
-  return filter;
-}
-
-FilterWithAllDocsProvider::FilterWithAllDocsProvider(
-  irs::type_info type) noexcept
-  : filter{type}, all_docs_{DefaultProvider} {}
-
-void FilterWithAllDocsProvider::SetProvider(AllDocsProvider&& provider) {
-  all_docs_ = provider ? std::move(provider) : std::function{DefaultProvider};
-}
-
 // Base class for boolean queries
 class BooleanQuery : public filter::prepared {
  public:
