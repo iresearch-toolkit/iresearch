@@ -35,6 +35,8 @@ namespace iresearch {
 // filters.
 class boolean_filter : public filter, private util::noncopyable {
  public:
+  using AllDocsProvider = std::function<filter::ptr(irs::score_t)>;
+
   auto begin() const { return ptr_iterator{std::begin(filters_)}; }
   auto end() const { return ptr_iterator{std::end(filters_)}; }
 
@@ -61,6 +63,8 @@ class boolean_filter : public filter, private util::noncopyable {
   bool empty() const { return filters_.empty(); }
   size_t size() const { return filters_.size(); }
 
+  void all_docs_provider(AllDocsProvider&& provider);
+
   virtual filter::prepared::ptr prepare(
     const index_reader& rdr, const Order& ord, score_t boost,
     const attribute_provider* ctx) const override final;
@@ -72,12 +76,14 @@ class boolean_filter : public filter, private util::noncopyable {
   virtual filter::prepared::ptr prepare(
     std::vector<const filter*>& incl, std::vector<const filter*>& excl,
     const index_reader& rdr, const Order& ord, score_t boost,
-    const attribute_provider* ctx) const = 0;
+    const AllDocsProvider& all_docs, const attribute_provider* ctx) const = 0;
 
  private:
-  void group_filters(std::vector<const filter*>& incl,
+  void group_filters(const filter& all_docs_no_boost,
+                     std::vector<const filter*>& incl,
                      std::vector<const filter*>& excl) const;
 
+  AllDocsProvider all_docs_;
   std::vector<filter::ptr> filters_;
   sort::MergeType merge_type_{sort::MergeType::kSum};
 };
@@ -93,6 +99,7 @@ class And final : public boolean_filter {
   virtual filter::prepared::ptr prepare(
     std::vector<const filter*>& incl, std::vector<const filter*>& excl,
     const index_reader& rdr, const Order& ord, score_t boost,
+    const AllDocsProvider& all_docs,
     const attribute_provider* ctx) const override;
 };
 
@@ -116,6 +123,7 @@ class Or final : public boolean_filter {
   virtual filter::prepared::ptr prepare(
     std::vector<const filter*>& incl, std::vector<const filter*>& excl,
     const index_reader& rdr, const Order& ord, score_t boost,
+    const AllDocsProvider& all_docs,
     const attribute_provider* ctx) const override;
 
  private:
