@@ -138,25 +138,6 @@ class filter {
   type_info::type_id type_;
 };
 
-class FilterWithAllDocsProvider : public filter, private util::noncopyable {
- public:
-  using AllDocsProvider = std::function<filter::ptr(irs::score_t)>;
-
-  static irs::filter::ptr DefaultProvider(irs::score_t boost);
-
-  filter::ptr MakeAllDocsFilter(score_t boost) const {
-    return all_docs_(boost);
-  }
-
-  void SetProvider(AllDocsProvider&& provider);
-
- protected:
-  explicit FilterWithAllDocsProvider(irs::type_info type) noexcept;
-
- private:
-  AllDocsProvider all_docs_;
-};
-
 // boost::hash_combine support
 inline size_t hash_value(const filter& q) noexcept { return q.hash(); }
 
