@@ -360,7 +360,6 @@ void boolean_filter::group_filters(const filter& all_docs_no_boost,
   incl.reserve(size() / 2);
   excl.reserve(incl.capacity());
 
-  const auto all_type = all_docs_no_boost.type();
   const irs::filter* empty_filter{nullptr};
   const auto is_or = type() == irs::type<Or>::id();
   for (auto begin = this->begin(), end = this->end(); begin != end; ++begin) {
@@ -376,7 +375,7 @@ void boolean_filter::group_filters(const filter& all_docs_no_boost,
       }
 
       if (res.second) {
-        if (all_type == res.first->type()) {
+        if (all_docs_no_boost == *res.first) {
           // not all -> empty result
           incl.clear();
           return;
