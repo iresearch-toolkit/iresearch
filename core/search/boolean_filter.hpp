@@ -35,6 +35,8 @@ class FilterWithAllDocsProvider : public filter, private util::noncopyable {
  public:
   using AllDocsProvider = std::function<filter::ptr(irs::score_t)>;
 
+  static irs::filter::ptr DefaultProvider(irs::score_t boost);
+
   filter::ptr MakeAllDocsFilter(score_t boost) const {
     return all_docs_(boost);
   }

@@ -32,12 +32,6 @@
 
 namespace {
 
-irs::filter::ptr DefaultAllDocsProvider(irs::score_t boost) {
-  auto filter = std::make_unique<irs::all>();
-  filter->boost(boost);
-  return filter;
-}
-
 // first - pointer to the innermost not "not" node
 // second - collapsed negation mark
 std::pair<const irs::filter*, bool> optimize_not(const irs::Not& node) {
@@ -135,13 +129,19 @@ irs::doc_iterator::ptr make_conjunction(const irs::ExecutionContext& ctx,
 
 namespace iresearch {
 
+irs::filter::ptr FilterWithAllDocsProvider::DefaultProvider(
+  irs::score_t boost) {
+  auto filter = std::make_unique<irs::all>();
+  filter->boost(boost);
+  return filter;
+}
+
 FilterWithAllDocsProvider::FilterWithAllDocsProvider(
   irs::type_info type) noexcept
-  : filter{type}, all_docs_{::DefaultAllDocsProvider} {}
+  : filter{type}, all_docs_{DefaultProvider} {}
 
 void FilterWithAllDocsProvider::SetProvider(AllDocsProvider&& provider) {
-  all_docs_ =
-    provider ? std::move(provider) : std::function{::DefaultAllDocsProvider};
+  all_docs_ = provider ? std::move(provider) : std::function{DefaultProvider};
 }
 
 // Base class for boolean queries
