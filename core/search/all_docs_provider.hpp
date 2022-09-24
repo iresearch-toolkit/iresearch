@@ -28,9 +28,9 @@ namespace iresearch {
 
 class AllDocsProvider {
  public:
-  using ProviderFunc = std::function<filter::ptr(irs::score_t)>;
+  using ProviderFunc = std::function<filter::ptr(score_t)>;
 
-  static irs::filter::ptr Default(irs::score_t boost);
+  static filter::ptr Default(score_t boost);
 
   filter::ptr MakeAllDocsFilter(score_t boost) const {
     return all_docs_(boost);

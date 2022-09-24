@@ -26,8 +26,8 @@
 
 namespace iresearch {
 
-filter::ptr AllDocsProvider::Default(irs::score_t boost) {
-  auto filter = std::make_unique<irs::all>();
+filter::ptr AllDocsProvider::Default(score_t boost) {
+  auto filter = std::make_unique<all>();
   filter->boost(boost);
   return filter;
 }
