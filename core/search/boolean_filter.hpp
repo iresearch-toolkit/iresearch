@@ -74,6 +74,11 @@ class boolean_filter : public FilterWithAllDocsProvider {
       memory::make_unique<T>(std::forward<Args>(args)...)));
   }
 
+  filter& add(filter::ptr&& filter) {
+    assert(filter);
+    return *filters_.emplace_back(std::move(filter));
+  }
+
   virtual size_t hash() const noexcept override;
 
   void clear() { return filters_.clear(); }
