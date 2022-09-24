@@ -129,21 +129,6 @@ irs::doc_iterator::ptr make_conjunction(const irs::ExecutionContext& ctx,
 
 namespace iresearch {
 
-irs::filter::ptr FilterWithAllDocsProvider::DefaultProvider(
-  irs::score_t boost) {
-  auto filter = std::make_unique<irs::all>();
-  filter->boost(boost);
-  return filter;
-}
-
-FilterWithAllDocsProvider::FilterWithAllDocsProvider(
-  irs::type_info type) noexcept
-  : filter{type}, all_docs_{DefaultProvider} {}
-
-void FilterWithAllDocsProvider::SetProvider(AllDocsProvider&& provider) {
-  all_docs_ = provider ? std::move(provider) : std::function{DefaultProvider};
-}
-
 // Base class for boolean queries
 class BooleanQuery : public filter::prepared {
  public:
@@ -314,8 +299,7 @@ class MinMatchQuery final : public BooleanQuery {
   size_t min_match_count_;
 };
 
-boolean_filter::boolean_filter(const type_info& type) noexcept
-  : FilterWithAllDocsProvider{type} {}
+boolean_filter::boolean_filter(const type_info& type) noexcept : filter{type} {}
 
 size_t boolean_filter::hash() const noexcept {
   size_t seed = 0;
@@ -398,7 +382,7 @@ void boolean_filter::group_filters(const filter& all_docs_no_boost,
   }
 }
 
-And::And() noexcept : boolean_filter(irs::type<And>::get()) {}
+And::And() noexcept : boolean_filter{irs::type<And>::get()} {}
 
 filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
                                    std::vector<const filter*>& excl,
@@ -560,7 +544,7 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
   return q;
 }
 
-Not::Not() noexcept : FilterWithAllDocsProvider{irs::type<Not>::get()} {}
+Not::Not() noexcept : irs::filter{irs::type<Not>::get()} {}
 
 filter::prepared::ptr Not::prepare(const index_reader& rdr, const Order& ord,
                                    score_t boost,

@@ -25,34 +25,15 @@
 
 #include <vector>
 
-#include "all_filter.hpp"
-#include "filter.hpp"
+#include "search/all_docs_provider.hpp"
+#include "search/filter.hpp"
 #include "utils/iterator.hpp"
 
 namespace iresearch {
 
-class FilterWithAllDocsProvider : public filter, private util::noncopyable {
- public:
-  using AllDocsProvider = std::function<filter::ptr(irs::score_t)>;
-
-  static irs::filter::ptr DefaultProvider(irs::score_t boost);
-
-  filter::ptr MakeAllDocsFilter(score_t boost) const {
-    return all_docs_(boost);
-  }
-
-  void SetProvider(AllDocsProvider&& provider);
-
- protected:
-  explicit FilterWithAllDocsProvider(irs::type_info type) noexcept;
-
- private:
-  AllDocsProvider all_docs_;
-};
-
 // Represents user-side boolean filter as the container for other
 // filters.
-class boolean_filter : public FilterWithAllDocsProvider {
+class boolean_filter : public filter, public AllDocsProvider {
  public:
   auto begin() const { return ptr_iterator{std::begin(filters_)}; }
   auto end() const { return ptr_iterator{std::end(filters_)}; }
@@ -148,7 +129,7 @@ class Or final : public boolean_filter {
 };
 
 // Represents negation
-class Not : public FilterWithAllDocsProvider {
+class Not : public filter, public AllDocsProvider {
  public:
   Not() noexcept;
 

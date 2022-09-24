@@ -25,6 +25,7 @@
 
 #include <set>
 
+#include "search/all_docs_provider.hpp"
 #include "search/filter.hpp"
 #include "utils/string.hpp"
 
@@ -81,7 +82,8 @@ struct by_terms_options {
 };
 
 // Filter by a set of terms
-class by_terms final : public filter_base<by_terms_options> {
+class by_terms final : public filter_base<by_terms_options>,
+                       public AllDocsProvider {
  public:
   static ptr make();
 
