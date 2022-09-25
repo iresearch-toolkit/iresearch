@@ -326,19 +326,21 @@ filter::prepared::ptr boolean_filter::prepare(
   std::vector<const filter*> incl;
   std::vector<const filter*> excl;
 
-  const auto all_docs_zero_boost = MakeAllDocsFilter(0.f);
-  group_filters(*all_docs_zero_boost, incl, excl);
+  irs::filter::ptr all_docs_zero_boost;
+  irs::filter::ptr all_docs_no_boost;
 
-  const auto all_docs_no_boost = MakeAllDocsFilter(kNoBoost);
+  group_filters(all_docs_zero_boost, incl, excl);
+
   if (incl.empty() && !excl.empty()) {
     // single negative query case
+    all_docs_no_boost = MakeAllDocsFilter(kNoBoost);
     incl.push_back(all_docs_no_boost.get());
   }
 
   return prepare(incl, excl, rdr, ord, boost, ctx);
 }
 
-void boolean_filter::group_filters(const filter& all_docs_no_boost,
+void boolean_filter::group_filters(filter::ptr& all_docs_zero_boost,
                                    std::vector<const filter*>& incl,
                                    std::vector<const filter*>& excl) const {
   incl.reserve(size() / 2);
@@ -359,7 +361,11 @@ void boolean_filter::group_filters(const filter& all_docs_no_boost,
       }
 
       if (res.second) {
-        if (all_docs_no_boost == *res.first) {
+        if (!all_docs_zero_boost) {
+          all_docs_zero_boost = MakeAllDocsFilter(0.f);
+        }
+
+        if (*all_docs_zero_boost == *res.first) {
           // not all -> empty result
           incl.clear();
           return;
@@ -368,7 +374,7 @@ void boolean_filter::group_filters(const filter& all_docs_no_boost,
         if (is_or) {
           // FIXME: this should have same boost as Not filter.
           // But for now we do not boost negation.
-          incl.push_back(&all_docs_no_boost);
+          incl.push_back(all_docs_zero_boost.get());
         }
       } else {
         incl.push_back(res.first);

@@ -80,7 +80,7 @@ class boolean_filter : public filter, public AllDocsProvider {
     const attribute_provider* ctx) const = 0;
 
  private:
-  void group_filters(const filter& all_docs_no_boost,
+  void group_filters(filter::ptr& all_docs_no_boost,
                      std::vector<const filter*>& incl,
                      std::vector<const filter*>& excl) const;
 
