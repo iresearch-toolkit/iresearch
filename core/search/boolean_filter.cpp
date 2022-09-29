@@ -402,6 +402,11 @@ filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
     return prepared::empty();
   }
 
+  // single node case
+  if (1 == incl.size() && excl.empty()) {
+    return incl.front()->prepare(rdr, ord, this->boost() * boost, ctx);
+  }
+
   auto cumulative_all = MakeAllDocsFilter(kNoBoost);
   score_t all_boost{0};
   size_t all_count{0};
@@ -463,7 +468,6 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
                                   const index_reader& rdr, const Order& ord,
                                   score_t boost,
                                   const attribute_provider* ctx) const {
-  // preparing
   boost *= this->boost();
 
   if (0 == min_match_count_) {  // only explicit 0 min match counts!
@@ -477,6 +481,11 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
 
   if (incl.empty()) {
     return prepared::empty();
+  }
+
+  // single node case
+  if (1 == incl.size() && excl.empty()) {
+    return incl.front()->prepare(rdr, ord, boost, ctx);
   }
 
   auto cumulative_all = MakeAllDocsFilter(kNoBoost);
