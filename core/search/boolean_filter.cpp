@@ -143,12 +143,19 @@ class BooleanQuery : public filter::prepared {
     }
 
     assert(excl_);
-    auto incl = execute(ctx, begin(), begin() + excl_);
+    const auto excl_begin = this->excl_begin();
+    const auto end = this->end();
+
+    auto incl = execute(ctx, begin(), excl_begin);
+
+    if (excl_begin == end) {
+      return incl;
+    }
 
     // exclusion part does not affect scoring at all
     auto excl = ::make_disjunction(
       {.segment = ctx.segment, .scorers = Order::kUnordered, .ctx = ctx.ctx},
-      irs::sort::MergeType::kSum, begin() + excl_, end());
+      irs::sort::MergeType::kSum, excl_begin, end);
 
     // got empty iterator for excluded
     if (doc_limits::eof(excl->value())) {
