@@ -77,11 +77,14 @@ class column_existence_query : public irs::filter::prepared {
 class column_prefix_existence_query final : public column_existence_query {
  public:
   column_prefix_existence_query(std::string_view prefix, bstring&& stats,
-                                score_t boost)
-    : column_existence_query(prefix, std::move(stats), boost) {}
+                                const ColumnAcceptor& acceptor, score_t boost)
+    : column_existence_query{prefix, std::move(stats), boost},
+      acceptor_{acceptor ? acceptor : [](string_ref) { return true; }} {}
 
   irs::doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
     using adapter_t = irs::score_iterator_adapter<irs::doc_iterator::ptr>;
+
+    assert(acceptor_);
 
     auto& segment = ctx.segment;
     auto& ord = ctx.scorers;
@@ -94,15 +97,15 @@ class column_prefix_existence_query final : public column_existence_query {
       return irs::doc_iterator::empty();
     }
 
+    const auto* column = &it->value();
+
+    auto accept = [&] {
+      const auto name = column->name();
+      return irs::starts_with(name, prefix) && acceptor_(name);
+    };
+
     std::vector<adapter_t> itrs;
-
-    while (irs::starts_with(it->value().name(), prefix)) {
-      const auto* column = segment.column(it->value().id());
-
-      if (!column) {
-        continue;
-      }
-
+    for (; accept(); column = &it->value()) {
       itrs.emplace_back(iterator(segment, *column, ord));
 
       if (!it->next()) {
@@ -120,6 +123,9 @@ class column_prefix_existence_query final : public column_existence_query {
                                                    std::move(aggregator));
       });
   }
+
+ private:
+  ColumnAcceptor acceptor_;
 };
 
 }  // namespace
@@ -139,11 +145,12 @@ filter::prepared::ptr by_column_existence::prepare(
 
   filter_boost *= boost();
 
-  return options().prefix_match
-           ? memory::make_managed<column_prefix_existence_query>(
-               field(), std::move(stats), filter_boost)
-           : memory::make_managed<column_existence_query>(
-               field(), std::move(stats), filter_boost);
+  auto& acceptor = options().acceptor;
+
+  return acceptor ? memory::make_managed<column_prefix_existence_query>(
+                      field(), std::move(stats), acceptor, filter_boost)
+                  : memory::make_managed<column_existence_query>(
+                      field(), std::move(stats), filter_boost);
 }
 
 }  // namespace iresearch
