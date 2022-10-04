@@ -68,7 +68,7 @@ class boolean_filter : public filter, public AllDocsProvider {
 
   virtual filter::prepared::ptr prepare(
     const index_reader& rdr, const Order& ord, score_t boost,
-    const attribute_provider* ctx) const override final;
+    const attribute_provider* ctx) const override;
 
  protected:
   explicit boolean_filter(const type_info& type) noexcept;
@@ -107,8 +107,6 @@ class Or final : public boolean_filter {
  public:
   Or() noexcept;
 
-  using filter::prepare;
-
   // Return minimum number of subqueries which must be satisfied
   size_t min_match_count() const { return min_match_count_; }
 
@@ -117,6 +115,11 @@ class Or final : public boolean_filter {
     min_match_count_ = count;
     return *this;
   }
+
+  using filter::prepare;
+  filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
+                                score_t boost,
+                                const attribute_provider* ctx) const final;
 
  protected:
   virtual filter::prepared::ptr prepare(

@@ -329,6 +329,22 @@ bool boolean_filter::equals(const filter& rhs) const noexcept {
 filter::prepared::ptr boolean_filter::prepare(
   const index_reader& rdr, const Order& ord, score_t boost,
   const attribute_provider* ctx) const {
+  const auto size = filters_.size();
+
+  if (IRS_UNLIKELY(size == 0)) {
+    return prepared::empty();
+  }
+
+  if (size == 1) {
+    auto* filter = filters_.front().get();
+    assert(filter);
+
+    // FIXME(gnusi): let Not handle everything?
+    if (filter->type() != irs::type<irs::Not>::id()) {
+      return filter->prepare(rdr, ord, boost * this->boost(), ctx);
+    }
+  }
+
   // determine incl/excl parts
   std::vector<const filter*> incl;
   std::vector<const filter*> excl;
@@ -469,6 +485,18 @@ filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
 }
 
 Or::Or() noexcept : boolean_filter(irs::type<Or>::get()), min_match_count_(1) {}
+
+filter::prepared::ptr Or::prepare(const index_reader& rdr, const Order& ord,
+                                  score_t boost,
+                                  const attribute_provider* ctx) const {
+  if (0 == min_match_count_) {  // only explicit 0 min match counts!
+    // all conditions are satisfied
+    return MakeAllDocsFilter(kNoBoost)->prepare(rdr, ord, this->boost() * boost,
+                                                ctx);
+  }
+
+  return boolean_filter::prepare(rdr, ord, boost, ctx);
+}
 
 filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
                                   std::vector<const filter*>& excl,
