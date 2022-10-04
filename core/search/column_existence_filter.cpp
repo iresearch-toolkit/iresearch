@@ -99,14 +99,11 @@ class column_prefix_existence_query final : public column_existence_query {
 
     const auto* column = &it->value();
 
-    auto accept = [&] {
-      const auto name = column->name();
-      return irs::starts_with(name, prefix) && acceptor_(name);
-    };
-
     std::vector<adapter_t> itrs;
-    for (; accept(); column = &it->value()) {
-      itrs.emplace_back(iterator(segment, *column, ord));
+    for (; irs::starts_with(column->name(), prefix); column = &it->value()) {
+      if (acceptor_(column->name())) {
+        itrs.emplace_back(iterator(segment, *column, ord));
+      }
 
       if (!it->next()) {
         break;
