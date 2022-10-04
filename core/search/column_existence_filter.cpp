@@ -79,7 +79,9 @@ class column_prefix_existence_query final : public column_existence_query {
   column_prefix_existence_query(std::string_view prefix, bstring&& stats,
                                 const ColumnAcceptor& acceptor, score_t boost)
     : column_existence_query{prefix, std::move(stats), boost},
-      acceptor_{acceptor ? acceptor : [](string_ref) { return true; }} {}
+      acceptor_{acceptor} {
+    assert(acceptor_);
+  }
 
   irs::doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
     using adapter_t = irs::score_iterator_adapter<irs::doc_iterator::ptr>;
@@ -101,7 +103,7 @@ class column_prefix_existence_query final : public column_existence_query {
 
     std::vector<adapter_t> itrs;
     for (; irs::starts_with(column->name(), prefix); column = &it->value()) {
-      if (acceptor_(column->name())) {
+      if (acceptor_(column->name(), prefix)) {
         itrs.emplace_back(iterator(segment, *column, ord));
       }
 

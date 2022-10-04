@@ -30,7 +30,7 @@ namespace iresearch {
 
 class by_column_existence;
 
-using ColumnAcceptor = std::function<bool(string_ref)>;
+using ColumnAcceptor = std::function<bool(string_ref prefix, string_ref name)>;
 
 // Options for column existence filter
 struct by_column_existence_options {

@@ -36,7 +36,9 @@ irs::by_column_existence make_filter(const irs::string_ref& field,
   irs::by_column_existence filter;
   *filter.mutable_field() = field;
   if (prefix_match) {
-    filter.mutable_options()->acceptor = [](irs::string_ref) { return true; };
+    filter.mutable_options()->acceptor = [](irs::string_ref, irs::string_ref) {
+      return true;
+    };
   }
   return filter;
 }
