@@ -35,7 +35,11 @@ irs::by_column_existence make_filter(const irs::string_ref& field,
                                      bool prefix_match) {
   irs::by_column_existence filter;
   *filter.mutable_field() = field;
-  filter.mutable_options()->prefix_match = prefix_match;
+  if (prefix_match) {
+    filter.mutable_options()->acceptor = [](irs::string_ref, irs::string_ref) {
+      return true;
+    };
+  }
   return filter;
 }
 
@@ -997,7 +1001,7 @@ TEST_P(column_existence_filter_test_case, exact_prefix_match) {
 
 TEST(by_column_existence, options) {
   irs::by_column_existence_options opts;
-  ASSERT_FALSE(opts.prefix_match);
+  ASSERT_FALSE(opts.acceptor);
 }
 
 TEST(by_column_existence, ctor) {

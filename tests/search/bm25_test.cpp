@@ -21,7 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
+#include "search/bm25.hpp"
+
 #include "index/index_tests.hpp"
 #include "index/norm.hpp"
 #include "search/all_filter.hpp"
@@ -30,11 +31,11 @@
 #include "search/phrase_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
+#include "search/score.hpp"
 #include "search/scorers.hpp"
 #include "search/sort.hpp"
-#include "search/score.hpp"
-#include "search/bm25.hpp"
 #include "search/term_filter.hpp"
+#include "tests_shared.hpp"
 
 namespace {
 
@@ -1177,7 +1178,7 @@ TEST_P(bm25_test_case, test_query) {
 
     irs::by_column_existence filter;
     *filter.mutable_field() = "seq";
-    filter.mutable_options()->prefix_match = false;
+    filter.mutable_options()->acceptor = {};
 
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
@@ -1207,7 +1208,7 @@ TEST_P(bm25_test_case, test_query) {
 
     irs::by_column_existence filter;
     *filter.mutable_field() = "seq";
-    filter.mutable_options()->prefix_match = false;
+    filter.mutable_options()->acceptor = {};
     filter.boost(0.f);
 
     auto prepared_filter = filter.prepare(reader, prepared_order);

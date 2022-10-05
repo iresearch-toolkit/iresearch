@@ -105,6 +105,7 @@ set(IResearch_core_sources
   ./index/segment_reader.cpp
   ./index/segment_writer.cpp
   ./index/sorted_column.cpp
+  ./search/all_docs_provider.cpp
   ./search/all_filter.cpp
   ./search/all_iterator.cpp
   ./search/boost_sort.cpp

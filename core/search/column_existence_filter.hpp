@@ -30,18 +30,20 @@ namespace iresearch {
 
 class by_column_existence;
 
+using ColumnAcceptor = bool (*)(string_ref prefix, string_ref name);
+
 // Options for column existence filter
 struct by_column_existence_options {
   using filter_type = by_column_existence;
 
-  // Match field prefix
-  bool prefix_match{};
+  // If set approves column matched the specified prefix
+  ColumnAcceptor acceptor{};
 
   bool operator==(const by_column_existence_options& rhs) const noexcept {
-    return prefix_match == rhs.prefix_match;
+    return acceptor == rhs.acceptor;
   }
 
-  size_t hash() const noexcept { return std::hash<bool>()(prefix_match); }
+  size_t hash() const noexcept { return std::hash<ColumnAcceptor>()(acceptor); }
 };
 
 // User-side column existence filter
