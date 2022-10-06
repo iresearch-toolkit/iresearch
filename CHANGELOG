@@ -1,4 +1,4 @@
-master
+v1.2 (2022-10-06)
 -------------------------
 
 * Allow specifying progress report callback for
