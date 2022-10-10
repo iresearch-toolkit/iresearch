@@ -312,7 +312,7 @@ analysis::analyzer::ptr construct(
   cached_options_t* options_ptr;
 
   {
-    auto lock = make_lock_guard(mutex);
+    std::lock_guard lock{mutex};
 
     options_ptr =
       &(map_utils::try_emplace_update_key(
@@ -334,7 +334,8 @@ analysis::analyzer::ptr construct(icu::Locale&& locale) {
   }
 
   {
-    auto lock = make_lock_guard(mutex);
+    std::lock_guard lock{mutex};
+
     auto itr =
       cached_state_by_key.find(make_hashed_ref(string_ref(locale.getName())));
 
@@ -853,7 +854,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   try {
     const string_ref slice_ref(slice.startAs<char>(), slice.byteSize());
     {
-      auto lock = make_lock_guard(mutex);
+      std::lock_guard lock{mutex};
       auto itr = cached_state_by_key.find(make_hashed_ref(slice_ref));
 
       if (itr != cached_state_by_key.end()) {
@@ -1026,7 +1027,7 @@ text_token_stream::text_token_stream(const options_t& options,
 
 /*static*/ void text_token_stream::clear_cache() {
   // cppcheck-suppress unreadVariable
-  auto lock = make_lock_guard(::mutex);
+  std::lock_guard lock{mutex};
   cached_state_by_key.clear();
 }
 

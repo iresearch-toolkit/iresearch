@@ -274,7 +274,7 @@ class index_writer : private util::noncopyable {
         // FIXME make me noexcept as I'm begin called from within ~finally()
         if (!--segment->active_count_) {
           // lock due to context modification and notification
-          auto lock = make_lock_guard(ctx->mutex_);
+          std::lock_guard lock{ctx->mutex_};
           // in case ctx is in flush_all()
           ctx->pending_segment_context_cond_.notify_all();
         }
@@ -525,7 +525,7 @@ class index_writer : private util::noncopyable {
                        const consolidating_segments_t& consolidating_segments)>;
 
   // Name of the lock for index repository
-  static const std::string WRITE_LOCK_NAME;
+  static constexpr std::string_view kWriteLockName = "write.lock";
 
   ~index_writer() noexcept;
 
@@ -591,7 +591,7 @@ class index_writer : private util::noncopyable {
   // Returns true if transaction has been sucessflully started.
   bool begin() {
     // cppcheck-suppress unreadVariable
-    auto lock = make_lock_guard(commit_lock_);
+    std::lock_guard lock{commit_lock_};
 
     return start();
   }
@@ -599,7 +599,7 @@ class index_writer : private util::noncopyable {
   // Rollbacks the two-phase transaction
   void rollback() {
     // cppcheck-suppress unreadVariable
-    auto lock = make_lock_guard(commit_lock_);
+    std::lock_guard lock{commit_lock_};
 
     abort();
   }
@@ -612,7 +612,7 @@ class index_writer : private util::noncopyable {
   // relatively lightweight operation.
   bool commit(progress_report_callback const& progress = nullptr) {
     // cppcheck-suppress unreadVariable
-    auto lock = make_lock_guard(commit_lock_);
+    std::lock_guard lock{commit_lock_};
 
     const bool modified = start(progress);
     finish();
@@ -628,10 +628,9 @@ class index_writer : private util::noncopyable {
   }
 
  private:
-  typedef std::vector<index_file_refs::ref_t> file_refs_t;
+  using file_refs_t = std::vector<index_file_refs::ref_t>;
 
-  static constexpr size_t NON_UPDATE_RECORD =
-    std::numeric_limits<size_t>::max();  // non-update
+  static constexpr size_t kNonUpdateRecord = std::numeric_limits<size_t>::max();
 
   struct consolidation_context_t : util::noncopyable {
     consolidation_context_t() = default;
@@ -829,7 +828,7 @@ class index_writer : private util::noncopyable {
 
     // Returns context for "insert" operation.
     segment_writer::update_context make_update_context() const noexcept {
-      return {uncomitted_generation_offset_, NON_UPDATE_RECORD};
+      return {uncomitted_generation_offset_, kNonUpdateRecord};
     }
 
     // Returns context for "update" operation.
@@ -853,11 +852,11 @@ class index_writer : private util::noncopyable {
   };
 
   struct segment_limits {
-    // @see segment_options::max_segment_count
+    // see segment_options::max_segment_count
     std::atomic<size_t> segment_count_max;
-    // @see segment_options::max_segment_docs
+    // see segment_options::max_segment_docs
     std::atomic<size_t> segment_docs_max;
-    // @see segment_options::max_segment_memory
+    // see segment_options::max_segment_memory
     std::atomic<size_t> segment_memory_max;
 
     explicit segment_limits(const segment_options& opts) noexcept

@@ -194,7 +194,7 @@ class index_profile_test_case : public tests::index_test_base {
 
             if (count >= writer_batch_size) {
               auto commit_lock =
-                irs::make_unique_lock(commit_mutex, std::try_to_lock);
+                std::unique_lock(commit_mutex, std::try_to_lock);
 
               // break commit chains by skipping commit if one is already in
               // progress
@@ -326,7 +326,7 @@ class index_profile_test_case : public tests::index_test_base {
 
             if (count >= writer_batch_size) {
               auto commit_lock =
-                irs::make_unique_lock(commit_mutex, std::try_to_lock);
+                std::unique_lock{commit_mutex, std::try_to_lock};
 
               // break commit chains by skipping commit if one is already in
               // progress

@@ -21,26 +21,25 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <sstream>
-#include <atomic>
 
 #if defined(_MSC_VER)
-#include <Windows.h>  // must be included before DbgHelp.h
-#include <Psapi.h>
 #include <DbgHelp.h>
-
-#include <stdio.h>  // for *printf(...)
+#include <Psapi.h>
+#include <Windows.h>  // must be included before DbgHelp.h
+#include <stdio.h>    // for *printf(...)
 #else
-#include <cstdio>  // for *printf(...)
-#include <thread>
-
 #include <cxxabi.h>  // for abi::__cxa_demangle(...)
 #include <dlfcn.h>   // for dladdr(...)
 #include <execinfo.h>
-#include <unistd.h>    // for STDIN_FILENO/STDOUT_FILENO/STDERR_FILENO
 #include <sys/wait.h>  // for waitpid(...)
+#include <unistd.h>    // for STDIN_FILENO/STDOUT_FILENO/STDERR_FILENO
+
+#include <cstdio>  // for *printf(...)
+#include <thread>
 #endif
 
 #if defined(__APPLE__)
@@ -56,12 +55,11 @@
 #endif
 
 #include "file_utils.hpp"
+#include "log.hpp"
+#include "misc.hpp"
 #include "shared.hpp"
 #include "singleton.hpp"
 #include "thread_utils.hpp"
-
-#include "misc.hpp"
-#include "log.hpp"
 
 namespace {
 
@@ -180,8 +178,8 @@ bool stack_trace_libunwind(irs::logger::level_t level,
 DWORD stack_trace_win32(irs::logger::level_t level,
                         struct _EXCEPTION_POINTERS* ex) {
   static std::mutex mutex;
-  auto lock =
-    irs::make_lock_guard(mutex);  // win32 stack trace API is not thread safe
+  // win32 stack trace API is not thread safe
+  std::lock_guard lock{mutex};
 
   if (!ex || !ex->ContextRecord) {
     IR_LOG_FORMATED(
@@ -923,7 +921,7 @@ void stack_trace_nomalloc(level_t level, int fd, size_t skip) {
 
   if (frames_count > 0 && size_t(frames_count) > skip) {
     static std::mutex mtx;
-    auto lock = irs::make_lock_guard(mtx);
+    std::lock_guard lock{mtx};
     backtrace_symbols_fd(frames_buf + skip, frames_count - skip, fd);
   }
 }
