@@ -2061,10 +2061,12 @@ index_writer::flush_pending(flush_context& ctx,
   segment_flush_locks.reserve(ctx.pending_segment_contexts_.size());
 
   for (auto& entry : ctx.pending_segment_contexts_) {
+    auto& segment = entry.segment_;
+
     // mark the 'segment_context' as dirty so that it will not be reused if this
     // 'flush_context' once again becomes the active context while the
     // 'segment_context' handle is still held by documents()
-    entry.segment_->dirty_ = true;
+    segment->dirty_ = true;
 
     // wait for the segment to no longer be active
     // i.e. wait for all ongoing document operations to finish (insert/replace)
@@ -2072,8 +2074,7 @@ index_writer::flush_pending(flush_context& ctx,
     // because it was started by a different 'flush_context', i.e. by 'ctx'
 
     // FIXME remove this condition once col_writer tail is writen correctly
-    while (entry.segment_->active_count_.load() ||
-           entry.segment_.use_count() != 1) {
+    while (segment->active_count_.load() || segment.use_count() != 1) {
       // arbitrary sleep interval
       ctx.pending_segment_context_cond_.wait_for(ctx_lock, 50ms);
     }
@@ -2082,17 +2083,19 @@ index_writer::flush_pending(flush_context& ctx,
     // flush_context::emplace(...)
     // FIXME flush_all() blocks flush_context::emplace(...) and
     // insert()/remove()/replace()
-    segment_flush_locks.emplace_back(entry.segment_->flush_mutex_);
+    segment_flush_locks.emplace_back(segment->flush_mutex_);
+
+    //    entry.segment_->
 
     // force a flush of the underlying segment_writer
-    max_tick = std::max(entry.segment_->flush(), max_tick);
+    max_tick = std::max(segment->flush(), max_tick);
 
     // may be std::numeric_limits<size_t>::max() if segment_meta only in this
     // flush_context
     entry.doc_id_end_ =
-      std::min(entry.segment_->uncomitted_doc_id_begin_, entry.doc_id_end_);
+      std::min(segment->uncomitted_doc_id_begin_, entry.doc_id_end_);
     entry.modification_offset_end_ =
-      std::min(entry.segment_->uncomitted_modification_queries_,
+      std::min(segment->uncomitted_modification_queries_,
                entry.modification_offset_end_);
   }
 
