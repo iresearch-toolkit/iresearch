@@ -186,13 +186,14 @@ bool add_document_mask_modified_records(
     return false;  // nothing new to flush
   }
 
-  auto reader = readers.emplace(ctx.segment_.meta);
+  auto& segment = ctx.segment_;
+  auto reader = readers.emplace(segment.meta);
 
   if (!reader) {
     throw index_error(string_utils::to_string(
       "while adding document mask modified records to flush_segment_context of "
       "segment '%s', error: failed to open segment",
-      ctx.segment_.meta.name.c_str()));
+      segment.meta.name.c_str()));
   }
 
   assert(doc_limits::valid(ctx.doc_id_begin_));
@@ -244,8 +245,8 @@ bool add_document_mask_modified_records(
                    // which in turn did not match any records
       }
 
-      assert(ctx.segment_.meta.live_docs_count);
-      --ctx.segment_.meta.live_docs_count;  // decrement count of live docs
+      assert(segment.meta.live_docs_count);
+      --segment.meta.live_docs_count;  // decrement count of live docs
       modification.seen = true;
       modified = true;
     }
@@ -445,8 +446,8 @@ bool map_removals(const candidates_mapping_t& candidates_mapping,
       // removed docs to the meged mask
       for (;;) {
         while (merged_itr->value() < current_itr->value()) {
-          assert(doc_limits::valid(merge_ctx.doc_map(
-            merged_itr->value())));  // doc_id must have a valid mapping
+          // doc_id must have a valid mapping
+          assert(doc_limits::valid(merge_ctx.doc_map(merged_itr->value())));
           docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
 
           if (!merged_itr->next()) {
@@ -503,8 +504,8 @@ bool map_removals(const candidates_mapping_t& candidates_mapping,
         // mask all remaining doc_ids
         if (!current_itr->next()) {
           do {
-            assert(doc_limits::valid(merge_ctx.doc_map(
-              merged_itr->value())));  // doc_id must have a valid mapping
+            // doc_id must have a valid mapping
+            assert(doc_limits::valid(merge_ctx.doc_map(merged_itr->value())));
             docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
           } while (merged_itr->next());
 
@@ -1206,8 +1207,8 @@ index_writer::segment_context::ptr index_writer::segment_context::make(
 
 segment_writer::update_context
 index_writer::segment_context::make_update_context(const filter& filter) {
-  auto generation =
-    ++uncomitted_generation_offset_;  // increment generation due to removal
+  // increment generation due to removal
+  auto generation = ++uncomitted_generation_offset_;
   auto update_id = modification_queries_.size();
 
   // -1 for previous generation
@@ -1220,8 +1221,8 @@ segment_writer::update_context
 index_writer::segment_context::make_update_context(
   const std::shared_ptr<filter>& filter) {
   assert(filter);
-  auto generation =
-    ++uncomitted_generation_offset_;  // increment generation due to removal
+  // increment generation due to removal
+  auto generation = ++uncomitted_generation_offset_;
   auto update_id = modification_queries_.size();
 
   // -1 for previous generation
@@ -1233,8 +1234,8 @@ index_writer::segment_context::make_update_context(
 segment_writer::update_context
 index_writer::segment_context::make_update_context(filter::ptr&& filter) {
   assert(filter);
-  auto generation =
-    ++uncomitted_generation_offset_;  // increment generation due to removal
+  // increment generation due to removal
+  auto generation = ++uncomitted_generation_offset_;
   auto update_id = modification_queries_.size();
 
   // -1 for previous generation
@@ -1476,8 +1477,8 @@ index_writer::ptr index_writer::make(
     opts.features ? opts.features : kDefaultFeatureInfo,
     opts.meta_payload_provider, std::move(meta), std::move(comitted_state));
 
-  directory_utils::remove_all_unreferenced(
-    dir);  // remove non-index files from directory
+  // remove non-index files from directory
+  directory_utils::remove_all_unreferenced(dir);
 
   return writer;
 }
@@ -2188,9 +2189,7 @@ index_writer::pending_context_t index_writer::flush_all(
         modifications_end - modifications_begin};
 
       mask_modified |= add_document_mask_modified_records(
-        modification_queries, docs_mask,
-        cached_readers_,  // reader cache for segments
-        segment.meta);
+        modification_queries, docs_mask, cached_readers_, segment.meta);
     }
 
     ++current_segment_index;
@@ -2319,8 +2318,7 @@ index_writer::pending_context_t index_writer::flush_all(
           modifications_end - modifications_begin};
 
         docs_mask_modified |= add_document_mask_modified_records(
-          modification_queries, docs_mask,
-          cached_readers_,  // reader cache for segments
+          modification_queries, docs_mask, cached_readers_,
           pending_segment.segment.meta, pending_segment.generation);
       }
 
