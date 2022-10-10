@@ -1618,6 +1618,76 @@ TEST_P(sorted_index_test_case,
   assert_index();
 }
 
+TEST_P(sorted_index_test_case, doc_removal_same_key_within_trx) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [](tests::document& doc, const std::string& name,
+       const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        doc.insert(std::make_shared<tests::string_field>(name, data.str));
+      }
+    });
+
+  tests::document const* doc1 = gen.next();
+  tests::document const* doc2 = gen.next();
+  tests::document const* doc3 = gen.next();
+
+  auto query_doc1 = MakeByTerm("name", "A");
+  auto query_doc2 = MakeByTerm("name", "B");
+
+  {
+    string_comparer less;
+
+    // open writer
+    irs::index_writer::init_options opts;
+    opts.comparator = &less;
+    opts.features = features();
+    auto writer = open_writer(irs::OM_CREATE, opts);
+    ASSERT_NE(nullptr, writer);
+    ASSERT_EQ(&less, writer->comparator());
+
+    ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
+                       doc1->stored.begin(), doc1->stored.end()));
+    ASSERT_TRUE(writer->commit());
+    writer->documents().remove(*(query_doc1));
+    ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
+                       doc2->stored.begin(), doc2->stored.end()));
+    writer->documents().remove(*(query_doc2));
+    ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
+                       doc3->stored.begin(), doc3->stored.end()));
+    ASSERT_TRUE(writer->commit());
+  }
+
+  // Check consolidated segment
+  {
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(1, reader.size());
+    ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
+
+    // Check segment 0
+    auto& segment = reader[0];
+    const auto* column = segment.sort();
+    ASSERT_NE(nullptr, column);
+    ASSERT_TRUE(column->name().null());
+    ASSERT_EQ(0, column->payload().size());
+    auto values = column->iterator(irs::ColumnHint::kNormal);
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+    ASSERT_EQ("C",
+              irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+    ASSERT_FALSE(docsItr->next());
+  }
+}
+
 TEST_P(sorted_index_test_case,
        check_document_order_after_consolidation_sparse) {
   tests::json_doc_generator gen(
