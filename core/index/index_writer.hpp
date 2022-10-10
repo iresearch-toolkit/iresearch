@@ -383,7 +383,7 @@ class index_writer : private util::noncopyable {
 
   // Additional information required for removal/update requests
   struct modification_context {
-    typedef std::shared_ptr<const irs::filter> filter_ptr;
+    using filter_ptr = std::shared_ptr<const irs::filter>;
 
     modification_context(const irs::filter& match_filter, size_t gen,
                          bool isUpdate)
@@ -872,10 +872,9 @@ class index_writer : private util::noncopyable {
     }
   };
 
-  typedef std::shared_ptr<std::pair<std::shared_ptr<index_meta>, file_refs_t>>
-    committed_state_t;
-
-  typedef unbounded_object_pool<segment_context> segment_pool_t;
+  using committed_state_t =
+    std::shared_ptr<std::pair<std::shared_ptr<index_meta>, file_refs_t>>;
+  using segment_pool_t = unbounded_object_pool<segment_context>;
 
   // The context containing data collected for the next commit() call
   // Note a 'segment_context' is tracked by at most 1 'flush_context', it is
@@ -884,7 +883,8 @@ class index_writer : private util::noncopyable {
   // longer active.
   struct flush_context {
     // 'value' == node offset into 'pending_segment_context_'
-    typedef concurrent_stack<size_t> freelist_t;
+    using freelist_t = concurrent_stack<size_t>;
+
     struct pending_segment_context : public freelist_t::node_type {
       // starting segment_context::document_contexts_ for this
       // flush_context range
@@ -956,8 +956,7 @@ class index_writer : private util::noncopyable {
     // 'pending_segment_contexts_' that
     // are available for reuse
     freelist_t pending_segment_contexts_freelist_;
-    // set of segment names to be removed from the index upon
-    // commit
+    // set of segment names to be removed from the index upon commit
     absl::flat_hash_set<readers_cache::key_t, readers_cache::key_hash_t>
       segment_mask_;
 

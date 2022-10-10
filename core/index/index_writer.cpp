@@ -1176,7 +1176,7 @@ uint64_t index_writer::segment_context::flush() {
        doc_id < doc_id_end; ++doc_id) {
     assert(doc_id <= std::numeric_limits<doc_id_t>::max());
     flushed_update_contexts_.emplace_back(
-      writer_->doc_context(doc_id_t(doc_id)));
+      writer_->doc_context(static_cast<doc_id_t>(doc_id)));
   }
 
   auto& segment = flushed_.back();
@@ -2464,7 +2464,7 @@ index_writer::pending_context_t index_writer::flush_all(
           continue;  // empty segment since head+tail == 'docs_count'
         }
 
-        std::span flush_update_contexts{
+        const std::span flush_update_contexts{
           segment->flushed_update_contexts_.data() + flushed_docs_start,
           flushed.meta.docs_count};
 
@@ -2518,7 +2518,7 @@ index_writer::pending_context_t index_writer::flush_all(
           assert(modifications_begin <= modifications_end);
           assert(modifications_end <=
                  modifications.segment_->modification_queries_.size());
-          std::span modification_queries(
+          const std::span modification_queries(
             modifications.segment_->modification_queries_.data() +
               modifications_begin,
             modifications_end - modifications_begin);
