@@ -21,12 +21,14 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "segment_writer.hpp"
-#include "store/store_utils.hpp"
-#include "index_meta.hpp"
-#include "analysis/token_stream.hpp"
+
 #include "analysis/token_attributes.hpp"
+#include "analysis/token_stream.hpp"
+#include "index/norm.hpp"
+#include "index_meta.hpp"
+#include "shared.hpp"
+#include "store/store_utils.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
@@ -34,8 +36,6 @@
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
-
-#include "index/norm.hpp"
 
 namespace {
 
@@ -85,21 +85,21 @@ doc_id_t segment_writer::begin(const update_context& ctx,
   doc_.clear();  // clear norm fields
 
   if (docs_mask_.capacity() <= docs_mask_.size() + 1 + reserve_rollback_extra) {
-    docs_mask_.reserve(math::roundup_power2(
-      docs_mask_.size() + 1 +
-      reserve_rollback_extra)  // reserve in blocks of power-of-2
-    );                         // reserve space for potential rollback
+    // reserve space for potential rollback
+    // reserve in blocks of power-of-2
+    docs_mask_.reserve(
+      math::roundup_power2(docs_mask_.size() + 1 + reserve_rollback_extra));
   }
 
   if (docs_context_.size() >= docs_context_.capacity()) {
-    docs_context_.reserve(math::roundup_power2(
-      docs_context_.size() + 1));  // reserve in blocks of power-of-2
+    // reserve in blocks of power-of-2
+    docs_context_.reserve(math::roundup_power2(docs_context_.size() + 1));
   }
 
   docs_context_.emplace_back(ctx);
 
-  return doc_id_t(docs_cached() + doc_limits::min() -
-                  1);  // -1 for 0-based offset
+  // -1 for 0-based offset
+  return doc_id_t(docs_cached() + doc_limits::min() - 1);
 }
 
 segment_writer::ptr segment_writer::make(

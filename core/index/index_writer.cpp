@@ -2085,8 +2085,6 @@ index_writer::flush_pending(flush_context& ctx,
     // insert()/remove()/replace()
     segment_flush_locks.emplace_back(segment->flush_mutex_);
 
-    //    entry.segment_->
-
     // force a flush of the underlying segment_writer
     max_tick = std::max(segment->flush(), max_tick);
 

@@ -26,11 +26,11 @@
 
 #include <absl/container/node_hash_set.h>
 
+#include "analysis/token_stream.hpp"
 #include "column_info.hpp"
 #include "field_data.hpp"
-#include "sorted_column.hpp"
-#include "analysis/token_stream.hpp"
 #include "formats/formats.hpp"
+#include "sorted_column.hpp"
 #include "utils/bitvector.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
@@ -43,37 +43,26 @@ namespace iresearch {
 class comparer;
 struct segment_meta;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @enum Action
-/// @brief defines how the inserting field should be processed
-//////////////////////////////////////////////////////////////////////////////
+// Defines how the inserting field should be processed
 enum class Action {
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief Field should be indexed only
-  /// @note Field must satisfy 'Field' concept
-  ////////////////////////////////////////////////////////////////////////////
+  // Field should be indexed only
+  // Field must satisfy 'Field' concept
   INDEX = 1,
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief Field should be stored only
-  /// @note Field must satisfy 'Attribute' concept
-  ////////////////////////////////////////////////////////////////////////////
+  // Field should be stored only
+  // Field must satisfy 'Attribute' concept
   STORE = 2,
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief Field should be stored in sorted order
-  /// @note Field must satisfy 'Attribute' concept
-  ////////////////////////////////////////////////////////////////////////////
+  // Field should be stored in sorted order
+  // Field must satisfy 'Attribute' concept
   STORE_SORTED = 4
-};  // Action
+};
 
 ENABLE_BITMASK_ENUM(Action);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief interface for an index writer over a directory
-///        an object that represents a single ongoing transaction
-///        non-thread safe
-////////////////////////////////////////////////////////////////////////////////
+// Interface for an index writer over a directory
+// an object that represents a single ongoing transaction
+// non-thread safe
 class segment_writer : util::noncopyable {
  public:
   struct update_context {
@@ -83,58 +72,44 @@ class segment_writer : util::noncopyable {
 
   using update_contexts = std::vector<update_context>;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @class document
-  /// @brief Facade for the insertion logic
-  //////////////////////////////////////////////////////////////////////////////
+  // Facade for the insertion logic
   class document : private util::noncopyable {
    public:
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief constructor
-    ////////////////////////////////////////////////////////////////////////////
     // cppcheck-suppress constParameter
     explicit document(segment_writer& writer) noexcept : writer_(writer) {}
 
-    ////////////////////////////////////////////////////////////////////////////
-    /// @return current state of the object
-    /// @note if the object is in an invalid state all further operations will
-    ///       not take any effect
-    ////////////////////////////////////////////////////////////////////////////
+    // Return current state of the object
+    // Note that if the object is in an invalid state all further operations
+    // will not take any effect
     explicit operator bool() const noexcept { return writer_.valid(); }
 
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief inserts the specified field into the document according to the
-    ///        specified ACTION
-    /// @note 'Field' type type must satisfy the Field concept
-    /// @param field attribute to be inserted
-    /// @return true, if field was successfully insterted
-    ////////////////////////////////////////////////////////////////////////////
+    // Inserts the specified field into the document according to the
+    // specified ACTION
+    // Note that 'Field' type type must satisfy the Field concept
+    // field attribute to be inserted
+    // Return true, if field was successfully insterted
     template<Action action, typename Field>
     bool insert(Field&& field) const {
       return writer_.insert<action>(std::forward<Field>(field));
     }
 
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief inserts the specified field (denoted by the pointer) into the
-    ///        document according to the specified ACTION
-    /// @note 'Field' type type must satisfy the Field concept
-    /// @note pointer must not be nullptr
-    /// @param field attribute to be inserted
-    /// @return true, if field was successfully insterted
-    ////////////////////////////////////////////////////////////////////////////
+    // Inserts the specified field (denoted by the pointer) into the
+    //        document according to the specified ACTION
+    // Note that 'Field' type type must satisfy the Field concept
+    // Note that pointer must not be nullptr
+    // field attribute to be inserted
+    // Return true, if field was successfully insterted
     template<Action action, typename Field>
     bool insert(Field* field) const {
       return writer_.insert<action>(*field);
     }
 
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief inserts the specified range of fields, denoted by the [begin;end)
-    ///        into the document according to the specified ACTION
-    /// @note 'Iterator' underline value type must satisfy the Field concept
-    /// @param begin the beginning of the fields range
-    /// @param end the end of the fields range
-    /// @return true, if the range was successfully insterted
-    ////////////////////////////////////////////////////////////////////////////
+    // Inserts the specified range of fields, denoted by the [begin;end)
+    // into the document according to the specified ACTION
+    // Note that 'Iterator' underline value type must satisfy the Field concept
+    // begin the beginning of the fields range
+    // end the end of the fields range
+    // Return true, if the range was successfully insterted
     template<Action action, typename Iterator>
     bool insert(Iterator begin, Iterator end) const {
       for (; writer_.valid() && begin != end; ++begin) {
@@ -146,7 +121,7 @@ class segment_writer : util::noncopyable {
 
    private:
     segment_writer& writer_;
-  };  // document
+  };
 
   DECLARE_UNIQUE_PTR(segment_writer);
 
@@ -155,11 +130,11 @@ class segment_writer : util::noncopyable {
                   const comparer* comparator);
 
   // begin document-write transaction
-  // @return doc_id_t as per type_limits<type_t::doc_id_t>
+  // Return doc_id_t as per type_limits<type_t::doc_id_t>
   doc_id_t begin(const update_context& ctx, size_t reserve_rollback_extra = 0);
 
-  // @param doc_id the document id as returned by begin(...)
-  // @return modifiable update_context for the specified doc_id
+  // doc_id the document id as returned by begin(...)
+  // Rreturn modifiable update_context for the specified doc_id
   update_context& doc_context(doc_id_t doc_id) {
     assert(doc_limits::valid(doc_id));
     assert(doc_id - doc_limits::min() < docs_context_.size());
@@ -196,7 +171,7 @@ class segment_writer : util::noncopyable {
     return false;
   }
 
-  // commit document-write transaction
+  // Commit document-write transaction
   void commit() {
     if (valid_) {
       finish();
@@ -205,24 +180,25 @@ class segment_writer : util::noncopyable {
     }
   }
 
-  // @return approximate amount of memory actively in-use by this instance
+  // Return approximate amount of memory actively in-use by this instance
   size_t memory_active() const noexcept;
 
-  // @return approximate amount of memory reserved by this instance
+  // Return approximate amount of memory reserved by this instance
   size_t memory_reserved() const noexcept;
 
-  // @param doc_id the document id as returned by begin(...)
-  // @return success
+  // doc_id the document id as returned by begin(...)
+  // Return success
   bool remove(doc_id_t doc_id);
 
-  // rollbacks document-write transaction,
+  // Rollback document-write transaction,
   // implicitly noexcept since we reserve memory in 'begin'
   void rollback() {
     // mark as removed since not fully inserted
-    assert(docs_cached() + doc_limits::min() - 1 <
-           doc_limits::eof());  // user should check return of begin() != eof()
-    remove(doc_id_t(docs_cached() + doc_limits::min() -
-                    1));  // -1 for 0-based offset
+
+    // user should check return of begin() != eof()
+    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
+    // -1 for 0-based offset
+    remove(doc_id_t(docs_cached() + doc_limits::min() - 1));
     valid_ = false;
   }
 
@@ -280,7 +256,7 @@ class segment_writer : util::noncopyable {
     size_t name_hash;
     columnstore_writer::values_writer_f writer;
     mutable field_id id{field_limits::invalid()};
-  };  // stored_column
+  };
 
   // FIXME consider refactor this
   // we can't use flat_hash_set as stored_column stores 'this' in non-cached
@@ -292,14 +268,13 @@ class segment_writer : util::noncopyable {
     explicit sorted_column(
       const column_info_provider_t& column_info,
       columnstore_writer::column_finalizer_f finalizer) noexcept
-      : stream(
-          column_info(string_ref::NIL)),  // get compression for sorted column
+      : stream(column_info(string_ref::NIL)),  // compression for sorted column
         finalizer{std::move(finalizer)} {}
 
     field_id id{field_limits::invalid()};
     irs::sorted_column stream;
     columnstore_writer::column_finalizer_f finalizer;
-  };  // sorted_column
+  };
 
   segment_writer(directory& dir, const column_info_provider_t& column_info,
                  const feature_info_provider_t& feature_info,
@@ -355,10 +330,10 @@ class segment_writer : util::noncopyable {
     const auto field_name =
       make_hashed_ref(static_cast<const string_ref&>(field.name()));
 
-    assert(docs_cached() + doc_limits::min() - 1 <
-           doc_limits::eof());  // user should check return of begin() != eof()
-    const auto doc_id =
-      doc_id_t(docs_cached() + doc_limits::min() - 1);  // -1 for 0-based offset
+    // user should check return of begin() != eof()
+    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
+    // -1 for 0-based offset
+    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1);
 
     return store(field_name, doc_id, field);
   }
@@ -367,10 +342,10 @@ class segment_writer : util::noncopyable {
   bool store_sorted(Field&& field) {
     REGISTER_TIMER_DETAILED();
 
-    assert(docs_cached() + doc_limits::min() - 1 <
-           doc_limits::eof());  // user should check return of begin() != eof()
-    const auto doc_id =
-      doc_id_t(docs_cached() + doc_limits::min() - 1);  // -1 for 0-based offset
+    // user should check return of begin() != eof()
+    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
+    // -1 for 0-based offset
+    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1);
 
     return store_sorted(doc_id, field);
   }
@@ -386,10 +361,10 @@ class segment_writer : util::noncopyable {
     const auto& features = static_cast<const features_t&>(field.features());
     const IndexFeatures index_features = field.index_features();
 
-    assert(docs_cached() + doc_limits::min() - 1 <
-           doc_limits::eof());  // user should check return of begin() != eof()
-    const auto doc_id =
-      doc_id_t(docs_cached() + doc_limits::min() - 1);  // -1 for 0-based offset
+    // user should check return of begin() != eof()
+    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
+    // -1 for 0-based offset
+    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1);
 
     return index(field_name, doc_id, index_features, features, tokens);
   }
@@ -405,10 +380,10 @@ class segment_writer : util::noncopyable {
     const auto& features = static_cast<const features_t&>(field.features());
     const IndexFeatures index_features = field.index_features();
 
-    assert(docs_cached() + doc_limits::min() - 1 <
-           doc_limits::eof());  // user should check return of begin() != eof()
-    const auto doc_id =
-      doc_id_t(docs_cached() + doc_limits::min() - 1);  // -1 for 0-based offset
+    // user should check return of begin() != eof()
+    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
+    // -1 for 0-based offset
+    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1);
 
     if (IRS_UNLIKELY(
           !index(field_name, doc_id, index_features, features, tokens))) {
@@ -422,16 +397,16 @@ class segment_writer : util::noncopyable {
     return store(field_name, doc_id, field);
   }
 
-  // returns stream for storing attributes in sorted order
+  // Returns stream for storing attributes in sorted order
   column_output& sorted_stream(const doc_id_t doc_id) {
     sort_.stream.prepare(doc_id);
     return sort_.stream;
   }
 
-  // returns stream for storing attributes
+  // Returns stream for storing attributes
   column_output& stream(const hashed_string_ref& name, const doc_id_t doc);
 
-  // finishes document
+  // Finishes document
   void finish() {
     REGISTER_TIMER_DETAILED();
     for (const auto* field : doc_) {
@@ -439,17 +414,16 @@ class segment_writer : util::noncopyable {
     }
   }
 
-  size_t flush_doc_mask(
-    const segment_meta& meta);  // flushes document mask to directory, returns
-                                // number of masked documens
-  void flush_fields(
-    const doc_map& docmap);  // flushes indexed fields to directory
+  // Flushes document mask to directory, returns number of masked documens
+  size_t flush_doc_mask(const segment_meta& meta);
+  // Flushes indexed fields to directory
+  void flush_fields(const doc_map& docmap);
 
   std::deque<cached_column> cached_columns_;  // pointers remain valid
   sorted_column sort_;
   update_contexts docs_context_;
-  bitvector docs_mask_;  // invalid/removed doc_ids (e.g. partially indexed due
-                         // to indexing failure)
+  // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
+  bitvector docs_mask_;
   fields_data fields_;
   stored_columns columns_;
   std::vector<const stored_column*> sorted_columns_;
@@ -462,7 +436,7 @@ class segment_writer : util::noncopyable {
   uint64_t tick_{0};
   bool initialized_;
   bool valid_{true};  // current state
-};                    // segment_writer
+};
 
 }  // namespace iresearch
 
