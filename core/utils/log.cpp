@@ -27,10 +27,12 @@
 #include <sstream>
 
 #if defined(_MSC_VER)
+// clang-format off
+#include <Windows.h>  // must be included before DbgHelp.h
 #include <DbgHelp.h>
 #include <Psapi.h>
-#include <Windows.h>  // must be included before DbgHelp.h
 #include <stdio.h>    // for *printf(...)
+// clang-format on
 #else
 #include <cxxabi.h>  // for abi::__cxa_demangle(...)
 #include <dlfcn.h>   // for dladdr(...)
