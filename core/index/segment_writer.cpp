@@ -37,23 +37,38 @@
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 
+namespace iresearch {
 namespace {
-
-using namespace irs;
 
 [[maybe_unused]] inline bool is_subset_of(const features_t& lhs,
                                           const feature_map_t& rhs) noexcept {
   for (const irs::type_info::type_id type : lhs) {
-    if (!rhs.count(type)) {
+    if (!rhs.contains(type)) {
       return false;
     }
   }
   return true;
 }
 
-}  // namespace
+void reorder(std::span<segment_writer::update_context> ctxs,
+             const doc_map& docmap) {
+  assert(!docmap.empty());
 
-namespace iresearch {
+  for (size_t doc = doc_limits::min(); doc <= ctxs.size(); ++doc) {
+    assert(doc < docmap.size());
+    const auto new_doc = docmap[doc];
+    assert(!doc_limits::eof(new_doc));
+
+    if (new_doc > doc) {
+      assert(new_doc > 0);
+      assert(new_doc <= ctxs.size());
+      std::swap(ctxs[doc - doc_limits::min()],
+                ctxs[new_doc - doc_limits::min()]);
+    }
+  }
+}
+
+}  // namespace
 
 segment_writer::stored_column::stored_column(
   const hashed_string_ref& name, columnstore_writer& columnstore,
@@ -186,7 +201,7 @@ bool segment_writer::index(const hashed_string_ref& name, const doc_id_t doc,
   auto* slot = fields_.emplace(name, index_features, features, *col_writer_);
 
   // invert only if new field index features are a subset of slot index features
-  assert(::is_subset_of(features, slot->meta().features));
+  assert(is_subset_of(features, slot->meta().features));
   if (is_subset_of(index_features, slot->requested_features()) &&
       slot->invert(tokens, doc)) {
     if (!slot->seen() && slot->has_features()) {
@@ -280,6 +295,7 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
 
     if (!docmap.empty()) {
       state.docmap = &docmap;
+      reorder(docs_context_, docmap);
     }
   }
 

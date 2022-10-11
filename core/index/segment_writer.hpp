@@ -133,13 +133,7 @@ class segment_writer : util::noncopyable {
   // Return doc_id_t as per type_limits<type_t::doc_id_t>
   doc_id_t begin(const update_context& ctx, size_t reserve_rollback_extra = 0);
 
-  // doc_id the document id as returned by begin(...)
-  // Rreturn modifiable update_context for the specified doc_id
-  update_context& doc_context(doc_id_t doc_id) {
-    assert(doc_limits::valid(doc_id));
-    assert(doc_id - doc_limits::min() < docs_context_.size());
-    return docs_context_[doc_id - doc_limits::min()];
-  }
+  std::span<update_context> docs_context() noexcept { return docs_context_; }
 
   template<Action action, typename Field>
   bool insert(Field&& field) {

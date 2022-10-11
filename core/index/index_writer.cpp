@@ -935,8 +935,8 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
     (this != flush_ctx && flush_ctx && segment.ctx_.use_count() == 1));
 
   freelist_t::node_type* freelist_node = nullptr;
-  size_t generation_base;
-  size_t modification_count;
+  size_t generation_base{};
+  size_t modification_count{};
   auto& ctx = *(segment.ctx_);
 
   // prevent concurrent flush related modifications,
@@ -1051,47 +1051,42 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
                   const_cast<size_t&>(v.generation) += generation_base;
                 });
 
-  auto uncomitted_doc_id_begin = ctx.uncomitted_doc_id_begin_;
+  auto update_generation = [uncomitted_doc_id_begin =
+                              ctx.uncomitted_doc_id_begin_ - doc_limits::min(),
+                            modification_count, generation_base](
+                             std::span<segment_writer::update_context> ctxs) {
+    // update generations of segment_context::flushed_update_contexts_
+    for (size_t i = uncomitted_doc_id_begin, end = ctxs.size(); i < end; ++i) {
+      // can == modification_count if inserts come  after
+      // modification
+      assert(ctxs[i].generation <= modification_count);
+      // update to flush_context generation
+      ctxs[i].generation += generation_base;
+    }
+  };
+
+  auto& flushed_update_contexts = ctx.flushed_update_contexts_;
 
   // update generations of segment_context::flushed_update_contexts_
-  for (auto i = uncomitted_doc_id_begin - doc_limits::min(),
-            end = ctx.flushed_update_contexts_.size();
-       i < end; ++i, ++uncomitted_doc_id_begin) {
-    // can == modification_count if inserts come  after modification
-    assert(ctx.flushed_update_contexts_[i].generation <= modification_count);
-    // update to flush_context generation
-    ctx.flushed_update_contexts_[i].generation += generation_base;
-  }
+  update_generation(flushed_update_contexts);
 
   assert(ctx.writer_);
-  assert(std::numeric_limits<doc_id_t>::max() >= ctx.writer_->docs_cached());
+  assert(ctx.writer_->docs_cached() <= doc_limits::eof());
   auto& writer = *(ctx.writer_);
-  auto writer_docs = writer.initialized() ? writer.docs_cached() : 0;
-
-  // update_contexts located inside th writer
-  assert(uncomitted_doc_id_begin - doc_limits::min() >=
-         ctx.flushed_update_contexts_.size());
-  assert(uncomitted_doc_id_begin - doc_limits::min() <=
-         ctx.flushed_update_contexts_.size() + writer_docs);
+  const auto writer_docs = writer.initialized() ? writer.docs_cached() : 0;
 
   // update generations of segment_writer::doc_contexts
-  for (auto
-         doc_id = uncomitted_doc_id_begin - ctx.flushed_update_contexts_.size(),
-         doc_id_end = writer_docs + doc_limits::min();
-       doc_id < doc_id_end; ++doc_id) {
-    assert(doc_id <= std::numeric_limits<doc_id_t>::max());
-    // can == modification_count if inserts come after modification
-    assert(writer.doc_context(doc_id).generation <= modification_count);
-    // update to flush_context generation
-    writer.doc_context(doc_id_t(doc_id)).generation += generation_base;
+  if (writer_docs) {
+    update_generation(writer.docs_context());
   }
 
   // reset counters for segment reuse
 
   ctx.uncomitted_generation_offset_ = 0;
   ctx.uncomitted_doc_id_begin_ =
-    ctx.flushed_update_contexts_.size() + writer_docs + doc_limits::min();
+    flushed_update_contexts.size() + writer_docs + doc_limits::min();
   ctx.uncomitted_modification_queries_ = ctx.modification_queries_.size();
+
   if (!freelist_node) {
     // FIXME remove this condition once col_writer tail is writen correctly
     return;
@@ -1155,39 +1150,26 @@ index_writer::segment_context::segment_context(
 }
 
 uint64_t index_writer::segment_context::flush() {
-  // must be already locked to
-  // prevent concurrent flush related modifications
+  // must be already locked to prevent concurrent flush related modifications
   assert(!flush_mutex_.try_lock());
 
   if (!writer_ || !writer_->initialized() || !writer_->docs_cached()) {
     return 0;  // skip flushing an empty writer
   }
 
-  auto flushed_docs_count = flushed_update_contexts_.size();
+  assert(writer_->docs_cached() <= doc_limits::eof());
 
-  assert(std::numeric_limits<doc_id_t>::max() >= writer_->docs_cached());
-  flushed_update_contexts_.reserve(flushed_update_contexts_.size() +
-                                   writer_->docs_cached());
-  flushed_.emplace_back(std::move(writer_meta_.meta));
+  auto& segment = flushed_.emplace_back(std::move(writer_meta_.meta));
 
-  // copy over update_contexts
-  for (size_t doc_id = doc_limits::min(),
-              doc_id_end = writer_->docs_cached() + doc_limits::min();
-       doc_id < doc_id_end; ++doc_id) {
-    assert(doc_id <= std::numeric_limits<doc_id_t>::max());
-    flushed_update_contexts_.emplace_back(
-      writer_->doc_context(static_cast<doc_id_t>(doc_id)));
-  }
-
-  auto& segment = flushed_.back();
-
-  // flush segment_writer
   try {
     writer_->flush(segment);
+
+    const std::span ctxs{writer_->docs_context()};
+    flushed_update_contexts_.insert(flushed_update_contexts_.end(),
+                                    ctxs.begin(), ctxs.end());
   } catch (...) {
     // failed to flush segment
     flushed_.pop_back();
-    flushed_update_contexts_.resize(flushed_docs_count);
 
     throw;
   }
