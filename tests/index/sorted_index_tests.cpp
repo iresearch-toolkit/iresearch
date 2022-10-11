@@ -1621,10 +1621,12 @@ TEST_P(sorted_index_test_case,
 TEST_P(sorted_index_test_case, doc_removal_same_key_within_trx) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [](tests::document& doc, const std::string& name,
+    [](tests::document& doc, std::string_view name,
        const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        doc.insert(std::make_shared<tests::string_field>(name, data.str));
+      if (name == "name" && data.is_string()) {
+        auto field = std::make_shared<tests::string_field>(name, data.str);
+        doc.sorted = field;
+        doc.insert(field);
       }
     });
 
@@ -1647,14 +1649,13 @@ TEST_P(sorted_index_test_case, doc_removal_same_key_within_trx) {
     ASSERT_EQ(&less, writer->comparator());
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
-                       doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_TRUE(writer->commit());
+                       doc1->stored.begin(), doc1->stored.end(), doc1->sorted));
     writer->documents().remove(*(query_doc1));
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
-                       doc2->stored.begin(), doc2->stored.end()));
+                       doc2->stored.begin(), doc2->stored.end(), doc2->sorted));
     writer->documents().remove(*(query_doc2));
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
-                       doc3->stored.begin(), doc3->stored.end()));
+                       doc3->stored.begin(), doc3->stored.end(), doc3->sorted));
     ASSERT_TRUE(writer->commit());
   }
 
@@ -1663,7 +1664,8 @@ TEST_P(sorted_index_test_case, doc_removal_same_key_within_trx) {
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
-    ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
+    ASSERT_EQ(3, reader->docs_count());
+    ASSERT_EQ(1, reader->live_docs_count());
 
     // Check segment 0
     auto& segment = reader[0];
@@ -1675,16 +1677,14 @@ TEST_P(sorted_index_test_case, doc_removal_same_key_within_trx) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto terms = segment.field("same");
+    auto terms = segment.field("name");
     ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-    ASSERT_TRUE(termItr->next());
-    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+    auto docs = segment.docs_iterator();
+    ASSERT_TRUE(docs->next());
+    ASSERT_EQ(docs->value(), values->seek(docs->value()));
     ASSERT_EQ("C",
               irs::to_string<irs::string_ref>(actual_value->value.c_str()));
-    ASSERT_FALSE(docsItr->next());
+    ASSERT_FALSE(docs->next());
   }
 }
 

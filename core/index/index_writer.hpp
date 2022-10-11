@@ -754,11 +754,13 @@ class index_writer : private util::noncopyable {
   struct segment_context {
     struct flushed_t : public index_meta::index_segment_t {
       // starting doc_id that should be added to docs_mask
-      doc_id_t docs_mask_tail_doc_id{std::numeric_limits<doc_id_t>::max()};
+      doc_id_t docs_mask_tail_doc_id{doc_limits::eof()};
+
       flushed_t() = default;
-      explicit flushed_t(segment_meta&& meta)
-        : index_meta::index_segment_t(std::move(meta)) {}
+      explicit flushed_t(segment_meta&& meta) noexcept
+        : index_meta::index_segment_t{std::move(meta)} {}
     };
+
     using segment_meta_generator_t = std::function<segment_meta()>;
     using ptr = std::unique_ptr<segment_context>;
 
