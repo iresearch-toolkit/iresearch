@@ -27,7 +27,6 @@
 #endif
 
 #include <cmdline.h>
-
 #include <frozen/unordered_set.h>
 
 #if defined(_MSC_VER)
@@ -48,10 +47,11 @@
 #pragma warning(default : 4229)
 #endif
 
-#include "common.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
+#include "common.hpp"
+#include "index-put.hpp"
 #include "index/index_writer.hpp"
 #include "index/norm.hpp"
 #include "store/store_utils.hpp"
@@ -59,8 +59,6 @@
 #include "utils/index_utils.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/text_format.hpp"
-
-#include "index-put.hpp"
 
 namespace {
 
@@ -414,7 +412,7 @@ int put(const std::string& path, const std::string& dir_type,
     std::vector<std::string> buf_;
 
     bool swap(std::vector<std::string>& buf) {
-      auto lock = irs::make_unique_lock(mutex_);
+      auto lock = std::unique_lock(mutex_);
 
       for (;;) {
         buf_.swap(buf);
@@ -446,7 +444,7 @@ int put(const std::string& path, const std::string& dir_type,
     irs::set_thread_name(IR_NATIVE_STRING("reader"));
 
     SCOPED_TIMER("Stream read total time");
-    auto lock = irs::make_unique_lock(batch_provider.mutex_);
+    auto lock = std::unique_lock(batch_provider.mutex_);
 
     for (auto i = lines_max ? lines_max : (std::numeric_limits<size_t>::max)();
          i; --i) {
@@ -490,7 +488,7 @@ int put(const std::string& path, const std::string& dir_type,
 
         // notify consolidation threads
         if (consolidation_threads) {
-          auto lock = irs::make_unique_lock(consolidation_mutex);
+          auto lock = std::unique_lock(consolidation_mutex);
           consolidation_cv.notify_all();
         }
 
@@ -512,7 +510,7 @@ int put(const std::string& path, const std::string& dir_type,
 
       while (!batch_provider.done_.load()) {
         {
-          auto lock = irs::make_unique_lock(consolidation_mutex);
+          auto lock = std::unique_lock(consolidation_mutex);
           if (std::cv_status::timeout ==
               consolidation_cv.wait_for(
                 lock, std::chrono::milliseconds(consolidation_interval_ms))) {

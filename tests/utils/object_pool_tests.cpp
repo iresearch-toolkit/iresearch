@@ -97,7 +97,7 @@ TEST(bounded_object_pool_tests, check_total_number_of_instances) {
   auto job = [&mutex, &ready_cv, &pool, &ready, &id]() {
     // wait for all threads to be ready
     {
-      auto lock = irs::make_unique_lock(mutex);
+      auto lock = std::unique_lock(mutex);
 
       while (!ready) {
         ready_cv.wait(lock);
@@ -110,7 +110,7 @@ TEST(bounded_object_pool_tests, check_total_number_of_instances) {
   auto job_shared = [&mutex, &ready_cv, &pool, &ready, &id]() {
     // wait for all threads to be ready
     {
-      auto lock = irs::make_unique_lock(mutex);
+      auto lock = std::unique_lock(mutex);
 
       while (!ready) {
         ready_cv.wait(lock);
@@ -130,7 +130,7 @@ TEST(bounded_object_pool_tests, check_total_number_of_instances) {
 
   // ready
   {
-    auto lock = irs::make_unique_lock(mutex);
+    auto lock = std::unique_lock(mutex);
     ready = true;
   }
   ready_cv.notify_all();
@@ -151,12 +151,12 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
     auto obj = pool.emplace(1);
 
     {
-      auto lock = irs::make_unique_lock(mutex);
+      auto lock = std::unique_lock(mutex);
       std::atomic<bool> emplace(false);
       std::thread thread([&cond, &mutex, &pool, &emplace]() -> void {
         auto obj = pool.emplace(2);
         emplace = true;
-        auto lock = irs::make_unique_lock(mutex);
+        auto lock = std::unique_lock(mutex);
         cond.notify_all();
       });
 
@@ -187,14 +187,14 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
     ASSERT_EQ(1, test_sobject_nullptr::MAKE_COUNT);
 
     {
-      auto lock = irs::make_unique_lock(mutex);
+      auto lock = std::unique_lock(mutex);
       std::atomic<bool> emplace(false);
       std::thread thread([&cond, &mutex, &pool, &emplace]() -> void {
         auto obj = pool.emplace();
         ASSERT_FALSE(obj);
         ASSERT_EQ(2, test_sobject_nullptr::MAKE_COUNT);
         emplace = true;
-        auto lock = irs::make_unique_lock(mutex);
+        auto lock = std::unique_lock(mutex);
         cond.notify_all();
       });
 
@@ -228,13 +228,13 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
     ASSERT_TRUE(obj);
     std::condition_variable cond;
     std::mutex mutex;
-    auto lock = irs::make_unique_lock(mutex);
+    auto lock = std::unique_lock(mutex);
     std::atomic<bool> visit(false);
     std::thread thread([&cond, &mutex, &pool, &visit]() -> void {
       auto visitor = [](test_sobject&) -> bool { return true; };
       pool.visit(visitor);
       visit = true;
-      auto lock = irs::make_unique_lock(mutex);
+      auto lock = std::unique_lock(mutex);
       cond.notify_all();
     });
     auto result =
@@ -269,12 +269,12 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
     auto obj = pool.emplace(1);
 
     {
-      auto lock = irs::make_unique_lock(mutex);
+      auto lock = std::unique_lock(mutex);
       std::atomic<bool> emplace(false);
       std::thread thread([&cond, &mutex, &pool, &emplace]() -> void {
         auto obj = pool.emplace(2);
         emplace = true;
-        auto lock = irs::make_unique_lock(mutex);
+        auto lock = std::unique_lock(mutex);
         cond.notify_all();
       });
 
@@ -306,9 +306,9 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
     ASSERT_EQ(1, test_uobject_nullptr::MAKE_COUNT);
 
     {
-      auto lock = irs::make_unique_lock(mutex);
+      auto lock = std::unique_lock(mutex);
       std::thread thread([&cond, &mutex, &pool]() -> void {
-        auto lock = irs::make_unique_lock(mutex);
+        auto lock = std::unique_lock(mutex);
         auto obj = pool.emplace();
         ASSERT_FALSE(obj);
         ASSERT_EQ(2, test_uobject_nullptr::MAKE_COUNT);
@@ -344,13 +344,13 @@ TEST(bounded_object_pool_tests, test_uobject_pool) {
     auto obj = pool.emplace(1);
     std::condition_variable cond;
     std::mutex mutex;
-    auto lock = irs::make_unique_lock(mutex);
+    auto lock = std::unique_lock(mutex);
     std::atomic<bool> visit(false);
     std::thread thread([&cond, &mutex, &pool, &visit]() -> void {
       auto visitor = [](test_uobject&) -> bool { return true; };
       pool.visit(visitor);
       visit = true;
-      auto lock = irs::make_unique_lock(mutex);
+      auto lock = std::unique_lock(mutex);
       cond.notify_all();
     });
     auto result =
@@ -392,7 +392,7 @@ TEST(unbounded_object_pool_tests, check_total_number_of_cached_instances) {
   auto job = [&mutex, &ready_cv, &pool, &ready, &id]() {
     // wait for all threads to be ready
     {
-      auto lock = irs::make_unique_lock(mutex);
+      auto lock = std::unique_lock(mutex);
 
       while (!ready) {
         ready_cv.wait(lock);
@@ -408,7 +408,7 @@ TEST(unbounded_object_pool_tests, check_total_number_of_cached_instances) {
   auto job_shared = [&mutex, &ready_cv, &pool, &ready, &id]() {
     // wait for all threads to be ready
     {
-      auto lock = irs::make_unique_lock(mutex);
+      auto lock = std::unique_lock(mutex);
 
       while (!ready) {
         ready_cv.wait(lock);
@@ -431,7 +431,7 @@ TEST(unbounded_object_pool_tests, check_total_number_of_cached_instances) {
 
   // ready
   {
-    auto lock = irs::make_unique_lock(mutex);
+    auto lock = std::unique_lock(mutex);
     ready = true;
   }
   ready_cv.notify_all();
@@ -452,10 +452,10 @@ TEST(unbounded_object_pool_tests, test_uobject_pool_1) {
     std::shared_ptr<test_uobject> obj = pool.emplace(1);
 
     {
-      auto lock = irs::make_unique_lock(mutex);
+      auto lock = std::unique_lock(mutex);
       std::thread thread([&cond, &mutex, &pool]() -> void {
         auto obj = pool.emplace(2);
-        auto lock = irs::make_unique_lock(mutex);
+        auto lock = std::unique_lock(mutex);
         cond.notify_all();
       });
       ASSERT_EQ(
@@ -588,10 +588,10 @@ TEST(unbounded_object_pool_tests, test_uobject_pool_2) {
     std::shared_ptr<test_uobject> obj = pool.emplace(1);
 
     {
-      auto lock = irs::make_unique_lock(mutex);
+      auto lock = std::unique_lock(mutex);
       std::thread thread([&cond, &mutex, &pool]() -> void {
         auto obj = pool.emplace(2);
-        auto lock = irs::make_unique_lock(mutex);
+        auto lock = std::unique_lock(mutex);
         cond.notify_all();
       });
       ASSERT_EQ(
@@ -870,10 +870,10 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_1) {
     ASSERT_EQ(1, pool.generation_size());
 
     {
-      auto lock = irs::make_unique_lock(mutex);
+      auto lock = std::unique_lock(mutex);
       std::thread thread([&cond, &mutex, &pool]() -> void {
         auto obj = pool.emplace(2);
-        auto lock = irs::make_unique_lock(mutex);
+        auto lock = std::unique_lock(mutex);
         cond.notify_all();
       });
       // assume threads start within 1000msec
@@ -1065,10 +1065,10 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_2) {
     auto obj = pool.emplace(1);
 
     {
-      auto lock = irs::make_unique_lock(mutex);
+      auto lock = std::unique_lock(mutex);
       std::thread thread([&cond, &mutex, &pool]() -> void {
         auto obj = pool.emplace(2);
-        auto lock = irs::make_unique_lock(mutex);
+        auto lock = std::unique_lock(mutex);
         cond.notify_all();
       });
       // assume threads start within 1000msec
@@ -1209,7 +1209,7 @@ TEST(unbounded_object_pool_volatile_tests,
   auto job = [&mutex, &ready_cv, &pool, &ready, &id]() {
     // wait for all threads to be ready
     {
-      auto lock = irs::make_unique_lock(mutex);
+      auto lock = std::unique_lock(mutex);
 
       while (!ready) {
         ready_cv.wait(lock);
@@ -1225,7 +1225,7 @@ TEST(unbounded_object_pool_volatile_tests,
   auto job_shared = [&mutex, &ready_cv, &pool, &ready, &id]() {
     // wait for all threads to be ready
     {
-      auto lock = irs::make_unique_lock(mutex);
+      auto lock = std::unique_lock(mutex);
 
       while (!ready) {
         ready_cv.wait(lock);
@@ -1248,7 +1248,7 @@ TEST(unbounded_object_pool_volatile_tests,
 
   // ready
   {
-    auto lock = irs::make_unique_lock(mutex);
+    auto lock = std::unique_lock(mutex);
     ready = true;
   }
   ready_cv.notify_all();
@@ -1414,7 +1414,7 @@ TEST(concurrent_linked_list_test, concurrent_pop) {
 
   // start threads
   {
-    auto lock = irs::make_unique_lock(mutex);
+    auto lock = std::unique_lock(mutex);
     for (size_t i = 0; i < threads_data.size(); ++i) {
       auto& thread_data = threads_data[i];
       threads.emplace_back([&list, &wait_for_all, &thread_data]() {
@@ -1474,7 +1474,7 @@ TEST(concurrent_linked_list_test, concurrent_push) {
 
   auto wait_for_all = [&mutex, &ready, &ready_cv]() {
     // wait for all threads to be registered
-    auto lock = irs::make_unique_lock(mutex);
+    auto lock = std::unique_lock(mutex);
     while (!ready) {
       ready_cv.wait(lock);
     }
@@ -1482,7 +1482,7 @@ TEST(concurrent_linked_list_test, concurrent_push) {
 
   // start threads
   {
-    auto lock = irs::make_unique_lock(mutex);
+    auto lock = std::unique_lock(mutex);
     for (size_t i = 0; i < threads_data.size(); ++i) {
       auto& thread_data = threads_data[i];
       threads.emplace_back([&list, &wait_for_all, &thread_data]() {
@@ -1551,7 +1551,7 @@ TEST(concurrent_linked_list_test, concurrent_pop_push) {
 
   auto wait_for_all = [&mutex, &ready, &ready_cv]() {
     // wait for all threads to be registered
-    auto lock = irs::make_unique_lock(mutex);
+    auto lock = std::unique_lock(mutex);
     while (!ready) {
       ready_cv.wait(lock);
     }
@@ -1559,7 +1559,7 @@ TEST(concurrent_linked_list_test, concurrent_pop_push) {
 
   // start threads
   {
-    auto lock = irs::make_unique_lock(mutex);
+    auto lock = std::unique_lock(mutex);
     for (size_t i = 0; i < THREADS; ++i) {
       threads.emplace_back([NODES, &list, &wait_for_all]() {
         wait_for_all();
@@ -1588,7 +1588,7 @@ TEST(concurrent_linked_list_test, concurrent_pop_push) {
 
   // all threads are registered... go, go, go...
   {
-    auto lock = irs::make_unique_lock(mutex);
+    auto lock = std::unique_lock(mutex);
     ready = true;
     ready_cv.notify_all();
   }

@@ -21,12 +21,14 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "segment_writer.hpp"
-#include "store/store_utils.hpp"
-#include "index_meta.hpp"
-#include "analysis/token_stream.hpp"
+
 #include "analysis/token_attributes.hpp"
+#include "analysis/token_stream.hpp"
+#include "index/norm.hpp"
+#include "index_meta.hpp"
+#include "shared.hpp"
+#include "store/store_utils.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
@@ -35,25 +37,38 @@
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 
-#include "index/norm.hpp"
-
+namespace iresearch {
 namespace {
-
-using namespace irs;
 
 [[maybe_unused]] inline bool is_subset_of(const features_t& lhs,
                                           const feature_map_t& rhs) noexcept {
   for (const irs::type_info::type_id type : lhs) {
-    if (!rhs.count(type)) {
+    if (!rhs.contains(type)) {
       return false;
     }
   }
   return true;
 }
 
-}  // namespace
+void reorder(std::span<segment_writer::update_context> ctxs,
+             const doc_map& docmap) {
+  assert(!docmap.empty());
 
-namespace iresearch {
+  for (size_t doc = doc_limits::min(); doc <= ctxs.size(); ++doc) {
+    assert(doc < docmap.size());
+    const auto new_doc = docmap[doc];
+    assert(!doc_limits::eof(new_doc));
+
+    if (new_doc > doc) {
+      assert(new_doc > 0);
+      assert(new_doc <= ctxs.size());
+      std::swap(ctxs[doc - doc_limits::min()],
+                ctxs[new_doc - doc_limits::min()]);
+    }
+  }
+}
+
+}  // namespace
 
 segment_writer::stored_column::stored_column(
   const hashed_string_ref& name, columnstore_writer& columnstore,
@@ -85,21 +100,21 @@ doc_id_t segment_writer::begin(const update_context& ctx,
   doc_.clear();  // clear norm fields
 
   if (docs_mask_.capacity() <= docs_mask_.size() + 1 + reserve_rollback_extra) {
-    docs_mask_.reserve(math::roundup_power2(
-      docs_mask_.size() + 1 +
-      reserve_rollback_extra)  // reserve in blocks of power-of-2
-    );                         // reserve space for potential rollback
+    // reserve space for potential rollback
+    // reserve in blocks of power-of-2
+    docs_mask_.reserve(
+      math::roundup_power2(docs_mask_.size() + 1 + reserve_rollback_extra));
   }
 
   if (docs_context_.size() >= docs_context_.capacity()) {
-    docs_context_.reserve(math::roundup_power2(
-      docs_context_.size() + 1));  // reserve in blocks of power-of-2
+    // reserve in blocks of power-of-2
+    docs_context_.reserve(math::roundup_power2(docs_context_.size() + 1));
   }
 
   docs_context_.emplace_back(ctx);
 
-  return doc_id_t(docs_cached() + doc_limits::min() -
-                  1);  // -1 for 0-based offset
+  // -1 for 0-based offset
+  return doc_id_t(docs_cached() + doc_limits::min() - 1);
 }
 
 segment_writer::ptr segment_writer::make(
@@ -186,7 +201,7 @@ bool segment_writer::index(const hashed_string_ref& name, const doc_id_t doc,
   auto* slot = fields_.emplace(name, index_features, features, *col_writer_);
 
   // invert only if new field index features are a subset of slot index features
-  assert(::is_subset_of(features, slot->meta().features));
+  assert(is_subset_of(features, slot->meta().features));
   if (is_subset_of(index_features, slot->requested_features()) &&
       slot->invert(tokens, doc)) {
     if (!slot->seen() && slot->has_features()) {
@@ -280,6 +295,7 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
 
     if (!docmap.empty()) {
       state.docmap = &docmap;
+      reorder(docs_context_, docmap);
     }
   }
 

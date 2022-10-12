@@ -21,22 +21,22 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "memory_directory.hpp"
 
-#include "error/error.hpp"
-#include "utils/directory_utils.hpp"
-#include "utils/log.hpp"
-#include "utils/string.hpp"
-#include "utils/thread_utils.hpp"
-#include "utils/std.hpp"
-#include "utils/bytes_utils.hpp"
-#include "utils/numeric_utils.hpp"
-#include "utils/crc.hpp"
-
+#include <algorithm>
 #include <cassert>
 #include <cstring>
-#include <algorithm>
+
+#include "error/error.hpp"
+#include "shared.hpp"
+#include "utils/bytes_utils.hpp"
+#include "utils/crc.hpp"
+#include "utils/directory_utils.hpp"
+#include "utils/log.hpp"
+#include "utils/numeric_utils.hpp"
+#include "utils/std.hpp"
+#include "utils/string.hpp"
+#include "utils/thread_utils.hpp"
 
 namespace iresearch {
 
@@ -52,13 +52,13 @@ class single_instance_lock : public index_lock {
 
   virtual bool lock() override {
     // cppcheck-suppress unreadVariable
-    auto lock = make_lock_guard(parent->llock_);
+    std::lock_guard lock{parent->llock_};
     return parent->locks_.insert(name).second;
   }
 
   virtual bool is_locked(bool& result) const noexcept override {
     try {
-      auto lock_guard = make_lock_guard(parent->llock_);
+      std::lock_guard lock{parent->llock_};
 
       result = parent->locks_.find(name) != parent->locks_.end();
 
@@ -71,7 +71,7 @@ class single_instance_lock : public index_lock {
 
   virtual bool unlock() noexcept override {
     try {
-      auto lock_guard = make_lock_guard(parent->llock_);
+      std::lock_guard lock{parent->llock_};
 
       return parent->locks_.erase(name) > 0;
     } catch (...) {
@@ -415,7 +415,7 @@ memory_directory::memory_directory(directory_attributes attrs)
 
 memory_directory::~memory_directory() noexcept {
   // cppcheck-suppress unreadVariable
-  auto lock = make_lock_guard(flock_);
+  std::lock_guard lock{flock_};
 
   files_.clear();
 }
@@ -423,7 +423,7 @@ memory_directory::~memory_directory() noexcept {
 bool memory_directory::exists(bool& result,
                               std::string_view name) const noexcept {
   // cppcheck-suppress unreadVariable
-  auto lock = make_shared_lock(flock_);
+  std::shared_lock lock{flock_};
 
   result = files_.find(name) != files_.end();
 
@@ -432,7 +432,7 @@ bool memory_directory::exists(bool& result,
 
 index_output::ptr memory_directory::create(std::string_view name) noexcept {
   try {
-    auto lock = make_lock_guard(flock_);
+    std::lock_guard lock{flock_};
 
     auto res =
       files_.emplace(std::piecewise_construct, std::forward_as_tuple(name),
@@ -456,7 +456,7 @@ index_output::ptr memory_directory::create(std::string_view name) noexcept {
 bool memory_directory::length(uint64_t& result,
                               std::string_view name) const noexcept {
   // cppcheck-suppress unreadVariable
-  auto lock = make_shared_lock(flock_);
+  std::shared_lock lock{flock_};
 
   const auto it = files_.find(name);
 
@@ -482,7 +482,7 @@ index_lock::ptr memory_directory::make_lock(std::string_view name) noexcept {
 bool memory_directory::mtime(std::time_t& result,
                              std::string_view name) const noexcept {
   // cppcheck-suppress unreadVariable
-  auto lock = make_shared_lock(flock_);
+  std::shared_lock lock{flock_};
 
   const auto it = files_.find(name);
 
@@ -498,7 +498,7 @@ bool memory_directory::mtime(std::time_t& result,
 index_input::ptr memory_directory::open(std::string_view name,
                                         IOAdvice /*advice*/) const noexcept {
   try {
-    auto lock = make_shared_lock(flock_);
+    std::shared_lock lock{flock_};
 
     const auto it = files_.find(name);
 
@@ -520,7 +520,7 @@ index_input::ptr memory_directory::open(std::string_view name,
 
 bool memory_directory::remove(std::string_view name) noexcept {
   try {
-    auto lock = make_lock_guard(flock_);
+    std::lock_guard lock{flock_};
 
     return files_.erase(name) > 0;
   } catch (...) {
@@ -532,7 +532,7 @@ bool memory_directory::remove(std::string_view name) noexcept {
 bool memory_directory::rename(std::string_view src,
                               std::string_view dst) noexcept {
   try {
-    auto lock = make_lock_guard(flock_);
+    std::lock_guard lock{flock_};
 
     const auto res = files_.try_emplace(dst);
     auto it = files_.find(src);
@@ -563,7 +563,7 @@ bool memory_directory::visit(const directory::visitor_f& visitor) const {
   // to avoid potential recursive read locks in visitor
   {
     // cppcheck-suppress unreadVariable
-    auto lock = make_shared_lock(flock_);
+    std::shared_lock lock{flock_};
 
     files.reserve(files_.size());
 

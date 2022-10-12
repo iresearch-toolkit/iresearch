@@ -24,15 +24,15 @@
 #ifndef IRESEARCH_INDEX_TESTS_H
 #define IRESEARCH_INDEX_TESTS_H
 
-#include "tests_shared.hpp"
-#include "tests_param.hpp"
-#include "assert_format.hpp"
 #include "analysis/analyzers.hpp"
-#include "analysis/token_streams.hpp"
 #include "analysis/token_attributes.hpp"
+#include "analysis/token_streams.hpp"
+#include "assert_format.hpp"
+#include "doc_generator.hpp"
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
-#include "doc_generator.hpp"
+#include "tests_param.hpp"
+#include "tests_shared.hpp"
 #include "utils/timer_utils.hpp"
 
 using namespace std::chrono_literals;
@@ -115,12 +115,12 @@ struct blocking_directory : directory_mock {
 
     if (name == blocker) {
       {
-        auto guard = irs::make_unique_lock(policy_lock);
+        auto guard = std::unique_lock(policy_lock);
         policy_applied.notify_all();
       }
 
       // wait for intermediate commits to be applied
-      auto guard = irs::make_unique_lock(intermediate_commits_lock);
+      auto guard = std::unique_lock(intermediate_commits_lock);
     }
 
     return stream;
@@ -133,7 +133,7 @@ struct blocking_directory : directory_mock {
     while (!has) {
       exists(has, blocker);
 
-      auto policy_guard = irs::make_unique_lock(policy_lock);
+      auto policy_guard = std::unique_lock(policy_lock);
       policy_applied.wait_for(policy_guard, 1000ms);
     }
   }

@@ -22,9 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "formats_test_case_base.hpp"
-#include "search/term_filter.hpp"
+
 #include "formats/format_utils.hpp"
 #include "index/norm.hpp"
+#include "search/term_filter.hpp"
 #include "utils/lz4compression.hpp"
 
 namespace {
@@ -129,7 +130,7 @@ void format_test_case::assert_no_directory_artifacts(
   std::vector<std::string> dir_files;
   auto visitor = [&dir_files](std::string_view file) {
     // ignore lock file present in fs_directory
-    if (iresearch::index_writer::WRITE_LOCK_NAME != file) {
+    if (iresearch::index_writer::kWriteLockName != file) {
       dir_files.emplace_back(file);
     }
     return true;

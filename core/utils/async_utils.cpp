@@ -90,7 +90,7 @@ thread_pool::~thread_pool() {
 
 size_t thread_pool::max_idle() const {
   // cppcheck-suppress unreadVariable
-  auto lock = make_lock_guard(shared_state_->lock);
+  std::lock_guard lock{shared_state_->lock};
 
   return max_idle_;
 }
@@ -100,7 +100,7 @@ void thread_pool::max_idle(size_t value) {
 
   {
     // cppcheck-suppress unreadVariable
-    auto lock = make_lock_guard(state.lock);
+    std::lock_guard lock{state.lock};
 
     max_idle_ = value;
   }
@@ -113,7 +113,7 @@ void thread_pool::max_idle_delta(int delta) {
 
   {
     // cppcheck-suppress unreadVariable
-    auto lock = make_lock_guard(state.lock);
+    std::lock_guard lock{state.lock};
     auto max_idle = max_idle_ + delta;
 
     if (delta > 0 && max_idle < max_idle_) {
@@ -130,7 +130,7 @@ void thread_pool::max_idle_delta(int delta) {
 
 size_t thread_pool::max_threads() const {
   // cppcheck-suppress unreadVariable
-  auto lock = make_lock_guard(shared_state_->lock);
+  std::lock_guard lock{shared_state_->lock};
 
   return max_threads_;
 }
@@ -140,7 +140,7 @@ void thread_pool::max_threads(size_t value) {
 
   {
     // cppcheck-suppress unreadVariable
-    auto lock = make_lock_guard(state.lock);
+    std::lock_guard lock{shared_state_->lock};
 
     max_threads_ = value;
 
@@ -157,7 +157,7 @@ void thread_pool::max_threads_delta(int delta) {
 
   {
     // cppcheck-suppress unreadVariable
-    auto lock = make_lock_guard(state.lock);
+    std::lock_guard lock{state.lock};
     auto max_threads = max_threads_ + delta;
 
     if (delta > 0 && max_threads < max_threads_) {
@@ -185,7 +185,7 @@ bool thread_pool::run(std::function<void()>&& fn,
   auto& state = *shared_state_;
 
   {
-    auto lock = make_lock_guard(state.lock);
+    std::lock_guard lock{state.lock};
 
     if (State::RUN != state.state.load()) {
       return false;  // pool not active
@@ -214,7 +214,7 @@ void thread_pool::stop(bool skip_pending /*= false*/) {
 
   decltype(queue_) empty;
   {
-    auto lock = make_unique_lock(shared_state_->lock);
+    std::unique_lock lock{shared_state_->lock};
 
     // wait for all threads to terminate
     while (threads_.load()) {
@@ -231,7 +231,7 @@ void thread_pool::limits(size_t max_threads, size_t max_idle) {
 
   {
     // cppcheck-suppress unreadVariable
-    auto lock = make_lock_guard(state.lock);
+    std::lock_guard lock{state.lock};
 
     max_threads_ = max_threads;
     max_idle_ = max_idle;
@@ -264,35 +264,35 @@ bool thread_pool::maybe_spawn_worker() {
 
 std::pair<size_t, size_t> thread_pool::limits() const {
   // cppcheck-suppress unreadVariable
-  auto lock = make_lock_guard(shared_state_->lock);
+  std::lock_guard lock{shared_state_->lock};
 
   return {max_threads_, max_idle_};
 }
 
 std::tuple<size_t, size_t, size_t> thread_pool::stats() const {
   // cppcheck-suppress unreadVariable
-  auto lock = make_lock_guard(shared_state_->lock);
+  std::lock_guard lock{shared_state_->lock};
 
   return {active_, queue_.size(), threads_.load()};
 }
 
 size_t thread_pool::tasks_active() const {
   // cppcheck-suppress unreadVariable
-  auto lock = make_lock_guard(shared_state_->lock);
+  std::lock_guard lock{shared_state_->lock};
 
   return active_;
 }
 
 size_t thread_pool::tasks_pending() const {
   // cppcheck-suppress unreadVariable
-  auto lock = make_lock_guard(shared_state_->lock);
+  std::lock_guard lock{shared_state_->lock};
 
   return queue_.size();
 }
 
 size_t thread_pool::threads() const {
   // cppcheck-suppress unreadVariable
-  auto lock = make_lock_guard(shared_state_->lock);
+  std::lock_guard lock{shared_state_->lock};
 
   return threads_.load();
 }
@@ -304,7 +304,7 @@ void thread_pool::worker(std::shared_ptr<shared_state> shared_state) noexcept {
   }
 
   {
-    auto lock = make_unique_lock(shared_state->lock, std::defer_lock);
+    std::unique_lock lock{shared_state->lock, std::defer_lock};
 
     try {
       worker_impl(lock, shared_state);
