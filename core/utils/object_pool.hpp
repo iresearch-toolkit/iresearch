@@ -289,7 +289,7 @@ class bounded_object_pool {
   void wait_for_free_slots() const {
     using namespace std::chrono_literals;
 
-    auto lock = make_unique_lock(mutex_);
+    std::unique_lock lock{mutex_};
 
     if (free_list_.empty()) {
       cond_.wait_for(lock, 100ms);

@@ -23,11 +23,11 @@
 #ifndef IRESEARCH_SORTED_COLUMN_H
 #define IRESEARCH_SORTED_COLUMN_H
 
-#include "index/column_info.hpp"
-#include "formats/formats.hpp"
-#include "store/store_utils.hpp"
-
 #include <vector>
+
+#include "formats/formats.hpp"
+#include "index/column_info.hpp"
+#include "store/store_utils.hpp"
 
 namespace iresearch {
 
@@ -116,8 +116,8 @@ class sorted_column final : public column_output, private util::noncopyable {
                     const doc_map& docmap, flush_buffer_t& buffer);
 
   bstring data_buf_;  // FIXME use memory_file or block_pool instead
-  std::vector<std::pair<irs::doc_id_t, size_t>>
-    index_;  // doc_id + offset in 'data_buf_'
+  // doc_id + offset in 'data_buf_'
+  std::vector<std::pair<irs::doc_id_t, size_t>> index_;
   column_info info_;
 };  // sorted_column
 

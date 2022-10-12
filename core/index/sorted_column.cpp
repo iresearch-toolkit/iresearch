@@ -20,12 +20,13 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "sorted_column.hpp"
+
 #include "comparer.hpp"
-#include "utils/type_limits.hpp"
-#include "utils/misc.hpp"
+#include "shared.hpp"
 #include "utils/lz4compression.hpp"
+#include "utils/misc.hpp"
+#include "utils/type_limits.hpp"
 
 namespace iresearch {
 
@@ -112,8 +113,8 @@ std::pair<doc_map, field_id> sorted_column::flush(
 
 void sorted_column::flush_already_sorted(
   const columnstore_writer::values_writer_f& writer) {
-  for (size_t i = 0, size = index_.size() - 1; i < size;
-       ++i) {  // -1 for sentinel
+  // -1 for sentinel
+  for (size_t i = 0, size = index_.size() - 1; i < size; ++i) {
     write_value(writer(index_[i].first), i);
   }
 }
@@ -164,8 +165,7 @@ void sorted_column::flush_sparse(
   }
 
   std::sort(buffer.begin(), buffer.end(),
-            [](const std::pair<size_t, doc_id_t>& lhs,
-               const std::pair<size_t, doc_id_t>& rhs) {
+            [](const auto& lhs, const auto& rhs) noexcept {
               return lhs.second < rhs.second;
             });
 
@@ -175,9 +175,9 @@ void sorted_column::flush_sparse(
   };
 }
 
-field_id sorted_column::flush(
-  columnstore_writer& writer, columnstore_writer::column_finalizer_f finalizer,
-  const doc_map& docmap, std::vector<std::pair<doc_id_t, doc_id_t>>& buffer) {
+field_id sorted_column::flush(columnstore_writer& writer,
+                              columnstore_writer::column_finalizer_f finalizer,
+                              const doc_map& docmap, flush_buffer_t& buffer) {
   assert(docmap.size() < irs::doc_limits::eof());
 
   if (index_.empty()) {
