@@ -5,9 +5,6 @@
 #define FST_GENERIC_REGISTER_H_
 
 #include <fst/compat.h>
-#ifndef FST_NO_DYNAMIC_LINKING
-#include <dlfcn.h>
-#endif
 #include <map>
 #include <string>
 
@@ -62,29 +59,7 @@ class GenericRegister {
   // Override this if you want to be able to load missing definitions from
   // shared object files.
   virtual EntryType LoadEntryFromSharedObject(const KeyType &key) const {
-#ifdef FST_NO_DYNAMIC_LINKING
     return EntryType();
-#else
-    const auto so_filename = ConvertKeyToSoFilename(key);
-    void *handle = dlopen(so_filename.c_str(), RTLD_LAZY);
-    if (handle == nullptr) {
-      LOG(ERROR) << "GenericRegister::GetEntry: " << dlerror();
-      return EntryType();
-    }
-#ifdef RUN_MODULE_INITIALIZERS
-    RUN_MODULE_INITIALIZERS();
-#endif
-    // We assume that the DSO constructs a static object in its global scope
-    // that does the registration. Thus we need only load it, not call any
-    // methods.
-    const auto *entry = this->LookupEntry(key);
-    if (entry == nullptr) {
-      LOG(ERROR) << "GenericRegister::GetEntry: "
-                 << "lookup failed in shared object: " << so_filename;
-      return EntryType();
-    }
-    return *entry;
-#endif  // FST_NO_DYNAMIC_LINKING
   }
 
   // Override this to define how to turn a key into an SO filename.

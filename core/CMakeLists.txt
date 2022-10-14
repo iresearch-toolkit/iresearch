@@ -785,7 +785,7 @@ set_target_properties(iresearch-format-1_0-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME format-1_0-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING;${FORMAT_10_EXTRA_DEFS}"
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;${FORMAT_10_EXTRA_DEFS}"
   )
 
 target_include_directories(iresearch-format-1_0-static
