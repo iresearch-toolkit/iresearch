@@ -25,13 +25,13 @@
 
 #include <libstemmer.h>
 
-#include "velocypack/Slice.h"
+#include <string_view>
+
+#include "utils/vpack_utils.hpp"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
+#include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
-#include "utils/vpack_utils.hpp"
-
-#include <string_view>
 
 namespace {
 
@@ -254,7 +254,7 @@ bool stemming_token_stream::reset(string_ref data) {
 
   auto& term = std::get<term_attribute>(attrs_);
 
-  term.value = bytes_ref::NIL;  // reset
+  term.value = {};  // reset
 
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;

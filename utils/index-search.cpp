@@ -50,25 +50,24 @@
 
 #include <frozen/map.h>
 
-#include "common.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
+#include "common.hpp"
+#include "index-search.hpp"
 #include "index/directory_reader.hpp"
 #include "search/bm25.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/levenshtein_filter.hpp"
+#include "search/ngram_similarity_filter.hpp"
 #include "search/phrase_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/score.hpp"
 #include "search/term_filter.hpp"
 #include "search/wildcard_filter.hpp"
-#include "search/ngram_similarity_filter.hpp"
 #include "store/fs_directory.hpp"
-#include "utils/memory_pool.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
+#include "utils/memory_pool.hpp"
 #include "utils/timer_utils.hpp"
-
-#include "index-search.hpp"
 
 namespace {
 
@@ -236,7 +235,7 @@ irs::string_ref splitFreq(const std::string& text) {
                            std::distance(res[1].first, res[1].second));
   }
 
-  return irs::string_ref::NIL;
+  return {};
 }
 
 irs::filter::prepared::ptr prepareFilter(
@@ -808,7 +807,7 @@ int search(const cmdline::parser& args) {
   const auto scorer = args.get<std::string>(SCORER);
   const auto scorer_arg = args.exist(SCORER_ARG)
                             ? irs::string_ref(args.get<std::string>(SCORER_ARG))
-                            : irs::string_ref::NIL;
+                            : irs::string_ref{};
   const auto scorer_arg_format = args.get<std::string>(SCORER_ARG_FMT);
   const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE)
                                              : std::string("mmap");

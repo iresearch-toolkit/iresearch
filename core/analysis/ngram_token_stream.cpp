@@ -22,19 +22,18 @@
 
 #include "ngram_token_stream.hpp"
 
-#include <frozen/unordered_map.h>
 #include <frozen/string.h>
-
-#include "velocypack/Slice.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Parser.h"
-#include "velocypack/velocypack-aliases.h"
-
-#include "utils/hash_utils.hpp"
-#include "utils/vpack_utils.hpp"
-#include "utils/utf8_utils.hpp"
+#include <frozen/unordered_map.h>
 
 #include <string_view>
+
+#include "utils/hash_utils.hpp"
+#include "utils/utf8_utils.hpp"
+#include "utils/vpack_utils.hpp"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#include "velocypack/Slice.h"
+#include "velocypack/velocypack-aliases.h"
 
 namespace {
 
@@ -427,7 +426,7 @@ bool ngram_token_stream_base::reset(string_ref value) noexcept {
   auto& offset = std::get<irs::offset>(attrs_);
 
   // reset term attribute
-  term.value = bytes_ref::NIL;
+  term.value = {};
 
   // reset offset attribute
   offset.start = std::numeric_limits<uint32_t>::max();

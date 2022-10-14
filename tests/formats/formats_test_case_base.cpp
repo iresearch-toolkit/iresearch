@@ -58,7 +58,7 @@ bool visit(const irs::column_reader& reader,
 namespace tests {
 
 irs::columnstore_writer::column_finalizer_f column_finalizer(
-  uint32_t value, irs::string_ref name = irs::string_ref::NIL) {
+  uint32_t value, irs::string_ref name = irs::string_ref{}) {
   return [value, name](irs::bstring& out) {
     EXPECT_TRUE(out.empty());
     out.resize(sizeof(value));
@@ -867,22 +867,22 @@ TEST_P(format_test_case, fields_read_write) {
     // seek to nil (the smallest possible term)
     {// with state
      {auto term = term_reader->iterator(irs::SeekMode::NORMAL);
-    ASSERT_FALSE(term->seek(irs::bytes_ref::NIL));
+    ASSERT_FALSE(term->seek(irs::bytes_ref{}));
     ASSERT_EQ((term_reader->min)(), term->value());
-    ASSERT_EQ(irs::SeekResult::NOT_FOUND, term->seek_ge(irs::bytes_ref::NIL));
+    ASSERT_EQ(irs::SeekResult::NOT_FOUND, term->seek_ge(irs::bytes_ref{}));
     ASSERT_EQ((term_reader->min)(), term->value());
   }
 
   // without state
   {
     auto term = term_reader->iterator(irs::SeekMode::NORMAL);
-    ASSERT_FALSE(term->seek(irs::bytes_ref::NIL));
+    ASSERT_FALSE(term->seek(irs::bytes_ref{}));
     ASSERT_EQ((term_reader->min)(), term->value());
   }
 
   {
     auto term = term_reader->iterator(irs::SeekMode::NORMAL);
-    ASSERT_EQ(irs::SeekResult::NOT_FOUND, term->seek_ge(irs::bytes_ref::NIL));
+    ASSERT_EQ(irs::SeekResult::NOT_FOUND, term->seek_ge(irs::bytes_ref{}));
     ASSERT_EQ((term_reader->min)(), term->value());
   }
 }
@@ -1307,7 +1307,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         // if attribute is present, payload value has
         // to be always empty for mask column
         ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        ASSERT_EQ(irs::bytes_ref{}, payload->value);
       }
 
       std::vector<std::pair<irs::doc_id_t, irs::doc_id_t>> expected_values = {
@@ -1400,7 +1400,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         // if attribute is present, payload value has
         // to be always empty for mask column
         ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        ASSERT_EQ(irs::bytes_ref{}, payload->value);
       }
 
       std::vector<irs::doc_id_t> expected_values = {2, 4, 8, 9};
@@ -1461,7 +1461,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         // if attribute is present, payload value has
         // to be always empty for mask column
         ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        ASSERT_EQ(irs::bytes_ref{}, payload->value);
       }
 
       std::vector<irs::doc_id_t> expected_values = {2, 4, 8, 9};
@@ -1472,7 +1472,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         if (payload) {
           // if attribute is present, payload value has
           // to be always empty for mask column
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+          ASSERT_EQ(irs::bytes_ref{}, payload->value);
         }
       }
 
@@ -1482,7 +1482,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       if (payload) {
         // if attribute is present, payload value has
         // to be always empty for mask column
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        ASSERT_EQ(irs::bytes_ref{}, payload->value);
       }
     }
   }
@@ -1742,7 +1742,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      ASSERT_EQ(irs::bytes_ref{}, payload->value);
 
       ASSERT_TRUE(it->next());
       std::memset(field.buf, 0, sizeof field.buf);  // clear buffer
@@ -1776,7 +1776,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      ASSERT_EQ(irs::bytes_ref{}, payload->value);
 
       ASSERT_EQ(1, it->seek(1));
       std::memset(field.buf, 0, sizeof field.buf);  // clear buffer
@@ -2238,7 +2238,7 @@ TEST_P(format_test_case, columns_rw_typed) {
           auto* payload = irs::get<irs::payload>(*it);
           ASSERT_FALSE(!payload);
           ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+          ASSERT_EQ(irs::bytes_ref{}, payload->value);
         }
 
         auto& it = res.first->second;
@@ -2276,7 +2276,7 @@ TEST_P(format_test_case, columns_rw_typed) {
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      ASSERT_EQ(irs::bytes_ref{}, payload->value);
     }
   }
 
@@ -2311,7 +2311,7 @@ TEST_P(format_test_case, columns_rw_typed) {
           auto* payload = irs::get<irs::payload>(*it);
           ASSERT_FALSE(!payload);
           ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+          ASSERT_EQ(irs::bytes_ref{}, payload->value);
         }
 
         auto& it = res.first->second;
@@ -2349,7 +2349,7 @@ TEST_P(format_test_case, columns_rw_typed) {
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+      ASSERT_EQ(irs::bytes_ref{}, payload->value);
     }
   }
 }
@@ -2481,7 +2481,7 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     ASSERT_NE(nullptr, column);
 
     std::vector<std::pair<irs::doc_id_t, irs::bytes_ref>> expected_values{
-      {irs::doc_limits::min(), irs::bytes_ref::NIL},
+      {irs::doc_limits::min(), irs::bytes_ref{}},
       {irs::doc_limits::min() + 1, keys_ref},
     };
 
@@ -2534,7 +2534,7 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     ASSERT_NE(nullptr, column);
 
     std::vector<std::pair<irs::doc_id_t, irs::bytes_ref>> expected_values{
-      {irs::doc_limits::min(), irs::bytes_ref::NIL},
+      {irs::doc_limits::min(), irs::bytes_ref{}},
       {irs::doc_limits::min() + 3, keys_ref},
     };
 
@@ -2950,7 +2950,7 @@ ASSERT_TRUE(writer->commit(state));
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_FALSE(!payload);
     ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
 
     std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
       {"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
@@ -2968,7 +2968,7 @@ ASSERT_TRUE(writer->commit(state));
     ASSERT_FALSE(it->next());
     ASSERT_EQ(i, expected_values.size());
     ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
   }
 
   // seek over field0 values (cached)
@@ -2981,7 +2981,7 @@ ASSERT_TRUE(writer->commit(state));
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_FALSE(!payload);
     ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
 
     std::vector<
       std::pair<irs::string_ref, std::pair<irs::doc_id_t, irs::doc_id_t>>>
@@ -3001,7 +3001,7 @@ ASSERT_TRUE(writer->commit(state));
 
     ASSERT_FALSE(it->next());
     ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
   }
 
   // iterate over field1 values (not cached)
@@ -3014,7 +3014,7 @@ ASSERT_TRUE(writer->commit(state));
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_FALSE(!payload);
     ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
 
     std::vector<std::pair<std::vector<irs::string_ref>, irs::doc_id_t>>
       expected_values = {{{"field1_doc0", "field1_doc0_1"}, 1},
@@ -3037,7 +3037,7 @@ ASSERT_TRUE(writer->commit(state));
     ASSERT_FALSE(it->next());
     ASSERT_EQ(i, expected_values.size());
     ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
   }
 
   // seek over field1 values (cached)
@@ -3050,7 +3050,7 @@ ASSERT_TRUE(writer->commit(state));
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_FALSE(!payload);
     ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
 
     std::vector<std::pair<std::vector<irs::string_ref>,
                           std::pair<irs::doc_id_t, irs::doc_id_t>>>
@@ -3077,7 +3077,7 @@ ASSERT_TRUE(writer->commit(state));
 
     ASSERT_FALSE(it->next());
     ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
   }
 
   // check field1 (multiple values per document - cached)
@@ -3182,7 +3182,7 @@ ASSERT_TRUE(writer->commit(state));
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_FALSE(!payload);
     ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
 
     std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
       {"field2_doc1", 1}};
@@ -3200,7 +3200,7 @@ ASSERT_TRUE(writer->commit(state));
     ASSERT_FALSE(it->next());
     ASSERT_EQ(i, expected_values.size());
     ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
   }
 
   // seek over field2 values (cached)
@@ -3213,7 +3213,7 @@ ASSERT_TRUE(writer->commit(state));
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_FALSE(!payload);
     ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
 
     std::vector<
       std::pair<irs::string_ref, std::pair<irs::doc_id_t, irs::doc_id_t>>>
@@ -3231,7 +3231,7 @@ ASSERT_TRUE(writer->commit(state));
 
     ASSERT_FALSE(it->next());
     ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
   }
 }
 
@@ -3256,7 +3256,7 @@ ASSERT_TRUE(writer->commit(state));
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_FALSE(!payload);
     ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
 
     std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
       {"segment_2_field1_doc0", 1}, {"segment_2_field1_doc12", 12}};
@@ -3274,7 +3274,7 @@ ASSERT_TRUE(writer->commit(state));
     ASSERT_FALSE(it->next());
     ASSERT_EQ(i, expected_values.size());
     ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
   }
 
   // seek over field0 values (cached)
@@ -3287,7 +3287,7 @@ ASSERT_TRUE(writer->commit(state));
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_FALSE(!payload);
     ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
 
     std::vector<
       std::pair<irs::string_ref, std::pair<irs::doc_id_t, irs::doc_id_t>>>
@@ -3305,11 +3305,11 @@ ASSERT_TRUE(writer->commit(state));
     }
 
     ASSERT_EQ(irs::doc_limits::eof(), it->seek(13));
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
 
     ASSERT_FALSE(it->next());
     ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
   }
 
   // check field0 (cached)
@@ -3338,7 +3338,7 @@ ASSERT_TRUE(writer->commit(state));
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_FALSE(!payload);
     ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
 
     std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
       {"segment_2_field1_doc0", 1}, {"segment_2_field1_doc12", 12}};
@@ -3356,7 +3356,7 @@ ASSERT_TRUE(writer->commit(state));
     ASSERT_FALSE(it->next());
     ASSERT_EQ(i, expected_values.size());
     ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+    ASSERT_EQ(irs::bytes_ref{}, payload->value);
   }
 }
 }
@@ -3501,7 +3501,7 @@ TEST_P(format_test_case_with_encryption,
 
     {
       auto [id, handle] =
-        writer->push_column(info, [](auto&) { return irs::string_ref::NIL; });
+        writer->push_column(info, [](auto&) { return irs::string_ref{}; });
       handle(1).write_byte(1);
       handle(2).write_byte(2);
       handle(3).write_byte(3);

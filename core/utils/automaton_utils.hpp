@@ -24,14 +24,14 @@
 #define IRESEARCH_AUTOMATON_UTILS_H
 
 #include "formats/formats.hpp"
+#include "fst/closure.h"
 #include "search/filter.hpp"
 #include "utils/automaton.hpp"
+#include "utils/fstext/fst_sorted_range_matcher.hpp"
 #include "utils/fstext/fst_states_map.hpp"
 #include "utils/fstext/fst_table_matcher.hpp"
-#include "utils/fstext/fst_sorted_range_matcher.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/utf8_utils.hpp"
-#include "fst/closure.h"
 
 namespace iresearch {
 
@@ -166,7 +166,7 @@ class utf8_transitions_builder {
   template<typename Iterator>
   void insert(automaton& a, automaton::StateId from,
               automaton::StateId rho_state, Iterator begin, Iterator end) {
-    last_ = bytes_ref::EMPTY;
+    last_ = EmptyBytesRef();
     states_map_.reset();
 
     // we inherit weight from 'from' node to all intermediate states

@@ -158,7 +158,7 @@ TEST(collation_token_stream_test, construct_from_str) {
   {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
                          "collation", irs::type<irs::text_format::json>::get(),
-                         irs::string_ref::NIL));
+                         irs::string_ref{}));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
                 "collation", irs::type<irs::text_format::json>::get(), "1"));
@@ -750,7 +750,7 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
     ASSERT_NE(nullptr, inc);
 
     {
-      const irs::string_ref data{irs::string_ref::NIL};
+      const irs::string_ref data{};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -761,7 +761,7 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
     }
 
     {
-      const irs::string_ref data{irs::string_ref::EMPTY};
+      const irs::string_ref data{""};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);

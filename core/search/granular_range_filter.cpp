@@ -171,11 +171,10 @@ void collect_terms_from(
   // for the case where there is no min_term, include remaining range at the
   // current granularity level
   if (min_term_itr == min_term.rend()) {
-    collect_terms_between(
-      segment, field, terms, prefix_size,
-      irs::bytes_ref::NIL,  // collect full granularity range
-      irs::bytes_ref::NIL,  // collect full granularity range
-      true, true, visitor);
+    collect_terms_between(segment, field, terms, prefix_size,
+                          irs::bytes_ref{},  // collect full granularity range
+                          irs::bytes_ref{},  // collect full granularity range
+                          true, true, visitor);
 
     return;  // done
   }
@@ -191,8 +190,8 @@ void collect_terms_from(
   // masked next term is < masked current term)
   collect_terms_between(
     segment, field, terms, prefix_size,
-    *min_term_itr,        // the min term for the current granularity level
-    irs::bytes_ref::NIL,  // collect full granularity range
+    *min_term_itr,     // the min term for the current granularity level
+    irs::bytes_ref{},  // collect full granularity range
     min_term_inclusive && exact_min_term == &(*min_term_itr),
     true,  // add min_term if requested
     visitor);
@@ -220,7 +219,7 @@ void collect_terms_from(
                mask_granularity(*min_term_itr,
                                 prefix_size)  // on same level
         ? terms.value()
-        : irs::bytes_ref::NIL;
+        : irs::bytes_ref{};
     irs::bstring end_term_copy;
     auto is_most_granular_term = exact_min_term == &(*current_min_term_itr);
 
@@ -255,11 +254,10 @@ void collect_terms_until(
   // for the case where there is no max_term, remaining range at the current
   // granularity level
   if (max_term_itr == max_term.rend()) {
-    collect_terms_between(
-      segment, field, terms, prefix_size,
-      irs::bytes_ref::NIL,  // collect full granularity range
-      irs::bytes_ref::NIL,  // collect full granularity range
-      true, true, visitor);
+    collect_terms_between(segment, field, terms, prefix_size,
+                          irs::bytes_ref{},  // collect full granularity range
+                          irs::bytes_ref{},  // collect full granularity range
+                          true, true, visitor);
 
     return;  // done
   }
@@ -288,8 +286,8 @@ void collect_terms_until(
   // advance by one and collect all terms excluding the current max_term
   collect_terms_between(
     segment, field, terms, prefix_size,
-    irs::bytes_ref::NIL,  // collect full granularity range
-    *max_term_itr,        // the max term for the current granularity level
+    irs::bytes_ref{},  // collect full granularity range
+    *max_term_itr,     // the max term for the current granularity level
     true,
     max_term_inclusive &&
       exact_max_term == &(*max_term_itr),  // add max_term if requested
@@ -419,7 +417,7 @@ void collect_terms_within(
     segment, field, terms, prefix_size,
     *min_term_itr,  // the min term for the current granularity level
     max_term.empty()
-      ? irs::bytes_ref::NIL
+      ? irs::bytes_ref{}
       : irs::bytes_ref(*max_term_itr),  // collect up to max term at same
                                         // granularity range
     min_term_inclusive && exact_min_term == &(*min_term_itr),
@@ -449,7 +447,7 @@ void collect_terms_within(
                mask_granularity(*min_term_itr,
                                 prefix_size)  // on same level
         ? terms.value()
-        : irs::bytes_ref::NIL;
+        : irs::bytes_ref{};
     irs::bstring end_term_copy;
 
     // need a copy of the term since bytes_ref changes on terms.seek(...)

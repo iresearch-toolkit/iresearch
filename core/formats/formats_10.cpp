@@ -23,44 +23,38 @@
 #include "formats_10.hpp"
 
 extern "C" {
-#include <simdbitpacking.h>
 #include <avxbitpacking.h>
+#include <simdbitpacking.h>
 }
 
-#include "shared.hpp"
-#include "skip_list.hpp"
-
-#include "formats_10_attributes.hpp"
-#include "formats_burst_trie.hpp"
+#include "analysis/token_attributes.hpp"
 #include "columnstore.hpp"
 #include "columnstore2.hpp"
 #include "format_utils.hpp"
-
-#include "analysis/token_attributes.hpp"
-
+#include "formats_10_attributes.hpp"
+#include "formats_burst_trie.hpp"
 #include "index/field_meta.hpp"
 #include "index/file_names.hpp"
-#include "index/index_meta.hpp"
 #include "index/index_features.hpp"
+#include "index/index_meta.hpp"
 #include "index/index_reader.hpp"
-
 #include "search/cost.hpp"
 #include "search/score.hpp"
-
+#include "shared.hpp"
+#include "skip_list.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
-
-#include "utils/bitpack.hpp"
-#include "utils/encryption.hpp"
 #include "utils/attribute_helper.hpp"
+#include "utils/bitpack.hpp"
 #include "utils/directory_utils.hpp"
+#include "utils/encryption.hpp"
 #include "utils/log.hpp"
 #include "utils/memory.hpp"
 #include "utils/memory_pool.hpp"
 #include "utils/noncopyable.hpp"
+#include "utils/std.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/std.hpp"
 
 #if defined(_MSC_VER)
 #pragma warning(disable : 4351)
@@ -1104,7 +1098,7 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
 
   void clear_attributes() noexcept {
     offs_.clear();
-    pay_.value = bytes_ref::NIL;
+    pay_.value = {};
   }
 
   void read_block() {
@@ -1239,7 +1233,7 @@ struct position_impl<IteratorTraits, FieldTraits, false, true>
     pay_data_pos_ += pay_lengths_[this->buf_pos_];
   }
 
-  void clear_attributes() noexcept { pay_.value = bytes_ref::NIL; }
+  void clear_attributes() noexcept { pay_.value = {}; }
 
   void read_block() {
     base::read_block();
@@ -2634,10 +2628,9 @@ struct index_meta_reader final : public irs::index_meta_reader {
   virtual bool last_segments_file(const directory& dir,
                                   std::string& name) const override;
 
-  virtual void read(
-    const directory& dir, index_meta& meta,
-    string_ref filename = string_ref::NIL) override;  // null == use meta
-};                                                    // index_meta_reader
+  virtual void read(const directory& dir, index_meta& meta,
+                    string_ref filename = {}) override;  // null == use meta
+};                                                       // index_meta_reader
 
 template<>
 std::string file_name<irs::index_meta_reader, index_meta>(
@@ -2788,7 +2781,7 @@ bool index_meta_reader::last_segments_file(const directory& dir,
 }
 
 void index_meta_reader::read(const directory& dir, index_meta& meta,
-                             string_ref filename /*= string_ref::NIL*/) {
+                             string_ref filename /*= {} */) {
   const std::string meta_file = filename.null()
                                   ? file_name<irs::index_meta_reader>(meta)
                                   : static_cast<std::string>(filename);
@@ -2910,13 +2903,12 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file,
 }
 
 struct segment_meta_reader final : public irs::segment_meta_reader {
-  virtual void read(
-    const directory& dir, segment_meta& meta,
-    string_ref filename = string_ref::NIL) override;  // null == use meta
-};                                                    // segment_meta_reader
+  virtual void read(const directory& dir, segment_meta& meta,
+                    string_ref filename = {}) override;  // null == use meta
+};
 
 void segment_meta_reader::read(const directory& dir, segment_meta& meta,
-                               string_ref filename /*= string_ref::NIL*/) {
+                               string_ref filename /*= {} */) {
   const std::string meta_file = filename.null()
                                   ? file_name<irs::segment_meta_writer>(meta)
                                   : static_cast<std::string>(filename);

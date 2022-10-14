@@ -22,9 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "analysis/token_stopwords_stream.hpp"
-
 #include "gtest/gtest.h"
-
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
@@ -164,7 +162,7 @@ TEST(token_stopwords_stream_tests, test_load) {
   {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
                          "stopwords", irs::type<irs::text_format::json>::get(),
-                         irs::string_ref::NIL));
+                         irs::string_ref{}));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
                 "stopwords", irs::type<irs::text_format::json>::get(), "1"));
@@ -196,7 +194,7 @@ TEST(token_stopwords_stream_tests, normalize_invalid) {
   std::string actual;
   ASSERT_FALSE(irs::analysis::analyzers::normalize(
     actual, "stopwords", irs::type<irs::text_format::json>::get(),
-    irs::string_ref::NIL));
+    irs::string_ref{}));
   ASSERT_FALSE(irs::analysis::analyzers::normalize(
     actual, "stopwords", irs::type<irs::text_format::json>::get(), "1"));
   ASSERT_FALSE(irs::analysis::analyzers::normalize(

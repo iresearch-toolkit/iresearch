@@ -21,27 +21,24 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
+#include "index/field_data.hpp"
 
-#include <set>
 #include <algorithm>
 #include <cassert>
-
-#include "index/comparer.hpp"
-#include "index/field_data.hpp"
-#include "index/field_meta.hpp"
-#include "index/norm.hpp"
-
-#include "formats/formats.hpp"
-
-#include "store/directory.hpp"
-#include "store/store_utils.hpp"
+#include <set>
 
 #include "analysis/analyzer.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
-
+#include "formats/formats.hpp"
+#include "index/comparer.hpp"
+#include "index/field_meta.hpp"
+#include "index/norm.hpp"
+#include "shared.hpp"
+#include "store/directory.hpp"
+#include "store/store_utils.hpp"
 #include "utils/bit_utils.hpp"
+#include "utils/bytes_utils.hpp"
 #include "utils/io_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
@@ -50,7 +47,6 @@
 #include "utils/object_pool.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/bytes_utils.hpp"
 
 namespace {
 
@@ -152,7 +148,7 @@ class pos_iterator final : public irs::position {
     pos_ = 0;
     value_ = pos_limits::invalid();
     offs_.clear();
-    pay_.value = bytes_ref::NIL;
+    pay_.value = {};
   }
 
   // reset field
@@ -726,7 +722,7 @@ field_data::field_data(string_ref name, const features_t& features,
       columnstore_writer::column_finalizer_f finalizer =
         [writer = feature_writer.get()](bstring& out) {
           writer->finish(out);
-          return string_ref::NIL;
+          return string_ref{};
         };
 
       if (random_access) {

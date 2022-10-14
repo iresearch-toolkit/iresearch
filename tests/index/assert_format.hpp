@@ -25,8 +25,8 @@
 #define IRESEARCH_ASSERT_FORMAT_H
 
 #include "doc_generator.hpp"
-#include "index/field_meta.hpp"
 #include "formats/formats.hpp"
+#include "index/field_meta.hpp"
 
 namespace tests {
 
@@ -130,7 +130,7 @@ class column_values {
 
   irs::field_id id() const noexcept { return id_; }
   irs::string_ref name() const noexcept {
-    return name_.has_value() ? name_.value() : irs::string_ref::NIL;
+    return name_.has_value() ? name_.value() : irs::string_ref{};
   }
 
   irs::bstring payload() const;

@@ -162,7 +162,7 @@ std::mutex mutex;
 /// @brief retrieves a set of ignored words from FS at the specified custom path
 ////////////////////////////////////////////////////////////////////////////////
 bool get_stopwords(analysis::text_token_stream::stopwords_t& buf,
-                   string_ref language, string_ref path = string_ref::NIL) {
+                   string_ref language, string_ref path = {}) {
   utf8_path stopword_path;
 
   auto* custom_stopword_path =
@@ -1061,7 +1061,7 @@ bool text_token_stream::reset(string_ref data) {
   state_->break_iterator->setText(state_->data);
 
   // reset term state for ngrams
-  state_->term = bytes_ref::NIL;
+  state_->term = {};
   state_->start = 0;
   state_->end = 0;
   state_->set_ngram_finished();

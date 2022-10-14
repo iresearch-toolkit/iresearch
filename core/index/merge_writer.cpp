@@ -514,7 +514,7 @@ class compound_column_iterator final {
       return true;
     }
 
-    current_key_ = string_ref::NIL;
+    current_key_ = {};
 
     return false;
   }
@@ -560,7 +560,7 @@ class compound_term_iterator final : public term_iterator {
     meta_ = &meta;
     term_iterator_mask_.clear();
     term_iterators_.clear();
-    current_term_ = bytes_ref::NIL;
+    current_term_ = {};
   }
 
   const field_meta& meta() const noexcept { return *meta_; }
@@ -668,7 +668,7 @@ bool compound_term_iterator::next() {
     return true;
   }
 
-  current_term_ = bytes_ref::NIL;
+  current_term_ = {};
 
   return false;
 }
@@ -808,7 +808,7 @@ bool compound_field_iterator::next() {
   if (aborted()) {
     field_iterators_.clear();
     field_iterator_mask_.clear();
-    current_field_ = string_ref::NIL;
+    current_field_ = {};
     max_ = min_ = &bytes_ref::NIL;
     return false;
   }
@@ -864,7 +864,7 @@ bool compound_field_iterator::next() {
     return true;
   }
 
-  current_field_ = string_ref::NIL;
+  current_field_ = {};
 
   return false;
 }
@@ -1263,13 +1263,13 @@ bool write_fields(columnstore& cs, Iterator& feature_itr,
           [feature_writer =
              make_move_on_copy(std::move(feature_writer))](bstring& out) {
             feature_writer.value()->finish(out);
-            return string_ref::NIL;
+            return string_ref{};
           },
           std::move(value_writer));
       } else if (!factory) {  // Otherwise factory has failed to instantiate
                               // writer
         res = cs.insert(
-          feature_itr, info, [](bstring&) { return string_ref::NIL; },
+          feature_itr, info, [](bstring&) { return string_ref{}; },
           [](data_output& out, bytes_ref payload) {
             if (!payload.empty()) {
               out.write_bytes(payload.c_str(), payload.size());
@@ -1564,7 +1564,7 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
   writer->prepare(dir, segment.meta);
 
   // get column info for sorted column
-  const auto info = (*column_info_)(string_ref::NIL);
+  const auto info = (*column_info_)({});
   auto column = writer->push_column(info, {});
 
   for (doc_id_t next_id = doc_limits::min(); columns_it.next();) {

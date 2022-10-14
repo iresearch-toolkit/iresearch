@@ -224,7 +224,8 @@ std::vector<DocIterator> execute_all(
 template<typename DocIterator>
 std::vector<DocIterator> execute_all(
   std::span<const std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs) {
-  const irs::byte_type* stats = irs::bytes_ref::EMPTY.c_str();
+  const auto emptyBytesRef = irs::EmptyBytesRef();
+  const irs::byte_type* stats = emptyBytesRef.c_str();
   std::vector<DocIterator> itrs;
   itrs.reserve(docs.size());
   for (const auto& [doc, ord] : docs) {
@@ -1806,7 +1807,8 @@ TEST(basic_disjunction_test, seek_next) {
 }
 
 TEST(basic_disjunction_test, scored_seek_next) {
-  const irs::byte_type* empty_stats = irs::bytes_ref::EMPTY.c_str();
+  const auto empty_ref = irs::EmptyBytesRef();
+  const irs::byte_type* empty_stats = empty_ref.c_str();
 
   // disjunction without order
   {

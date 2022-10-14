@@ -446,10 +446,9 @@ struct segment_meta_reader {
 
   virtual ~segment_meta_reader() = default;
 
-  virtual void read(
-    const directory& dir, segment_meta& meta,
-    string_ref filename = string_ref::NIL) = 0;  // null == use meta
-};                                               // segment_meta_reader
+  virtual void read(const directory& dir, segment_meta& meta,
+                    string_ref filename = {}) = 0;  // null == use meta
+};                                                  // segment_meta_reader
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct index_meta_writer
@@ -479,9 +478,8 @@ struct index_meta_reader {
   virtual bool last_segments_file(const directory& dir,
                                   std::string& name) const = 0;
 
-  virtual void read(
-    const directory& dir, index_meta& meta,
-    string_ref filename = string_ref::NIL) = 0;  // null == use meta
+  virtual void read(const directory& dir, index_meta& meta,
+                    string_ref filename = {}) = 0;  // null == use meta
 
  protected:
   static void complete(index_meta& meta, uint64_t generation, uint64_t counter,
@@ -551,7 +549,7 @@ class formats {
   ///        indirect call to <class>::make(...)
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   //////////////////////////////////////////////////////////////////////////////
-  static format::ptr get(string_ref name, string_ref module = string_ref::NIL,
+  static format::ptr get(string_ref name, string_ref module = {},
                          bool load_library = true) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -595,7 +593,7 @@ class format_registrar {
 #define REGISTER_FORMAT_MODULE(format_name, module_name) \
   REGISTER_FORMAT_EXPANDER__(format_name, module_name, __FILE__, __LINE__)
 #define REGISTER_FORMAT(format_name) \
-  REGISTER_FORMAT_MODULE(format_name, irs::string_ref::NIL)
+  REGISTER_FORMAT_MODULE(format_name, irs::string_ref{})
 
 }  // namespace iresearch
 

@@ -237,7 +237,7 @@ class range_column_iterator final : public resettable_doc_iterator,
       max_doc_ = doc_limits::invalid();
       min_doc_ = doc_limits::eof();
       std::get<document>(attrs_).value = doc_limits::eof();
-      std::get<irs::payload>(attrs_).value = bytes_ref::NIL;
+      std::get<irs::payload>(attrs_).value = {};
       return doc_limits::eof();
     }
 
@@ -252,7 +252,7 @@ class range_column_iterator final : public resettable_doc_iterator,
     }
 
     std::get<document>(attrs_).value = doc_limits::eof();
-    std::get<irs::payload>(attrs_).value = bytes_ref::NIL;
+    std::get<irs::payload>(attrs_).value = {};
     return false;
   }
 
@@ -313,7 +313,7 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
       return doc;
     }
 
-    std::get<irs::payload>(attrs_).value = bytes_ref::NIL;
+    std::get<irs::payload>(attrs_).value = {};
     return doc_limits::eof();
   }
 
@@ -323,7 +323,7 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
       return true;
     }
 
-    std::get<irs::payload>(attrs_).value = bytes_ref::NIL;
+    std::get<irs::payload>(attrs_).value = {};
     return false;
   }
 
@@ -349,7 +349,7 @@ class column_base : public column_reader, private util::noncopyable {
   }
 
   virtual string_ref name() const final {
-    return name_.has_value() ? name_.value() : string_ref::NIL;
+    return name_.has_value() ? name_.value() : string_ref{};
   }
 
   virtual field_id id() const noexcept final { return hdr_.id; }

@@ -23,9 +23,9 @@
 #ifndef IRESEARCH_STATUS_H
 #define IRESEARCH_STATUS_H
 
-#include "string.hpp"
-
 #include <memory>
+
+#include "string.hpp"
 
 namespace iresearch {
 
@@ -49,8 +49,7 @@ class result {
   }
 
   template<Code code>
-  static result make(irs::string_ref const& msg,
-                     irs::string_ref const& msg2 = irs::string_ref::NIL) {
+  static result make(irs::string_ref msg, irs::string_ref msg2 = {}) {
     return result(code, msg, msg2);
   }
 

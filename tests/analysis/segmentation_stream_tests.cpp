@@ -368,7 +368,7 @@ TEST(segmentation_token_stream_test, make_invalid_json) {
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
                 "segmentation", irs::type<irs::text_format::json>::get(),
-                irs::string_ref::NIL));
+                irs::string_ref{}));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
                 "segmentation", irs::type<irs::text_format::json>::get(), "1"));
@@ -440,7 +440,7 @@ TEST(segmentation_token_stream_test, normalize_invalid) {
   std::string actual;
   ASSERT_FALSE(irs::analysis::analyzers::normalize(
     actual, "segmentation", irs::type<irs::text_format::json>::get(),
-    irs::string_ref::NIL));
+    irs::string_ref{}));
   ASSERT_FALSE(irs::analysis::analyzers::normalize(
     actual, "segmentation", irs::type<irs::text_format::json>::get(), "1"));
   ASSERT_FALSE(irs::analysis::analyzers::normalize(

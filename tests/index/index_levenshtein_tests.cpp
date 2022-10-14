@@ -20,14 +20,14 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
-
 #include <utf8/core.h>
+
 #include "index/index_tests.hpp"
+#include "tests_shared.hpp"
 #include "utils/arena_allocator.hpp"
-#include "utils/levenshtein_utils.hpp"
 #include "utils/automaton_utils.hpp"
 #include "utils/fstext/fst_table_matcher.hpp"
+#include "utils/levenshtein_utils.hpp"
 
 class levenshtein_automaton_index_test_case : public tests::index_test_base {
  protected:
@@ -124,8 +124,7 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
                    << target << testing::Message("', Edit distance: ")
                    << size_t(description.max_distance()));
       assert_index(static_cast<irs::index_reader::ptr>(reader), description,
-                   irs::bytes_ref::EMPTY,
-                   irs::ref_cast<irs::byte_type>(target));
+                   irs::EmptyBytesRef(), irs::ref_cast<irs::byte_type>(target));
     }
   }
 }

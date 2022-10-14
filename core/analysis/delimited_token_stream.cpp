@@ -23,13 +23,13 @@
 
 #include "delimited_token_stream.hpp"
 
-#include "velocypack/Slice.h"
+#include <string_view>
+
+#include "utils/vpack_utils.hpp"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
+#include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
-#include "utils/vpack_utils.hpp"
-
-#include <string_view>
 
 namespace {
 
@@ -306,8 +306,8 @@ bool delimited_token_stream::next() {
                  ? bytes_ref(data_.c_str(), size)
                  : eval_term(term_buf_, bytes_ref(data_.c_str(), size));
   data_ = size >= data_.size()
-            ? bytes_ref::NIL
-            : bytes_ref(data_.c_str() + next, data_.size() - next);
+            ? bytes_ref{}
+            : bytes_ref{data_.c_str() + next, data_.size() - next};
 
   return true;
 }

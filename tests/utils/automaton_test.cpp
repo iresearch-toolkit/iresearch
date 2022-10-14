@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
-
 #include "utils/automaton_utils.hpp"
 #include "utils/misc.hpp"
 
@@ -551,7 +550,7 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
     auto finish = a.AddState();
 
     std::vector<std::pair<irs::bytes_ref, irs::automaton::StateId>> arcs{
-      {irs::bytes_ref::EMPTY, finish}};
+      {irs::EmptyBytesRef(), finish}};
     builder.insert(a, start, fst::kNoStateId, arcs.begin(), arcs.end());
 
     assert_properties(a);
@@ -582,7 +581,7 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
     auto intermediate2 = a.NumStates() + 2;
 
     std::vector<std::pair<irs::bytes_ref, irs::automaton::StateId>> arcs{
-      {irs::bytes_ref::EMPTY, finish}};
+      {irs::EmptyBytesRef(), finish}};
     builder.insert(a, start, finish, arcs.begin(), arcs.end());
 
     assert_properties(a);
@@ -1272,7 +1271,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       ASSERT_EQ(0, actual_arcs.narcs);
     }
 
-    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::bytes_ref::EMPTY));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::EmptyBytesRef()));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
       a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
@@ -1372,7 +1371,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       ASSERT_EQ(0, actual_arcs.narcs);
     }
 
-    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::bytes_ref::EMPTY));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::EmptyBytesRef()));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
       a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
@@ -1486,7 +1485,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       ASSERT_EQ(0, actual_arcs.narcs);
     }
 
-    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::bytes_ref::EMPTY));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::EmptyBytesRef()));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
       a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
@@ -1612,7 +1611,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       ASSERT_EQ(0, actual_arcs.narcs);
     }
 
-    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::bytes_ref::EMPTY));
+    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::EmptyBytesRef()));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
       a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
@@ -1684,7 +1683,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
     ASSERT_EQ(0, actual_arcs.narcs);
   }
 
-  ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::bytes_ref::EMPTY));
+  ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::EmptyBytesRef()));
   ASSERT_TRUE(irs::accept<irs::byte_type>(
     a, irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
   ASSERT_TRUE(irs::accept<irs::byte_type>(
@@ -2155,7 +2154,7 @@ transition
 //      ASSERT_EQ(0, actual_arcs.narcs);
 //    }
 //
-//    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::bytes_ref::EMPTY));
+//    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::EmptyBytesRef()));
 //    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
 irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
 //    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
@@ -2305,7 +2304,7 @@ transition
 //      ASSERT_EQ(0, actual_arcs.narcs);
 //    }
 //
-//    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::bytes_ref::EMPTY));
+//    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::EmptyBytesRef()));
 //    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
 irs::ref_cast<irs::byte_type>(irs::string_ref("a"))));
 //    ASSERT_TRUE(irs::accept<irs::byte_type>(a,

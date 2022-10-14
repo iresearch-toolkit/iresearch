@@ -24,16 +24,14 @@
 #ifndef IRESEARCH_INDEX_META_H
 #define IRESEARCH_INDEX_META_H
 
-#include <algorithm>
-#include <vector>
-#include <atomic>
-
 #include <absl/container/flat_hash_set.h>
 
-#include "store/directory.hpp"
+#include <algorithm>
+#include <atomic>
+#include <vector>
 
 #include "error/error.hpp"
-
+#include "store/directory.hpp"
 #include "utils/string.hpp"
 #include "utils/type_limits.hpp"
 
@@ -237,7 +235,7 @@ class index_meta {
   void payload(bytes_ref payload) {
     if (payload.null()) {
       payload_buf_.clear();
-      payload_ = bytes_ref::NIL;
+      payload_ = {};
     } else {
       payload_buf_ = payload;
       payload_ = payload_buf_;

@@ -22,15 +22,15 @@
 
 #include "wildcard_filter.hpp"
 
-#include "shared.hpp"
+#include "index/index_reader.hpp"
 #include "search/filter_visitor.hpp"
 #include "search/multiterm_query.hpp"
-#include "search/term_filter.hpp"
 #include "search/prefix_filter.hpp"
-#include "index/index_reader.hpp"
-#include "utils/wildcard_utils.hpp"
+#include "search/term_filter.hpp"
+#include "shared.hpp"
 #include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"
+#include "utils/wildcard_utils.hpp"
 
 namespace {
 
@@ -65,7 +65,7 @@ auto executeWildcard(bstring& buf, bytes_ref term, Invalid&& inv, Term&& t,
     case WildcardType::TERM:
       return t(term);
     case WildcardType::MATCH_ALL:
-      term = bytes_ref::EMPTY;
+      term = EmptyBytesRef();
       return p(term);
     case WildcardType::PREFIX_ESCAPED:
       term = unescape(term, buf);

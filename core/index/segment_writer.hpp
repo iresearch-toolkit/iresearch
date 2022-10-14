@@ -262,7 +262,7 @@ class segment_writer : util::noncopyable {
     explicit sorted_column(
       const column_info_provider_t& column_info,
       columnstore_writer::column_finalizer_f finalizer) noexcept
-      : stream(column_info(string_ref::NIL)),  // compression for sorted column
+      : stream(column_info({})),  // compression for sorted column
         finalizer{std::move(finalizer)} {}
 
     field_id id{field_limits::invalid()};

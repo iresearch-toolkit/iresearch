@@ -20,20 +20,20 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
-#include "store/store_utils.hpp"
-#include "utils/lz4compression.hpp"
-#include "utils/delta_compression.hpp"
-
 #include <numeric>
 #include <random>
+
+#include "store/store_utils.hpp"
+#include "tests_shared.hpp"
+#include "utils/delta_compression.hpp"
+#include "utils/lz4compression.hpp"
 
 namespace {
 
 struct dummy_compressor final : irs::compression::compressor {
   virtual irs::bytes_ref compress(irs::byte_type*, size_t,
                                   irs::bstring& /*buf*/) {
-    return irs::bytes_ref::NIL;
+    return irs::bytes_ref{};
   }
 
   virtual void flush(irs::data_output&) {}
@@ -42,7 +42,7 @@ struct dummy_compressor final : irs::compression::compressor {
 struct dummy_decompressor final : irs::compression::decompressor {
   virtual irs::bytes_ref decompress(const irs::byte_type*, size_t,
                                     irs::byte_type*, size_t) {
-    return irs::bytes_ref::NIL;
+    return irs::bytes_ref{};
   }
 
   virtual bool prepare(irs::data_input&) { return true; }

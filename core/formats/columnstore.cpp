@@ -25,30 +25,25 @@
 #include <tuple>
 
 #include "analysis/token_attributes.hpp"
-
-#include "formats/formats.hpp"
 #include "formats/format_utils.hpp"
-
+#include "formats/formats.hpp"
 #include "index/file_names.hpp"
-
 #include "search/cost.hpp"
 #include "search/score.hpp"
-
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
-
-#include "utils/bitpack.hpp"
+#include "utils/attribute_helper.hpp"
 #include "utils/bit_utils.hpp"
+#include "utils/bitpack.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/encryption.hpp"
-#include "utils/attribute_helper.hpp"
+#include "utils/hash_set_utils.hpp"
 #include "utils/iterator.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/hash_set_utils.hpp"
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                               columnstore format
@@ -1062,7 +1057,7 @@ class sparse_block : util::noncopyable {
 
     void reset(const sparse_block& block, irs::payload& payload) noexcept {
       value_ = doc_limits::invalid();
-      payload.value = bytes_ref::NIL;
+      payload.value = {};
       payload_ = &payload.value;
       next_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
@@ -1174,7 +1169,7 @@ class dense_block : util::noncopyable {
 
     void reset(const dense_block& block, irs::payload& payload) noexcept {
       value_ = block.base_;
-      payload.value = bytes_ref::NIL;
+      payload.value = {};
       payload_ = &payload.value;
       it_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
@@ -1304,7 +1299,7 @@ class dense_fixed_offset_block : util::noncopyable {
                irs::payload& payload) noexcept {
       avg_length_ = block.avg_length_;
       data_ = block.data_;
-      payload.value = bytes_ref::NIL;
+      payload.value = {};
       payload_ = &payload.value;
       value_ = doc_limits::invalid();
       value_next_ = block.base_key_;
@@ -1399,7 +1394,7 @@ class sparse_mask_block : util::noncopyable {
 
     void reset(const sparse_mask_block& block, irs::payload& payload) noexcept {
       value_ = doc_limits::invalid();
-      payload.value = bytes_ref::NIL;  // mask block doesn't have payload
+      payload.value = {};  // mask block doesn't have payload
       it_ = begin_ = std::begin(block.keys_);
       end_ = begin_ + block.size_;
 
@@ -1493,7 +1488,7 @@ class dense_mask_block {
 
     void reset(const dense_mask_block& block, irs::payload& payload) noexcept {
       block_ = &block;
-      payload.value = bytes_ref::NIL;  // mask block doesn't have payload
+      payload.value = {};  // mask block doesn't have payload
       doc_ = block.min_;
       max_ = block.max_;
     }
@@ -1723,12 +1718,12 @@ class column : public irs::column_reader, private util::noncopyable {
   virtual field_id id() const final { return id_; }
 
   virtual string_ref name() const final {
-    return name_.has_value() ? name_.value() : string_ref::NIL;
+    return name_.has_value() ? name_.value() : string_ref{};
   }
 
   virtual bytes_ref payload() const final {
     // Implementation doesn't support column headers.
-    return bytes_ref::NIL;
+    return {}
   }
 
   virtual void read(data_input& in, uint64_t* /*buf*/,
@@ -1842,7 +1837,7 @@ class column_iterator final : public irs::doc_iterator {
       // reached the end of the column
       block_.seal();
       seek_origin_ = end_;
-      payload.value = bytes_ref::NIL;
+      payload.value = {};
       doc.value = irs::doc_limits::eof();
 
       return false;
@@ -1862,7 +1857,7 @@ class column_iterator final : public irs::doc_iterator {
       // unable to load block, seal the iterator
       block_.seal();
       begin_ = end_;
-      payload.value = bytes_ref::NIL;
+      payload.value = {};
       doc.value = irs::doc_limits::eof();
 
       throw;

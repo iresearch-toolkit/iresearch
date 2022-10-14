@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "analysis/text_token_normalizing_stream.hpp"
-
 #include "gtest/gtest.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
@@ -266,7 +265,7 @@ TEST_F(normalizing_token_stream_tests, test_load) {
   {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
                          "norm", irs::type<irs::text_format::json>::get(),
-                         irs::string_ref::NIL));
+                         irs::string_ref{}));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
                 "norm", irs::type<irs::text_format::json>::get(), "1"));

@@ -24,9 +24,10 @@
 #define IRESEARCH_STRING_H
 
 #include <algorithm>
+#include <bit>
+#include <cassert>
 #include <cmath>
 #include <cstring>
-#include <cassert>
 #include <vector>
 
 #include "shared.hpp"
@@ -319,12 +320,6 @@ template<typename Elem, typename Traits>
 /*static*/ const basic_string_ref<Elem, Traits>
   basic_string_ref<Elem, Traits>::NIL(nullptr, 0);
 
-template<typename Elem, typename Traits>
-/*static*/ const basic_string_ref<Elem, Traits>
-  basic_string_ref<Elem, Traits>::EMPTY(reinterpret_cast<const Elem*>(""),
-                                        0  // FIXME
-  );
-
 template<typename _Elem, typename _Traits>
 inline constexpr bool starts_with(const basic_string_ref<_Elem, _Traits>& first,
                                   const _Elem* second, size_t second_size) {
@@ -408,6 +403,10 @@ inline constexpr bool starts_with(
 
 typedef basic_string_ref<char> string_ref;
 typedef basic_string_ref<byte_type> bytes_ref;
+
+inline bytes_ref EmptyBytesRef() noexcept {
+  return {reinterpret_cast<const byte_type*>(""), 0};
+}
 
 template<typename _ElemDst, typename _ElemSrc>
 constexpr inline basic_string_ref<_ElemDst> ref_cast(

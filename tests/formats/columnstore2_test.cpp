@@ -133,7 +133,7 @@ TEST_P(columnstore2_test_case, empty_columnstore) {
   auto finalizer = [](auto&) {
     // Must not be called
     EXPECT_FALSE(true);
-    return irs::string_ref::NIL;
+    return irs::string_ref{};
   };
 
   irs::columnstore2::writer writer(
@@ -170,13 +170,13 @@ TEST_P(columnstore2_test_case, empty_column) {
     writer.push_column(column_info(), [](irs::bstring& out) {
       EXPECT_TRUE(out.empty());
       out += 2;
-      return irs::string_ref::NIL;
+      return irs::string_ref{};
     });
   [[maybe_unused]] auto [id2, handle2] =
     writer.push_column(column_info(), [](auto&) {
       // Must no be called
       EXPECT_TRUE(false);
-      return irs::string_ref::NIL;
+      return irs::string_ref{};
     });
   handle1(42).write_byte(42);
   ASSERT_TRUE(writer.commit(state));
@@ -272,7 +272,7 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
         out += 42;
-        return irs::string_ref::NIL;
+        return irs::string_ref{};
       });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; doc += 2) {
@@ -824,7 +824,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
         out += 42;
-        return irs::string_ref::NIL;
+        return irs::string_ref{};
       });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
@@ -1007,7 +1007,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
         out += 42;
-        return irs::string_ref::NIL;
+        return irs::string_ref{};
       });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
@@ -1196,7 +1196,7 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks) {
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
         out += 42;
-        return irs::string_ref::NIL;
+        return irs::string_ref{};
       });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
@@ -1383,7 +1383,7 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks_all_equal) {
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
         out += 42;
-        return irs::string_ref::NIL;
+        return irs::string_ref{};
       });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
@@ -1914,7 +1914,7 @@ TEST_P(columnstore2_test_case, dense_column_range) {
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
         out += 42;
-        return irs::string_ref::NIL;
+        return irs::string_ref{};
       });
 
     for (irs::doc_id_t doc = kMin; doc <= kMax; ++doc) {
@@ -2092,7 +2092,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
         writer.push_column(column_info(), [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
           out += 42;
-          return irs::string_ref::NIL;
+          return irs::string_ref{};
         });
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
@@ -2107,7 +2107,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
         writer.push_column(column_info(), [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
           out += 43;
-          return irs::string_ref::NIL;
+          return irs::string_ref{};
         });
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
@@ -2410,7 +2410,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
         writer.push_column(column_info(), [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
           out += 42;
-          return irs::string_ref::NIL;
+          return irs::string_ref{};
         });
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
@@ -2426,7 +2426,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
         writer.push_column(column_info(), [](auto&) {
           // Must not be called
           EXPECT_FALSE(true);
-          return irs::string_ref::NIL;
+          return irs::string_ref{};
         });
     }
 
@@ -2594,7 +2594,7 @@ TEST_P(columnstore2_test_case, empty_columns) {
         writer.push_column(column_info(), [](auto&) {
           // Must not be called
           EXPECT_FALSE(true);
-          return irs::string_ref::NIL;
+          return irs::string_ref{};
         });
     }
 
@@ -2604,7 +2604,7 @@ TEST_P(columnstore2_test_case, empty_columns) {
         writer.push_column(column_info(), [](auto&) {
           // Must not be called
           EXPECT_FALSE(true);
-          return irs::string_ref::NIL;
+          return irs::string_ref{};
         });
     }
 

@@ -23,31 +23,26 @@
 
 #include "assert_format.hpp"
 
-#include <unordered_set>
 #include <algorithm>
-#include <iostream>
 #include <cassert>
+#include <iostream>
+#include <unordered_set>
 
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_stream.hpp"
-
 #include "index/comparer.hpp"
-#include "index/field_meta.hpp"
 #include "index/directory_reader.hpp"
-
-#include "search/term_filter.hpp"
+#include "index/field_meta.hpp"
 #include "search/boolean_filter.hpp"
-#include "search/tfidf.hpp"
 #include "search/cost.hpp"
 #include "search/score.hpp"
-
-#include "utils/bit_utils.hpp"
-#include "utils/automaton_utils.hpp"
-#include "utils/fstext/fst_table_matcher.hpp"
-
+#include "search/term_filter.hpp"
+#include "search/tfidf.hpp"
 #include "store/data_output.hpp"
-
 #include "tests_shared.hpp"
+#include "utils/automaton_utils.hpp"
+#include "utils/bit_utils.hpp"
+#include "utils/fstext/fst_table_matcher.hpp"
 
 namespace {
 
@@ -94,7 +89,7 @@ void posting::insert(uint32_t pos, uint32_t offs_start,
     end = offs_start + offs->end;
   }
 
-  positions_.emplace(pos, start, end, pay ? pay->value : irs::bytes_ref::NIL);
+  positions_.emplace(pos, start, end, pay ? pay->value : irs::bytes_ref{});
 }
 
 posting& term::insert(irs::doc_id_t id) {
@@ -483,7 +478,7 @@ class doc_iterator : public irs::doc_iterator {
       next_ = owner_.prev_->positions().begin();
       value_ = irs::type_limits<irs::type_t::pos_t>::invalid();
       offs_.clear();
-      pay_.value = irs::bytes_ref::NIL;
+      pay_.value = irs::bytes_ref{};
     }
 
     bool next() override {
@@ -576,7 +571,7 @@ class term_iterator final : public irs::seek_term_iterator {
 
   bool next() override {
     if (next_ == data_.terms.end()) {
-      value_ = irs::bytes_ref::NIL;
+      value_ = irs::bytes_ref{};
       return false;
     }
 
@@ -592,7 +587,7 @@ class term_iterator final : public irs::seek_term_iterator {
 
     if (it == data_.terms.end()) {
       prev_ = next_ = it;
-      value_ = irs::bytes_ref::NIL;
+      value_ = irs::bytes_ref{};
       return false;
     }
 
@@ -606,7 +601,7 @@ class term_iterator final : public irs::seek_term_iterator {
     auto it = data_.terms.lower_bound(term{value});
     if (it == data_.terms.end()) {
       prev_ = next_ = it;
-      value_ = irs::bytes_ref::NIL;
+      value_ = irs::bytes_ref{};
       return irs::SeekResult::END;
     }
 
@@ -748,8 +743,8 @@ void assert_terms_next(const field& expected_field,
                        const irs::term_reader& actual_field,
                        irs::IndexFeatures features,
                        irs::automaton_table_matcher* matcher) {
-  irs::bytes_ref actual_min{irs::bytes_ref::NIL};
-  irs::bytes_ref actual_max{irs::bytes_ref::NIL};
+  irs::bytes_ref actual_min{};
+  irs::bytes_ref actual_max{};
   irs::bstring actual_min_buf;
   irs::bstring actual_max_buf;
   size_t actual_size = 0;

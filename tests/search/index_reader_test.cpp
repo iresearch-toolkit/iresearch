@@ -21,13 +21,14 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "index/index_reader.hpp"
+
 #include "formats/formats_10.hpp"
-#include "index/index_writer.hpp"
-#include "store/memory_directory.hpp"
 #include "index/doc_generator.hpp"
 #include "index/index_tests.hpp"
+#include "index/index_writer.hpp"
+#include "store/memory_directory.hpp"
+#include "tests_shared.hpp"
 #include "utils/version_utils.hpp"
 
 using namespace std::chrono_literals;
@@ -83,9 +84,8 @@ TEST(directory_reader_test, open_newest_index) {
       out = segments_file;
       return true;
     }
-    virtual void read(
-      const irs::directory& /*dir*/, irs::index_meta& /*meta*/,
-      irs::string_ref filename = irs::string_ref::NIL) override {
+    virtual void read(const irs::directory& /*dir*/, irs::index_meta& /*meta*/,
+                      irs::string_ref filename = irs::string_ref{}) override {
       read_file.assign(filename.c_str(), filename.size());
     };
     std::string segments_file;
@@ -139,10 +139,10 @@ TEST(directory_reader_test, open_newest_index) {
 
   test_format test_codec0(irs::type<test_format0>::get());
   test_format test_codec1(irs::type<test_format1>::get());
-  irs::format_registrar test_format0_registrar(
-    irs::type<test_format0>::get(), irs::string_ref::NIL, &get_codec0);
-  irs::format_registrar test_format1_registrar(
-    irs::type<test_format1>::get(), irs::string_ref::NIL, &get_codec1);
+  irs::format_registrar test_format0_registrar(irs::type<test_format0>::get(),
+                                               irs::string_ref{}, &get_codec0);
+  irs::format_registrar test_format1_registrar(irs::type<test_format1>::get(),
+                                               irs::string_ref{}, &get_codec1);
   test_index_meta_reader& test_reader0 = test_codec0.index_meta_reader;
   test_index_meta_reader& test_reader1 = test_codec1.index_meta_reader;
   codec0 = &test_codec0;

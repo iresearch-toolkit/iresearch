@@ -75,7 +75,7 @@ class index_profile_test_case : public tests::index_test_base {
         clear();
 
         for (auto& field : fields) {
-          field->value(irs::string_ref::EMPTY);
+          field->value(irs::string_ref{""});
           insert(field);
         }
       }

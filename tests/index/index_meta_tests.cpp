@@ -21,14 +21,13 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
-#include "formats/formats_10.hpp"
-#include "store/memory_directory.hpp"
-
-#include "index/index_meta.hpp"
-#include "utils/type_limits.hpp"
-
 #include <boost/algorithm/string/predicate.hpp>
+
+#include "formats/formats_10.hpp"
+#include "index/index_meta.hpp"
+#include "store/memory_directory.hpp"
+#include "tests_shared.hpp"
+#include "utils/type_limits.hpp"
 
 using namespace iresearch;
 
@@ -87,7 +86,7 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
   EXPECT_TRUE(meta_read.payload().null());
 
   EXPECT_NE(meta_orig, meta_read);
-  const_cast<bytes_ref&>(meta_orig.payload()) = bytes_ref::NIL;
+  const_cast<bytes_ref&>(meta_orig.payload()) = bytes_ref{};
   EXPECT_EQ(meta_orig, meta_read);
 }
 

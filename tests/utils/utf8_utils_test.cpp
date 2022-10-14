@@ -302,7 +302,7 @@ TEST(utf8_utils_test, test) {
 TEST(utf8_utils_test, find) {
   // null sequence
   {
-    const auto str = irs::bytes_ref::NIL;
+    const auto str = irs::bytes_ref{};
     ASSERT_EQ(0, irs::utf8_utils::utf8_length(str));
     ASSERT_EQ(irs::bstring::npos,
               irs::utf8_utils::find<true>(str.begin(), str.size(), 0x80));
@@ -316,7 +316,7 @@ TEST(utf8_utils_test, find) {
 
   // empty sequence
   {
-    const auto str = irs::bytes_ref::EMPTY;
+    const auto str = irs::EmptyBytesRef();
     ASSERT_EQ(irs::bstring::npos,
               irs::utf8_utils::find<true>(str.begin(), str.size(), 0x80));
     ASSERT_EQ(irs::bstring::npos,

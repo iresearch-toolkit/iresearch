@@ -21,8 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "search/scorers.hpp"
+#include "tests_shared.hpp"
 
 TEST(scorers_tests, duplicate_register) {
   struct dummy_scorer : public irs::sort {
@@ -49,15 +49,15 @@ TEST(scorers_tests, duplicate_register) {
     ASSERT_EQ(nullptr,
               irs::scorers::get(irs::type<dummy_scorer>::name(),
                                 irs::type<irs::text_format::vpack>::get(),
-                                irs::string_ref::NIL));
+                                irs::string_ref{}));
     ASSERT_EQ(nullptr,
               irs::scorers::get(irs::type<dummy_scorer>::name(),
                                 irs::type<irs::text_format::json>::get(),
-                                irs::string_ref::NIL));
+                                irs::string_ref{}));
     ASSERT_EQ(nullptr,
               irs::scorers::get(irs::type<dummy_scorer>::name(),
                                 irs::type<irs::text_format::text>::get(),
-                                irs::string_ref::NIL));
+                                irs::string_ref{}));
 
     irs::scorer_registrar initial0(irs::type<dummy_scorer>::get(),
                                    irs::type<irs::text_format::vpack>::get(),
@@ -98,11 +98,11 @@ TEST(scorers_tests, duplicate_register) {
   ASSERT_NE(nullptr,
             irs::scorers::get(irs::type<dummy_scorer>::name(),
                               irs::type<irs::text_format::vpack>::get(),
-                              irs::string_ref::NIL));
+                              irs::string_ref{}));
   ASSERT_NE(nullptr, irs::scorers::get(irs::type<dummy_scorer>::name(),
                                        irs::type<irs::text_format::json>::get(),
-                                       irs::string_ref::NIL));
+                                       irs::string_ref{}));
   ASSERT_NE(nullptr, irs::scorers::get(irs::type<dummy_scorer>::name(),
                                        irs::type<irs::text_format::text>::get(),
-                                       irs::string_ref::NIL));
+                                       irs::string_ref{}));
 }

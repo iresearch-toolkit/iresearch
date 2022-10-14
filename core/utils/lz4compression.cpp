@@ -20,15 +20,16 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "lz4compression.hpp"
-#include "error/error.hpp"
-#include "store/store_utils.hpp"
-#include "utils/string_utils.hpp"
-#include "utils/misc.hpp"
-#include "utils/type_limits.hpp"
 
 #include <lz4.h>
+
+#include "error/error.hpp"
+#include "shared.hpp"
+#include "store/store_utils.hpp"
+#include "utils/misc.hpp"
+#include "utils/string_utils.hpp"
+#include "utils/type_limits.hpp"
 
 namespace {
 
@@ -111,10 +112,10 @@ bytes_ref lz4::lz4decompressor::decompress(const byte_type* src,
   );
 
   if (IRS_UNLIKELY(lz4_size < 0)) {
-    return bytes_ref::NIL;  // corrupted index
+    return {};  // corrupted index
   }
 
-  return bytes_ref(dst, size_t(lz4_size));
+  return bytes_ref{dst, size_t(lz4_size)};
 }
 
 compressor::ptr lz4::compressor(const options& opts) {

@@ -224,7 +224,7 @@ TEST_P(tfidf_test_case, consts) {
 
 TEST_P(tfidf_test_case, test_load) {
   auto scorer = irs::scorers::get(
-    "tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+    "tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref{});
 
   ASSERT_NE(nullptr, scorer);
 }
@@ -257,7 +257,7 @@ TEST_P(tfidf_test_case, make_from_array) {
   // default args
   {
     auto scorer = irs::scorers::get(
-      "tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+      "tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref{});
     ASSERT_NE(nullptr, scorer);
     ASSERT_EQ(irs::type<irs::tfidf_sort>::id(), scorer->type());
     auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
@@ -311,7 +311,7 @@ TEST_P(tfidf_test_case, test_normalize_features) {
   // default norms
   {
     auto scorer = irs::scorers::get(
-      "tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+      "tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref{});
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
@@ -1419,7 +1419,7 @@ TEST_P(tfidf_test_case, test_make) {
   // default values
   {
     auto scorer = irs::scorers::get(
-      "tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+      "tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref{});
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_FALSE(scr.normalize());

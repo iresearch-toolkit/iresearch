@@ -20,8 +20,9 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "token_streams.hpp"
+
+#include "shared.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/string_utils.hpp"
 
@@ -103,7 +104,7 @@ bytes_ref numeric_token_stream::numeric_term::value(byte_type* buf,
     }
   }
 
-  return bytes_ref::NIL;
+  return {};
 }
 
 bool numeric_token_stream::numeric_term::next(increment& inc, bytes_ref& out) {

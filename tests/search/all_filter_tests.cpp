@@ -161,7 +161,7 @@ TEST_P(all_filter_test_case, all_order) {
               17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32};
 
     auto sort = irs::scorers::get(
-      "bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+      "bm25", irs::type<irs::text_format::json>::get(), irs::string_ref{});
 
     CheckQuery(irs::all(), std::span{&sort, 1}, docs, rdr);
   }
@@ -172,7 +172,7 @@ TEST_P(all_filter_test_case, all_order) {
               17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32};
 
     auto sort = irs::scorers::get(
-      "tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+      "tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref{});
     CheckQuery(irs::all(), std::span{&sort, 1}, docs, rdr);
   }
 }

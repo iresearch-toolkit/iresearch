@@ -23,11 +23,12 @@
 
 #ifndef IRESEARCH_DLL
 
-#include "tests_shared.hpp"
 #include "index/sorted_column.hpp"
-#include "index/comparer.hpp"
+
 #include "analysis/token_attributes.hpp"
+#include "index/comparer.hpp"
 #include "store/memory_directory.hpp"
+#include "tests_shared.hpp"
 #include "utils/bitvector.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/lz4compression.hpp"
@@ -108,7 +109,7 @@ TEST_P(sorted_column_test_case, flush_empty) {
       [](auto&) {
         // Must not be called
         EXPECT_TRUE(false);
-        return irs::string_ref::NIL;
+        return irs::string_ref{};
       },
       0, less);
     ASSERT_TRUE(col.empty());
@@ -217,7 +218,7 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
       [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
         out += 42;
-        return irs::string_ref::NIL;
+        return irs::string_ref{};
       },
       std::size(values), less);
     ASSERT_TRUE(col.empty());
@@ -346,7 +347,7 @@ TEST_P(sorted_column_test_case, sort) {
       [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
         out += 42;
-        return irs::string_ref::NIL;
+        return irs::string_ref{};
       },
       std::size(values), less);
     ASSERT_TRUE(col.empty());

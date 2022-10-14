@@ -55,10 +55,10 @@ TEST_F(delimited_token_stream_tests, consts) {
 }
 
 TEST_F(delimited_token_stream_tests, test_delimiter) {
-  // test delimiter string_ref::NIL
+  // test delimiter string_ref{}
   {
     irs::string_ref data("abc,def\"\",\"\"ghi");
-    irs::analysis::delimited_token_stream stream(irs::string_ref::NIL);
+    irs::analysis::delimited_token_stream stream(irs::string_ref{});
     ASSERT_EQ(irs::type<irs::analysis::delimited_token_stream>::id(),
               stream.type());
 
@@ -430,7 +430,7 @@ TEST_F(delimited_token_stream_tests, test_load) {
   {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
                          "delimiter", irs::type<irs::text_format::json>::get(),
-                         irs::string_ref::NIL));
+                         irs::string_ref{}));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
                 "delimiter", irs::type<irs::text_format::json>::get(), "1"));

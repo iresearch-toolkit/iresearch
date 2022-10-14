@@ -24,18 +24,19 @@
 #ifndef IRESEARCH_FILE_UTILS_H
 #define IRESEARCH_FILE_UTILS_H
 
-#include <memory>
+#include <fcntl.h>  // open/_wopen
+
 #include <cstdio>
 #include <functional>
-#include <fcntl.h>  // open/_wopen
+#include <memory>
 
 #include "shared.hpp"
 #include "string.hpp"
 #include "utils/utf8_path.hpp"
 
 #ifdef _WIN32
-#include <tchar.h>
 #include <io.h>  // _close
+#include <tchar.h>
 #define file_blksize_t \
   uint32_t  // DWORD (same as GetDriveGeometry(...)
             // DISK_GEOMETRY::BytesPerSector)
@@ -59,8 +60,8 @@
 #define IR_FADVICE_DONTNEED 0
 #define IR_FADVICE_NOREUSE 0
 #else
-#include <unistd.h>     // close
 #include <sys/types.h>  // for blksize_t
+#include <unistd.h>     // close
 #define file_blksize_t blksize_t
 #define file_path_delimiter '/'
 #define file_stat_t struct stat
@@ -159,12 +160,12 @@ long ftell(void* fd);
 
 struct path_parts_t {
   using ref_t = irs::basic_string_ref<path_char_t>;
-  ref_t basename;   // path component after the last path delimiter (ref_t::NIL
+  ref_t basename;   // path component after the last path delimiter (ref_t{}
                     // if not present)
-  ref_t dirname;    // path component before the last path delimiter (ref_t::NIL
+  ref_t dirname;    // path component before the last path delimiter (ref_t{}
                     // if not present)
-  ref_t extension;  // basename extension (ref_t::NIL if not present)
-  ref_t stem;       // basename without extension (ref_t::NIL if not present)
+  ref_t extension;  // basename extension (ref_t{} if not present)
+  ref_t stem;       // basename without extension (ref_t{} if not present)
 };
 
 path_parts_t path_parts(const file_path_t path) noexcept;

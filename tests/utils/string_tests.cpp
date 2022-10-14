@@ -21,11 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
-
-#include "utils/string.hpp"
-
 #include <climits>
+
+#include "tests_shared.hpp"
+#include "utils/string.hpp"
 
 void expect_sign_eq(long double lhs, long double rhs) {
   EXPECT_TRUE((lhs == 0 && rhs == 0) || std::signbit(lhs) == std::signbit(rhs));
@@ -258,14 +257,14 @@ TEST(string_ref_tests, common_prefix) {
 
   {
     const string_ref str = "quick brown foxies";
-    EXPECT_EQ(0, common_prefix_length(string_ref::NIL, str));
-    EXPECT_EQ(0, common_prefix_length(str, string_ref::NIL));
+    EXPECT_EQ(0, common_prefix_length(string_ref{}, str));
+    EXPECT_EQ(0, common_prefix_length(str, string_ref{}));
   }
 
   {
     const string_ref str = "quick brown foxies";
-    EXPECT_EQ(0, common_prefix_length(string_ref::EMPTY, str));
-    EXPECT_EQ(0, common_prefix_length(str, string_ref::EMPTY));
+    EXPECT_EQ(0, common_prefix_length(string_ref{""}, str));
+    EXPECT_EQ(0, common_prefix_length(str, string_ref{""}));
   }
 }
 

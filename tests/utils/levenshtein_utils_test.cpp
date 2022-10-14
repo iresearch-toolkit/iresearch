@@ -20,12 +20,12 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
+#include "utils/levenshtein_utils.hpp"
 
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
+#include "tests_shared.hpp"
 #include "utils/automaton_utils.hpp"
-#include "utils/levenshtein_utils.hpp"
 #include "utils/fstext/fst_table_matcher.hpp"
 #include "utils/utf8_utils.hpp"
 
@@ -108,7 +108,7 @@ void assert_description(
   const irs::parametric_description& description, const irs::bytes_ref& target,
   const std::vector<std::tuple<irs::bytes_ref, size_t, size_t, size_t>>&
     candidates) {
-  return assert_description(description, irs::bytes_ref::EMPTY, target,
+  return assert_description(description, irs::EmptyBytesRef(), target,
                             candidates);
 }
 
@@ -493,7 +493,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description, irs::ref_cast<irs::byte_type>("a"_sr),
       {
-        {irs::bytes_ref::EMPTY, 1, 1, 1},
+        {irs::EmptyBytesRef(), 1, 1, 1},
         // 1-byte sequence
         {irs::ref_cast<irs::byte_type>("a"_sr), 0, 0, 0},
         {irs::ref_cast<irs::byte_type>("b"_sr), 1, 1, 1},
@@ -527,7 +527,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description, irs::ref_cast<irs::byte_type>("\xD1\x83"_sr),
       {
-        {irs::bytes_ref::EMPTY, 1, 1, 1},
+        {irs::EmptyBytesRef(), 1, 1, 1},
         // 1-byte sequence
         {irs::ref_cast<irs::byte_type>("a"_sr), 1, 1, 1},
         {irs::ref_cast<irs::byte_type>("b"_sr), 1, 1, 1},
@@ -561,7 +561,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description, irs::ref_cast<irs::byte_type>("\xE2\x9E\x96"_sr),
       {
-        {irs::bytes_ref::EMPTY, 1, 1, 1},
+        {irs::EmptyBytesRef(), 1, 1, 1},
         // 1-byte sequence
         {irs::ref_cast<irs::byte_type>("a"_sr), 1, 1, 1},
         {irs::ref_cast<irs::byte_type>("b"_sr), 1, 1, 1},
@@ -597,7 +597,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description, irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81"_sr),
       {
-        {irs::bytes_ref::EMPTY, 1, 1, 1},
+        {irs::EmptyBytesRef(), 1, 1, 1},
         // 1-byte sequence
         {irs::ref_cast<irs::byte_type>("a"_sr), 1, 1, 1},
         {irs::ref_cast<irs::byte_type>("b"_sr), 1, 1, 1},
@@ -728,7 +728,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description, irs::ref_cast<irs::byte_type>("a"_sr),
       {
-        {irs::bytes_ref::EMPTY, 1, 1, 1},
+        {irs::EmptyBytesRef(), 1, 1, 1},
         // 1-byte sequence
         {irs::ref_cast<irs::byte_type>("a"_sr), 0, 0, 0},
         {irs::ref_cast<irs::byte_type>("b"_sr), 1, 1, 1},
@@ -762,7 +762,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description, irs::ref_cast<irs::byte_type>("\xD1\x83"_sr),
       {
-        {irs::bytes_ref::EMPTY, 1, 1, 1},
+        {irs::EmptyBytesRef(), 1, 1, 1},
         // 1-byte sequence
         {irs::ref_cast<irs::byte_type>("a"_sr), 1, 1, 1},
         {irs::ref_cast<irs::byte_type>("b"_sr), 1, 1, 1},
@@ -796,7 +796,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description, irs::ref_cast<irs::byte_type>("\xE2\x9E\x96"_sr),
       {
-        {irs::bytes_ref::EMPTY, 1, 1, 1},
+        {irs::EmptyBytesRef(), 1, 1, 1},
         // 1-byte sequence
         {irs::ref_cast<irs::byte_type>("a"_sr), 1, 1, 1},
         {irs::ref_cast<irs::byte_type>("b"_sr), 1, 1, 1},
@@ -832,7 +832,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description, irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81"_sr),
       {
-        {irs::bytes_ref::EMPTY, 1, 1, 1},
+        {irs::EmptyBytesRef(), 1, 1, 1},
         // 1-byte sequence
         {irs::ref_cast<irs::byte_type>("a"_sr), 1, 1, 1},
         {irs::ref_cast<irs::byte_type>("b"_sr), 1, 1, 1},
@@ -904,7 +904,7 @@ TEST(levenshtein_utils_test, test_description_2) {
     assert_description(
       description, irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81"_sr),
       {
-        {irs::bytes_ref::EMPTY, 1, 1, 1},
+        {irs::EmptyBytesRef(), 1, 1, 1},
         // 1-byte sequence
         {irs::ref_cast<irs::byte_type>("a"_sr), 1, 1, 1},
         {irs::ref_cast<irs::byte_type>("b"_sr), 1, 1, 1},
@@ -1039,7 +1039,7 @@ TEST(levenshtein_utils_test, test_description_2) {
     assert_description(
       description, irs::ref_cast<irs::byte_type>("\xF0\x9F\x98\x81"_sr),
       {
-        {irs::bytes_ref::EMPTY, 1, 1, 1},
+        {irs::EmptyBytesRef(), 1, 1, 1},
         // 1-byte sequence
         {irs::ref_cast<irs::byte_type>("a"_sr), 1, 1, 1},
         {irs::ref_cast<irs::byte_type>("b"_sr), 1, 1, 1},

@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "analysis/text_token_stemming_stream.hpp"
-
 #include "gtest/gtest.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
@@ -45,7 +44,7 @@ TEST_F(stemming_token_stream_tests, consts) {
 }
 
 TEST_F(stemming_token_stream_tests, test_stemming) {
-  // test stemming (locale irs::string_ref::NIL)
+  // test stemming (locale irs::string_ref{})
   // there is no Snowball stemmer for "C" locale
   {
     irs::analysis::stemming_token_stream::options_t opts;
@@ -146,7 +145,7 @@ TEST_F(stemming_token_stream_tests, test_load) {
   {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
                          "stem", irs::type<irs::text_format::json>::get(),
-                         irs::string_ref::NIL));
+                         irs::string_ref{}));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
                 "stem", irs::type<irs::text_format::json>::get(), "1"));

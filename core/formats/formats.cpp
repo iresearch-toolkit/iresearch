@@ -29,8 +29,8 @@
 
 #include "analysis/token_attributes.hpp"
 #include "utils/hash_utils.hpp"
-#include "utils/type_limits.hpp"
 #include "utils/register.hpp"
+#include "utils/type_limits.hpp"
 
 namespace {
 
@@ -93,17 +93,17 @@ namespace iresearch {
   if (payload) {
     meta.payload(std::move(*payload));
   } else {
-    meta.payload(bytes_ref::NIL);
+    meta.payload(bytes_ref{});
   }
 }
 
 /*static*/ bool formats::exists(string_ref name, bool load_library /*= true*/) {
-  auto const key = std::make_pair(name, string_ref::NIL);
+  auto const key = std::make_pair(name, string_ref{});
   return nullptr != format_register::instance().get(key, load_library);
 }
 
 /*static*/ format::ptr formats::get(string_ref name,
-                                    string_ref module /*= string_ref::NIL*/,
+                                    string_ref module /*= {} */,
                                     bool load_library /*= true*/) noexcept {
   try {
     auto const key = std::make_pair(name, module);
@@ -154,7 +154,7 @@ format_registrar::format_registrar(const type_info& type, string_ref module,
   registered_ = entry.second;
 
   if (!registered_ && factory != entry.first) {
-    const auto key = std::make_pair(type.name(), string_ref::NIL);
+    const auto key = std::make_pair(type.name(), string_ref{});
     auto* registered_source = format_register::instance().tag(key);
 
     if (source && registered_source) {

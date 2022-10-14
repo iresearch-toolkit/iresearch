@@ -1756,15 +1756,15 @@ class index_test_case : public tests::index_test_base {
       {
         std::vector<field> doc;
         doc.emplace_back(std::string("name"), irs::string_ref("", 0));
-        doc.emplace_back(std::string("name"), irs::string_ref::NIL);
+        doc.emplace_back(std::string("name"), irs::string_ref{});
         ASSERT_TRUE(tests::insert(*writer, doc.begin(), doc.end()));
       }
       // doc1: nullptr, empty, nullptr
       {
         std::vector<field> doc;
-        doc.emplace_back(std::string("name1"), irs::string_ref::NIL);
+        doc.emplace_back(std::string("name1"), irs::string_ref{});
         doc.emplace_back(std::string("name1"), irs::string_ref("", 0));
-        doc.emplace_back(std::string("name"), irs::string_ref::NIL);
+        doc.emplace_back(std::string("name"), irs::string_ref{});
         ASSERT_TRUE(tests::insert(*writer, doc.begin(), doc.end()));
       }
       writer->commit();
@@ -2784,7 +2784,7 @@ TEST_P(index_test_case, document_context) {
     std::mutex mutex;
     std::condition_variable wait_cond;
     std::atomic<bool> wait;
-    const irs::string_ref& name() { return irs::string_ref::EMPTY; }
+    irs::string_ref name() { return ""; }
     irs::features_t features() const { return {}; }
     bool write(irs::data_output&) {
       { std::lock_guard cond_lock{cond_mutex}; }
@@ -16363,7 +16363,7 @@ TEST_P(index_test_case_11, commit_payload) {
       ASSERT_NE(reader, new_reader);
       ASSERT_FALSE(new_reader.meta().meta.payload().null());
       ASSERT_TRUE(new_reader.meta().meta.payload().empty());
-      ASSERT_EQ(irs::bytes_ref::EMPTY, new_reader.meta().meta.payload());
+      ASSERT_EQ(irs::EmptyBytesRef(), new_reader.meta().meta.payload());
       reader = new_reader;
     }
   }

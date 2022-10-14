@@ -20,13 +20,14 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "analysis/token_attributes.hpp"
 #include "index/iterators.hpp"
-#include "index/field_meta.hpp"
+
+#include "analysis/token_attributes.hpp"
 #include "formats/empty_term_reader.hpp"
+#include "index/field_meta.hpp"
 #include "search/cost.hpp"
-#include "utils/type_limits.hpp"
 #include "utils/singleton.hpp"
+#include "utils/type_limits.hpp"
 
 namespace {
 
@@ -123,12 +124,10 @@ struct empty_column_reader final : irs::column_reader {
   }
 
   // Returns optional column name.
-  virtual irs::string_ref name() const override { return irs::string_ref::NIL; }
+  virtual irs::string_ref name() const override { return {}; }
 
   // Returns column header.
-  virtual irs::bytes_ref payload() const override {
-    return irs::bytes_ref::NIL;
-  }
+  virtual irs::bytes_ref payload() const override { return {}; }
 
   // Returns the corresponding column iterator.
   // If the column implementation supports document payloads then it

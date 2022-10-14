@@ -20,12 +20,13 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
+#include "search/levenshtein_filter.hpp"
+
 #include "filter_test_case_base.hpp"
 #include "index/norm.hpp"
-#include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/term_filter.hpp"
+#include "tests_shared.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
 #include "utils/misc.hpp"
 
@@ -39,11 +40,12 @@ irs::by_term make_term_filter(const irs::string_ref& field,
   return q;
 }
 
-irs::by_edit_distance make_filter(
-  const irs::string_ref& field, const irs::string_ref term,
-  irs::byte_type max_distance = 0, size_t max_terms = 0,
-  bool with_transpositions = false,
-  const irs::string_ref prefix = irs::string_ref::EMPTY) {
+irs::by_edit_distance make_filter(const irs::string_ref& field,
+                                  const irs::string_ref term,
+                                  irs::byte_type max_distance = 0,
+                                  size_t max_terms = 0,
+                                  bool with_transpositions = false,
+                                  const irs::string_ref prefix = "") {
   irs::by_edit_distance q;
   *q.mutable_field() = field;
   q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
@@ -563,7 +565,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
   }
 
   std::array<irs::sort::ptr, 1> order{irs::scorers::get(
-    "bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL)};
+    "bm25", irs::type<irs::text_format::json>::get(), irs::string_ref{})};
   ASSERT_NE(nullptr, order.front());
 
   auto prepared_order = irs::Order::Prepare(order);

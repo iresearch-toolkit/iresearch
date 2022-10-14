@@ -1363,7 +1363,7 @@ void field_writer::end_field(std::string_view name,
   }
 
   // cause creation of all final blocks
-  push(bytes_ref::EMPTY);
+  push(EmptyBytesRef());
 
   // write root block with empty prefix
   write_blocks(0, stack_.size());
@@ -3354,7 +3354,7 @@ void field_reader::prepare(const directory& dir, const segment_meta& meta,
       fields.reserve(fields_count);
       name_to_field_.reserve(fields_count);
 
-      for (string_ref previous_field_name = string_ref::EMPTY; fields_count;
+      for (string_ref previous_field_name{""}; fields_count;
            --fields_count) {
         auto& field = fields.emplace_back(*this);
         field.prepare(term_index_version, *index_in, feature_map);
