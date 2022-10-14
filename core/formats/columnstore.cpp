@@ -1723,7 +1723,7 @@ class column : public irs::column_reader, private util::noncopyable {
 
   virtual bytes_ref payload() const final {
     // Implementation doesn't support column headers.
-    return {}
+    return {};
   }
 
   virtual void read(data_input& in, uint64_t* /*buf*/,

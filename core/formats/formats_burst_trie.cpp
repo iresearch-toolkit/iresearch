@@ -206,7 +206,7 @@ class volatile_ref : util::noncopyable {
 
   void clear() {
     str_.clear();
-    ref_ = ref_t::NIL;
+    ref_ = {};
   }
 
   template<bool Volatile>
@@ -236,7 +236,7 @@ class volatile_ref : util::noncopyable {
 
  private:
   str_t str_;
-  ref_t ref_{ref_t::NIL};
+  ref_t ref_{};
 };  // volatile_ref
 
 using volatile_byte_ref = volatile_ref<byte_type>;
@@ -2709,7 +2709,7 @@ bool single_term_iterator<FST>::seek(const bytes_ref& term) {
     return true;
   }
 
-  value_ = bytes_ref::NIL;
+  value_ = {};
   return false;
 }
 
