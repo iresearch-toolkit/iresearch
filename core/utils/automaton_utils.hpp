@@ -166,7 +166,7 @@ class utf8_transitions_builder {
   template<typename Iterator>
   void insert(automaton& a, automaton::StateId from,
               automaton::StateId rho_state, Iterator begin, Iterator end) {
-    last_ = EmptyBytesRef();
+    last_ = EmptyRef<irs::byte_type>();
     states_map_.reset();
 
     // we inherit weight from 'from' node to all intermediate states

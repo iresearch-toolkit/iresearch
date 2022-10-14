@@ -534,8 +534,8 @@ class term_iterator : public irs::term_iterator {
                          const doc_map* docmap) noexcept
     : postings_(&postings), doc_map_(docmap) {}
 
-  void reset(const field_data& field, const bytes_ref*& min,
-             const bytes_ref*& max) {
+  void reset(const field_data& field, bytes_ref min,
+             bytes_ref max) {
     field_ = &field;
 
     doc_itr_.reset(field);
@@ -548,10 +548,10 @@ class term_iterator : public irs::term_iterator {
     next_ = it_ = postings_->begin();
     end_ = postings_->end();
 
-    max = min = &irs::bytes_ref::NIL;
+    max = min = {};
     if (it_ != end_) {
-      min = &(*it_)->term;
-      max = &(*(end_ - 1))->term;
+      min = (*it_)->term;
+      max = (*(end_ - 1))->term;
     }
   }
 
@@ -659,9 +659,9 @@ class term_reader final : public irs::basic_term_reader,
 
   void reset(const field_data& field) { it_.reset(field, min_, max_); }
 
-  virtual const irs::bytes_ref&(min)() const noexcept override { return *min_; }
+  virtual irs::bytes_ref (min)() const noexcept override { return min_; }
 
-  virtual const irs::bytes_ref&(max)() const noexcept override { return *max_; }
+  virtual irs::bytes_ref (max)() const noexcept override { return max_; }
 
   virtual const irs::field_meta& meta() const noexcept override {
     return it_.meta();
@@ -677,8 +677,8 @@ class term_reader final : public irs::basic_term_reader,
 
  private:
   mutable detail::term_iterator it_;
-  const irs::bytes_ref* min_{&irs::bytes_ref::NIL};
-  const irs::bytes_ref* max_{&irs::bytes_ref::NIL};
+  const irs::bytes_ref min_{};
+  const irs::bytes_ref max_{};
 };  // term_reader
 
 }  // namespace detail

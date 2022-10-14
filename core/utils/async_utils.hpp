@@ -63,7 +63,7 @@ class thread_pool {
 
   explicit thread_pool(size_t max_threads = 0, size_t max_idle = 0,
                        basic_string_ref<native_char_t> worker_name =
-                         basic_string_ref<native_char_t>::EMPTY);
+                         EmptyRef<native_char_t>());
   ~thread_pool();
   size_t max_idle() const;
   void max_idle(size_t value);

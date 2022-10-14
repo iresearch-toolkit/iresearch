@@ -167,8 +167,6 @@ class basic_string_ref {
   // it may cause undefined behaviour in std::char_traits<Elem>
   // (e.g. becuase of memcmp function)
   IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref NIL;  // null string
-  IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref
-    EMPTY;  // empty string
 
   constexpr basic_string_ref() noexcept : data_(nullptr), size_(0) {}
 
@@ -404,8 +402,9 @@ inline constexpr bool starts_with(
 typedef basic_string_ref<char> string_ref;
 typedef basic_string_ref<byte_type> bytes_ref;
 
-inline bytes_ref EmptyBytesRef() noexcept {
-  return {reinterpret_cast<const byte_type*>(""), 0};
+template<typename Char>
+inline basic_string_ref<Char> EmptyRef() noexcept {
+  return {reinterpret_cast<const Char*>(""), 0};
 }
 
 template<typename _ElemDst, typename _ElemSrc>

@@ -16363,7 +16363,7 @@ TEST_P(index_test_case_11, commit_payload) {
       ASSERT_NE(reader, new_reader);
       ASSERT_FALSE(new_reader.meta().meta.payload().null());
       ASSERT_TRUE(new_reader.meta().meta.payload().empty());
-      ASSERT_EQ(irs::EmptyBytesRef(), new_reader.meta().meta.payload());
+      ASSERT_EQ(irs::EmptyRef<irs::byte_type>(), new_reader.meta().meta.payload());
       reader = new_reader;
     }
   }

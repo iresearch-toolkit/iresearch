@@ -124,7 +124,7 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
                    << target << testing::Message("', Edit distance: ")
                    << size_t(description.max_distance()));
       assert_index(static_cast<irs::index_reader::ptr>(reader), description,
-                   irs::EmptyBytesRef(), irs::ref_cast<irs::byte_type>(target));
+                   irs::EmptyRef<irs::byte_type>(), irs::ref_cast<irs::byte_type>(target));
     }
   }
 }

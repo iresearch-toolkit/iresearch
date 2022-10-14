@@ -178,7 +178,7 @@ TEST(Norm2HeaderTest, ResetByValue) {
 
 TEST(Norm2HeaderTest, ReadInvalid) {
   ASSERT_FALSE(irs::Norm2Header::Read(irs::bytes_ref{}).has_value());
-  ASSERT_FALSE(irs::Norm2Header::Read(irs::EmptyBytesRef()).has_value());
+  ASSERT_FALSE(irs::Norm2Header::Read(irs::EmptyRef<irs::byte_type>()).has_value());
 
   // Invalid size
   {

@@ -446,10 +446,10 @@ struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
   virtual uint64_t docs_count() const { return 0; }
 
   // less significant term
-  virtual const irs::bytes_ref&(min)() const { return irs::bytes_ref::NIL; }
+  virtual irs::bytes_ref (min)() const { return {}; }
 
   // most significant term
-  virtual const irs::bytes_ref&(max)() const { return irs::bytes_ref::NIL; }
+  virtual irs::bytes_ref (max)() const { return {}; }
 };  // empty_term_reader
 
 class empty_filter_visitor : public irs::filter_visitor {

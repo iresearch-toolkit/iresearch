@@ -742,9 +742,9 @@ class compound_field_iterator final : public basic_term_reader {
     return *current_meta_;
   }
 
-  virtual const bytes_ref&(min)() const noexcept override { return *min_; }
+  virtual bytes_ref(min)() const noexcept override { return min_; }
 
-  virtual const bytes_ref&(max)() const noexcept override { return *max_; }
+  virtual bytes_ref(max)() const noexcept override { return max_; }
 
   virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
@@ -780,8 +780,8 @@ class compound_field_iterator final : public basic_term_reader {
 
   string_ref current_field_;
   const field_meta* current_meta_{&field_meta::kEmpty};
-  const bytes_ref* min_{&bytes_ref::NIL};
-  const bytes_ref* max_{&bytes_ref::NIL};
+  bytes_ref min_{};
+  bytes_ref max_{};
   std::vector<term_iterator_t>
     field_iterator_mask_;  // valid iterators for current field
   std::vector<field_iterator_t> field_iterators_;  // all segment iterators
@@ -809,7 +809,7 @@ bool compound_field_iterator::next() {
     field_iterators_.clear();
     field_iterator_mask_.clear();
     current_field_ = {};
-    max_ = min_ = &bytes_ref::NIL;
+    max_ = min_ = {};
     return false;
   }
 
@@ -823,7 +823,7 @@ bool compound_field_iterator::next() {
 
   // reset for next pass
   field_iterator_mask_.clear();
-  max_ = min_ = &bytes_ref::NIL;
+  max_ = min_ = {};
 
   for (size_t i = 0, count = field_iterators_.size(); i < count; ++i) {
     auto& field_itr = field_iterators_[i];
@@ -856,8 +856,8 @@ bool compound_field_iterator::next() {
       term_iterator_t{i, &field_meta, field_terms});
 
     // update min and max terms
-    min_ = &std::min(*min_, field_terms->min());
-    max_ = &std::max(*max_, field_terms->max());
+    min_ = std::min(min_, field_terms->min());
+    max_ = std::max(max_, field_terms->max());
   }
 
   if (!field_iterator_mask_.empty()) {

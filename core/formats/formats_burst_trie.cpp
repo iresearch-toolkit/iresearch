@@ -23,8 +23,10 @@
 #include "formats_burst_trie.hpp"
 
 #include <cassert>
-#include <variant>
 #include <list>
+#include <variant>
+
+// clang-format off
 
 #if (defined(__clang__) || defined(_MSC_VER) || \
      defined(__GNUC__) &&                       \
@@ -101,6 +103,8 @@
 #include "utils/attribute_helper.hpp"
 #include "utils/string.hpp"
 #include "utils/log.hpp"
+
+// clang-format on
 
 namespace {
 
@@ -1363,7 +1367,7 @@ void field_writer::end_field(std::string_view name,
   }
 
   // cause creation of all final blocks
-  push(EmptyBytesRef());
+  push(EmptyRef<irs::byte_type>());
 
   // write root block with empty prefix
   write_blocks(0, stack_.size());
@@ -1462,12 +1466,8 @@ class term_reader_base : public irs::term_reader, private util::noncopyable {
   virtual const field_meta& meta() const noexcept override { return field_; }
   virtual size_t size() const noexcept override { return terms_count_; }
   virtual uint64_t docs_count() const noexcept override { return doc_count_; }
-  virtual const bytes_ref& min() const noexcept override {
-    return min_term_ref_;
-  }
-  virtual const bytes_ref& max() const noexcept override {
-    return max_term_ref_;
-  }
+  virtual bytes_ref min() const noexcept override { return min_term_ref_; }
+  virtual bytes_ref max() const noexcept override { return max_term_ref_; }
   virtual attribute* get_mutable(
     irs::type_info::type_id type) noexcept override;
 
@@ -3354,8 +3354,7 @@ void field_reader::prepare(const directory& dir, const segment_meta& meta,
       fields.reserve(fields_count);
       name_to_field_.reserve(fields_count);
 
-      for (string_ref previous_field_name{""}; fields_count;
-           --fields_count) {
+      for (string_ref previous_field_name{""}; fields_count; --fields_count) {
         auto& field = fields.emplace_back(*this);
         field.prepare(term_index_version, *index_in, feature_map);
 

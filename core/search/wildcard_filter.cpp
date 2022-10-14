@@ -65,7 +65,7 @@ auto executeWildcard(bstring& buf, bytes_ref term, Invalid&& inv, Term&& t,
     case WildcardType::TERM:
       return t(term);
     case WildcardType::MATCH_ALL:
-      term = EmptyBytesRef();
+      term = EmptyRef<irs::byte_type>();
       return p(term);
     case WildcardType::PREFIX_ESCAPED:
       term = unescape(term, buf);
