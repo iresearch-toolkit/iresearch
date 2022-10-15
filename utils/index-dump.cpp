@@ -33,15 +33,15 @@
 #pragma warning(default : 4101)
 #endif
 
-#include "shared.hpp"
+#include <fstream>
+#include <iostream>
+
+#include "analysis/token_attributes.hpp"
 #include "common.hpp"
 #include "index-dump.hpp"
 #include "index/directory_reader.hpp"
 #include "index/field_meta.hpp"
-#include "analysis/token_attributes.hpp"
-
-#include <fstream>
-#include <iostream>
+#include "shared.hpp"
 
 namespace {
 
@@ -100,7 +100,7 @@ int dump(const std::string& path, const std::string& dir_type,
       stream << "Column id=" << reader.id() << " name=" << reader.name()
              << '\n';
 
-      auto it = reader.iterator(true);
+      auto it = reader.iterator(irs::ColumnHint::kConsolidation);
       auto* payload = irs::get<irs::payload>(*it);
       auto* doc = irs::get<irs::document>(*it);
 

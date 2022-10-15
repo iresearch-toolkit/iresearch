@@ -20,7 +20,8 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <unordered_map>
+#include <absl/container/flat_hash_map.h>
+
 #include <functional>
 #include <iomanip>
 
@@ -38,29 +39,18 @@
 
 #include "shared.hpp"
 #include "store/store_utils.hpp"
-#include "utils/levenshtein_utils.hpp"
 #include "utils/compression.hpp"
+#include "utils/levenshtein_utils.hpp"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               handle registration
-// -----------------------------------------------------------------------------
-
-typedef std::unordered_map<std::string,
-                           std::function<int(int argc, char* argv[])>>
-  handlers_t;
+using handlers_t =
+  absl::flat_hash_map<std::string, std::function<int(int argc, char* argv[])>>;
 
 int dump(int argc, char* argv[]);
 
-const std::string MODE_DUMP = "dump";
-
 bool init_handlers(handlers_t& handlers) {
-  handlers.emplace(MODE_DUMP, &dump);
+  handlers.emplace("dump", &dump);
   return true;
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               dump implementation
-// -----------------------------------------------------------------------------
 
 const std::string HELP = "help";
 const std::string DISTANCE = "distance";
@@ -85,7 +75,7 @@ int dump(irs::byte_type distance, bool with_transpositions, size_t line_length,
   // write description to string
   {
     irs::bytes_output out(raw);
-    irs::write(d, static_cast<data_output&>(out));
+    irs::write(d, static_cast<irs::data_output&>(out));
   }
 
   irs::bstring buf;

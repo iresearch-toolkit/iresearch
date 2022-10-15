@@ -22,22 +22,19 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/container/flat_hash_map.h>
+
 #include <functional>
 #include <string>
-#include <unordered_map>
 
-#include "index-dump.hpp"
 #include "index-convert.hpp"
+#include "index-dump.hpp"
 
-typedef std::unordered_map<std::string,
-                           std::function<int(int argc, char* argv[])>>
-  handlers_t;
-
-const std::string MODE_DUMP = "dump";
-const std::string MODE_CONV = "convert";
+using handlers_t =
+  absl::flat_hash_map<std::string, std::function<int(int argc, char* argv[])>>;
 
 bool init_handlers(handlers_t& handlers) {
-  handlers.emplace(MODE_DUMP, &dump);
-  handlers.emplace(MODE_CONV, &convert);
+  handlers.emplace("dump", &dump);
+  handlers.emplace("convert", &convert);
   return true;
 }

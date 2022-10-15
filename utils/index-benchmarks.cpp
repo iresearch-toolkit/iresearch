@@ -22,21 +22,44 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/container/flat_hash_map.h>
+
+#include <functional>
+
+#include "analysis/collation_token_stream.hpp"
+#include "analysis/delimited_token_stream.hpp"
+#include "analysis/ngram_token_stream.hpp"
+#include "analysis/pipeline_token_stream.hpp"
+#include "analysis/segmentation_token_stream.hpp"
+#include "analysis/text_token_normalizing_stream.hpp"
+#include "analysis/text_token_stemming_stream.hpp"
+#include "analysis/text_token_stream.hpp"
+#include "analysis/token_stopwords_stream.hpp"
 #include "index-put.hpp"
 #include "index-search.hpp"
 
-#include <unordered_map>
-#include <functional>
+namespace {
 
-typedef std::unordered_map<std::string,
-                           std::function<int(int argc, char* argv[])>>
-  handlers_t;
+using handlers_t =
+  absl::flat_hash_map<std::string, std::function<int(int argc, char* argv[])>>;
 
-const std::string MODE_PUT = "put";
-const std::string MODE_SEARCH = "search";
+void init_analyzers() {
+  ::iresearch::analysis::delimited_token_stream::init();
+  ::iresearch::analysis::collation_token_stream::init();
+  ::iresearch::analysis::ngram_token_stream_base::init();
+  ::iresearch::analysis::normalizing_token_stream::init();
+  ::iresearch::analysis::stemming_token_stream::init();
+  ::iresearch::analysis::text_token_stream::init();
+  ::iresearch::analysis::token_stopwords_stream::init();
+  ::iresearch::analysis::pipeline_token_stream::init();
+  ::iresearch::analysis::segmentation_token_stream::init();
+}
+
+}  // namespace
 
 bool init_handlers(handlers_t& handlers) {
-  handlers.emplace(MODE_PUT, &put);
-  handlers.emplace(MODE_SEARCH, &search);
+  init_analyzers();
+  handlers.emplace("put", &put);
+  handlers.emplace("search", &search);
   return true;
 }
