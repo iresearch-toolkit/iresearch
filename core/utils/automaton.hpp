@@ -20,31 +20,24 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_AUTOMATON_H
-#define IRESEARCH_AUTOMATON_H
-
-#include "shared.hpp"
+#pragma once
 
 #include <vector>
 
-#if defined(_MSC_VER)
-// NOOP
-#elif defined(__GNUC__)
+#include "shared.hpp"
+
+#if !defined(_MSC_VER) && defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #endif
 
-#ifndef FST_NO_DYNAMIC_LINKING
-#define FST_NO_DYNAMIC_LINKING
-#endif
-
+// clang-format off
 #include <fst/fst.h>
+// clang-format on
 #include <fst/connect.h>
 #include <fst/test-properties.h>
 
-#if defined(_MSC_VER)
-// NOOP
-#elif defined(__GNUC__)
+#if !defined(_MSC_VER) && defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
 
@@ -61,8 +54,8 @@ class BooleanWeight {
   using PayloadType = irs::byte_type;
 
   static const std::string& Type() {
-    static const std::string type = "boolean";
-    return type;
+    static const std::string kType = "boolean";
+    return kType;
   }
 
   static constexpr BooleanWeight Zero() noexcept { return false; }
@@ -76,9 +69,9 @@ class BooleanWeight {
   constexpr BooleanWeight() noexcept = default;
   // cppcheck-suppress noExplicitConstructor
   constexpr BooleanWeight(bool v, PayloadType payload = 0) noexcept
-    : v_(PayloadType(v)), p_(payload) {}
+    : v_(static_cast<PayloadType>(v)), p_(payload) {}
 
-  constexpr bool Member() const noexcept { return Invalid != v_; }
+  constexpr bool Member() const noexcept { return kInvalid != v_; }
   constexpr BooleanWeight Quantize(
     [[maybe_unused]] float delta = kDelta) const noexcept {
     return {};
@@ -86,7 +79,7 @@ class BooleanWeight {
   std::istream& Read(std::istream& strm) noexcept {
     v_ = strm.get();
     if (strm.fail()) {
-      v_ = Invalid;
+      v_ = kInvalid;
     }
     return strm;
   }
@@ -94,10 +87,10 @@ class BooleanWeight {
     strm.put(v_);
     return strm;
   }
-  constexpr size_t Hash() const noexcept { return size_t(v_); }
+  constexpr size_t Hash() const noexcept { return static_cast<size_t>(v_); }
   constexpr ReverseWeight Reverse() const noexcept { return *this; }
   constexpr PayloadType Payload() const noexcept { return p_; }
-  constexpr operator bool() const noexcept { return v_ == True; }
+  constexpr operator bool() const noexcept { return v_ == kTrue; }
 
   friend constexpr bool operator==(const BooleanWeight& lhs,
                                    const BooleanWeight& rhs) noexcept {
@@ -107,26 +100,45 @@ class BooleanWeight {
                                    const BooleanWeight& rhs) noexcept {
     return !(lhs == rhs);
   }
+
+  // Note: | and & used instead of || and && because gcc cannot optimize it
+
   friend constexpr BooleanWeight Plus(const BooleanWeight& lhs,
                                       const BooleanWeight& rhs) noexcept {
-    return BooleanWeight(bool(lhs.Hash()) || bool(rhs.Hash()),
-                         lhs.Payload() | rhs.Payload());
+    return {
+      static_cast<bool>(static_cast<unsigned>(static_cast<bool>(lhs.Hash())) |
+                        static_cast<unsigned>(static_cast<bool>(rhs.Hash()))),
+      static_cast<PayloadType>(lhs.Payload() | rhs.Payload())};
   }
   friend constexpr BooleanWeight Times(const BooleanWeight& lhs,
                                        const BooleanWeight& rhs) noexcept {
-    return BooleanWeight(bool(lhs.Hash()) && bool(rhs.Hash()),
-                         lhs.Payload() & rhs.Payload());
+    return {
+      static_cast<bool>(static_cast<unsigned>(static_cast<bool>(lhs.Hash())) &
+                        static_cast<unsigned>(static_cast<bool>(rhs.Hash()))),
+      static_cast<PayloadType>(lhs.Payload() & rhs.Payload())};
   }
-  friend constexpr BooleanWeight Divide(BooleanWeight, BooleanWeight,
-                                        DivideType) noexcept {
+  friend constexpr BooleanWeight Divide(
+    [[maybe_unused]] const BooleanWeight& lhs,
+    [[maybe_unused]] const BooleanWeight& rhs,
+    [[maybe_unused]] DivideType type) noexcept {
     return NoWeight();
   }
-  friend constexpr BooleanWeight Divide(BooleanWeight, BooleanWeight) noexcept {
+  friend constexpr BooleanWeight Divide(
+    [[maybe_unused]] const BooleanWeight& lhs,
+    [[maybe_unused]] const BooleanWeight& rhs) noexcept {
     return NoWeight();
   }
+  friend constexpr BooleanWeight DivideLeft(
+    [[maybe_unused]] const BooleanWeight& lhs,
+    [[maybe_unused]] const BooleanWeight& rhs) noexcept {
+    return NoWeight();
+  }
+
   friend std::ostream& operator<<(std::ostream& strm, const BooleanWeight& w) {
     if (w.Member()) {
-      strm << "{" << char(bool(w) + 48) << "," << int(w.Payload()) << "}";
+      strm << "{"
+           << static_cast<char>(static_cast<int>(static_cast<bool>(w)) + 48)
+           << "," << static_cast<int>(w.Payload()) << "}";
     }
     return strm;
   }
@@ -137,11 +149,13 @@ class BooleanWeight {
   }
 
  private:
-  static constexpr PayloadType False = 0;
-  static constexpr PayloadType True = 1;     // "is true" mask
-  static constexpr PayloadType Invalid = 2;  // "not a member" value
+  static constexpr PayloadType kFalse = 0;
+  static constexpr PayloadType kTrue = 1;     // "is true" mask
+  static constexpr PayloadType kInvalid = 2;  // "not a member" value
 
-  PayloadType v_{Invalid};
+  // TODO(MBkkt) can be bool?
+  // TODO(MBkkt) try to make it more signaling
+  PayloadType v_{kInvalid};
   PayloadType p_{};
 };
 
@@ -196,6 +210,7 @@ struct RangeLabel : RangeLabelType {
   constexpr explicit RangeLabel(int64_t ilabel) noexcept
     : RangeLabelType{ilabel} {}
 
+  // TODO(MBkkt) should use std::bit_cast
   constexpr operator int64_t() const noexcept { return ilabel; }
 
   friend std::ostream& operator<<(std::ostream& strm, const RangeLabel& l) {
@@ -211,8 +226,8 @@ struct Transition : RangeLabel {
   using StateId = int32_t;
 
   static const std::string& Type() {
-    static const std::string type("Transition");
-    return type;
+    static const std::string kType = "Transition";
+    return kType;
   }
 
   union {
@@ -230,11 +245,12 @@ struct Transition : RangeLabel {
     : RangeLabel{ilabel}, nextstate{nextstate} {}
 
   // satisfy openfst API
-  constexpr Transition(Label ilabel, Label, Weight, StateId nextstate)
+  constexpr Transition(Label ilabel, Label /*unused*/, Weight /*unused*/,
+                       StateId nextstate)
     : RangeLabel{ilabel}, nextstate{nextstate} {}
 
   // satisfy openfst API
-  constexpr Transition(Label ilabel, Label, StateId nextstate)
+  constexpr Transition(Label ilabel, Label /*unused*/, StateId nextstate)
     : RangeLabel{ilabel}, nextstate{nextstate} {}
 };
 
@@ -253,7 +269,9 @@ uint64 ComputeProperties(const Fst<fsa::Transition<W>>& fst, uint64 mask,
     const auto known_props = KnownProperties(fst_props);
     // If FST contains required info, return it.
     if ((known_props & mask) == mask) {
-      if (known) *known = known_props;
+      if (known) {
+        *known = known_props;
+      }
       return fst_props;
     }
   }
@@ -288,10 +306,10 @@ uint64 ComputeProperties(const Fst<fsa::Transition<W>>& fst, uint64 mask,
 
     struct RangeLabelComparer {
       bool operator()(Label lhs, Label rhs) const noexcept {
-        fsa::RangeLabel lhsRange{lhs};
-        fsa::RangeLabel rhsRange{rhs};
+        fsa::RangeLabel lhs_range{lhs};
+        fsa::RangeLabel rhs_range{rhs};
 
-        return lhsRange.min < rhsRange.min && lhsRange.max < rhsRange.min;
+        return lhs_range.min < rhs_range.min && lhs_range.max < rhs_range.min;
       }
     };
 
@@ -366,8 +384,12 @@ uint64 ComputeProperties(const Fst<fsa::Transition<W>>& fst, uint64 mask,
         }
         prev_arc = arc;
         first_arc = false;
-        if (ilabels) ilabels->insert(arc.ilabel);
-        if (olabels) olabels->insert(arc.olabel);
+        if (ilabels) {
+          ilabels->insert(arc.ilabel);
+        }
+        if (olabels) {
+          olabels->insert(arc.olabel);
+        }
       }
 
       if (nfinal > 0) {  // Final state not last.
@@ -393,26 +415,24 @@ uint64 ComputeProperties(const Fst<fsa::Transition<W>>& fst, uint64 mask,
       comp_props &= ~kString;
     }
   }
-  if (known) *known = KnownProperties(comp_props);
+  if (known) {
+    *known = KnownProperties(comp_props);
+  }
   return comp_props;
 }
 
 }  // namespace fst
 
-#if defined(_MSC_VER)
-   // NOOP
-#elif defined(__GNUC__)
+#if !defined(_MSC_VER) && defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #endif
 
+// clang-format off
 #include <fst/vector-fst.h>
+// clang-format on
 #include <fst/matcher.h>
 
-#if defined(_MSC_VER)
-   // NOOP
-#elif defined(__GNUC__)
+#if !defined(_MSC_VER) && defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
-
-#endif  // IRESEARCH_AUTOMATON_H

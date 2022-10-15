@@ -45,12 +45,6 @@ std::pair<const irs::filter*, bool> optimize_not(const irs::Not& node) {
   return std::make_pair(inner, neg);
 }
 
-const irs::all kAllDocsZeroBoost = []() {
-  irs::all a;
-  a.boost(0);
-  return a;
-}();
-
 // Returns disjunction iterator created from the specified queries
 template<typename QueryIterator, typename... Args>
 irs::doc_iterator::ptr make_disjunction(const irs::ExecutionContext& ctx,
@@ -149,12 +143,19 @@ class BooleanQuery : public filter::prepared {
     }
 
     assert(excl_);
-    auto incl = execute(ctx, begin(), begin() + excl_);
+    const auto excl_begin = this->excl_begin();
+    const auto end = this->end();
+
+    auto incl = execute(ctx, begin(), excl_begin);
+
+    if (excl_begin == end) {
+      return incl;
+    }
 
     // exclusion part does not affect scoring at all
     auto excl = ::make_disjunction(
       {.segment = ctx.segment, .scorers = Order::kUnordered, .ctx = ctx.ctx},
-      irs::sort::MergeType::kSum, begin() + excl_, end());
+      irs::sort::MergeType::kSum, excl_begin, end);
 
     // got empty iterator for excluded
     if (doc_limits::eof(excl->value())) {
@@ -305,7 +306,7 @@ class MinMatchQuery final : public BooleanQuery {
   size_t min_match_count_;
 };
 
-boolean_filter::boolean_filter(const type_info& type) noexcept : filter(type) {}
+boolean_filter::boolean_filter(const type_info& type) noexcept : filter{type} {}
 
 size_t boolean_filter::hash() const noexcept {
   size_t seed = 0;
@@ -328,22 +329,42 @@ bool boolean_filter::equals(const filter& rhs) const noexcept {
 filter::prepared::ptr boolean_filter::prepare(
   const index_reader& rdr, const Order& ord, score_t boost,
   const attribute_provider* ctx) const {
+  const auto size = filters_.size();
+
+  if (IRS_UNLIKELY(size == 0)) {
+    return prepared::empty();
+  }
+
+  if (size == 1) {
+    auto* filter = filters_.front().get();
+    assert(filter);
+
+    // FIXME(gnusi): let Not handle everything?
+    if (filter->type() != irs::type<irs::Not>::id()) {
+      return filter->prepare(rdr, ord, boost * this->boost(), ctx);
+    }
+  }
+
   // determine incl/excl parts
   std::vector<const filter*> incl;
   std::vector<const filter*> excl;
 
-  group_filters(incl, excl);
+  irs::filter::ptr all_docs_zero_boost;
+  irs::filter::ptr all_docs_no_boost;
 
-  const irs::all all_docs_no_boost;
+  group_filters(all_docs_zero_boost, incl, excl);
+
   if (incl.empty() && !excl.empty()) {
     // single negative query case
-    incl.push_back(&all_docs_no_boost);
+    all_docs_no_boost = MakeAllDocsFilter(kNoBoost);
+    incl.push_back(all_docs_no_boost.get());
   }
 
   return prepare(incl, excl, rdr, ord, boost, ctx);
 }
 
-void boolean_filter::group_filters(std::vector<const filter*>& incl,
+void boolean_filter::group_filters(filter::ptr& all_docs_zero_boost,
+                                   std::vector<const filter*>& incl,
                                    std::vector<const filter*>& excl) const {
   incl.reserve(size() / 2);
   excl.reserve(incl.capacity());
@@ -363,7 +384,11 @@ void boolean_filter::group_filters(std::vector<const filter*>& incl,
       }
 
       if (res.second) {
-        if (irs::type<all>::id() == res.first->type()) {
+        if (!all_docs_zero_boost) {
+          all_docs_zero_boost = MakeAllDocsFilter(0.f);
+        }
+
+        if (*all_docs_zero_boost == *res.first) {
           // not all -> empty result
           incl.clear();
           return;
@@ -372,7 +397,7 @@ void boolean_filter::group_filters(std::vector<const filter*>& incl,
         if (is_or) {
           // FIXME: this should have same boost as Not filter.
           // But for now we do not boost negation.
-          incl.push_back(&kAllDocsZeroBoost);
+          incl.push_back(all_docs_zero_boost.get());
         }
       } else {
         incl.push_back(res.first);
@@ -386,7 +411,7 @@ void boolean_filter::group_filters(std::vector<const filter*>& incl,
   }
 }
 
-And::And() noexcept : boolean_filter(irs::type<And>::get()) {}
+And::And() noexcept : boolean_filter{irs::type<And>::get()} {}
 
 filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
                                    std::vector<const filter*>& excl,
@@ -400,21 +425,26 @@ filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
     return prepared::empty();
   }
 
-  irs::all cumulative_all;
+  // single node case
+  if (1 == incl.size() && excl.empty()) {
+    return incl.front()->prepare(rdr, ord, this->boost() * boost, ctx);
+  }
+
+  auto cumulative_all = MakeAllDocsFilter(kNoBoost);
   score_t all_boost{0};
   size_t all_count{0};
   for (auto filter : incl) {
-    if (filter->type() == irs::type<irs::all>::id()) {
+    if (*filter == *cumulative_all) {
       all_count++;
       all_boost += filter->boost();
     }
   }
   if (all_count != 0) {
     const auto non_all_count = incl.size() - all_count;
-    auto it =
-      std::remove_if(incl.begin(), incl.end(), [](const irs::filter* filter) {
-        return irs::type<all>::id() == filter->type();
-      });
+    auto it = std::remove_if(incl.begin(), incl.end(),
+                             [&cumulative_all](const irs::filter* filter) {
+                               return *cumulative_all == *filter;
+                             });
     incl.erase(it, incl.end());
     // Here And differs from Or. Last 'All' should be left in include group only
     // if there is more than one filter of other type. Otherwise this another
@@ -440,8 +470,8 @@ filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
       }
     } else {
       // create new 'all' with boost from all removed
-      cumulative_all.boost(all_boost);
-      incl.push_back(&cumulative_all);
+      cumulative_all->boost(all_boost);
+      incl.push_back(cumulative_all.get());
     }
   }
   boost *= this->boost();
@@ -456,17 +486,28 @@ filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
 
 Or::Or() noexcept : boolean_filter(irs::type<Or>::get()), min_match_count_(1) {}
 
+filter::prepared::ptr Or::prepare(const index_reader& rdr, const Order& ord,
+                                  score_t boost,
+                                  const attribute_provider* ctx) const {
+  if (0 == min_match_count_) {  // only explicit 0 min match counts!
+    // all conditions are satisfied
+    return MakeAllDocsFilter(kNoBoost)->prepare(rdr, ord, this->boost() * boost,
+                                                ctx);
+  }
+
+  return boolean_filter::prepare(rdr, ord, boost, ctx);
+}
+
 filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
                                   std::vector<const filter*>& excl,
                                   const index_reader& rdr, const Order& ord,
                                   score_t boost,
                                   const attribute_provider* ctx) const {
-  // preparing
   boost *= this->boost();
 
   if (0 == min_match_count_) {  // only explicit 0 min match counts!
     // all conditions are satisfied
-    return all().prepare(rdr, ord, boost, ctx);
+    return MakeAllDocsFilter(kNoBoost)->prepare(rdr, ord, boost, ctx);
   }
 
   if (!incl.empty() && incl.back()->type() == irs::type<irs::empty>::id()) {
@@ -477,7 +518,12 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
     return prepared::empty();
   }
 
-  irs::all cumulative_all;
+  // single node case
+  if (1 == incl.size() && excl.empty()) {
+    return incl.front()->prepare(rdr, ord, boost, ctx);
+  }
+
+  auto cumulative_all = MakeAllDocsFilter(kNoBoost);
   size_t optimized_match_count = 0;
   // Optimization steps
 
@@ -485,7 +531,7 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
   size_t all_count{0};
   const irs::filter* incl_all{nullptr};
   for (auto filter : incl) {
-    if (filter->type() == irs::type<irs::all>::id()) {
+    if (*filter == *cumulative_all) {
       all_count++;
       all_boost += filter->boost();
       incl_all = filter;
@@ -502,14 +548,14 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
       optimized_match_count = all_count - 1;
     } else {
       // Here Or differs from And. Last All should be left in include group
-      auto it =
-        std::remove_if(incl.begin(), incl.end(), [](const irs::filter* filter) {
-          return irs::type<all>::id() == filter->type();
-        });
+      auto it = std::remove_if(incl.begin(), incl.end(),
+                               [&cumulative_all](const irs::filter* filter) {
+                                 return *cumulative_all == *filter;
+                               });
       incl.erase(it, incl.end());
       // create new 'all' with boost from all removed
-      cumulative_all.boost(all_boost);
-      incl.push_back(&cumulative_all);
+      cumulative_all->boost(all_boost);
+      incl.push_back(cumulative_all.get());
       optimized_match_count = all_count - 1;
     }
   }
@@ -548,7 +594,7 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
   return q;
 }
 
-Not::Not() noexcept : irs::filter(irs::type<Not>::get()) {}
+Not::Not() noexcept : irs::filter{irs::type<Not>::get()} {}
 
 filter::prepared::ptr Not::prepare(const index_reader& rdr, const Order& ord,
                                    score_t boost,
@@ -562,8 +608,8 @@ filter::prepared::ptr Not::prepare(const index_reader& rdr, const Order& ord,
   boost *= this->boost();
 
   if (res.second) {
-    all all_docs;
-    const std::array<const irs::filter*, 1> incl{&all_docs};
+    auto all_docs = MakeAllDocsFilter(kNoBoost);
+    const std::array<const irs::filter*, 1> incl{all_docs.get()};
     const std::array<const irs::filter*, 1> excl{res.first};
 
     auto q = memory::make_managed<AndQuery>();

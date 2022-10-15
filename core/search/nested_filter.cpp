@@ -174,7 +174,8 @@ class ChildToParentJoin final : public doc_iterator, private Matcher {
          first_child = child_->seek(FirstChildApprox())) {
       parent = parent_->seek(first_child);
 
-      if (doc_limits::eof(parent)) {
+      if (doc_limits::eof(parent) ||
+          (parent == first_child && !parent_->next())) {  // Skip parent docs
         return doc_limits::eof();
       }
     }

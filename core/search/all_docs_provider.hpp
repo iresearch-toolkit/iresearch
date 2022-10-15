@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,22 +18,33 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <absl/container/flat_hash_map.h>
+#pragma once
 
-#include <functional>
-#include <string>
+#include "search/filter.hpp"
 
-#include "index-convert.hpp"
-#include "index-dump.hpp"
+namespace iresearch {
 
-using handlers_t =
-  absl::flat_hash_map<std::string, std::function<int(int argc, char* argv[])>>;
+class AllDocsProvider {
+ public:
+  using ProviderFunc = std::function<filter::ptr(score_t)>;
 
-bool init_handlers(handlers_t& handlers) {
-  handlers.emplace("dump", &dump);
-  handlers.emplace("convert", &convert);
-  return true;
-}
+  static filter::ptr Default(score_t boost);
+
+  filter::ptr MakeAllDocsFilter(score_t boost) const {
+    return all_docs_(boost);
+  }
+
+  void SetProvider(ProviderFunc&& provider) {
+    all_docs_ = provider ? std::move(provider) : ProviderFunc{&Default};
+  }
+
+ protected:
+  ~AllDocsProvider() = default;
+
+ private:
+  ProviderFunc all_docs_{&Default};
+};
+
+}  // namespace iresearch

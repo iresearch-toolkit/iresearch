@@ -338,12 +338,16 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
 
     uint32_t freq{0};
     size_t count_longest{0};
+    [[maybe_unused]] SearchState* last_state{};
 
     // try to optimize case with one longest candidate
     // performance profiling shows it is majority of cases
     for (auto& [_, state] : search_buf_) {
       if (state->len == longest_sequence_len) {
         ++count_longest;
+        if constexpr (HasPosition) {
+          last_state = state.get();
+        }
         if (count_longest > 1) {
           break;
         }
@@ -406,6 +410,10 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
       }
     } else {
       freq = 1;
+      if constexpr (HasPosition) {
+        assert(last_state);
+        static_cast<NGramPosition&>(*this).PushOffset(*last_state);
+      }
     }
     seq_freq_.value = freq;
     assert(!pos_.empty());

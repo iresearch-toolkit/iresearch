@@ -174,23 +174,9 @@ auto MakeByNumericTerm(std::string_view name, int32_t value) {
   return filter;
 }
 
-irs::filter::ptr MakeOr(
-  std::span<std::pair<std::string_view, std::string_view>> parts) {
-  auto filter = std::make_unique<irs::Or>();
-  for (const auto& [name, value] : parts) {
-    filter->add<irs::by_term>() =
-      std::move(static_cast<irs::by_term&>(*MakeByTerm(name, value)));
-  }
-  return filter;
-}
-
-irs::filter::ptr MakeAnd(
-  std::span<std::pair<std::string_view, std::string_view>> parts) {
-  auto filter = std::make_unique<irs::And>();
-  for (const auto& [name, value] : parts) {
-    filter->add<irs::by_term>() =
-      std::move(static_cast<irs::by_term&>(*MakeByTerm(name, value)));
-  }
+auto MakeByColumnExistence(std::string_view name) {
+  auto filter = std::make_unique<irs::by_column_existence>();
+  *filter->mutable_field() = name;
   return filter;
 }
 
@@ -1312,6 +1298,35 @@ TEST_P(NestedFilterFormatsTestCase, JoinAny0) {
 
   const auto expected = HasPrevDocSupport() ? Docs{6, 13, 20} : Docs{};
   CheckQuery(filter, expected, Costs{expected.size()}, reader, SOURCE_LOCATION);
+}
+
+TEST_P(NestedFilterFormatsTestCase, JoinAnyParent) {
+  InitDataSet();
+  auto reader = open_reader();
+
+  irs::ByNestedFilter filter;
+  auto& opts = *filter.mutable_options();
+  opts.child = MakeByColumnExistence("customer");
+  opts.parent = MakeParentProvider("customer");
+
+  // Filter must return no docs, as child query returns only parents
+  const auto expected = Docs{};
+  CheckQuery(filter, expected, Costs{(HasPrevDocSupport() ? 4U : 0U)}, reader,
+             SOURCE_LOCATION);
+}
+
+TEST_P(NestedFilterFormatsTestCase, JoinAnyAll) {
+  InitDataSet();
+  auto reader = open_reader();
+
+  irs::ByNestedFilter filter;
+  auto& opts = *filter.mutable_options();
+  opts.child = std::make_unique<irs::all>();
+  opts.parent = MakeParentProvider("customer");
+
+  const auto expected = HasPrevDocSupport() ? Docs{6, 8, 13, 20} : Docs{};
+  CheckQuery(filter, expected, Costs{(HasPrevDocSupport() ? 20U : 0U)}, reader,
+             SOURCE_LOCATION);
 }
 
 INSTANTIATE_TEST_SUITE_P(

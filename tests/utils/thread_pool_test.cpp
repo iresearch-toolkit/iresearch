@@ -442,7 +442,7 @@ TEST(thread_pool_test, test_stop_long_running_run_after_stop_mt) {
   std::condition_variable cv;
   std::atomic<size_t> count{0};
   auto long_running_task = [&mtx, &count]() {
-    { auto lock = irs::make_lock_guard(mtx); }
+    { auto lock = std::lock_guard(mtx); }
 
     std::this_thread::sleep_for(2s);
     ++count;
@@ -450,7 +450,7 @@ TEST(thread_pool_test, test_stop_long_running_run_after_stop_mt) {
 
   irs::async_utils::thread_pool pool(1, 0);
   {
-    auto lock = irs::make_lock_guard(mtx);
+    auto lock = std::lock_guard(mtx);
     ASSERT_TRUE(pool.run(std::move(long_running_task)));
     {
       const auto end = std::chrono::steady_clock::now() +
@@ -479,7 +479,7 @@ TEST(thread_pool_test, test_stop_long_ruuning_run_skip_pending_mt) {
   std::mutex mtx;
   std::atomic<size_t> count{0};
   auto long_running_task = [&mtx, &count]() {
-    { auto lock = irs::make_lock_guard(mtx); }
+    { auto lock = std::lock_guard(mtx); }
 
     std::this_thread::sleep_for(2s);
 
@@ -488,7 +488,7 @@ TEST(thread_pool_test, test_stop_long_ruuning_run_skip_pending_mt) {
 
   irs::async_utils::thread_pool pool(1, 0);
   {
-    auto lock = irs::make_unique_lock(mtx);
+    auto lock = std::unique_lock(mtx);
     ASSERT_TRUE(pool.run(std::move(long_running_task)));
     {
       const auto end = std::chrono::steady_clock::now() +

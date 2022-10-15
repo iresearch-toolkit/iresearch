@@ -25,15 +25,15 @@
 
 #include <vector>
 
-#include "all_filter.hpp"
-#include "filter.hpp"
+#include "search/all_docs_provider.hpp"
+#include "search/filter.hpp"
 #include "utils/iterator.hpp"
 
 namespace iresearch {
 
 // Represents user-side boolean filter as the container for other
 // filters.
-class boolean_filter : public filter, private util::noncopyable {
+class boolean_filter : public filter, public AllDocsProvider {
  public:
   auto begin() const { return ptr_iterator{std::begin(filters_)}; }
   auto end() const { return ptr_iterator{std::end(filters_)}; }
@@ -55,6 +55,11 @@ class boolean_filter : public filter, private util::noncopyable {
       memory::make_unique<T>(std::forward<Args>(args)...)));
   }
 
+  filter& add(filter::ptr&& filter) {
+    assert(filter);
+    return *filters_.emplace_back(std::move(filter));
+  }
+
   virtual size_t hash() const noexcept override;
 
   void clear() { return filters_.clear(); }
@@ -63,7 +68,7 @@ class boolean_filter : public filter, private util::noncopyable {
 
   virtual filter::prepared::ptr prepare(
     const index_reader& rdr, const Order& ord, score_t boost,
-    const attribute_provider* ctx) const override final;
+    const attribute_provider* ctx) const override;
 
  protected:
   explicit boolean_filter(const type_info& type) noexcept;
@@ -75,7 +80,8 @@ class boolean_filter : public filter, private util::noncopyable {
     const attribute_provider* ctx) const = 0;
 
  private:
-  void group_filters(std::vector<const filter*>& incl,
+  void group_filters(filter::ptr& all_docs_no_boost,
+                     std::vector<const filter*>& incl,
                      std::vector<const filter*>& excl) const;
 
   std::vector<filter::ptr> filters_;
@@ -101,8 +107,6 @@ class Or final : public boolean_filter {
  public:
   Or() noexcept;
 
-  using filter::prepare;
-
   // Return minimum number of subqueries which must be satisfied
   size_t min_match_count() const { return min_match_count_; }
 
@@ -111,6 +115,11 @@ class Or final : public boolean_filter {
     min_match_count_ = count;
     return *this;
   }
+
+  using filter::prepare;
+  filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
+                                score_t boost,
+                                const attribute_provider* ctx) const final;
 
  protected:
   virtual filter::prepared::ptr prepare(
@@ -123,7 +132,7 @@ class Or final : public boolean_filter {
 };
 
 // Represents negation
-class Not : public filter {
+class Not : public filter, public AllDocsProvider {
  public:
   Not() noexcept;
 

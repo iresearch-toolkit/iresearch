@@ -1203,7 +1203,6 @@ TEST_P(tfidf_test_case, test_query) {
 
     irs::by_column_existence filter;
     *filter.mutable_field() = "seq";
-    filter.mutable_options()->prefix_match = false;
 
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
@@ -1233,7 +1232,6 @@ TEST_P(tfidf_test_case, test_query) {
 
     irs::by_column_existence filter;
     *filter.mutable_field() = "seq";
-    filter.mutable_options()->prefix_match = false;
     filter.boost(0.f);
 
     auto prepared_filter = filter.prepare(reader, prepared_order);

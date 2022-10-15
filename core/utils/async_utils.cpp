@@ -35,43 +35,22 @@ using namespace std::chrono_literals;
 namespace iresearch {
 namespace async_utils {
 
-busywait_mutex::busywait_mutex() : owner_(std::thread::id()) {}
-
-busywait_mutex::~busywait_mutex() {
-  assert(try_lock());  // ensure destroying an unlocked mutex
-}
-
-void busywait_mutex::lock() {
-  auto this_thread_id = std::this_thread::get_id();
-
-  for (auto expected = std::thread::id();
-       !owner_.compare_exchange_strong(expected, this_thread_id);
-       expected = std::thread::id()) {
-    assert(this_thread_id != expected);  // recursive lock acquisition attempted
+void busywait_mutex::lock() noexcept {
+  while (!try_lock()) {
     std::this_thread::yield();
   }
 }
 
-bool busywait_mutex::try_lock() {
-  auto this_thread_id = std::this_thread::get_id();
-  auto expected = std::thread::id();
-
-  return owner_.compare_exchange_strong(expected, this_thread_id);
+bool busywait_mutex::try_lock() noexcept {
+  bool expected = false;
+  return locked_.load(std::memory_order_relaxed) == expected &&
+         locked_.compare_exchange_strong(expected, true,
+                                         std::memory_order_acquire,
+                                         std::memory_order_relaxed);
 }
 
-void busywait_mutex::unlock() {
-  auto expected = std::this_thread::get_id();
-
-  if (!owner_.compare_exchange_strong(expected, std::thread::id())) {
-    // try again since std::thread::id is garanteed to be '==' but may not be
-    // bit equal
-    if (expected == std::this_thread::get_id() &&
-        owner_.compare_exchange_strong(expected, std::thread::id())) {
-      return;
-    }
-
-    assert(false);  // lock not owned by current thread
-  }
+void busywait_mutex::unlock() noexcept {
+  locked_.store(false, std::memory_order_release);
 }
 
 thread_pool::thread_pool(size_t max_threads /*= 0*/, size_t max_idle /*= 0*/,
@@ -90,7 +69,7 @@ thread_pool::~thread_pool() {
 
 size_t thread_pool::max_idle() const {
   // cppcheck-suppress unreadVariable
-  auto lock = make_lock_guard(shared_state_->lock);
+  std::lock_guard lock{shared_state_->lock};
 
   return max_idle_;
 }
@@ -100,7 +79,7 @@ void thread_pool::max_idle(size_t value) {
 
   {
     // cppcheck-suppress unreadVariable
-    auto lock = make_lock_guard(state.lock);
+    std::lock_guard lock{state.lock};
 
     max_idle_ = value;
   }
@@ -113,7 +92,7 @@ void thread_pool::max_idle_delta(int delta) {
 
   {
     // cppcheck-suppress unreadVariable
-    auto lock = make_lock_guard(state.lock);
+    std::lock_guard lock{state.lock};
     auto max_idle = max_idle_ + delta;
 
     if (delta > 0 && max_idle < max_idle_) {
@@ -130,7 +109,7 @@ void thread_pool::max_idle_delta(int delta) {
 
 size_t thread_pool::max_threads() const {
   // cppcheck-suppress unreadVariable
-  auto lock = make_lock_guard(shared_state_->lock);
+  std::lock_guard lock{shared_state_->lock};
 
   return max_threads_;
 }
@@ -140,7 +119,7 @@ void thread_pool::max_threads(size_t value) {
 
   {
     // cppcheck-suppress unreadVariable
-    auto lock = make_lock_guard(state.lock);
+    std::lock_guard lock{shared_state_->lock};
 
     max_threads_ = value;
 
@@ -157,7 +136,7 @@ void thread_pool::max_threads_delta(int delta) {
 
   {
     // cppcheck-suppress unreadVariable
-    auto lock = make_lock_guard(state.lock);
+    std::lock_guard lock{state.lock};
     auto max_threads = max_threads_ + delta;
 
     if (delta > 0 && max_threads < max_threads_) {
@@ -185,7 +164,7 @@ bool thread_pool::run(std::function<void()>&& fn,
   auto& state = *shared_state_;
 
   {
-    auto lock = make_lock_guard(state.lock);
+    std::lock_guard lock{state.lock};
 
     if (State::RUN != state.state.load()) {
       return false;  // pool not active
@@ -214,7 +193,7 @@ void thread_pool::stop(bool skip_pending /*= false*/) {
 
   decltype(queue_) empty;
   {
-    auto lock = make_unique_lock(shared_state_->lock);
+    std::unique_lock lock{shared_state_->lock};
 
     // wait for all threads to terminate
     while (threads_.load()) {
@@ -231,7 +210,7 @@ void thread_pool::limits(size_t max_threads, size_t max_idle) {
 
   {
     // cppcheck-suppress unreadVariable
-    auto lock = make_lock_guard(state.lock);
+    std::lock_guard lock{state.lock};
 
     max_threads_ = max_threads;
     max_idle_ = max_idle;
@@ -264,35 +243,35 @@ bool thread_pool::maybe_spawn_worker() {
 
 std::pair<size_t, size_t> thread_pool::limits() const {
   // cppcheck-suppress unreadVariable
-  auto lock = make_lock_guard(shared_state_->lock);
+  std::lock_guard lock{shared_state_->lock};
 
   return {max_threads_, max_idle_};
 }
 
 std::tuple<size_t, size_t, size_t> thread_pool::stats() const {
   // cppcheck-suppress unreadVariable
-  auto lock = make_lock_guard(shared_state_->lock);
+  std::lock_guard lock{shared_state_->lock};
 
   return {active_, queue_.size(), threads_.load()};
 }
 
 size_t thread_pool::tasks_active() const {
   // cppcheck-suppress unreadVariable
-  auto lock = make_lock_guard(shared_state_->lock);
+  std::lock_guard lock{shared_state_->lock};
 
   return active_;
 }
 
 size_t thread_pool::tasks_pending() const {
   // cppcheck-suppress unreadVariable
-  auto lock = make_lock_guard(shared_state_->lock);
+  std::lock_guard lock{shared_state_->lock};
 
   return queue_.size();
 }
 
 size_t thread_pool::threads() const {
   // cppcheck-suppress unreadVariable
-  auto lock = make_lock_guard(shared_state_->lock);
+  std::lock_guard lock{shared_state_->lock};
 
   return threads_.load();
 }
@@ -304,7 +283,7 @@ void thread_pool::worker(std::shared_ptr<shared_state> shared_state) noexcept {
   }
 
   {
-    auto lock = make_unique_lock(shared_state->lock, std::defer_lock);
+    std::unique_lock lock{shared_state->lock, std::defer_lock};
 
     try {
       worker_impl(lock, shared_state);

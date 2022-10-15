@@ -11,7 +11,7 @@
 
 # IResearch search engine
 
-### Version 1.2
+### Version 1.3
 
 ## Table of contents
 

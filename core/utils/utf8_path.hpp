@@ -21,82 +21,14 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_UTF8_PATH_H
-#define IRESEARCH_UTF8_PATH_H
+#pragma once
 
-#ifndef __APPLE__
 #include <filesystem>
+
 namespace iresearch {
+
 using utf8_path = std::filesystem::path;
-utf8_path current_path();
-}  // namespace iresearch
-#else
-
-#include "string.hpp"
-
-#include <functional>
-
-namespace iresearch {
-
-class utf8_path {
- public:
-#ifdef _WIN32
-  typedef wchar_t native_char_t;
-#else
-  typedef char native_char_t;
-#endif
-
-  typedef std::function<bool(const native_char_t* name)> directory_visitor;
-  typedef std::basic_string<native_char_t> native_str_t;
-  typedef std::basic_string<native_char_t>
-    string_type;  // to simplify move to std::filesystem::path
-  typedef native_char_t
-    value_type;  // to simplify move to std::filesystem::path
-
-  utf8_path() = default;
-  utf8_path(const char* utf8_path);  // cppcheck-suppress noExplicitConstructor
-  utf8_path(
-    const std::string& utf8_path);  // cppcheck-suppress noExplicitConstructor
-  utf8_path(
-    irs::string_ref utf8_path);  // cppcheck-suppress noExplicitConstructor
-  utf8_path& operator+=(const char* utf8_name);
-  utf8_path& operator+=(const std::string& utf8_name);
-  utf8_path& operator+=(irs::string_ref utf8_name);
-  utf8_path& operator/=(const char* utf8_name);
-  utf8_path& operator/=(const std::string& utf8_name);
-  utf8_path& operator/=(irs::string_ref utf8_name);
-
-  bool is_absolute(bool& result) const noexcept;
-
-  // std::filesystem::path compliant version
-  bool is_absolute() const noexcept {
-    bool result;
-    return is_absolute(result) && result;
-  }
-
-  const native_char_t* c_str() const noexcept;
-  const native_str_t& native() const noexcept;
-  std::string u8string() const;
-  std::string string() const { return u8string(); }
-
-  template<typename T>
-  utf8_path& assign(T&& source) {
-    path_.clear();
-    (*this) += source;
-    return *this;
-  }
-
-  void clear();
-
- private:
-  native_str_t path_;
-};
-
-// need this operator to be closer to std::filesystem::path
-utf8_path operator/(const utf8_path& lhs, const utf8_path& rhs);
 
 utf8_path current_path();
 
 }  // namespace iresearch
-#endif
-#endif

@@ -3,7 +3,7 @@ if (NOT IResearch_version_major)
   set(IResearch_version_major "1")
 endif ()
 if (NOT IResearch_version_minor)
-  set(IResearch_version_minor "2")
+  set(IResearch_version_minor "3")
 endif ()
 if (NOT IResearch_version_revision)
   set(IResearch_version_revision "0")
@@ -105,6 +105,7 @@ set(IResearch_core_sources
   ./index/segment_reader.cpp
   ./index/segment_writer.cpp
   ./index/sorted_column.cpp
+  ./search/all_docs_provider.cpp
   ./search/all_filter.cpp
   ./search/all_iterator.cpp
   ./search/boost_sort.cpp
@@ -785,7 +786,7 @@ set_target_properties(iresearch-format-1_0-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME format-1_0-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING;${FORMAT_10_EXTRA_DEFS}"
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;${FORMAT_10_EXTRA_DEFS}"
   )
 
 target_include_directories(iresearch-format-1_0-static

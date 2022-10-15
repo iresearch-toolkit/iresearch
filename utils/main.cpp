@@ -44,18 +44,18 @@
 #pragma warning(default : 4229)
 #endif
 
-#include "index-search.hpp"
-#include "index-put.hpp"
-#include "utils/timer_utils.hpp"
-#include "utils/log.hpp"
-#include "utils/misc.hpp"
+#include <absl/container/flat_hash_map.h>
 
-#include <unordered_map>
 #include <functional>
 
-typedef std::unordered_map<std::string,
-                           std::function<int(int argc, char* argv[])>>
-  handlers_t;
+#include "index-put.hpp"
+#include "index-search.hpp"
+#include "utils/log.hpp"
+#include "utils/misc.hpp"
+#include "utils/timer_utils.hpp"
+
+using handlers_t =
+  absl::flat_hash_map<std::string, std::function<int(int argc, char* argv[])>>;
 
 bool init_handlers(handlers_t&);
 
