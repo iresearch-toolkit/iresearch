@@ -322,7 +322,7 @@ class segment_writer : util::noncopyable {
     REGISTER_TIMER_DETAILED();
 
     const auto field_name =
-      make_hashed_ref(static_cast<const string_ref&>(field.name()));
+      make_hashed_ref(static_cast<string_ref>(field.name()));
 
     // user should check return of begin() != eof()
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
@@ -349,7 +349,7 @@ class segment_writer : util::noncopyable {
     REGISTER_TIMER_DETAILED();
 
     const auto field_name =
-      make_hashed_ref(static_cast<const string_ref&>(field.name()));
+      make_hashed_ref(static_cast<string_ref>(field.name()));
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const features_t&>(field.features());
@@ -368,7 +368,7 @@ class segment_writer : util::noncopyable {
     REGISTER_TIMER_DETAILED();
 
     const auto field_name =
-      make_hashed_ref(static_cast<const string_ref&>(field.name()));
+      make_hashed_ref(static_cast<string_ref>(field.name()));
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const features_t&>(field.features());

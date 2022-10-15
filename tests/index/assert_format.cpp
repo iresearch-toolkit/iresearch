@@ -582,7 +582,7 @@ class term_iterator final : public irs::seek_term_iterator {
 
   virtual void read() override {}
 
-  virtual bool seek(const irs::bytes_ref& value) override {
+  virtual bool seek(irs::bytes_ref value) override {
     auto it = data_.terms.find(term{value});
 
     if (it == data_.terms.end()) {
@@ -597,7 +597,7 @@ class term_iterator final : public irs::seek_term_iterator {
     return true;
   }
 
-  virtual irs::SeekResult seek_ge(const irs::bytes_ref& value) override {
+  virtual irs::SeekResult seek_ge(irs::bytes_ref value) override {
     auto it = data_.terms.lower_bound(term{value});
     if (it == data_.terms.end()) {
       prev_ = next_ = it;

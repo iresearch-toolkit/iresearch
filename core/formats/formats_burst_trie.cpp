@@ -319,10 +319,10 @@ enum EntryType : byte_type { ET_TERM = 0, ET_BLOCK, ET_INVALID };  // EntryType
 ///////////////////////////////////////////////////////////////////////////////
 class entry : private util::noncopyable {
  public:
-  entry(const irs::bytes_ref& term, irs::postings_writer::state&& attrs,
+  entry(irs::bytes_ref term, irs::postings_writer::state&& attrs,
         bool volatile_term);
 
-  entry(const irs::bytes_ref& prefix,
+  entry(irs::bytes_ref prefix,
 #ifdef __cpp_lib_memory_resource
         std::pmr::memory_resource& mrc,
 #endif
@@ -357,7 +357,7 @@ class entry : private util::noncopyable {
   EntryType type_;  // entry type
 };                  // entry
 
-entry::entry(const irs::bytes_ref& term, irs::postings_writer::state&& attrs,
+entry::entry(irs::bytes_ref term, irs::postings_writer::state&& attrs,
              bool volatile_term)
   : type_(ET_TERM) {
   data_.assign(term, volatile_term);
@@ -365,7 +365,7 @@ entry::entry(const irs::bytes_ref& term, irs::postings_writer::state&& attrs,
   mem_.construct<irs::postings_writer::state>(std::move(attrs));
 }
 
-entry::entry(const irs::bytes_ref& prefix,
+entry::entry(irs::bytes_ref prefix,
 #ifdef __cpp_lib_memory_resource
              std::pmr::memory_resource& mrc,
 #endif
@@ -1023,7 +1023,7 @@ void field_writer::write_block(size_t prefix, size_t begin, size_t end,
 
   for (; begin < end; ++begin) {
     auto& e = stack_[begin];
-    const irs::bytes_ref& data = e.data();
+    const irs::bytes_ref data = e.data();
     const EntryType type = e.type();
     assert(starts_with(data, bytes_ref(last_term_, prefix)));
 
@@ -1120,7 +1120,7 @@ void field_writer::write_blocks(size_t prefix, size_t count) {
     block_t::INVALID_LABEL};  // next lead suffix label in current block
   for (size_t i = begin; i < end; ++i) {
     const entry& e = stack_[i];
-    const irs::bytes_ref& data = e.data();
+    const irs::bytes_ref data = e.data();
 
     const size_t suffix = data.size() - prefix;
     min_suffix = std::min(suffix, min_suffix);
@@ -1171,7 +1171,7 @@ void field_writer::write_blocks(size_t prefix, size_t count) {
 }
 
 void field_writer::push(bytes_ref term) {
-  const irs::bytes_ref& last = last_term_;
+  const irs::bytes_ref last = last_term_;
   const size_t limit = std::min(last.size(), term.size());
 
   // find common prefix
@@ -1315,7 +1315,7 @@ void field_writer::write(std::string_view name, IndexFeatures index_features,
     if (meta->docs_count) {
       sum_dfreq += meta->docs_count;
 
-      const bytes_ref& term = terms.value();
+      const bytes_ref term = terms.value();
       push(term);
 
       // push term to the top of the stack
@@ -1529,7 +1529,7 @@ class block_iterator : util::noncopyable {
 
   block_iterator(byte_weight&& header, size_t prefix) noexcept;
 
-  block_iterator(const bytes_ref& header, size_t prefix)
+  block_iterator(bytes_ref header, size_t prefix)
     : block_iterator{byte_weight{header}, prefix} {}
 
   block_iterator(uint64_t start, size_t prefix) noexcept
@@ -1591,7 +1591,7 @@ class block_iterator : util::noncopyable {
   uint64_t size() const noexcept { return ent_count_; }
 
   template<typename Reader>
-  SeekResult scan_to_term(const bytes_ref& term, Reader&& reader) {
+  SeekResult scan_to_term(bytes_ref term, Reader&& reader) {
     assert(term.size() >= prefix_);
     assert(!dirty_);
 
@@ -1683,9 +1683,9 @@ class block_iterator : util::noncopyable {
   }
 
   template<typename Reader>
-  SeekResult scan_to_term_nonleaf(const bytes_ref& term, Reader&& reader);
+  SeekResult scan_to_term_nonleaf(bytes_ref term, Reader&& reader);
   template<typename Reader>
-  SeekResult scan_to_term_leaf(const bytes_ref& term, Reader&& reader);
+  SeekResult scan_to_term_leaf(bytes_ref term, Reader&& reader);
 
   template<typename Reader>
   SeekResult scan_nonleaf(Reader&& reader);
@@ -1899,8 +1899,7 @@ SeekResult block_iterator::scan_nonleaf(Reader&& reader) {
 }
 
 template<typename Reader>
-SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term,
-                                             Reader&& reader) {
+SeekResult block_iterator::scan_to_term_leaf(bytes_ref term, Reader&& reader) {
   assert(leaf_);
   assert(!dirty_);
   assert(term.size() >= prefix_);
@@ -1945,7 +1944,7 @@ SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term,
 }
 
 template<typename Reader>
-SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term,
+SeekResult block_iterator::scan_to_term_nonleaf(bytes_ref term,
                                                 Reader&& reader) {
   assert(!leaf_);
   assert(!dirty_);
@@ -2205,8 +2204,8 @@ class term_iterator final : public term_iterator_base {
   }
 
   virtual bool next() override;
-  virtual SeekResult seek_ge(const bytes_ref& term) override;
-  virtual bool seek(const bytes_ref& term) override {
+  virtual SeekResult seek_ge(bytes_ref term) override;
+  virtual bool seek(bytes_ref term) override {
     return SeekResult::FOUND == seek_equal(term);
   }
 
@@ -2224,7 +2223,7 @@ class term_iterator final : public term_iterator_base {
 
   struct arc {
     arc() = default;
-    arc(stateid_t state, const bytes_ref& weight, size_t block) noexcept
+    arc(stateid_t state, bytes_ref weight, size_t block) noexcept
       : state(state), weight(weight), block(block) {}
 
     stateid_t state;
@@ -2237,12 +2236,12 @@ class term_iterator final : public term_iterator_base {
   typedef std::vector<arc> seek_state_t;
 
   ptrdiff_t seek_cached(size_t& prefix, stateid_t& state, size_t& block,
-                        byte_weight& weight, const bytes_ref& term);
+                        byte_weight& weight, bytes_ref term);
 
   /// @brief Seek to the closest block which contain a specified term
   /// @param prefix size of the common term/block prefix
   /// @returns true if we're already at a requested term
-  bool seek_to_block(const bytes_ref& term, size_t& prefix);
+  bool seek_to_block(bytes_ref term, size_t& prefix);
 
   /// @brief Seeks to the specified term using FST
   /// There may be several sutuations:
@@ -2254,7 +2253,7 @@ class term_iterator final : public term_iterator_base {
   /// Note, that search may end up on a BLOCK entry. In all cases
   /// "owner_->term_" will be refreshed with the valid number of
   /// common bytes
-  SeekResult seek_equal(const bytes_ref& term);
+  SeekResult seek_equal(bytes_ref term);
 
   block_iterator* pop_block() noexcept {
     block_stack_.pop_back();
@@ -2262,7 +2261,7 @@ class term_iterator final : public term_iterator_base {
     return &block_stack_.back();
   }
 
-  block_iterator* push_block(const bytes_ref& out, size_t prefix) {
+  block_iterator* push_block(bytes_ref out, size_t prefix) {
     // ensure final weight correctess
     assert(out.size() >= MIN_WEIGHT_SIZE);
 
@@ -2328,7 +2327,7 @@ bool term_iterator<FST>::next() {
       // anymore
 
       // seek to the term with the specified state was called from
-      // term_iterator::seek(const bytes_ref&, const attribute&),
+      // term_iterator::seek(bytes_ref, const attribute&),
       // need create temporary "bytes_ref" here, since "seek" calls
       // term_.reset() internally,
       // note, that since we do not create extra copy of term_
@@ -2393,7 +2392,7 @@ bool term_iterator<FST>::next() {
 template<typename FST>
 ptrdiff_t term_iterator<FST>::seek_cached(size_t& prefix, stateid_t& state,
                                           size_t& block, byte_weight& weight,
-                                          const bytes_ref& target) {
+                                          bytes_ref target) {
   assert(!block_stack_.empty());
   const byte_type* pterm = term_.c_str();
   const byte_type* ptarget = target.c_str();
@@ -2436,7 +2435,7 @@ ptrdiff_t term_iterator<FST>::seek_cached(size_t& prefix, stateid_t& state,
 }
 
 template<typename FST>
-bool term_iterator<FST>::seek_to_block(const bytes_ref& term, size_t& prefix) {
+bool term_iterator<FST>::seek_to_block(bytes_ref term, size_t& prefix) {
   assert(fst_->GetImpl());
   auto& fst = *fst_->GetImpl();
 
@@ -2513,7 +2512,7 @@ bool term_iterator<FST>::seek_to_block(const bytes_ref& term, size_t& prefix) {
 }
 
 template<typename FST>
-SeekResult term_iterator<FST>::seek_equal(const bytes_ref& term) {
+SeekResult term_iterator<FST>::seek_equal(bytes_ref term) {
   size_t prefix;
   if (seek_to_block(term, prefix)) {
     return SeekResult::FOUND;
@@ -2542,7 +2541,7 @@ SeekResult term_iterator<FST>::seek_equal(const bytes_ref& term) {
 }
 
 template<typename FST>
-SeekResult term_iterator<FST>::seek_ge(const bytes_ref& term) {
+SeekResult term_iterator<FST>::seek_ge(bytes_ref term) {
   size_t prefix;
   if (seek_to_block(term, prefix)) {
     return SeekResult::FOUND;
@@ -2621,11 +2620,9 @@ class single_term_iterator final : public seek_term_iterator {
 
   virtual bool next() override { throw not_supported(); }
 
-  virtual SeekResult seek_ge(const bytes_ref&) override {
-    throw not_supported();
-  }
+  virtual SeekResult seek_ge(bytes_ref) override { throw not_supported(); }
 
-  virtual bool seek(const bytes_ref& term) override;
+  virtual bool seek(bytes_ref term) override;
 
   virtual seek_cookie::ptr cookie() const override {
     return memory::make_unique<::cookie>(meta_);
@@ -2655,7 +2652,7 @@ class single_term_iterator final : public seek_term_iterator {
 // -----------------------------------------------------------------------------
 
 template<typename FST>
-bool single_term_iterator<FST>::seek(const bytes_ref& term) {
+bool single_term_iterator<FST>::seek(bytes_ref term) {
   assert(fst_->GetImpl());
   auto& fst = *fst_->GetImpl();
 
@@ -2802,7 +2799,7 @@ class automaton_term_iterator final : public term_iterator_base {
 
   virtual bool next() override;
 
-  virtual SeekResult seek_ge(const bytes_ref& term) override {
+  virtual SeekResult seek_ge(bytes_ref term) override {
     if (!irs::seek(*this, term)) {
       return SeekResult::END;
     }
@@ -2810,7 +2807,7 @@ class automaton_term_iterator final : public term_iterator_base {
     return term_ == term ? SeekResult::FOUND : SeekResult::NOT_FOUND;
   }
 
-  virtual bool seek(const bytes_ref& term) override {
+  virtual bool seek(bytes_ref term) override {
     return SeekResult::FOUND == seek_ge(term);
   }
 
@@ -2826,7 +2823,7 @@ class automaton_term_iterator final : public term_iterator_base {
  private:
   class block_iterator : public ::block_iterator {
    public:
-    block_iterator(const bytes_ref& out, const FST& fst, size_t prefix,
+    block_iterator(bytes_ref out, const FST& fst, size_t prefix,
                    size_t weight_prefix, automaton::StateId state,
                    typename FST::StateId fst_state, const automaton::Arc* arcs,
                    size_t narcs) noexcept
@@ -2858,9 +2855,8 @@ class automaton_term_iterator final : public term_iterator_base {
     return &block_stack_.back();
   }
 
-  block_iterator* push_block(const bytes_ref& out, const FST& fst,
-                             size_t prefix, size_t weight_prefix,
-                             automaton::StateId state,
+  block_iterator* push_block(bytes_ref out, const FST& fst, size_t prefix,
+                             size_t weight_prefix, automaton::StateId state,
                              typename FST::StateId fst_state) {
     // ensure final weight correctness
     assert(out.size() >= MIN_WEIGHT_SIZE);
@@ -2915,7 +2911,7 @@ bool automaton_term_iterator<FST>::next() {
       // anymore
 
       // seek to the term with the specified state was called from
-      // term_iterator::seek(const bytes_ref&, const attribute&),
+      // term_iterator::seek(bytes_ref, const attribute&),
       // need create temporary "bytes_ref" here, since "seek" calls
       // term_.reset() internally,
       // note, that since we do not create extra copy of term_
@@ -3536,12 +3532,12 @@ class dumper : util::noncopyable {
  public:
   explicit dumper(std::ostream& out) : out_(out) {}
 
-  void push_term(const bytes_ref& term) {
+  void push_term(bytes_ref term) {
     indent();
     out_ << "TERM|" << suffix(term) << "\n";
   }
 
-  void push_block(const bytes_ref& term, const block_iterator& block) {
+  void push_block(bytes_ref term, const block_iterator& block) {
     indent();
     out_ << "BLOCK|" << block.size() << "|" << suffix(term) << "\n";
     indent_ += 2;
@@ -3567,7 +3563,7 @@ class dumper : util::noncopyable {
     }
   }
 
-  string_ref suffix(const bytes_ref& term) {
+  string_ref suffix(bytes_ref term) {
     return ref_cast<char>(
       bytes_ref(term.c_str() + prefix_, term.size() - prefix_));
   }

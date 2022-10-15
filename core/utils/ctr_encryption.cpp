@@ -20,14 +20,15 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "ctr_encryption.hpp"
 
 #include <chrono>
 
+#include "shared.hpp"
+
 namespace {
 
-void decode_ctr_header(const irs::bytes_ref& header, size_t block_size,
+void decode_ctr_header(irs::bytes_ref header, size_t block_size,
                        uint64_t& base_counter, irs::bytes_ref& iv) {
   assert(header.size() >= irs::ctr_encryption::MIN_HEADER_LENGTH &&
          header.size() >= 2 * block_size);

@@ -132,11 +132,11 @@ struct seek_term_iterator : term_iterator {
 
   // Position iterator at a value that is not less than the specified
   // one. Returns seek result.
-  virtual SeekResult seek_ge(const bytes_ref& value) = 0;
+  virtual SeekResult seek_ge(bytes_ref value) = 0;
 
   // Position iterator at a value that is not less than the specified
   // one. Returns `true` on success, `false` otherwise.
-  virtual bool seek(const bytes_ref& value) = 0;
+  virtual bool seek(bytes_ref value) = 0;
 
   // Returns seek cookie of the current term value.
   [[nodiscard]] virtual seek_cookie::ptr cookie() const = 0;
@@ -157,7 +157,7 @@ bool seek(Iterator& it, const T& target, Less less = Less()) {
 // Returns true in case if iterator has been succesfully positioned,
 // false otherwise.
 template<bool Include>
-bool seek_min(seek_term_iterator& it, const bytes_ref& min) {
+bool seek_min(seek_term_iterator& it, bytes_ref min) {
   const auto res = it.seek_ge(min);
 
   return SeekResult::END != res &&

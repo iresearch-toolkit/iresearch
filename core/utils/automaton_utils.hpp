@@ -105,7 +105,7 @@ class automaton_term_iterator final : public seek_term_iterator {
     return it_->get_mutable(type);
   }
 
-  virtual SeekResult seek_ge(const bytes_ref& target) override {
+  virtual SeekResult seek_ge(bytes_ref target) override {
     it_->seek_ge(target);
 
     if (accept()) {
@@ -115,7 +115,7 @@ class automaton_term_iterator final : public seek_term_iterator {
     return next() ? SeekResult::NOT_FOUND : SeekResult::END;
   }
 
-  virtual bool seek(const bytes_ref& target) override {
+  virtual bool seek(bytes_ref target) override {
     return SeekResult::FOUND == seek_ge(target);
   }
 

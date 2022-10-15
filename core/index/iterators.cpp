@@ -91,10 +91,10 @@ struct empty_seek_term_iterator final : irs::seek_term_iterator {
     irs::type_info::type_id) noexcept override final {
     return nullptr;
   }
-  virtual irs::SeekResult seek_ge(const irs::bytes_ref&) noexcept override {
+  virtual irs::SeekResult seek_ge(irs::bytes_ref) noexcept override {
     return irs::SeekResult::END;
   }
-  virtual bool seek(const irs::bytes_ref&) noexcept override { return false; }
+  virtual bool seek(irs::bytes_ref) noexcept override { return false; }
   virtual irs::seek_cookie::ptr cookie() const noexcept override {
     return nullptr;
   }

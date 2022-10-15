@@ -38,8 +38,8 @@
 
 #include "shared.hpp"
 #include "utils/bytes_utils.hpp"
-#include "utils/string.hpp"
 #include "utils/std.hpp"
+#include "utils/string.hpp"
 
 namespace fst {
 
@@ -473,7 +473,7 @@ inline StringLeftWeight<irs::byte_type> Times(
 // Zero() or NoWeight() as they may interfere
 // with real values
 inline StringLeftWeight<irs::byte_type> Times(
-  const irs::bytes_ref& lhs, const StringLeftWeight<irs::byte_type>& rhs) {
+  irs::bytes_ref lhs, const StringLeftWeight<irs::byte_type>& rhs) {
   typedef StringLeftWeight<irs::byte_type> Weight;
 
   Weight product;
@@ -487,7 +487,7 @@ inline StringLeftWeight<irs::byte_type> Times(
 // Zero() or NoWeight() as they may interfere
 // with real values
 inline StringLeftWeight<irs::byte_type> Times(
-  const StringLeftWeight<irs::byte_type>& lhs, const irs::bytes_ref& rhs) {
+  const StringLeftWeight<irs::byte_type>& lhs, irs::bytes_ref rhs) {
   typedef StringLeftWeight<irs::byte_type> Weight;
 
   Weight product;
@@ -519,7 +519,7 @@ inline irs::bytes_ref DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
 // For binary strings that's impossible to use
 // Zero() or NoWeight() as they may interfere
 // with real values
-inline irs::bytes_ref DivideLeft(const irs::bytes_ref& lhs,
+inline irs::bytes_ref DivideLeft(irs::bytes_ref lhs,
                                  const StringLeftWeight<irs::byte_type>& rhs) {
   typedef irs::bytes_ref Weight;
 
@@ -538,7 +538,7 @@ inline irs::bytes_ref DivideLeft(const irs::bytes_ref& lhs,
 // Zero() or NoWeight() as they may interfere
 // with real values
 inline irs::bytes_ref DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
-                                 const irs::bytes_ref& rhs) {
+                                 irs::bytes_ref rhs) {
   typedef irs::bytes_ref Weight;
 
   if (rhs.size() > lhs.Size()) {

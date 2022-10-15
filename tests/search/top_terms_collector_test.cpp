@@ -145,11 +145,11 @@ class seek_term_iterator final : public irs::seek_term_iterator {
   seek_term_iterator(iterator_type begin, iterator_type end)
     : begin_(begin), end_(end), cookie_ptr_(begin) {}
 
-  virtual irs::SeekResult seek_ge(const irs::bytes_ref&) override {
+  virtual irs::SeekResult seek_ge(irs::bytes_ref) override {
     return irs::SeekResult::NOT_FOUND;
   }
 
-  virtual bool seek(const irs::bytes_ref&) override { return false; }
+  virtual bool seek(irs::bytes_ref) override { return false; }
 
   virtual irs::seek_cookie::ptr cookie() const override {
     return irs::memory::make_unique<struct seek_ptr>(cookie_ptr_);

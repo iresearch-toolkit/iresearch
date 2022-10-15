@@ -20,11 +20,12 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "numeric_utils.hpp"
-#include "bit_utils.hpp"
 
 #include <cmath>
+
+#include "bit_utils.hpp"
+#include "shared.hpp"
 
 #if defined(_MSC_VER)
 #include <Winsock2.h>
@@ -180,49 +181,49 @@ size_t encoded64(uint64_t value, byte_type* out, size_t shift /* = 0 */) {
 
 uint64_t decoded64(const byte_type* in) { return decode<double_t>(in); }
 
-const bytes_ref& mini32() {
+bytes_ref mini32() {
   static bytes_ref data = encode(static_buf<int32_t, buf_id_t::MIN>(),
                                  std::numeric_limits<int32_t>::min());
   return data;
 }
 
-const bytes_ref& maxi32() {
+bytes_ref maxi32() {
   static bytes_ref data = encode(static_buf<int32_t, buf_id_t::MAX>(),
                                  std::numeric_limits<int32_t>::max());
   return data;
 }
 
-const bytes_ref& minu32() {
+bytes_ref minu32() {
   static bytes_ref data = encode(static_buf<uint32_t, buf_id_t::MIN>(),
                                  std::numeric_limits<uint32_t>::min());
   return data;
 }
 
-const bytes_ref& maxu32() {
+bytes_ref maxu32() {
   static bytes_ref data = encode(static_buf<uint32_t, buf_id_t::MAX>(),
                                  std::numeric_limits<uint32_t>::max());
   return data;
 }
 
-const bytes_ref& mini64() {
+bytes_ref mini64() {
   static bytes_ref data = encode(static_buf<int64_t, buf_id_t::MIN>(),
                                  std::numeric_limits<int64_t>::min());
   return data;
 }
 
-const bytes_ref& maxi64() {
+bytes_ref maxi64() {
   static bytes_ref data = encode(static_buf<int64_t, buf_id_t::MAX>(),
                                  std::numeric_limits<int64_t>::max());
   return data;
 }
 
-const bytes_ref& minu64() {
+bytes_ref minu64() {
   static bytes_ref data = encode(static_buf<uint64_t, buf_id_t::MIN>(),
                                  std::numeric_limits<uint64_t>::min());
   return data;
 }
 
-const bytes_ref& maxu64() {
+bytes_ref maxu64() {
   static bytes_ref data = encode(static_buf<uint64_t, buf_id_t::MAX>(),
                                  std::numeric_limits<uint64_t>::max());
   return data;
@@ -288,7 +289,7 @@ double_t i64tod(int64_t value) {
   return conv.out;
 }
 
-const bytes_ref& finf32() {
+bytes_ref finf32() {
   static_assert(std::numeric_limits<double_t>::is_iec559,
                 "compiler does not support ieee754 (float)");
   static bytes_ref data = encode(static_buf<float_t, buf_id_t::INF>(),
@@ -296,26 +297,26 @@ const bytes_ref& finf32() {
   return data;
 }
 
-const bytes_ref& nfinf32() {
+bytes_ref nfinf32() {
   static_assert(std::numeric_limits<double_t>::is_iec559,
                 "compiler does not support ieee754 (float)");
   static bytes_ref data = encode(static_buf<float_t, buf_id_t::NINF>(),
                                  -1 * std::numeric_limits<float_t>::infinity());
   return data;
 }
-const bytes_ref& minf32() {
+bytes_ref minf32() {
   static bytes_ref data = encode(static_buf<float_t, buf_id_t::MIN>(),
                                  (std::numeric_limits<float_t>::min)());
   return data;
 }
 
-const bytes_ref& maxf32() {
+bytes_ref maxf32() {
   static bytes_ref data = encode(static_buf<float_t, buf_id_t::MAX>(),
                                  (std::numeric_limits<float_t>::max)());
   return data;
 }
 
-const bytes_ref& dinf64() {
+bytes_ref dinf64() {
   static_assert(std::numeric_limits<double_t>::is_iec559,
                 "compiler does not support ieee754 (double)");
   static bytes_ref data = encode(static_buf<double_t, buf_id_t::INF>(),
@@ -323,7 +324,7 @@ const bytes_ref& dinf64() {
   return data;
 }
 
-const bytes_ref& ndinf64() {
+bytes_ref ndinf64() {
   static_assert(std::numeric_limits<double_t>::is_iec559,
                 "compiler does not support ieee754 (double)");
   static bytes_ref data =
@@ -332,13 +333,13 @@ const bytes_ref& ndinf64() {
   return data;
 }
 
-const bytes_ref& mind64() {
+bytes_ref mind64() {
   static bytes_ref data = encode(static_buf<double_t, buf_id_t::MIN>(),
                                  (std::numeric_limits<double_t>::min)());
   return data;
 }
 
-const bytes_ref& maxd64() {
+bytes_ref maxd64() {
   static bytes_ref data = encode(static_buf<double_t, buf_id_t::MAX>(),
                                  (std::numeric_limits<double_t>::max)());
   return data;
