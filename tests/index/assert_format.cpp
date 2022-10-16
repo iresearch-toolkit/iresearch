@@ -175,7 +175,7 @@ void column_values::insert(irs::doc_id_t key, irs::bytes_ref value) {
   const auto res = values_.emplace(key, value);
 
   if (!res.second) {
-    res.first->second.append(value.c_str(), value.size());
+    res.first->second.append(value.data(), value.size());
   }
 }
 
@@ -563,20 +563,21 @@ class term_iterator final : public irs::seek_term_iterator {
     next_ = data_.terms.begin();
   }
 
-  irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
-    return nullptr;
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return type == irs::type<irs::term_attribute>::id() ? &value_ : nullptr;
+    ;
   }
 
-  irs::bytes_ref value() const override { return value_; }
+  irs::bytes_ref value() const override { return value_.value; }
 
   bool next() override {
     if (next_ == data_.terms.end()) {
-      value_ = irs::bytes_ref{};
+      value_.value = {};
       return false;
     }
 
     prev_ = next_, ++next_;
-    value_ = prev_->value;
+    value_.value = prev_->value;
     return true;
   }
 
@@ -587,13 +588,13 @@ class term_iterator final : public irs::seek_term_iterator {
 
     if (it == data_.terms.end()) {
       prev_ = next_ = it;
-      value_ = irs::bytes_ref{};
+      value_.value = {};
       return false;
     }
 
     prev_ = it;
     next_ = ++it;
-    value_ = prev_->value;
+    value_.value = prev_->value;
     return true;
   }
 
@@ -601,20 +602,20 @@ class term_iterator final : public irs::seek_term_iterator {
     auto it = data_.terms.lower_bound(term{value});
     if (it == data_.terms.end()) {
       prev_ = next_ = it;
-      value_ = irs::bytes_ref{};
+      value_.value = irs::bytes_ref{};
       return irs::SeekResult::END;
     }
 
     if (it->value == value) {
       prev_ = it;
       next_ = ++it;
-      value_ = prev_->value;
+      value_.value = prev_->value;
       return irs::SeekResult::FOUND;
     }
 
     prev_ = ++it;
     next_ = ++it;
-    value_ = prev_->value;
+    value_.value = prev_->value;
     return irs::SeekResult::NOT_FOUND;
   }
 
@@ -625,14 +626,14 @@ class term_iterator final : public irs::seek_term_iterator {
   }
 
   virtual irs::seek_cookie::ptr cookie() const override {
-    return irs::memory::make_unique<term_cookie>(value_);
+    return irs::memory::make_unique<term_cookie>(value_.value);
   }
 
  private:
   const tests::field& data_;
   std::set<tests::term>::const_iterator prev_;
   std::set<tests::term>::const_iterator next_;
-  irs::bytes_ref value_;
+  irs::term_attribute value_;
 };
 
 irs::seek_term_iterator::ptr field::iterator() const {
