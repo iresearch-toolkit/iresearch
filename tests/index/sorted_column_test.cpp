@@ -75,8 +75,8 @@ TEST_P(sorted_column_test_case, flush_empty) {
   struct comparator final : irs::comparer {
     virtual bool less(irs::bytes_ref lhs,
                       irs::bytes_ref rhs) const noexcept override {
-      const auto* plhs = lhs.c_str();
-      const auto* prhs = rhs.c_str();
+      const auto* plhs = lhs.data();
+      const auto* prhs = rhs.data();
 
       if (!plhs && !prhs) {
         return false;
@@ -148,8 +148,8 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
   struct comparator final : irs::comparer {
     virtual bool less(irs::bytes_ref lhs,
                       irs::bytes_ref rhs) const noexcept override {
-      const auto* plhs = lhs.c_str();
-      const auto* prhs = rhs.c_str();
+      const auto* plhs = lhs.data();
+      const auto* prhs = rhs.data();
 
       if (!plhs && !prhs) {
         return false;
@@ -280,8 +280,8 @@ TEST_P(sorted_column_test_case, sort) {
   struct comparator final : irs::comparer {
     virtual bool less(irs::bytes_ref lhs,
                       irs::bytes_ref rhs) const noexcept override {
-      const auto* plhs = lhs.c_str();
-      const auto* prhs = rhs.c_str();
+      const auto* plhs = lhs.data();
+      const auto* prhs = rhs.data();
 
       if (!plhs && !prhs) {
         return false;
@@ -407,7 +407,7 @@ TEST_P(sorted_column_test_case, sort) {
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
     while (it->next()) {
       ASSERT_EQ(doc, it->value());
-      const auto* pvalue = payload->value.c_str();
+      const auto* pvalue = payload->value.data();
       ASSERT_NE(nullptr, pvalue);
       ASSERT_EQ(*begin, irs::vread<uint32_t>(pvalue));
       ++doc;

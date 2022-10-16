@@ -33,9 +33,9 @@ void decode_ctr_header(irs::bytes_ref header, size_t block_size,
   assert(header.size() >= irs::ctr_encryption::MIN_HEADER_LENGTH &&
          header.size() >= 2 * block_size);
 
-  const auto* begin = header.c_str();
+  const auto* begin = header.data();
   base_counter = irs::read<uint64_t>(begin);
-  iv = irs::bytes_ref(header.c_str() + block_size, block_size);
+  iv = irs::bytes_ref(header.data() + block_size, block_size);
 }
 
 }  // namespace
@@ -295,7 +295,7 @@ encryption::stream::ptr ctr_encryption::create_stream(std::string_view filename,
   }
 
   return memory::make_unique<ctr_cipher_stream>(
-    *cipher_, bytes_ref(iv.c_str(), block_size), base_counter);
+    *cipher_, bytes_ref(iv.data(), block_size), base_counter);
 }
 
 }  // namespace iresearch

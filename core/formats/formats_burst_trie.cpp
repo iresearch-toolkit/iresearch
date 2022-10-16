@@ -138,9 +138,9 @@ class volatile_ref : util::noncopyable {
   }
 
   template<bool Volatile>
-  void assign(const ref_t& str) {
+  void assign(ref_t str) {
     if constexpr (Volatile) {
-      str_.assign(str.c_str(), str.size());
+      str_.assign(str.data(), str.size());
       ref_ = str_;
     } else {
       ref_ = str;
@@ -153,14 +153,16 @@ class volatile_ref : util::noncopyable {
               : volatile_ref<Char>::assign<false>(str));
   }
 
-  void assign(const ref_t& str, Char label) {
+  void assign(ref_t str, Char label) {
     str_.resize(str.size() + 1);
-    std::memcpy(&str_[0], str.c_str(), str.size() * sizeof(Char));
+    std::memcpy(&str_[0], str.data(), str.size() * sizeof(Char));
     str_[str.size()] = label;
     ref_ = str_;
   }
 
-  operator const ref_t&() const noexcept { return ref_; }
+  ref_t view() const noexcept { return ref_; }
+
+  operator ref_t() const noexcept { return ref_; }
 
  private:
   str_t str_;
@@ -477,7 +479,7 @@ void write_field_features_legacy(FeatureMap& feature_map, data_output& out,
       // should not happen in reality
       throw irs::index_error(string_utils::to_string(
         "feature '%s' is not listed in segment features",
-        feature().name().c_str()));
+        feature().name().data()));
     }
 
     out.write_vlong(it->second);
@@ -583,9 +585,8 @@ void write_field_features(FeatureMap& feature_map, data_output& out,
 
     if (feature_map.end() == it) {
       // should not happen in reality
-      throw irs::index_error(string_utils::to_string(
-        "feature '%s' is not listed in segment features",
-        feature().name().c_str()));
+      throw irs::index_error(absl::StrCat(
+        "feature '", feature().name(), "' is not listed in segment features"));
     }
 
     out.write_vlong(it->second);
@@ -648,12 +649,11 @@ void read_field_features(data_input& in, const feature_map_t& feature_map,
       UNUSED(it);
 
       if (!is_new) {
-        throw irs::index_error(irs::string_utils::to_string(
-          "duplicate feature '%s'", feature().name().c_str()));
+        throw irs::index_error(
+          absl::StrCat("duplicate feature '", feature().name(), "'"));
       }
     } else {
-      throw irs::index_error(irs::string_utils::to_string(
-        "unknown feature id '" IR_SIZE_T_SPECIFIER "'", id));
+      throw irs::index_error(absl::StrCat("unknown feature id '", id, "'"));
     }
   }
 }
@@ -949,7 +949,7 @@ void field_writer::write_block(size_t prefix, size_t begin, size_t end,
     auto& e = stack_[begin];
     const irs::bytes_ref data = e.data();
     const EntryType type = e.type();
-    assert(starts_with(data, bytes_ref(last_term_, prefix)));
+    assert(data.starts_with({last_term_.view().data(), prefix}));
 
     // only terms under 32k are allowed
     assert(data.size() - prefix <= UINT32_C(0x7FFFFFFF));
@@ -957,7 +957,7 @@ void field_writer::write_block(size_t prefix, size_t begin, size_t end,
 
     suffix_.stream.write_vint(
       leaf ? suf_size : ((suf_size << 1) | static_cast<uint32_t>(type)));
-    suffix_.stream.write_bytes(data.c_str() + prefix, suf_size);
+    suffix_.stream.write_bytes(data.data() + prefix, suf_size);
 
     if (ET_TERM == type) {
       pw_->encode(stats_.stream, *e.term());
@@ -1013,7 +1013,7 @@ void field_writer::write_block(size_t prefix, size_t begin, size_t end,
   stats_.stream.reset();
 
   // add new block to the list of created blocks
-  blocks_.emplace_back(bytes_ref(last_term_, prefix),
+  blocks_.emplace_back(bytes_ref{last_term_.view().data(), prefix},
 #ifdef __cpp_lib_memory_resource
                        block_index_buf_,
 #endif
@@ -1829,7 +1829,7 @@ SeekResult block_iterator::scan_to_term_leaf(bytes_ref term, Reader&& reader) {
   assert(term.size() >= prefix_);
 
   const size_t term_suffix_length = term.size() - prefix_;
-  const byte_type* term_suffix = term.c_str() + prefix_;
+  const byte_type* term_suffix = term.data() + prefix_;
   size_t suffix_length = suffix_length_;
   cur_type_ = ET_TERM;  // leaf block contains terms only
   SeekResult res = SeekResult::END;
@@ -1875,7 +1875,7 @@ SeekResult block_iterator::scan_to_term_nonleaf(bytes_ref term,
   assert(term.size() >= prefix_);
 
   const size_t term_suffix_length = term.size() - prefix_;
-  const byte_type* term_suffix = term.c_str() + prefix_;
+  const byte_type* term_suffix = term.data() + prefix_;
   const byte_type* suffix_begin = suffix_begin_;
   size_t suffix_length = suffix_length_;
   SeekResult res = SeekResult::END;
@@ -2470,7 +2470,7 @@ SeekResult term_iterator<FST>::seek_equal(bytes_ref term) {
   auto refresh_value =
     make_finally([this]() noexcept { this->refresh_value(); });
 
-  assert(starts_with(term, term_buf_));
+  assert(term.starts_with(term_buf_));
   return cur_block_->scan_to_term(term, append_suffix);
 }
 
@@ -2496,7 +2496,7 @@ SeekResult term_iterator<FST>::seek_ge(bytes_ref term) {
   auto refresh_value =
     make_finally([this]() noexcept { this->refresh_value(); });
 
-  assert(starts_with(term, term_buf_));
+  assert(term.starts_with(term_buf_));
   switch (cur_block_->scan_to_term(term, append_suffix)) {
     case SeekResult::FOUND:
       assert(ET_TERM == cur_block_->type());
@@ -3499,7 +3499,7 @@ class dumper : util::noncopyable {
 
   string_ref suffix(bytes_ref term) {
     return ref_cast<char>(
-      bytes_ref(term.c_str() + prefix_, term.size() - prefix_));
+      bytes_ref{term.data() + prefix_, term.size() - prefix_});
   }
 
   std::ostream& out_;

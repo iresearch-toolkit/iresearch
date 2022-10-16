@@ -1157,7 +1157,7 @@ bool write_columns(columnstore& cs, Iterator& columns,
       [column_name](bstring&) { return column_name; },
       [](data_output& out, bytes_ref payload) {
         if (!payload.empty()) {
-          out.write_bytes(payload.c_str(), payload.size());
+          out.write_bytes(payload.data(), payload.size());
         }
       });
 
@@ -1272,7 +1272,7 @@ bool write_fields(columnstore& cs, Iterator& feature_itr,
           feature_itr, info, [](bstring&) { return string_ref{}; },
           [](data_output& out, bytes_ref payload) {
             if (!payload.empty()) {
-              out.write_bytes(payload.c_str(), payload.size());
+              out.write_bytes(payload.data(), payload.size());
             }
           });
       }
@@ -1586,7 +1586,7 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
 
     // write value into new column
     auto& stream = column.second(next_id);
-    stream.write_bytes(payload.c_str(), payload.size());
+    stream.write_bytes(payload.data(), payload.size());
 
     ++next_id;
 

@@ -51,7 +51,7 @@ inline automaton_table_matcher make_automaton_matcher(
 
 template<typename Char, typename Matcher>
 inline automaton::Weight match(Matcher& matcher,
-                               const basic_string_ref<Char>& target) {
+                               basic_string_ref<Char> target) {
   auto state = matcher.GetFst().Start();
   matcher.SetState(state);
 
@@ -68,7 +68,7 @@ inline automaton::Weight match(Matcher& matcher,
 
 template<typename Char>
 inline automaton::Weight accept(const automaton& a,
-                                const basic_string_ref<Char>& target) {
+                                basic_string_ref<Char> target) {
   using matcher_t =
     fst::SortedRangeExplicitMatcher<automaton, fst::MatchType::MATCH_INPUT>;
 
@@ -193,7 +193,7 @@ class utf8_transitions_builder {
       assert(last_ <= static_cast<bytes_ref>(std::get<0>(*begin)));
 
       const auto& label = std::get<0>(*begin);
-      insert(a, label.c_str(), label.size(), std::get<1>(*begin));
+      insert(a, label.data(), label.size(), std::get<1>(*begin));
       last_ = static_cast<bytes_ref>(label);
     }
 

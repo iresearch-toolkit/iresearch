@@ -93,8 +93,8 @@ struct string_comparer : irs::comparer {
       return false;
     }
 
-    const auto lhs_value = irs::to_string<irs::bytes_ref>(lhs.c_str());
-    const auto rhs_value = irs::to_string<irs::bytes_ref>(rhs.c_str());
+    const auto lhs_value = irs::to_string<irs::bytes_ref>(lhs.data());
+    const auto rhs_value = irs::to_string<irs::bytes_ref>(rhs.data());
 
     return lhs_value > rhs_value;
   }
@@ -110,8 +110,8 @@ struct long_comparer : irs::comparer {
       return true;
     }
 
-    auto* plhs = lhs.c_str();
-    auto* prhs = rhs.c_str();
+    auto* plhs = lhs.data();
+    auto* prhs = rhs.data();
 
     return irs::zig_zag_decode64(irs::vread<uint64_t>(plhs)) <
            irs::zig_zag_decode64(irs::vread<uint64_t>(prhs));
@@ -136,7 +136,7 @@ struct custom_feature {
 
     void update(irs::bytes_ref in) {
       EXPECT_EQ(sizeof(count), in.size());
-      auto* p = in.c_str();
+      auto* p = in.data();
       count += irs::read<decltype(count)>(p);
     }
 
@@ -167,7 +167,7 @@ struct custom_feature {
     virtual void write(irs::data_output& out, irs::bytes_ref payload) {
       if (!payload.empty()) {
         ++hdr.count;
-        out.write_bytes(payload.c_str(), payload.size());
+        out.write_bytes(payload.data(), payload.size());
       }
     }
 
@@ -1045,7 +1045,7 @@ TEST_P(sorted_index_test_case, europarl) {
 TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
   struct {
     bool write(irs::data_output& out) {
-      out.write_bytes(reinterpret_cast<const irs::byte_type*>(value.c_str()),
+      out.write_bytes(reinterpret_cast<const irs::byte_type*>(value.data()),
                       value.size());
       return true;
     }
@@ -1205,11 +1205,11 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1238,11 +1238,11 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1288,19 +1288,19 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features in consolidated segment
@@ -1411,11 +1411,11 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1446,11 +1446,11 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1495,7 +1495,7 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1526,11 +1526,11 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1577,15 +1577,15 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features in consolidated segment
@@ -1682,8 +1682,7 @@ TEST_P(sorted_index_test_case, doc_removal_same_key_within_trx) {
     auto docs = segment.docs_iterator();
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), values->seek(docs->value()));
-    ASSERT_EQ("C",
-              irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value->value.data()));
     ASSERT_FALSE(docs->next());
   }
 }
@@ -1760,7 +1759,7 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_TRUE(actual_value->value.empty());
@@ -1795,7 +1794,7 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_TRUE(actual_value->value.empty());
@@ -1846,11 +1845,11 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+                irs::to_string<irs::string_ref>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_TRUE(actual_value->value.empty());

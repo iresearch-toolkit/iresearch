@@ -83,7 +83,7 @@ class test_feature_writer final : public irs::feature_writer {
   }
 
   virtual void write(irs::data_output& out, irs::bytes_ref payload) final {
-    out.write_bytes(payload.c_str(), payload.size());
+    out.write_bytes(payload.data(), payload.size());
   }
 
   virtual void finish(irs::bstring& out) final {
@@ -296,12 +296,12 @@ void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
     ASSERT_TRUE(seq->next());
     ASSERT_EQ(doc + irs::doc_limits::min(), seq->value());
 
-    auto* p = payload->value.c_str();
+    auto* p = payload->value.data();
     auto len = irs::vread<uint32_t>(p);
 
     const auto str_seq =
       static_cast<std::string>(irs::ref_cast<char>(irs::bytes_ref{p, len}));
-    const auto seq = atoi(str_seq.c_str());
+    const auto seq = atoi(str_seq.data());
 
     if (0 == (doc % 10)) {
       ASSERT_EQ(0, seq % 10);
@@ -453,7 +453,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
         ++calls_count;
 
         const auto actual_value_string =
-          irs::to_string<irs::string_ref>(actual_value.c_str());
+          irs::to_string<irs::string_ref>(actual_value.data());
 
         auto it = expected_values.find(actual_value_string);
         if (it == expected_values.end()) {

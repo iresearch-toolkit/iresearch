@@ -235,14 +235,14 @@ TEST(ngram_token_stream_test, next_utf8) {
     utf8token(const irs::string_ref& value, size_t start, size_t end) noexcept
       : start_marker(""),
         end_marker(""),
-        value(value.c_str(), value.size()),
+        value(value.data(), value.size()),
         start(start),
         end(end) {}
     utf8token(const irs::string_ref& value, size_t start, size_t end,
               irs::string_ref sm, irs::string_ref em) noexcept
       : start_marker(sm),
         end_marker(em),
-        value(value.c_str(), value.size()),
+        value(value.data(), value.size()),
         start(start),
         end(end) {}
 
@@ -282,13 +282,13 @@ TEST(ngram_token_stream_test, next_utf8) {
         irs::bstring bs;
         if (!expected_token->start_marker.empty()) {
           bs.append(reinterpret_cast<const irs::byte_type*>(
-                      expected_token->start_marker.c_str()),
+                      expected_token->start_marker.data()),
                     expected_token->start_marker.size());
         }
         bs.append(start, size);
         if (!expected_token->end_marker.empty()) {
           bs.append(reinterpret_cast<const irs::byte_type*>(
-                      expected_token->end_marker.c_str()),
+                      expected_token->end_marker.data()),
                     expected_token->end_marker.size());
         }
 
@@ -949,7 +949,7 @@ TEST(ngram_token_stream_test, next) {
           irs::string_ref em) noexcept
       : start_marker(sm),
         end_marker(em),
-        value(value.c_str(), value.size()),
+        value(value.data(), value.size()),
         start(start),
         end(end) {}
 
@@ -988,14 +988,14 @@ TEST(ngram_token_stream_test, next) {
         irs::bstring bs;
         if (!expected_token->start_marker.empty()) {
           bs.append(reinterpret_cast<const irs::byte_type*>(
-                      expected_token->start_marker.c_str()),
+                      expected_token->start_marker.data()),
                     expected_token->start_marker.size());
         }
-        bs.append(reinterpret_cast<const irs::byte_type*>(data.c_str()) + pos,
+        bs.append(reinterpret_cast<const irs::byte_type*>(data.data()) + pos,
                   size);
         if (!expected_token->end_marker.empty()) {
           bs.append(reinterpret_cast<const irs::byte_type*>(
-                      expected_token->end_marker.c_str()),
+                      expected_token->end_marker.data()),
                     expected_token->end_marker.size());
         }
         ASSERT_EQ(bs, value->value);

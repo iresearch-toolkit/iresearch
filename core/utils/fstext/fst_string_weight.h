@@ -85,14 +85,14 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
   StringLeftWeight(const StringLeftWeight&) = default;
   StringLeftWeight(StringLeftWeight&&) = default;
 
-  explicit StringLeftWeight(const irs::basic_string_ref<Label>& rhs)
-    : str_(rhs.c_str(), rhs.size()) {}
+  explicit StringLeftWeight(irs::basic_string_ref<Label> rhs)
+    : str_(rhs.data(), rhs.size()) {}
 
   StringLeftWeight& operator=(StringLeftWeight&&) = default;
   StringLeftWeight& operator=(const StringLeftWeight&) = default;
 
-  StringLeftWeight& operator=(const irs::basic_string_ref<Label>& rhs) {
-    str_.assign(rhs.c_str(), rhs.size());
+  StringLeftWeight& operator=(irs::basic_string_ref<Label> rhs) {
+    str_.assign(rhs.data(), rhs.size());
     return *this;
   }
 
@@ -346,8 +346,7 @@ inline StringLeftWeight<Label> DivideLeft(const StringLeftWeight<Label>& lhs,
     return Weight();
   }
 
-  assert(irs::starts_with(irs::basic_string_ref<Label>(lhs),
-                          irs::basic_string_ref<Label>(rhs)));
+  assert(irs::basic_string_ref<Label>(lhs).starts_with(rhs));
 
   return Weight(lhs.begin() + rhs.Size(), lhs.end());
 }
@@ -379,7 +378,7 @@ struct StringLeftWeightTraits<irs::byte_type> {
     return Zero();
   }
 
-  static bool Member(const StringLeftWeight<irs::byte_type>& weight) noexcept {
+  static bool Member(const StringLeftWeight<irs::byte_type>&) noexcept {
     // always member
     return true;
   }
@@ -509,8 +508,7 @@ inline irs::bytes_ref DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
     return Weight();
   }
 
-  assert(irs::starts_with(irs::basic_string_ref<irs::byte_type>(lhs),
-                          irs::basic_string_ref<irs::byte_type>(rhs)));
+  assert(irs::basic_string_ref<irs::byte_type>(lhs).starts_with(rhs));
 
   return Weight(lhs.c_str() + rhs.Size(), lhs.Size() - rhs.Size());
 }
@@ -527,10 +525,9 @@ inline irs::bytes_ref DivideLeft(irs::bytes_ref lhs,
     return Weight();
   }
 
-  assert(irs::starts_with(irs::basic_string_ref<irs::byte_type>(lhs),
-                          irs::basic_string_ref<irs::byte_type>(rhs)));
+  assert(irs::basic_string_ref<irs::byte_type>(lhs).starts_with(rhs));
 
-  return Weight(lhs.c_str() + rhs.Size(), lhs.size() - rhs.Size());
+  return Weight(lhs.data() + rhs.Size(), lhs.size() - rhs.Size());
 }
 
 // Left division in a left string semiring.
@@ -545,8 +542,7 @@ inline irs::bytes_ref DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
     return Weight();
   }
 
-  assert(irs::starts_with(irs::basic_string_ref<irs::byte_type>(lhs),
-                          irs::basic_string_ref<irs::byte_type>(rhs)));
+  assert(irs::basic_string_ref<irs::byte_type>(lhs).starts_with(rhs));
 
   return Weight(lhs.c_str() + rhs.size(), lhs.Size() - rhs.size());
 }

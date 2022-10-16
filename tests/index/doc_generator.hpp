@@ -414,8 +414,8 @@ class json_doc_generator : public doc_generator_base {
     const char* data;
     size_t size;
 
-    json_string& operator=(const irs::string_ref& ref) {
-      data = ref.c_str();
+    json_string& operator=(irs::string_ref ref) {
+      data = ref.data();
       size = ref.size();
       return *this;
     }

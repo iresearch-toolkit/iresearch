@@ -21,11 +21,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "utils/block_pool.hpp"
+
 #include "tests_shared.hpp"
+#include "utils/misc.hpp"
 #include "utils/string.hpp"
 #include "utils/string_utils.hpp"
-#include "utils/block_pool.hpp"
-#include "utils/misc.hpp"
 
 using namespace iresearch;
 
@@ -160,9 +161,9 @@ class block_pool_test : public test_base {
       }
 
       sliced_inserter_t sliced_ins(ins, slice_chain_begin);
-      sliced_ins.write(data0.c_str(),
+      sliced_ins.write(data0.data(),
                        data0.size());  // fill 1st slice & alloc 2nd slice here
-      sliced_ins.write(data1.c_str(),
+      sliced_ins.write(data1.data(),
                        data1.size());  // fill 2st slice & alloc 3nd slice here
 
       slice_chain_end = sliced_ins.pool_offset();
@@ -337,11 +338,11 @@ class block_pool_test : public test_base {
       sliced_greedy_inserter_t sliced_ins(ins, cookies.back().second,
                                           cookies.back().first);
       sliced_ins.write(
-        data[0].c_str(),
+        data[0].data(),
         data[0].size());  // fill 1st slice & alloc 2nd slice here
       push_cookie(sliced_ins);
       sliced_ins.write(
-        data[1].c_str(),
+        data[1].data(),
         data[1].size());  // fill 2st slice & alloc 3nd slice here
 
       // insert payload

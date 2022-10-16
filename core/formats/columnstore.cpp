@@ -167,10 +167,10 @@ ColumnProperty write_compact(index_output& out, bstring& encode_buf,
     irs::write_zvint(out, int32_t(compressed.size()));  // compressed size
     if (cipher) {
       cipher->encrypt(out.file_pointer(),
-                      const_cast<irs::byte_type*>(compressed.c_str()),
+                      const_cast<irs::byte_type*>(compressed.data()),
                       compressed.size());
     }
-    out.write_bytes(compressed.c_str(), compressed.size());
+    out.write_bytes(compressed.data(), compressed.size());
     irs::write_zvlong(out, data.size() - MAX_DATA_BLOCK_SIZE);  // original size
   } else {
     assert(data.size() <=
@@ -1281,7 +1281,7 @@ class dense_fixed_offset_block : util::noncopyable {
 
       assert(payload_ != &kDummy);
       *payload_ =
-        bytes_ref(data_.c_str() + offset,
+        bytes_ref(data_.data() + offset,
                   value_ == value_back_ ? data_.size() - offset : avg_length_);
 
       return true;
@@ -1309,7 +1309,7 @@ class dense_fixed_offset_block : util::noncopyable {
     }
 
     bool operator==(const dense_fixed_offset_block& rhs) const noexcept {
-      return data_.c_str() == rhs.data_.c_str();
+      return data_.data() == rhs.data_.c_str();
     }
 
     bool operator!=(const dense_fixed_offset_block& rhs) const noexcept {

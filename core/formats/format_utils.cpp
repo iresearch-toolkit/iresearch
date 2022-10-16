@@ -20,12 +20,11 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "format_utils.hpp"
 
-#include "index/index_meta.hpp"
-
 #include "formats/formats.hpp"
+#include "index/index_meta.hpp"
+#include "shared.hpp"
 
 namespace iresearch {
 
@@ -97,10 +96,10 @@ int32_t check_header(index_input& in, string_ref req_format, int32_t min_ver,
 
   const auto format = read_string<std::string>(in);
 
-  if (compare(req_format, format) != 0) {
+  if (req_format != format) {
     throw index_error(string_utils::to_string(
       "while checking header, error: format mismatch '%s' != '%s'",
-      format.c_str(), req_format.c_str()));
+      format.c_str(), req_format.data()));
   }
 
   const int32_t ver = in.read_int();

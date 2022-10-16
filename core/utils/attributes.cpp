@@ -69,22 +69,22 @@ attribute_registrar::attribute_registrar(const type_info& type,
       IR_FRMT_WARN(
         "type name collision detected while registering attribute, ignoring: "
         "type '%s' from %s, previously from %s",
-        type.name().c_str(), source, registered_source->c_str());
+        type.name().data(), source, registered_source->data());
     } else if (source) {
       IR_FRMT_WARN(
         "type name collision detected while registering attribute, ignoring: "
         "type '%s' from %s",
-        type.name().c_str(), source);
+        type.name().data(), source);
     } else if (registered_source) {
       IR_FRMT_WARN(
         "type name collision detected while registering attribute, ignoring: "
         "type '%s', previously from %s",
-        type.name().c_str(), registered_source->c_str());
+        type.name().data(), registered_source->data());
     } else {
       IR_FRMT_WARN(
         "type name collision detected while registering attribute, ignoring: "
         "type '%s'",
-        type.name().c_str());
+        type.name().data());
     }
   }
 }

@@ -26,10 +26,10 @@
 
 #include "shared.hpp"
 #include "utils/block_pool.hpp"
+#include "utils/hash_set_utils.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
-#include "utils/hash_set_utils.hpp"
 
 namespace iresearch {
 
@@ -48,7 +48,7 @@ inline bool memcmp_less(const byte_type* lhs, size_t lhs_size,
 }
 
 inline bool memcmp_less(bytes_ref lhs, bytes_ref rhs) noexcept {
-  return memcmp_less(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
+  return memcmp_less(lhs.data(), lhs.size(), rhs.data(), rhs.size());
 }
 
 using byte_block_pool = block_pool<byte_type, 32768>;

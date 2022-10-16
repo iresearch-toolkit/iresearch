@@ -41,7 +41,7 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
 
     irs::memory::arena<uint32_t, 16> arena;
     irs::memory::arena_vector<uint32_t, decltype(arena)> target_chars(arena);
-    irs::utf8_utils::utf8_to_utf32<false>(target.c_str(), target.size(),
+    irs::utf8_utils::utf8_to_utf32<false>(target.data(), target.size(),
                                           std::back_inserter(target_chars));
 
     for (auto& segment : *reader) {
@@ -64,7 +64,7 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
           irs::memory::arena_vector<uint32_t, decltype(arena)> expected_chars(
             arena);
           irs::utf8_utils::utf8_to_utf32<false>(
-            expected_term.c_str(), expected_term.size(),
+            expected_term.data(), expected_term.size(),
             std::back_inserter(expected_chars));
 
           auto edit_distance =

@@ -51,10 +51,10 @@ class hashed_basic_string_ref : public basic_string_ref<Elem> {
  public:
   typedef basic_string_ref<Elem> base_t;
 
-  hashed_basic_string_ref(size_t hash, const base_t& ref) noexcept
+  hashed_basic_string_ref(size_t hash, base_t ref) noexcept
     : base_t(ref), hash_(hash) {}
 
-  hashed_basic_string_ref(size_t hash, const base_t& ref, size_t size) noexcept
+  hashed_basic_string_ref(size_t hash, base_t ref, size_t size) noexcept
     : base_t(ref, size), hash_(hash) {}
 
   hashed_basic_string_ref(size_t hash,
@@ -65,15 +65,15 @@ class hashed_basic_string_ref : public basic_string_ref<Elem> {
                           size_t size) noexcept
     : base_t(ptr, size), hash_(hash) {}
 
-  hashed_basic_string_ref(
-    size_t hash,
-    const std::basic_string<typename base_t::char_type>& str) noexcept
-    : base_t(str), hash_(hash) {}
+  //  hashed_basic_string_ref(
+  //    size_t hash,
+  //    const std::basic_string<typename base_t::char_type>& str) noexcept
+  //    : base_t(str), hash_(hash) {}
 
-  hashed_basic_string_ref(
-    size_t hash, const std::basic_string<typename base_t::char_type>& str,
-    size_t size) noexcept
-    : base_t(str, size), hash_(hash) {}
+  //  hashed_basic_string_ref(
+  //    size_t hash, const std::basic_string<typename base_t::char_type>& str,
+  //    size_t size) noexcept
+  //    : base_t(str, size), hash_(hash) {}
 
   size_t hash() const noexcept { return hash_; }
 
@@ -82,13 +82,13 @@ class hashed_basic_string_ref : public basic_string_ref<Elem> {
 };  // hashed_basic_string_ref
 
 template<typename Elem, typename Hasher = std::hash<basic_string_ref<Elem>>>
-hashed_basic_string_ref<Elem> make_hashed_ref(const basic_string_ref<Elem>& ref,
+hashed_basic_string_ref<Elem> make_hashed_ref(basic_string_ref<Elem> ref,
                                               const Hasher& hasher = Hasher()) {
   return hashed_basic_string_ref<Elem>(hasher(ref), ref);
 }
 
 template<typename Elem, typename Hasher = std::hash<basic_string_ref<Elem>>>
-hashed_basic_string_ref<Elem> make_hashed_ref(const basic_string_ref<Elem>& ref,
+hashed_basic_string_ref<Elem> make_hashed_ref(basic_string_ref<Elem> ref,
                                               size_t size,
                                               const Hasher& hasher = Hasher()) {
   return hashed_basic_string_ref<Elem>(hasher(ref), ref, size);
@@ -120,11 +120,11 @@ namespace frozen {
 template<>
 struct elsa<irs::string_ref> {
   constexpr size_t operator()(irs::string_ref value) const noexcept {
-    return elsa<frozen::string>{}({value.c_str(), value.size()});
+    return elsa<frozen::string>{}({value.data(), value.size()});
   }
   constexpr std::size_t operator()(irs::string_ref value,
                                    std::size_t seed) const {
-    return elsa<frozen::string>{}({value.c_str(), value.size()}, seed);
+    return elsa<frozen::string>{}({value.data(), value.size()}, seed);
   }
 };
 

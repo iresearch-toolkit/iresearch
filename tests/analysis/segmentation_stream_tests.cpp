@@ -55,7 +55,7 @@ void assert_stream(irs::analysis::analyzer* pipe, std::string_view data,
   auto expected_token = expected_tokens.begin();
   while (pipe->next()) {
     auto term_value =
-      std::string(irs::ref_cast<char>(term->value).c_str(), term->value.size());
+      std::string(irs::ref_cast<char>(term->value).data(), term->value.size());
     SCOPED_TRACE(testing::Message("Term:<") << term_value << ">");
     SCOPED_TRACE(testing::Message("Expected term:<")
                  << expected_token->value << ">");

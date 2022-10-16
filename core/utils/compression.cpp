@@ -20,14 +20,14 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "utils/register.hpp"
-
 #include "compression.hpp"
+
+#include "utils/register.hpp"
 
 // list of statically loaded scorers via init()
 #ifndef IRESEARCH_DLL
-#include "lz4compression.hpp"
 #include "delta_compression.hpp"
+#include "lz4compression.hpp"
 #endif
 
 namespace {
@@ -68,7 +68,7 @@ class compression_register
     std::memcpy(filename.data(), kFileNamePrefix.data(),
                 kFileNamePrefix.size());
 
-    std::memcpy(filename.data() + kFileNamePrefix.size(), key.c_str(),
+    std::memcpy(filename.data() + kFileNamePrefix.size(), key.data(),
                 key.size());
 
     return filename;
@@ -110,22 +110,22 @@ compression_registrar::compression_registrar(
       IR_FRMT_WARN(
         "type name collision detected while registering compression, ignoring: "
         "type '%s' from %s, previously from %s",
-        type.name().c_str(), source, registered_source->c_str());
+        type.name().data(), source, registered_source->data());
     } else if (source) {
       IR_FRMT_WARN(
         "type name collision detected while registering compression, ignoring: "
         "type '%s' from %s",
-        type.name().c_str(), source);
+        type.name().data(), source);
     } else if (registered_source) {
       IR_FRMT_WARN(
         "type name collision detected while registering compression, ignoring: "
         "type '%s', previously from %s",
-        type.name().c_str(), registered_source->c_str());
+        type.name().data(), registered_source->data());
     } else {
       IR_FRMT_WARN(
         "type name collision detected while registering compression, ignoring: "
         "type '%s'",
-        type.name().c_str());
+        type.name().data());
     }
   }
 }

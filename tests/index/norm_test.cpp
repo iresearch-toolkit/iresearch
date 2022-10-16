@@ -116,7 +116,7 @@ void AssertNorm2Header(irs::bytes_ref header, uint32_t num_bytes, uint32_t min,
   ASSERT_FALSE(header.null());
   ASSERT_EQ(10, header.size());
 
-  auto* p = header.c_str();
+  auto* p = header.data();
   const auto actual_verson = *p++;
   const auto actual_num_bytes = *p++;
   const auto actual_min = irs::read<uint32_t>(p);
@@ -178,7 +178,8 @@ TEST(Norm2HeaderTest, ResetByValue) {
 
 TEST(Norm2HeaderTest, ReadInvalid) {
   ASSERT_FALSE(irs::Norm2Header::Read(irs::bytes_ref{}).has_value());
-  ASSERT_FALSE(irs::Norm2Header::Read(irs::EmptyRef<irs::byte_type>()).has_value());
+  ASSERT_FALSE(
+    irs::Norm2Header::Read(irs::EmptyRef<irs::byte_type>()).has_value());
 
   // Invalid size
   {
@@ -386,7 +387,7 @@ void Norm2TestCase::AssertNormColumn(
     ASSERT_EQ(expected_doc->first, doc->value);
     ASSERT_EQ(sizeof(T), payload->value.size());
 
-    auto* p = payload->value.c_str();
+    auto* p = payload->value.data();
     const auto value = irs::read<T>(p);
     ASSERT_EQ(expected_doc->second, value);
     ASSERT_EQ(value, reader());

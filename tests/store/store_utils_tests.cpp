@@ -108,25 +108,22 @@ class bytes_input final : public data_input, public bytes_ref {
 // ----------------------------------------------------------------------------
 
 bytes_input::bytes_input(bytes_ref data)
-  : buf_(data.c_str(), data.size()), pos_(this->buf_.c_str()) {
-  this->data_ = buf_.data();
-  this->size_ = data.size();
+  : buf_(data.data(), data.size()), pos_(this->buf_.c_str()) {
+  static_cast<bytes_ref&>(*this) = {buf_.data(), data.size()};
 }
 
 bytes_input::bytes_input(bytes_input&& other) noexcept
   : buf_(std::move(other.buf_)), pos_(other.pos_) {
-  this->data_ = buf_.data();
-  this->size_ = other.size();
+  static_cast<bytes_ref&>(*this) = {buf_.data(), other.size()};
   other.pos_ = other.buf_.c_str();
-  other.size_ = 0;
+  static_cast<bytes_ref&>(other) = {other.data(), 0};
 }
 
 bytes_input& bytes_input::operator=(bytes_ref data) {
   if (this != &data) {
-    buf_.assign(data.c_str(), data.size());
+    buf_.assign(data);
     pos_ = this->buf_.c_str();
-    this->data_ = buf_.data();
-    this->size_ = data.size();
+    static_cast<bytes_ref&>(*this) = {buf_.data(), data.size()};
   }
 
   return *this;
@@ -136,10 +133,9 @@ bytes_input& bytes_input::operator=(bytes_input&& other) noexcept {
   if (this != &other) {
     buf_ = std::move(other.buf_);
     pos_ = buf_.c_str();
-    this->data_ = buf_.data();
-    this->size_ = other.size();
+    static_cast<bytes_ref&>(*this) = {buf_.data(), other.size()};
     other.pos_ = other.buf_.c_str();
-    other.size_ = 0;
+    static_cast<bytes_ref&>(other) = {other.data(), 0};
   }
 
   return *this;

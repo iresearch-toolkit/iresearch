@@ -428,7 +428,7 @@ TEST_P(bm25_test_case, test_phrase) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
 
       sorted.emplace(score_value,
-                     irs::to_string<std::string>(actual_value->value.c_str()));
+                     irs::to_string<std::string>(actual_value->value.data()));
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -486,7 +486,7 @@ TEST_P(bm25_test_case, test_phrase) {
       ASSERT_EQ(docs->value(), values->seek(docs->value()));
 
       sorted.emplace(score_value,
-                     irs::to_string<std::string>(actual_value->value.c_str()));
+                     irs::to_string<std::string>(actual_value->value.data()));
     }
 
     ASSERT_EQ(expected.size(), sorted.size());

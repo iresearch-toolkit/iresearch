@@ -86,7 +86,7 @@ size_t find_delimiter(irs::bytes_ref data, irs::bytes_ref delim) {
       break;  // no more delimiters in data
     }
 
-    if (0 == memcmp(data.c_str() + i, delim.c_str(), delim.size()) &&
+    if (0 == memcmp(data.data() + i, delim.data(), delim.size()) &&
         (i || delim.size())) {  // do not match empty delim at data start
       return i;  // delimiter match takes precedence over '"' match
     }
@@ -152,7 +152,7 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
 }
 
 irs::analysis::analyzer::ptr make_vpack(irs::string_ref args) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
 ///////////////////////////////////////////////////////////////////////////////
@@ -182,7 +182,7 @@ bool normalize_vpack_config(const VPackSlice slice,
 }
 
 bool normalize_vpack_config(irs::string_ref args, std::string& definition) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   bool res = normalize_vpack_config(slice, &builder);
   if (res) {
@@ -198,7 +198,7 @@ irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
       IR_FRMT_ERROR("Null arguments while constructing delimited_token_stream");
       return nullptr;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
@@ -217,7 +217,7 @@ bool normalize_json_config(irs::string_ref args, std::string& definition) {
       IR_FRMT_ERROR("Null arguments while normalizing delimited_token_stream");
       return false;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     VPackBuilder vpack_builder;
     if (normalize_vpack_config(vpack->slice(), &vpack_builder)) {
       definition = vpack_builder.toString();
@@ -303,11 +303,11 @@ bool delimited_token_stream::next() {
   offset.start = start;
   offset.end = uint32_t(end);
   term.value = delim_.null()
-                 ? bytes_ref(data_.c_str(), size)
-                 : eval_term(term_buf_, bytes_ref(data_.c_str(), size));
+                 ? bytes_ref{data_.data(), size}
+                 : eval_term(term_buf_, bytes_ref(data_.data(), size));
   data_ = size >= data_.size()
             ? bytes_ref{}
-            : bytes_ref{data_.c_str() + next, data_.size() - next};
+            : bytes_ref{data_.data() + next, data_.size() - next};
 
   return true;
 }

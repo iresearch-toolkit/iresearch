@@ -51,7 +51,7 @@ namespace {
 // Return the granularity portion of the term
 irs::bytes_ref mask_granularity(irs::bytes_ref term,
                                 size_t prefix_size) noexcept {
-  return term.size() > prefix_size ? irs::bytes_ref{term.c_str(), prefix_size}
+  return term.size() > prefix_size ? irs::bytes_ref{term.data(), prefix_size}
                                    : term;
 }
 
@@ -61,7 +61,7 @@ irs::bytes_ref mask_value(irs::bytes_ref term, size_t prefix_size) noexcept {
     return term;
   }
 
-  return term.size() > prefix_size ? irs::bytes_ref{term.c_str() + prefix_size,
+  return term.size() > prefix_size ? irs::bytes_ref{term.data() + prefix_size,
                                                     term.size() - prefix_size}
                                    : irs::bytes_ref{};
 }
@@ -225,7 +225,7 @@ void collect_terms_from(
 
     // need a copy of the term since bytes_ref changes on terms.seek(...)
     if (!end_term.null()) {
-      end_term_copy.assign(end_term.c_str(), end_term.size());
+      end_term_copy.assign(end_term.data(), end_term.size());
       end_term = irs::bytes_ref(end_term_copy);
     }
 
@@ -452,7 +452,7 @@ void collect_terms_within(
 
     // need a copy of the term since bytes_ref changes on terms.seek(...)
     if (!end_term.null()) {
-      end_term_copy.assign(end_term.c_str(), end_term.size());
+      end_term_copy.assign(end_term.data(), end_term.size());
       end_term = irs::bytes_ref(end_term_copy);
     }
 

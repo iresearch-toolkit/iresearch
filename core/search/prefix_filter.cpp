@@ -49,7 +49,7 @@ void visit(const sub_reader& segment, const term_reader& reader,
     return;
   }
 
-  if (starts_with(term->value, prefix)) {
+  if (term->value.starts_with(prefix)) {
     terms->read();
 
     visitor.prepare(segment, reader, *terms);
@@ -62,7 +62,7 @@ void visit(const sub_reader& segment, const term_reader& reader,
       }
 
       terms->read();
-    } while (starts_with(term->value, prefix));
+    } while (term->value.starts_with(prefix));
   }
 }
 

@@ -167,7 +167,7 @@ bool get_stopwords(analysis::text_token_stream::stopwords_t& buf,
 
   auto* custom_stopword_path =
     !path.null()
-      ? path.c_str()
+      ? path.data()
       : irs::getenv(analysis::text_token_stream::STOPWORD_PATH_ENV_VARIABLE);
 
   if (custom_stopword_path) {
@@ -884,7 +884,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
 }
 
 analysis::analyzer::ptr make_vpack(string_ref args) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
 
@@ -899,7 +899,7 @@ bool normalize_vpack_config(const VPackSlice slice,
 }
 
 bool normalize_vpack_config(string_ref args, std::string& definition) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   bool res = normalize_vpack_config(slice, &builder);
   if (res) {
@@ -940,7 +940,7 @@ analysis::analyzer::ptr make_json(string_ref args) {
         "Null arguments while constructing text_token_normalizing_stream");
       return nullptr;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
@@ -962,7 +962,7 @@ bool normalize_json_config(string_ref args, std::string& definition) {
         "Null arguments while normalizing text_token_normalizing_stream");
       return false;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     VPackBuilder builder;
     if (normalize_vpack_config(vpack->slice(), &builder)) {
       definition = builder.toString();
@@ -1055,7 +1055,7 @@ bool text_token_stream::reset(string_ref data) {
   }
 
   state_->data = icu::UnicodeString::fromUTF8(
-    icu::StringPiece{data.c_str(), static_cast<int32_t>(data.size())});
+    icu::StringPiece{data.data(), static_cast<int32_t>(data.size())});
 
   // tokenise the unicode data
   state_->break_iterator->setText(state_->data);
@@ -1191,7 +1191,7 @@ bool text_token_stream::next_ngram() {
     static_assert(sizeof(byte_type) == sizeof(char));
 
     auto size = static_cast<uint32_t>(std::distance(begin, state_->ngram.it));
-    term_buf_.assign(state_->term.c_str(), size);
+    term_buf_.assign(state_->term.data(), size);
     std::get<term_attribute>(attrs_).value = term_buf_;
 
     auto& offset = std::get<irs::offset>(attrs_);

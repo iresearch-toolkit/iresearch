@@ -46,7 +46,7 @@ struct by_terms_options {
       : term(std::move(term)), boost(boost) {}
 
     explicit search_term(bytes_ref term, score_t boost = kNoBoost)
-      : term(term.c_str(), term.size()), boost(boost) {}
+      : term(term.data(), term.size()), boost(boost) {}
 
     bool operator==(const search_term& rhs) const noexcept {
       return term == rhs.term && boost == rhs.boost;

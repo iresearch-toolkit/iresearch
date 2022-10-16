@@ -86,7 +86,7 @@ TEST(directory_reader_test, open_newest_index) {
     }
     virtual void read(const irs::directory& /*dir*/, irs::index_meta& /*meta*/,
                       irs::string_ref filename = irs::string_ref{}) override {
-      read_file.assign(filename.c_str(), filename.size());
+      read_file.assign(filename.data(), filename.size());
     };
     std::string segments_file;
     std::string read_file;
@@ -269,13 +269,13 @@ TEST(directory_reader_test, open) {
     // read documents
     ASSERT_EQ(1, values->seek(1));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc1
+                     actual_value->value.data()));  // 'name' value in doc1
     ASSERT_EQ(2, values->seek(2));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc2
+                     actual_value->value.data()));  // 'name' value in doc2
     ASSERT_EQ(3, values->seek(3));
     ASSERT_EQ("C", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
 
     // read invalid document
     ASSERT_TRUE(irs::doc_limits::eof(values->seek(4)));
@@ -299,16 +299,16 @@ TEST(directory_reader_test, open) {
     // read documents
     ASSERT_EQ(1, values->seek(1));
     ASSERT_EQ("D", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc4
+                     actual_value->value.data()));  // 'name' value in doc4
     ASSERT_EQ(2, values->seek(2));
     ASSERT_EQ("E", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc5
+                     actual_value->value.data()));  // 'name' value in doc5
     ASSERT_EQ(3, values->seek(3));
     ASSERT_EQ("F", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc6
+                     actual_value->value.data()));  // 'name' value in doc6
     ASSERT_EQ(4, values->seek(4));
     ASSERT_EQ("G", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc7
+                     actual_value->value.data()));  // 'name' value in doc7
 
     // read invalid document
     ASSERT_TRUE(irs::doc_limits::eof(values->seek(5)));
@@ -332,10 +332,10 @@ TEST(directory_reader_test, open) {
     // read documents
     ASSERT_EQ(1, values->seek(1));
     ASSERT_EQ("H", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc8
+                     actual_value->value.data()));  // 'name' value in doc8
     ASSERT_EQ(2, values->seek(2));
     ASSERT_EQ("I", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc9
+                     actual_value->value.data()));  // 'name' value in doc9
 
     // read invalid document
     ASSERT_TRUE(irs::doc_limits::eof(values->seek(3)));
@@ -511,19 +511,19 @@ TEST(segment_reader_test, open) {
     // read documents
     ASSERT_EQ(1, values->seek(1));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc1
+                     actual_value->value.data()));  // 'name' value in doc1
     ASSERT_EQ(2, values->seek(2));
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc2
+                     actual_value->value.data()));  // 'name' value in doc2
     ASSERT_EQ(3, values->seek(3));
     ASSERT_EQ("C", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
     ASSERT_EQ(4, values->seek(4));
     ASSERT_EQ("D", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc4
+                     actual_value->value.data()));  // 'name' value in doc4
     ASSERT_EQ(5, values->seek(5));
     ASSERT_EQ("E", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc5
+                     actual_value->value.data()));  // 'name' value in doc5
 
     ASSERT_TRUE(
       irs::doc_limits::eof(values->seek(6)));  // read invalid document

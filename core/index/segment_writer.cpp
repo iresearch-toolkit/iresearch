@@ -74,8 +74,8 @@ segment_writer::stored_column::stored_column(
   const hashed_string_ref& name, columnstore_writer& columnstore,
   const column_info_provider_t& column_info,
   std::deque<cached_column>& cached_columns, bool cache)
-  : name(name.c_str(), name.size()), name_hash(name.hash()) {
-  const auto info = column_info(name);
+  : name(name.data(), name.size()), name_hash(name.hash()) {
+  const auto info = column_info(static_cast<const string_ref&>(name));
 
   columnstore_writer::column_finalizer_f finalizer = [this](bstring&) noexcept {
     return string_ref{this->name};

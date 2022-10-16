@@ -53,7 +53,7 @@ TEST(map_utils_tests, try_emplace_update_key) {
       ASSERT_EQ(2, map.size());
 
       for (auto& entry : map) {
-        ASSERT_EQ(entry.first.c_str(), entry.second.c_str());
+        ASSERT_EQ(entry.first.data(), entry.second.c_str());
       }
     }
 
@@ -66,7 +66,7 @@ TEST(map_utils_tests, try_emplace_update_key) {
       ASSERT_EQ(2, map.size());
 
       for (auto& entry : map) {
-        ASSERT_EQ(entry.first.c_str(), entry.second.c_str());
+        ASSERT_EQ(entry.first.data(), entry.second.c_str());
       }
     }
   }
@@ -87,7 +87,7 @@ TEST(map_utils_tests, try_emplace_update_key) {
       ASSERT_EQ(2, map.size());
 
       for (auto& entry : map) {
-        ASSERT_EQ(entry.first.c_str(), entry.second.c_str());
+        ASSERT_EQ(entry.first.data(), entry.second.c_str());
       }
     }
 
@@ -99,7 +99,7 @@ TEST(map_utils_tests, try_emplace_update_key) {
       ASSERT_EQ(2, map.size());
 
       for (auto& entry : map) {
-        ASSERT_EQ(entry.first.c_str(), entry.second.c_str());
+        ASSERT_EQ(entry.first.data(), entry.second.c_str());
       }
     }
   }

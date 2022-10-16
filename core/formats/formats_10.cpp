@@ -248,7 +248,7 @@ struct pay_buffer : skip_buffer {
 
   void push_payload(uint32_t i, bytes_ref pay) {
     if (!pay.empty()) {
-      pay_buf_.append(pay.c_str(), pay.size());
+      pay_buf_.append(pay.data(), pay.size());
     }
     pay_sizes[i] = static_cast<uint32_t>(pay.size());
   }

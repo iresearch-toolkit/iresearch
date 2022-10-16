@@ -4680,11 +4680,11 @@ TEST(memory_directory_test, rewrite) {
   const bytes_ref payload1{ref_cast<byte_type>(str1)};
 
   memory_output out{irs::memory_allocator::global()};
-  out.stream.write_bytes(payload0.c_str(), payload0.size());
+  out.stream.write_bytes(payload0.data(), payload0.size());
   ASSERT_EQ(payload0.size(), out.stream.file_pointer());
   out.stream.seek(out.stream.file_pointer() - 3);
   ASSERT_EQ(payload0.size() - 3, out.stream.file_pointer());
-  out.stream.write_bytes(payload1.c_str(), payload1.size());
+  out.stream.write_bytes(payload1.data(), payload1.size());
   ASSERT_EQ(payload0.size() - 3 + payload1.size(), out.stream.file_pointer());
   out.stream.flush();
 

@@ -179,7 +179,7 @@ TEST(collation_token_stream_test, check_collation) {
 
   constexpr irs::string_ref locale_name = R"(en)";
   const icu::Locale icu_locale =
-    icu::Locale::createFromName(locale_name.c_str());
+    icu::Locale::createFromName(locale_name.data());
 
   CollationEncoder encodedKey;
   std::unique_ptr<icu::Collator> coll{
@@ -191,7 +191,7 @@ TEST(collation_token_stream_test, check_collation) {
     err = UErrorCode::U_ZERO_ERROR;
     icu::CollationKey key;
     coll->getCollationKey(icu::UnicodeString::fromUTF8(icu::StringPiece{
-                            data.c_str(), static_cast<int32_t>(data.size())}),
+                            data.data(), static_cast<int32_t>(data.size())}),
                           key, err);
     EXPECT_TRUE(U_SUCCESS(err));
 
@@ -262,7 +262,7 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
 
   constexpr irs::string_ref locale_name = R"(de@collation=phonebook)";
   const icu::Locale icu_locale =
-    icu::Locale::createFromName(locale_name.c_str());
+    icu::Locale::createFromName(locale_name.data());
 
   CollationEncoder encodedKey;
   std::unique_ptr<icu::Collator> coll{
@@ -274,7 +274,7 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
     err = UErrorCode::U_ZERO_ERROR;
     icu::CollationKey key;
     coll->getCollationKey(icu::UnicodeString::fromUTF8(icu::StringPiece{
-                            data.c_str(), static_cast<int32_t>(data.size())}),
+                            data.data(), static_cast<int32_t>(data.size())}),
                           key, err);
     EXPECT_TRUE(U_SUCCESS(err));
 
@@ -543,7 +543,7 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
 
   constexpr irs::string_ref locale_name = "de_phonebook";
   const icu::Locale icu_locale =
-    icu::Locale::createFromName(locale_name.c_str());
+    icu::Locale::createFromName(locale_name.data());
 
   CollationEncoder encodedKey;
   std::unique_ptr<icu::Collator> coll{
@@ -555,7 +555,7 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
     err = UErrorCode::U_ZERO_ERROR;
     icu::CollationKey key;
     coll->getCollationKey(icu::UnicodeString::fromUTF8(icu::StringPiece{
-                            data.c_str(), static_cast<int32_t>(data.size())}),
+                            data.data(), static_cast<int32_t>(data.size())}),
                           key, err);
     EXPECT_TRUE(U_SUCCESS(err));
 
@@ -711,7 +711,7 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
 
   constexpr irs::string_ref locale_name = "en-EN.UTF-8";
 
-  const auto icu_locale = icu::Locale::createFromName(locale_name.c_str());
+  const auto icu_locale = icu::Locale::createFromName(locale_name.data());
 
   CollationEncoder encodedKey;
   std::unique_ptr<icu::Collator> coll{
@@ -723,7 +723,7 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
     err = UErrorCode::U_ZERO_ERROR;
     icu::CollationKey key;
     coll->getCollationKey(icu::UnicodeString::fromUTF8(icu::StringPiece{
-                            data.c_str(), static_cast<int32_t>(data.size())}),
+                            data.data(), static_cast<int32_t>(data.size())}),
                           key, err);
     EXPECT_TRUE(U_SUCCESS(err));
 
@@ -812,7 +812,7 @@ TEST(collation_token_stream_test, check_tokens) {
 
   constexpr irs::string_ref locale_name = "de-DE";
 
-  const auto icu_locale = icu::Locale::createFromName(locale_name.c_str());
+  const auto icu_locale = icu::Locale::createFromName(locale_name.data());
 
   CollationEncoder encodedKey;
   std::unique_ptr<icu::Collator> coll{
@@ -825,7 +825,7 @@ TEST(collation_token_stream_test, check_tokens) {
     icu::CollationKey key;
     err = UErrorCode::U_ZERO_ERROR;
     coll->getCollationKey(icu::UnicodeString::fromUTF8(icu::StringPiece{
-                            data.c_str(), static_cast<int32_t>(data.size())}),
+                            data.data(), static_cast<int32_t>(data.size())}),
                           key, err);
     EXPECT_TRUE(U_SUCCESS(err));
 

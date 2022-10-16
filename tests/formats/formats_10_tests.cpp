@@ -622,7 +622,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.index_features =
       field.index_features;  // all possible features in segment
 
-    auto out = dir().create(std::string("postings") + state.name.c_str());
+    auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
     postings docs(docs0);
@@ -650,7 +650,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.index_features =
       field.index_features;  // all possible features in segment
 
-    auto out = dir().create(std::string("postings") + state.name.c_str());
+    auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
     postings docs(docs0);
@@ -678,7 +678,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.index_features =
       field.index_features;  // all possible features in segment
 
-    auto out = dir().create(std::string("postings") + state.name.c_str());
+    auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
     postings docs(docs0);
@@ -705,7 +705,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.index_features =
       field.index_features;  // all possible features in segment
 
-    auto out = dir().create(std::string("postings") + state.name.c_str());
+    auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
     postings docs(docs0);
@@ -731,7 +731,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.index_features =
       field.index_features;  // all possible features in segment
 
-    auto out = dir().create(std::string("postings") + state.name.c_str());
+    auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
     postings docs(docs0);
@@ -755,7 +755,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.doc_count = 10000;
     state.name = "5";
 
-    auto out = dir().create(std::string("postings") + state.name.c_str());
+    auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
     postings docs(docs0);

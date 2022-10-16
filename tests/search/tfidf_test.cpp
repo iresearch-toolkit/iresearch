@@ -437,7 +437,7 @@ TEST_P(tfidf_test_case, test_phrase) {
       (*score)(&score_value);
 
       sorted.emplace(score_value,
-                     irs::to_string<std::string>(actual_value->value.c_str()));
+                     irs::to_string<std::string>(actual_value->value.data()));
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -497,7 +497,7 @@ TEST_P(tfidf_test_case, test_phrase) {
       (*score)(&score_value);
 
       sorted.emplace(score_value,
-                     irs::to_string<std::string>(actual_value->value.c_str()));
+                     irs::to_string<std::string>(actual_value->value.data()));
     }
 
     ASSERT_EQ(expected.size(), sorted.size());

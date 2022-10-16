@@ -186,7 +186,7 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data,
   auto expected_token = expected_tokens.begin();
   while (pipe->next()) {
     auto term_value =
-      std::string(irs::ref_cast<char>(term->value).c_str(), term->value.size());
+      std::string(irs::ref_cast<char>(term->value).data(), term->value.size());
     SCOPED_TRACE(testing::Message("Term:") << term_value);
     auto old_pos = pos;
     pos += inc->value;
@@ -732,7 +732,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(p1, pay->value.c_str());
+    ASSERT_EQ(p1, pay->value.data());
   }
   {
     auto payload_offset = std::make_unique<pipeline_test_analyzer>(
@@ -754,7 +754,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(p1, pay->value.c_str());
+    ASSERT_EQ(p1, pay->value.data());
   }
   {
     auto payload_offset = std::make_unique<pipeline_test_analyzer>(
@@ -776,7 +776,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(p2, pay->value.c_str());
+    ASSERT_EQ(p2, pay->value.data());
   }
   {
     auto payload_offset = std::make_unique<pipeline_test_analyzer>(
@@ -798,7 +798,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(p1, pay->value.c_str());
+    ASSERT_EQ(p1, pay->value.data());
   }
   {
     auto only_payload = std::make_unique<pipeline_test_analyzer>(
@@ -820,7 +820,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(p2, pay->value.c_str());
+    ASSERT_EQ(p2, pay->value.data());
   }
 }
 

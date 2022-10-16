@@ -1293,7 +1293,7 @@ bool writer::commit(const flush_state& /*state*/) {
   const field_id count = static_cast<field_id>(columns_.size());
 
   const irs::string_ref segment_name{
-    data_filename_, data_filename_.size() - kDataFormatExt.size() - 1};
+    data_filename_.data(), data_filename_.size() - kDataFormatExt.size() - 1};
   auto index_filename = index_file_name(segment_name);
   auto index_out = dir_->create(index_filename);
 

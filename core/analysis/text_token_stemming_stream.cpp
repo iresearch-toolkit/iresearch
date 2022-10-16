@@ -128,7 +128,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
 }
 
 analysis::analyzer::ptr make_vpack(string_ref args) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
 ///////////////////////////////////////////////////////////////////////////////
@@ -158,7 +158,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
 }
 
 bool normalize_vpack_config(string_ref args, std::string& config) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
@@ -174,7 +174,7 @@ analysis::analyzer::ptr make_json(string_ref args) {
         "Null arguments while constructing text_token_normalizing_stream");
       return nullptr;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
@@ -196,7 +196,7 @@ bool normalize_json_config(string_ref args, std::string& definition) {
         "Null arguments while normalizing text_token_normalizing_stream");
       return false;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     VPackBuilder builder;
     if (normalize_vpack_config(vpack->slice(), &builder)) {
       definition = builder.toString();
@@ -272,7 +272,7 @@ bool stemming_token_stream::reset(string_ref data) {
     }
 
     static_assert(sizeof(sb_symbol) == sizeof(char));
-    const auto* value = reinterpret_cast<const sb_symbol*>(utf8_data.c_str());
+    const auto* value = reinterpret_cast<const sb_symbol*>(utf8_data.data());
 
     value = sb_stemmer_stem(stemmer_.get(), value,
                             static_cast<int>(utf8_data.size()));

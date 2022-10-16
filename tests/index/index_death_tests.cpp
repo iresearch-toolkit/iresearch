@@ -327,11 +327,11 @@ void open_reader(
   ASSERT_TRUE(docsItr->next());
   ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
   ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                   actual_value->value.c_str()));  // 'name' value in doc3
+                   actual_value->value.data()));  // 'name' value in doc3
   ASSERT_TRUE(docsItr->next());
   ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
   ASSERT_EQ("B", irs::to_string<irs::string_ref>(
-                   actual_value->value.c_str()));  // 'name' value in doc3
+                   actual_value->value.data()));  // 'name' value in doc3
   ASSERT_FALSE(docsItr->next());
 
   // validate live docs
@@ -453,7 +453,7 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -592,7 +592,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -700,7 +700,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -799,7 +799,7 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -863,7 +863,7 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 
@@ -934,7 +934,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -957,7 +957,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -1098,7 +1098,7 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -1246,7 +1246,7 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -1369,7 +1369,7 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -1469,7 +1469,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -1492,7 +1492,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -1609,7 +1609,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -1632,7 +1632,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -1655,7 +1655,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -1678,7 +1678,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -1787,7 +1787,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -1810,7 +1810,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -1833,7 +1833,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -1926,7 +1926,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -1949,7 +1949,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -1972,7 +1972,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2067,7 +2067,7 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -2090,7 +2090,7 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2185,7 +2185,7 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -2208,7 +2208,7 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2365,7 +2365,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2492,7 +2492,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2649,7 +2649,7 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("C", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -2729,7 +2729,7 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -2832,7 +2832,7 @@ TEST(index_death_test_formats_14,
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -3085,12 +3085,12 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc1
+                     actual_value->value.data()));  // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values->next());
     actual_value = irs::get<irs::payload>(*values);
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc2
+                     actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -3194,22 +3194,22 @@ TEST(index_death_test_formats_14, fails_in_exists) {
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc1
+                     actual_value->value.data()));  // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values->next());
     actual_value = irs::get<irs::payload>(*values);
     ASSERT_EQ("B", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc2
+                     actual_value->value.data()));  // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values->next());
     actual_value = irs::get<irs::payload>(*values);
     ASSERT_EQ("C", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values->next());
     actual_value = irs::get<irs::payload>(*values);
     ASSERT_EQ("D", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc4
+                     actual_value->value.data()));  // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -3378,22 +3378,22 @@ TEST(index_death_test_formats_14, fails_in_length) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc1
+                       actual_value->value.data()));  // 'name' value in doc1
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values->next());
       actual_value = irs::get<irs::payload>(*values);
       ASSERT_EQ("B", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc2
+                       actual_value->value.data()));  // 'name' value in doc2
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values->next());
       actual_value = irs::get<irs::payload>(*values);
       ASSERT_EQ("C", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values->next());
       actual_value = irs::get<irs::payload>(*values);
       ASSERT_EQ("D", irs::to_string<irs::string_ref>(
-                       actual_value->value.c_str()));  // 'name' value in doc4
+                       actual_value->value.data()));  // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -3532,11 +3532,11 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   // don't need to reopen anymore
   dir.register_failure(failing_directory::Failure::REOPEN, "_1.cs");
   // 'name' value in doc3
-  ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+  ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.data()));
   ASSERT_TRUE(docsItr->next());
   ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
   // 'name' value in doc3
-  ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+  ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.data()));
   ASSERT_FALSE(docsItr->next());
 
   // validate live docs
@@ -3635,11 +3635,11 @@ TEST(index_death_test_formats_14, columnstore_reopen_fail) {
   ASSERT_EQ(docsItr->value(),
             values->seek(docsItr->value()));  // successful attempt
   ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                   actual_value->value.c_str()));  // 'name' value in doc3
+                   actual_value->value.data()));  // 'name' value in doc3
   ASSERT_TRUE(docsItr->next());
   ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
   ASSERT_EQ("B", irs::to_string<irs::string_ref>(
-                   actual_value->value.c_str()));  // 'name' value in doc3
+                   actual_value->value.data()));  // 'name' value in doc3
   ASSERT_FALSE(docsItr->next());
 
   // validate live docs
@@ -3738,7 +3738,7 @@ TEST(index_death_test_formats_14, fails_in_dup) {
 
   ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));  // '1' and '1'
   // 'name' value in doc1
-  ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+  ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.data()));
   ASSERT_TRUE(docsItr->next());
 
   ASSERT_EQ(docsItr->value(), 2);
@@ -3747,11 +3747,11 @@ TEST(index_death_test_formats_14, fails_in_dup) {
 
   // 'name' value in doc3. because
   // 2nd document is not stored
-  ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+  ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value->value.data()));
   ASSERT_TRUE(docsItr->next());
 
   ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));  // '3' and '3'
-  ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+  ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value->value.data()));
   ASSERT_TRUE(docsItr->next());
 
   ASSERT_EQ(docsItr->value(), 4);
@@ -3916,11 +3916,11 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   // successful attempt
   ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
   // 'name' value in doc3
-  ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+  ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.data()));
   ASSERT_TRUE(docsItr->next());
   ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
   // 'name' value in doc3
-  ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+  ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.data()));
   ASSERT_FALSE(docsItr->next());
 
   // validate live docs

@@ -83,7 +83,7 @@ TEST_P(format_13_test_case, open_10_with_13) {
          docsItr->next();) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str())));
+                     actual_value->value.data())));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -155,7 +155,7 @@ TEST_P(format_13_test_case, formats_10_13) {
          docsItr->next();) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str())));
+                     actual_value->value.data())));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -186,7 +186,7 @@ TEST_P(format_13_test_case, formats_10_13) {
          docsItr->next();) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str())));
+                     actual_value->value.data())));
     }
 
     ASSERT_TRUE(expectedName.empty());

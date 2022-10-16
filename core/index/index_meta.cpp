@@ -34,7 +34,7 @@ namespace iresearch {
  * ------------------------------------------------------------------*/
 
 segment_meta::segment_meta(string_ref name, format::ptr codec)
-  : name(name.c_str(), name.size()), codec(codec), column_store(false) {}
+  : name(name.data(), name.size()), codec(codec), column_store(false) {}
 
 segment_meta::segment_meta(std::string&& name, format::ptr codec,
                            uint64_t docs_count, uint64_t live_docs_count,

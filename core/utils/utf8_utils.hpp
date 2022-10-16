@@ -246,7 +246,7 @@ inline size_t utf8_length(const byte_type* begin, size_t size) noexcept {
 }
 
 FORCE_INLINE size_t utf8_length(bytes_ref in) noexcept {
-  return utf8_length(in.c_str(), in.size());
+  return utf8_length(in.data(), in.size());
 }
 
 }  // namespace utf8_utils

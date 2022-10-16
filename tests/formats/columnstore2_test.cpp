@@ -424,7 +424,7 @@ TEST_P(columnstore2_test_case, sparse_column) {
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; doc += 2) {
       auto& stream = column(doc);
       const auto str = std::to_string(doc);
-      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.c_str()),
+      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.data()),
                          str.size());
     }
 
@@ -659,7 +659,7 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
           (doc <= kGapBegin || doc > (kGapBegin + kBlockSize))) {
         ASSERT_EQ(sizeof doc, payload.size());
         const irs::doc_id_t actual_doc =
-          *reinterpret_cast<const irs::doc_id_t*>(payload.c_str());
+          *reinterpret_cast<const irs::doc_id_t*>(payload.data());
         ASSERT_EQ(doc, actual_doc);
       } else {
         ASSERT_TRUE(payload.empty());
@@ -870,13 +870,13 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
       if (doc > kTailBegin) {
         ASSERT_EQ(2 * sizeof doc, payload.size());
         const irs::doc_id_t* actual_doc =
-          reinterpret_cast<const irs::doc_id_t*>(payload.c_str());
+          reinterpret_cast<const irs::doc_id_t*>(payload.data());
         ASSERT_EQ(doc, actual_doc[0]);
         ASSERT_EQ(doc, actual_doc[1]);
       } else {
         ASSERT_EQ(sizeof doc, payload.size());
         const irs::doc_id_t actual_doc =
-          *reinterpret_cast<const irs::doc_id_t*>(payload.c_str());
+          *reinterpret_cast<const irs::doc_id_t*>(payload.data());
         ASSERT_EQ(doc, actual_doc);
       }
     };
@@ -1053,13 +1053,13 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
       if (doc > kTailBegin) {
         ASSERT_EQ(1 + sizeof doc, payload.size());
         const irs::doc_id_t actual_doc =
-          *reinterpret_cast<const irs::doc_id_t*>(payload.c_str());
+          *reinterpret_cast<const irs::doc_id_t*>(payload.data());
         ASSERT_EQ(doc, actual_doc);
         ASSERT_EQ(42, payload[sizeof doc]);
       } else {
         ASSERT_EQ(sizeof doc, payload.size());
         const irs::doc_id_t actual_doc =
-          *reinterpret_cast<const irs::doc_id_t*>(payload.c_str());
+          *reinterpret_cast<const irs::doc_id_t*>(payload.data());
         ASSERT_EQ(doc, actual_doc);
       }
     };
@@ -2130,7 +2130,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
         if (has_payload()) {
           ASSERT_EQ(sizeof doc, payload.value.size());
           const irs::doc_id_t actual_doc =
-            *reinterpret_cast<const irs::doc_id_t*>(payload.value.c_str());
+            *reinterpret_cast<const irs::doc_id_t*>(payload.value.data());
           EXPECT_EQ(doc, actual_doc);
         } else {
           ASSERT_TRUE(payload.value.empty());
@@ -2444,7 +2444,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
         if (has_payload()) {
           ASSERT_EQ(sizeof doc, payload.value.size());
           const irs::doc_id_t actual_doc =
-            *reinterpret_cast<const irs::doc_id_t*>(payload.value.c_str());
+            *reinterpret_cast<const irs::doc_id_t*>(payload.value.data());
           EXPECT_EQ(doc, actual_doc);
         } else {
           ASSERT_TRUE(payload.value.empty());

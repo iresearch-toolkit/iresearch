@@ -26,11 +26,11 @@
 #include <cctype>  // for std::isspace(...)
 #include <string_view>
 
-#include "velocypack/Slice.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Parser.h"
-#include "velocypack/Iterator.h"
 #include "utils/vpack_utils.hpp"
+#include "velocypack/Builder.h"
+#include "velocypack/Iterator.h"
+#include "velocypack/Parser.h"
+#include "velocypack/Slice.h"
 
 namespace {
 
@@ -169,7 +169,7 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
 }
 
 irs::analysis::analyzer::ptr make_vpack(irs::string_ref args) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
 
@@ -180,7 +180,7 @@ irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
         "Null arguments while constructing token_stopwords_stream ");
       return nullptr;
     }
-    auto vpack = VPackParser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.data());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
@@ -238,7 +238,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
 }
 
 bool normalize_vpack_config(irs::string_ref args, std::string& config) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
@@ -253,7 +253,7 @@ bool normalize_json_config(irs::string_ref args, std::string& definition) {
       IR_FRMT_ERROR("Null arguments while normalizing token_stopwords_stream");
       return false;
     }
-    auto vpack = VPackParser::fromJson(args.c_str());
+    auto vpack = VPackParser::fromJson(args.data());
     VPackBuilder builder;
     if (normalize_vpack_config(vpack->slice(), &builder)) {
       definition = builder.toString();

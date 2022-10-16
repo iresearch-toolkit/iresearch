@@ -72,7 +72,7 @@ auto executeWildcard(bstring& buf, bytes_ref term, Invalid&& inv, Term&& t,
       [[fallthrough]];
     case WildcardType::PREFIX: {
       assert(!term.empty());
-      const auto* begin = term.c_str();
+      const auto* begin = term.data();
       const auto* end = begin + term.size();
 
       // term is already checked to be a valid UTF-8 sequence

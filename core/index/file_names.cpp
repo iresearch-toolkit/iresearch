@@ -21,9 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "file_names.hpp"
+
 #include <cinttypes>
+
+#include "shared.hpp"
 
 #if defined(_MSC_VER)
 #pragma warning(disable : 4996)
@@ -42,7 +44,7 @@ std::string file_name(string_ref prefix, uint64_t gen) {
 
   std::string str;
   str.reserve(buf_size + prefix.size());
-  str.append(prefix.c_str(), prefix.size());
+  str.append(prefix);
   str.append(buf, sprintf(buf, "%" PRIu64, gen));
 
   return str;
@@ -51,9 +53,9 @@ std::string file_name(string_ref prefix, uint64_t gen) {
 std::string file_name(string_ref name, string_ref ext) {
   std::string out;
   out.reserve(1 + name.size() + ext.size());
-  out.append(name.c_str(), name.size());
+  out.append(name);
   out += '.';
-  out.append(ext.c_str(), ext.size());
+  out.append(ext);
 
   return out;
 }
@@ -61,9 +63,9 @@ std::string file_name(string_ref name, string_ref ext) {
 void file_name(std::string& out, string_ref name, string_ref ext) {
   out.clear();
   out.reserve(1 + name.size() + ext.size());
-  out.append(name.c_str(), name.size());
+  out.append(name);
   out += '.';
-  out.append(ext.c_str(), ext.size());
+  out.append(ext);
 }
 
 std::string file_name(string_ref name, uint64_t gen, string_ref ext) {
@@ -72,11 +74,11 @@ std::string file_name(string_ref name, uint64_t gen, string_ref ext) {
 
   std::string out;
   out.reserve(2 + name.size() + buf_size + ext.size());
-  out.append(name.c_str(), name.size());
+  out.append(name);
   out += '.';
   out.append(buf, buf_size);
   out += '.';
-  out.append(ext.c_str(), ext.size());
+  out.append(ext);
 
   return out;
 }

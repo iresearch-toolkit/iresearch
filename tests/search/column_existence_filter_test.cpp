@@ -520,43 +520,43 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("A", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("C", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("D", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("J", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("J", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("K", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("K", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("L", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("R", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("R", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("S", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("S", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("T", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("T", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("U", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("U", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("V", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("V", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("!", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("!", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("%", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("%", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_FALSE(it->next());
     }
 
@@ -587,19 +587,19 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("B", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("U", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("U", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("V", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("V", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("X", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("X", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("Z", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("Z", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_FALSE(it->next());
     }
 
@@ -630,19 +630,19 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("Z", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("Z", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("~", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("~", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("@", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("@", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("#", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("#", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("$", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("$", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_FALSE(it->next());
     }
 
@@ -673,16 +673,16 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("A", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("J", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("J", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("L", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("L", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("N", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("N", irs::to_string<irs::string_ref>(value->value.data()));
       ASSERT_FALSE(it->next());
     }
 

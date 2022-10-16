@@ -21,9 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
 #include "search/granular_range_filter.hpp"
+#include "tests_shared.hpp"
 
 namespace {
 
@@ -2203,7 +2203,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     while (docs->next()) {
       const auto doc = docs->value();
       ASSERT_EQ(doc, values->seek(doc));
-      actual.emplace(irs::to_string<std::string>(actual_value->value.c_str()));
+      actual.emplace(irs::to_string<std::string>(actual_value->value.data()));
     }
     ASSERT_EQ(expected, actual);
   }
@@ -2255,7 +2255,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     while (docs->next()) {
       const auto doc = docs->value();
       ASSERT_EQ(doc, values->seek(doc));
-      actual.emplace(irs::to_string<std::string>(actual_value->value.c_str()));
+      actual.emplace(irs::to_string<std::string>(actual_value->value.data()));
     }
     ASSERT_EQ(expected, actual);
   }
@@ -2310,7 +2310,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     while (docs->next()) {
       const auto doc = docs->value();
       ASSERT_EQ(doc, values->seek(doc));
-      actual.emplace(irs::to_string<std::string>(actual_value->value.c_str()));
+      actual.emplace(irs::to_string<std::string>(actual_value->value.data()));
     }
     ASSERT_EQ(expected, actual);
   }
@@ -2362,7 +2362,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     while (docs->next()) {
       const auto doc = docs->value();
       ASSERT_EQ(doc, values->seek(doc));
-      actual.emplace(irs::to_string<std::string>(actual_value->value.c_str()));
+      actual.emplace(irs::to_string<std::string>(actual_value->value.data()));
     }
     ASSERT_EQ(expected, actual);
   }

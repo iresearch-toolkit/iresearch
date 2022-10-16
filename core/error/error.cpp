@@ -20,8 +20,9 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "error.hpp"
+
+#include "shared.hpp"
 
 namespace iresearch {
 
@@ -40,7 +41,7 @@ lock_obtain_failed::lock_obtain_failed(irs::string_ref filename /*= "" */
     error_ += ".";
   } else {
     error_ += ": ";
-    error_ += filename.c_str();
+    error_ += filename;
   }
 }
 
@@ -53,7 +54,7 @@ file_not_found::file_not_found(irs::string_ref filename /*= "" */
     error_ += ".";
   } else {
     error_ += ": ";
-    error_.append(filename.c_str(), filename.size());
+    error_.append(filename);
   }
 }
 

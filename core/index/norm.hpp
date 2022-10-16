@@ -23,8 +23,8 @@
 #ifndef IRESEARCH_NORM_H
 #define IRESEARCH_NORM_H
 
-#include "shared.hpp"
 #include "analysis/token_attributes.hpp"
+#include "shared.hpp"
 #include "store/store_utils.hpp"
 #include "utils/lz4compression.hpp"
 
@@ -149,11 +149,11 @@ class Norm2Writer final : public feature_writer {
         value = payload.front();
       } break;
       case sizeof(uint16_t): {
-        auto* p = payload.c_str();
+        auto* p = payload.data();
         value = irs::read<uint16_t>(p);
       } break;
       case sizeof(uint32_t): {
-        auto* p = payload.c_str();
+        auto* p = payload.data();
         value = irs::read<uint32_t>(p);
       } break;
       default:
@@ -219,7 +219,7 @@ class Norm2 : public attribute {
       if (const doc_id_t doc = ctx.doc->value;
           IRS_LIKELY(doc == ctx.it->seek(doc))) {
         assert(sizeof(T) == ctx.payload->value.size());
-        const auto* value = ctx.payload->value.c_str();
+        const auto* value = ctx.payload->value.data();
 
         if constexpr (std::is_same_v<T, irs::byte_type>) {
           return *value;

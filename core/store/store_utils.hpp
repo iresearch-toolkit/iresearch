@@ -271,7 +271,7 @@ void vwrite_string(OutputIterator& out, const CharType* value, size_t size) {
 ////////////////////////////////////////////////////////////////////////////////
 template<typename OutputIterator, typename StringType>
 void vwrite_string(OutputIterator& out, const StringType& value) {
-  vwrite_string(out, value.c_str(), value.size());
+  vwrite_string(out, value.data(), value.size());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -397,7 +397,7 @@ class bytes_ref_input : public index_input {
     pos_ = data;
   }
 
-  void reset(bytes_ref ref) noexcept { reset(ref.c_str(), ref.size()); }
+  void reset(bytes_ref ref) noexcept { reset(ref.data(), ref.size()); }
 
   virtual ptr dup() const override {
     return memory::make_unique<bytes_ref_input>(*this);

@@ -87,7 +87,7 @@ void write_prox(Stream& out, uint32_t prox, const irs::payload* pay,
   } else {
     irs::vwrite<uint32_t>(out, shift_pack_32(prox, true));
     irs::vwrite<size_t>(out, pay->value.size());
-    out.write(pay->value.c_str(), pay->value.size());
+    out.write(pay->value.data(), pay->value.size());
 
     // saw payloads
     features |= IndexFeatures::PAY;
@@ -1016,13 +1016,13 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
 
   if (!inc) {
     IR_FRMT_ERROR("field '%s' missing required token_stream attribute '%s'",
-                  meta_.name.c_str(), type<increment>::name().c_str());
+                  meta_.name.c_str(), type<increment>::name().data());
     return false;
   }
 
   if (!term) {
     IR_FRMT_ERROR("field '%s' missing required token_stream attribute '%s'",
-                  meta_.name.c_str(), type<term_attribute>::name().c_str());
+                  meta_.name.c_str(), type<term_attribute>::name().data());
     return false;
   }
 
@@ -1075,7 +1075,7 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
                    "' in field '%s'",
                    term->value.size(), meta_.name.c_str());
       IR_FRMT_TRACE("field '%s' contains too long term '%s'",
-                    meta_.name.c_str(), ref_cast<char>(term->value).c_str());
+                    meta_.name.c_str(), ref_cast<char>(term->value).data());
       continue;
     }
 
@@ -1124,8 +1124,9 @@ field_data* fields_data::emplace(const hashed_string_ref& name,
 
   if (!it->second) {
     try {
-      fields_.emplace_back(name, features, *feature_info_, *cached_features_,
-                           columns, byte_writer_, int_writer_, index_features,
+      fields_.emplace_back(static_cast<const string_ref&>(name), features,
+                           *feature_info_, *cached_features_, columns,
+                           byte_writer_, int_writer_, index_features,
                            (nullptr != comparator_));
     } catch (...) {
       fields_map_.erase(it);

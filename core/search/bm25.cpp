@@ -148,7 +148,7 @@ irs::sort::ptr make_vpack(irs::string_ref args) {
     // default args
     return irs::memory::make_unique<irs::bm25_sort>();
   } else {
-    VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+    VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
     return make_vpack(slice);
   }
 }
@@ -159,7 +159,7 @@ irs::sort::ptr make_json(irs::string_ref args) {
     return irs::memory::make_unique<irs::bm25_sort>();
   } else {
     try {
-      auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+      auto vpack = VPackParser::fromJson(args.data(), args.size());
       return make_vpack(vpack->slice());
     } catch (const VPackException& ex) {
       IR_FRMT_ERROR(
@@ -188,7 +188,7 @@ struct byte_ref_iterator {
   const irs::byte_type* pos_;
 
   explicit byte_ref_iterator(irs::bytes_ref in)
-    : end_(in.c_str() + in.size()), pos_(in.c_str()) {}
+    : end_(in.data() + in.size()), pos_(in.data()) {}
 
   irs::byte_type operator*() {
     if (pos_ >= end_) {

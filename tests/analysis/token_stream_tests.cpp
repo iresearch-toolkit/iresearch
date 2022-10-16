@@ -83,7 +83,7 @@ TEST(token_streams_tests, boolean_stream) {
 
 TEST(token_streams_tests, null_stream) {
   ASSERT_EQ(0, null_token_stream::value_null().size());
-  ASSERT_NE(nullptr, null_token_stream::value_null().c_str());
+  ASSERT_NE(nullptr, null_token_stream::value_null().data());
 
   const auto expected = bytes_ref{};
   null_token_stream stream;

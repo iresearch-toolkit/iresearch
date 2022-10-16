@@ -40,7 +40,7 @@ void assert_description(
     candidates) {
   auto a = irs::make_levenshtein_automaton(description, prefix, term);
 
-  irs::bstring target(prefix.c_str(), prefix.size());
+  irs::bstring target(prefix.data(), prefix.size());
   target += term;
 
   // ensure only invalid state has no outbound connections
@@ -108,8 +108,8 @@ void assert_description(
   const irs::parametric_description& description, const irs::bytes_ref& target,
   const std::vector<std::tuple<irs::bytes_ref, size_t, size_t, size_t>>&
     candidates) {
-  return assert_description(description, irs::EmptyRef<irs::byte_type>(), target,
-                            candidates);
+  return assert_description(description, irs::EmptyRef<irs::byte_type>(),
+                            target, candidates);
 }
 
 void assert_read_write(const irs::parametric_description& description) {
@@ -133,9 +133,9 @@ TEST(levenshtein_utils_test, test_distance) {
     const irs::string_ref rhs = "abcd";
 
     ASSERT_EQ(
-      2, irs::edit_distance(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size()));
+      2, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
     ASSERT_EQ(
-      2, irs::edit_distance(rhs.c_str(), rhs.size(), lhs.c_str(), lhs.size()));
+      2, irs::edit_distance(rhs.data(), rhs.size(), lhs.data(), lhs.size()));
   }
 
   {
@@ -143,9 +143,9 @@ TEST(levenshtein_utils_test, test_distance) {
     const irs::string_ref rhs = "relevant";
 
     ASSERT_EQ(
-      3, irs::edit_distance(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size()));
+      3, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
     ASSERT_EQ(
-      3, irs::edit_distance(rhs.c_str(), rhs.size(), lhs.c_str(), lhs.size()));
+      3, irs::edit_distance(rhs.data(), rhs.size(), lhs.data(), lhs.size()));
   }
 
   {
@@ -169,9 +169,9 @@ TEST(levenshtein_utils_test, test_distance) {
     const irs::string_ref rhs = "aec";
 
     ASSERT_EQ(
-      3, irs::edit_distance(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size()));
+      3, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
     ASSERT_EQ(
-      3, irs::edit_distance(rhs.c_str(), rhs.size(), lhs.c_str(), lhs.size()));
+      3, irs::edit_distance(rhs.data(), rhs.size(), lhs.data(), lhs.size()));
   }
 
   {
@@ -179,9 +179,9 @@ TEST(levenshtein_utils_test, test_distance) {
     const irs::string_ref rhs = "";
 
     ASSERT_EQ(
-      0, irs::edit_distance(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size()));
+      0, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
     ASSERT_EQ(
-      0, irs::edit_distance(rhs.c_str(), rhs.size(), lhs.c_str(), lhs.size()));
+      0, irs::edit_distance(rhs.data(), rhs.size(), lhs.data(), lhs.size()));
   }
 
   {
@@ -189,9 +189,9 @@ TEST(levenshtein_utils_test, test_distance) {
     const irs::string_ref rhs;
 
     ASSERT_EQ(
-      0, irs::edit_distance(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size()));
+      0, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
     ASSERT_EQ(
-      0, irs::edit_distance(rhs.c_str(), rhs.size(), lhs.c_str(), lhs.size()));
+      0, irs::edit_distance(rhs.data(), rhs.size(), lhs.data(), lhs.size()));
   }
 }
 

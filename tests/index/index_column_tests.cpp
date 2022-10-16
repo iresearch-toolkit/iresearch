@@ -98,7 +98,7 @@ TEST_P(index_column_test_case,
       bool write(irs::data_output& out) {
         auto str = std::to_string(value);
         if (value % 3) {
-          str.append(column_name.c_str(), column_name.size());
+          str.append(column_name.data(), column_name.size());
         }
 
         irs::write_string(out, str);
@@ -161,11 +161,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 3) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -195,11 +195,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 3) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -235,11 +235,11 @@ TEST_P(index_column_test_case,
       size_t docs = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -284,11 +284,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 3) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -324,11 +324,11 @@ TEST_P(index_column_test_case,
       size_t docs = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -357,11 +357,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 3) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -397,11 +397,11 @@ TEST_P(index_column_test_case,
       size_t docs = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -446,11 +446,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 3) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -487,19 +487,19 @@ TEST_P(index_column_test_case,
       for (; expected_doc <= MAX_DOCS;) {
         auto expected_value_str = std::to_string(expected_value);
         if (expected_value % 3) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         ASSERT_EQ(expected_value_str, actual_str_value);
 
         ASSERT_EQ(expected_doc,
                   it->seek(expected_value));  // seek before the existing key
                                               // (value should remain the same)
         actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         ASSERT_EQ(expected_value_str, actual_str_value);
 
         expected_doc += 2;
@@ -540,19 +540,19 @@ TEST_P(index_column_test_case,
       for (; expected_doc <= MAX_DOCS;) {
         auto expected_value_str = std::to_string(expected_value);
         if (expected_value % 3) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->seek(expected_value));
         auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         ASSERT_EQ(expected_value_str, actual_str_value);
 
         ASSERT_EQ(expected_doc,
                   it->seek(expected_doc));  // seek to the existing key (value
                                             // should remain the same)
         actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         ASSERT_EQ(expected_value_str, actual_str_value);
 
         expected_doc += 2;
@@ -593,11 +593,11 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 3) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_EQ(expected_value_str, actual_value_str);
@@ -608,11 +608,11 @@ TEST_P(index_column_test_case,
 
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -648,11 +648,11 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 3) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_EQ(expected_value_str, actual_value_str);
@@ -663,11 +663,11 @@ TEST_P(index_column_test_case,
 
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -701,12 +701,12 @@ TEST_P(index_column_test_case,
       auto expected_value = MAX_DOCS - 1;
       auto expected_value_str = std::to_string(expected_value);
       if (expected_value % 3) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       it->seek(expected_doc);
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       ASSERT_EQ(expected_doc, it->value());
       ASSERT_EQ(expected_value_str, actual_value_str);
 
@@ -731,12 +731,12 @@ TEST_P(index_column_test_case,
       auto expected_value = MAX_DOCS - 1;
       auto expected_value_str = std::to_string(expected_value);
       if (expected_value % 3) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       it->seek(expected_value);
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       ASSERT_EQ(MAX_DOCS, it->value());
       ASSERT_EQ(expected_value_str, actual_value_str);
 
@@ -797,11 +797,11 @@ TEST_P(index_column_test_case,
         }
 
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -813,11 +813,11 @@ TEST_P(index_column_test_case,
         auto next_expected_value = expected_value + 2;
         for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.c_str());
+            irs::to_string<irs::string_ref>(payload->value.data());
           auto next_expected_value_str = std::to_string(next_expected_value);
 
           if (next_expected_value % 3) {
-            next_expected_value_str.append(column_name.c_str(),
+            next_expected_value_str.append(column_name.data(),
                                            column_name.size());
           }
 
@@ -866,11 +866,11 @@ TEST_P(index_column_test_case,
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_value_str, actual_value_str);
@@ -881,11 +881,11 @@ TEST_P(index_column_test_case,
         auto next_expected_value = expected_value + 2;
         for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.c_str());
+            irs::to_string<irs::string_ref>(payload->value.data());
           auto next_expected_value_str = std::to_string(next_expected_value);
 
           if (next_expected_value % 3) {
-            next_expected_value_str.append(column_name.c_str(),
+            next_expected_value_str.append(column_name.data(),
                                            column_name.size());
           }
 
@@ -917,11 +917,11 @@ TEST_P(index_column_test_case,
       expected_value = expected_doc - 1;
       ASSERT_EQ(min_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 3) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_EQ(expected_value_str, actual_value_str);
@@ -931,11 +931,11 @@ TEST_P(index_column_test_case,
       for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         auto next_expected_value_str = std::to_string(next_expected_value);
         if (next_expected_value % 3) {
-          next_expected_value_str.append(column_name.c_str(),
+          next_expected_value_str.append(column_name.data(),
                                          column_name.size());
         }
 
@@ -967,11 +967,11 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 3) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_EQ(expected_value_str, actual_value_str);
@@ -980,11 +980,11 @@ TEST_P(index_column_test_case,
       auto next_expected_value = expected_value + 2;
       for (size_t i = 0; i < steps_forward && it->next(); ++i) {
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto next_expected_value_str = std::to_string(next_expected_value);
 
         if (next_expected_value % 3) {
-          next_expected_value_str.append(column_name.c_str(),
+          next_expected_value_str.append(column_name.data(),
                                          column_name.size());
         }
 
@@ -1018,11 +1018,11 @@ TEST_P(index_column_test_case,
       for (; expected_doc <= MAX_DOCS;) {
         ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_value_str, actual_str_value);
@@ -1057,11 +1057,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 3) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -1097,11 +1097,11 @@ TEST_P(index_column_test_case,
       size_t docs = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -1961,7 +1961,7 @@ TEST_P(index_column_test_case,
       bool write(irs::data_output& out) {
         auto str = std::to_string(value);
         if (value % 2) {
-          str.append(column_name.c_str(), column_name.size());
+          str.append(column_name.data(), column_name.size());
         }
 
         irs::write_string(out, str);
@@ -2028,11 +2028,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -2069,11 +2069,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -2116,11 +2116,11 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -2171,11 +2171,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -2218,11 +2218,11 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -2257,11 +2257,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -2304,11 +2304,11 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -2359,11 +2359,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -2414,11 +2414,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_value_str, actual_str_value);
@@ -2462,11 +2462,11 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_EQ(expected_value_str, actual_value_str);
@@ -2482,11 +2482,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -2523,11 +2523,11 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_EQ(expected_value_str, actual_value_str);
@@ -2543,11 +2543,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -2582,11 +2582,11 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_EQ(expected_value_str, actual_value_str);
@@ -2614,11 +2614,11 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_EQ(expected_value_str, actual_value_str);
@@ -2627,13 +2627,13 @@ TEST_P(index_column_test_case,
       ++expected_value;
       expected_value_str = std::to_string(expected_value);
       if (expected_value % 2) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_TRUE(it->next());
       ASSERT_EQ(expected_doc, it->value());
       ASSERT_EQ(expected_value_str,
-                irs::to_string<irs::string_ref>(payload->value.c_str()));
+                irs::to_string<irs::string_ref>(payload->value.data()));
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
@@ -2705,11 +2705,11 @@ TEST_P(index_column_test_case,
         ++docs_count;
 
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -2724,11 +2724,11 @@ TEST_P(index_column_test_case,
           }
 
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.c_str());
+            irs::to_string<irs::string_ref>(payload->value.data());
           auto next_expected_value_str = std::to_string(next_expected_value);
 
           if (next_expected_value % 2) {
-            next_expected_value_str.append(column_name.c_str(),
+            next_expected_value_str.append(column_name.data(),
                                            column_name.size());
           }
 
@@ -2779,11 +2779,11 @@ TEST_P(index_column_test_case,
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ++docs_count;
@@ -2799,11 +2799,11 @@ TEST_P(index_column_test_case,
           }
 
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.c_str());
+            irs::to_string<irs::string_ref>(payload->value.data());
           auto next_expected_value_str = std::to_string(next_expected_value);
 
           if (next_expected_value % 2) {
-            next_expected_value_str.append(column_name.c_str(),
+            next_expected_value_str.append(column_name.data(),
                                            column_name.size());
           }
 
@@ -2839,11 +2839,11 @@ TEST_P(index_column_test_case,
       expected_value = expected_doc - 1;
       ASSERT_EQ(min_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_EQ(expected_value_str, actual_value_str);
@@ -2853,11 +2853,11 @@ TEST_P(index_column_test_case,
       for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         auto next_expected_value_str = std::to_string(next_expected_value);
         if (next_expected_value % 2) {
-          next_expected_value_str.append(column_name.c_str(),
+          next_expected_value_str.append(column_name.data(),
                                          column_name.size());
         }
 
@@ -2889,11 +2889,11 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_EQ(expected_value_str, actual_value_str);
@@ -2907,11 +2907,11 @@ TEST_P(index_column_test_case,
         }
 
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto next_expected_value_str = std::to_string(next_expected_value);
 
         if (next_expected_value % 2) {
-          next_expected_value_str.append(column_name.c_str(),
+          next_expected_value_str.append(column_name.data(),
                                          column_name.size());
         }
 
@@ -2939,11 +2939,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -2986,11 +2986,11 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -3534,9 +3534,9 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
         if (expected_value !=
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value.c_str())) {
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
         }
 
@@ -3570,9 +3570,9 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
         if (expected_value !=
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value.c_str())) {
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
         }
 
@@ -3611,11 +3611,11 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         ++expected_doc;
         ++expected_value;
@@ -3662,9 +3662,9 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
         if (expected_value !=
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value.c_str())) {
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
         }
 
@@ -3704,11 +3704,11 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         ++expected_doc;
         ++expected_value;
@@ -3739,9 +3739,9 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
         if (expected_value !=
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value.c_str())) {
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
         }
 
@@ -3781,11 +3781,11 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         ++expected_doc;
         ++expected_value;
@@ -3832,9 +3832,9 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
         if (expected_value !=
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value.c_str())) {
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
         }
 
@@ -3880,9 +3880,9 @@ TEST_P(index_column_test_case,
           ASSERT_EQ(expected_doc, it->seek(expected_doc));
         }
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         ++expected_doc;
         ++expected_value;
@@ -3921,9 +3921,9 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                  actual_value_str.c_str()));
+                                  actual_value_str.data()));
 
       ++expected_doc;
       ++expected_value;
@@ -3935,11 +3935,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         ++expected_doc;
         ++expected_value;
@@ -3970,9 +3970,9 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                  actual_value_str.c_str()));
+                                  actual_value_str.data()));
 
       ++expected_doc;
       ++expected_value;
@@ -3984,11 +3984,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         ++expected_doc;
         ++expected_value;
@@ -4017,9 +4017,9 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                  actual_value_str.c_str()));
+                                  actual_value_str.data()));
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
@@ -4044,18 +4044,17 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                  actual_value_str.c_str()));
+                                  actual_value_str.data()));
 
       ++expected_doc;
       ++expected_value;
       ASSERT_TRUE(it->next());
-      actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+      actual_value_str = irs::to_string<irs::string_ref>(payload->value.data());
       ASSERT_EQ(expected_doc, it->value());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                  actual_value_str.c_str()));
+                                  actual_value_str.data()));
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
@@ -4106,9 +4105,9 @@ TEST_P(index_column_test_case,
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
       ASSERT_EQ(expected_doc, it->value());
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                  actual_value_str.c_str()));
+                                  actual_value_str.data()));
 
       for (; it->next();) {
         ++expected_doc;
@@ -4116,9 +4115,9 @@ TEST_P(index_column_test_case,
 
         ASSERT_EQ(expected_doc, it->value());
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
       }
 
       ASSERT_FALSE(it->next());
@@ -4162,10 +4161,10 @@ TEST_P(index_column_test_case,
         }
 
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         auto next_expected_doc = expected_doc + 1;
         auto next_expected_value = expected_value + 1;
@@ -4176,18 +4175,18 @@ TEST_P(index_column_test_case,
           }
 
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.c_str());
+            irs::to_string<irs::string_ref>(payload->value.data());
 
           ASSERT_EQ(next_expected_doc, it->value());
           ASSERT_EQ(
             next_expected_value,
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.data()));
 
           // can't seek backwards
           ASSERT_EQ(next_expected_doc, it->seek(expected_doc));
           ASSERT_EQ(
             next_expected_value,
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.data()));
 
           ++next_expected_doc;
           ++next_expected_value;
@@ -4238,12 +4237,12 @@ TEST_P(index_column_test_case,
         }
 
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ++docs_count;
 
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         auto next_expected_doc = expected_doc + 1;
         auto next_expected_value = expected_value + 1;
@@ -4254,12 +4253,12 @@ TEST_P(index_column_test_case,
           }
 
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.c_str());
+            irs::to_string<irs::string_ref>(payload->value.data());
 
           ASSERT_EQ(next_expected_doc, it->value());
           ASSERT_EQ(
             next_expected_value,
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.data()));
 
           ++next_expected_doc;
           ++next_expected_value;
@@ -4291,20 +4290,20 @@ TEST_P(index_column_test_case,
       expected_value = expected_doc - 1;
       ASSERT_EQ(min_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                  actual_value_str.c_str()));
+                                  actual_value_str.data()));
 
       auto next_expected_doc = expected_doc + 1;
       auto next_expected_value = expected_value + 1;
       for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(next_expected_doc, it->value());
         ASSERT_EQ(next_expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                         actual_value_str.c_str()));
+                                         actual_value_str.data()));
 
         ++next_expected_doc;
         ++next_expected_value;
@@ -4337,9 +4336,9 @@ TEST_P(index_column_test_case,
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
       }
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                  actual_value_str.c_str()));
+                                  actual_value_str.data()));
 
       auto next_expected_doc = expected_doc + 1;
       auto next_expected_value = expected_value + 1;
@@ -4350,11 +4349,11 @@ TEST_P(index_column_test_case,
         }
 
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(next_expected_doc, it->value());
         ASSERT_EQ(next_expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                         actual_value_str.c_str()));
+                                         actual_value_str.data()));
 
         ++next_expected_doc;
         ++next_expected_value;
@@ -4378,9 +4377,9 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
         if (expected_value !=
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value.c_str())) {
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
         }
 
@@ -4420,11 +4419,11 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         ++expected_doc;
         ++expected_value;
@@ -5985,9 +5984,9 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
         if (expected_value !=
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value.c_str())) {
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
         }
 
@@ -6015,9 +6014,9 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
         if (expected_value !=
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value.c_str())) {
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
         }
 
@@ -6050,11 +6049,11 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         ++expected_doc;
         ++expected_value;
@@ -6095,9 +6094,9 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
         if (expected_value !=
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value.c_str())) {
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
         }
 
@@ -6130,11 +6129,11 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         ++expected_doc;
         ++expected_value;
@@ -6159,9 +6158,9 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
         if (expected_value !=
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value.c_str())) {
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
         }
 
@@ -6194,11 +6193,11 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         ++expected_doc;
         ++expected_value;
@@ -6239,9 +6238,9 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
         if (expected_value !=
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value.c_str())) {
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
         }
 
@@ -6275,9 +6274,9 @@ TEST_P(index_column_test_case,
       for (; expected_doc <= MAX_DOCS;) {
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         ++expected_doc;
         ++expected_value;
@@ -6316,20 +6315,20 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                  actual_value_str.c_str()));
+                                  actual_value_str.data()));
 
       ++expected_doc;
       ++expected_value;
 
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         ++expected_doc;
         ++expected_value;
@@ -6360,20 +6359,20 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                  actual_value_str.c_str()));
+                                  actual_value_str.data()));
 
       ++expected_doc;
       ++expected_value;
 
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         ++expected_doc;
         ++expected_value;
@@ -6402,9 +6401,9 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                  actual_value_str.c_str()));
+                                  actual_value_str.data()));
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
@@ -6429,18 +6428,17 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                  actual_value_str.c_str()));
+                                  actual_value_str.data()));
 
       ++expected_doc;
       ++expected_value;
       ASSERT_TRUE(it->next());
-      actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+      actual_value_str = irs::to_string<irs::string_ref>(payload->value.data());
       ASSERT_EQ(expected_doc, it->value());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                  actual_value_str.c_str()));
+                                  actual_value_str.data()));
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
@@ -6499,27 +6497,27 @@ TEST_P(index_column_test_case,
         }
 
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         auto next_expected_doc = expected_doc + 1;
         auto next_expected_value = expected_value + 1;
         for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.c_str());
+            irs::to_string<irs::string_ref>(payload->value.data());
 
           ASSERT_EQ(next_expected_doc, it->value());
           ASSERT_EQ(
             next_expected_value,
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.data()));
 
           // can't seek backwards
           ASSERT_EQ(next_expected_doc, it->seek(expected_doc));
           ASSERT_EQ(
             next_expected_value,
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.data()));
 
           ++next_expected_doc;
           ++next_expected_value;
@@ -6559,23 +6557,23 @@ TEST_P(index_column_test_case,
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ++docs_count;
 
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         auto next_expected_doc = expected_doc + 1;
         auto next_expected_value = expected_value + 1;
         for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.c_str());
+            irs::to_string<irs::string_ref>(payload->value.data());
 
           ASSERT_EQ(next_expected_doc, it->value());
           ASSERT_EQ(
             next_expected_value,
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.c_str()));
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value_str.data()));
 
           ++next_expected_doc;
           ++next_expected_value;
@@ -6601,20 +6599,20 @@ TEST_P(index_column_test_case,
       expected_value = expected_doc - 1;
       ASSERT_EQ(min_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                  actual_value_str.c_str()));
+                                  actual_value_str.data()));
 
       auto next_expected_doc = expected_doc + 1;
       auto next_expected_value = expected_value + 1;
       for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(next_expected_doc, it->value());
         ASSERT_EQ(next_expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                         actual_value_str.c_str()));
+                                         actual_value_str.data()));
 
         ++next_expected_doc;
         ++next_expected_value;
@@ -6641,19 +6639,19 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                  actual_value_str.c_str()));
+                                  actual_value_str.data()));
 
       auto next_expected_doc = expected_doc + 1;
       auto next_expected_value = expected_value + 1;
       for (size_t i = 0; i < steps_forward && it->next(); ++i) {
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(next_expected_doc, it->value());
         ASSERT_EQ(next_expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                         actual_value_str.c_str()));
+                                         actual_value_str.data()));
 
         ++next_expected_doc;
         ++next_expected_value;
@@ -6676,9 +6674,9 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
         if (expected_value !=
-            *reinterpret_cast<const irs::doc_id_t*>(actual_value.c_str())) {
+            *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
         }
 
@@ -6711,11 +6709,11 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
-                                    actual_value_str.c_str()));
+                                    actual_value_str.data()));
 
         ++expected_doc;
         ++expected_value;
@@ -6751,7 +6749,7 @@ TEST_P(index_column_test_case,
       bool write(irs::data_output& out) {
         auto str = std::to_string(value);
         if (value % 2) {
-          str.append(column_name.c_str(), column_name.size());
+          str.append(column_name.data(), column_name.size());
         }
 
         irs::write_string(out, str);
@@ -6810,11 +6808,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -6845,11 +6843,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -6885,11 +6883,11 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -6934,11 +6932,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -6974,11 +6972,11 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -7007,11 +7005,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -7047,11 +7045,11 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -7096,11 +7094,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -7137,11 +7135,11 @@ TEST_P(index_column_test_case,
       for (; expected_doc <= MAX_DOCS;) {
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_value_str, actual_str_value);
@@ -7183,11 +7181,11 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_EQ(expected_value_str, actual_value_str);
@@ -7197,11 +7195,11 @@ TEST_P(index_column_test_case,
 
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -7236,11 +7234,11 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_EQ(expected_value_str, actual_value_str);
@@ -7250,11 +7248,11 @@ TEST_P(index_column_test_case,
 
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -7288,11 +7286,11 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_EQ(expected_value_str, actual_value_str);
@@ -7320,11 +7318,11 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_EQ(expected_value_str, actual_value_str);
@@ -7333,13 +7331,13 @@ TEST_P(index_column_test_case,
       ++expected_value;
       expected_value_str = std::to_string(expected_value);
       if (expected_value % 2) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_TRUE(it->next());
       ASSERT_EQ(expected_doc, it->value());
       ASSERT_EQ(expected_value_str,
-                irs::to_string<irs::string_ref>(payload->value.c_str()));
+                irs::to_string<irs::string_ref>(payload->value.data()));
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
@@ -7398,11 +7396,11 @@ TEST_P(index_column_test_case,
         }
 
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -7412,11 +7410,11 @@ TEST_P(index_column_test_case,
         auto next_expected_value = expected_value + 1;
         for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.c_str());
+            irs::to_string<irs::string_ref>(payload->value.data());
           auto next_expected_value_str = std::to_string(next_expected_value);
 
           if (next_expected_value % 2) {
-            next_expected_value_str.append(column_name.c_str(),
+            next_expected_value_str.append(column_name.data(),
                                            column_name.size());
           }
 
@@ -7465,11 +7463,11 @@ TEST_P(index_column_test_case,
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ++docs_count;
@@ -7480,11 +7478,11 @@ TEST_P(index_column_test_case,
         auto next_expected_value = expected_value + 1;
         for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.c_str());
+            irs::to_string<irs::string_ref>(payload->value.data());
           auto next_expected_value_str = std::to_string(next_expected_value);
 
           if (next_expected_value % 2) {
-            next_expected_value_str.append(column_name.c_str(),
+            next_expected_value_str.append(column_name.data(),
                                            column_name.size());
           }
 
@@ -7515,11 +7513,11 @@ TEST_P(index_column_test_case,
       expected_value = expected_doc - 1;
       ASSERT_EQ(min_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_EQ(expected_value_str, actual_value_str);
@@ -7529,11 +7527,11 @@ TEST_P(index_column_test_case,
       for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         auto next_expected_value_str = std::to_string(next_expected_value);
         if (next_expected_value % 2) {
-          next_expected_value_str.append(column_name.c_str(),
+          next_expected_value_str.append(column_name.data(),
                                          column_name.size());
         }
 
@@ -7565,11 +7563,11 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.c_str());
+        irs::to_string<irs::string_ref>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
-        expected_value_str.append(column_name.c_str(), column_name.size());
+        expected_value_str.append(column_name.data(), column_name.size());
       }
 
       ASSERT_EQ(expected_value_str, actual_value_str);
@@ -7578,11 +7576,11 @@ TEST_P(index_column_test_case,
       auto next_expected_value = expected_value + 1;
       for (size_t i = 0; i < steps_forward && it->next(); ++i) {
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto next_expected_value_str = std::to_string(next_expected_value);
 
         if (next_expected_value % 2) {
-          next_expected_value_str.append(column_name.c_str(),
+          next_expected_value_str.append(column_name.data(),
                                          column_name.size());
         }
 
@@ -7610,11 +7608,11 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.c_str());
+          irs::to_string<irs::string_ref>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
-          expected_str.append(column_name.c_str(), column_name.size());
+          expected_str.append(column_name.data(), column_name.size());
         }
 
         if (expected_str != actual_str) {
@@ -7650,11 +7648,11 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
-          expected_value_str.append(column_name.c_str(), column_name.size());
+          expected_value_str.append(column_name.data(), column_name.size());
         }
 
         ASSERT_EQ(expected_doc, it->value());
@@ -7758,7 +7756,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
             return false;
           }
 
-          const auto actual_value = irs::to_string<irs::string_ref>(in.c_str());
+          const auto actual_value = irs::to_string<irs::string_ref>(in.data());
           if (field->value() != actual_value) {
             return false;
           }
@@ -7789,7 +7787,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
             return false;
           }
 
-          const auto actual_value = irs::to_string<irs::string_ref>(in.c_str());
+          const auto actual_value = irs::to_string<irs::string_ref>(in.data());
           if (field->value() != actual_value) {
             return false;
           }
@@ -7827,7 +7825,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ASSERT_NE(nullptr, field);
 
           const auto actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.c_str());
+            irs::to_string<irs::string_ref>(payload->value.data());
 
           ASSERT_EQ(expected_id, it->value());
           ASSERT_EQ(field->value(), actual_value_str);
@@ -7863,7 +7861,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
             return false;
           }
 
-          if (field->value() != irs::to_string<irs::string_ref>(in.c_str())) {
+          if (field->value() != irs::to_string<irs::string_ref>(in.data())) {
             return false;
           }
 
@@ -7893,7 +7891,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
             return false;
           }
 
-          if (field->value() != irs::to_string<irs::string_ref>(in.c_str())) {
+          if (field->value() != irs::to_string<irs::string_ref>(in.data())) {
             return false;
           }
 
@@ -7929,7 +7927,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.c_str());
+            irs::to_string<irs::string_ref>(payload->value.data());
 
           ASSERT_EQ(expected_id, it->value());
           ASSERT_EQ(field->value(), actual_value_str);
@@ -7986,7 +7984,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
             return false;
           }
 
-          const auto actual_value = irs::to_string<irs::string_ref>(in.c_str());
+          const auto actual_value = irs::to_string<irs::string_ref>(in.data());
           if (field->value() != actual_value) {
             return false;
           }
@@ -8023,7 +8021,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.c_str());
+            irs::to_string<irs::string_ref>(payload->value.data());
 
           ASSERT_EQ(expected_id, it->value());
           ASSERT_EQ(field->value(), actual_value_str);
@@ -8052,7 +8050,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
             return false;
           }
 
-          const auto actual_value = irs::to_string<irs::string_ref>(in.c_str());
+          const auto actual_value = irs::to_string<irs::string_ref>(in.data());
           if (field->value() != actual_value) {
             return false;
           }
@@ -8089,7 +8087,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.c_str());
+            irs::to_string<irs::string_ref>(payload->value.data());
 
           ASSERT_EQ(expected_id, it->value());
           ASSERT_EQ(field->value(), actual_value_str);
@@ -8125,7 +8123,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
             return false;
           }
 
-          if (field->value() != irs::to_string<irs::string_ref>(in.c_str())) {
+          if (field->value() != irs::to_string<irs::string_ref>(in.data())) {
             return false;
           }
 
@@ -8161,7 +8159,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.c_str());
+            irs::to_string<irs::string_ref>(payload->value.data());
 
           ASSERT_EQ(expected_id, it->value());
           ASSERT_EQ(field->value(), actual_value_str);
@@ -8190,7 +8188,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
             return false;
           }
 
-          if (field->value() != irs::to_string<irs::string_ref>(in.c_str())) {
+          if (field->value() != irs::to_string<irs::string_ref>(in.data())) {
             return false;
           }
 
@@ -8226,7 +8224,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.c_str());
+            irs::to_string<irs::string_ref>(payload->value.data());
 
           ASSERT_EQ(expected_id, it->value());
           ASSERT_EQ(field->value(), actual_value_str);
@@ -8309,7 +8307,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       for (; it->next(); ++i) {
         const auto& expected_value = expected_values[i];
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_value.first, it->value());
         ASSERT_EQ(expected_value.second, actual_str_value);
@@ -8341,7 +8339,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       for (; it->next(); ++i) {
         const auto& expected_value = expected_values[i];
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_value.first, it->value());
         ASSERT_EQ(expected_value.second, actual_str_value);
@@ -8385,7 +8383,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       for (; it->next(); ++i) {
         const auto& expected_value = expected_values[i];
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_value.first, it->value());
         ASSERT_EQ(expected_value.second, actual_str_value);
@@ -8417,7 +8415,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       for (; it->next(); ++i) {
         const auto& expected_value = expected_values[i];
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_value.first, it->value());
         ASSERT_EQ(expected_value.second, actual_str_value);
@@ -8449,7 +8447,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       for (; it->next(); ++i) {
         const auto& expected_value = expected_values[i];
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_value.first, it->value());
         ASSERT_EQ(expected_value.second, actual_str_value);
@@ -8481,7 +8479,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       for (; it->next(); ++i) {
         const auto& expected_value = expected_values[i];
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.c_str());
+          irs::to_string<irs::string_ref>(payload->value.data());
 
         ASSERT_EQ(expected_value.first, it->value());
         ASSERT_EQ(expected_value.second, actual_str_value);

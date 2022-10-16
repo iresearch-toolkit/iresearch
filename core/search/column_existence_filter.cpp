@@ -102,7 +102,7 @@ class column_prefix_existence_query final : public column_existence_query {
     const auto* column = &it->value();
 
     std::vector<adapter_t> itrs;
-    for (; irs::starts_with(column->name(), prefix); column = &it->value()) {
+    for (; column->name().starts_with(prefix); column = &it->value()) {
       if (acceptor_(column->name(), prefix)) {
         itrs.emplace_back(iterator(segment, *column, ord));
       }

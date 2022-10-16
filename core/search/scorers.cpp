@@ -26,12 +26,12 @@
 #include "shared.hpp"
 // list of statically loaded scorers via init()
 #ifndef IRESEARCH_DLL
-#include "tfidf.hpp"
 #include "bm25.hpp"
 #include "boost_sort.hpp"
+#include "tfidf.hpp"
 #endif
-#include "utils/register.hpp"
 #include "utils/hash_utils.hpp"
+#include "utils/register.hpp"
 
 namespace {
 
@@ -77,7 +77,7 @@ class scorer_register : public irs::tagged_generic_register<
     std::memcpy(filename.data(), kFileNamePrefix.data(),
                 kFileNamePrefix.size());
 
-    std::memcpy(filename.data() + kFileNamePrefix.size(), name.c_str(),
+    std::memcpy(filename.data() + kFileNamePrefix.size(), name.data(),
                 name.size());
 
     return filename;
@@ -154,22 +154,22 @@ scorer_registrar::scorer_registrar(const type_info& type,
       IR_FRMT_WARN(
         "type name collision detected while registering scorer, ignoring: type "
         "'%s' from %s, previously from %s",
-        type.name().c_str(), source, registered_source->c_str());
+        type.name().data(), source, registered_source->data());
     } else if (source) {
       IR_FRMT_WARN(
         "type name collision detected while registering scorer, ignoring: type "
         "'%s' from %s",
-        type.name().c_str(), source);
+        type.name().data(), source);
     } else if (registered_source) {
       IR_FRMT_WARN(
         "type name collision detected while registering scorer, ignoring: type "
         "'%s', previously from %s",
-        type.name().c_str(), registered_source->c_str());
+        type.name().data(), registered_source->data());
     } else {
       IR_FRMT_WARN(
         "type name collision detected while registering scorer, ignoring: type "
         "'%s'",
-        type.name().c_str());
+        type.name().data());
     }
   }
 }

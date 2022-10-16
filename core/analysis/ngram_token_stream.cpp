@@ -254,7 +254,7 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
 }
 
 irs::analysis::analyzer::ptr make_vpack(irs::string_ref args) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
 ///////////////////////////////////////////////////////////////////////////////
@@ -271,7 +271,7 @@ bool normalize_vpack_config(const VPackSlice slice,
 }
 
 bool normalize_vpack_config(irs::string_ref args, std::string& config) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
@@ -286,7 +286,7 @@ irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
       IR_FRMT_ERROR("Null arguments while constructing ngram_token_stream");
       return nullptr;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
@@ -305,7 +305,7 @@ bool normalize_json_config(irs::string_ref args, std::string& definition) {
       IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
       return false;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     VPackBuilder builder;
     if (normalize_vpack_config(vpack->slice(), &builder)) {
       definition = builder.toString();

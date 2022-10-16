@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "result.hpp"
+
 #include "memory.hpp"
 
 namespace iresearch {
@@ -43,11 +44,11 @@ result::result(Code code, string_ref msg1, string_ref msg2) : code_(code) {
   const size_t len2 = msg2.size();
   const size_t size = len1 + (len2 ? (len2 + 2) : 0);
   auto state = memory::make_unique<char[]>(size + 1);  // +1 for null terminator
-  memcpy(state.get(), msg1.c_str(), len1);
+  memcpy(state.get(), msg1.data(), len1);
   if (len2) {
     state[len1] = ':';
     state[len1 + 1] = ' ';
-    memcpy(state.get() + len1 + 2, msg2.c_str(), len2);
+    memcpy(state.get() + len1 + 2, msg2.data(), len2);
   }
   state[size] = 0;  // null terminator
   state_ = std::move(state);

@@ -42,7 +42,7 @@ struct top_term {
 
   template<typename U = key_type>
   top_term(const bytes_ref& term, U&& key)
-    : term(term.c_str(), term.size()), key(std::forward<U>(key)) {}
+    : term(term.data(), term.size()), key(std::forward<U>(key)) {}
 
   template<typename CollectorState>
   void emplace(const CollectorState& /*state*/) {
@@ -161,7 +161,7 @@ class top_terms_collector : private compact<0, Comparer>,
 
   // Collect current term
   void visit(const key_type& key) {
-    const auto& term = *state_.term;
+    const auto term = *state_.term;
 
     if (left_) {
       const auto res = emplace(make_hashed_ref(term), key);

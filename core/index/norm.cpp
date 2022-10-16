@@ -45,7 +45,7 @@ class NormWriter final : public feature_writer {
 
   virtual void write(data_output& out, bytes_ref payload) final {
     if (!payload.empty()) {
-      out.write_bytes(payload.c_str(), payload.size());
+      out.write_bytes(payload.data(), payload.size());
     }
   }
 
@@ -123,7 +123,7 @@ void Norm2Header::Reset(const Norm2Header& hdr) noexcept {
     return std::nullopt;
   }
 
-  const auto* p = payload.c_str();
+  const auto* p = payload.data();
 
   if (const byte_type ver = *p++;
       IRS_UNLIKELY(ver != static_cast<byte_type>(Norm2Version::kMin))) {
