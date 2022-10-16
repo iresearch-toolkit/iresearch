@@ -567,7 +567,7 @@ class term_iterator final : public irs::seek_term_iterator {
     return nullptr;
   }
 
-  const irs::bytes_ref& value() const override { return value_; }
+  irs::bytes_ref value() const override { return value_; }
 
   bool next() override {
     if (next_ == data_.terms.end()) {

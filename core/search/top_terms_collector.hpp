@@ -146,10 +146,13 @@ class top_terms_collector : private compact<0, Comparer>,
   // `terms` segment term-iterator positioned at the current term
   void prepare(const sub_reader& segment, const term_reader& field,
                const seek_term_iterator& terms) noexcept {
+    auto* term = irs::get<term_attribute>(terms);
+    assert(term);
+
     state_.segment = &segment;
     state_.field = &field;
     state_.terms = &terms;
-    state_.term = &terms.value();
+    state_.term = &term->value;
 
     // get term metadata
     auto* meta = irs::get<term_meta>(terms);

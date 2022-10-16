@@ -59,7 +59,7 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
         ASSERT_EQ(1, payload->value.size());
 
         while (expected_terms->next()) {
-          auto& expected_term = expected_terms->value();
+          auto expected_term = expected_terms->value();
 
           irs::memory::arena_vector<uint32_t, decltype(arena)> expected_chars(
             arena);
@@ -85,7 +85,7 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
                        << irs::ref_cast<char>(expected_term));
 
           ASSERT_TRUE(actual_terms->next());
-          auto& actual_term = actual_terms->value();
+          auto actual_term = actual_terms->value();
           SCOPED_TRACE(testing::Message("Actual term: '")
                        << irs::ref_cast<char>(actual_term));
 
@@ -124,7 +124,8 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
                    << target << testing::Message("', Edit distance: ")
                    << size_t(description.max_distance()));
       assert_index(static_cast<irs::index_reader::ptr>(reader), description,
-                   irs::EmptyRef<irs::byte_type>(), irs::ref_cast<irs::byte_type>(target));
+                   irs::EmptyRef<irs::byte_type>(),
+                   irs::ref_cast<irs::byte_type>(target));
     }
   }
 }

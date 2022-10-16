@@ -43,8 +43,13 @@ void visit(const sub_reader& segment, const term_reader& reader,
     return;
   }
 
-  const auto& value = terms->value();
-  if (starts_with(value, prefix)) {
+  auto* term = irs::get<term_attribute>(*terms);
+
+  if (!IRS_UNLIKELY(!term)) {
+    return;
+  }
+
+  if (starts_with(term->value, prefix)) {
     terms->read();
 
     visitor.prepare(segment, reader, *terms);
@@ -57,7 +62,7 @@ void visit(const sub_reader& segment, const term_reader& reader,
       }
 
       terms->read();
-    } while (starts_with(value, prefix));
+    } while (starts_with(term->value, prefix));
   }
 }
 

@@ -580,7 +580,7 @@ class compound_term_iterator final : public term_iterator {
       }
     }
   }
-  virtual const bytes_ref& value() const override { return current_term_; }
+  virtual bytes_ref value() const override { return current_term_; }
 
  private:
   struct term_iterator_t {

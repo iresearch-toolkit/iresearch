@@ -36,9 +36,13 @@ using namespace irs;
 template<typename Visitor, typename Comparer>
 void collect_terms(const sub_reader& segment, const term_reader& field,
                    seek_term_iterator& terms, Visitor& visitor, Comparer cmp) {
-  auto& value = terms.value();
+  auto* term = irs::get<term_attribute>(terms);
 
-  if (cmp(value)) {
+  if (!IRS_UNLIKELY(!term)) {
+    return;
+  }
+
+  if (cmp(term->value)) {
     // read attributes
     terms.read();
 
@@ -52,7 +56,7 @@ void collect_terms(const sub_reader& segment, const term_reader& field,
       }
 
       terms.read();
-    } while (cmp(value));
+    } while (cmp(term->value));
   }
 }
 

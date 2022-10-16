@@ -94,7 +94,7 @@ struct column_iterator : iterator<const column_reader&> {
 };
 
 // An iterator providing sequential access to term dictionary
-struct term_iterator : iterator<const bytes_ref&>, public attribute_provider {
+struct term_iterator : iterator<bytes_ref>, public attribute_provider {
   using ptr = memory::managed_ptr<term_iterator>;
 
   // Return an empty iterator

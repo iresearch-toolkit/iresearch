@@ -211,7 +211,7 @@ class format_test_case : public index_test_base {
       return true;
     }
 
-    const irs::bytes_ref& value() const { return val_; }
+    irs::bytes_ref value() const override { return val_; }
 
     irs::doc_iterator::ptr postings(irs::IndexFeatures /*features*/) const {
       return irs::memory::make_managed<format_test_case::postings>(docs_);

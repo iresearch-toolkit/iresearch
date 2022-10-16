@@ -534,8 +534,7 @@ class term_iterator : public irs::term_iterator {
                          const doc_map* docmap) noexcept
     : postings_(&postings), doc_map_(docmap) {}
 
-  void reset(const field_data& field, bytes_ref min,
-             bytes_ref max) {
+  void reset(const field_data& field, bytes_ref min, bytes_ref max) {
     field_ = &field;
 
     doc_itr_.reset(field);
@@ -555,7 +554,7 @@ class term_iterator : public irs::term_iterator {
     }
   }
 
-  virtual const bytes_ref& value() const noexcept override {
+  virtual bytes_ref value() const noexcept override {
     assert(it_ != end_);
     return (*it_)->term;
   }
@@ -659,9 +658,9 @@ class term_reader final : public irs::basic_term_reader,
 
   void reset(const field_data& field) { it_.reset(field, min_, max_); }
 
-  virtual irs::bytes_ref (min)() const noexcept override { return min_; }
+  virtual irs::bytes_ref(min)() const noexcept override { return min_; }
 
-  virtual irs::bytes_ref (max)() const noexcept override { return max_; }
+  virtual irs::bytes_ref(max)() const noexcept override { return max_; }
 
   virtual const irs::field_meta& meta() const noexcept override {
     return it_.meta();

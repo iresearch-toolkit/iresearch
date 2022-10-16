@@ -30,13 +30,6 @@ void expect_sign_eq(long double lhs, long double rhs) {
   EXPECT_TRUE((lhs == 0 && rhs == 0) || std::signbit(lhs) == std::signbit(rhs));
 }
 
-TEST(string_ref_tests, static_members) {
-  EXPECT_EQ(nullptr, irs::string_ref::NIL.c_str());
-  EXPECT_EQ(0, irs::string_ref::NIL.size());
-  EXPECT_TRUE(irs::string_ref::NIL.null());
-  EXPECT_TRUE(irs::string_ref::NIL.empty());
-}
-
 TEST(string_ref_tests, create) {
   using namespace iresearch;
 
@@ -47,7 +40,6 @@ TEST(string_ref_tests, create) {
     EXPECT_EQ(0, ref.size());
     EXPECT_TRUE(ref.null());
     EXPECT_TRUE(ref.empty());
-    EXPECT_EQ(irs::string_ref::NIL, ref);
     EXPECT_EQ(ref.begin(), ref.end());
     EXPECT_EQ(ref.rbegin(), ref.rend());
   }

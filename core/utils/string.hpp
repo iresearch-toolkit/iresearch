@@ -163,11 +163,6 @@ class basic_string_ref {
   typedef Traits traits_type;
   typedef Elem char_type;
 
-  // beware of performing comparison against NIL value,
-  // it may cause undefined behaviour in std::char_traits<Elem>
-  // (e.g. becuase of memcmp function)
-  IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref NIL;  // null string
-
   constexpr basic_string_ref() noexcept : data_(nullptr), size_(0) {}
 
   // Constructs a string reference object from a ref and a size.
@@ -313,10 +308,6 @@ class basic_string_ref {
   const char_type* data_;
   size_t size_;
 };  // basic_string_ref
-
-template<typename Elem, typename Traits>
-/*static*/ const basic_string_ref<Elem, Traits>
-  basic_string_ref<Elem, Traits>::NIL(nullptr, 0);
 
 template<typename _Elem, typename _Traits>
 inline constexpr bool starts_with(const basic_string_ref<_Elem, _Traits>& first,

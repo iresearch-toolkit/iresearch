@@ -23,18 +23,18 @@
 
 #include "doc_generator.hpp"
 
-#include <sstream>
-#include <iomanip>
-#include <numeric>
-
+#include <rapidjson/istreamwrapper.h>
 #include <rapidjson/rapidjson.h>
 #include <rapidjson/reader.h>
-#include <rapidjson/istreamwrapper.h>
 #include <utf8.h>
 
-#include "index/norm.hpp"
-#include "index/field_data.hpp"
+#include <iomanip>
+#include <numeric>
+#include <sstream>
+
 #include "analysis/token_streams.hpp"
+#include "index/field_data.hpp"
+#include "index/norm.hpp"
 #include "store/store_utils.hpp"
 #include "utils/file_utils.hpp"
 
@@ -529,7 +529,7 @@ bool token_stream_payload::next() {
     pay_.value = term_->value;
     return true;
   }
-  pay_.value = irs::bytes_ref::NIL;
+  pay_.value = {};
   return false;
 }
 

@@ -59,9 +59,7 @@ empty_doc_iterator kEmptyDocIterator;
 
 // Represents an iterator without terms
 struct empty_term_iterator : irs::term_iterator {
-  virtual const irs::bytes_ref& value() const noexcept override final {
-    return irs::bytes_ref::NIL;
-  }
+  virtual irs::bytes_ref value() const noexcept override final { return {}; }
   virtual irs::doc_iterator::ptr postings(
     irs::IndexFeatures) const noexcept override final {
     return irs::doc_iterator::empty();
@@ -78,9 +76,7 @@ empty_term_iterator kEmptyTermIterator;
 
 // Represents an iterator without terms
 struct empty_seek_term_iterator final : irs::seek_term_iterator {
-  virtual const irs::bytes_ref& value() const noexcept override final {
-    return irs::bytes_ref::NIL;
-  }
+  virtual irs::bytes_ref value() const noexcept override final { return {}; }
   virtual irs::doc_iterator::ptr postings(
     irs::IndexFeatures) const noexcept override final {
     return irs::doc_iterator::empty();

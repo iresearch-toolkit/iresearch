@@ -175,9 +175,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     return true;
   }
 
-  virtual const irs::bytes_ref& value() const noexcept override {
-    return value_;
-  }
+  virtual irs::bytes_ref value() const noexcept override { return value_; }
 
   virtual void read() override {}
 

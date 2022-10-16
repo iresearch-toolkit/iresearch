@@ -23,6 +23,7 @@
 #ifndef IRESEARCH_AUTOMATON_UTILS_H
 #define IRESEARCH_AUTOMATON_UTILS_H
 
+#include "analysis/token_attributes.hpp"
 #include "formats/formats.hpp"
 #include "fst/closure.h"
 #include "search/filter.hpp"
@@ -80,10 +81,12 @@ class automaton_term_iterator final : public seek_term_iterator {
   automaton_term_iterator(const automaton& a, seek_term_iterator::ptr&& it)
     : a_(&a), matcher_(a_), it_(std::move(it)) {
     assert(it_);
-    value_ = &it_->value();
+    auto* term = irs::get<term_attribute>(*it_);
+    assert(term);
+    value_ = &term->value;
   }
 
-  virtual const bytes_ref& value() const noexcept override { return *value_; }
+  virtual bytes_ref value() const noexcept override { return *value_; }
 
   virtual doc_iterator::ptr postings(IndexFeatures features) const override {
     return it_->postings(features);

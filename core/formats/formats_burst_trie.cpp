@@ -2045,25 +2045,25 @@ void block_iterator::reset() {
 ///////////////////////////////////////////////////////////////////////////////
 class term_iterator_base : public seek_term_iterator {
  public:
-  explicit term_iterator_base(const field_meta& field,
-                              postings_reader& postings,
-                              irs::encryption::stream* terms_cipher,
-                              payload* pay = nullptr)
+  term_iterator_base(const field_meta& field, postings_reader& postings,
+                     irs::encryption::stream* terms_cipher,
+                     payload* pay = nullptr)
     : field_(&field), postings_(&postings), terms_cipher_(terms_cipher) {
     std::get<attribute_ptr<payload>>(attrs_) = pay;
   }
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override final {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual seek_cookie::ptr cookie() const override final {
+  seek_cookie::ptr cookie() const override final {
     return memory::make_unique<::cookie>(
       std::get<version10::term_meta>(attrs_));
   }
 
-  virtual const bytes_ref& value() const noexcept final { return term_.value; }
+  bytes_ref value() const noexcept final {
+    return std::get<term_attribute>(attrs_).value;
+  }
 
   index_input& terms_input() const;
 
@@ -2072,7 +2072,8 @@ class term_iterator_base : public seek_term_iterator {
   }
 
  protected:
-  using attributes = std::tuple<version10::term_meta, attribute_ptr<payload>>;
+  using attributes =
+    std::tuple<version10::term_meta, term_attribute, attribute_ptr<payload>>;
 
   void read_impl(block_iterator& it) {
     it.load_data(*field_, std::get<version10::term_meta>(attrs_), *postings_);
@@ -2094,7 +2095,10 @@ class term_iterator_base : public seek_term_iterator {
     std::memcpy(term_buf_.data() + prefix_size, suffix, suffix_size);
   }
 
-  void refresh_term() noexcept { term_.value = term_buf_; }
+  void refresh_value() noexcept {
+    std::get<term_attribute>(attrs_).value = term_buf_;
+  }
+  void reset_value() noexcept { std::get<term_attribute>(attrs_).value = {}; }
 
   const field_meta& field() const noexcept { return *field_; }
 
@@ -2103,7 +2107,6 @@ class term_iterator_base : public seek_term_iterator {
   postings_reader* postings_;
   irs::encryption::stream* terms_cipher_;
   bstring term_buf_;
-  term_attribute term_;
   byte_weight weight_;  // aggregated fst output
 };
 
@@ -2120,27 +2123,27 @@ class term_iterator final : public term_iterator_base {
   using weight_t = typename FST::Weight;
   using stateid_t = typename FST::StateId;
 
-  explicit term_iterator(const field_meta& field, postings_reader& postings,
-                         const index_input& terms_in,
-                         irs::encryption::stream* terms_cipher, const FST& fst)
+  term_iterator(const field_meta& field, postings_reader& postings,
+                const index_input& terms_in,
+                irs::encryption::stream* terms_cipher, const FST& fst)
     : term_iterator_base(field, postings, terms_cipher, nullptr),
       terms_in_source_(&terms_in),
       fst_(&fst),
       matcher_(&fst, fst::MATCH_INPUT) {  // pass pointer to avoid copying FST
   }
 
-  virtual bool next() override;
-  virtual SeekResult seek_ge(bytes_ref term) override;
-  virtual bool seek(bytes_ref term) override {
+  bool next() override;
+  SeekResult seek_ge(bytes_ref term) override;
+  bool seek(bytes_ref term) override {
     return SeekResult::FOUND == seek_equal(term);
   }
 
-  virtual void read() override {
+  void read() override {
     assert(cur_block_);
     read_impl(*cur_block_);
   }
 
-  virtual doc_iterator::ptr postings(IndexFeatures features) const override {
+  doc_iterator::ptr postings(IndexFeatures features) const override {
     return postings_impl(cur_block_, features);
   }
 
@@ -2243,7 +2246,7 @@ template<typename FST>
 bool term_iterator<FST>::next() {
   // iterator at the beginning or seek to cached state was called
   if (!cur_block_) {
-    if (term_.value.empty()) {
+    if (value().empty()) {
       // iterator at the beginning
       cur_block_ = push_block(fst_->Final(fst_->Start()), 0);
       cur_block_->load(terms_input(), terms_cipher());
@@ -2259,7 +2262,7 @@ bool term_iterator<FST>::next() {
       // note, that since we do not create extra copy of term_
       // make sure that it does not reallocate memory !!!
 #ifdef IRESEARCH_DEBUG
-      const SeekResult res = seek_equal(term_.value);
+      const SeekResult res = seek_equal(value());
       assert(SeekResult::FOUND == res);
       UNUSED(res);
 #else
@@ -2273,7 +2276,7 @@ bool term_iterator<FST>::next() {
     if (cur_block_->next_sub_block<false>()) {
       cur_block_->load(terms_input(), terms_cipher());
     } else if (&block_stack_.front() == cur_block_) {  // root
-      term_.value = {};
+      reset_value();
       cur_block_->reset();
       sstate_.clear();
       return false;
@@ -2305,7 +2308,7 @@ bool term_iterator<FST>::next() {
     cur_block_->load(terms_input(), terms_cipher());
   }
 
-  refresh_term();
+  refresh_value();
   return true;
 }
 
@@ -2321,7 +2324,8 @@ ptrdiff_t term_iterator<FST>::seek_cached(size_t& prefix, stateid_t& state,
                                           size_t& block, byte_weight& weight,
                                           bytes_ref target) {
   assert(!block_stack_.empty());
-  const byte_type* pterm = term_.value.data();
+  const auto term = value();
+  const byte_type* pterm = term.data();
   const byte_type* ptarget = target.data();
 
   // determine common prefix between target term and current
@@ -2336,16 +2340,16 @@ ptrdiff_t term_iterator<FST>::seek_cached(size_t& prefix, stateid_t& state,
       block = begin->block;
     }
 
-    prefix = size_t(pterm - term_.value.data());
+    prefix = size_t(pterm - term.data());
   }
 
   // inspect suffix and determine our current position
   // with respect to target term (before, after, equal)
   ptrdiff_t cmp = std::char_traits<byte_type>::compare(
-    pterm, ptarget, std::min(target.size(), term_.value.size()) - prefix);
+    pterm, ptarget, std::min(target.size(), term.size()) - prefix);
 
   if (!cmp) {
-    cmp = term_.value.size() - target.size();
+    cmp = term.size() - target.size();
   }
 
   if (cmp) {
@@ -2450,7 +2454,7 @@ SeekResult term_iterator<FST>::seek_equal(bytes_ref term) {
 
   if (!block_meta::terms(cur_block_->meta())) {
     // current block has no terms
-    term_.value = {term_buf_.c_str(), prefix};
+    std::get<term_attribute>(attrs_).value = {term_buf_.c_str(), prefix};
     return SeekResult::NOT_FOUND;
   }
 
@@ -2463,7 +2467,8 @@ SeekResult term_iterator<FST>::seek_equal(bytes_ref term) {
 
   cur_block_->load(terms_input(), terms_cipher());
 
-  auto refresh_term = make_finally([this]() noexcept { this->refresh_term(); });
+  auto refresh_value =
+    make_finally([this]() noexcept { this->refresh_value(); });
 
   assert(starts_with(term, term_buf_));
   return cur_block_->scan_to_term(term, append_suffix);
@@ -2488,7 +2493,8 @@ SeekResult term_iterator<FST>::seek_ge(bytes_ref term) {
 
   cur_block_->load(terms_input(), terms_cipher());
 
-  auto refresh_term = make_finally([this]() noexcept { this->refresh_term(); });
+  auto refresh_value =
+    make_finally([this]() noexcept { this->refresh_value(); });
 
   assert(starts_with(term, term_buf_));
   switch (cur_block_->scan_to_term(term, append_suffix)) {
@@ -2542,26 +2548,30 @@ class single_term_iterator final : public seek_term_iterator {
     assert(terms_in_);
   }
 
-  virtual attribute* get_mutable(irs::type_info::type_id type) override {
-    return type == irs::type<term_meta>::id() ? &meta_ : nullptr;
+  attribute* get_mutable(irs::type_info::type_id type) override {
+    if (type == irs::type<term_meta>::id()) {
+      return &meta_;
+    }
+
+    return type == irs::type<term_attribute>::id() ? &value_ : nullptr;
   }
 
-  virtual const bytes_ref& value() const override { return value_.value; }
+  bytes_ref value() const override { return value_.value; }
 
-  virtual bool next() override { throw not_supported(); }
+  bool next() override { throw not_supported(); }
 
-  virtual SeekResult seek_ge(bytes_ref) override { throw not_supported(); }
+  SeekResult seek_ge(bytes_ref) override { throw not_supported(); }
 
-  virtual bool seek(bytes_ref term) override;
+  bool seek(bytes_ref term) override;
 
-  virtual seek_cookie::ptr cookie() const override {
+  seek_cookie::ptr cookie() const override {
     return memory::make_unique<::cookie>(meta_);
   }
 
-  virtual void read() override { /*NOOP*/
+  void read() override { /*NOOP*/
   }
 
-  virtual doc_iterator::ptr postings(IndexFeatures features) const override {
+  doc_iterator::ptr postings(IndexFeatures features) const override {
     return postings_->iterator(field_->index_features, features, meta_);
   }
 
@@ -2667,7 +2677,7 @@ class automaton_arc_matcher {
  private:
   const automaton::Arc* begin_;  // current arc
   const automaton::Arc* end_;    // end of arcs range
-};                               // automaton_arc_matcher
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class fst_arc_matcher
@@ -2698,7 +2708,7 @@ class fst_arc_matcher {
  private:
   const typename FST::Arc* begin_;  // current arc
   const typename FST::Arc* end_;    // end of arcs range
-};                                  // fst_arc_matcher
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class automaton_term_iterator
@@ -2706,12 +2716,10 @@ class fst_arc_matcher {
 template<typename FST>
 class automaton_term_iterator final : public term_iterator_base {
  public:
-  explicit automaton_term_iterator(const field_meta& field,
-                                   postings_reader& postings,
-                                   index_input::ptr&& terms_in,
-                                   irs::encryption::stream* terms_cipher,
-                                   const FST& fst,
-                                   automaton_table_matcher& matcher)
+  automaton_term_iterator(const field_meta& field, postings_reader& postings,
+                          index_input::ptr&& terms_in,
+                          irs::encryption::stream* terms_cipher, const FST& fst,
+                          automaton_table_matcher& matcher)
     : term_iterator_base(field, postings, terms_cipher, &payload_),
       terms_in_(std::move(terms_in)),
       fst_(&fst),
@@ -2727,26 +2735,26 @@ class automaton_term_iterator final : public term_iterator_base {
     payload_.value = {&payload_value_, sizeof(payload_value_)};
   }
 
-  virtual bool next() override;
+  bool next() override;
 
-  virtual SeekResult seek_ge(bytes_ref term) override {
+  SeekResult seek_ge(bytes_ref term) override {
     if (!irs::seek(*this, term)) {
       return SeekResult::END;
     }
 
-    return term_.value == term ? SeekResult::FOUND : SeekResult::NOT_FOUND;
+    return value() == term ? SeekResult::FOUND : SeekResult::NOT_FOUND;
   }
 
-  virtual bool seek(bytes_ref term) override {
+  bool seek(bytes_ref term) override {
     return SeekResult::FOUND == seek_ge(term);
   }
 
-  virtual void read() override {
+  void read() override {
     assert(cur_block_);
     read_impl(*cur_block_);
   }
 
-  virtual doc_iterator::ptr postings(IndexFeatures features) const override {
+  doc_iterator::ptr postings(IndexFeatures features) const override {
     return postings_impl(cur_block_, features);
   }
 
@@ -2830,7 +2838,7 @@ bool automaton_term_iterator<FST>::next() {
 
   // iterator at the beginning or seek to cached state was called
   if (!cur_block_) {
-    if (term_.value.empty()) {
+    if (value().empty()) {
       const auto fst_start = fst.Start();
       cur_block_ = push_block(fst.Final(fst_start), *fst_, 0, 0,
                               acceptor_->Start(), fst_start);
@@ -2842,7 +2850,7 @@ bool automaton_term_iterator<FST>::next() {
 
       // seek to the term with the specified state was called from
       // term_iterator::seek(bytes_ref, const attribute&),
-      const SeekResult res = seek_ge(term_.value);
+      const SeekResult res = seek_ge(value());
       assert(SeekResult::FOUND == res);
       UNUSED(res);
     }
@@ -2988,7 +2996,7 @@ bool automaton_term_iterator<FST>::next() {
           if (arcs.done()) {
             if (&block_stack_.front() == cur_block_) {
               // need to pop root block, we're done
-              term_.value = {};
+              reset_value();
               cur_block_->reset();
               return false;
             }
@@ -3013,7 +3021,7 @@ bool automaton_term_iterator<FST>::next() {
 
         cur_block_->load(terms_input(), terms_cipher());
       } else if (&block_stack_.front() == cur_block_) {  // root
-        term_.value = {};
+        reset_value();
         cur_block_->reset();
         return false;
       } else {
@@ -3034,12 +3042,12 @@ bool automaton_term_iterator<FST>::next() {
     const auto res = cur_block_->scan(read_suffix);
 
     if (SeekResult::FOUND == res) {
-      refresh_term();
+      refresh_value();
       return true;
     } else if (SeekResult::END == res) {
       if (&block_stack_.front() == cur_block_) {
         // need to pop root block, we're done
-        term_.value = {};
+        reset_value();
         cur_block_->reset();
         return false;
       }
