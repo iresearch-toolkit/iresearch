@@ -2266,7 +2266,7 @@ bool term_iterator<FST>::next() {
       assert(SeekResult::FOUND == res);
       UNUSED(res);
 #else
-      seek_equal(term_.value);
+      seek_equal(value());
 #endif
     }
   }
