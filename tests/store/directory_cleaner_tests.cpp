@@ -40,7 +40,7 @@ using namespace irs;
 auto MakeByTerm(std::string_view name, std::string_view value) {
   auto filter = std::make_unique<irs::by_term>();
   *filter->mutable_field() = name;
-  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  filter->mutable_options()->term = irs::ViewCast<irs::byte_type>(value);
   return filter;
 }
 

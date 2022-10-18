@@ -168,7 +168,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
       return false;
     }
 
-    value_ = irs::ref_cast<irs::byte_type>(begin_->first);
+    value_ = irs::ViewCast<irs::byte_type>(begin_->first);
     cookie_ptr_ = begin_;
     meta_ = begin_->second;
     ++begin_;

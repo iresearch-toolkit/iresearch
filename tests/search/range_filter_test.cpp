@@ -56,19 +56,19 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(name);
-            field.value(irs::ref_cast<irs::byte_type>(
+            field.value(irs::ViewCast<irs::byte_type>(
               irs::null_token_stream::value_null()));
           } else if (data.is_bool() && data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(name);
-            field.value(irs::ref_cast<irs::byte_type>(
+            field.value(irs::ViewCast<irs::byte_type>(
               irs::boolean_token_stream::value_true()));
           } else if (data.is_bool() && !data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(name);
-            field.value(irs::ref_cast<irs::byte_type>(
+            field.value(irs::ViewCast<irs::byte_type>(
               irs::boolean_token_stream::value_true()));
           } else if (data.is_number()) {
             const double dValue = data.as_number<double_t>();
@@ -698,7 +698,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(std::string_view("A"));
+        irs::ViewCast<irs::byte_type>(std::string_view("A"));
       filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
 
       CheckQuery(filter, docs, costs, rdr);
@@ -714,7 +714,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(std::string_view("A"));
+        irs::ViewCast<irs::byte_type>(std::string_view("A"));
       filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
 
       CheckQuery(filter, docs, costs, rdr);
@@ -729,7 +729,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.max =
-        irs::ref_cast<irs::byte_type>(std::string_view("C"));
+        irs::ViewCast<irs::byte_type>(std::string_view("C"));
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
       CheckQuery(filter, docs, costs, rdr);
@@ -744,7 +744,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.max =
-        irs::ref_cast<irs::byte_type>(std::string_view("C"));
+        irs::ViewCast<irs::byte_type>(std::string_view("C"));
       filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       CheckQuery(filter, docs, costs, rdr);
@@ -759,10 +759,10 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(std::string_view("A"));
+        irs::ViewCast<irs::byte_type>(std::string_view("A"));
       filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       filter.mutable_options()->range.max =
-        irs::ref_cast<irs::byte_type>(std::string_view("C"));
+        irs::ViewCast<irs::byte_type>(std::string_view("C"));
       filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       CheckQuery(filter, docs, costs, rdr);
@@ -777,10 +777,10 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(std::string_view("A"));
+        irs::ViewCast<irs::byte_type>(std::string_view("A"));
       filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       filter.mutable_options()->range.max =
-        irs::ref_cast<irs::byte_type>(std::string_view("B"));
+        irs::ViewCast<irs::byte_type>(std::string_view("B"));
       filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       CheckQuery(filter, docs, costs, rdr);
@@ -795,10 +795,10 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(std::string_view("A"));
+        irs::ViewCast<irs::byte_type>(std::string_view("A"));
       filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       filter.mutable_options()->range.max =
-        irs::ref_cast<irs::byte_type>(std::string_view("B"));
+        irs::ViewCast<irs::byte_type>(std::string_view("B"));
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
       CheckQuery(filter, docs, costs, rdr);
@@ -813,10 +813,10 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(std::string_view("A"));
+        irs::ViewCast<irs::byte_type>(std::string_view("A"));
       filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       filter.mutable_options()->range.max =
-        irs::ref_cast<irs::byte_type>(std::string_view("B"));
+        irs::ViewCast<irs::byte_type>(std::string_view("B"));
       filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       CheckQuery(filter, docs, costs, rdr);
@@ -828,10 +828,10 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(std::string_view("A"));
+        irs::ViewCast<irs::byte_type>(std::string_view("A"));
       filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       filter.mutable_options()->range.max =
-        irs::ref_cast<irs::byte_type>(std::string_view("B"));
+        irs::ViewCast<irs::byte_type>(std::string_view("B"));
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
       CheckQuery(filter, Docs{}, Costs{0}, rdr);
@@ -846,10 +846,10 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(std::string_view("A"));
+        irs::ViewCast<irs::byte_type>(std::string_view("A"));
       filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       filter.mutable_options()->range.max =
-        irs::ref_cast<irs::byte_type>(std::string_view("C"));
+        irs::ViewCast<irs::byte_type>(std::string_view("C"));
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
       CheckQuery(filter, docs, costs, rdr);
@@ -864,10 +864,10 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(std::string_view("A"));
+        irs::ViewCast<irs::byte_type>(std::string_view("A"));
       filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       filter.mutable_options()->range.max =
-        irs::ref_cast<irs::byte_type>(std::string_view("C"));
+        irs::ViewCast<irs::byte_type>(std::string_view("C"));
       filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       CheckQuery(filter, docs, costs, rdr);
@@ -882,10 +882,10 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(std::string_view("A"));
+        irs::ViewCast<irs::byte_type>(std::string_view("A"));
       filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       filter.mutable_options()->range.max =
-        irs::ref_cast<irs::byte_type>(std::string_view("C"));
+        irs::ViewCast<irs::byte_type>(std::string_view("C"));
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
       CheckQuery(filter, docs, costs, rdr);
@@ -897,10 +897,10 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(std::string_view("C"));
+        irs::ViewCast<irs::byte_type>(std::string_view("C"));
       filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       filter.mutable_options()->range.max =
-        irs::ref_cast<irs::byte_type>(std::string_view("A"));
+        irs::ViewCast<irs::byte_type>(std::string_view("A"));
       filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       CheckQuery(filter, Docs{}, Costs{0}, rdr);
@@ -915,10 +915,10 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(std::string_view("~"));
+        irs::ViewCast<irs::byte_type>(std::string_view("~"));
       filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       filter.mutable_options()->range.max =
-        irs::ref_cast<irs::byte_type>(std::string_view("~"));
+        irs::ViewCast<irs::byte_type>(std::string_view("~"));
       filter.mutable_options()->range.max_type = irs::BoundType::UNBOUNDED;
 
       CheckQuery(filter, docs, costs, rdr);
@@ -930,7 +930,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(std::string_view("~"));
+        irs::ViewCast<irs::byte_type>(std::string_view("~"));
       filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
 
       CheckQuery(filter, Docs{}, Costs{0}, rdr);
@@ -945,10 +945,10 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(std::string_view("a"));
+        irs::ViewCast<irs::byte_type>(std::string_view("a"));
       filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       filter.mutable_options()->range.max =
-        irs::ref_cast<irs::byte_type>(std::string_view("a"));
+        irs::ViewCast<irs::byte_type>(std::string_view("a"));
       filter.mutable_options()->range.max_type = irs::BoundType::UNBOUNDED;
 
       CheckQuery(filter, docs, costs, rdr);
@@ -964,10 +964,10 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(std::string_view("a"));
+        irs::ViewCast<irs::byte_type>(std::string_view("a"));
       filter.mutable_options()->range.min_type = irs::BoundType::UNBOUNDED;
       filter.mutable_options()->range.max =
-        irs::ref_cast<irs::byte_type>(std::string_view("a"));
+        irs::ViewCast<irs::byte_type>(std::string_view("a"));
       filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       CheckQuery(filter, docs, costs, rdr);
@@ -983,7 +983,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.max =
-        irs::ref_cast<irs::byte_type>(std::string_view("a"));
+        irs::ViewCast<irs::byte_type>(std::string_view("a"));
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
       CheckQuery(filter, docs, costs, rdr);
@@ -995,7 +995,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(std::string_view("\x7f"));
+        irs::ViewCast<irs::byte_type>(std::string_view("\x7f"));
       filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
 
       CheckQuery(filter, Docs{}, Costs{0}, rdr);
@@ -1146,19 +1146,19 @@ TEST(by_range_test, equal) {
   irs::by_range q0;
   *q0.mutable_field() = "field";
   q0.mutable_options()->range.min =
-    irs::ref_cast<irs::byte_type>(std::string_view("min_term"));
+    irs::ViewCast<irs::byte_type>(std::string_view("min_term"));
   q0.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
   q0.mutable_options()->range.max =
-    irs::ref_cast<irs::byte_type>(std::string_view("max_term"));
+    irs::ViewCast<irs::byte_type>(std::string_view("max_term"));
   q0.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
   irs::by_range q1;
   *q1.mutable_field() = "field";
   q1.mutable_options()->range.min =
-    irs::ref_cast<irs::byte_type>(std::string_view("min_term"));
+    irs::ViewCast<irs::byte_type>(std::string_view("min_term"));
   q1.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
   q1.mutable_options()->range.max =
-    irs::ref_cast<irs::byte_type>(std::string_view("max_term"));
+    irs::ViewCast<irs::byte_type>(std::string_view("max_term"));
   q1.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
   ASSERT_EQ(q0, q1);
@@ -1167,10 +1167,10 @@ TEST(by_range_test, equal) {
   irs::by_range q2;
   *q2.mutable_field() = "field1";
   q2.mutable_options()->range.min =
-    irs::ref_cast<irs::byte_type>(std::string_view("min_term"));
+    irs::ViewCast<irs::byte_type>(std::string_view("min_term"));
   q2.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
   q2.mutable_options()->range.max =
-    irs::ref_cast<irs::byte_type>(std::string_view("max_term"));
+    irs::ViewCast<irs::byte_type>(std::string_view("max_term"));
   q2.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
   ASSERT_NE(q0, q2);
@@ -1178,10 +1178,10 @@ TEST(by_range_test, equal) {
   irs::by_range q3;
   *q3.mutable_field() = "field";
   q3.mutable_options()->range.min =
-    irs::ref_cast<irs::byte_type>(std::string_view("min_term1"));
+    irs::ViewCast<irs::byte_type>(std::string_view("min_term1"));
   q3.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
   q3.mutable_options()->range.max =
-    irs::ref_cast<irs::byte_type>(std::string_view("max_term"));
+    irs::ViewCast<irs::byte_type>(std::string_view("max_term"));
   q3.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
   ASSERT_NE(q0, q3);
@@ -1189,10 +1189,10 @@ TEST(by_range_test, equal) {
   irs::by_range q4;
   *q4.mutable_field() = "field";
   q4.mutable_options()->range.min =
-    irs::ref_cast<irs::byte_type>(std::string_view("min_term"));
+    irs::ViewCast<irs::byte_type>(std::string_view("min_term"));
   q4.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
   q4.mutable_options()->range.max =
-    irs::ref_cast<irs::byte_type>(std::string_view("max_term1"));
+    irs::ViewCast<irs::byte_type>(std::string_view("max_term1"));
   q4.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
   ASSERT_NE(q0, q4);
@@ -1200,10 +1200,10 @@ TEST(by_range_test, equal) {
   irs::by_range q5;
   *q5.mutable_field() = "field";
   q5.mutable_options()->range.min =
-    irs::ref_cast<irs::byte_type>(std::string_view("min_term"));
+    irs::ViewCast<irs::byte_type>(std::string_view("min_term"));
   q5.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
   q5.mutable_options()->range.max =
-    irs::ref_cast<irs::byte_type>(std::string_view("max_term"));
+    irs::ViewCast<irs::byte_type>(std::string_view("max_term"));
   q5.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
   ASSERT_NE(q0, q5);
@@ -1211,10 +1211,10 @@ TEST(by_range_test, equal) {
   irs::by_range q6;
   *q6.mutable_field() = "field";
   q6.mutable_options()->range.min =
-    irs::ref_cast<irs::byte_type>(std::string_view("min_term"));
+    irs::ViewCast<irs::byte_type>(std::string_view("min_term"));
   q6.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
   q6.mutable_options()->range.max =
-    irs::ref_cast<irs::byte_type>(std::string_view("max_term"));
+    irs::ViewCast<irs::byte_type>(std::string_view("max_term"));
   q6.mutable_options()->range.max_type = irs::BoundType::UNBOUNDED;
 
   ASSERT_NE(q0, q6);
@@ -1226,10 +1226,10 @@ TEST(by_range_test, boost) {
     irs::by_range q;
     *q.mutable_field() = "field";
     q.mutable_options()->range.min =
-      irs::ref_cast<irs::byte_type>(std::string_view("min_term"));
+      irs::ViewCast<irs::byte_type>(std::string_view("min_term"));
     q.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
     q.mutable_options()->range.max =
-      irs::ref_cast<irs::byte_type>(std::string_view("max_term"));
+      irs::ViewCast<irs::byte_type>(std::string_view("max_term"));
     q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     auto prepared = q.prepare(irs::sub_reader::empty());
@@ -1243,10 +1243,10 @@ TEST(by_range_test, boost) {
     irs::by_range q;
     *q.mutable_field() = "field";
     q.mutable_options()->range.min =
-      irs::ref_cast<irs::byte_type>(std::string_view("min_term"));
+      irs::ViewCast<irs::byte_type>(std::string_view("min_term"));
     q.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
     q.mutable_options()->range.max =
-      irs::ref_cast<irs::byte_type>(std::string_view("max_term"));
+      irs::ViewCast<irs::byte_type>(std::string_view("max_term"));
     q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
     q.boost(boost);
 
@@ -1273,8 +1273,8 @@ TEST_P(range_filter_test_case, visit) {
 
   const std::string_view field = "prefix";
   irs::by_range_options::range_type range;
-  range.min = irs::ref_cast<irs::byte_type>(std::string_view("abc"));
-  range.max = irs::ref_cast<irs::byte_type>(std::string_view("abcd"));
+  range.min = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
+  range.max = irs::ViewCast<irs::byte_type>(std::string_view("abcd"));
   range.min_type = irs::BoundType::INCLUSIVE;
   range.max_type = irs::BoundType::INCLUSIVE;
 

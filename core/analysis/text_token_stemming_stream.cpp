@@ -288,7 +288,7 @@ bool stemming_token_stream::reset(std::string_view data) {
 
   // use the value of the unstemmed token
   static_assert(sizeof(byte_type) == sizeof(char));
-  term.value = ref_cast<byte_type>(utf8_data);
+  term.value = ViewCast<byte_type>(utf8_data);
 
   return true;
 }

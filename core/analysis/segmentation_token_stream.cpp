@@ -45,7 +45,8 @@ constexpr std::string_view CASE_CONVERT_PARAM_NAME{"case"};
 constexpr std::string_view BREAK_PARAM_NAME{"break"};
 
 const frozen::unordered_map<
-  std::string_view, analysis::segmentation_token_stream::options_t::case_convert_t, 3>
+  std::string_view,
+  analysis::segmentation_token_stream::options_t::case_convert_t, 3>
   CASE_CONVERT_MAP = {
     {"lower",
      analysis::segmentation_token_stream::options_t::case_convert_t::LOWER},
@@ -56,7 +57,8 @@ const frozen::unordered_map<
 };
 
 const frozen::unordered_map<
-  std::string_view, analysis::segmentation_token_stream::options_t::word_break_t, 3>
+  std::string_view,
+  analysis::segmentation_token_stream::options_t::word_break_t, 3>
   BREAK_CONVERT_MAP = {
     {"all", analysis::segmentation_token_stream::options_t::word_break_t::ALL},
     {"alpha",
@@ -106,8 +108,8 @@ bool parse_vpack_options(
       return false;
     }
     auto break_type = break_type_slice.stringView();
-    auto itr =
-      BREAK_CONVERT_MAP.find(std::string_view(break_type.data(), break_type.size()));
+    auto itr = BREAK_CONVERT_MAP.find(
+      std::string_view(break_type.data(), break_type.size()));
 
     if (itr == BREAK_CONVERT_MAP.end()) {
       IR_FRMT_WARN(
@@ -297,7 +299,8 @@ namespace analysis {
 
 using namespace boost::text;
 
-using data_t = decltype(as_graphemes(std::string_view{}.begin(), std::string_view{}.end()));
+using data_t =
+  decltype(as_graphemes(std::string_view{}.begin(), std::string_view{}.end()));
 using iterator_t = decltype(next_word_break(data_t{}, data_t{}.begin()));
 
 struct segmentation_token_stream::state_t {
@@ -364,12 +367,12 @@ bool segmentation_token_stream::next() {
       case options_t::case_convert_t::LOWER:
         term_buf_.clear();
         to_lower(as_graphemes(begin, end), from_utf32_back_inserter(term_buf_));
-        term.value = irs::ref_cast<byte_type>(term_buf_);
+        term.value = irs::ViewCast<byte_type>(std::string_view{term_buf_});
         break;
       case options_t::case_convert_t::UPPER:
         term_buf_.clear();
         to_upper(as_graphemes(begin, end), from_utf32_back_inserter(term_buf_));
-        term.value = irs::ref_cast<byte_type>(term_buf_);
+        term.value = irs::ViewCast<byte_type>(std::string_view{term_buf_});
         break;
     }
 

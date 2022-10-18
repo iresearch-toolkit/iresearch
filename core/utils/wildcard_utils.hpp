@@ -60,7 +60,7 @@ enum WildcardMatch : byte_type {
 automaton from_wildcard(bytes_view expr);
 
 inline automaton from_wildcard(std::string_view expr) {
-  return from_wildcard(ref_cast<byte_type>(expr));
+  return from_wildcard(ViewCast<byte_type>(expr));
 }
 
 }  // namespace iresearch

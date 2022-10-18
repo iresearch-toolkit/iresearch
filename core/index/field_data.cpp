@@ -1075,7 +1075,7 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
                    "' in field '%s'",
                    term->value.size(), meta_.name.c_str());
       IR_FRMT_TRACE("field '%s' contains too long term '%s'",
-                    meta_.name.c_str(), ref_cast<char>(term->value).data());
+                    meta_.name.c_str(), ViewCast<char>(term->value).data());
       continue;
     }
 

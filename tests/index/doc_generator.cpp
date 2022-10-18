@@ -327,7 +327,7 @@ const document* csv_doc_generator::next() {
   }
 
   for (size_t i = 0; stream_->next(); ++i) {
-    doc_.value(i, irs::ref_cast<char>(term->value));
+    doc_.value(i, irs::ViewCast<char>(term->value));
   }
 
   return &doc_;
@@ -686,19 +686,19 @@ void generic_json_field_factory(document& doc, const std::string& name,
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
     field.value(
-      irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
+      irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<binary_field>());
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
     field.value(
-      irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
+      irs::ViewCast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<binary_field>());
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
     field.value(
-      irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
+      irs::ViewCast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<double_field>());
@@ -728,19 +728,19 @@ void payloaded_json_field_factory(document& doc, const std::string& name,
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
     field.value(
-      irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
+      irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<binary_field>());
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
     field.value(
-      irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
+      irs::ViewCast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<binary_field>());
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
     field.value(
-      irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false()));
+      irs::ViewCast<irs::byte_type>(irs::boolean_token_stream::value_false()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<double_field>());

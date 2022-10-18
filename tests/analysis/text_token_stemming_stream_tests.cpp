@@ -65,7 +65,7 @@ TEST_F(stemming_token_stream_tests, test_stemming) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("running", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("running", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -88,7 +88,7 @@ TEST_F(stemming_token_stream_tests, test_stemming) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("run", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("run", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -112,7 +112,7 @@ TEST_F(stemming_token_stream_tests, test_stemming) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("running", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("running", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 }
@@ -137,7 +137,7 @@ TEST_F(stemming_token_stream_tests, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("run", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("run", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
@@ -177,7 +177,7 @@ TEST_F(stemming_token_stream_tests, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("run", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("run", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 }

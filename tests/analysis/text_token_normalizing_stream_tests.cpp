@@ -66,7 +66,7 @@ TEST_F(normalizing_token_stream_tests, test_normalizing) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(9, offset->end);
-    ASSERT_EQ(data, irs::ref_cast<char>(term->value));
+    ASSERT_EQ(data, irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -91,7 +91,7 @@ TEST_F(normalizing_token_stream_tests, test_normalizing) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(9, offset->end);
-    ASSERT_EQ(expected, irs::ref_cast<char>(term->value));
+    ASSERT_EQ(expected, irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -116,7 +116,7 @@ TEST_F(normalizing_token_stream_tests, test_normalizing) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(9, offset->end);
-    ASSERT_EQ(expected, irs::ref_cast<char>(term->value));
+    ASSERT_EQ(expected, irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -141,7 +141,7 @@ TEST_F(normalizing_token_stream_tests, test_normalizing) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(9, offset->end);
-    ASSERT_EQ(expected, irs::ref_cast<char>(term->value));
+    ASSERT_EQ(expected, irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 }
@@ -166,7 +166,7 @@ TEST_F(normalizing_token_stream_tests, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("running", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("running", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
@@ -188,7 +188,7 @@ TEST_F(normalizing_token_stream_tests, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("RUNNING", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("RUNNING", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
@@ -210,7 +210,7 @@ TEST_F(normalizing_token_stream_tests, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("running", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("running", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
@@ -232,14 +232,14 @@ TEST_F(normalizing_token_stream_tests, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("ruNNing", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("ruNNing", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
   // remove accent
   {
     constexpr std::u8string_view data{u8"\u00F6\u00F5"};
-    const auto ref = irs::ref_cast<char>(data);
+    const auto ref = irs::ViewCast<char>(data);
 
     auto stream = irs::analysis::analyzers::get(
       "norm", irs::type<irs::text_format::json>::get(),
@@ -256,7 +256,7 @@ TEST_F(normalizing_token_stream_tests, test_load) {
 
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(data.size(), offset->end);
-    ASSERT_TRUE(u8"\u006F\u006F" == irs::ref_cast<char8_t>(term->value));
+    ASSERT_TRUE(u8"\u006F\u006F" == irs::ViewCast<char8_t>(term->value));
 
     ASSERT_FALSE(stream->next());
   }
@@ -303,7 +303,7 @@ TEST_F(normalizing_token_stream_tests, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("running", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("running", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 }

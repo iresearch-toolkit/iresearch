@@ -37,7 +37,7 @@ namespace {
 irs::filter::ptr MakeByTerm(std::string_view name, std::string_view value) {
   auto filter = std::make_unique<irs::by_term>();
   *filter->mutable_field() = name;
-  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  filter->mutable_options()->term = irs::ViewCast<irs::byte_type>(value);
   return filter;
 }
 
@@ -300,7 +300,7 @@ void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
     auto len = irs::vread<uint32_t>(p);
 
     const auto str_seq =
-      static_cast<std::string>(irs::ref_cast<char>(irs::bytes_view{p, len}));
+      static_cast<std::string>(irs::ViewCast<char>(irs::bytes_view{p, len}));
     const auto seq = atoi(str_seq.data());
 
     if (0 == (doc % 10)) {
@@ -1097,9 +1097,9 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   irs::bstring bytes2;
   irs::bstring bytes3;
 
-  bytes1.append(irs::ref_cast<irs::byte_type>(std::string_view("bytes1_data")));
-  bytes2.append(irs::ref_cast<irs::byte_type>(std::string_view("bytes2_data")));
-  bytes3.append(irs::ref_cast<irs::byte_type>(std::string_view("bytes3_data")));
+  bytes1.append(irs::ViewCast<irs::byte_type>(std::string_view("bytes1_data")));
+  bytes2.append(irs::ViewCast<irs::byte_type>(std::string_view("bytes2_data")));
+  bytes3.append(irs::ViewCast<irs::byte_type>(std::string_view("bytes3_data")));
 
   constexpr irs::IndexFeatures STRING_FIELD_FEATURES =
     irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
@@ -1362,10 +1362,10 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
         expected_terms;
 
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("bytes1_data"))]
         .emplace(1);
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("bytes2_data"))]
         .emplace(2);
 
@@ -1620,10 +1620,10 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
         expected_terms;
 
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("string1_data"))]
         .emplace(1);
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("string2_data"))]
         .emplace(2);
 
@@ -1633,8 +1633,8 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       validate_terms(segment, *terms, 2,
-                     irs::ref_cast<irs::byte_type>(std::string_view(string1)),
-                     irs::ref_cast<irs::byte_type>(std::string_view(string2)), 2,
+                     irs::ViewCast<irs::byte_type>(std::string_view(string1)),
+                     irs::ViewCast<irs::byte_type>(std::string_view(string2)), 2,
                      features, {}, expected_terms, &frequency, &position);
     }
 
@@ -1649,10 +1649,10 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
         expected_terms;
 
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("text1_data"))]
         .emplace(1);
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("text2_data"))]
         .emplace(2);
 
@@ -1662,8 +1662,8 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       validate_terms(segment, *terms, 2,
-                     irs::ref_cast<irs::byte_type>(std::string_view(text1)),
-                     irs::ref_cast<irs::byte_type>(std::string_view(text2)), 2,
+                     irs::ViewCast<irs::byte_type>(std::string_view(text1)),
+                     irs::ViewCast<irs::byte_type>(std::string_view(text2)), 2,
                      features, {}, expected_terms, &frequency, &position);
     }
 
@@ -1767,7 +1767,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       auto features = tests::binary_field().index_features();
       std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
         expected_terms;
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("bytes3_data"))]
         .emplace(1);
 
@@ -1988,10 +1988,10 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
         expected_terms;
 
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("string3_data"))]
         .emplace(1);
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
         std::string_view("string4_data"))];
 
       ASSERT_EQ(2, docs_count(segment, "doc_string"));
@@ -2000,8 +2000,8 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       validate_terms(segment, *terms, 2,
-                     irs::ref_cast<irs::byte_type>(std::string_view(string3)),
-                     irs::ref_cast<irs::byte_type>(std::string_view(string4)), 2,
+                     irs::ViewCast<irs::byte_type>(std::string_view(string3)),
+                     irs::ViewCast<irs::byte_type>(std::string_view(string4)), 2,
                      features, {}, expected_terms, &frequency, &position);
     }
 
@@ -2016,7 +2016,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
         expected_terms;
 
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("text3_data"))]
         .emplace(1);
 
@@ -2026,8 +2026,8 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       validate_terms(segment, *terms, 1,
-                     irs::ref_cast<irs::byte_type>(std::string_view(text3)),
-                     irs::ref_cast<irs::byte_type>(std::string_view(text3)), 1,
+                     irs::ViewCast<irs::byte_type>(std::string_view(text3)),
+                     irs::ViewCast<irs::byte_type>(std::string_view(text3)), 1,
                      features, {}, expected_terms, &frequency, &position);
     }
 
@@ -2156,13 +2156,13 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
       expected_terms;
 
-    expected_terms[irs::ref_cast<irs::byte_type>(
+    expected_terms[irs::ViewCast<irs::byte_type>(
                      std::string_view("bytes1_data"))]
       .emplace(1);
-    expected_terms[irs::ref_cast<irs::byte_type>(
+    expected_terms[irs::ViewCast<irs::byte_type>(
                      std::string_view("bytes2_data"))]
       .emplace(2);
-    expected_terms[irs::ref_cast<irs::byte_type>(
+    expected_terms[irs::ViewCast<irs::byte_type>(
                      std::string_view("bytes3_data"))]
       .emplace(3);
 
@@ -2461,13 +2461,13 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
       expected_terms;
 
-    expected_terms[irs::ref_cast<irs::byte_type>(
+    expected_terms[irs::ViewCast<irs::byte_type>(
                      std::string_view("string1_data"))]
       .emplace(1);
-    expected_terms[irs::ref_cast<irs::byte_type>(
+    expected_terms[irs::ViewCast<irs::byte_type>(
                      std::string_view("string2_data"))]
       .emplace(2);
-    expected_terms[irs::ref_cast<irs::byte_type>(
+    expected_terms[irs::ViewCast<irs::byte_type>(
                      std::string_view("string3_data"))]
       .emplace(3);
 
@@ -2477,8 +2477,8 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     ASSERT_EQ(features, field.index_features);
     ASSERT_NE(nullptr, terms);
     validate_terms(segment, *terms, 3,
-                   irs::ref_cast<irs::byte_type>(std::string_view(string1)),
-                   irs::ref_cast<irs::byte_type>(std::string_view(string3)), 3,
+                   irs::ViewCast<irs::byte_type>(std::string_view(string1)),
+                   irs::ViewCast<irs::byte_type>(std::string_view(string3)), 3,
                    features, {}, expected_terms, &frequency, &position);
   }
 
@@ -2493,19 +2493,19 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
       expected_terms;
 
-    expected_terms[irs::ref_cast<irs::byte_type>(std::string_view("text1_data"))]
+    expected_terms[irs::ViewCast<irs::byte_type>(std::string_view("text1_data"))]
       .emplace(1);
-    expected_terms[irs::ref_cast<irs::byte_type>(std::string_view("text2_data"))]
+    expected_terms[irs::ViewCast<irs::byte_type>(std::string_view("text2_data"))]
       .emplace(2);
-    expected_terms[irs::ref_cast<irs::byte_type>(std::string_view("text3_data"))]
+    expected_terms[irs::ViewCast<irs::byte_type>(std::string_view("text3_data"))]
       .emplace(3);
 
     ASSERT_EQ(3, docs_count(segment, "doc_text"));
     ASSERT_EQ(features, field.index_features);
     ASSERT_NE(nullptr, terms);
     validate_terms(segment, *terms, 3,
-                   irs::ref_cast<irs::byte_type>(std::string_view(text1)),
-                   irs::ref_cast<irs::byte_type>(std::string_view(text3)), 3,
+                   irs::ViewCast<irs::byte_type>(std::string_view(text1)),
+                   irs::ViewCast<irs::byte_type>(std::string_view(text3)), 3,
                    features, {}, expected_terms, &frequency, &position);
   }
 
@@ -2991,9 +2991,9 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   irs::bstring bytes2;
   irs::bstring bytes3;
 
-  bytes1.append(irs::ref_cast<irs::byte_type>(std::string_view("bytes1_data")));
-  bytes2.append(irs::ref_cast<irs::byte_type>(std::string_view("bytes2_data")));
-  bytes3.append(irs::ref_cast<irs::byte_type>(std::string_view("bytes3_data")));
+  bytes1.append(irs::ViewCast<irs::byte_type>(std::string_view("bytes1_data")));
+  bytes2.append(irs::ViewCast<irs::byte_type>(std::string_view("bytes2_data")));
+  bytes3.append(irs::ViewCast<irs::byte_type>(std::string_view("bytes3_data")));
 
   constexpr irs::IndexFeatures STRING_FIELD_FEATURES =
     irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
@@ -3256,10 +3256,10 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
         expected_terms;
 
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("bytes1_data"))]
         .emplace(1);
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("bytes2_data"))]
         .emplace(2);
 
@@ -3542,10 +3542,10 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
         expected_terms;
 
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("string1_data"))]
         .emplace(1);
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("string2_data"))]
         .emplace(2);
 
@@ -3555,8 +3555,8 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       validate_terms(segment, *terms, 2,
-                     irs::ref_cast<irs::byte_type>(std::string_view(string1)),
-                     irs::ref_cast<irs::byte_type>(std::string_view(string2)), 2,
+                     irs::ViewCast<irs::byte_type>(std::string_view(string1)),
+                     irs::ViewCast<irs::byte_type>(std::string_view(string2)), 2,
                      features, {}, expected_terms, &frequency, &position);
     }
 
@@ -3571,10 +3571,10 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
         expected_terms;
 
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("text1_data"))]
         .emplace(1);
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("text2_data"))]
         .emplace(2);
 
@@ -3584,8 +3584,8 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       validate_terms(segment, *terms, 2,
-                     irs::ref_cast<irs::byte_type>(std::string_view(text1)),
-                     irs::ref_cast<irs::byte_type>(std::string_view(text2)), 2,
+                     irs::ViewCast<irs::byte_type>(std::string_view(text1)),
+                     irs::ViewCast<irs::byte_type>(std::string_view(text2)), 2,
                      features, {}, expected_terms, &frequency, &position);
     }
 
@@ -3690,7 +3690,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       auto features = tests::binary_field().index_features();
       std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
         expected_terms;
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("bytes3_data"))]
         .emplace(1);
 
@@ -3939,10 +3939,10 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
         expected_terms;
 
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("string3_data"))]
         .emplace(1);
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
         std::string_view("string4_data"))];
 
       ASSERT_EQ(2, docs_count(segment, "doc_string"));
@@ -3951,8 +3951,8 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       validate_terms(segment, *terms, 2,
-                     irs::ref_cast<irs::byte_type>(std::string_view(string3)),
-                     irs::ref_cast<irs::byte_type>(std::string_view(string4)), 2,
+                     irs::ViewCast<irs::byte_type>(std::string_view(string3)),
+                     irs::ViewCast<irs::byte_type>(std::string_view(string4)), 2,
                      features, {}, expected_terms, &frequency, &position);
     }
 
@@ -3967,7 +3967,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
         expected_terms;
 
-      expected_terms[irs::ref_cast<irs::byte_type>(
+      expected_terms[irs::ViewCast<irs::byte_type>(
                        std::string_view("text3_data"))]
         .emplace(1);
 
@@ -3977,8 +3977,8 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       ASSERT_EQ(features, field.index_features);
       ASSERT_NE(nullptr, terms);
       validate_terms(segment, *terms, 1,
-                     irs::ref_cast<irs::byte_type>(std::string_view(text3)),
-                     irs::ref_cast<irs::byte_type>(std::string_view(text3)), 1,
+                     irs::ViewCast<irs::byte_type>(std::string_view(text3)),
+                     irs::ViewCast<irs::byte_type>(std::string_view(text3)), 1,
                      features, {}, expected_terms, &frequency, &position);
     }
 
@@ -4107,13 +4107,13 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
       expected_terms;
 
-    expected_terms[irs::ref_cast<irs::byte_type>(
+    expected_terms[irs::ViewCast<irs::byte_type>(
                      std::string_view("bytes1_data"))]
       .emplace(1);
-    expected_terms[irs::ref_cast<irs::byte_type>(
+    expected_terms[irs::ViewCast<irs::byte_type>(
                      std::string_view("bytes2_data"))]
       .emplace(2);
-    expected_terms[irs::ref_cast<irs::byte_type>(
+    expected_terms[irs::ViewCast<irs::byte_type>(
                      std::string_view("bytes3_data"))]
       .emplace(3);
 
@@ -4445,13 +4445,13 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
       expected_terms;
 
-    expected_terms[irs::ref_cast<irs::byte_type>(
+    expected_terms[irs::ViewCast<irs::byte_type>(
                      std::string_view("string1_data"))]
       .emplace(1);
-    expected_terms[irs::ref_cast<irs::byte_type>(
+    expected_terms[irs::ViewCast<irs::byte_type>(
                      std::string_view("string2_data"))]
       .emplace(2);
-    expected_terms[irs::ref_cast<irs::byte_type>(
+    expected_terms[irs::ViewCast<irs::byte_type>(
                      std::string_view("string3_data"))]
       .emplace(3);
 
@@ -4461,8 +4461,8 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     ASSERT_EQ(features, field.index_features);
     ASSERT_NE(nullptr, terms);
     validate_terms(segment, *terms, 3,
-                   irs::ref_cast<irs::byte_type>(std::string_view(string1)),
-                   irs::ref_cast<irs::byte_type>(std::string_view(string3)), 3,
+                   irs::ViewCast<irs::byte_type>(std::string_view(string1)),
+                   irs::ViewCast<irs::byte_type>(std::string_view(string3)), 3,
                    features, {}, expected_terms, &frequency, &position);
   }
 
@@ -4477,19 +4477,19 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
       expected_terms;
 
-    expected_terms[irs::ref_cast<irs::byte_type>(std::string_view("text1_data"))]
+    expected_terms[irs::ViewCast<irs::byte_type>(std::string_view("text1_data"))]
       .emplace(1);
-    expected_terms[irs::ref_cast<irs::byte_type>(std::string_view("text2_data"))]
+    expected_terms[irs::ViewCast<irs::byte_type>(std::string_view("text2_data"))]
       .emplace(2);
-    expected_terms[irs::ref_cast<irs::byte_type>(std::string_view("text3_data"))]
+    expected_terms[irs::ViewCast<irs::byte_type>(std::string_view("text3_data"))]
       .emplace(3);
 
     ASSERT_EQ(3, docs_count(segment, "doc_text"));
     ASSERT_EQ(features, field.index_features);
     ASSERT_NE(nullptr, terms);
     validate_terms(segment, *terms, 3,
-                   irs::ref_cast<irs::byte_type>(std::string_view(text1)),
-                   irs::ref_cast<irs::byte_type>(std::string_view(text3)), 3,
+                   irs::ViewCast<irs::byte_type>(std::string_view(text1)),
+                   irs::ViewCast<irs::byte_type>(std::string_view(text3)), 3,
                    features, {}, expected_terms, &frequency, &position);
   }
 

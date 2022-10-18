@@ -41,7 +41,7 @@ struct by_prefix_filter_options {
     return term == rhs.term;
   }
 
-  size_t hash() const noexcept { return hash_utils::hash(term); }
+  size_t hash() const noexcept { return hash_utils::Hash(term); }
 };  // by_prefix_options
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -45,7 +45,7 @@ template<typename Filter>
 Filter make_filter(const std::string_view& field, const std::string_view term) {
   Filter q;
   *q.mutable_field() = field;
-  q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
+  q.mutable_options()->term = irs::ViewCast<irs::byte_type>(term);
   return q;
 }
 
@@ -54,7 +54,7 @@ Filter& append(irs::boolean_filter& root, const std::string_view& name,
                const std::string_view& term) {
   auto& sub = root.add<Filter>();
   *sub.mutable_field() = name;
-  sub.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
+  sub.mutable_options()->term = irs::ViewCast<irs::byte_type>(term);
   return sub;
 }
 
@@ -224,7 +224,7 @@ std::vector<DocIterator> execute_all(
 template<typename DocIterator>
 std::vector<DocIterator> execute_all(
   std::span<const std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs) {
-  const auto emptyBytesRef = irs::EmptyRef<irs::byte_type>();
+  const auto emptyBytesRef = irs::EmptyStringView<irs::byte_type>();
   const irs::byte_type* stats = emptyBytesRef.data();
   std::vector<DocIterator> itrs;
   itrs.reserve(docs.size());
@@ -1807,7 +1807,7 @@ TEST(basic_disjunction_test, seek_next) {
 }
 
 TEST(basic_disjunction_test, scored_seek_next) {
-  const auto empty_ref = irs::EmptyRef<irs::byte_type>();
+  const auto empty_ref = irs::EmptyStringView<irs::byte_type>();
   const irs::byte_type* empty_stats = empty_ref.data();
 
   // disjunction without order
@@ -16086,14 +16086,14 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
       auto& filter = sub.add<irs::by_range>();
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(std::string_view("!"));
+        irs::ViewCast<irs::byte_type>(std::string_view("!"));
       filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
       auto& filter = sub.add<irs::by_range>();
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.max =
-        irs::ref_cast<irs::byte_type>(std::string_view("~"));
+        irs::ViewCast<irs::byte_type>(std::string_view("~"));
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 

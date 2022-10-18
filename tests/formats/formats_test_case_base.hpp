@@ -206,7 +206,7 @@ class format_test_case : public index_test_base {
         return false;
       }
 
-      val_ = irs::ref_cast<irs::byte_type>(*next_);
+      val_ = irs::ViewCast<irs::byte_type>(*next_);
       ++next_;
       return true;
     }

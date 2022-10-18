@@ -56,7 +56,7 @@ struct hash<entry_key_t> {
   size_t operator()(const entry_key_t& value) const {
     return irs::hash_combine(
       std::hash<irs::type_info::type_id>()(value.args_format_.id()),
-      irs::hash_utils::hash(value.name_));
+      irs::hash_utils::Hash(value.name_));
   }
 };  // hash
 

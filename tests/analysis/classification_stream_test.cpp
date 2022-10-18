@@ -79,7 +79,7 @@ TEST(classification_stream_test, test_load) {
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(6, offset->end);
-    ASSERT_EQ("__label__baking", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("__label__baking", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
   }
@@ -111,7 +111,7 @@ TEST(classification_stream_test, test_load) {
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(37, offset->end);
-    ASSERT_EQ("__label__knives", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("__label__knives", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
 
@@ -120,7 +120,7 @@ TEST(classification_stream_test, test_load) {
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(15, offset->end);
-    ASSERT_EQ("__label__pasta", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("__label__pasta", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
   }
@@ -154,7 +154,7 @@ TEST(classification_stream_test, test_load) {
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(50, offset->end);
-    ASSERT_EQ("__label__baking", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("__label__baking", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
   }
@@ -188,12 +188,12 @@ TEST(classification_stream_test, test_load) {
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(50, offset->end);
-    ASSERT_EQ("__label__baking", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("__label__baking", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(50, offset->end);
     ASSERT_EQ(0, inc->value);
-    ASSERT_EQ("__label__bananas", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("__label__bananas", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
   }

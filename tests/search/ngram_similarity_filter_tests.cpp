@@ -40,7 +40,7 @@ irs::by_ngram_similarity make_filter(const std::string_view& field,
   *filter.mutable_field() = field;
   auto* opts = filter.mutable_options();
   for (auto& ngram : ngrams) {
-    opts->ngrams.emplace_back(irs::ref_cast<irs::byte_type>(ngram));
+    opts->ngrams.emplace_back(irs::ViewCast<irs::byte_type>(ngram));
   }
   opts->threshold = threshold;
   return filter;

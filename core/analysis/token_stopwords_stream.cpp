@@ -308,7 +308,7 @@ bool token_stopwords_stream::reset(std::string_view data) {
   offset.start = 0;
   offset.end = uint32_t(data.size());
   auto& term = std::get<term_attribute>(attrs_);
-  term.value = irs::ref_cast<irs::byte_type>(data);
+  term.value = irs::ViewCast<irs::byte_type>(data);
   term_eof_ = stopwords_.contains(data);
   return true;
 }

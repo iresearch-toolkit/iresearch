@@ -54,14 +54,14 @@ TEST(token_stopwords_stream_tests, test_masking) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("abc", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
 
     ASSERT_TRUE(stream.reset(data1));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("ghi", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -82,7 +82,7 @@ TEST(token_stopwords_stream_tests, test_masking) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("ghi", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 }
@@ -109,7 +109,7 @@ TEST(token_stopwords_stream_tests, test_load) {
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
       ASSERT_EQ(3, offset->end);
-      ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
+      ASSERT_EQ("ghi", irs::ViewCast<char>(term->value));
       ASSERT_FALSE(stream->next());
     };
     auto stream = irs::analysis::analyzers::get(
@@ -148,7 +148,7 @@ TEST(token_stopwords_stream_tests, test_load) {
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
       ASSERT_EQ(6, offset->end);
-      ASSERT_EQ("646566", irs::ref_cast<char>(term->value));
+      ASSERT_EQ("646566", irs::ViewCast<char>(term->value));
       ASSERT_FALSE(stream->next());
     };
     auto streamFromJsonObjest = irs::analysis::analyzers::get(

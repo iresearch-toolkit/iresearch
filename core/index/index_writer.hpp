@@ -69,7 +69,7 @@ class readers_cache final : util::noncopyable {
 
   struct key_hash_t {
     size_t operator()(const key_t& key) const noexcept {
-      return hash_utils::hash(key.name);
+      return hash_utils::Hash(key.name);
     }
   };
 
@@ -468,7 +468,7 @@ class index_writer : private util::noncopyable {
 
   struct segment_hash {
     size_t operator()(const segment_meta* segment) const noexcept {
-      return hash_utils::hash(segment->name);
+      return hash_utils::Hash(segment->name);
     }
   };
 

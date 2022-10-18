@@ -26,13 +26,13 @@
 
 namespace iresearch::hash_utils {
 
-size_t hash(const char* value, size_t size) noexcept {
+size_t Hash(const char* value, size_t size) noexcept {
   return absl::Hash<std::string_view>{}({value, size});
 }
 
-size_t hash(const byte_type* value, size_t size) noexcept {
+size_t Hash(const byte_type* value, size_t size) noexcept {
   static_assert(sizeof(byte_type) == sizeof(char));
-  return hash(reinterpret_cast<const char*>(value), size);
+  return Hash(reinterpret_cast<const char*>(value), size);
 }
 
 }  // namespace iresearch::hash_utils

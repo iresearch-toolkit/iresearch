@@ -109,7 +109,7 @@ class fst_builder : util::noncopyable {
     const auto size = in.size();
 
     // determine common prefix
-    const size_t pref = 1 + common_prefix_length(last_, in);
+    const size_t pref = 1 + CommonPrefixLength(last_, in);
 
     // add states for current input
     add_states(size);

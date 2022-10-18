@@ -33,7 +33,7 @@ namespace {
 auto MakeByTerm(std::string_view name, std::string_view value) {
   auto filter = std::make_unique<irs::by_term>();
   *filter->mutable_field() = name;
-  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  filter->mutable_options()->term = irs::ViewCast<irs::byte_type>(value);
   return filter;
 }
 
@@ -1124,10 +1124,10 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("CD", irs::ref_cast<char>(actual_value->value));
+      ASSERT_EQ("CD", irs::ViewCast<char>(actual_value->value));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("AB", irs::ref_cast<char>(actual_value->value));
+      ASSERT_EQ("AB", irs::ViewCast<char>(actual_value->value));
       ASSERT_FALSE(docsItr->next());
     }
   }

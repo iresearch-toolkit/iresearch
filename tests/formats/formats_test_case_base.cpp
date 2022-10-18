@@ -166,7 +166,7 @@ void format_test_case::assert_no_directory_artifacts(
 auto MakeByTerm(std::string_view name, std::string_view value) {
   auto filter = std::make_unique<irs::by_term>();
   *filter->mutable_field() = name;
-  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  filter->mutable_options()->term = irs::ViewCast<irs::byte_type>(value);
   return filter;
 }
 
@@ -701,7 +701,7 @@ TEST_P(format_test_case, fields_read_write) {
       const tests::json_doc_generator::json_value& data) {
       doc.insert(std::make_shared<tests::string_field>(name, data.str));
 
-      auto ref = irs::ref_cast<irs::byte_type>(
+      auto ref = irs::ViewCast<irs::byte_type>(
         (doc.indexed.end() - 1).as<tests::string_field>().value());
       sorted_terms.emplace(ref);
       unsorted_terms.emplace_back(ref);
@@ -859,8 +859,8 @@ TEST_P(format_test_case, fields_read_write) {
       auto term = term_reader->iterator(irs::SeekMode::NORMAL);
       for (const auto& [seek_term, expected_term] : TERMS) {
         ASSERT_EQ(seek_term == expected_term,
-                  term->seek(irs::ref_cast<irs::byte_type>(seek_term)));
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_term), term->value());
+                  term->seek(irs::ViewCast<irs::byte_type>(seek_term)));
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(expected_term), term->value());
       }
     }
 
@@ -905,19 +905,19 @@ TEST_P(format_test_case, fields_read_write) {
  * In case of "seek_next" we also end our scan on BLOCK entry "abab"
  * but furher "next" get us to the TERM "ababInteger" */
 {
-  auto seek_term = irs::ref_cast<irs::byte_type>(std::string_view("abaN"));
+  auto seek_term = irs::ViewCast<irs::byte_type>(std::string_view("abaN"));
   auto seek_result =
-    irs::ref_cast<irs::byte_type>(std::string_view("ababInteger"));
+    irs::ViewCast<irs::byte_type>(std::string_view("ababInteger"));
 
   /* seek exactly to term */
   {
     auto term = term_reader->iterator(irs::SeekMode::NORMAL);
     ASSERT_FALSE(term->seek(seek_term));
     /* we on the BLOCK "abab" */
-    ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("abab")),
+    ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abab")),
               term->value());
     ASSERT_TRUE(term->next());
-    ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("abcaLorem")),
+    ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abcaLorem")),
               term->value());
   }
 
@@ -1124,7 +1124,7 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
 
   size_t column_id;
   const irs::bytes_view payload(
-    irs::ref_cast<irs::byte_type>(std::string_view("abcd")));
+    irs::ViewCast<irs::byte_type>(std::string_view("abcd")));
 
   // write docs
   {
@@ -1719,14 +1719,14 @@ TEST_P(format_test_case, columns_rw_big_document) {
       ASSERT_TRUE(bool(stream));
       ASSERT_EQ(1, values->seek(1));
       ASSERT_EQ(std::string_view(field.buf, sizeof field.buf),
-                irs::ref_cast<char>(actual_value->value));
+                irs::ViewCast<char>(actual_value->value));
 
       std::memset(field.buf, 0, sizeof field.buf);  // clear buffer
       stream.read(field.buf, sizeof field.buf);
       ASSERT_TRUE(bool(stream));
       ASSERT_EQ(2, values->seek(2));
       ASSERT_EQ(std::string_view(field.buf, sizeof field.buf),
-                irs::ref_cast<char>(actual_value->value));
+                irs::ViewCast<char>(actual_value->value));
     }
 
     // iterator "next"
@@ -1750,7 +1750,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
       ASSERT_TRUE(bool(stream));
       ASSERT_EQ(1, it->value());
       ASSERT_EQ(std::string_view(field.buf, sizeof field.buf),
-                irs::ref_cast<char>(payload->value));
+                irs::ViewCast<char>(payload->value));
 
       ASSERT_TRUE(it->next());
       std::memset(field.buf, 0, sizeof field.buf);  // clear buffer
@@ -1758,7 +1758,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
       ASSERT_TRUE(bool(stream));
       ASSERT_EQ(2, it->value());
       ASSERT_EQ(std::string_view(field.buf, sizeof field.buf),
-                irs::ref_cast<char>(payload->value));
+                irs::ViewCast<char>(payload->value));
 
       ASSERT_FALSE(it->next());
     }
@@ -1783,14 +1783,14 @@ TEST_P(format_test_case, columns_rw_big_document) {
       stream.read(field.buf, sizeof field.buf);
       ASSERT_TRUE(bool(stream));
       ASSERT_EQ(std::string_view(field.buf, sizeof field.buf),
-                irs::ref_cast<char>(payload->value));
+                irs::ViewCast<char>(payload->value));
 
       ASSERT_EQ(2, it->seek(2));
       std::memset(field.buf, 0, sizeof field.buf);  // clear buffer
       stream.read(field.buf, sizeof field.buf);
       ASSERT_TRUE(bool(stream));
       ASSERT_EQ(std::string_view(field.buf, sizeof field.buf),
-                irs::ref_cast<char>(payload->value));
+                irs::ViewCast<char>(payload->value));
 
       ASSERT_FALSE(it->next());
     }
@@ -2080,20 +2080,20 @@ TEST_P(format_test_case, columns_rw_typed) {
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(name);
         field.value(
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null()));
         values.emplace_back(field.name(), field.value());
       } else if (data.is_bool() && data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(name);
-        field.value(irs::ref_cast<irs::byte_type>(
+        field.value(irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_true()));
         values.emplace_back(field.name(), field.value());
       } else if (data.is_bool() && !data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(name);
-        field.value(irs::ref_cast<irs::byte_type>(
+        field.value(irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_true()));
         values.emplace_back(field.name(), field.value());
       } else if (data.is_number()) {
@@ -3584,7 +3584,7 @@ TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
       const tests::json_doc_generator::json_value& data) {
       doc.insert(std::make_shared<tests::string_field>(name, data.str));
 
-      auto ref = irs::ref_cast<irs::byte_type>(
+      auto ref = irs::ViewCast<irs::byte_type>(
         (doc.indexed.end() - 1).as<tests::string_field>().value());
       sorted_terms.emplace(ref);
       unsorted_terms.emplace_back(ref);

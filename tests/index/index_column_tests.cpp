@@ -3132,12 +3132,12 @@ TEST_P(index_column_test_case,
         }
 
         if (count == BLOCK_SIZE) {
-          if (irs::ref_cast<irs::byte_type>(std::string_view("\0", 1)) !=
+          if (irs::ViewCast<irs::byte_type>(std::string_view("\0", 1)) !=
               actual_data) {
             return false;
           }
         } else if (count == MAX_DOCS) {
-          if (irs::ref_cast<irs::byte_type>(std::string_view("\1", 1)) !=
+          if (irs::ViewCast<irs::byte_type>(std::string_view("\1", 1)) !=
               actual_data) {
             return false;
           }
@@ -3173,12 +3173,12 @@ TEST_P(index_column_test_case,
         }
 
         if (count == BLOCK_SIZE) {
-          if (irs::ref_cast<irs::byte_type>(std::string_view("\0", 1)) !=
+          if (irs::ViewCast<irs::byte_type>(std::string_view("\0", 1)) !=
               actual_data) {
             return false;
           }
         } else if (count == MAX_DOCS) {
-          if (irs::ref_cast<irs::byte_type>(std::string_view("\1", 1)) !=
+          if (irs::ViewCast<irs::byte_type>(std::string_view("\1", 1)) !=
               actual_data) {
             return false;
           }
@@ -3223,10 +3223,10 @@ TEST_P(index_column_test_case,
         }
 
         if (count == BLOCK_SIZE) {
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("\0", 1)),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("\0", 1)),
                     actual_data);
         } else if (count == MAX_DOCS) {
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("\1", 1)),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("\1", 1)),
                     actual_data);
         } else {
           ASSERT_EQ(irs::bytes_view{}, actual_data);
@@ -3340,12 +3340,12 @@ TEST_P(index_column_test_case,
         ++count;
 
         if (count == BLOCK_SIZE) {
-          if (irs::ref_cast<irs::byte_type>(std::string_view("\0", 1)) !=
+          if (irs::ViewCast<irs::byte_type>(std::string_view("\0", 1)) !=
               actual_data) {
             return false;
           }
         } else if (count == MAX_DOCS) {
-          if (irs::ref_cast<irs::byte_type>(std::string_view("\1", 1)) !=
+          if (irs::ViewCast<irs::byte_type>(std::string_view("\1", 1)) !=
               actual_data) {
             return false;
           }
@@ -3378,12 +3378,12 @@ TEST_P(index_column_test_case,
         ++count;
 
         if (count == BLOCK_SIZE) {
-          if (irs::ref_cast<irs::byte_type>(std::string_view("\0", 1)) !=
+          if (irs::ViewCast<irs::byte_type>(std::string_view("\0", 1)) !=
               actual_data) {
             return false;
           }
         } else if (count == MAX_DOCS) {
-          if (irs::ref_cast<irs::byte_type>(std::string_view("\1", 1)) !=
+          if (irs::ViewCast<irs::byte_type>(std::string_view("\1", 1)) !=
               actual_data) {
             return false;
           }
@@ -3425,10 +3425,10 @@ TEST_P(index_column_test_case,
         ++count;
 
         if (count == BLOCK_SIZE) {
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("\0", 1)),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("\0", 1)),
                     actual_data);
         } else if (count == MAX_DOCS) {
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("\1", 1)),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("\1", 1)),
                     actual_data);
         } else {
           ASSERT_EQ(irs::bytes_view{}, actual_data);

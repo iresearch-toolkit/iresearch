@@ -38,7 +38,7 @@ irs::by_terms make_filter(
   q.mutable_options()->min_match = min_match;
   for (auto& term : terms) {
     q.mutable_options()->terms.emplace(
-      irs::ref_cast<irs::byte_type>(term.first), term.second);
+      irs::ViewCast<irs::byte_type>(term.first), term.second);
   }
   return q;
 }

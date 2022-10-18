@@ -142,8 +142,8 @@ bool parse_vpack_options(
           return false;
         }
 
-        auto itr =
-          CASE_CONVERT_MAP.find(get_string<std::string_view>(case_convert_slice));
+        auto itr = CASE_CONVERT_MAP.find(
+          get_string<std::string_view>(case_convert_slice));
 
         if (itr == CASE_CONVERT_MAP.end()) {
           IR_FRMT_WARN(
@@ -423,7 +423,7 @@ bool normalizing_token_stream::reset(std::string_view data) {
   // use the normalized value
   static_assert(sizeof(byte_type) == sizeof(char));
   std::get<term_attribute>(attrs_).value =
-    irs::ref_cast<byte_type>(state_->term_buf);
+    irs::ViewCast<byte_type>(std::string_view{state_->term_buf});
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
   offset.end = static_cast<uint32_t>(data.size());

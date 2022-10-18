@@ -34,7 +34,7 @@ namespace {
 auto MakeByTerm(std::string_view name, std::string_view value) {
   auto filter = std::make_unique<irs::by_term>();
   *filter->mutable_field() = name;
-  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  filter->mutable_options()->term = irs::ViewCast<irs::byte_type>(value);
   return filter;
 }
 
@@ -61,7 +61,7 @@ class Analyzer : public irs::analysis::analyzer {
   virtual bool next() override {
     if (i_ < count_) {
       std::get<irs::term_attribute>(attrs_).value =
-        irs::ref_cast<irs::byte_type>(value_);
+        irs::ViewCast<irs::byte_type>(value_);
       auto& offset = std::get<irs::offset>(attrs_);
       offset.start = 0;
       offset.end = static_cast<uint32_t>(value_.size());
@@ -179,7 +179,7 @@ TEST(Norm2HeaderTest, ResetByValue) {
 TEST(Norm2HeaderTest, ReadInvalid) {
   ASSERT_FALSE(irs::Norm2Header::Read(irs::bytes_view{}).has_value());
   ASSERT_FALSE(
-    irs::Norm2Header::Read(irs::EmptyRef<irs::byte_type>()).has_value());
+    irs::Norm2Header::Read(irs::EmptyStringView<irs::byte_type>()).has_value());
 
   // Invalid size
   {

@@ -111,7 +111,7 @@ class string_token_stream : public analysis::analyzer,
   }
 
   bool reset(std::string_view value) noexcept final {
-    value_ = ref_cast<byte_type>(value);
+    value_ = ViewCast<byte_type>(value);
     in_use_ = false;
     return true;
   }

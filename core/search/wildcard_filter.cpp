@@ -65,7 +65,7 @@ auto executeWildcard(bstring& buf, bytes_view term, Invalid&& inv, Term&& t,
     case WildcardType::TERM:
       return t(term);
     case WildcardType::MATCH_ALL:
-      term = EmptyRef<irs::byte_type>();
+      term = EmptyStringView<irs::byte_type>();
       return p(term);
     case WildcardType::PREFIX_ESCAPED:
       term = unescape(term, buf);

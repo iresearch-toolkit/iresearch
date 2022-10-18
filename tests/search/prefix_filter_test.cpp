@@ -34,7 +34,7 @@ irs::by_prefix make_filter(const std::string_view& field,
                            size_t scored_terms_limit = 1024) {
   irs::by_prefix q;
   *q.mutable_field() = field;
-  q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
+  q.mutable_options()->term = irs::ViewCast<irs::byte_type>(term);
   q.mutable_options()->scored_terms_limit = scored_terms_limit;
   return q;
 }
@@ -322,7 +322,7 @@ TEST_P(prefix_filter_test_case, visit) {
 
   const std::string_view field = "prefix";
   const irs::bytes_view term =
-    irs::ref_cast<irs::byte_type>(std::string_view("ab"));
+    irs::ViewCast<irs::byte_type>(std::string_view("ab"));
 
   tests::empty_filter_visitor visitor;
   // read segment

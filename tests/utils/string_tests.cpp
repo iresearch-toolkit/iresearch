@@ -36,68 +36,68 @@ TEST(string_tests, common_prefix) {
   {
     const std::string_view lhs = "20-MAR-2012 19:56:11.00";
     const std::string_view rhs = "20-MAR-2012 19:56:11.00\0\0";
-    EXPECT_EQ(23, common_prefix_length(lhs, rhs));
-    EXPECT_EQ(23, common_prefix_length(rhs, lhs));
+    EXPECT_EQ(23, CommonPrefixLength(lhs, rhs));
+    EXPECT_EQ(23, CommonPrefixLength(rhs, lhs));
   }
 
   {
     const std::string_view lhs = "quick brown fox";
     const std::string_view rhs = "quick brown fax";
-    EXPECT_EQ(13, common_prefix_length(lhs, rhs));
-    EXPECT_EQ(13, common_prefix_length(rhs, lhs));
+    EXPECT_EQ(13, CommonPrefixLength(lhs, rhs));
+    EXPECT_EQ(13, CommonPrefixLength(rhs, lhs));
   }
 
   {
     const std::string_view lhs = "quick brown foxies";
     const std::string_view rhs = "quick brown fax";
-    EXPECT_EQ(13, common_prefix_length(lhs, rhs));
-    EXPECT_EQ(13, common_prefix_length(rhs, lhs));
+    EXPECT_EQ(13, CommonPrefixLength(lhs, rhs));
+    EXPECT_EQ(13, CommonPrefixLength(rhs, lhs));
   }
 
   {
     const std::string_view lhs = "quick brown foxies";
     const std::string_view rhs = "fuick brown fax";
-    EXPECT_EQ(0, common_prefix_length(lhs, rhs));
-    EXPECT_EQ(0, common_prefix_length(rhs, lhs));
+    EXPECT_EQ(0, CommonPrefixLength(lhs, rhs));
+    EXPECT_EQ(0, CommonPrefixLength(rhs, lhs));
   }
 
   {
     const std::string_view lhs = "quick brown foxies";
     const std::string_view rhs = "q1ick brown fax";
-    EXPECT_EQ(1, common_prefix_length(lhs, rhs));
-    EXPECT_EQ(1, common_prefix_length(rhs, lhs));
+    EXPECT_EQ(1, CommonPrefixLength(lhs, rhs));
+    EXPECT_EQ(1, CommonPrefixLength(rhs, lhs));
   }
 
   {
     const std::string_view lhs = "qui";
     const std::string_view rhs = "q1";
-    EXPECT_EQ(1, common_prefix_length(lhs, rhs));
-    EXPECT_EQ(1, common_prefix_length(rhs, lhs));
+    EXPECT_EQ(1, CommonPrefixLength(lhs, rhs));
+    EXPECT_EQ(1, CommonPrefixLength(rhs, lhs));
   }
 
   {
     const std::string_view lhs = "qui";
     const std::string_view rhs = "f1";
-    EXPECT_EQ(0, common_prefix_length(lhs, rhs));
-    EXPECT_EQ(0, common_prefix_length(rhs, lhs));
+    EXPECT_EQ(0, CommonPrefixLength(lhs, rhs));
+    EXPECT_EQ(0, CommonPrefixLength(rhs, lhs));
   }
 
   {
     const std::string_view lhs = "quick brown foxies";
     const std::string_view rhs = "qui";
-    EXPECT_EQ(3, common_prefix_length(lhs, rhs));
-    EXPECT_EQ(3, common_prefix_length(rhs, lhs));
+    EXPECT_EQ(3, CommonPrefixLength(lhs, rhs));
+    EXPECT_EQ(3, CommonPrefixLength(rhs, lhs));
   }
 
   {
     const std::string_view str = "quick brown foxies";
-    EXPECT_EQ(0, common_prefix_length(std::string_view{}, str));
-    EXPECT_EQ(0, common_prefix_length(str, std::string_view{}));
+    EXPECT_EQ(0, CommonPrefixLength(std::string_view{}, str));
+    EXPECT_EQ(0, CommonPrefixLength(str, std::string_view{}));
   }
 
   {
     const std::string_view str = "quick brown foxies";
-    EXPECT_EQ(0, common_prefix_length(std::string_view{""}, str));
-    EXPECT_EQ(0, common_prefix_length(str, std::string_view{""}));
+    EXPECT_EQ(0, CommonPrefixLength(std::string_view{""}, str));
+    EXPECT_EQ(0, CommonPrefixLength(str, std::string_view{""}));
   }
 }

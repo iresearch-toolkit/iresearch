@@ -1292,7 +1292,7 @@ void field_writer::end_field(std::string_view name,
   }
 
   // cause creation of all final blocks
-  push(EmptyRef<irs::byte_type>());
+  push(EmptyStringView<irs::byte_type>());
 
   // write root block with empty prefix
   write_blocks(0, stack_.size());
@@ -3500,7 +3500,7 @@ class dumper : util::noncopyable {
   }
 
   std::string_view suffix(bytes_view term) {
-    return ref_cast<char>(
+    return ViewCast<char>(
       bytes_view{term.data() + prefix_, term.size() - prefix_});
   }
 

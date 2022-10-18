@@ -40,7 +40,7 @@ TEST(token_streams_tests, boolean_stream) {
   // 'false' stream
   {
     const auto expected =
-      irs::ref_cast<irs::byte_type>(boolean_token_stream::value_false());
+      irs::ViewCast<irs::byte_type>(boolean_token_stream::value_false());
     boolean_token_stream stream(false);
 
     auto* inc = irs::get<increment>(stream);
@@ -62,7 +62,7 @@ TEST(token_streams_tests, boolean_stream) {
   // 'true' stream
   {
     auto expected =
-      irs::ref_cast<irs::byte_type>(boolean_token_stream::value_true());
+      irs::ViewCast<irs::byte_type>(boolean_token_stream::value_true());
     boolean_token_stream stream(true);
     auto* inc = irs::get<increment>(stream);
     ASSERT_FALSE(!inc);

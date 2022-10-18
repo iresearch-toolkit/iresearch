@@ -40,7 +40,7 @@ boolean_token_stream::boolean_token_stream(bool value /*= false*/) noexcept
 bool boolean_token_stream::next() noexcept {
   const auto in_use = in_use_;
   in_use_ = true;
-  std::get<term_attribute>(attrs_).value = ref_cast<byte_type>(value(value_));
+  std::get<term_attribute>(attrs_).value = ViewCast<byte_type>(value(value_));
   return !in_use;
 }
 
@@ -180,7 +180,7 @@ bool null_token_stream::next() noexcept {
   const auto in_use = in_use_;
   in_use_ = true;
   std::get<term_attribute>(attrs_).value =
-    irs::ref_cast<byte_type>(value_null());
+    irs::ViewCast<byte_type>(value_null());
   return !in_use;
 }
 

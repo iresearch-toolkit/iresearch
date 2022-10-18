@@ -226,13 +226,13 @@ std::string_view splitFreq(const std::string& text) {
 
   if (std::regex_match(text, res, freqPattern1)) {
     return std::string_view(&*(res[1].first),
-                           std::distance(res[1].first, res[1].second));
+                            std::distance(res[1].first, res[1].second));
   } else if (std::regex_match(text, res, freqPattern2)) {
     return std::string_view(&*(res[1].first),
-                           std::distance(res[1].first, res[1].second));
+                            std::distance(res[1].first, res[1].second));
   } else if (std::regex_match(text, res, freqPattern3)) {
     return std::string_view(&*(res[1].first),
-                           std::distance(res[1].first, res[1].second));
+                            std::distance(res[1].first, res[1].second));
   }
 
   return {};
@@ -255,8 +255,7 @@ irs::filter::prepared::ptr prepareFilter(
 
       irs::by_term query;
       *query.mutable_field() = "body";
-      irs::assign(query.mutable_options()->term,
-                  irs::ref_cast<irs::byte_type>(terms));
+      query.mutable_options()->term = irs::ViewCast<irs::byte_type>(terms);
 
       return query.prepare(reader, order);
     }
@@ -275,7 +274,7 @@ irs::filter::prepared::ptr prepareFilter(
 
       for (auto* term = irs::get<irs::term_attribute>(*analyzer);
            analyzer->next();) {
-        irs::assign(opts->push_back<irs::by_term_options>().term, term->value);
+        opts->push_back<irs::by_term_options>().term = term->value;
       }
 
       return query.prepare(reader, order);
@@ -319,10 +318,10 @@ irs::filter::prepared::ptr prepareFilter(
            std::getline(in, tmpBuf, ' ');) {
         auto& part = query.add<irs::by_term>();
         *part.mutable_field() = "body";
-        irs::assign(
-          part.mutable_options()->term,
-          irs::ref_cast<irs::byte_type>(std::string_view(
-            tmpBuf.c_str() + 1)));  // +1 for skip '+' at the start of the term
+
+        // +1 for skip '+' at the start of the term
+        part.mutable_options()->term =
+          irs::ViewCast<irs::byte_type>(std::string_view(tmpBuf.c_str() + 1));
       }
 
       return query.prepare(reader, order);
@@ -342,8 +341,7 @@ irs::filter::prepared::ptr prepareFilter(
            std::getline(in, tmpBuf, ' ');) {
         auto& part = query.add<irs::by_term>();
         *part.mutable_field() = "body";
-        irs::assign(part.mutable_options()->term,
-                    irs::ref_cast<irs::byte_type>(tmpBuf));
+        part.mutable_options()->term = irs::ViewCast<irs::byte_type>(tmpBuf);
       }
 
       return query.prepare(reader, order);
@@ -356,7 +354,7 @@ irs::filter::prepared::ptr prepareFilter(
       *query.mutable_field() = "body";
       auto* opts = query.mutable_options();
       opts->scored_terms_limit = scored_terms_limit;
-      irs::assign(opts->term, irs::ref_cast<irs::byte_type>(terms));
+      opts->term = irs::ViewCast<irs::byte_type>(terms);
 
       return query.prepare(reader, order);
     }
@@ -366,7 +364,7 @@ irs::filter::prepared::ptr prepareFilter(
       irs::by_wildcard query;
       *query.mutable_field() = "body";
       auto* opts = query.mutable_options();
-      irs::assign(opts->term, irs::ref_cast<irs::byte_type>(terms));
+      opts->term = irs::ViewCast<irs::byte_type>(terms);
       opts->scored_terms_limit = scored_terms_limit;
 
       for (auto& b : opts->term) {
@@ -393,7 +391,7 @@ irs::filter::prepared::ptr prepareFilter(
       auto* opts = query.mutable_options();
       opts->max_terms = 50;  // same as Lucene by default
       opts->max_distance = (category == category_t::Fuzzy1 ? 1 : 2);
-      irs::assign(opts->term, irs::ref_cast<irs::byte_type>(term));
+      opts->term = irs::ViewCast<irs::byte_type>(term);
 
       return query.prepare(reader, order);
     }
@@ -412,8 +410,7 @@ irs::filter::prepared::ptr prepareFilter(
         } else {
           auto& part = query.add<irs::by_term>();
           *part.mutable_field() = "body";
-          irs::assign(part.mutable_options()->term,
-                      irs::ref_cast<irs::byte_type>(tmpBuf));
+          part.mutable_options()->term = irs::ViewCast<irs::byte_type>(tmpBuf);
         }
       }
       return query.prepare(reader, order);
@@ -805,9 +802,9 @@ int search(const cmdline::parser& args) {
   const bool csv = args.exist(CSV);
   const size_t scored_terms_limit = args.get<size_t>(SCORED_TERMS_LIMIT);
   const auto scorer = args.get<std::string>(SCORER);
-  const auto scorer_arg = args.exist(SCORER_ARG)
-                            ? std::string_view(args.get<std::string>(SCORER_ARG))
-                            : std::string_view{};
+  const auto scorer_arg =
+    args.exist(SCORER_ARG) ? std::string_view(args.get<std::string>(SCORER_ARG))
+                           : std::string_view{};
   const auto scorer_arg_format = args.get<std::string>(SCORER_ARG_FMT);
   const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE)
                                              : std::string("mmap");

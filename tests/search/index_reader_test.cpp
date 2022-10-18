@@ -595,9 +595,9 @@ TEST(segment_reader_test, open) {
 
         ASSERT_EQ(5, terms->size());
         ASSERT_EQ(5, terms->docs_count());
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("A")),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("A")),
                   (terms->min)());
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("E")),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("E")),
                   (terms->max)());
 
         auto term = terms->iterator(irs::SeekMode::NORMAL);
@@ -605,7 +605,7 @@ TEST(segment_reader_test, open) {
         // check term: A
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("A")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("A")),
                     term->value());
 
           // check docs
@@ -620,7 +620,7 @@ TEST(segment_reader_test, open) {
         // check term: B
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("B")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("B")),
                     term->value());
 
           // check docs
@@ -636,7 +636,7 @@ TEST(segment_reader_test, open) {
         // check term: C
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("C")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("C")),
                     term->value());
 
           // check docs
@@ -652,7 +652,7 @@ TEST(segment_reader_test, open) {
         // check term: D
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("D")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("D")),
                     term->value());
 
           // check docs
@@ -668,7 +668,7 @@ TEST(segment_reader_test, open) {
         // check term: E
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("E")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("E")),
                     term->value());
 
           // check docs
@@ -706,9 +706,9 @@ TEST(segment_reader_test, open) {
         ASSERT_NE(nullptr, terms);
         ASSERT_EQ(1, terms->size());
         ASSERT_EQ(5, terms->docs_count());
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("xyz")),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("xyz")),
                   (terms->min)());
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("xyz")),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("xyz")),
                   (terms->max)());
 
         auto term = terms->iterator(irs::SeekMode::NORMAL);
@@ -716,7 +716,7 @@ TEST(segment_reader_test, open) {
         // check term: xyz
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("xyz")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("xyz")),
                     term->value());
 
           /* check docs */
@@ -751,9 +751,9 @@ TEST(segment_reader_test, open) {
         ASSERT_NE(nullptr, terms);
         ASSERT_EQ(2, terms->size());
         ASSERT_EQ(4, terms->docs_count());
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("abcd")),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abcd")),
                   (terms->min)());
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("vczc")),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("vczc")),
                   (terms->max)());
 
         auto term = terms->iterator(irs::SeekMode::NORMAL);
@@ -761,7 +761,7 @@ TEST(segment_reader_test, open) {
         // check term: abcd
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("abcd")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abcd")),
                     term->value());
 
           // check docs
@@ -779,7 +779,7 @@ TEST(segment_reader_test, open) {
         // check term: vczc
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("vczc")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("vczc")),
                     term->value());
 
           // check docs
@@ -808,9 +808,9 @@ TEST(segment_reader_test, open) {
         ASSERT_NE(nullptr, terms);
         ASSERT_EQ(2, terms->size());
         ASSERT_EQ(2, terms->docs_count());
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("abcd")),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abcd")),
                   (terms->min)());
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("abcde")),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abcde")),
                   (terms->max)());
 
         auto term = terms->iterator(irs::SeekMode::NORMAL);
@@ -818,7 +818,7 @@ TEST(segment_reader_test, open) {
         // check term: abcd
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("abcd")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abcd")),
                     term->value());
 
           // check docs
@@ -834,7 +834,7 @@ TEST(segment_reader_test, open) {
         // check term: abcde
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("abcde")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abcde")),
                     term->value());
 
           // check docs

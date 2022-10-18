@@ -37,7 +37,7 @@ template<typename Filter = irs::by_wildcard>
 Filter make_filter(const std::string_view& field, const std::string_view term) {
   Filter q;
   *q.mutable_field() = field;
-  q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
+  q.mutable_options()->term = irs::ViewCast<irs::byte_type>(term);
   return q;
 }
 
@@ -470,7 +470,7 @@ TEST_P(wildcard_filter_test_case, visit) {
   ASSERT_NE(nullptr, reader);
 
   {
-    auto term = irs::ref_cast<irs::byte_type>(std::string_view("abc"));
+    auto term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
     tests::empty_filter_visitor visitor;
     auto field_visitor = irs::by_wildcard::visitor(term);
     ASSERT_TRUE(field_visitor);
@@ -486,7 +486,7 @@ TEST_P(wildcard_filter_test_case, visit) {
   }
 
   {
-    auto prefix = irs::ref_cast<irs::byte_type>(std::string_view("ab%"));
+    auto prefix = irs::ViewCast<irs::byte_type>(std::string_view("ab%"));
     tests::empty_filter_visitor visitor;
     auto field_visitor = irs::by_wildcard::visitor(prefix);
     ASSERT_TRUE(field_visitor);
@@ -506,7 +506,7 @@ TEST_P(wildcard_filter_test_case, visit) {
   }
 
   {
-    auto wildcard = irs::ref_cast<irs::byte_type>(std::string_view("a_c%"));
+    auto wildcard = irs::ViewCast<irs::byte_type>(std::string_view("a_c%"));
     tests::empty_filter_visitor visitor;
     auto field_visitor = irs::by_wildcard::visitor(wildcard);
     ASSERT_TRUE(field_visitor);

@@ -111,7 +111,7 @@ TEST(nearest_neighbors_stream_test, test_load) {
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(4, offset->end);
-    ASSERT_EQ("homogenized", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("homogenized", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
   }
@@ -144,12 +144,12 @@ TEST(nearest_neighbors_stream_test, test_load) {
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(4, offset->end);
-    ASSERT_EQ("homogenized", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("homogenized", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(4, offset->end);
-    ASSERT_EQ("teach", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("teach", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
 
@@ -158,12 +158,12 @@ TEST(nearest_neighbors_stream_test, test_load) {
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(5, offset->end);
-    ASSERT_EQ("\"prepared\"", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("\"prepared\"", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(5, offset->end);
     ASSERT_EQ(0, inc->value);
-    ASSERT_EQ("tinfoil", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("tinfoil", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
   }
@@ -197,16 +197,16 @@ TEST(nearest_neighbors_stream_test, test_load) {
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(8, offset->end);
-    ASSERT_EQ("homogenized", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("homogenized", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, inc->value);
-    ASSERT_EQ("teach", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("teach", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(1, inc->value);
-    ASSERT_EQ("tube\"", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("tube\"", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, inc->value);
-    ASSERT_EQ("\"breather", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("\"breather", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
   }

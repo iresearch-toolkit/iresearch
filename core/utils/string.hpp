@@ -148,8 +148,8 @@ using bstring = std::basic_string<byte_type>;
 using bytes_view = std::basic_string_view<byte_type>;
 
 template<typename Char>
-inline size_t common_prefix_length(const Char* lhs, size_t lhs_size,
-                                   const Char* rhs, size_t rhs_size) noexcept {
+inline size_t CommonPrefixLength(const Char* lhs, size_t lhs_size,
+                                 const Char* rhs, size_t rhs_size) noexcept {
   static_assert(1 == sizeof(Char), "1 != sizeof(Char)");
 
   const size_t* lhs_block = reinterpret_cast<const size_t*>(lhs);
@@ -176,20 +176,14 @@ inline size_t common_prefix_length(const Char* lhs, size_t lhs_size,
 }
 
 template<typename Char, typename Traits>
-inline size_t common_prefix_length(
+inline size_t CommonPrefixLength(
   std::basic_string_view<Char, Traits> lhs,
   std::basic_string_view<Char, Traits> rhs) noexcept {
-  return common_prefix_length(lhs.data(), lhs.size(), rhs.data(), rhs.size());
-}
-
-template<typename T, typename U>
-inline void assign(std::basic_string<T>& str, std::basic_string_view<U> ref) {
-  static_assert(sizeof(T) == 1 && sizeof(T) == sizeof(U));
-  str.assign(reinterpret_cast<const T*>(ref.data()), ref.size());
+  return CommonPrefixLength(lhs.data(), lhs.size(), rhs.data(), rhs.size());
 }
 
 template<typename Char>
-inline std::basic_string_view<Char> EmptyRef() noexcept {
+inline std::basic_string_view<Char> EmptyStringView() noexcept {
   return {reinterpret_cast<const Char*>(""), 0};
 }
 
@@ -199,33 +193,28 @@ constexpr bool IsNull(std::basic_string_view<Char> str) noexcept {
 }
 
 template<typename ElemDst, typename ElemSrc>
-constexpr inline std::basic_string_view<ElemDst> ref_cast(
+constexpr inline std::basic_string_view<ElemDst> ViewCast(
   std::basic_string_view<ElemSrc> src) noexcept {
+  static_assert(sizeof(ElemDst) == sizeof(ElemSrc));
   return {reinterpret_cast<const ElemDst*>(src.data()), src.size()};
-}
-
-template<typename ElemDst, typename ElemSrc>
-constexpr inline std::basic_string_view<ElemDst> ref_cast(
-  std::basic_string<ElemSrc> src) noexcept {
-  return {reinterpret_cast<const ElemDst*>(src.c_str()), src.size()};
 }
 
 namespace hash_utils {
 
-size_t hash(const char* value, size_t size) noexcept;
-size_t hash(const byte_type* value, size_t size) noexcept;
+size_t Hash(const char* value, size_t size) noexcept;
+size_t Hash(const byte_type* value, size_t size) noexcept;
 
-inline size_t hash(bytes_view value) noexcept {
-  return hash(value.data(), value.size());
+inline size_t Hash(bytes_view value) noexcept {
+  return Hash(value.data(), value.size());
 }
-inline size_t hash(std::string_view value) noexcept {
-  return hash(value.data(), value.size());
+inline size_t Hash(std::string_view value) noexcept {
+  return Hash(value.data(), value.size());
 }
-inline size_t hash(const char* value) noexcept {
-  return hash(value, std::char_traits<char>::length(value));
+inline size_t Hash(const char* value) noexcept {
+  return Hash(value, std::char_traits<char>::length(value));
 }
-inline size_t hash(const wchar_t* value) noexcept {
-  return hash(reinterpret_cast<const char*>(value),
+inline size_t Hash(const wchar_t* value) noexcept {
+  return Hash(reinterpret_cast<const char*>(value),
               std::char_traits<wchar_t>::length(value) * sizeof(wchar_t));
 }
 
@@ -237,14 +226,14 @@ namespace std {
 template<>
 struct hash<::iresearch::bstring> {
   size_t operator()(const ::iresearch::bstring& value) const noexcept {
-    return ::iresearch::hash_utils::hash(value);
+    return ::iresearch::hash_utils::Hash(value);
   }
 };
 
 template<>
 struct hash<::iresearch::bytes_view> {
   size_t operator()(::iresearch::bytes_view value) const noexcept {
-    return ::iresearch::hash_utils::hash(value);
+    return ::iresearch::hash_utils::Hash(value);
   }
 };
 

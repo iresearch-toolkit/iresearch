@@ -155,7 +155,7 @@ auto MakeParentProvider(std::string_view name) {
 auto MakeByTerm(std::string_view name, std::string_view value) {
   auto filter = std::make_unique<irs::by_term>();
   *filter->mutable_field() = name;
-  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  filter->mutable_options()->term = irs::ViewCast<irs::byte_type>(value);
   return filter;
 }
 
@@ -169,7 +169,7 @@ auto MakeByNumericTerm(std::string_view name, int32_t value) {
   stream.reset(value);
   stream.next();
 
-  irs::assign(filter->mutable_options()->term, token->value);
+  irs::Assign(filter->mutable_options()->term, token->value);
 
   return filter;
 }
@@ -188,7 +188,7 @@ auto MakeByTermAndRange(std::string_view name, std::string_view value,
   {
     auto& filter = root->add<irs::by_term>();
     *filter.mutable_field() = name;
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+    filter.mutable_options()->term = irs::ViewCast<irs::byte_type>(value);
   }
   // range_field <= upper_bound
   {
@@ -215,7 +215,7 @@ auto MakeOptions(std::string_view parent, std::string_view child,
   auto& child_filter = static_cast<irs::by_term&>(*opts.child);
   *child_filter.mutable_field() = child;
   child_filter.mutable_options()->term =
-    irs::ref_cast<irs::byte_type>(child_value);
+    irs::ViewCast<irs::byte_type>(child_value);
 
   return opts;
 }

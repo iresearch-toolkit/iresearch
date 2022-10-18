@@ -288,7 +288,7 @@ void utf8_transitions_builder::insert(automaton& a, const byte_type* label,
   assert(label && size < 5);
 
   const size_t prefix =
-    1 + common_prefix_length(last_.data(), last_.size(), label, size);
+    1 + CommonPrefixLength(last_.data(), last_.size(), label, size);
   minimize(a, prefix);  // minimize suffix
 
   // add current word suffix

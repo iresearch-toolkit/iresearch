@@ -131,10 +131,10 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
     irs::by_range filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->range.min =
-      irs::ref_cast<irs::byte_type>(std::string_view("6"));
+      irs::ViewCast<irs::byte_type>(std::string_view("6"));
     filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     filter.mutable_options()->range.max =
-      irs::ref_cast<irs::byte_type>(std::string_view("8"));
+      irs::ViewCast<irs::byte_type>(std::string_view("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
@@ -175,10 +175,10 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
     irs::by_range filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->range.min =
-      irs::ref_cast<irs::byte_type>(std::string_view("6"));
+      irs::ViewCast<irs::byte_type>(std::string_view("6"));
     filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
     filter.mutable_options()->range.max =
-      irs::ref_cast<irs::byte_type>(std::string_view("8"));
+      irs::ViewCast<irs::byte_type>(std::string_view("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
@@ -398,9 +398,9 @@ TEST_P(bm25_test_case, test_phrase) {
     irs::by_phrase filter;
     *filter.mutable_field() = "phrase_anl";
     filter.mutable_options()->push_back<irs::by_term_options>().term =
-      irs::ref_cast<irs::byte_type>(std::string_view("jumps"));
+      irs::ViewCast<irs::byte_type>(std::string_view("jumps"));
     filter.mutable_options()->push_back<irs::by_term_options>().term =
-      irs::ref_cast<irs::byte_type>(std::string_view("high"));
+      irs::ViewCast<irs::byte_type>(std::string_view("high"));
 
     std::multimap<irs::score_t, std::string, std::greater<>> sorted;
 
@@ -445,19 +445,19 @@ TEST_P(bm25_test_case, test_phrase) {
     *filter.mutable_field() = "phrase_anl";
     auto& phrase = *filter.mutable_options();
     phrase.push_back<irs::by_term_options>().term =
-      irs::ref_cast<irs::byte_type>(std::string_view("cookies"));
+      irs::ViewCast<irs::byte_type>(std::string_view("cookies"));
     phrase.push_back<irs::by_prefix_options>().term =
-      irs::ref_cast<irs::byte_type>(std::string_view("ca"));
+      irs::ViewCast<irs::byte_type>(std::string_view("ca"));
     phrase.push_back<irs::by_wildcard_options>().term =
-      irs::ref_cast<irs::byte_type>(std::string_view("p_e"));
+      irs::ViewCast<irs::byte_type>(std::string_view("p_e"));
     auto& lt = phrase.push_back<irs::by_edit_distance_filter_options>();
     lt.max_distance = 1;
-    lt.term = irs::ref_cast<irs::byte_type>(std::string_view("biscuit"));
+    lt.term = irs::ViewCast<irs::byte_type>(std::string_view("biscuit"));
     auto& ct = phrase.push_back<irs::by_terms_options>();
     ct.terms.emplace(
-      irs::ref_cast<irs::byte_type>(std::string_view("meringue")));
+      irs::ViewCast<irs::byte_type>(std::string_view("meringue")));
     ct.terms.emplace(
-      irs::ref_cast<irs::byte_type>(std::string_view("marshmallows")));
+      irs::ViewCast<irs::byte_type>(std::string_view("marshmallows")));
 
     std::multimap<irs::score_t, std::string, std::greater<>> sorted;
 
@@ -534,7 +534,7 @@ TEST_P(bm25_test_case, test_query) {
     irs::by_term filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->term =
-      irs::ref_cast<irs::byte_type>(std::string_view("7"));
+      irs::ViewCast<irs::byte_type>(std::string_view("7"));
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
     constexpr std::array expected{0, 1, 5, 7};
@@ -613,7 +613,7 @@ TEST_P(bm25_test_case, test_query) {
     irs::by_term filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->term =
-      irs::ref_cast<irs::byte_type>(std::string_view("6"));
+      irs::ViewCast<irs::byte_type>(std::string_view("6"));
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
     constexpr std::array expected{
@@ -708,14 +708,14 @@ TEST_P(bm25_test_case, test_query) {
       auto& sub = filter.add<irs::by_term>();
       *sub.mutable_field() = "field";
       sub.mutable_options()->term =
-        irs::ref_cast<irs::byte_type>(std::string_view("6"));
+        irs::ViewCast<irs::byte_type>(std::string_view("6"));
     }
     {
       // doc 3, 7
       auto& sub = filter.add<irs::by_term>();
       *sub.mutable_field() = "field";
       sub.mutable_options()->term =
-        irs::ref_cast<irs::byte_type>(std::string_view("8"));
+        irs::ViewCast<irs::byte_type>(std::string_view("8"));
     }
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
@@ -807,7 +807,7 @@ TEST_P(bm25_test_case, test_query) {
     irs::by_prefix filter;
     *filter.mutable_field() = "prefix";
     filter.mutable_options()->term =
-      irs::ref_cast<irs::byte_type>(std::string_view(""));
+      irs::ViewCast<irs::byte_type>(std::string_view(""));
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
     constexpr std::array expected{
@@ -861,10 +861,10 @@ TEST_P(bm25_test_case, test_query) {
     irs::by_range filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->range.min =
-      irs::ref_cast<irs::byte_type>(std::string_view("6"));
+      irs::ViewCast<irs::byte_type>(std::string_view("6"));
     filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     filter.mutable_options()->range.max =
-      irs::ref_cast<irs::byte_type>(std::string_view("8"));
+      irs::ViewCast<irs::byte_type>(std::string_view("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
@@ -904,10 +904,10 @@ TEST_P(bm25_test_case, test_query) {
     irs::by_range filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->range.min =
-      irs::ref_cast<irs::byte_type>(std::string_view("8"));
+      irs::ViewCast<irs::byte_type>(std::string_view("8"));
     filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
     filter.mutable_options()->range.max =
-      irs::ref_cast<irs::byte_type>(std::string_view("9"));
+      irs::ViewCast<irs::byte_type>(std::string_view("9"));
     filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
     filter.mutable_options()->scored_terms_limit = 1;
 
@@ -991,10 +991,10 @@ TEST_P(bm25_test_case, test_query) {
     irs::by_range filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->range.min =
-      irs::ref_cast<irs::byte_type>(std::string_view("6"));
+      irs::ViewCast<irs::byte_type>(std::string_view("6"));
     filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     filter.mutable_options()->range.max =
-      irs::ref_cast<irs::byte_type>(std::string_view("8"));
+      irs::ViewCast<irs::byte_type>(std::string_view("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
@@ -1034,10 +1034,10 @@ TEST_P(bm25_test_case, test_query) {
     irs::by_range filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->range.min =
-      irs::ref_cast<irs::byte_type>(std::string_view("6"));
+      irs::ViewCast<irs::byte_type>(std::string_view("6"));
     filter.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
     filter.mutable_options()->range.max =
-      irs::ref_cast<irs::byte_type>(std::string_view("8"));
+      irs::ViewCast<irs::byte_type>(std::string_view("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
@@ -1078,7 +1078,7 @@ TEST_P(bm25_test_case, test_query) {
     irs::by_phrase filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->push_back<irs::by_term_options>().term =
-      irs::ref_cast<irs::byte_type>(std::string_view("7"));
+      irs::ViewCast<irs::byte_type>(std::string_view("7"));
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
     std::vector<std::pair<float_t, uint32_t>> expected = {
@@ -1542,7 +1542,7 @@ TEST_P(bm25_test_case, test_order) {
     ASSERT_NE(nullptr, actual_value);
 
     query.mutable_options()->term =
-      irs::ref_cast<irs::byte_type>(std::string_view("7"));
+      irs::ViewCast<irs::byte_type>(std::string_view("7"));
 
     std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
     constexpr std::array expected{0, 1, 5, 7};

@@ -138,7 +138,7 @@ bool parse_vpack_options(
     }
     start_marker = irs::get_string<std::string_view>(start_marker_type_slice);
   }
-  options.start_marker = irs::ref_cast<irs::byte_type>(start_marker);
+  options.start_marker = irs::ViewCast<irs::byte_type>(start_marker);
 
   // end marker
   if (slice.hasKey(END_MARKER_PARAM_NAME)) {
@@ -152,7 +152,7 @@ bool parse_vpack_options(
     }
     end_marker = irs::get_string<std::string_view>(end_marker_type_slice);
   }
-  options.end_marker = irs::ref_cast<irs::byte_type>(end_marker);
+  options.end_marker = irs::ViewCast<irs::byte_type>(end_marker);
 
   // stream bytes
   if (slice.hasKey(STREAM_TYPE_PARAM_NAME)) {
@@ -219,11 +219,13 @@ bool make_vpack_config(
     }
 
     // start_marker
-    builder->add(START_MARKER_PARAM_NAME,
-                 VPackValue(irs::ref_cast<char>(options.start_marker)));
+    builder->add(
+      START_MARKER_PARAM_NAME,
+      VPackValue(irs::ViewCast<char>(irs::bytes_view{options.start_marker})));
     // end_marker
-    builder->add(END_MARKER_PARAM_NAME,
-                 VPackValue(irs::ref_cast<char>(options.end_marker)));
+    builder->add(
+      END_MARKER_PARAM_NAME,
+      VPackValue(irs::ViewCast<char>(irs::bytes_view{options.end_marker})));
   }
 
   return true;
@@ -433,7 +435,7 @@ bool ngram_token_stream_base::reset(std::string_view value) noexcept {
   offset.end = std::numeric_limits<uint32_t>::max();
 
   // reset stream
-  data_ = ref_cast<byte_type>(value);
+  data_ = ViewCast<byte_type>(value);
   begin_ = data_.begin();
   ngram_end_ = begin_;
   data_end_ = data_.end();

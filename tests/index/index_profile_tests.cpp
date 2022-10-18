@@ -309,7 +309,7 @@ class index_profile_test_case : public tests::index_test_base {
               auto& filter_impl = static_cast<irs::by_term&>(*filter);
               *filter_impl.mutable_field() = key_field;
               filter_impl.mutable_options()->term =
-                irs::ref_cast<irs::byte_type>(key_term);
+                irs::ViewCast<irs::byte_type>(key_term);
               // double up term
               updated_term.append(value_term.data(), value_term.size());
               csv_doc_template.indexed.get<tests::string_field>(value_field)

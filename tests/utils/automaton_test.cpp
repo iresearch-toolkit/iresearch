@@ -550,7 +550,7 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
     auto finish = a.AddState();
 
     std::vector<std::pair<irs::bytes_view, irs::automaton::StateId>> arcs{
-      {irs::EmptyRef<irs::byte_type>(), finish}};
+      {irs::EmptyStringView<irs::byte_type>(), finish}};
     builder.insert(a, start, fst::kNoStateId, arcs.begin(), arcs.end());
 
     assert_properties(a);
@@ -581,7 +581,7 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
     auto intermediate2 = a.NumStates() + 2;
 
     std::vector<std::pair<irs::bytes_view, irs::automaton::StateId>> arcs{
-      {irs::EmptyRef<irs::byte_type>(), finish}};
+      {irs::EmptyStringView<irs::byte_type>(), finish}};
     builder.insert(a, start, finish, arcs.begin(), arcs.end());
 
     assert_properties(a);
@@ -647,15 +647,15 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
     auto finish1 = a.AddState();
 
     std::vector<std::pair<irs::bytes_view, irs::automaton::StateId>> arcs;
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("a")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("a")),
                       finish0);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("0")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("0")),
                       finish0);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("7")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("7")),
                       finish1);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("U")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("U")),
                       finish0);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("b")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("b")),
                       finish1);
     std::sort(arcs.begin(), arcs.end());
 
@@ -708,15 +708,15 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
     a.SetStart(start);
 
     std::vector<std::pair<irs::bytes_view, irs::automaton::StateId>> arcs;
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("a")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("a")),
                       finish0);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("0")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("0")),
                       finish0);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("7")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("7")),
                       finish1);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("U")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("U")),
                       finish0);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("b")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("b")),
                       finish1);
     std::sort(arcs.begin(), arcs.end());
 
@@ -822,49 +822,49 @@ TEST_F(utf8_transitions_builder_test, multi_byte_sequence) {
     a.SetStart(start);
 
     std::vector<std::pair<irs::bytes_view, irs::automaton::StateId>> arcs;
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("a")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("a")),
                       finish0);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("0")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("0")),
                       finish0);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("7")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("7")),
                       finish1);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("U")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("U")),
                       finish0);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("b")),
-                      finish1);
-    arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xF5\x85\x97\x86")),
-      finish1);
-    arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xFE\x85\x97\x86")),
-      finish1);
-    arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xFF\x85\x97\x86")),
-      finish1);
-    arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xFF\x85\x97\x86")),
-      finish1);
-    arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xFF\x85\x97\x96")),
-      finish1);
-    arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xD1\x90")), finish0);
-    arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xD1\x86")), finish0);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("b")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("b")),
                       finish1);
     arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x85\x96")), finish1);
+      irs::ViewCast<irs::byte_type>(std::string_view("\xF5\x85\x97\x86")),
+      finish1);
     arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x9E\x96")), finish1);
+      irs::ViewCast<irs::byte_type>(std::string_view("\xFE\x85\x97\x86")),
+      finish1);
     arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x9E\x96")), finish1);
+      irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x86")),
+      finish1);
     arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x9E\x97")), finish1);
+      irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x86")),
+      finish1);
     arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xE3\x9E\x97")), finish1);
+      irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x96")),
+      finish1);
     arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xE3\x85\x97")), finish1);
+      irs::ViewCast<irs::byte_type>(std::string_view("\xD1\x90")), finish0);
+    arcs.emplace_back(
+      irs::ViewCast<irs::byte_type>(std::string_view("\xD1\x86")), finish0);
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("b")),
+                      finish1);
+    arcs.emplace_back(
+      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x85\x96")), finish1);
+    arcs.emplace_back(
+      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96")), finish1);
+    arcs.emplace_back(
+      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96")), finish1);
+    arcs.emplace_back(
+      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x97")), finish1);
+    arcs.emplace_back(
+      irs::ViewCast<irs::byte_type>(std::string_view("\xE3\x9E\x97")), finish1);
+    arcs.emplace_back(
+      irs::ViewCast<irs::byte_type>(std::string_view("\xE3\x85\x97")), finish1);
     std::sort(arcs.begin(), arcs.end());
 
     builder.insert(a, start, fst::kNoStateId, arcs.begin(), arcs.end());
@@ -923,49 +923,49 @@ TEST_F(utf8_transitions_builder_test, multi_byte_sequence_default_state) {
     auto rho = a.AddState();
 
     std::vector<std::pair<irs::bytes_view, irs::automaton::StateId>> arcs;
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("a")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("a")),
                       finish0);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("0")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("0")),
                       finish0);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("7")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("7")),
                       finish1);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("U")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("U")),
                       finish0);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("b")),
-                      finish1);
-    arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xF5\x85\x97\x86")),
-      finish1);
-    arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xFE\x85\x97\x86")),
-      finish1);
-    arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xFF\x85\x97\x86")),
-      finish1);
-    arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xFF\x85\x97\x86")),
-      finish1);
-    arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xFF\x85\x97\x96")),
-      finish1);
-    arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xD1\x90")), finish0);
-    arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xD1\x86")), finish0);
-    arcs.emplace_back(irs::ref_cast<irs::byte_type>(std::string_view("b")),
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("b")),
                       finish1);
     arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x85\x96")), finish1);
+      irs::ViewCast<irs::byte_type>(std::string_view("\xF5\x85\x97\x86")),
+      finish1);
     arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x9E\x96")), finish1);
+      irs::ViewCast<irs::byte_type>(std::string_view("\xFE\x85\x97\x86")),
+      finish1);
     arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x9E\x96")), finish1);
+      irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x86")),
+      finish1);
     arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x9E\x97")), finish1);
+      irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x86")),
+      finish1);
     arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xE3\x9E\x97")), finish1);
+      irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x96")),
+      finish1);
     arcs.emplace_back(
-      irs::ref_cast<irs::byte_type>(std::string_view("\xE3\x85\x97")), finish1);
+      irs::ViewCast<irs::byte_type>(std::string_view("\xD1\x90")), finish0);
+    arcs.emplace_back(
+      irs::ViewCast<irs::byte_type>(std::string_view("\xD1\x86")), finish0);
+    arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("b")),
+                      finish1);
+    arcs.emplace_back(
+      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x85\x96")), finish1);
+    arcs.emplace_back(
+      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96")), finish1);
+    arcs.emplace_back(
+      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96")), finish1);
+    arcs.emplace_back(
+      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x97")), finish1);
+    arcs.emplace_back(
+      irs::ViewCast<irs::byte_type>(std::string_view("\xE3\x9E\x97")), finish1);
+    arcs.emplace_back(
+      irs::ViewCast<irs::byte_type>(std::string_view("\xE3\x85\x97")), finish1);
     std::sort(arcs.begin(), arcs.end());
 
     builder.insert(a, start, rho, arcs.begin(), arcs.end());
@@ -1070,7 +1070,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
 
     const std::string_view label = "a";
     irs::utf8_emplace_arc(a, start, fst::kNoStateId,
-                          irs::ref_cast<irs::byte_type>(label), finish);
+                          irs::ViewCast<irs::byte_type>(label), finish);
 
     const std::vector<std::vector<
       std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>
@@ -1096,7 +1096,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
 
     const std::string_view label = "\xD0\xBF";
     irs::utf8_emplace_arc(a, start, fst::kNoStateId,
-                          irs::ref_cast<irs::byte_type>(label), finish);
+                          irs::ViewCast<irs::byte_type>(label), finish);
 
     const std::vector<std::vector<
       std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>
@@ -1112,11 +1112,11 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, "a"));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xD0\xBF"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
     ASSERT_FALSE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
     ASSERT_FALSE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
   }
 
   // 3-byte sequence
@@ -1129,7 +1129,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
 
     const std::string_view label = "\xE2\x9E\x96";
     irs::utf8_emplace_arc(a, start, fst::kNoStateId,
-                          irs::ref_cast<irs::byte_type>(label), finish);
+                          irs::ViewCast<irs::byte_type>(label), finish);
 
     const std::vector<std::vector<
       std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>
@@ -1146,11 +1146,11 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, "a"));
     ASSERT_FALSE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xD0\xBF"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
     ASSERT_FALSE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
   }
 
   // 4-byte sequence
@@ -1163,7 +1163,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
 
     const std::string_view label = "\xF0\x9F\x98\x81";
     irs::utf8_emplace_arc(a, start, fst::kNoStateId,
-                          irs::ref_cast<irs::byte_type>(label), finish);
+                          irs::ViewCast<irs::byte_type>(label), finish);
 
     const std::vector<std::vector<
       std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>
@@ -1181,11 +1181,11 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_no_default_arc) {
     ASSERT_FALSE(irs::accept<char>(a, ""));
     ASSERT_FALSE(irs::accept<char>(a, "a"));
     ASSERT_FALSE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xD0\xBF"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
     ASSERT_FALSE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
   }
 }
 
@@ -1204,7 +1204,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     auto intermediate2 = a.NumStates() + 2;
 
     const std::string_view label = "a";
-    irs::utf8_emplace_arc(a, start, def, irs::ref_cast<irs::byte_type>(label),
+    irs::utf8_emplace_arc(a, start, def, irs::ViewCast<irs::byte_type>(label),
                           finish);
     ASSERT_EQ(6, a.NumStates());
     assert_properties(a);
@@ -1271,15 +1271,16 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       ASSERT_EQ(0, actual_arcs.narcs);
     }
 
-    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::EmptyRef<irs::byte_type>()));
+    ASSERT_FALSE(
+      irs::accept<irs::byte_type>(a, irs::EmptyStringView<irs::byte_type>()));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("a"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xD0\xBF"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
   }
 
   // 2-byte sequence
@@ -1296,7 +1297,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     auto intermediate2 = a.NumStates() + 2;
 
     const std::string_view label = "\xD0\xBF";
-    irs::utf8_emplace_arc(a, start, def, irs::ref_cast<irs::byte_type>(label),
+    irs::utf8_emplace_arc(a, start, def, irs::ViewCast<irs::byte_type>(label),
                           finish);
     ASSERT_EQ(7, a.NumStates());
     assert_properties(a);
@@ -1371,15 +1372,16 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       ASSERT_EQ(0, actual_arcs.narcs);
     }
 
-    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::EmptyRef<irs::byte_type>()));
+    ASSERT_FALSE(
+      irs::accept<irs::byte_type>(a, irs::EmptyStringView<irs::byte_type>()));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("a"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xD0\xBF"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
   }
 
   // 3-byte sequence
@@ -1396,7 +1398,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     auto intermediate2 = a.NumStates() + 2;
 
     const std::string_view label = "\xE2\x9E\x96";
-    irs::utf8_emplace_arc(a, start, def, irs::ref_cast<irs::byte_type>(label),
+    irs::utf8_emplace_arc(a, start, def, irs::ViewCast<irs::byte_type>(label),
                           finish);
     ASSERT_EQ(8, a.NumStates());
     assert_properties(a);
@@ -1485,15 +1487,16 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       ASSERT_EQ(0, actual_arcs.narcs);
     }
 
-    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::EmptyRef<irs::byte_type>()));
+    ASSERT_FALSE(
+      irs::accept<irs::byte_type>(a, irs::EmptyStringView<irs::byte_type>()));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("a"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xD0\xBF"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
   }
 
   // 4-byte sequence
@@ -1510,7 +1513,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     auto intermediate2 = a.NumStates() + 2;
 
     const std::string_view label = "\xF0\x9F\x98\x81";
-    irs::utf8_emplace_arc(a, start, def, irs::ref_cast<irs::byte_type>(label),
+    irs::utf8_emplace_arc(a, start, def, irs::ViewCast<irs::byte_type>(label),
                           finish);
     ASSERT_EQ(9, a.NumStates());
     assert_properties(a);
@@ -1611,15 +1614,16 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
       ASSERT_EQ(0, actual_arcs.narcs);
     }
 
-    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::EmptyRef<irs::byte_type>()));
+    ASSERT_FALSE(
+      irs::accept<irs::byte_type>(a, irs::EmptyStringView<irs::byte_type>()));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("a"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xD0\xBF"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
-      a, irs::ref_cast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
   }
 }
 
@@ -1683,21 +1687,23 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
     ASSERT_EQ(0, actual_arcs.narcs);
   }
 
-  ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::EmptyRef<irs::byte_type>()));
+  ASSERT_FALSE(
+    irs::accept<irs::byte_type>(a, irs::EmptyStringView<irs::byte_type>()));
   ASSERT_TRUE(irs::accept<irs::byte_type>(
-    a, irs::ref_cast<irs::byte_type>(std::string_view("a"))));
+    a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
   ASSERT_TRUE(irs::accept<irs::byte_type>(
-    a, irs::ref_cast<irs::byte_type>(std::string_view("\xD0\xBF"))));
+    a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
   ASSERT_TRUE(irs::accept<irs::byte_type>(
-    a, irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
+    a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
   ASSERT_TRUE(irs::accept<irs::byte_type>(
-    a, irs::ref_cast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
+    a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
   ASSERT_FALSE(irs::accept<irs::byte_type>(
-    a, irs::ref_cast<irs::byte_type>(std::string_view("\xD0\xBF\xD0\xBF"))));
+    a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF\xD0\xBF"))));
   ASSERT_FALSE(irs::accept<irs::byte_type>(
-    a, irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x9E\x96\xD0\xBF"))));
+    a,
+    irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96\xD0\xBF"))));
   ASSERT_FALSE(irs::accept<irs::byte_type>(
-    a, irs::ref_cast<irs::byte_type>(
+    a, irs::ViewCast<irs::byte_type>(
          std::string_view("\xF0\x9F\x98\x81\xD0\xBF"))));
 }
 
@@ -2154,15 +2160,16 @@ transition
 //      ASSERT_EQ(0, actual_arcs.narcs);
 //    }
 //
-//    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::EmptyRef<irs::byte_type>()));
+//    ASSERT_FALSE(irs::accept<irs::byte_type>(a,
+irs::EmptyRef<irs::byte_type>()));
 //    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
-irs::ref_cast<irs::byte_type>(std::string_view("a"))));
+irs::ViewCast<irs::byte_type>(std::string_view("a"))));
 //    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
-irs::ref_cast<irs::byte_type>(std::string_view("\xD0\xBF"))));
+irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
 //    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
-irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
+irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
 //    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
-irs::ref_cast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
+irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
 //  }
 //}
 //
@@ -2304,15 +2311,16 @@ transition
 //      ASSERT_EQ(0, actual_arcs.narcs);
 //    }
 //
-//    ASSERT_FALSE(irs::accept<irs::byte_type>(a, irs::EmptyRef<irs::byte_type>()));
+//    ASSERT_FALSE(irs::accept<irs::byte_type>(a,
+irs::EmptyRef<irs::byte_type>()));
 //    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
-irs::ref_cast<irs::byte_type>(std::string_view("a"))));
+irs::ViewCast<irs::byte_type>(std::string_view("a"))));
 //    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
-irs::ref_cast<irs::byte_type>(std::string_view("\xD0\xBF"))));
+irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
 //    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
-irs::ref_cast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
+irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
 //    ASSERT_TRUE(irs::accept<irs::byte_type>(a,
-irs::ref_cast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
+irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
 //  }
 //}
 //

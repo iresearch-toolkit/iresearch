@@ -512,7 +512,7 @@ void MinHashTokenStream::ComputeSignature() {
     end = offs->end;
 
     do {
-      const std::string_view value = ref_cast<char>(term_->value);
+      const std::string_view value = ViewCast<char>(term_->value);
       const size_t hash_value = ::CityHash64(value.data(), value.size());
 
       minhash_.Insert(hash_value);

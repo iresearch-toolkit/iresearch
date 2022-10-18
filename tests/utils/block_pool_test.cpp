@@ -144,8 +144,8 @@ class block_pool_test : public test_base {
     decltype(pool_.begin().pool_offset()) slice_chain_begin;
     decltype(slice_chain_begin) slice_chain_end;
 
-    bytes_view data0 = ref_cast<byte_type>(std::string_view("first_payload"));
-    bytes_view data1 = ref_cast<byte_type>(std::string_view("second_payload_1234"));
+    bytes_view data0 = ViewCast<byte_type>(std::string_view("first_payload"));
+    bytes_view data1 = ViewCast<byte_type>(std::string_view("second_payload_1234"));
 
     // write data
     {
@@ -313,8 +313,8 @@ class block_pool_test : public test_base {
 
   void greedy_slice_read_write() {
     const bytes_view data[]{
-      ref_cast<byte_type>(std::string_view("first_payload")),
-      ref_cast<byte_type>(std::string_view("second_payload_1234"))};
+      ViewCast<byte_type>(std::string_view("first_payload")),
+      ViewCast<byte_type>(std::string_view("second_payload_1234"))};
 
     std::vector<std::pair<size_t, size_t>> cookies;  // slice_offset + offset
 

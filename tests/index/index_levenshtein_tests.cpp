@@ -82,12 +82,12 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
           }
 
           SCOPED_TRACE(testing::Message("Expected term: '")
-                       << irs::ref_cast<char>(expected_term));
+                       << irs::ViewCast<char>(expected_term));
 
           ASSERT_TRUE(actual_terms->next());
           auto actual_term = actual_terms->value();
           SCOPED_TRACE(testing::Message("Actual term: '")
-                       << irs::ref_cast<char>(actual_term));
+                       << irs::ViewCast<char>(actual_term));
 
           ASSERT_EQ(expected_term, actual_term);
           ASSERT_EQ(1, payload->value.size());
@@ -124,8 +124,8 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
                    << target << testing::Message("', Edit distance: ")
                    << size_t(description.max_distance()));
       assert_index(static_cast<irs::index_reader::ptr>(reader), description,
-                   irs::EmptyRef<irs::byte_type>(),
-                   irs::ref_cast<irs::byte_type>(target));
+                   irs::EmptyStringView<irs::byte_type>(),
+                   irs::ViewCast<irs::byte_type>(target));
     }
   }
 }

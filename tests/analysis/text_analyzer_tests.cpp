@@ -278,13 +278,13 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       auto* value = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("a", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("a", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("quick", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("quick", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("brown", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("brown", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("fox", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("fox", irs::ViewCast<char>(value->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -317,13 +317,13 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       auto* value = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("A", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("A", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("QUICK", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("QUICK", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("BROWN", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("BROWN", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("FOX", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("FOX", irs::ViewCast<char>(value->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -356,13 +356,13 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       auto* value = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("A", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("A", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("qUiCk", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("qUiCk", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("brOwn", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("brOwn", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("FoX", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("FoX", irs::ViewCast<char>(value->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -523,7 +523,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       options.locale = icu::Locale::createFromName("ru_RU.UTF-16");
       irs::analysis::text_token_stream stream(options,
                                               options.explicit_stopwords);
-      testFunc(irs::ref_cast<char>(data), &stream);
+      testFunc(irs::ViewCast<char>(data), &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere
@@ -532,7 +532,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
         "text", irs::type<irs::text_format::json>::get(),
         R"({"locale":"ru_RU.UTF-16", "stopwords":[]})");
       ASSERT_NE(nullptr, stream);
-      testFunc(irs::ref_cast<char>(data), stream.get());
+      testFunc(irs::ViewCast<char>(data), stream.get());
     }
   }
 
@@ -586,7 +586,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       irs::analysis::text_token_stream stream(options,
                                               options.explicit_stopwords);
 
-      testFunc(irs::ref_cast<char>(data), &stream);
+      testFunc(irs::ViewCast<char>(data), &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere
@@ -595,7 +595,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
         "text", irs::type<irs::text_format::json>::get(),  // ignore encoding
         "{\"locale\":\"en_US.utf32\", \"stopwords\":[]}");
       ASSERT_NE(nullptr, stream);
-      testFunc(irs::ref_cast<char>(data), stream.get());
+      testFunc(irs::ViewCast<char>(data), stream.get());
     }
   }
 }
@@ -1156,15 +1156,15 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("he", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("her", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("of", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("qu", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("qu", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("qui", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("qui", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -1188,21 +1188,21 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("h", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("he", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("her", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("o", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("of", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("q", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("q", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("qu", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("qu", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("qui", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("qui", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
 
       ASSERT_TRUE(pStream->reset(data));
@@ -1232,19 +1232,19 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("he", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("her", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("herd", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("of", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("qu", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("qu", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("qui", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("qui", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("quick", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("quick", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -1268,9 +1268,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("her", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("qui", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("qui", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -1323,11 +1323,11 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("herd", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("of", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("quick", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("quick", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -1380,9 +1380,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("h", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("o", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -1406,13 +1406,13 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("h", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("herd", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("o", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("of", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -1436,17 +1436,17 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("h", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("he", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("her", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("herd", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("o", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("of", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -1470,17 +1470,17 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("h", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("he", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("her", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("herd", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("o", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("of", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -1504,17 +1504,17 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("h", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("he", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("her", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("herd", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("o", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("of", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 

@@ -55,13 +55,13 @@ void assert_stream(irs::analysis::analyzer* pipe, std::string_view data,
   auto expected_token = expected_tokens.begin();
   while (pipe->next()) {
     auto term_value =
-      std::string(irs::ref_cast<char>(term->value).data(), term->value.size());
+      std::string(irs::ViewCast<char>(term->value).data(), term->value.size());
     SCOPED_TRACE(testing::Message("Term:<") << term_value << ">");
     SCOPED_TRACE(testing::Message("Expected term:<")
                  << expected_token->value << ">");
     pos += inc->value;
     ASSERT_NE(expected_token, expected_tokens.end());
-    ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value),
+    ASSERT_EQ(irs::ViewCast<irs::byte_type>(expected_token->value),
               term->value);
     ASSERT_EQ(expected_token->start, offset->start);
     ASSERT_EQ(expected_token->end, offset->end);
@@ -226,39 +226,39 @@ TEST(segmentation_token_stream_test, chinese_glyphs_test) {
     };
 
     ASSERT_TRUE(pStream->next());
-    ASSERT_TRUE(u8"\u4ECA" == irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u4ECA" == irs::ViewCast<char8_t>(pValue->value));
     assert_offset(0, 3);
     ASSERT_TRUE(pStream->next());
-    ASSERT_TRUE(u8"\u5929" == irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u5929" == irs::ViewCast<char8_t>(pValue->value));
     assert_offset(3, 6);
     ASSERT_TRUE(pStream->next());
-    ASSERT_TRUE(u8"\u4E0B" == irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u4E0B" == irs::ViewCast<char8_t>(pValue->value));
     assert_offset(6, 9);
     ASSERT_TRUE(pStream->next());
-    ASSERT_TRUE(u8"\u5348" == irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u5348" == irs::ViewCast<char8_t>(pValue->value));
     assert_offset(9, 12);
     ASSERT_TRUE(pStream->next());
-    ASSERT_TRUE(u8"\u7684" == irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u7684" == irs::ViewCast<char8_t>(pValue->value));
     assert_offset(12, 15);
     ASSERT_TRUE(pStream->next());
-    ASSERT_TRUE(u8"\u592A" == irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u592A" == irs::ViewCast<char8_t>(pValue->value));
     assert_offset(15, 18);
     ASSERT_TRUE(pStream->next());
-    ASSERT_TRUE(u8"\u9633" == irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u9633" == irs::ViewCast<char8_t>(pValue->value));
     assert_offset(18, 21);
     ASSERT_TRUE(pStream->next());
-    ASSERT_TRUE(u8"\u5F88" == irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u5F88" == irs::ViewCast<char8_t>(pValue->value));
     assert_offset(21, 24);
     ASSERT_TRUE(pStream->next());
-    ASSERT_TRUE(u8"\u6E29" == irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u6E29" == irs::ViewCast<char8_t>(pValue->value));
     assert_offset(24, 27);
     ASSERT_TRUE(pStream->next());
-    ASSERT_TRUE(u8"\u6696" == irs::ref_cast<char8_t>(pValue->value));
+    ASSERT_TRUE(u8"\u6696" == irs::ViewCast<char8_t>(pValue->value));
     assert_offset(27, 30);
     ASSERT_FALSE(pStream->next());
   };
 
-  testFunc(irs::ref_cast<char>(data), &stream);
+  testFunc(irs::ViewCast<char>(data), &stream);
 }
 
 TEST(segmentation_token_stream_test, make_empty_object) {

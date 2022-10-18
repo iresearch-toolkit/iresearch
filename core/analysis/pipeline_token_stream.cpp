@@ -372,7 +372,7 @@ bool pipeline_token_stream::next() {
         top_holds_position && current_->pos != 0 &&
         current_->pos != std::numeric_limits<uint32_t>::max();
       if (!current_->reset(prev_start, prev_end,
-                           irs::ref_cast<char>(prev_term))) {
+                           irs::ViewCast<char>(prev_term))) {
         return false;
       }
       if (!current_->next()) {  // empty one found. Another round from the very

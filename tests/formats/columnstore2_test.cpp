@@ -481,7 +481,7 @@ TEST_P(columnstore2_test_case, sparse_column) {
           ASSERT_EQ(doc, it->seek(doc));
           const auto str = std::to_string(doc);
           if (payload) {
-            ASSERT_EQ(str, irs::ref_cast<char>(payload->value));
+            ASSERT_EQ(str, irs::ViewCast<char>(payload->value));
           }
           assert_prev_doc(*it, *prev_it);
         }
@@ -508,15 +508,15 @@ TEST_P(columnstore2_test_case, sparse_column) {
         const auto str = std::to_string(doc);
         ASSERT_EQ(doc, it->seek(doc));
         if (payload) {
-          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+          EXPECT_EQ(str, irs::ViewCast<char>(payload->value));
         }
         ASSERT_EQ(doc, it->seek(doc));
         if (payload) {
-          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+          EXPECT_EQ(str, irs::ViewCast<char>(payload->value));
         }
         ASSERT_EQ(doc, it->seek(doc - 1));
         if (payload) {
-          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+          EXPECT_EQ(str, irs::ViewCast<char>(payload->value));
         }
       }
 
@@ -544,15 +544,15 @@ TEST_P(columnstore2_test_case, sparse_column) {
         const auto str = std::to_string(doc);
         ASSERT_EQ(doc, it->seek(doc));
         if (payload) {
-          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+          EXPECT_EQ(str, irs::ViewCast<char>(payload->value));
         }
         ASSERT_EQ(doc, it->seek(doc));
         if (payload) {
-          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+          EXPECT_EQ(str, irs::ViewCast<char>(payload->value));
         }
         ASSERT_EQ(doc, it->seek(doc - 1));
         if (payload) {
-          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+          EXPECT_EQ(str, irs::ViewCast<char>(payload->value));
         }
         assert_prev_doc(*it, *prev_it);
 
@@ -567,14 +567,14 @@ TEST_P(columnstore2_test_case, sparse_column) {
         }
         ASSERT_EQ(doc, next_it->seek(doc));
         if (next_payload) {
-          EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
+          EXPECT_EQ(str, irs::ViewCast<char>(next_payload->value));
         }
         for (auto next_doc = doc + 2; next_doc <= kMax; next_doc += 2) {
           ASSERT_TRUE(next_it->next());
           ASSERT_EQ(next_doc, next_it->value());
           const auto str = std::to_string(next_doc);
           if (next_payload) {
-            EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
+            EXPECT_EQ(str, irs::ViewCast<char>(next_payload->value));
           }
           assert_prev_doc(*next_it, *prev_it);
         }
@@ -605,7 +605,7 @@ TEST_P(columnstore2_test_case, sparse_column) {
         ASSERT_EQ(118775, it->seek(118774));
         const auto str = std::to_string(it->value());
         if (payload) {
-          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+          EXPECT_EQ(str, irs::ViewCast<char>(payload->value));
         }
         assert_prev_doc(*it, *prev_it);
         ASSERT_TRUE(irs::doc_limits::eof(it->seek(kMax + 1)));
@@ -1244,10 +1244,10 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks) {
         ASSERT_EQ(1 + value.size(), payload.size());
         std::string expected{value.data(), value.size()};
         expected += value.front();
-        ASSERT_EQ(expected, irs::ref_cast<char>(payload));
+        ASSERT_EQ(expected, irs::ViewCast<char>(payload));
       } else {
         ASSERT_EQ(value.size(), payload.size());
-        ASSERT_EQ(value, irs::ref_cast<char>(payload));
+        ASSERT_EQ(value, irs::ViewCast<char>(payload));
       }
     };
 
@@ -1431,10 +1431,10 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks_all_equal) {
         ASSERT_EQ(1 + value.size(), payload.size());
         std::string expected{value.data(), value.size()};
         expected += value.front();
-        ASSERT_EQ(expected, irs::ref_cast<char>(payload));
+        ASSERT_EQ(expected, irs::ViewCast<char>(payload));
       } else {
         ASSERT_EQ(value.size(), payload.size());
-        ASSERT_EQ(value, irs::ref_cast<char>(payload));
+        ASSERT_EQ(value, irs::ViewCast<char>(payload));
       }
     };
 
@@ -1771,7 +1771,7 @@ TEST_P(columnstore2_test_case, dense_column) {
           if (hint == irs::ColumnHint::kMask) {
             EXPECT_TRUE(irs::IsNull(payload->value));
           } else {
-            EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+            EXPECT_EQ(str, irs::ViewCast<char>(payload->value));
           }
         }
       }
@@ -1794,19 +1794,19 @@ TEST_P(columnstore2_test_case, dense_column) {
         if (hint == irs::ColumnHint::kMask) {
           EXPECT_TRUE(irs::IsNull(payload->value));
         } else {
-          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+          EXPECT_EQ(str, irs::ViewCast<char>(payload->value));
         }
         ASSERT_EQ(doc, it->seek(doc));
         if (hint == irs::ColumnHint::kMask) {
           EXPECT_TRUE(irs::IsNull(payload->value));
         } else {
-          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+          EXPECT_EQ(str, irs::ViewCast<char>(payload->value));
         }
         ASSERT_EQ(doc, it->seek(doc - 1));
         if (hint == irs::ColumnHint::kMask) {
           EXPECT_TRUE(irs::IsNull(payload->value));
         } else {
-          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+          EXPECT_EQ(str, irs::ViewCast<char>(payload->value));
         }
       }
 
@@ -1831,13 +1831,13 @@ TEST_P(columnstore2_test_case, dense_column) {
         if (hint == irs::ColumnHint::kMask) {
           EXPECT_TRUE(irs::IsNull(payload->value));
         } else {
-          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+          EXPECT_EQ(str, irs::ViewCast<char>(payload->value));
         }
         ASSERT_EQ(doc, it->seek(doc));
         if (hint == irs::ColumnHint::kMask) {
           EXPECT_TRUE(irs::IsNull(payload->value));
         } else {
-          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+          EXPECT_EQ(str, irs::ViewCast<char>(payload->value));
         }
         assert_prev_doc(*it, *prev_it);
 
@@ -1848,7 +1848,7 @@ TEST_P(columnstore2_test_case, dense_column) {
         if (hint == irs::ColumnHint::kMask) {
           EXPECT_TRUE(irs::IsNull(next_payload->value));
         } else {
-          EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
+          EXPECT_EQ(str, irs::ViewCast<char>(next_payload->value));
         }
         for (auto next_doc = doc + 1; next_doc <= kMax; ++next_doc) {
           ASSERT_TRUE(next_it->next());
@@ -1857,7 +1857,7 @@ TEST_P(columnstore2_test_case, dense_column) {
           if (hint == irs::ColumnHint::kMask) {
             EXPECT_TRUE(irs::IsNull(next_payload->value));
           } else {
-            EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
+            EXPECT_EQ(str, irs::ViewCast<char>(next_payload->value));
           }
           assert_prev_doc(*next_it, *prev_it);
         }
@@ -1885,7 +1885,7 @@ TEST_P(columnstore2_test_case, dense_column) {
         if (hint == irs::ColumnHint::kMask) {
           EXPECT_TRUE(irs::IsNull(payload->value));
         } else {
-          EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
+          EXPECT_EQ(str, irs::ViewCast<char>(payload->value));
         }
         assert_prev_doc(*it, *prev_it);
         ASSERT_TRUE(irs::doc_limits::eof(it->seek(kMax + 1)));
@@ -1954,7 +1954,7 @@ TEST_P(columnstore2_test_case, dense_column_range) {
     auto assert_payload = [this](std::string_view str,
                                  const irs::payload& payload) {
       if (has_payload()) {
-        EXPECT_EQ(str, irs::ref_cast<char>(payload.value));
+        EXPECT_EQ(str, irs::ViewCast<char>(payload.value));
       } else {
         ASSERT_TRUE(payload.value.empty());
       }

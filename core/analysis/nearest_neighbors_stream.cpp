@@ -267,7 +267,7 @@ bool nearest_neighbors_stream::reset(std::string_view data) {
   offset.start = 0;
   offset.end = static_cast<uint32_t>(data.size());
 
-  bytes_view_input s_input{ref_cast<byte_type>(data)};
+  bytes_view_input s_input{ViewCast<byte_type>(data)};
   input_buf buf{&s_input};
   std::istream ss{&buf};
 

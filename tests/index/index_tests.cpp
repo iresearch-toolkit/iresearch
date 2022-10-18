@@ -65,7 +65,7 @@ bool visit(const irs::column_reader& reader,
 irs::filter::ptr MakeByTerm(std::string_view name, std::string_view value) {
   auto filter = std::make_unique<irs::by_term>();
   *filter->mutable_field() = name;
-  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  filter->mutable_options()->term = irs::ViewCast<irs::byte_type>(value);
   return filter;
 }
 
@@ -2176,8 +2176,8 @@ void index_test_case::docs_bit_union(irs::IndexFeatures features) {
   ASSERT_NE(nullptr, term_reader);
   ASSERT_EQ(N + 1, term_reader->docs_count());
   ASSERT_EQ(3, term_reader->size());
-  ASSERT_EQ("A", irs::ref_cast<char>(term_reader->min()));
-  ASSERT_EQ("C", irs::ref_cast<char>(term_reader->max()));
+  ASSERT_EQ("A", irs::ViewCast<char>(term_reader->min()));
+  ASSERT_EQ("C", irs::ViewCast<char>(term_reader->max()));
   ASSERT_EQ(field.name(), term_reader->meta().name);
   ASSERT_TRUE(term_reader->meta().features.empty());
   ASSERT_EQ(field.index_features(), term_reader->meta().index_features);
@@ -2197,13 +2197,13 @@ void index_test_case::docs_bit_union(irs::IndexFeatures features) {
 
   auto term = term_reader->iterator(irs::SeekMode::NORMAL);
   ASSERT_TRUE(term->next());
-  ASSERT_EQ("A", irs::ref_cast<char>(term->value()));
+  ASSERT_EQ("A", irs::ViewCast<char>(term->value()));
   term->read();
   cookies[0] = term->cookie();
   ASSERT_TRUE(term->next());
   term->read();
   cookies[1] = term->cookie();
-  ASSERT_EQ("B", irs::ref_cast<char>(term->value()));
+  ASSERT_EQ("B", irs::ViewCast<char>(term->value()));
 
   auto cookie_provider =
     [begin = std::begin(cookies),
@@ -4445,7 +4445,7 @@ TEST_P(index_test_case, document_context) {
         [&expected](irs::doc_id_t, const irs::bytes_view& data) -> bool {
           auto* value = data.data();
           auto actual_value =
-            irs::ref_cast<char>(irs::vread_string<std::string_view>(value));
+            irs::ViewCast<char>(irs::vread_string<std::string_view>(value));
           return 1 == expected.erase(actual_value);
         }));
       ASSERT_TRUE(expected.empty());
@@ -15624,7 +15624,7 @@ TEST_P(index_test_case_10, commit_payload) {
 
     payload_committed_tick = 0;
     input_payload =
-      irs::ref_cast<irs::byte_type>(std::string_view(reader.meta().filename));
+      irs::ViewCast<irs::byte_type>(std::string_view(reader.meta().filename));
     ASSERT_TRUE(writer->begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
 
@@ -15889,7 +15889,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
   irs::index_writer::init_options writer_options;
   uint64_t payload_committed_tick{0};
   irs::bstring input_payload = static_cast<irs::bstring>(
-    irs::ref_cast<irs::byte_type>(std::string_view("init")));
+    irs::ViewCast<irs::byte_type>(std::string_view("init")));
   bool payload_provider_result{false};
   writer_options.meta_payload_provider =
     [&payload_provider_result, &payload_committed_tick, &input_payload](
@@ -16005,7 +16005,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload_revert) {
     };
   auto writer = open_writer(irs::OM_CREATE, writer_options);
 
-  input_payload = irs::ref_cast<irs::byte_type>(std::string_view("init"));
+  input_payload = irs::ViewCast<irs::byte_type>(std::string_view("init"));
   payload_committed_tick = 42;
   ASSERT_TRUE(writer->begin());
   ASSERT_EQ(0, payload_committed_tick);
@@ -16046,7 +16046,7 @@ TEST_P(index_test_case_11, initial_commit_payload_revert) {
     };
   auto writer = open_writer(irs::OM_CREATE, writer_options);
 
-  input_payload = irs::ref_cast<irs::byte_type>(std::string_view("init"));
+  input_payload = irs::ViewCast<irs::byte_type>(std::string_view("init"));
   payload_committed_tick = 42;
   writer->commit();
   ASSERT_EQ(0, payload_committed_tick);
@@ -16082,7 +16082,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload) {
     };
   auto writer = open_writer(irs::OM_CREATE, writer_options);
 
-  input_payload = irs::ref_cast<irs::byte_type>(std::string_view("init"));
+  input_payload = irs::ViewCast<irs::byte_type>(std::string_view("init"));
   payload_committed_tick = 42;
   ASSERT_TRUE(writer->begin());
   ASSERT_EQ(0, payload_committed_tick);
@@ -16121,7 +16121,7 @@ TEST_P(index_test_case_11, initial_commit_payload) {
     };
   auto writer = open_writer(irs::OM_CREATE, writer_options);
 
-  input_payload = irs::ref_cast<irs::byte_type>(std::string_view("init"));
+  input_payload = irs::ViewCast<irs::byte_type>(std::string_view("init"));
   payload_committed_tick = 42;
   writer->commit();
   ASSERT_EQ(0, payload_committed_tick);
@@ -16201,7 +16201,7 @@ TEST_P(index_test_case_11, commit_payload) {
     payload_committed_tick = 0;
 
     input_payload =
-      irs::ref_cast<irs::byte_type>(std::string_view(reader.meta().filename));
+      irs::ViewCast<irs::byte_type>(std::string_view(reader.meta().filename));
     ASSERT_TRUE(writer->begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
 
@@ -16253,7 +16253,7 @@ TEST_P(index_test_case_11, commit_payload) {
     payload_committed_tick = 0;
 
     input_payload =
-      irs::ref_cast<irs::byte_type>(std::string_view(reader.meta().filename));
+      irs::ViewCast<irs::byte_type>(std::string_view(reader.meta().filename));
     ASSERT_TRUE(writer->begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
 
@@ -16299,7 +16299,7 @@ TEST_P(index_test_case_11, commit_payload) {
     payload_committed_tick = 0;
 
     input_payload =
-      irs::ref_cast<irs::byte_type>(std::string_view(reader.meta().filename));
+      irs::ViewCast<irs::byte_type>(std::string_view(reader.meta().filename));
     payload_provider_result = false;
     ASSERT_TRUE(writer->begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
@@ -16367,7 +16367,7 @@ TEST_P(index_test_case_11, commit_payload) {
       ASSERT_NE(reader, new_reader);
       ASSERT_FALSE(irs::IsNull(new_reader.meta().meta.payload()));
       ASSERT_TRUE(new_reader.meta().meta.payload().empty());
-      ASSERT_EQ(irs::EmptyRef<irs::byte_type>(),
+      ASSERT_EQ(irs::EmptyStringView<irs::byte_type>(),
                 new_reader.meta().meta.payload());
       reader = new_reader;
     }

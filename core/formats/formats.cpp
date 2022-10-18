@@ -48,7 +48,7 @@ struct equal_to {
 
 struct hash {
   size_t operator()(const key_t& lhs) const noexcept {
-    return irs::hash_utils::hash(lhs.first);
+    return irs::hash_utils::Hash(lhs.first);
   }
 };
 

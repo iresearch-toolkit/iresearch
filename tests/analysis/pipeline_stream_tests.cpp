@@ -65,7 +65,7 @@ class pipeline_test_analyzer : public irs::analysis::analyzer,
   virtual bool reset(std::string_view data) override {
     term_emitted = false;
     std::get<irs::term_attribute>(attrs_).value =
-      irs::ref_cast<irs::byte_type>(data);
+      irs::ViewCast<irs::byte_type>(data);
     return true;
   }
   virtual irs::attribute* get_mutable(
@@ -186,12 +186,12 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data,
   auto expected_token = expected_tokens.begin();
   while (pipe->next()) {
     auto term_value =
-      std::string(irs::ref_cast<char>(term->value).data(), term->value.size());
+      std::string(irs::ViewCast<char>(term->value).data(), term->value.size());
     SCOPED_TRACE(testing::Message("Term:") << term_value);
     auto old_pos = pos;
     pos += inc->value;
     ASSERT_NE(expected_token, expected_tokens.end());
-    ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value),
+    ASSERT_EQ(irs::ViewCast<irs::byte_type>(expected_token->value),
               term->value);
     ASSERT_EQ(expected_token->start, offset->start);
     ASSERT_EQ(expected_token->end, offset->end);
@@ -462,7 +462,7 @@ TEST(pipeline_token_stream_test, hold_position_tokenizer) {
 
 TEST(pipeline_token_stream_test, hold_position_tokenizer2) {
   std::string data = "A";
-  irs::bytes_view term = irs::ref_cast<irs::byte_type>(std::string_view(data));
+  irs::bytes_view term = irs::ViewCast<irs::byte_type>(std::string_view(data));
   irs::analysis::analyzer::ptr tokenizer1;
   {
     std::vector<std::pair<uint32_t, uint32_t>> offsets{{0, 5}, {0, 5}};

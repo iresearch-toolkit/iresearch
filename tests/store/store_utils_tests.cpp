@@ -547,10 +547,10 @@ TEST(store_utils_tests, std_string_read_write) {
 TEST(store_utils_tests, bytes_read_write) {
   tests::detail::read_write_core<bstring>(
     {bstring(),
-     bstring(irs::ref_cast<byte_type>(std::string_view("qalsdflsajfd"))),
-     bstring(irs::ref_cast<byte_type>(std::string_view("jfdldsflaflj"))),
-     bstring(irs::ref_cast<byte_type>(std::string_view("102174174010"))),
-     bstring(irs::ref_cast<byte_type>(std::string_view("0182ljdskfaof")))},
+     bstring(irs::ViewCast<byte_type>(std::string_view("qalsdflsajfd"))),
+     bstring(irs::ViewCast<byte_type>(std::string_view("jfdldsflaflj"))),
+     bstring(irs::ViewCast<byte_type>(std::string_view("102174174010"))),
+     bstring(irs::ViewCast<byte_type>(std::string_view("0182ljdskfaof")))},
     irs::read_string<bstring>, irs::write_string<bstring>);
 }
 

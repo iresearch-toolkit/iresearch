@@ -41,7 +41,7 @@ TEST(utf8_utils_test, test) {
   // ascii sequence
   {
     const irs::bytes_view str =
-      irs::ref_cast<irs::byte_type>(std::string_view("abcd"));
+      irs::ViewCast<irs::byte_type>(std::string_view("abcd"));
     const std::vector<uint32_t> expected = {0x0061, 0x0062, 0x0063, 0x0064};
 
     {
@@ -99,7 +99,7 @@ TEST(utf8_utils_test, test) {
 
   // 2-bytes sequence
   {
-    const irs::bytes_view str = irs::ref_cast<irs::byte_type>(
+    const irs::bytes_view str = irs::ViewCast<irs::byte_type>(
       std::string_view("\xD0\xBF\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82"));
     const std::vector<uint32_t> expected = {0x043F, 0x0440, 0x0438,
                                             0x0432, 0x0435, 0x0442};
@@ -176,7 +176,7 @@ TEST(utf8_utils_test, test) {
 
   // 3-bytes sequence
   {
-    const irs::bytes_view str = irs::ref_cast<irs::byte_type>(
+    const irs::bytes_view str = irs::ViewCast<irs::byte_type>(
       std::string_view("\xE2\x9E\x96\xE2\x9D\xA4"));
     const std::vector<uint32_t> expected = {
       0x2796,  // heavy minus sign
@@ -238,7 +238,7 @@ TEST(utf8_utils_test, test) {
 
   // 4-bytes sequence
   {
-    const irs::bytes_view str = irs::ref_cast<irs::byte_type>(
+    const irs::bytes_view str = irs::ViewCast<irs::byte_type>(
       std::string_view("\xF0\x9F\x98\x81\xF0\x9F\x98\x82"));
     const std::vector<uint32_t> expected = {
       0x1F601,  // grinning face with smiling eyes
@@ -316,7 +316,7 @@ TEST(utf8_utils_test, find) {
 
   // empty sequence
   {
-    const auto str = irs::EmptyRef<irs::byte_type>();
+    const auto str = irs::EmptyStringView<irs::byte_type>();
     ASSERT_EQ(irs::bstring::npos,
               irs::utf8_utils::find<true>(str.begin(), str.size(), 0x80));
     ASSERT_EQ(irs::bstring::npos,
@@ -330,7 +330,7 @@ TEST(utf8_utils_test, find) {
   // 1-byte sequence
   {
     const irs::bytes_view str =
-      irs::ref_cast<irs::byte_type>(std::string_view("abcd"));
+      irs::ViewCast<irs::byte_type>(std::string_view("abcd"));
     const std::vector<uint32_t> expected = {0x0061, 0x0062, 0x0063, 0x0064};
 
     ASSERT_EQ(expected.size(), irs::utf8_utils::utf8_length(str));
@@ -362,7 +362,7 @@ TEST(utf8_utils_test, find) {
 
   // 2-byte sequence
   {
-    const irs::bytes_view str = irs::ref_cast<irs::byte_type>(
+    const irs::bytes_view str = irs::ViewCast<irs::byte_type>(
       std::string_view("\xD0\xBF\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82"));
     const std::vector<uint32_t> expected = {0x043F, 0x0440, 0x0438,
                                             0x0432, 0x0435, 0x0442};
@@ -396,7 +396,7 @@ TEST(utf8_utils_test, find) {
 
   // 3-byte sequence
   {
-    const irs::bytes_view str = irs::ref_cast<irs::byte_type>(
+    const irs::bytes_view str = irs::ViewCast<irs::byte_type>(
       std::string_view("\xE2\x9E\x96\xE2\x9D\xA4"));
     const std::vector<uint32_t> expected = {
       0x2796,  // heavy minus sign
@@ -432,7 +432,7 @@ TEST(utf8_utils_test, find) {
 
   // 4-byte sequence
   {
-    const irs::bytes_view str = irs::ref_cast<irs::byte_type>(
+    const irs::bytes_view str = irs::ViewCast<irs::byte_type>(
       std::string_view("\xF0\x9F\x98\x81\xF0\x9F\x98\x82"));
     const std::vector<uint32_t> expected = {
       0x1F601,  // grinning face with smiling eyes
@@ -470,7 +470,7 @@ TEST(utf8_utils_test, find) {
   {
     const auto expected_value = 128512;
     const irs::bytes_view str =
-      irs::ref_cast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x0"));
+      irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x0"));
     ASSERT_EQ(irs::bstring::npos, irs::utf8_utils::find<true>(
                                     str.begin(), str.size(), expected_value));
     ASSERT_EQ(

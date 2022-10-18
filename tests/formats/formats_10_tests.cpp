@@ -773,7 +773,7 @@ TEST_P(format_10_test_case, ires336) {
   const std::string_view segment_name = "bug";
   const std::string_view field = "sbiotype";
   const irs::bytes_view term =
-    irs::ref_cast<irs::byte_type>(std::string_view("protein_coding"));
+    irs::ViewCast<irs::byte_type>(std::string_view("protein_coding"));
 
   std::vector<std::pair<irs::doc_id_t, uint32_t>> docs;
   {
