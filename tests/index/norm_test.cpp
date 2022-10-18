@@ -113,7 +113,7 @@ void AssertNorm2Header(irs::bytes_ref header, uint32_t num_bytes, uint32_t min,
                        uint32_t max) {
   constexpr irs::Norm2Version kVersion{irs::Norm2Version::kMin};
 
-  ASSERT_FALSE(header.null());
+  ASSERT_FALSE(IsNull(header));
   ASSERT_EQ(10, header.size());
 
   auto* p = header.data();
@@ -344,7 +344,7 @@ void Norm2TestCase::AssertNormColumn(
   auto* column = segment.column(it->second);
   ASSERT_NE(nullptr, column);
   ASSERT_EQ(it->second, column->id());
-  ASSERT_TRUE(column->name().null());
+  ASSERT_TRUE(IsNull(column->name()));
 
   const auto min = std::min_element(
     std::begin(expected_docs), std::end(expected_docs),

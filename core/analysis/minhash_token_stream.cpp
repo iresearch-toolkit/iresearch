@@ -267,7 +267,7 @@ bool ParseVPack(velocypack::Slice slice, MinHashTokenStream::Options* opts) {
   } else {
     auto [type, props] = ParseAnalyzer(analyzerSlice);
 
-    if (type.null()) {
+    if (IsNull(type)) {
       return false;
     }
 
@@ -318,7 +318,7 @@ irs::analysis::analyzer::ptr MakeVPack(irs::string_ref args) {
 // optional "properties"(object)
 analyzer::ptr MakeJson(irs::string_ref args) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while constructing MinHashAnalyzer");
       return nullptr;
     }
@@ -407,7 +407,7 @@ bool NormalizeVPack(irs::string_ref args, std::string& definition) {
 
 bool NormalizeJson(irs::string_ref args, std::string& definition) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while normalizing MinHashAnalyzer");
       return false;
     }

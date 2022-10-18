@@ -475,7 +475,7 @@ class compound_column_iterator final {
         bool exhausted;
         do {
           exhausted = !it->next();
-        } while (!exhausted && it->value().name().null());
+        } while (!exhausted && IsNull(it->value().name()));
 
         if (exhausted) {
           it = nullptr;
@@ -493,7 +493,7 @@ class compound_column_iterator final {
 
       const auto& value = it->value();
       const string_ref key = value.name();
-      assert(!key.null());
+      assert(!IsNull(key));
 
       if (!iterator_mask_.empty() && current_key_ < key) {
         continue;  // empty field or value too large

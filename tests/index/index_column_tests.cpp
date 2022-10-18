@@ -1200,7 +1200,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 
@@ -1233,7 +1233,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 
@@ -1316,7 +1316,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 
@@ -1384,7 +1384,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 
@@ -1467,7 +1467,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 
@@ -1880,7 +1880,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 
@@ -4514,7 +4514,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 
@@ -4540,7 +4540,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 
@@ -4612,7 +4612,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 
@@ -4668,7 +4668,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 
@@ -4740,7 +4740,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 
@@ -5213,7 +5213,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 
@@ -5331,7 +5331,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 
@@ -5359,7 +5359,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 
@@ -5429,7 +5429,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 
@@ -5483,7 +5483,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 
@@ -5553,7 +5553,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 
@@ -5863,7 +5863,7 @@ TEST_P(index_column_test_case,
           return false;
         }
 
-        if (!actual_data.null()) {
+        if (!IsNull(actual_data)) {
           return false;
         }
 

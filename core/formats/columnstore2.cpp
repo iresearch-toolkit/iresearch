@@ -933,11 +933,11 @@ constexpr column_factory_f kFactories[]{
   &dense_fixed_length_column::read};
 
 bool less(string_ref lhs, string_ref rhs) noexcept {
-  if (lhs.null()) {
-    return !rhs.null();
+  if (IsNull(lhs)) {
+    return !IsNull(rhs);
   }
 
-  if (rhs.null()) {
+  if (IsNull(rhs)) {
     return false;
   }
 
@@ -1096,7 +1096,7 @@ void column::finish(index_output& index_out) {
     docs_.file >> data_out;
   }
 
-  if (name_.null()) {
+  if (IsNull(name_)) {
     hdr.props |= ColumnProperty::kNoName;
   }
 
@@ -1133,7 +1133,7 @@ void column::finish(index_output& index_out) {
   irs::write_string(index_out, compression_.name());
   write_header(index_out, hdr);
   write_string(index_out, payload_);
-  if (!name_.null()) {
+  if (!IsNull(name_)) {
     if (ctx_.cipher) {
       auto name = static_cast<std::string>(name_);
       ctx_.cipher->encrypt(index_out.file_pointer(),

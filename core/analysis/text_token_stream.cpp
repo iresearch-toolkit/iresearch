@@ -166,7 +166,7 @@ bool get_stopwords(analysis::text_token_stream::stopwords_t& buf,
   utf8_path stopword_path;
 
   auto* custom_stopword_path =
-    !path.null()
+    !IsNull(path)
       ? path.data()
       : irs::getenv(analysis::text_token_stream::STOPWORD_PATH_ENV_VARIABLE);
 
@@ -299,7 +299,7 @@ analysis::analyzer::ptr construct(
   analysis::text_token_stream::stopwords_t&& stopwords) {
   auto generator = [](const hashed_string_ref& key,
                       cached_options_t& value) noexcept {
-    if (key.null()) {
+    if (IsNull(key)) {
       return key;
     }
 
@@ -935,7 +935,7 @@ bool normalize_text_config(string_ref args, std::string& definition) {
 
 analysis::analyzer::ptr make_json(string_ref args) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR(
         "Null arguments while constructing text_token_normalizing_stream");
       return nullptr;
@@ -957,7 +957,7 @@ analysis::analyzer::ptr make_json(string_ref args) {
 
 bool normalize_json_config(string_ref args, std::string& definition) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR(
         "Null arguments while normalizing text_token_normalizing_stream");
       return false;

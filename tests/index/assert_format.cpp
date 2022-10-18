@@ -765,7 +765,7 @@ void assert_terms_next(const field& expected_field,
     assert_term(*expected_term, *actual_term, features);
     assert_docs(*expected_term, actual_field, actual_term->cookie(), features);
 
-    if (actual_min.null()) {
+    if (IsNull(actual_min)) {
       actual_min_buf = actual_term->value();
       actual_min = actual_min_buf;
     }
@@ -974,14 +974,14 @@ void assert_column(const irs::column_reader* actual_reader,
     return;
   }
 
-  if (expected_values.name().null()) {
+  if (IsNull(expected_values.name())) {
     // field features are stored as annonymous columns
-    ASSERT_TRUE(actual_reader->name().null());
+    ASSERT_TRUE(IsNull(actual_reader->name()));
   } else {
     ASSERT_EQ(expected_values.name(), actual_reader->name());
   }
 
-  if (!actual_reader->payload().null()) {
+  if (!IsNull(actual_reader->payload())) {
     // old formats may not support column header payload
     ASSERT_EQ(expected_values.payload(), actual_reader->payload());
   }

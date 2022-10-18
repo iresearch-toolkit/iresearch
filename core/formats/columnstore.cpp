@@ -264,7 +264,7 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
   const auto decoded =
     decompressor->decompress(buf, buf_size, &decode_buf[0], decode_buf.size());
 
-  if (decoded.null()) {
+  if (IsNull(decoded)) {
     throw irs::index_error("error while reading compact");
   }
 }
@@ -964,17 +964,17 @@ void writer::flush_meta(const flush_state& meta) {
   sorted_columns_.reserve(columns_.size());
   std::copy_if(std::begin(columns_), std::end(columns_),
                std::back_inserter(sorted_columns_),
-               [](auto& column) noexcept { return !column.name().null(); });
+               [](auto& column) noexcept { return !IsNull(column.name()); });
   std::sort(std::begin(sorted_columns_), std::end(sorted_columns_),
             [](const writer::column& lhs, const writer::column& rhs) noexcept {
-              assert(!rhs.name().null());
+              assert(!IsNull(rhs.name()));
               return lhs.name() < rhs.name();
             });
 
   // flush columns meta
   meta_writer_.prepare(*dir_, meta.name);
   for (const writer::column& column : sorted_columns_) {
-    assert(!column.name().null());
+    assert(!IsNull(column.name()));
     meta_writer_.write(column.name(), column.id());
   }
   meta_writer_.flush();
@@ -2391,13 +2391,13 @@ bool reader::read_meta(const directory& dir, const segment_meta& meta,
   for (auto& column : columns) {
     const auto name = column->name();
 
-    if (name.null()) {
+    if (IsNull(name)) {
       sorted_columns.emplace_back(column.get());
     }
   }
 
   // column meta exists
-  return true;
+  return tru
 }
 
 bool reader::prepare(const directory& dir, const segment_meta& meta) {

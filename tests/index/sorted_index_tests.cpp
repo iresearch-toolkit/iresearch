@@ -102,11 +102,11 @@ struct string_comparer : irs::comparer {
 
 struct long_comparer : irs::comparer {
   virtual bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {
-    if (lhs.null() && rhs.null()) {
+    if (IsNull(lhs) && IsNull(rhs)) {
       return false;
-    } else if (rhs.null()) {
+    } else if (IsNull(rhs)) {
       return false;
-    } else if (lhs.null()) {
+    } else if (IsNull(lhs)) {
       return true;
     }
 
@@ -276,7 +276,7 @@ class sorted_index_test_case : public tests::index_test_base {
     ASSERT_TRUE(irs::field_limits::valid(feature->second));
     auto* column = segment.column(feature->second);
     ASSERT_NE(nullptr, column);
-    ASSERT_FALSE(column->payload().null());
+    ASSERT_FALSE(IsNull(column->payload()));
     ASSERT_EQ(header, column->payload());
   }
 
@@ -583,7 +583,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
         auto& sorted_column = *segment.sort();
         ASSERT_EQ(segment.docs_count(), sorted_column.size());
-        ASSERT_TRUE(sorted_column.name().null());
+        ASSERT_TRUE(IsNull(sorted_column.name()));
         ASSERT_TRUE(sorted_column.payload().empty());
 
         auto sorted_column_it =
@@ -759,7 +759,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
       auto& sorted_column = *segment.sort();
       ASSERT_EQ(segment.docs_count(), sorted_column.size());
       ASSERT_TRUE(sorted_column.payload().empty());
-      ASSERT_TRUE(sorted_column.name().null());
+      ASSERT_TRUE(IsNull(sorted_column.name()));
 
       auto sorted_column_it = sorted_column.iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, sorted_column_it);
@@ -927,7 +927,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
 
       auto& sorted_column = *segment.sort();
       ASSERT_EQ(segment.docs_count(), sorted_column.size());
-      ASSERT_TRUE(sorted_column.name().null());
+      ASSERT_TRUE(IsNull(sorted_column.name()));
       ASSERT_TRUE(sorted_column.payload().empty());
 
       auto sorted_column_it = sorted_column.iterator(irs::ColumnHint::kNormal);
@@ -1110,7 +1110,7 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
       auto& segment = reader[0];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
-      ASSERT_TRUE(column->name().null());
+      ASSERT_TRUE(IsNull(column->name()));
       ASSERT_TRUE(column->payload().empty());
       auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
@@ -1191,7 +1191,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       auto& segment = reader[0];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
-      ASSERT_TRUE(column->name().null());
+      ASSERT_TRUE(IsNull(column->name()));
       ASSERT_TRUE(column->payload().empty());
       auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
@@ -1274,7 +1274,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       auto& segment = reader[0];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
-      ASSERT_TRUE(column->name().null());
+      ASSERT_TRUE(IsNull(column->name()));
       ASSERT_TRUE(column->payload().empty());
       auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
@@ -1359,7 +1359,7 @@ TEST_P(sorted_index_test_case,
   auto* doc3 = gen.next();  // name == 'D'
 
   tests::string_field empty_field{"", irs::IndexFeatures::NONE};
-  ASSERT_FALSE(empty_field.value().null());
+  ASSERT_FALSE(IsNull(empty_field.value()));
   ASSERT_TRUE(empty_field.value().empty());
 
   string_comparer less;
@@ -1397,7 +1397,7 @@ TEST_P(sorted_index_test_case,
       auto& segment = reader[0];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
-      ASSERT_TRUE(column->name().null());
+      ASSERT_TRUE(IsNull(column->name()));
       ASSERT_TRUE(column->payload().empty());
       auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
@@ -1432,7 +1432,7 @@ TEST_P(sorted_index_test_case,
       auto& segment = reader[1];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
-      ASSERT_TRUE(column->name().null());
+      ASSERT_TRUE(IsNull(column->name()));
       ASSERT_EQ(0, column->payload().size());
       auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
@@ -1481,7 +1481,7 @@ TEST_P(sorted_index_test_case,
       auto& segment = reader[0];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
-      ASSERT_TRUE(column->name().null());
+      ASSERT_TRUE(IsNull(column->name()));
       ASSERT_EQ(0, column->payload().size());
       auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
@@ -1512,7 +1512,7 @@ TEST_P(sorted_index_test_case,
       auto& segment = reader[1];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
-      ASSERT_TRUE(column->name().null());
+      ASSERT_TRUE(IsNull(column->name()));
       ASSERT_EQ(0, column->payload().size());
       auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
@@ -1563,7 +1563,7 @@ TEST_P(sorted_index_test_case,
       auto& segment = reader[0];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
-      ASSERT_TRUE(column->name().null());
+      ASSERT_TRUE(IsNull(column->name()));
       ASSERT_EQ(0, column->payload().size());
       auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
@@ -1671,7 +1671,7 @@ TEST_P(sorted_index_test_case, doc_removal_same_key_within_trx) {
     auto& segment = reader[0];
     const auto* column = segment.sort();
     ASSERT_NE(nullptr, column);
-    ASSERT_TRUE(column->name().null());
+    ASSERT_TRUE(IsNull(column->name()));
     ASSERT_EQ(0, column->payload().size());
     auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
@@ -1744,7 +1744,7 @@ TEST_P(sorted_index_test_case,
       auto& segment = reader[0];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
-      ASSERT_TRUE(column->name().null());
+      ASSERT_TRUE(IsNull(column->name()));
       ASSERT_EQ(0, column->payload().size());
       ASSERT_EQ(2, column->size());
       auto values = column->iterator(irs::ColumnHint::kNormal);
@@ -1779,7 +1779,7 @@ TEST_P(sorted_index_test_case,
       auto& segment = reader[1];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
-      ASSERT_TRUE(column->name().null());
+      ASSERT_TRUE(IsNull(column->name()));
       ASSERT_EQ(0, column->payload().size());
       ASSERT_EQ(2, column->size());
       auto values = column->iterator(irs::ColumnHint::kNormal);
@@ -1831,7 +1831,7 @@ TEST_P(sorted_index_test_case,
       const auto* column = segment.sort();
       ASSERT_EQ(4, column->size());
       ASSERT_NE(nullptr, column);
-      ASSERT_TRUE(column->name().null());
+      ASSERT_TRUE(IsNull(column->name()));
       ASSERT_EQ(0, column->payload().size());
       auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);

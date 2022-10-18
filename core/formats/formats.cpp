@@ -58,7 +58,7 @@ class format_register
                                         equal_to> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
-    auto const& module = key.second.null() ? key.first : key.second;
+    auto const& module = IsNull(key.second) ? key.first : key.second;
 
     std::string filename(kFileNamePrefix.size() + module.size(), 0);
 
@@ -149,7 +149,7 @@ format_registrar::format_registrar(const type_info& type, string_ref module,
 
   auto entry = format_register::instance().set(
     std::make_pair(type.name(), module), factory,
-    source_ref.null() ? nullptr : &source_ref);
+    IsNull(source_ref) ? nullptr : &source_ref);
 
   registered_ = entry.second;
 

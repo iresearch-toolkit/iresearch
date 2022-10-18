@@ -1005,7 +1005,7 @@ path_parts_t path_parts(const file_path_t path) noexcept {
           stem_end = i;
         }
 
-        if (dirname.null()) {
+        if (IsNull(dirname)) {
           result.basename = path_parts_t::ref_t(path, i);
           result.stem = path_parts_t::ref_t(path, stem_end);
         } else {

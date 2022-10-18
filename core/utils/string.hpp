@@ -157,8 +157,6 @@ struct basic_string_ref : std::basic_string_view<Char, Traits> {
 
   basic_string_ref(const std::basic_string<Char>& str) noexcept
     : std::basic_string_view<Char>{str.c_str(), str.size()} {}
-
-  constexpr bool null() const noexcept { return nullptr == this->data(); }
 };
 
 template<typename Char>
@@ -208,6 +206,11 @@ using bytes_ref = basic_string_ref<byte_type>;
 template<typename Char>
 inline basic_string_ref<Char> EmptyRef() noexcept {
   return {reinterpret_cast<const Char*>(""), 0};
+}
+
+template<typename Char>
+constexpr bool IsNull(basic_string_ref<Char> str) noexcept {
+  return str.data() == nullptr;
 }
 
 template<typename ElemDst, typename ElemSrc>

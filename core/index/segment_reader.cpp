@@ -21,16 +21,14 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <absl/container/flat_hash_map.h>
-
-#include "shared.hpp"
 #include "segment_reader.hpp"
 
+#include <absl/container/flat_hash_map.h>
+
 #include "analysis/token_attributes.hpp"
-
-#include "index/index_meta.hpp"
-
 #include "formats/format_utils.hpp"
+#include "index/index_meta.hpp"
+#include "shared.hpp"
 #include "utils/hash_set_utils.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/singleton.hpp"
@@ -362,7 +360,7 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
                                &meta](const irs::column_reader& column) {
       const auto name = column.name();
 
-      if (!name.null()) {
+      if (!IsNull(name)) {
         const auto [it, is_new] =
           named_columns.emplace(make_hashed_ref(name), &column);
         UNUSED(it);

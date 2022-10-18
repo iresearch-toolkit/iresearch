@@ -142,7 +142,7 @@ scorer_registrar::scorer_registrar(const type_info& type,
   irs::string_ref source_ref(source);
   auto entry = scorer_register::instance().set(
     entry_key_t(type.name(), args_format), factory,
-    source_ref.null() ? nullptr : &source_ref);
+    IsNull(source_ref) ? nullptr : &source_ref);
 
   registered_ = entry.second;
 

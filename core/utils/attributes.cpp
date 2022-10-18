@@ -58,7 +58,7 @@ attribute_registrar::attribute_registrar(const type_info& type,
                                          const char* source /*= nullptr*/) {
   irs::string_ref source_ref(source);
   auto entry = attribute_register::instance().set(
-    type.name(), type, source_ref.null() ? nullptr : &source_ref);
+    type.name(), type, IsNull(source_ref) ? nullptr : &source_ref);
 
   registered_ = entry.second;
 

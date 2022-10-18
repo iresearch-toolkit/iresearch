@@ -99,7 +99,7 @@ compression_registrar::compression_registrar(
   const auto new_entry = ::value(compressor_factory, decompressor_factory);
 
   auto entry = compression_register::instance().set(
-    type.name(), new_entry, source_ref.null() ? nullptr : &source_ref);
+    type.name(), new_entry, IsNull(source_ref) ? nullptr : &source_ref);
 
   registered_ = entry.second;
 

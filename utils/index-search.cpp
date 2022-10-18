@@ -117,7 +117,7 @@ enum class category_t {
   UNKNOWN
 };
 
-category_t parseCategory(const irs::string_ref& value) {
+category_t parseCategory(irs::string_ref value) {
   if (value == "HighTerm") return category_t::HighTerm;
   if (value == "MedTerm") return category_t::MedTerm;
   if (value == "LowTerm") return category_t::LowTerm;
@@ -204,14 +204,14 @@ struct task_t {
 
 struct timers_t {
   std::vector<irs::timer_utils::timer_stat_t*> stat;
-  timers_t(const irs::string_ref& type) {
+  timers_t(irs::string_ref type) {
     std::string prefix("Query ");
-    prefix.append(type.c_str(), type.size());
+    prefix.append(type);
     prefix.append(" (");
 
     for (size_t i = 0, count = size_t(category_t::UNKNOWN); i < count; ++i) {
       stat.emplace_back(&irs::timer_utils::get_stat(
-        prefix + stringCategory(category_t(i)).c_str() + ") time"));
+        prefix + stringCategory(category_t(i)).data() + ") time"));
     }
   }
 };
@@ -249,7 +249,7 @@ irs::filter::prepared::ptr prepareFilter(
     case category_t::HighTerm:  // fall through
     case category_t::MedTerm:   // fall through
     case category_t::LowTerm: {
-      if ((terms = splitFreq(text)).null()) {
+      if (IsNull(terms = splitFreq(text))) {
         return nullptr;
       }
 
@@ -263,7 +263,7 @@ irs::filter::prepared::ptr prepareFilter(
     case category_t::HighPhrase:  // fall through
     case category_t::MedPhrase:   // fall through
     case category_t::LowPhrase: {
-      if ((terms = splitFreq(text)).null()) {
+      if (IsNull(terms = splitFreq(text))) {
         return nullptr;
       }
 
@@ -283,7 +283,7 @@ irs::filter::prepared::ptr prepareFilter(
     case category_t::HighNGram:  // fall through
     case category_t::MedNGram:   // fall through
     case category_t::LowNGram: {
-      if ((terms = splitFreq(text)).null()) {
+      if (IsNull(terms = splitFreq(text))) {
         return nullptr;
       }
       irs::by_ngram_similarity query;
@@ -309,7 +309,7 @@ irs::filter::prepared::ptr prepareFilter(
     case category_t::AndHighHigh:  // fall through
     case category_t::AndHighMed:   // fall through
     case category_t::AndHighLow: {
-      if ((terms = splitFreq(text)).null()) {
+      if (IsNull(terms = splitFreq(text))) {
         return nullptr;
       }
 
@@ -332,7 +332,7 @@ irs::filter::prepared::ptr prepareFilter(
     case category_t::OrHighHigh:  // fall through
     case category_t::OrHighMed:   // fall through
     case category_t::OrHighLow: {
-      if ((terms = splitFreq(text)).null()) {
+      if (IsNull(terms = splitFreq(text))) {
         return nullptr;
       }
 
@@ -349,8 +349,8 @@ irs::filter::prepared::ptr prepareFilter(
       return query.prepare(reader, order);
     }
     case category_t::Prefix3: {
-      terms = irs::string_ref(
-        text, text.size() - 1);  // cut '~' at the end of the text
+      // cut '~' at the end of the text
+      terms = irs::string_ref(text.data(), text.size() - 1);
 
       irs::by_prefix query;
       *query.mutable_field() = "body";
@@ -361,7 +361,7 @@ irs::filter::prepared::ptr prepareFilter(
       return query.prepare(reader, order);
     }
     case category_t::Wildcard: {
-      terms = irs::string_ref(text, text.size());
+      terms = irs::string_ref(text.data(), text.size());
 
       irs::by_wildcard query;
       *query.mutable_field() = "body";
@@ -398,7 +398,7 @@ irs::filter::prepared::ptr prepareFilter(
       return query.prepare(reader, order);
     }
     case category_t::MinMatch2High2Med: {
-      if ((terms = splitFreq(text)).null()) {
+      if (IsNull(terms = splitFreq(text))) {
         return nullptr;
       }
       irs::Or query;
@@ -489,7 +489,7 @@ int search(std::string_view path, std::string_view dir_type,
   auto scr = irs::scorers::get(scorer, arg_format_itr->second, scorer_arg);
 
   if (!scr) {
-    if (scorer_arg.null()) {
+    if (IsNull(scorer_arg)) {
       std::cerr << "Unable to instantiate scorer '" << scorer
                 << "' with argument format '" << scorer_arg_format
                 << "' with nil arguments" << std::endl;

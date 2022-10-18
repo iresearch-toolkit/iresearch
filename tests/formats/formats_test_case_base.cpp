@@ -1223,7 +1223,7 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
     for (irs::doc_id_t id = 0; id < seg.docs_count;) {
       ++id;
       ASSERT_EQ(id, values->seek(id));
-      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(!actual_value || IsNull(actual_value->value));
     }
   }
 }
@@ -1278,21 +1278,21 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
-      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(!actual_value || IsNull(actual_value->value));
       ASSERT_EQ(2, values->seek(1));
-      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(!actual_value || IsNull(actual_value->value));
       ASSERT_EQ(2, values->seek(2));
-      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(!actual_value || IsNull(actual_value->value));
       ASSERT_EQ(4, values->seek(4));
-      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(!actual_value || IsNull(actual_value->value));
       ASSERT_EQ(8, values->seek(6));
-      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(!actual_value || IsNull(actual_value->value));
       ASSERT_EQ(8, values->seek(8));
-      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(!actual_value || IsNull(actual_value->value));
       ASSERT_EQ(9, values->seek(9));
-      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(!actual_value || IsNull(actual_value->value));
       ASSERT_TRUE(irs::doc_limits::eof(values->seek(irs::doc_limits::eof())));
-      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(!actual_value || IsNull(actual_value->value));
     }
 
     // seek over field values (cached)
@@ -1329,7 +1329,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         if (payload) {
           // if attribute is present, payload value has
           // to be always empty for mask column
-          ASSERT_TRUE(payload->value.null());
+          ASSERT_TRUE(IsNull(payload->value));
         }
       }
 
@@ -1338,7 +1338,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       if (payload) {
         // if attribute is present, payload value has
         // to be always empty for mask column
-        ASSERT_TRUE(payload->value.null());
+        ASSERT_TRUE(IsNull(payload->value));
       }
     }
 
@@ -1354,7 +1354,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         // if attribute is present, payload value has
         // to be always empty for mask column
         ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-        ASSERT_TRUE(payload->value.null());
+        ASSERT_TRUE(IsNull(payload->value));
       }
 
       std::vector<irs::doc_id_t> expected_values = {2, 4, 8, 9};
@@ -1365,7 +1365,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         if (payload) {
           // if attribute is present, payload value has
           // to be always empty for mask column
-          ASSERT_TRUE(payload->value.null());
+          ASSERT_TRUE(IsNull(payload->value));
         }
       }
 
@@ -1375,7 +1375,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       if (payload) {
         // if attribute is present, payload value has
         // to be always empty for mask column
-        ASSERT_TRUE(payload->value.null());
+        ASSERT_TRUE(IsNull(payload->value));
       }
     }
   }
@@ -1411,7 +1411,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         if (payload) {
           // if attribute is present, payload value has
           // to be always empty for mask column
-          ASSERT_TRUE(payload->value.null());
+          ASSERT_TRUE(IsNull(payload->value));
         }
       }
 
@@ -1421,7 +1421,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       if (payload) {
         // if attribute is present, payload value has
         // to be always empty for mask column
-        ASSERT_TRUE(payload->value.null());
+        ASSERT_TRUE(IsNull(payload->value));
       }
     }
 
@@ -1432,21 +1432,21 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       auto values = column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
-      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(!actual_value || IsNull(actual_value->value));
       ASSERT_EQ(2, values->seek(1));
-      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(!actual_value || IsNull(actual_value->value));
       ASSERT_EQ(2, values->seek(2));
-      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(!actual_value || IsNull(actual_value->value));
       ASSERT_EQ(4, values->seek(4));
-      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(!actual_value || IsNull(actual_value->value));
       ASSERT_EQ(8, values->seek(6));
-      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(!actual_value || IsNull(actual_value->value));
       ASSERT_EQ(8, values->seek(8));
-      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(!actual_value || IsNull(actual_value->value));
       ASSERT_EQ(9, values->seek(9));
-      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(!actual_value || IsNull(actual_value->value));
       ASSERT_TRUE(irs::doc_limits::eof(values->seek(irs::doc_limits::eof())));
-      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(!actual_value || IsNull(actual_value->value));
     }
 
     // iterate over field values (cached)

@@ -67,7 +67,7 @@ irs::bytes_ref eval_term(irs::bstring& buf, irs::bytes_ref data) {
 }
 
 size_t find_delimiter(irs::bytes_ref data, irs::bytes_ref delim) {
-  if (delim.null()) {
+  if (IsNull(delim)) {
     return data.size();
   }
 
@@ -194,7 +194,7 @@ bool normalize_vpack_config(irs::string_ref args, std::string& definition) {
 
 irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while constructing delimited_token_stream");
       return nullptr;
     }
@@ -213,7 +213,7 @@ irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
 
 bool normalize_json_config(irs::string_ref args, std::string& definition) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while normalizing delimited_token_stream");
       return false;
     }
@@ -261,7 +261,7 @@ namespace analysis {
 delimited_token_stream::delimited_token_stream(string_ref delimiter)
   : analyzer(irs::type<delimited_token_stream>::get()),
     delim_(ref_cast<byte_type>(delimiter)) {
-  if (!delim_.null()) {
+  if (!IsNull(delim_)) {
     delim_buf_ = delim_;  // keep a local copy of the delimiter
     delim_ = delim_buf_;  // update the delimter to point at the local copy
   }
@@ -281,7 +281,7 @@ delimited_token_stream::delimited_token_stream(string_ref delimiter)
 }
 
 bool delimited_token_stream::next() {
-  if (data_.null()) {
+  if (IsNull(data_)) {
     return false;
   }
 
@@ -302,7 +302,7 @@ bool delimited_token_stream::next() {
 
   offset.start = start;
   offset.end = uint32_t(end);
-  term.value = delim_.null()
+  term.value = IsNull(delim_)
                  ? bytes_ref{data_.data(), size}
                  : eval_term(term_buf_, bytes_ref(data_.data(), size));
   data_ = size >= data_.size()

@@ -491,7 +491,7 @@ void postings_writer_base::write_skip(size_t level,
 void postings_writer_base::prepare(index_output& out,
                                    const irs::flush_state& state) {
   assert(state.dir);
-  assert(!state.name.null());
+  assert(!IsNull(state.name));
 
   std::string name;
 
@@ -2672,7 +2672,7 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
     }
 
     if (version_ > FORMAT_MIN) {
-      const byte_type flags = meta.payload().null() ? 0 : HAS_PAYLOAD;
+      const byte_type flags = IsNull(meta.payload()) ? 0 : HAS_PAYLOAD;
       out->write_byte(flags);
 
       if (flags == HAS_PAYLOAD) {
@@ -2782,7 +2782,7 @@ bool index_meta_reader::last_segments_file(const directory& dir,
 
 void index_meta_reader::read(const directory& dir, index_meta& meta,
                              string_ref filename /*= {} */) {
-  const std::string meta_file = filename.null()
+  const std::string meta_file = IsNull(filename)
                                   ? file_name<irs::index_meta_reader>(meta)
                                   : static_cast<std::string>(filename);
 
@@ -2909,7 +2909,7 @@ struct segment_meta_reader final : public irs::segment_meta_reader {
 
 void segment_meta_reader::read(const directory& dir, segment_meta& meta,
                                string_ref filename /*= {} */) {
-  const std::string meta_file = filename.null()
+  const std::string meta_file = IsNull(filename)
                                   ? file_name<irs::segment_meta_writer>(meta)
                                   : static_cast<std::string>(filename);
 

@@ -113,7 +113,7 @@ TEST(string_token_stream_tests, next_end) {
   // check attributes
   auto* term = irs::get<term_attribute>(ts);
   ASSERT_FALSE(!term);
-  ASSERT_TRUE(term->value.null());
+  ASSERT_TRUE(IsNull(term->value));
   auto* offs = irs::get<offset>(ts);
   ASSERT_FALSE(!offs);
   ASSERT_EQ(0, offs->start);

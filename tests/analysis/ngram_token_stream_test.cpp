@@ -150,7 +150,7 @@ TEST(ngram_token_stream_test, construct) {
 
     auto* term = irs::get<irs::term_attribute>(*stream);
     ASSERT_TRUE(term);
-    ASSERT_TRUE(term->value.null());
+    ASSERT_TRUE(IsNull(term->value));
 
     auto* increment = irs::get<irs::increment>(*stream);
     ASSERT_TRUE(increment);
@@ -183,7 +183,7 @@ TEST(ngram_token_stream_test, construct) {
 
     auto* term = irs::get<irs::term_attribute>(*stream);
     ASSERT_TRUE(term);
-    ASSERT_TRUE(term->value.null());
+    ASSERT_TRUE(IsNull(term->value));
 
     auto* increment = irs::get<irs::increment>(*stream);
     ASSERT_TRUE(increment);
@@ -217,7 +217,7 @@ TEST(ngram_token_stream_test, construct) {
 
     auto* term = irs::get<irs::term_attribute>(*stream);
     ASSERT_TRUE(term);
-    ASSERT_TRUE(term->value.null());
+    ASSERT_TRUE(IsNull(term->value));
 
     auto* increment = irs::get<irs::increment>(*stream);
     ASSERT_TRUE(increment);
@@ -924,7 +924,7 @@ TEST(ngram_token_stream_test, reset_too_big) {
 
   auto* term = irs::get<irs::term_attribute>(stream);
   ASSERT_TRUE(term);
-  ASSERT_TRUE(term->value.null());
+  ASSERT_TRUE(IsNull(term->value));
 
   auto* increment = irs::get<irs::increment>(stream);
   ASSERT_TRUE(increment);

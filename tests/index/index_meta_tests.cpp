@@ -48,7 +48,7 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
 
   // create index metadata and write it into the specified directory
   irs::index_meta meta_orig;
-  ASSERT_TRUE(meta_orig.payload().null());
+  ASSERT_TRUE(IsNull(meta_orig.payload()));
 
   // set payload
   const irs::bytes_ref payload = ref_cast<byte_type>(string_ref("payload"));
@@ -83,7 +83,7 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
   EXPECT_EQ(meta_orig.counter(), meta_read.counter());
   EXPECT_EQ(meta_orig.generation(), meta_read.generation());
   EXPECT_EQ(meta_orig.size(), meta_read.size());
-  EXPECT_TRUE(meta_read.payload().null());
+  EXPECT_TRUE(IsNull(meta_read.payload()));
 
   EXPECT_NE(meta_orig, meta_read);
   const_cast<bytes_ref&>(meta_orig.payload()) = bytes_ref{};
@@ -107,7 +107,7 @@ TEST(index_meta_tests, memory_directory_read_write_11) {
 
   // create index metadata and write it into the specified directory
   irs::index_meta meta_orig;
-  ASSERT_TRUE(meta_orig.payload().null());
+  ASSERT_TRUE(IsNull(meta_orig.payload()));
 
   // set payload
   const irs::bytes_ref payload = ref_cast<byte_type>(string_ref("payload"));
@@ -150,7 +150,7 @@ TEST(index_meta_tests, ctor) {
   irs::index_meta meta;
   EXPECT_EQ(0, meta.counter());
   EXPECT_EQ(0, meta.size());
-  EXPECT_TRUE(meta.payload().null());
+  EXPECT_TRUE(IsNull(meta.payload()));
   EXPECT_EQ(irs::type_limits<type_t::index_gen_t>::invalid(),
             meta.generation());
 }

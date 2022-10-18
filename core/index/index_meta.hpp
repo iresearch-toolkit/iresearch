@@ -233,7 +233,7 @@ class index_meta {
   }
 
   void payload(bytes_ref payload) {
-    if (payload.null()) {
+    if (IsNull(payload)) {
       payload_buf_.clear();
       payload_ = {};
     } else {

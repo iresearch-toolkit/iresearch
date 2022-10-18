@@ -227,7 +227,7 @@ bool normalize_vpack_config(string_ref args, std::string& config) {
 
 analysis::analyzer::ptr make_json(string_ref args) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR(
         "Null arguments while constructing segmentation_token_stream");
       return nullptr;
@@ -248,7 +248,7 @@ analysis::analyzer::ptr make_json(string_ref args) {
 
 bool normalize_json_config(string_ref args, std::string& definition) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR(
         "Null arguments while normalizing segmentation_token_stream");
       return false;

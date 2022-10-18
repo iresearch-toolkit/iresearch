@@ -112,7 +112,7 @@ analyzer_registrar::analyzer_registrar(
   const auto new_entry = ::value(factory, normalizer);
   auto entry = analyzer_register::instance().set(
     ::key(type.name(), args_format), new_entry,
-    source_ref.null() ? nullptr : &source_ref);
+    IsNull(source_ref) ? nullptr : &source_ref);
 
   registered_ = entry.second;
 

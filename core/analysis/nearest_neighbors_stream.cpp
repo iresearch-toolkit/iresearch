@@ -131,7 +131,7 @@ analyzer::ptr make_vpack(irs::string_ref args) {
 
 analyzer::ptr make_json(irs::string_ref args) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR(
         "Null arguments while constructing nearest_neighbors_stream ");
       return nullptr;
@@ -179,7 +179,7 @@ bool normalize_vpack_config(irs::string_ref args, std::string& config) {
 
 bool normalize_json_config(irs::string_ref args, std::string& definition) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR(
         "Null arguments while normalizing nearest_neighbors_stream ");
       return false;
