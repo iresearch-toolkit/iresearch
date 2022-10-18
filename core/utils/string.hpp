@@ -195,7 +195,9 @@ constexpr bool IsNull(std::basic_string_view<Char> str) noexcept {
 template<typename ElemDst, typename ElemSrc>
 constexpr inline std::basic_string_view<ElemDst> ViewCast(
   std::basic_string_view<ElemSrc> src) noexcept {
+  static_assert(!std::is_same_v<ElemDst, ElemSrc>);
   static_assert(sizeof(ElemDst) == sizeof(ElemSrc));
+
   return {reinterpret_cast<const ElemDst*>(src.data()), src.size()};
 }
 
