@@ -30,7 +30,7 @@ void expect_sign_eq(long double lhs, long double rhs) {
   EXPECT_TRUE((lhs == 0 && rhs == 0) || std::signbit(lhs) == std::signbit(rhs));
 }
 
-TEST(std::string_view_tests, common_prefix) {
+TEST(string_tests, common_prefix) {
   using namespace iresearch;
 
   {

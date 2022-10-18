@@ -554,7 +554,7 @@ string_field::string_field(
 }
 
 // reject too long terms
-void string_field::value(const std::string_view& str) {
+void string_field::value(std::string_view str) {
   const auto size_len =
     irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
   const auto max_len = (std::min)(
@@ -576,7 +576,7 @@ irs::token_stream& string_field::get_tokens() const {
   return stream_;
 }
 
-std::string_view_field::std::string_view_field(
+string_view_field::string_view_field(
   const std::string& name, irs::IndexFeatures extra_index_features,
   const std::vector<irs::type_info::type_id>& extra_features) {
   index_features_ =
@@ -585,7 +585,7 @@ std::string_view_field::std::string_view_field(
   name_ = name;
 }
 
-std::string_view_field::std::string_view_field(
+string_view_field::string_view_field(
   const std::string& name, const std::string_view& value,
   irs::IndexFeatures extra_index_features,
   const std::vector<irs::type_info::type_id>& extra_features)
@@ -597,7 +597,7 @@ std::string_view_field::std::string_view_field(
 }
 
 // truncate very long terms
-void std::string_view_field::value(const std::string_view& str) {
+void string_view_field::value(std::string_view str) {
   const auto size_len =
     irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
   const auto max_len = (std::min)(
@@ -606,12 +606,12 @@ void std::string_view_field::value(const std::string_view& str) {
   value_ = std::string_view(str.data(), max_len);
 }
 
-bool std::string_view_field::write(irs::data_output& out) const {
+bool string_view_field::write(irs::data_output& out) const {
   irs::write_string(out, value_);
   return true;
 }
 
-irs::token_stream& std::string_view_field::get_tokens() const {
+irs::token_stream& string_view_field::get_tokens() const {
   REGISTER_TIMER_DETAILED();
 
   stream_.reset(value_);

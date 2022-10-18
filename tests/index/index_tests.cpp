@@ -1102,7 +1102,8 @@ class index_test_case : public tests::index_test_base {
         tests::csv_doc_generator gen(resource("simple_two_column.csv"),
                                      csv_doc_template);
         auto visitor = [&gen, &column_name, &expected_id](
-                         irs::doc_id_t id, const irs::bytes_view& actual_value) {
+                         irs::doc_id_t id,
+                         const irs::bytes_view& actual_value) {
           if (id != ++expected_id) {
             return false;
           }
@@ -1812,7 +1813,8 @@ class index_test_case : public tests::index_test_base {
   void writer_bulk_insert() {
     class indexed_and_stored_field {
      public:
-      indexed_and_stored_field(std::string&& name, const std::string_view& value,
+      indexed_and_stored_field(std::string&& name,
+                               const std::string_view& value,
                                bool stored_valid = true,
                                bool indexed_valid = true)
         : stream_(std::make_unique<irs::string_token_stream>()),
@@ -2142,7 +2144,7 @@ class index_test_case : public tests::index_test_base {
 };  // index_test_case
 
 void index_test_case::docs_bit_union(irs::IndexFeatures features) {
-  tests::std::string_view_field field("0", features);
+  tests::string_view_field field("0", features);
   const size_t N = irs::bits_required<uint64_t>(2) + 7;
 
   {
@@ -15002,16 +15004,14 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
     irs::feature_writer_factory_t handler{};
 
     if (irs::type<feature1>::id() == id) {
-      handler =
-        [](
-          std::span<const irs::bytes_view> headers) -> irs::feature_writer::ptr {
+      handler = [](std::span<const irs::bytes_view> headers)
+        -> irs::feature_writer::ptr {
         return feature_writer::make(sNumCalls[irs::type<feature1>::id()], 2,
                                     headers);
       };
     } else if (irs::type<feature3>::id() == id) {
-      handler =
-        [](
-          std::span<const irs::bytes_view> headers) -> irs::feature_writer::ptr {
+      handler = [](std::span<const irs::bytes_view> headers)
+        -> irs::feature_writer::ptr {
         return feature_writer::make(sNumCalls[irs::type<feature3>::id()], 1,
                                     headers);
       };

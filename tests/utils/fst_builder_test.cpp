@@ -22,16 +22,16 @@
 
 #ifndef IRESEARCH_DLL
 
-#include "tests_shared.hpp"
+// clang-format off
 
-#include <fstream>
+#include "tests_shared.hpp"
 
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "store/mmap_directory.hpp"
 #include "store/memory_directory.hpp"
+#include "utils/fstext/fst_string_ref_weight.h"
 #include "utils/fstext/fst_string_weight.h"
-#include "utils/fstext/fst_std::string_view_weight.h"
 #include "utils/fstext/fst_builder.hpp"
 #include "utils/fstext/fst_matcher.hpp"
 #include "utils/fstext/immutable_fst.h"
@@ -39,8 +39,12 @@
 #include "utils/fstext/fst_decl.hpp"
 #include "utils/numeric_utils.hpp"
 
-#include <fst/vector-fst.h>
 #include <fst/matcher.h>
+#include <fst/vector-fst.h>
+
+#include <fstream>
+
+// clang-format on
 
 namespace {
 

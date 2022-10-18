@@ -188,7 +188,7 @@ class binary_field : public field_base {
 
   irs::token_stream& get_tokens() const override;
   const irs::bstring& value() const { return value_; }
-  void value(const irs::bytes_view& value) { value_ = value; }
+  void value(irs::bytes_view value) { value_ = value; }
   void value(irs::bstring&& value) { value_ = std::move(value); }
 
   template<typename Iterator>
@@ -588,7 +588,7 @@ class string_field : public tests::field_base {
     irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
     const std::vector<irs::type_info::type_id>& extra_features = {});
 
-  void value(const std::string_view& str);
+  void value(std::string_view str);
   std::string_view value() const { return value_; }
 
   virtual irs::token_stream& get_tokens() const override;
@@ -600,18 +600,18 @@ class string_field : public tests::field_base {
 };  // string_field
 
 // field which uses simple analyzer without tokenization
-class std::string_view_field : public tests::field_base {
+class string_view_field : public tests::field_base {
  public:
-  std::string_view_field(
+  string_view_field(
     const std::string& name,
     irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
     const std::vector<irs::type_info::type_id>& extra_features = {});
-  std::string_view_field(
+  string_view_field(
     const std::string& name, const std::string_view& value,
     irs::IndexFeatures index_features = irs::IndexFeatures::NONE,
     const std::vector<irs::type_info::type_id>& extra_features = {});
 
-  void value(const std::string_view& str);
+  void value(std::string_view str);
   std::string_view value() const { return value_; }
 
   virtual irs::token_stream& get_tokens() const override;

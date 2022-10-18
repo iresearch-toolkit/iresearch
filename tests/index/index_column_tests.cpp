@@ -27,8 +27,9 @@
 #include "utils/lz4compression.hpp"
 
 namespace {
-bool visit1(const irs::column_reader& reader,
-            const std::function<bool(irs::doc_id_t, irs::bytes_view)>& visitor) {
+bool visit1(
+  const irs::column_reader& reader,
+  const std::function<bool(irs::doc_id_t, irs::bytes_view)>& visitor) {
   auto it = reader.iterator(irs::ColumnHint::kNormal);
 
   irs::payload dummy;
@@ -85,7 +86,7 @@ TEST_P(index_column_test_case,
   };
 
   static const irs::doc_id_t MAX_DOCS = 1500;
-  static const iresearch::std::string_view column_name = "id";
+  static const std::string_view column_name = "id";
   size_t inserted = 0;
 
   // write documents
@@ -1132,7 +1133,7 @@ TEST_P(index_column_test_case,
   static const irs::doc_id_t MAX_DOCS =
     BLOCK_SIZE * BLOCK_SIZE  // full index block
     + 2051;                  // tail index block
-  static const iresearch::std::string_view column_name = "id";
+  static const std::string_view column_name = "id";
 
   // write documents
   {
@@ -1947,7 +1948,7 @@ TEST_P(index_column_test_case,
 
   static const irs::doc_id_t BLOCK_SIZE = 1024;
   static const irs::doc_id_t MAX_DOCS = 1500;
-  static const iresearch::std::string_view column_name = "id";
+  static const std::string_view column_name = "id";
 
   // write documents
   {
@@ -3266,7 +3267,7 @@ TEST_P(index_column_test_case,
 
   static const irs::doc_id_t MAX_DOCS = 1500;
   static const irs::doc_id_t BLOCK_SIZE = 1024;
-  static const iresearch::std::string_view column_name = "id";
+  static const std::string_view column_name = "id";
 
   // write documents
   {
@@ -4051,7 +4052,8 @@ TEST_P(index_column_test_case,
       ++expected_doc;
       ++expected_value;
       ASSERT_TRUE(it->next());
-      actual_value_str = irs::to_string<std::string_view>(payload->value.data());
+      actual_value_str =
+        irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_doc, it->value());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                   actual_value_str.data()));
@@ -4452,7 +4454,7 @@ TEST_P(index_column_test_case,
   };
 
   static const irs::doc_id_t MAX_DOCS = 1500;
-  static const iresearch::std::string_view column_name = "id";
+  static const std::string_view column_name = "id";
 
   // write documents
   {
@@ -5272,7 +5274,7 @@ TEST_P(index_column_test_case,
 
   static const irs::doc_id_t MAX_DOCS = 1024 * 1024  // full index block
                                         + 2051;      // tail index block
-  static const iresearch::std::string_view column_name = "id";
+  static const std::string_view column_name = "id";
 
   // write documents
   {
@@ -5917,7 +5919,7 @@ TEST_P(index_column_test_case,
   };
 
   static const irs::doc_id_t MAX_DOCS = 1500;
-  static const iresearch::std::string_view column_name = "id";
+  static const std::string_view column_name = "id";
 
   // write documents
   {
@@ -6435,7 +6437,8 @@ TEST_P(index_column_test_case,
       ++expected_doc;
       ++expected_value;
       ASSERT_TRUE(it->next());
-      actual_value_str = irs::to_string<std::string_view>(payload->value.data());
+      actual_value_str =
+        irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_doc, it->value());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                   actual_value_str.data()));
@@ -6737,7 +6740,7 @@ TEST_P(index_column_test_case,
   };
 
   static const irs::doc_id_t MAX_DOCS = 1500;
-  static const iresearch::std::string_view column_name = "id";
+  static const std::string_view column_name = "id";
 
   // write documents
   {
@@ -7735,7 +7738,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
     // check 'id' column
     {
-      const iresearch::std::string_view column_name = "id";
+      const std::string_view column_name = "id";
       auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
 
@@ -7840,7 +7843,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
     // check 'label' column
     {
-      const iresearch::std::string_view column_name = "label";
+      const std::string_view column_name = "label";
       auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
 
@@ -7963,7 +7966,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
     // check 'id' column
     {
-      const iresearch::std::string_view column_name = "id";
+      const std::string_view column_name = "id";
       auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
 
@@ -8102,7 +8105,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
     // check 'label' column
     {
-      const iresearch::std::string_view column_name = "label";
+      const std::string_view column_name = "label";
       auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
 
@@ -8300,8 +8303,8 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
-      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values = {
-        {1, "A"}, {2, "B"}, {3, "C"}, {4, "D"}};
+      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values =
+        {{1, "A"}, {2, "B"}, {3, "C"}, {4, "D"}};
 
       size_t i = 0;
       for (; it->next(); ++i) {
@@ -8332,8 +8335,8 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
-      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values = {
-        {1, "abcd"}, {4, "abcde"}};
+      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values =
+        {{1, "abcd"}, {4, "abcde"}};
 
       size_t i = 0;
       for (; it->next(); ++i) {
@@ -8376,8 +8379,8 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
-      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values = {
-        {1, "A"}, {2, "B"}, {3, "C"}, {4, "D"}};
+      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values =
+        {{1, "A"}, {2, "B"}, {3, "C"}, {4, "D"}};
 
       size_t i = 0;
       for (; it->next(); ++i) {
@@ -8408,8 +8411,8 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
-      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values = {
-        {1, "A"}, {2, "B"}, {3, "C"}, {4, "D"}};
+      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values =
+        {{1, "A"}, {2, "B"}, {3, "C"}, {4, "D"}};
 
       size_t i = 0;
       for (; it->next(); ++i) {
@@ -8440,8 +8443,8 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
-      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values = {
-        {1, "abcd"}, {4, "abcde"}};
+      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values =
+        {{1, "abcd"}, {4, "abcde"}};
 
       size_t i = 0;
       for (; it->next(); ++i) {
@@ -8472,8 +8475,8 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
-      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values = {
-        {1, "abcd"}, {4, "abcde"}};
+      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values =
+        {{1, "abcd"}, {4, "abcde"}};
 
       size_t i = 0;
       for (; it->next(); ++i) {

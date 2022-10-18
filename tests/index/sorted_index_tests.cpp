@@ -197,7 +197,7 @@ class sorted_index_test_case : public tests::index_test_base {
   bool supports_pluggable_features() const noexcept {
     // old formats don't support pluggable features
     constexpr std::string_view kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
-                                            "1_3simd"};
+                                             "1_3simd"};
 
     return std::end(kOldFormats) == std::find(std::begin(kOldFormats),
                                               std::end(kOldFormats),
@@ -415,7 +415,7 @@ TEST_P(sorted_index_test_case, simple_sequential) {
 
     // Check regular columns
     constexpr std::string_view column_names[]{"seq", "value", "duplicated",
-                                             "prefix"};
+                                              "prefix"};
 
     for (auto& column_name : column_names) {
       struct doc {
@@ -605,7 +605,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
       // Check stored columns
       constexpr std::string_view column_names[]{"seq", "value", "duplicated",
-                                               "prefix"};
+                                                "prefix"};
 
       for (auto& column_name : column_names) {
         struct doc {
@@ -779,7 +779,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
     // Check stored columns
     constexpr std::string_view column_names[]{"seq", "value", "duplicated",
-                                             "prefix"};
+                                              "prefix"};
 
     for (auto& column_name : column_names) {
       struct doc {
@@ -948,7 +948,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
 
     // Check stored columns
     constexpr std::string_view column_names[]{"name", "value", "duplicated",
-                                             "prefix"};
+                                              "prefix"};
 
     for (auto& column_name : column_names) {
       struct doc {
@@ -1053,7 +1053,7 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
     std::string_view value;
   } field;
 
-  tests::std::string_view_field same("same");
+  tests::string_view_field same("same");
   same.value("A");
 
   // Open writer
@@ -1682,7 +1682,8 @@ TEST_P(sorted_index_test_case, doc_removal_same_key_within_trx) {
     auto docs = segment.docs_iterator();
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), values->seek(docs->value()));
-    ASSERT_EQ("C", irs::to_string<std::string_view>(actual_value->value.data()));
+    ASSERT_EQ("C",
+              irs::to_string<std::string_view>(actual_value->value.data()));
     ASSERT_FALSE(docs->next());
   }
 }
