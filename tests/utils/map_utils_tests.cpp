@@ -29,15 +29,15 @@
 
 TEST(map_utils_tests, try_emplace_update_key) {
   struct key_updater_t {
-    irs::hashed_std::string_view operator()(const irs::hashed_std::string_view& key,
-                                      const std::string& value) const {
-      return irs::hashed_std::string_view(key.hash(), value);
+    irs::hashed_string_view operator()(const irs::hashed_string_view& key,
+                                       const std::string& value) const {
+      return irs::hashed_string_view(key.hash(), value);
     }
   } updater;
 
   // move constructed
   {
-    std::map<irs::hashed_std::string_view, std::string> map;
+    std::map<irs::hashed_string_view, std::string> map;
 
     // new element
     {
@@ -73,7 +73,7 @@ TEST(map_utils_tests, try_emplace_update_key) {
 
   // copy constructed
   {
-    std::map<irs::hashed_std::string_view, std::string> map;
+    std::map<irs::hashed_string_view, std::string> map;
 
     // new element
     {

@@ -94,7 +94,7 @@
 #include "utils/fstext/fst_builder.hpp"
 #include "utils/fstext/fst_decl.hpp"
 #include "utils/fstext/fst_matcher.hpp"
-#include "utils/fstext/fst_std::string_view_weight.h"
+#include "utils/fstext/fst_string_ref_weight.h"
 #include "utils/fstext/fst_table_matcher.hpp"
 #include "utils/fstext/immutable_fst.h"
 #include "utils/timer_utils.hpp"
@@ -856,7 +856,8 @@ class field_writer final : public irs::field_writer {
 
   static constexpr std::string_view FORMAT_TERMS = "block_tree_terms_dict";
   static constexpr std::string_view TERMS_EXT = "tm";
-  static constexpr std::string_view FORMAT_TERMS_INDEX = "block_tree_terms_index";
+  static constexpr std::string_view FORMAT_TERMS_INDEX =
+    "block_tree_terms_index";
   static constexpr std::string_view TERMS_INDEX_EXT = "ti";
 
   field_writer(irs::postings_writer::ptr&& pw, bool consolidation,
@@ -3195,7 +3196,7 @@ class field_reader final : public irs::field_reader {
   using immutable_fst_readers = std::vector<term_reader<immutable_byte_fst>>;
 
   std::variant<immutable_fst_readers, vector_fst_readers> fields_;
-  absl::flat_hash_map<hashed_std::string_view, irs::term_reader*> name_to_field_;
+  absl::flat_hash_map<hashed_string_view, irs::term_reader*> name_to_field_;
   irs::postings_reader::ptr pr_;
   encryption::stream::ptr terms_in_cipher_;
   index_input::ptr terms_in_;
@@ -3285,7 +3286,8 @@ void field_reader::prepare(const directory& dir, const segment_meta& meta,
       fields.reserve(fields_count);
       name_to_field_.reserve(fields_count);
 
-      for (std::string_view previous_field_name{""}; fields_count; --fields_count) {
+      for (std::string_view previous_field_name{""}; fields_count;
+           --fields_count) {
         auto& field = fields.emplace_back(*this);
         field.prepare(term_index_version, *index_in, feature_map);
 
@@ -3297,8 +3299,8 @@ void field_reader::prepare(const directory& dir, const segment_meta& meta,
             "invalid field order in segment '%s'", meta.name.c_str()));
         }
 
-        const auto res =
-          name_to_field_.emplace(make_hashed_ref(std::string_view(name)), &field);
+        const auto res = name_to_field_.emplace(
+          make_hashed_ref(std::string_view(name)), &field);
 
         if (!res.second) {
           throw irs::index_error(string_utils::to_string(

@@ -1111,7 +1111,7 @@ fields_data::fields_data(const feature_info_provider_t& feature_info,
     byte_writer_(byte_pool_.begin()),
     int_writer_(int_pool_.begin()) {}
 
-field_data* fields_data::emplace(const hashed_std::string_view& name,
+field_data* fields_data::emplace(const hashed_string_view& name,
                                  IndexFeatures index_features,
                                  const features_t& features,
                                  columnstore_writer& columns) {

@@ -167,11 +167,11 @@ class fields_data : util::noncopyable {
     using self_t::operator();
 
     bool operator()(const ref_t& lhs,
-                    const hashed_std::string_view& rhs) const noexcept {
+                    const hashed_string_view& rhs) const noexcept {
       return lhs.second->meta().name == rhs;
     }
 
-    bool operator()(const hashed_std::string_view& lhs,
+    bool operator()(const hashed_string_view& lhs,
                     const ref_t& rhs) const noexcept {
       return this->operator()(rhs, lhs);
     }
@@ -188,7 +188,7 @@ class fields_data : util::noncopyable {
 
   const comparer* comparator() const noexcept { return comparator_; }
 
-  field_data* emplace(const hashed_std::string_view& name,
+  field_data* emplace(const hashed_string_view& name,
                       IndexFeatures index_features, const features_t& features,
                       columnstore_writer& columns);
 

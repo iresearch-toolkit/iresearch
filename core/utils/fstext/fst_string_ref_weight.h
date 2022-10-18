@@ -56,15 +56,14 @@ struct StringRefWeightTraits {
 template<typename Label>
 class StringRefWeight : public StringRefWeightTraits<Label> {
  public:
-  using str_t = irs::basic_string_ref<Label>;
+  using str_t = std::basic_string_view<Label>;
 
   static const std::string& Type() {
     static const std::string type = "left_string";
     return type;
   }
 
-  friend bool operator==(const StringRefWeight& lhs,
-                         const StringRefWeight& rhs) noexcept {
+  friend bool operator==(StringRefWeight lhs, StringRefWeight rhs) noexcept {
     return lhs.str_ == rhs.str_;
   }
 
@@ -76,13 +75,13 @@ class StringRefWeight : public StringRefWeightTraits<Label> {
   StringRefWeight(const StringRefWeight&) = default;
   StringRefWeight(StringRefWeight&&) = default;
 
-  explicit StringRefWeight(const irs::basic_string_ref<Label>& rhs) noexcept
-    : str_(rhs.c_str(), rhs.size()) {}
+  explicit StringRefWeight(std::basic_string_view<Label> rhs) noexcept
+    : str_{rhs} {}
 
   StringRefWeight& operator=(StringRefWeight&&) = default;
   StringRefWeight& operator=(const StringRefWeight&) = default;
 
-  StringRefWeight& operator=(const irs::basic_string_ref<Label>& rhs) noexcept {
+  StringRefWeight& operator=(std::basic_string_view<Label> rhs) noexcept {
     str_ = rhs;
     return *this;
   }
@@ -118,21 +117,20 @@ class StringRefWeight : public StringRefWeightTraits<Label> {
   const Label* end() const noexcept { return str_.end(); }
 
   // intentionally implicit
-  operator irs::basic_string_ref<Label>() const noexcept { return str_; }
+  operator std::basic_string_view<Label>() const noexcept { return str_; }
 
  private:
   str_t str_;
 };  // StringRefWeight
 
 template<typename Label>
-inline bool operator!=(const StringRefWeight<Label>& w1,
-                       const StringRefWeight<Label>& w2) {
+inline bool operator!=(StringRefWeight<Label> w1, StringRefWeight<Label> w2) {
   return !(w1 == w2);
 }
 
 template<typename Label>
 inline std::ostream& operator<<(std::ostream& strm,
-                                const StringRefWeight<Label>& weight) {
+                                StringRefWeight<Label> weight) {
   if (weight.Empty()) {
     return strm << "Epsilon";
   }
@@ -177,14 +175,14 @@ struct StringRefWeightTraits<irs::byte_type> {
   }
 
   static constexpr bool Member(
-    const StringRefWeight<irs::byte_type>& weight) noexcept {
+    StringRefWeight<irs::byte_type> weight) noexcept {
     // always a member
     return true;
   }
 };  // StringRefWeightTraits
 
 inline std::ostream& operator<<(std::ostream& strm,
-                                const StringRefWeight<irs::byte_type>& weight) {
+                                StringRefWeight<irs::byte_type> weight) {
   if (weight.Empty()) {
     return strm << "Epsilon";
   }

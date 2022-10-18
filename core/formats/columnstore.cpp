@@ -273,11 +273,11 @@ struct column_ref_eq : value_ref_eq<column_meta*> {
   using self_t::operator();
 
   bool operator()(const ref_t& lhs,
-                  const hashed_std::string_view& rhs) const noexcept {
+                  const hashed_string_view& rhs) const noexcept {
     return lhs.second->name == rhs;
   }
 
-  bool operator()(const hashed_std::string_view& lhs,
+  bool operator()(const hashed_string_view& lhs,
                   const ref_t& rhs) const noexcept {
     return this->operator()(rhs, lhs);
   }
@@ -1045,7 +1045,7 @@ class sparse_block : util::noncopyable {
       assert(vend >= vbegin);
       assert(payload_ != &kDummy);
       *payload_ = bytes_view(data_->c_str() + vbegin,  // start
-                            vend - vbegin);           // length
+                             vend - vbegin);           // length
       return true;
     }
 
@@ -1194,7 +1194,7 @@ class dense_block : util::noncopyable {
       assert(vend >= vbegin);
       assert(payload_ != &kDummy);
       *payload_ = bytes_view(data_->c_str() + vbegin,  // start
-                            vend - vbegin);           // length
+                             vend - vbegin);           // length
     }
 
     irs::bytes_view* payload_{&kDummy};
@@ -1282,7 +1282,7 @@ class dense_fixed_offset_block : util::noncopyable {
       assert(payload_ != &kDummy);
       *payload_ =
         bytes_view(data_.data() + offset,
-                  value_ == value_back_ ? data_.size() - offset : avg_length_);
+                   value_ == value_back_ ? data_.size() - offset : avg_length_);
 
       return true;
     }

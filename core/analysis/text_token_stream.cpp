@@ -151,7 +151,7 @@ struct cached_options_t : public analysis::text_token_stream::options_t {
       stopwords_(std::move(stopwords)) {}
 };
 
-absl::node_hash_map<hashed_std::string_view, cached_options_t> cached_state_by_key;
+absl::node_hash_map<hashed_string_view, cached_options_t> cached_state_by_key;
 std::mutex mutex;
 
 // -----------------------------------------------------------------------------
@@ -297,7 +297,7 @@ bool build_stopwords(const analysis::text_token_stream::options_t& options,
 analysis::analyzer::ptr construct(
   std::string_view cache_key, analysis::text_token_stream::options_t&& options,
   analysis::text_token_stream::stopwords_t&& stopwords) {
-  auto generator = [](const hashed_std::string_view& key,
+  auto generator = [](const hashed_string_view& key,
                       cached_options_t& value) noexcept {
     if (IsNull(key)) {
       return key;
@@ -306,7 +306,7 @@ analysis::analyzer::ptr construct(
     value.key_ = key;
 
     // reuse hash but point ref at value
-    return hashed_std::string_view(key.hash(), value.key_);
+    return hashed_string_view(key.hash(), value.key_);
   };
 
   cached_options_t* options_ptr;
@@ -336,8 +336,8 @@ analysis::analyzer::ptr construct(icu::Locale&& locale) {
   {
     std::lock_guard lock{mutex};
 
-    auto itr =
-      cached_state_by_key.find(make_hashed_ref(std::string_view(locale.getName())));
+    auto itr = cached_state_by_key.find(
+      make_hashed_ref(std::string_view(locale.getName())));
 
     if (itr != cached_state_by_key.end()) {
       return memory::make_unique<analysis::text_token_stream>(
@@ -421,7 +421,7 @@ bool process_term(analysis::text_token_stream::state_t& state,
     if (value) {
       static_assert(sizeof(byte_type) == sizeof(sb_symbol));
       state.term = bytes_view(reinterpret_cast<const byte_type*>(value),
-                             sb_stemmer_length(state.stemmer.get()));
+                              sb_stemmer_length(state.stemmer.get()));
 
       return true;
     }

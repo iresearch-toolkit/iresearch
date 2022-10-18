@@ -23,12 +23,12 @@
 #ifndef IRESEARCH_LEVENSHTEIN_UTILS_H
 #define IRESEARCH_LEVENSHTEIN_UTILS_H
 
-#include <vector>
 #include <numeric>
 #include <span>
+#include <vector>
 
-#include "string.hpp"
 #include "automaton_decl.hpp"
+#include "string.hpp"
 
 namespace iresearch {
 
@@ -75,8 +75,8 @@ inline size_t edit_distance(const T* lhs, size_t lhs_size, const T* rhs,
 /// @returns edit distance
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Char>
-inline size_t edit_distance(const basic_std::string_view<Char>& lhs,
-                            const basic_std::string_view<Char>& rhs) {
+inline size_t edit_distance(std::basic_string_view<Char> lhs,
+                            std::basic_string_view<Char> rhs) {
   return edit_distance(lhs.begin(), lhs.size(), rhs.begin(), rhs.size());
 }
 

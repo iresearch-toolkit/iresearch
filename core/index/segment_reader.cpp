@@ -215,11 +215,12 @@ class segment_reader_impl : public sub_reader {
 
   virtual const irs::column_reader* column(field_id field) const override;
 
-  virtual const irs::column_reader* column(std::string_view name) const override;
+  virtual const irs::column_reader* column(
+    std::string_view name) const override;
 
  private:
   using named_columns =
-    absl::flat_hash_map<hashed_std::string_view, const irs::column_reader*>;
+    absl::flat_hash_map<hashed_string_view, const irs::column_reader*>;
   using sorted_named_columns =
     std::vector<std::reference_wrapper<const irs::column_reader>>;
 
@@ -279,7 +280,8 @@ segment_reader_impl::segment_reader_impl(const directory& dir,
                                          uint64_t docs_count)
   : dir_(dir), docs_count_(docs_count), meta_version_(meta_version) {}
 
-const irs::column_reader* segment_reader_impl::column(std::string_view name) const {
+const irs::column_reader* segment_reader_impl::column(
+  std::string_view name) const {
   auto it = named_columns_.find(make_hashed_ref(name));
   return it == named_columns_.end() ? nullptr : it->second;
 }
