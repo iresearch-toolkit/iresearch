@@ -213,7 +213,7 @@ class segment_writer : util::noncopyable {
     struct hash {
       using is_transparent = void;
 
-      size_t operator()(const hashed_string_ref& value) const noexcept {
+      size_t operator()(const hashed_std::string_view& value) const noexcept {
         return value.hash();
       }
 
@@ -231,17 +231,17 @@ class segment_writer : util::noncopyable {
       }
 
       bool operator()(const stored_column& lhs,
-                      const hashed_string_ref& rhs) const noexcept {
+                      const hashed_std::string_view& rhs) const noexcept {
         return lhs.name == rhs;
       }
 
-      bool operator()(const hashed_string_ref& lhs,
+      bool operator()(const hashed_std::string_view& lhs,
                       const stored_column& rhs) const noexcept {
         return this->operator()(rhs, lhs);
       }
     };
 
-    stored_column(const hashed_string_ref& name,
+    stored_column(const hashed_std::string_view& name,
                   columnstore_writer& columnstore,
                   const column_info_provider_t& column_info,
                   std::deque<cached_column>& cached_columns, bool cache);
@@ -274,7 +274,7 @@ class segment_writer : util::noncopyable {
                  const feature_info_provider_t& feature_info,
                  const comparer* comparator) noexcept;
 
-  bool index(const hashed_string_ref& name, const doc_id_t doc,
+  bool index(const hashed_std::string_view& name, const doc_id_t doc,
              IndexFeatures index_features, const features_t& features,
              token_stream& tokens);
 
@@ -301,7 +301,7 @@ class segment_writer : util::noncopyable {
   }
 
   template<typename Writer>
-  bool store(const hashed_string_ref& name, const doc_id_t doc,
+  bool store(const hashed_std::string_view& name, const doc_id_t doc,
              Writer& writer) {
     assert(doc < doc_limits::eof());
 
@@ -322,7 +322,7 @@ class segment_writer : util::noncopyable {
     REGISTER_TIMER_DETAILED();
 
     const auto field_name =
-      make_hashed_ref(static_cast<string_ref>(field.name()));
+      make_hashed_ref(static_cast<std::string_view>(field.name()));
 
     // user should check return of begin() != eof()
     assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
@@ -349,7 +349,7 @@ class segment_writer : util::noncopyable {
     REGISTER_TIMER_DETAILED();
 
     const auto field_name =
-      make_hashed_ref(static_cast<string_ref>(field.name()));
+      make_hashed_ref(static_cast<std::string_view>(field.name()));
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const features_t&>(field.features());
@@ -368,7 +368,7 @@ class segment_writer : util::noncopyable {
     REGISTER_TIMER_DETAILED();
 
     const auto field_name =
-      make_hashed_ref(static_cast<string_ref>(field.name()));
+      make_hashed_ref(static_cast<std::string_view>(field.name()));
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const features_t&>(field.features());
@@ -398,7 +398,7 @@ class segment_writer : util::noncopyable {
   }
 
   // Returns stream for storing attributes
-  column_output& stream(const hashed_string_ref& name, const doc_id_t doc);
+  column_output& stream(const hashed_std::string_view& name, const doc_id_t doc);
 
   // Finishes document
   void finish() {

@@ -34,9 +34,9 @@ using namespace std::literals;
 namespace {
 
 void assert_description(
-  const irs::parametric_description& description, const irs::bytes_ref& prefix,
-  const irs::bytes_ref& term,
-  const std::vector<std::tuple<irs::bytes_ref, size_t, size_t, size_t>>&
+  const irs::parametric_description& description, const irs::bytes_view& prefix,
+  const irs::bytes_view& term,
+  const std::vector<std::tuple<irs::bytes_view, size_t, size_t, size_t>>&
     candidates) {
   auto a = irs::make_levenshtein_automaton(description, prefix, term);
 
@@ -66,9 +66,9 @@ void assert_description(
                                          std::back_inserter(utf8_target));
     irs::utf8_utils::utf8_to_utf32<true>(candidate,
                                          std::back_inserter(utf8_candidate));
-    const irs::basic_string_ref<uint32_t> utf8_target_ref(utf8_target.data(),
-                                                          utf8_target.size());
-    const irs::basic_string_ref<uint32_t> utf8_candidate_ref(
+    const std::basic_string_view<uint32_t> utf8_target_ref(utf8_target.data(),
+                                                           utf8_target.size());
+    const std::basic_string_view<uint32_t> utf8_candidate_ref(
       utf8_candidate.data(), utf8_candidate.size());
 
     ASSERT_EQ(expected_distance_precise,
@@ -105,8 +105,8 @@ void assert_description(
 }
 
 void assert_description(
-  const irs::parametric_description& description, const irs::bytes_ref& target,
-  const std::vector<std::tuple<irs::bytes_ref, size_t, size_t, size_t>>&
+  const irs::parametric_description& description, const irs::bytes_view& target,
+  const std::vector<std::tuple<irs::bytes_view, size_t, size_t, size_t>>&
     candidates) {
   return assert_description(description, irs::EmptyRef<irs::byte_type>(),
                             target, candidates);
@@ -120,7 +120,7 @@ void assert_read_write(const irs::parametric_description& description) {
     ASSERT_FALSE(buf.empty());
   }
   {
-    irs::bytes_ref_input in(buf);
+    irs::bytes_view_input in(buf);
     ASSERT_EQ(description, irs::read(in));
   }
 }
@@ -129,8 +129,8 @@ void assert_read_write(const irs::parametric_description& description) {
 
 TEST(levenshtein_utils_test, test_distance) {
   {
-    const irs::string_ref lhs = "aec";
-    const irs::string_ref rhs = "abcd";
+    const std::string_view lhs = "aec";
+    const std::string_view rhs = "abcd";
 
     ASSERT_EQ(
       2, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
@@ -139,8 +139,8 @@ TEST(levenshtein_utils_test, test_distance) {
   }
 
   {
-    const irs::string_ref lhs = "elephant";
-    const irs::string_ref rhs = "relevant";
+    const std::string_view lhs = "elephant";
+    const std::string_view rhs = "relevant";
 
     ASSERT_EQ(
       3, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
@@ -149,8 +149,8 @@ TEST(levenshtein_utils_test, test_distance) {
   }
 
   {
-    const irs::string_ref lhs = "\xD0\xBF\xD1\x83\xD1\x82\xD0\xB8\xD0\xBD";
-    const irs::string_ref rhs = "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBB\xD0\xBE";
+    const std::string_view lhs = "\xD0\xBF\xD1\x83\xD1\x82\xD0\xB8\xD0\xBD";
+    const std::string_view rhs = "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBB\xD0\xBE";
 
     std::vector<uint32_t> lhs_utf8, rhs_utf8;
     irs::utf8_utils::utf8_to_utf32<false>(irs::ref_cast<irs::byte_type>(lhs),
@@ -165,8 +165,8 @@ TEST(levenshtein_utils_test, test_distance) {
   }
 
   {
-    const irs::string_ref lhs = "";
-    const irs::string_ref rhs = "aec";
+    const std::string_view lhs = "";
+    const std::string_view rhs = "aec";
 
     ASSERT_EQ(
       3, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
@@ -175,8 +175,8 @@ TEST(levenshtein_utils_test, test_distance) {
   }
 
   {
-    const irs::string_ref lhs = "";
-    const irs::string_ref rhs = "";
+    const std::string_view lhs = "";
+    const std::string_view rhs = "";
 
     ASSERT_EQ(
       0, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
@@ -185,8 +185,8 @@ TEST(levenshtein_utils_test, test_distance) {
   }
 
   {
-    const irs::string_ref lhs;
-    const irs::string_ref rhs;
+    const std::string_view lhs;
+    const std::string_view rhs;
 
     ASSERT_EQ(
       0, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));

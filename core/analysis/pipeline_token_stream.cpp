@@ -58,11 +58,11 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
     if (pipeline_slice.isArray()) {
       for (const auto pipe : VPackArrayIterator(pipeline_slice)) {
         if (pipe.isObject()) {
-          irs::string_ref type;
+          std::string_view type;
           if (pipe.hasKey(TYPE_PARAM_NAME)) {
             auto type_attr_slice = pipe.get(TYPE_PARAM_NAME);
             if (type_attr_slice.isString()) {
-              type = irs::get_string<irs::string_ref>(type_attr_slice);
+              type = irs::get_string<std::string_view>(type_attr_slice);
             } else {
               IR_FRMT_ERROR(
                 "Failed to read '%s' attribute of  '%s' member as string while "
@@ -200,7 +200,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   }
   return false;
 }
-bool normalize_vpack_config(irs::string_ref args, std::string& config) {
+bool normalize_vpack_config(std::string_view args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -227,12 +227,12 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-irs::analysis::analyzer::ptr make_vpack(irs::string_ref args) {
+irs::analysis::analyzer::ptr make_vpack(std::string_view args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
 
-irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
+irs::analysis::analyzer::ptr make_json(std::string_view args) {
   try {
     if (irs::IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while constructing pipeline_token_stream");
@@ -251,7 +251,7 @@ irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
   return nullptr;
 }
 
-bool normalize_json_config(irs::string_ref args, std::string& definition) {
+bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (irs::IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while normalizing pipeline_token_stream");
@@ -401,7 +401,7 @@ bool pipeline_token_stream::next() {
   return true;
 }
 
-bool pipeline_token_stream::reset(string_ref data) {
+bool pipeline_token_stream::reset(std::string_view data) {
   current_ = top_;
   return pipeline_.front().reset(0, static_cast<uint32_t>(data.size()), data);
 }

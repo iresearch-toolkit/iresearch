@@ -31,7 +31,7 @@
 namespace {
 
 struct analyzer_token {
-  irs::string_ref value;
+  std::string_view value;
   size_t start;
   size_t end;
   uint32_t pos;
@@ -210,7 +210,7 @@ TEST(segmentation_token_stream_test, chinese_glyphs_test) {
   irs::analysis::segmentation_token_stream::options_t opt;
   irs::analysis::segmentation_token_stream stream(std::move(opt));
 
-  auto testFunc = [](const irs::string_ref& data,
+  auto testFunc = [](const std::string_view& data,
                      irs::analysis::analyzer* pStream) {
     ASSERT_TRUE(pStream->reset(data));
     auto* pOffset = irs::get<irs::offset>(*pStream);
@@ -368,7 +368,7 @@ TEST(segmentation_token_stream_test, make_invalid_json) {
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
                 "segmentation", irs::type<irs::text_format::json>::get(),
-                irs::string_ref{}));
+                std::string_view{}));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
                 "segmentation", irs::type<irs::text_format::json>::get(), "1"));
@@ -440,7 +440,7 @@ TEST(segmentation_token_stream_test, normalize_invalid) {
   std::string actual;
   ASSERT_FALSE(irs::analysis::analyzers::normalize(
     actual, "segmentation", irs::type<irs::text_format::json>::get(),
-    irs::string_ref{}));
+    std::string_view{}));
   ASSERT_FALSE(irs::analysis::analyzers::normalize(
     actual, "segmentation", irs::type<irs::text_format::json>::get(), "1"));
   ASSERT_FALSE(irs::analysis::analyzers::normalize(

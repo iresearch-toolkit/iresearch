@@ -79,10 +79,10 @@ class empty_term_reader final : public irs::term_reader {
   virtual uint64_t docs_count() const noexcept override { return docs_count_; }
 
   // least significant term
-  virtual irs::bytes_ref(min)() const noexcept override { return {}; }
+  virtual irs::bytes_view(min)() const noexcept override { return {}; }
 
   // most significant term
-  virtual irs::bytes_ref(max)() const noexcept override { return {}; }
+  virtual irs::bytes_view(max)() const noexcept override { return {}; }
 
  private:
   uint64_t docs_count_;

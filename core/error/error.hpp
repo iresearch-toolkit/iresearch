@@ -105,7 +105,7 @@ class lock_obtain_failed : public error_base {
  public:
   DECLARE_ERROR_CODE(lock_obtain_failed);
 
-  explicit lock_obtain_failed(irs::string_ref filename = "");
+  explicit lock_obtain_failed(std::string_view filename = "");
   virtual const char* what() const noexcept override;
 
  private:
@@ -119,7 +119,7 @@ class file_not_found : public error_base {
  public:
   DECLARE_ERROR_CODE(file_not_found);
 
-  explicit file_not_found(irs::string_ref filename = "");
+  explicit file_not_found(std::string_view filename = "");
   virtual const char* what() const noexcept override;
 
  private:

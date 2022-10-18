@@ -57,8 +57,8 @@ FORCE_INLINE score_t similarity(uint32_t distance, uint32_t size) noexcept {
 template<typename Invalid, typename Term, typename Levenshtein>
 inline auto executeLevenshtein(byte_type max_distance,
                                by_edit_distance_options::pdp_f provider,
-                               bool with_transpositions, const bytes_ref prefix,
-                               const bytes_ref target, Invalid&& inv, Term&& t,
+                               bool with_transpositions, const bytes_view prefix,
+                               const bytes_view target, Invalid&& inv, Term&& t,
                                Levenshtein&& lev) {
   if (!provider) {
     provider = &default_pdp;
@@ -168,8 +168,8 @@ void visit(const sub_reader& segment, const term_reader& reader,
 }
 
 template<typename Collector>
-bool collect_terms(const index_reader& index, string_ref field,
-                   bytes_ref prefix, bytes_ref term,
+bool collect_terms(const index_reader& index, std::string_view field,
+                   bytes_view prefix, bytes_view term,
                    const parametric_description& d, Collector& collector) {
   const auto acceptor = make_levenshtein_automaton(d, prefix, term);
 
@@ -198,7 +198,7 @@ bool collect_terms(const index_reader& index, string_ref field,
 
 filter::prepared::ptr prepare_levenshtein_filter(
   const index_reader& index, const Order& order, score_t boost,
-  string_ref field, bytes_ref prefix, bytes_ref term, size_t terms_limit,
+  std::string_view field, bytes_view prefix, bytes_view term, size_t terms_limit,
   const parametric_description& d) {
   field_collectors field_stats(order);
   term_collectors term_stats(order, 1);
@@ -254,11 +254,11 @@ namespace iresearch {
         return by_term::visit(segment, field, target, visitor);
       };
     },
-    [](const parametric_description& d, const bytes_ref prefix,
-       const bytes_ref term) -> field_visitor {
+    [](const parametric_description& d, const bytes_view prefix,
+       const bytes_view term) -> field_visitor {
       struct automaton_context : util::noncopyable {
-        automaton_context(const parametric_description& d, bytes_ref prefix,
-                          bytes_ref term)
+        automaton_context(const parametric_description& d, bytes_view prefix,
+                          bytes_view term)
           : acceptor(make_levenshtein_automaton(d, prefix, term)),
             matcher(make_automaton_matcher(acceptor)) {}
 
@@ -288,9 +288,9 @@ namespace iresearch {
 
 /*static*/ filter::prepared::ptr by_edit_distance::prepare(
   const index_reader& index, const Order& order, score_t boost,
-  string_ref field, bytes_ref term, size_t scored_terms_limit,
+  std::string_view field, bytes_view term, size_t scored_terms_limit,
   byte_type max_distance, options_type::pdp_f provider,
-  bool with_transpositions, bytes_ref prefix) {
+  bool with_transpositions, bytes_view prefix) {
   return executeLevenshtein(
     max_distance, provider, with_transpositions, prefix, term,
     []() -> filter::prepared::ptr { return prepared::empty(); },
@@ -307,8 +307,8 @@ namespace iresearch {
                               prefix.empty() ? term : prefix);
     },
     [&field, scored_terms_limit, &index, &order, boost](
-      const parametric_description& d, const bytes_ref prefix,
-      const bytes_ref term) -> filter::prepared::ptr {
+      const parametric_description& d, const bytes_view prefix,
+      const bytes_view term) -> filter::prepared::ptr {
       return prepare_levenshtein_filter(index, order, boost, field, prefix,
                                         term, scored_terms_limit, d);
     });

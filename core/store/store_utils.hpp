@@ -326,12 +326,12 @@ class bytes_output : public data_output {
 };  // bytes_output
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class bytes_ref_input
+/// @class bytes_view_input
 //////////////////////////////////////////////////////////////////////////////
-class bytes_ref_input : public index_input {
+class bytes_view_input : public index_input {
  public:
-  bytes_ref_input() = default;
-  explicit bytes_ref_input(bytes_ref data) noexcept
+  bytes_view_input() = default;
+  explicit bytes_view_input(bytes_view data) noexcept
     : data_(data), pos_(data_.begin()) {}
 
   void skip(size_t size) noexcept {
@@ -393,14 +393,14 @@ class bytes_ref_input : public index_input {
   void read_bytes(bstring& buf, size_t size);
 
   void reset(const byte_type* data, size_t size) noexcept {
-    data_ = bytes_ref(data, size);
+    data_ = bytes_view(data, size);
     pos_ = data;
   }
 
-  void reset(bytes_ref ref) noexcept { reset(ref.data(), ref.size()); }
+  void reset(bytes_view ref) noexcept { reset(ref.data(), ref.size()); }
 
   virtual ptr dup() const override {
-    return memory::make_unique<bytes_ref_input>(*this);
+    return memory::make_unique<bytes_view_input>(*this);
   }
 
   virtual ptr reopen() const override { return dup(); }
@@ -428,9 +428,9 @@ class bytes_ref_input : public index_input {
   virtual int64_t checksum(size_t offset) const override final;
 
  private:
-  bytes_ref data_;
+  bytes_view data_;
   const byte_type* pos_{data_.begin()};
-};  // bytes_ref_input
+};  // bytes_view_input
 
 namespace encode {
 

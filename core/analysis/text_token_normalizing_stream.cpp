@@ -75,7 +75,7 @@ constexpr std::string_view CASE_CONVERT_PARAM_NAME{"case"};
 constexpr std::string_view ACCENT_PARAM_NAME{"accent"};
 
 constexpr frozen::unordered_map<
-  string_ref, analysis::normalizing_token_stream::case_convert_t, 3>
+  std::string_view, analysis::normalizing_token_stream::case_convert_t, 3>
   CASE_CONVERT_MAP = {
     {"lower", analysis::normalizing_token_stream::LOWER},
     {"none", analysis::normalizing_token_stream::NONE},
@@ -143,7 +143,7 @@ bool parse_vpack_options(
         }
 
         auto itr =
-          CASE_CONVERT_MAP.find(get_string<string_ref>(case_convert_slice));
+          CASE_CONVERT_MAP.find(get_string<std::string_view>(case_convert_slice));
 
         if (itr == CASE_CONVERT_MAP.end()) {
           IR_FRMT_WARN(
@@ -207,7 +207,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-analysis::analyzer::ptr make_vpack(string_ref args) {
+analysis::analyzer::ptr make_vpack(std::string_view args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
@@ -255,7 +255,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   }
 }
 
-bool normalize_vpack_config(string_ref args, std::string& config) {
+bool normalize_vpack_config(std::string_view args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -265,7 +265,7 @@ bool normalize_vpack_config(string_ref args, std::string& config) {
   return false;
 }
 
-analysis::analyzer::ptr make_json(string_ref args) {
+analysis::analyzer::ptr make_json(std::string_view args) {
   try {
     if (IsNull(args)) {
       IR_FRMT_ERROR(
@@ -287,7 +287,7 @@ analysis::analyzer::ptr make_json(string_ref args) {
   return nullptr;
 }
 
-bool normalize_json_config(string_ref args, std::string& definition) {
+bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (IsNull(args)) {
       IR_FRMT_ERROR(
@@ -349,7 +349,7 @@ bool normalizing_token_stream::next() {
   return true;
 }
 
-bool normalizing_token_stream::reset(string_ref data) {
+bool normalizing_token_stream::reset(std::string_view data) {
   auto err =
     UErrorCode::U_ZERO_ERROR;  // a value that passes the U_SUCCESS() test
 

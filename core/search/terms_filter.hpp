@@ -45,7 +45,7 @@ struct by_terms_options {
     explicit search_term(bstring&& term, score_t boost = kNoBoost) noexcept
       : term(std::move(term)), boost(boost) {}
 
-    explicit search_term(bytes_ref term, score_t boost = kNoBoost)
+    explicit search_term(bytes_view term, score_t boost = kNoBoost)
       : term(term.data(), term.size()), boost(boost) {}
 
     bool operator==(const search_term& rhs) const noexcept {

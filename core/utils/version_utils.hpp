@@ -38,10 +38,10 @@
 namespace iresearch {
 namespace version_utils {
 
-const string_ref build_date();
-const string_ref build_id();
-const string_ref build_time();
-const string_ref build_version();
+const std::string_view build_date();
+const std::string_view build_id();
+const std::string_view build_time();
+const std::string_view build_version();
 
 }  // namespace version_utils
 }  // namespace iresearch

@@ -33,7 +33,7 @@
 
 namespace {
 bool visit(const irs::column_reader& reader,
-           const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
+           const std::function<bool(irs::doc_id_t, irs::bytes_view)>& visitor) {
   auto it = reader.iterator(irs::ColumnHint::kConsolidation);
 
   irs::payload dummy;
@@ -75,12 +75,12 @@ class index_profile_test_case : public tests::index_test_base {
         clear();
 
         for (auto& field : fields) {
-          field->value(irs::string_ref{""});
+          field->value(std::string_view{""});
           insert(field);
         }
       }
 
-      virtual void value(size_t idx, const irs::string_ref& value) {
+      virtual void value(size_t idx, const std::string_view& value) {
         assert(idx < fields.size());
         fields[idx]->value(value);
       }
@@ -385,12 +385,12 @@ class index_profile_test_case : public tests::index_test_base {
     size_t imported_docs_count = 0;
     size_t updated_docs_count = 0;
     auto imported_visitor = [&imported_docs_count](
-                              irs::doc_id_t, const irs::bytes_ref&) -> bool {
+                              irs::doc_id_t, const irs::bytes_view&) -> bool {
       ++imported_docs_count;
       return true;
     };
     auto updated_visitor = [&updated_docs_count](
-                             irs::doc_id_t, const irs::bytes_ref&) -> bool {
+                             irs::doc_id_t, const irs::bytes_view&) -> bool {
       ++updated_docs_count;
       return true;
     };
@@ -522,7 +522,7 @@ class index_profile_test_case : public tests::index_test_base {
     struct dummy_doc_template_t
       : public tests::csv_doc_generator::doc_template {
       virtual void init() {}
-      virtual void value(size_t, const irs::string_ref&) {}
+      virtual void value(size_t, const std::string_view&) {}
     };
     dummy_doc_template_t dummy_doc_template;
     tests::csv_doc_generator gen(resource("simple_two_column.csv"),

@@ -31,18 +31,18 @@
 namespace {
 
 struct dummy_compressor final : irs::compression::compressor {
-  virtual irs::bytes_ref compress(irs::byte_type*, size_t,
+  virtual irs::bytes_view compress(irs::byte_type*, size_t,
                                   irs::bstring& /*buf*/) {
-    return irs::bytes_ref{};
+    return irs::bytes_view{};
   }
 
   virtual void flush(irs::data_output&) {}
 };
 
 struct dummy_decompressor final : irs::compression::decompressor {
-  virtual irs::bytes_ref decompress(const irs::byte_type*, size_t,
+  virtual irs::bytes_view decompress(const irs::byte_type*, size_t,
                                     irs::byte_type*, size_t) {
-    return irs::bytes_ref{};
+    return irs::bytes_view{};
   }
 
   virtual bool prepare(irs::data_input&) { return true; }
@@ -60,7 +60,7 @@ TEST(compression_test, registration) {
     ASSERT_FALSE(irs::compression::exists(type.name()));
     ASSERT_EQ(nullptr, irs::compression::get_compressor(type.name(), {}));
     ASSERT_EQ(nullptr, irs::compression::get_decompressor(type.name(), {}));
-    auto visitor = [&type](const irs::string_ref& name) {
+    auto visitor = [&type](const std::string_view& name) {
       return name != type.name();
     };
     ASSERT_TRUE(irs::compression::visit(visitor));
@@ -87,7 +87,7 @@ TEST(compression_test, registration) {
     ASSERT_EQ(1, calls_count);
     ASSERT_NE(nullptr, irs::compression::get_decompressor(type.name(), {}));
     ASSERT_EQ(2, calls_count);
-    auto visitor = [&type](const irs::string_ref& name) {
+    auto visitor = [&type](const std::string_view& name) {
       return name != type.name();
     };
     ASSERT_FALSE(irs::compression::visit(visitor));
@@ -109,7 +109,7 @@ TEST(compression_test, registration) {
     ASSERT_EQ(3, calls_count);
     ASSERT_NE(nullptr, irs::compression::get_decompressor(type.name(), {}));
     ASSERT_EQ(4, calls_count);
-    auto visitor = [&type](const irs::string_ref& name) {
+    auto visitor = [&type](const std::string_view& name) {
       return name != type.name();
     };
     ASSERT_FALSE(irs::compression::visit(visitor));
@@ -147,19 +147,19 @@ TEST(compression_test, lz4) {
     bstring data_buf(data.size() * sizeof(size_t), 0);
     std::memcpy(&data_buf[0], data.data(), data_buf.size());
 
-    ASSERT_EQ(bytes_ref(reinterpret_cast<const byte_type*>(data.data()),
+    ASSERT_EQ(bytes_view(reinterpret_cast<const byte_type*>(data.data()),
                         data.size() * sizeof(size_t)),
-              bytes_ref(data_buf));
+              bytes_view(data_buf));
 
     const auto compressed =
       compressor.compress(&data_buf[0], data_buf.size(), compression_buf);
     ASSERT_EQ(compressed,
-              bytes_ref(compression_buf.c_str(), compressed.size()));
+              bytes_view(compression_buf.c_str(), compressed.size()));
 
     // lz4 doesn't modify data_buf
-    ASSERT_EQ(bytes_ref(reinterpret_cast<const byte_type*>(data.data()),
+    ASSERT_EQ(bytes_view(reinterpret_cast<const byte_type*>(data.data()),
                         data.size() * sizeof(size_t)),
-              bytes_ref(data_buf));
+              bytes_view(data_buf));
 
     bstring decompression_buf(data_buf.size(),
                               0);  // ensure we have enough space in buffer
@@ -195,14 +195,14 @@ TEST(compression_test, delta) {
     bstring data_buf(data.size() * sizeof(size_t), 0);
     std::memcpy(&data_buf[0], data.data(), data_buf.size());
 
-    ASSERT_EQ(bytes_ref(reinterpret_cast<const byte_type*>(data.data()),
+    ASSERT_EQ(bytes_view(reinterpret_cast<const byte_type*>(data.data()),
                         data.size() * sizeof(size_t)),
-              bytes_ref(data_buf));
+              bytes_view(data_buf));
 
     const auto compressed =
       compressor.compress(&data_buf[0], data_buf.size(), compression_buf);
     ASSERT_EQ(compressed,
-              bytes_ref(compression_buf.c_str(), compressed.size()));
+              bytes_view(compression_buf.c_str(), compressed.size()));
 
     bstring decompression_buf(data_buf.size(),
                               0);  // ensure we have enough space in buffer
@@ -210,11 +210,11 @@ TEST(compression_test, delta) {
       decompressor.decompress(&compression_buf[0], compressed.size(),
                               &decompression_buf[0], decompression_buf.size());
 
-    ASSERT_EQ(bytes_ref(reinterpret_cast<const byte_type*>(data.data()),
+    ASSERT_EQ(bytes_view(reinterpret_cast<const byte_type*>(data.data()),
                         data.size() * sizeof(size_t)),
-              bytes_ref(decompression_buf));
-    ASSERT_EQ(bytes_ref(reinterpret_cast<const byte_type*>(data.data()),
+              bytes_view(decompression_buf));
+    ASSERT_EQ(bytes_view(reinterpret_cast<const byte_type*>(data.data()),
                         data.size() * sizeof(size_t)),
-              bytes_ref(decompressed));
+              bytes_view(decompressed));
   }
 }

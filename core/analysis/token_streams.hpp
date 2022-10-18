@@ -45,7 +45,7 @@ class basic_token_stream : public analysis::analyzer {
     return irs::get_mutable(attrs_, type);
   }
 
-  bool reset(string_ref) override { return false; }
+  bool reset(std::string_view) override { return false; }
 
  protected:
   std::tuple<term_attribute, increment> attrs_;
@@ -58,11 +58,11 @@ class basic_token_stream : public analysis::analyzer {
 class boolean_token_stream final : public basic_token_stream,
                                    private util::noncopyable {
  public:
-  static constexpr string_ref value_true() noexcept { return {"\xFF", 1}; }
+  static constexpr std::string_view value_true() noexcept { return {"\xFF", 1}; }
 
-  static constexpr string_ref value_false() noexcept { return {"\x00", 1}; }
+  static constexpr std::string_view value_false() noexcept { return {"\x00", 1}; }
 
-  static constexpr string_ref value(bool val) noexcept {
+  static constexpr std::string_view value(bool val) noexcept {
     return val ? value_true() : value_false();
   }
 
@@ -75,7 +75,7 @@ class boolean_token_stream final : public basic_token_stream,
     in_use_ = false;
   }
 
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "boolean_token_stream";
   }
 
@@ -95,7 +95,7 @@ class boolean_token_stream final : public basic_token_stream,
 class string_token_stream : public analysis::analyzer,
                             private util::noncopyable {
  public:
-  static constexpr irs::string_ref type_name() noexcept { return "identity"; }
+  static constexpr std::string_view type_name() noexcept { return "identity"; }
 
   string_token_stream() noexcept;
 
@@ -105,12 +105,12 @@ class string_token_stream : public analysis::analyzer,
     return irs::get_mutable(attrs_, id);
   }
 
-  void reset(bytes_ref value) noexcept {
+  void reset(bytes_view value) noexcept {
     value_ = value;
     in_use_ = false;
   }
 
-  bool reset(string_ref value) noexcept final {
+  bool reset(std::string_view value) noexcept final {
     value_ = ref_cast<byte_type>(value);
     in_use_ = false;
     return true;
@@ -118,7 +118,7 @@ class string_token_stream : public analysis::analyzer,
 
  private:
   std::tuple<offset, increment, term_attribute> attrs_;
-  bytes_ref value_;
+  bytes_view value_;
   bool in_use_;
 };  // string_token_stream
 
@@ -147,16 +147,16 @@ class numeric_token_stream final : public basic_token_stream,
 #endif
 
   void reset(double_t value, uint32_t step = PRECISION_STEP_DEF);
-  static bytes_ref value(bstring& buf, int32_t value);
-  static bytes_ref value(bstring& buf, int64_t value);
+  static bytes_view value(bstring& buf, int32_t value);
+  static bytes_view value(bstring& buf, int64_t value);
 
 #ifndef FLOAT_T_IS_DOUBLE_T
-  static bytes_ref value(bstring& buf, float_t value);
+  static bytes_view value(bstring& buf, float_t value);
 #endif
 
-  static bytes_ref value(bstring& buf, double_t value);
+  static bytes_view value(bstring& buf, double_t value);
 
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "numeric_token_stream";
   }
 
@@ -169,7 +169,7 @@ class numeric_token_stream final : public basic_token_stream,
   //////////////////////////////////////////////////////////////////////////////
   class numeric_term final {
    public:
-    static bytes_ref value(bstring& buf, int32_t value) {
+    static bytes_view value(bstring& buf, int32_t value) {
       decltype(val_) val;
 
       val.i32 = value;
@@ -178,7 +178,7 @@ class numeric_token_stream final : public basic_token_stream,
       return numeric_term::value(buf.data(), NT_INT, val, 0);
     }
 
-    static bytes_ref value(bstring& buf, int64_t value) {
+    static bytes_view value(bstring& buf, int64_t value) {
       decltype(val_) val;
 
       val.i64 = value;
@@ -188,7 +188,7 @@ class numeric_token_stream final : public basic_token_stream,
     }
 
 #ifndef FLOAT_T_IS_DOUBLE_T
-    static bytes_ref value(bstring& buf, float_t value) {
+    static bytes_view value(bstring& buf, float_t value) {
       decltype(val_) val;
 
       val.i32 = numeric_utils::numeric_traits<float_t>::integral(value);
@@ -198,7 +198,7 @@ class numeric_token_stream final : public basic_token_stream,
     }
 #endif
 
-    static bytes_ref value(bstring& buf, double_t value) {
+    static bytes_view value(bstring& buf, double_t value) {
       decltype(val_) val;
 
       val.i64 = numeric_utils::numeric_traits<double_t>::integral(value);
@@ -207,7 +207,7 @@ class numeric_token_stream final : public basic_token_stream,
       return numeric_term::value(buf.data(), NT_DBL, val, 0);
     }
 
-    bool next(increment& inc, bytes_ref& out);
+    bool next(increment& inc, bytes_view& out);
 
     void reset(int32_t value, uint32_t step) {
       val_.i32 = value;
@@ -247,7 +247,7 @@ class numeric_token_stream final : public basic_token_stream,
       uint32_t i32;
     };
 
-    static irs::bytes_ref value(byte_type* buf, NumericType type, value_t val,
+    static irs::bytes_view value(byte_type* buf, NumericType type, value_t val,
                                 uint32_t shift);
 
     byte_type data_[numeric_utils::numeric_traits<double_t>::size()];
@@ -270,7 +270,7 @@ class null_token_stream final : public basic_token_stream,
   explicit null_token_stream()
     : basic_token_stream(irs::type<null_token_stream>::get()) {}
 
-  static constexpr string_ref value_null() noexcept {
+  static constexpr std::string_view value_null() noexcept {
     // data pointer != nullptr or assert failure in bytes_hash::insert(...)
     return {"\x00", 0};
   }
@@ -279,7 +279,7 @@ class null_token_stream final : public basic_token_stream,
 
   void reset() noexcept { in_use_ = false; }
 
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "null_token_stream";
   }
 

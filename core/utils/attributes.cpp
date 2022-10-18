@@ -28,20 +28,20 @@
 namespace {
 
 class attribute_register
-  : public irs::tagged_generic_register<irs::string_ref, irs::type_info,
-                                        irs::string_ref, attribute_register> {};
+  : public irs::tagged_generic_register<std::string_view, irs::type_info,
+                                        std::string_view, attribute_register> {};
 
 }  // namespace
 
 namespace iresearch {
 
-/*static*/ bool attributes::exists(string_ref name,
+/*static*/ bool attributes::exists(std::string_view name,
                                    bool load_library /*= true*/) {
   return static_cast<bool>(
     attribute_register::instance().get(name, load_library));
 }
 
-/*static*/ type_info attributes::get(string_ref name,
+/*static*/ type_info attributes::get(std::string_view name,
                                      bool load_library /*= true*/) noexcept {
   try {
     return attribute_register::instance().get(name, load_library);
@@ -56,7 +56,7 @@ namespace iresearch {
 
 attribute_registrar::attribute_registrar(const type_info& type,
                                          const char* source /*= nullptr*/) {
-  irs::string_ref source_ref(source);
+  std::string_view source_ref(source);
   auto entry = attribute_register::instance().set(
     type.name(), type, IsNull(source_ref) ? nullptr : &source_ref);
 

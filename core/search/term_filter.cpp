@@ -66,7 +66,7 @@ class term_visitor : private util::noncopyable {
 };
 
 template<typename Visitor>
-void visit(const sub_reader& segment, const term_reader& field, bytes_ref term,
+void visit(const sub_reader& segment, const term_reader& field, bytes_view term,
            Visitor& visitor) {
   // find term
   auto terms = field.iterator(SeekMode::RANDOM_ONLY);
@@ -88,13 +88,13 @@ void visit(const sub_reader& segment, const term_reader& field, bytes_ref term,
 namespace iresearch {
 
 void by_term::visit(const sub_reader& segment, const term_reader& field,
-                    bytes_ref term, filter_visitor& visitor) {
+                    bytes_view term, filter_visitor& visitor) {
   ::visit(segment, field, term, visitor);
 }
 
 filter::prepared::ptr by_term::prepare(const index_reader& index,
                                        const Order& ord, score_t boost,
-                                       string_ref field, bytes_ref term) {
+                                       std::string_view field, bytes_view term) {
   TermQuery::States states(index);
   field_collectors field_stats(ord);
   term_collectors term_stats(ord, 1);

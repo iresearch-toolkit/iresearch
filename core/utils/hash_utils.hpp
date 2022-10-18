@@ -47,20 +47,20 @@ hash_combine(size_t seed, T const& v) noexcept(noexcept(std::hash<T>()(v))) {
 }
 
 template<typename Elem>
-class hashed_basic_string_ref : public basic_string_ref<Elem> {
+class hashed_basic_std::string_view : public basic_std::string_view<Elem> {
  public:
-  using base_t = basic_string_ref<Elem>;
+  using base_t = basic_std::string_view<Elem>;
 
-  hashed_basic_string_ref(size_t hash, base_t ref) noexcept
+  hashed_basic_std::string_view(size_t hash, base_t ref) noexcept
     : base_t(ref), hash_(hash) {}
 
-  hashed_basic_string_ref(size_t hash, base_t ref, size_t size) noexcept
+  hashed_basic_std::string_view(size_t hash, base_t ref, size_t size) noexcept
     : base_t(ref, size), hash_(hash) {}
 
-  hashed_basic_string_ref(size_t hash, typename base_t::pointer ptr) noexcept
+  hashed_basic_std::string_view(size_t hash, typename base_t::pointer ptr) noexcept
     : base_t(ptr), hash_(hash) {}
 
-  hashed_basic_string_ref(size_t hash, typename base_t::pointer ptr,
+  hashed_basic_std::string_view(size_t hash, typename base_t::pointer ptr,
                           size_t size) noexcept
     : base_t(ptr, size), hash_(hash) {}
 
@@ -70,17 +70,17 @@ class hashed_basic_string_ref : public basic_string_ref<Elem> {
   size_t hash_;
 };
 
-template<typename Elem, typename Hasher = std::hash<basic_string_ref<Elem>>>
-hashed_basic_string_ref<Elem> make_hashed_ref(basic_string_ref<Elem> ref,
+template<typename Elem, typename Hasher = std::hash<basic_std::string_view<Elem>>>
+hashed_basic_std::string_view<Elem> make_hashed_ref(basic_std::string_view<Elem> ref,
                                               const Hasher& hasher = Hasher()) {
-  return hashed_basic_string_ref<Elem>(hasher(ref), ref);
+  return hashed_basic_std::string_view<Elem>(hasher(ref), ref);
 }
 
-template<typename Elem, typename Hasher = std::hash<basic_string_ref<Elem>>>
-hashed_basic_string_ref<Elem> make_hashed_ref(basic_string_ref<Elem> ref,
+template<typename Elem, typename Hasher = std::hash<basic_std::string_view<Elem>>>
+hashed_basic_std::string_view<Elem> make_hashed_ref(basic_std::string_view<Elem> ref,
                                               size_t size,
                                               const Hasher& hasher = Hasher()) {
-  return hashed_basic_string_ref<Elem>(hasher(ref), ref, size);
+  return hashed_basic_std::string_view<Elem>(hasher(ref), ref, size);
 }
 
 template<typename T>
@@ -95,8 +95,8 @@ inline size_t hash(const T* begin, size_t size) noexcept {
   return hash;
 }
 
-typedef hashed_basic_string_ref<byte_type> hashed_bytes_ref;
-typedef hashed_basic_string_ref<char> hashed_string_ref;
+typedef hashed_basic_std::string_view<byte_type> hashed_bytes_view;
+typedef hashed_basic_std::string_view<char> hashed_std::string_view;
 
 }  // namespace iresearch
 
@@ -107,11 +107,11 @@ typedef hashed_basic_string_ref<char> hashed_string_ref;
 namespace frozen {
 
 template<>
-struct elsa<irs::string_ref> {
-  constexpr size_t operator()(irs::string_ref value) const noexcept {
+struct elsa<irs::std::string_view> {
+  constexpr size_t operator()(irs::std::string_view value) const noexcept {
     return elsa<frozen::string>{}({value.data(), value.size()});
   }
-  constexpr std::size_t operator()(irs::string_ref value,
+  constexpr std::size_t operator()(irs::std::string_view value,
                                    std::size_t seed) const {
     return elsa<frozen::string>{}({value.data(), value.size()}, seed);
   }
@@ -127,9 +127,9 @@ namespace absl {
 namespace hash_internal {
 
 template<typename Char>
-struct HashImpl<::iresearch::hashed_basic_string_ref<Char>> {
+struct HashImpl<::iresearch::hashed_basic_std::string_view<Char>> {
   size_t operator()(
-    const ::iresearch::hashed_basic_string_ref<Char>& value) const {
+    const ::iresearch::hashed_basic_std::string_view<Char>& value) const {
     return value.hash();
   }
 };
@@ -144,9 +144,9 @@ struct HashImpl<::iresearch::hashed_basic_string_ref<Char>> {
 namespace std {
 
 template<typename Char>
-struct hash<::iresearch::hashed_basic_string_ref<Char>> {
+struct hash<::iresearch::hashed_basic_std::string_view<Char>> {
   size_t operator()(
-    const ::iresearch::hashed_basic_string_ref<Char>& value) const {
+    const ::iresearch::hashed_basic_std::string_view<Char>& value) const {
     return value.hash();
   }
 };
@@ -160,17 +160,17 @@ struct hash<std::vector<::iresearch::bstring>> {
 };
 
 template<typename Char>
-struct hash<std::vector<::iresearch::hashed_basic_string_ref<Char>>> {
+struct hash<std::vector<::iresearch::hashed_basic_std::string_view<Char>>> {
   size_t operator()(
-    const std::vector<::iresearch::hashed_basic_string_ref<Char>>& value)
+    const std::vector<::iresearch::hashed_basic_std::string_view<Char>>& value)
     const noexcept {
     return ::iresearch::hash(value.data(), value.size());
   }
 };
 
 template<typename Char>
-struct hash<std::vector<::iresearch::basic_string_ref<Char>>> {
-  size_t operator()(const std::vector<::iresearch::basic_string_ref<Char>>&
+struct hash<std::vector<::iresearch::basic_std::string_view<Char>>> {
+  size_t operator()(const std::vector<::iresearch::basic_std::string_view<Char>>&
                       value) const noexcept {
     return ::iresearch::hash(value.data(), value.size());
   }

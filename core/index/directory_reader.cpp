@@ -83,8 +83,8 @@ irs::index_file_refs::ref_t load_newest_index_meta(
     }
   }
 
-  absl::flat_hash_set<irs::string_ref> codecs;
-  auto visitor = [&codecs](irs::string_ref name) -> bool {
+  absl::flat_hash_set<std::string_view> codecs;
+  auto visitor = [&codecs](std::string_view name) -> bool {
     codecs.insert(name);
     return true;
   };
@@ -264,7 +264,7 @@ directory_reader_impl::directory_reader_impl(
 
   constexpr size_t INVALID_CANDIDATE{std::numeric_limits<size_t>::max()};
   const size_t count = cached_impl ? cached_impl->meta_.meta.size() : 0;
-  absl::flat_hash_map<string_ref, size_t>
+  absl::flat_hash_map<std::string_view, size_t>
     reuse_candidates;  // map by segment name to old segment id
   reuse_candidates.reserve(count);
 

@@ -131,7 +131,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-analysis::analyzer::ptr make_vpack(string_ref args) {
+analysis::analyzer::ptr make_vpack(std::string_view args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
@@ -159,7 +159,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   }
 }
 
-bool normalize_vpack_config(string_ref args, std::string& config) {
+bool normalize_vpack_config(std::string_view args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -169,7 +169,7 @@ bool normalize_vpack_config(string_ref args, std::string& config) {
   return false;
 }
 
-analysis::analyzer::ptr make_json(string_ref args) {
+analysis::analyzer::ptr make_json(std::string_view args) {
   try {
     if (IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while constructing collation_token_stream");
@@ -188,7 +188,7 @@ analysis::analyzer::ptr make_json(string_ref args) {
   return nullptr;
 }
 
-bool normalize_json_config(string_ref args, std::string& definition) {
+bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while normalizing collation_token_stream");
@@ -248,7 +248,7 @@ collation_token_stream::collation_token_stream(const options_t& options)
     state_{new state_t(options)},
     term_eof_{true} {}
 
-bool collation_token_stream::reset(string_ref data) {
+bool collation_token_stream::reset(std::string_view data) {
   if (!state_->collator) {
     auto err = UErrorCode::U_ZERO_ERROR;
     state_->collator.reset(

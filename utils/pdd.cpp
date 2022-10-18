@@ -79,7 +79,7 @@ int dump(irs::byte_type distance, bool with_transpositions, size_t line_length,
   }
 
   irs::bstring buf;
-  irs::bytes_ref compressed;
+  irs::bytes_view compressed;
   if (comp) {
     compressed = comp->compress(&raw[0], raw.size(), buf);
   } else {

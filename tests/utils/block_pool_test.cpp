@@ -144,8 +144,8 @@ class block_pool_test : public test_base {
     decltype(pool_.begin().pool_offset()) slice_chain_begin;
     decltype(slice_chain_begin) slice_chain_end;
 
-    bytes_ref data0 = ref_cast<byte_type>(string_ref("first_payload"));
-    bytes_ref data1 = ref_cast<byte_type>(string_ref("second_payload_1234"));
+    bytes_view data0 = ref_cast<byte_type>(std::string_view("first_payload"));
+    bytes_view data1 = ref_cast<byte_type>(std::string_view("second_payload_1234"));
 
     // write data
     {
@@ -177,14 +177,14 @@ class block_pool_test : public test_base {
       {
         byte_type read[100]{};
         sliced_rdr.read(read, data0.size());
-        ASSERT_EQ(data0, bytes_ref(read, data0.size()));
+        ASSERT_EQ(data0, bytes_view(read, data0.size()));
       }
 
       // read second data
       {
         byte_type read[100]{};
         sliced_rdr.read(read, data1.size());
-        ASSERT_EQ(data1, bytes_ref(read, data1.size()));
+        ASSERT_EQ(data1, bytes_view(read, data1.size()));
       }
     }
   }
@@ -312,9 +312,9 @@ class block_pool_test : public test_base {
   }
 
   void greedy_slice_read_write() {
-    const bytes_ref data[]{
-      ref_cast<byte_type>(string_ref("first_payload")),
-      ref_cast<byte_type>(string_ref("second_payload_1234"))};
+    const bytes_view data[]{
+      ref_cast<byte_type>(std::string_view("first_payload")),
+      ref_cast<byte_type>(std::string_view("second_payload_1234"))};
 
     std::vector<std::pair<size_t, size_t>> cookies;  // slice_offset + offset
 
@@ -376,16 +376,16 @@ class block_pool_test : public test_base {
         sliced_rdr.read(read, str.size());
 
         ASSERT_EQ(
-          irs::bytes_ref(reinterpret_cast<const byte_type*>(str.c_str()),
+          irs::bytes_view(reinterpret_cast<const byte_type*>(str.c_str()),
                          str.size()),
-          irs::bytes_ref(read, str.size()));
+          irs::bytes_view(read, str.size()));
       }
 
       while (i--) {
         sliced_greedy_reader_t sliced_rdr(pool_, cookies[i].first,
                                           cookies[i].second);
         sliced_rdr.read(read, data[i].size());
-        ASSERT_EQ(data[i], bytes_ref(read, data[i].size()));
+        ASSERT_EQ(data[i], bytes_view(read, data[i].size()));
       }
     }
   }

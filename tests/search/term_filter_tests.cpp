@@ -29,8 +29,8 @@
 
 namespace {
 
-irs::by_term make_filter(const irs::string_ref& field,
-                         const irs::string_ref term) {
+irs::by_term make_filter(const std::string_view& field,
+                         const std::string_view term) {
   irs::by_term q;
   *q.mutable_field() = field;
   q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
@@ -599,8 +599,8 @@ TEST_P(term_filter_test_case, visit) {
     add_segment(gen);
   }
 
-  const irs::string_ref field = "prefix";
-  const auto term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+  const std::string_view field = "prefix";
+  const auto term = irs::ref_cast<irs::byte_type>(std::string_view("abc"));
 
   tests::empty_filter_visitor visitor;
 
@@ -615,7 +615,7 @@ TEST_P(term_filter_test_case, visit) {
   irs::by_term::visit(segment, *reader, term, visitor);
   ASSERT_EQ(1, visitor.prepare_calls_counter());
   ASSERT_EQ(1, visitor.visit_calls_counter());
-  ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{
+  ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{
               {"abc", irs::kNoBoost}}),
             visitor.term_refs<char>());
   visitor.reset();

@@ -42,7 +42,7 @@
 namespace {
 
 template<typename Filter>
-Filter make_filter(const irs::string_ref& field, const irs::string_ref term) {
+Filter make_filter(const std::string_view& field, const std::string_view term) {
   Filter q;
   *q.mutable_field() = field;
   q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
@@ -50,8 +50,8 @@ Filter make_filter(const irs::string_ref& field, const irs::string_ref term) {
 }
 
 template<typename Filter>
-Filter& append(irs::boolean_filter& root, const irs::string_ref& name,
-               const irs::string_ref& term) {
+Filter& append(irs::boolean_filter& root, const std::string_view& name,
+               const std::string_view& term) {
   auto& sub = root.add<Filter>();
   *sub.mutable_field() = name;
   sub.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
@@ -16086,14 +16086,14 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
       auto& filter = sub.add<irs::by_range>();
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.min =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("!"));
+        irs::ref_cast<irs::byte_type>(std::string_view("!"));
       filter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
       auto& filter = sub.add<irs::by_range>();
       *filter.mutable_field() = "name";
       filter.mutable_options()->range.max =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("~"));
+        irs::ref_cast<irs::byte_type>(std::string_view("~"));
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 

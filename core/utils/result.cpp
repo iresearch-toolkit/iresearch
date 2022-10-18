@@ -38,7 +38,7 @@ result::result(Code code) : code_(code) {
   // FIXME use static error message
 }
 
-result::result(Code code, string_ref msg1, string_ref msg2) : code_(code) {
+result::result(Code code, std::string_view msg1, std::string_view msg2) : code_(code) {
   assert(code_ != OK);
   const size_t len1 = msg1.size();
   const size_t len2 = msg2.size();

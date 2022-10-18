@@ -59,7 +59,7 @@ TEST(classification_stream_test, test_load) {
 #else
     auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
-    irs::string_ref data{"baking"};
+    std::string_view data{"baking"};
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
     auto stream = irs::analysis::analyzers::get(
       "classification", irs::type<irs::text_format::json>::get(), input_json);
@@ -127,7 +127,7 @@ TEST(classification_stream_test, test_load) {
 
   // Multi line input
   {
-    constexpr irs::string_ref data{
+    constexpr std::string_view data{
       "Which baking dish is best to bake\na banana bread ?"};
 
 #ifdef WIN32
@@ -160,7 +160,7 @@ TEST(classification_stream_test, test_load) {
   }
   // top 2 labels
   {
-    constexpr irs::string_ref data{
+    constexpr std::string_view data{
       "Which baking dish is best to bake a banana bread ?"};
 
 #ifdef WIN32

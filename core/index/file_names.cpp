@@ -38,7 +38,7 @@ std::string file_name(uint64_t gen) {
   return std::string(buf, 1 + std::sprintf(buf + 1, "%" PRIu64, gen));
 }
 
-std::string file_name(string_ref prefix, uint64_t gen) {
+std::string file_name(std::string_view prefix, uint64_t gen) {
   char buf[21];  // can hold : -2^63 .. 2^64-1, plus 0
   auto buf_size = sprintf(buf, "%" PRIu64, gen);
 
@@ -50,7 +50,7 @@ std::string file_name(string_ref prefix, uint64_t gen) {
   return str;
 }
 
-std::string file_name(string_ref name, string_ref ext) {
+std::string file_name(std::string_view name, std::string_view ext) {
   std::string out;
   out.reserve(1 + name.size() + ext.size());
   out.append(name);
@@ -60,7 +60,7 @@ std::string file_name(string_ref name, string_ref ext) {
   return out;
 }
 
-void file_name(std::string& out, string_ref name, string_ref ext) {
+void file_name(std::string& out, std::string_view name, std::string_view ext) {
   out.clear();
   out.reserve(1 + name.size() + ext.size());
   out.append(name);
@@ -68,7 +68,7 @@ void file_name(std::string& out, string_ref name, string_ref ext) {
   out.append(ext);
 }
 
-std::string file_name(string_ref name, uint64_t gen, string_ref ext) {
+std::string file_name(std::string_view name, uint64_t gen, std::string_view ext) {
   char buf[21];  // can hold : -2^63 .. 2^64-1, plus 0
   auto buf_size = sprintf(buf, "%" PRIu64, gen);
 

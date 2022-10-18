@@ -28,7 +28,7 @@
 
 namespace {
 bool visit1(const irs::column_reader& reader,
-            const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
+            const std::function<bool(irs::doc_id_t, irs::bytes_view)>& visitor) {
   auto it = reader.iterator(irs::ColumnHint::kNormal);
 
   irs::payload dummy;
@@ -50,7 +50,7 @@ bool visit1(const irs::column_reader& reader,
   return true;
 }
 bool visit(const irs::column_reader& reader,
-           const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
+           const std::function<bool(irs::doc_id_t, irs::bytes_view)>& visitor) {
   auto it = reader.iterator(irs::ColumnHint::kConsolidation);
 
   irs::payload dummy;
@@ -79,19 +79,19 @@ TEST_P(index_column_test_case,
        read_write_doc_attributes_sparse_column_sparse_variable_length) {
   // sparse_column<sparse_block>
   irs::index_writer::init_options options;
-  options.column_info = [](const irs::string_ref&) {
+  options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
 
   static const irs::doc_id_t MAX_DOCS = 1500;
-  static const iresearch::string_ref column_name = "id";
+  static const iresearch::std::string_view column_name = "id";
   size_t inserted = 0;
 
   // write documents
   {
     struct stored {
-      const irs::string_ref& name() { return column_name; }
+      const std::string_view& name() { return column_name; }
 
       irs::features_t features() const { return {}; }
 
@@ -155,13 +155,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 1;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 3) {
@@ -189,13 +189,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 1;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 3) {
@@ -228,14 +228,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = 2;
       irs::doc_id_t expected_value = 1;
       size_t docs = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
@@ -252,7 +252,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(inserted, docs);
     }
   }
@@ -278,13 +278,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 1;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 3) {
@@ -317,14 +317,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = 2;
       irs::doc_id_t expected_value = 1;
       size_t docs = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
@@ -341,7 +341,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(inserted, docs);
     }
 
@@ -351,13 +351,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 1;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 3) {
@@ -390,14 +390,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = 2;
       irs::doc_id_t expected_value = 1;
       size_t docs = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
@@ -414,7 +414,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(inserted, docs);
     }
   }
@@ -440,13 +440,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 1;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 3) {
@@ -479,7 +479,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = 2;
       irs::doc_id_t expected_value = 1;
@@ -492,14 +492,14 @@ TEST_P(index_column_test_case,
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         ASSERT_EQ(expected_value_str, actual_str_value);
 
         ASSERT_EQ(expected_doc,
                   it->seek(expected_value));  // seek before the existing key
                                               // (value should remain the same)
         actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         ASSERT_EQ(expected_value_str, actual_str_value);
 
         expected_doc += 2;
@@ -509,15 +509,15 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(inserted, docs);
     }
 
@@ -532,7 +532,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = 2;
       irs::doc_id_t expected_value = 1;
@@ -545,14 +545,14 @@ TEST_P(index_column_test_case,
 
         ASSERT_EQ(expected_doc, it->seek(expected_value));
         auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         ASSERT_EQ(expected_value_str, actual_str_value);
 
         ASSERT_EQ(expected_doc,
                   it->seek(expected_doc));  // seek to the existing key (value
                                             // should remain the same)
         actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         ASSERT_EQ(expected_value_str, actual_str_value);
 
         expected_doc += 2;
@@ -562,15 +562,15 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(inserted, docs);
     }
 
@@ -585,7 +585,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = 2;
       irs::doc_id_t expected_value = 1;
@@ -593,7 +593,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 3) {
@@ -608,7 +608,7 @@ TEST_P(index_column_test_case,
 
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
@@ -625,7 +625,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(inserted, docs);
     }
 
@@ -640,7 +640,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = 2;
       irs::doc_id_t expected_value = 1;
@@ -648,7 +648,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 3) {
@@ -663,7 +663,7 @@ TEST_P(index_column_test_case,
 
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
@@ -680,7 +680,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(inserted, docs);
     }
 
@@ -695,7 +695,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       auto expected_doc = MAX_DOCS;
       auto expected_value = MAX_DOCS - 1;
@@ -706,13 +706,13 @@ TEST_P(index_column_test_case,
 
       it->seek(expected_doc);
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_doc, it->value());
       ASSERT_EQ(expected_value_str, actual_value_str);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek to before the end + next
@@ -726,7 +726,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       auto expected_value = MAX_DOCS - 1;
       auto expected_value_str = std::to_string(expected_value);
@@ -736,13 +736,13 @@ TEST_P(index_column_test_case,
 
       it->seek(expected_value);
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(MAX_DOCS, it->value());
       ASSERT_EQ(expected_value_str, actual_value_str);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek to after the end + next
@@ -756,18 +756,18 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       // can't seek backwards
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS - 1));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek + next(x5)
@@ -783,7 +783,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = 2;
       irs::doc_id_t expected_value = 1;
@@ -797,7 +797,7 @@ TEST_P(index_column_test_case,
         }
 
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
@@ -813,7 +813,7 @@ TEST_P(index_column_test_case,
         auto next_expected_value = expected_value + 2;
         for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
           auto next_expected_value_str = std::to_string(next_expected_value);
 
           if (next_expected_value % 3) {
@@ -839,7 +839,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(inserted, docs);
     }
 
@@ -862,11 +862,11 @@ TEST_P(index_column_test_case,
         ASSERT_FALSE(!payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                   it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
@@ -881,7 +881,7 @@ TEST_P(index_column_test_case,
         auto next_expected_value = expected_value + 2;
         for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
           auto next_expected_value_str = std::to_string(next_expected_value);
 
           if (next_expected_value % 3) {
@@ -910,14 +910,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       it->seek(expected_doc);
       expected_doc = min_doc;
       expected_value = expected_doc - 1;
       ASSERT_EQ(min_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 3) {
@@ -931,7 +931,7 @@ TEST_P(index_column_test_case,
       for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         auto next_expected_value_str = std::to_string(next_expected_value);
         if (next_expected_value % 3) {
@@ -960,14 +960,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = MAX_DOCS;
       irs::doc_id_t expected_value = expected_doc - 1;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 3) {
@@ -980,7 +980,7 @@ TEST_P(index_column_test_case,
       auto next_expected_value = expected_value + 2;
       for (size_t i = 0; i < steps_forward && it->next(); ++i) {
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto next_expected_value_str = std::to_string(next_expected_value);
 
         if (next_expected_value % 3) {
@@ -1010,7 +1010,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = 2;
       irs::doc_id_t expected_value = 1;
@@ -1018,7 +1018,7 @@ TEST_P(index_column_test_case,
       for (; expected_doc <= MAX_DOCS;) {
         ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
@@ -1034,15 +1034,15 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // visit values (cached)
@@ -1051,13 +1051,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 1;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 3) {
@@ -1090,14 +1090,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = 2;
       irs::doc_id_t expected_value = 1;
       size_t docs = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 3) {
@@ -1113,7 +1113,7 @@ TEST_P(index_column_test_case,
       }
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(inserted, docs);
     }
   }
@@ -1123,7 +1123,7 @@ TEST_P(index_column_test_case,
        read_write_doc_attributes_sparse_column_dense_mask) {
   // sparse_column<dense_mask_block>
   irs::index_writer::init_options options;
-  options.column_info = [](const irs::string_ref&) {
+  options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
@@ -1132,17 +1132,17 @@ TEST_P(index_column_test_case,
   static const irs::doc_id_t MAX_DOCS =
     BLOCK_SIZE * BLOCK_SIZE  // full index block
     + 2051;                  // tail index block
-  static const iresearch::string_ref column_name = "id";
+  static const iresearch::std::string_view column_name = "id";
 
   // write documents
   {
     struct stored {
-      explicit stored(const irs::string_ref& name) noexcept
+      explicit stored(const std::string_view& name) noexcept
         : column_name(name) {}
-      const irs::string_ref& name() { return column_name; }
+      const std::string_view& name() { return column_name; }
       irs::features_t features() const { return {}; }
       bool write(irs::data_output&) { return true; }
-      const irs::string_ref column_name;
+      const std::string_view column_name;
     } field(column_name), gap("gap");
 
     irs::doc_id_t docs_count = 0;
@@ -1195,7 +1195,7 @@ TEST_P(index_column_test_case,
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -1228,7 +1228,7 @@ TEST_P(index_column_test_case,
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -1272,7 +1272,7 @@ TEST_P(index_column_test_case,
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
-        ASSERT_EQ(irs::bytes_ref{},
+        ASSERT_EQ(irs::bytes_view{},
                   payload->value);  // mask block has no data
         ++expected_doc;
         ++docs_count;
@@ -1311,7 +1311,7 @@ TEST_P(index_column_test_case,
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -1356,7 +1356,7 @@ TEST_P(index_column_test_case,
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
-        ASSERT_EQ(irs::bytes_ref{},
+        ASSERT_EQ(irs::bytes_view{},
                   payload->value);  // mask block has no data
         ++expected_doc;
         ++docs_count;
@@ -1379,7 +1379,7 @@ TEST_P(index_column_test_case,
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -1423,7 +1423,7 @@ TEST_P(index_column_test_case,
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
-        ASSERT_EQ(irs::bytes_ref{},
+        ASSERT_EQ(irs::bytes_view{},
                   payload->value);  // mask block has no data
         ++expected_doc;
         ++docs_count;
@@ -1462,7 +1462,7 @@ TEST_P(index_column_test_case,
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -1511,7 +1511,7 @@ TEST_P(index_column_test_case,
         } else {
           ASSERT_EQ(expected_doc, it->seek(expected_doc));
         }
-        ASSERT_EQ(irs::bytes_ref{},
+        ASSERT_EQ(irs::bytes_view{},
                   payload->value);  // mask block has no data
         ++expected_doc;
         ++docs_count;
@@ -1548,7 +1548,7 @@ TEST_P(index_column_test_case,
 
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
-        ASSERT_EQ(irs::bytes_ref{},
+        ASSERT_EQ(irs::bytes_view{},
                   payload->value);  // mask block has no data
         ++expected_doc;
         ++docs_count;
@@ -1585,7 +1585,7 @@ TEST_P(index_column_test_case,
 
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
-        ASSERT_EQ(irs::bytes_ref{},
+        ASSERT_EQ(irs::bytes_view{},
                   payload->value);  // mask block has no data
         ++expected_doc;
         ++docs_count;
@@ -1614,7 +1614,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(MAX_DOCS + 1, it->seek(MAX_DOCS + 1));
 
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);  // mask block has no data
+      ASSERT_EQ(irs::bytes_view{}, payload->value);  // mask block has no data
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
     }
@@ -1633,12 +1633,12 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(MAX_DOCS, it->seek(MAX_DOCS));
 
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);  // mask block has no data
+      ASSERT_EQ(irs::bytes_view{}, payload->value);  // mask block has no data
 
       ASSERT_TRUE(it->next());
       ASSERT_EQ(MAX_DOCS + 1, it->value());
 
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);  // mask block has no data
+      ASSERT_EQ(irs::bytes_view{}, payload->value);  // mask block has no data
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
@@ -1689,7 +1689,7 @@ TEST_P(index_column_test_case,
         ++docs_count;
 
         ASSERT_EQ(expected_doc, it->value());
-        ASSERT_EQ(irs::bytes_ref{},
+        ASSERT_EQ(irs::bytes_view{},
                   payload->value);  // mask block has no data
       }
 
@@ -1731,7 +1731,7 @@ TEST_P(index_column_test_case,
           break;
         }
 
-        ASSERT_EQ(irs::bytes_ref{},
+        ASSERT_EQ(irs::bytes_view{},
                   payload->value);  // mask block has no data
 
         ++docs_count;
@@ -1741,7 +1741,7 @@ TEST_P(index_column_test_case,
         for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           ASSERT_EQ(next_expected_doc, it->value());
 
-          ASSERT_EQ(irs::bytes_ref{},
+          ASSERT_EQ(irs::bytes_view{},
                     payload->value);  // mask block has no data
 
           // can't seek backwards
@@ -1799,7 +1799,7 @@ TEST_P(index_column_test_case,
           }
 
           ASSERT_EQ(next_expected_doc, it->value());
-          ASSERT_EQ(irs::bytes_ref{},
+          ASSERT_EQ(irs::bytes_view{},
                     payload->value);  // mask block has no data
           ++next_expected_doc;
         }
@@ -1824,7 +1824,7 @@ TEST_P(index_column_test_case,
       ASSERT_EQ(min_doc, it->seek(expected_doc));
       expected_doc = min_doc;
       ASSERT_EQ(min_doc, it->seek(expected_doc));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);  // mask block has no data
+      ASSERT_EQ(irs::bytes_view{}, payload->value);  // mask block has no data
 
       auto next_expected_doc = expected_doc + 1;
       for (size_t i = 0; i < steps_forward; ++i) {
@@ -1854,12 +1854,12 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_doc = MAX_DOCS;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);  // mask block has no data
+      ASSERT_EQ(irs::bytes_view{}, payload->value);  // mask block has no data
 
       auto next_expected_doc = expected_doc + 1;
       for (size_t i = 0; i < steps_forward && it->next(); ++i) {
         ASSERT_EQ(next_expected_doc, it->value());
-        ASSERT_EQ(irs::bytes_ref{},
+        ASSERT_EQ(irs::bytes_view{},
                   payload->value);  // mask block has no data
         ++next_expected_doc;
       }
@@ -1875,7 +1875,7 @@ TEST_P(index_column_test_case,
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -1921,7 +1921,7 @@ TEST_P(index_column_test_case,
           ++expected_doc;  // gap
         }
 
-        ASSERT_EQ(irs::bytes_ref{},
+        ASSERT_EQ(irs::bytes_view{},
                   payload->value);  // mask block has no data
 
         ASSERT_EQ(expected_doc, it->value());
@@ -1940,21 +1940,21 @@ TEST_P(index_column_test_case,
        read_write_doc_attributes_sparse_column_dense_variable_length) {
   // sparse_column<dense_block>
   irs::index_writer::init_options options;
-  options.column_info = [](const irs::string_ref&) {
+  options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::none>::get(),
                             irs::compression::options{}, true};
   };
 
   static const irs::doc_id_t BLOCK_SIZE = 1024;
   static const irs::doc_id_t MAX_DOCS = 1500;
-  static const iresearch::string_ref column_name = "id";
+  static const iresearch::std::string_view column_name = "id";
 
   // write documents
   {
     struct stored {
-      explicit stored(const irs::string_ref& name) noexcept
+      explicit stored(const std::string_view& name) noexcept
         : column_name(name) {}
-      const irs::string_ref& name() { return column_name; }
+      const std::string_view& name() { return column_name; }
 
       irs::features_t features() const { return {}; }
 
@@ -1969,7 +1969,7 @@ TEST_P(index_column_test_case,
       }
 
       uint64_t value{};
-      const irs::string_ref column_name;
+      const std::string_view column_name;
     } field(column_name), gap("gap");
 
     auto writer = irs::index_writer::make(this->dir(), this->codec(),
@@ -2022,13 +2022,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
@@ -2063,13 +2063,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
@@ -2108,7 +2108,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t docs_count = 0;
       irs::doc_id_t expected_doc =
@@ -2116,7 +2116,7 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -2138,7 +2138,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
   }
@@ -2165,13 +2165,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
@@ -2210,7 +2210,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t docs_count = 0;
       irs::doc_id_t expected_doc =
@@ -2218,7 +2218,7 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -2240,7 +2240,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
 
@@ -2251,13 +2251,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
@@ -2296,7 +2296,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t docs_count = 0;
       irs::doc_id_t expected_doc =
@@ -2304,7 +2304,7 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -2326,7 +2326,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
   }
@@ -2353,13 +2353,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
@@ -2398,7 +2398,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t docs_count = 0;
       irs::doc_id_t expected_doc =
@@ -2414,7 +2414,7 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -2430,15 +2430,15 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
 
@@ -2453,7 +2453,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t docs_count = 0;
       irs::doc_id_t expected_doc =
@@ -2462,7 +2462,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
@@ -2482,7 +2482,7 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -2499,7 +2499,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
 
@@ -2514,7 +2514,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t docs_count = 0;
       irs::doc_id_t expected_doc =
@@ -2523,7 +2523,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
@@ -2543,7 +2543,7 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -2560,7 +2560,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
 
@@ -2575,14 +2575,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       auto expected_doc = MAX_DOCS + 1;
       auto expected_value = MAX_DOCS;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
@@ -2593,7 +2593,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek to before the end + next
@@ -2607,14 +2607,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       auto expected_doc = MAX_DOCS;
       auto expected_value = expected_doc - 1;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
@@ -2633,11 +2633,11 @@ TEST_P(index_column_test_case,
       ASSERT_TRUE(it->next());
       ASSERT_EQ(expected_doc, it->value());
       ASSERT_EQ(expected_value_str,
-                irs::to_string<irs::string_ref>(payload->value.data()));
+                irs::to_string<std::string_view>(payload->value.data()));
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek to after the end + next
@@ -2651,18 +2651,18 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 2));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       // can't seek backwards
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek + next(x5)
@@ -2678,7 +2678,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t docs_count = 0;
       irs::doc_id_t expected_doc =
@@ -2705,7 +2705,7 @@ TEST_P(index_column_test_case,
         ++docs_count;
 
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -2724,7 +2724,7 @@ TEST_P(index_column_test_case,
           }
 
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
           auto next_expected_value_str = std::to_string(next_expected_value);
 
           if (next_expected_value % 2) {
@@ -2750,7 +2750,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
 
@@ -2774,12 +2774,12 @@ TEST_P(index_column_test_case,
         ASSERT_FALSE(!payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                   it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -2799,7 +2799,7 @@ TEST_P(index_column_test_case,
           }
 
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
           auto next_expected_value_str = std::to_string(next_expected_value);
 
           if (next_expected_value % 2) {
@@ -2832,14 +2832,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       it->seek(expected_doc);
       expected_doc = min_doc;
       expected_value = expected_doc - 1;
       ASSERT_EQ(min_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
@@ -2853,7 +2853,7 @@ TEST_P(index_column_test_case,
       for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         auto next_expected_value_str = std::to_string(next_expected_value);
         if (next_expected_value % 2) {
@@ -2882,14 +2882,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = MAX_DOCS;
       irs::doc_id_t expected_value = expected_doc - 1;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
@@ -2907,7 +2907,7 @@ TEST_P(index_column_test_case,
         }
 
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto next_expected_value_str = std::to_string(next_expected_value);
 
         if (next_expected_value % 2) {
@@ -2933,13 +2933,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
@@ -2978,7 +2978,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t docs_count = 0;
       irs::doc_id_t expected_doc =
@@ -2986,7 +2986,7 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -3007,7 +3007,7 @@ TEST_P(index_column_test_case,
       }
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, docs_count);
     }
   }
@@ -3018,7 +3018,7 @@ TEST_P(index_column_test_case,
   // sparse_column<dense_fixed_length_block>
 
   irs::index_writer::init_options options;
-  options.column_info = [](const irs::string_ref&) {
+  options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::none>::get(),
                             irs::compression::options{}, false};
   };
@@ -3040,16 +3040,16 @@ TEST_P(index_column_test_case,
 
   static const irs::doc_id_t BLOCK_SIZE = 1024;
   static const irs::doc_id_t MAX_DOCS = 1500;
-  static const irs::string_ref column_name = "id";
+  static const std::string_view column_name = "id";
   size_t inserted = 0;
 
   // write documents
   {
     struct stored {
-      explicit stored(const irs::string_ref& name) noexcept
+      explicit stored(const std::string_view& name) noexcept
         : column_name(name) {}
 
-      const irs::string_ref& name() noexcept { return column_name; }
+      const std::string_view& name() noexcept { return column_name; }
 
       irs::features_t features() const { return {}; }
 
@@ -3064,7 +3064,7 @@ TEST_P(index_column_test_case,
       }
 
       uint32_t value{};
-      const irs::string_ref column_name;
+      const std::string_view column_name;
     } field(column_name), gap("gap");
 
     auto writer =
@@ -3119,7 +3119,7 @@ TEST_P(index_column_test_case,
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       auto visitor = [&count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -3131,12 +3131,12 @@ TEST_P(index_column_test_case,
         }
 
         if (count == BLOCK_SIZE) {
-          if (irs::ref_cast<irs::byte_type>(irs::string_ref("\0", 1)) !=
+          if (irs::ref_cast<irs::byte_type>(std::string_view("\0", 1)) !=
               actual_data) {
             return false;
           }
         } else if (count == MAX_DOCS) {
-          if (irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)) !=
+          if (irs::ref_cast<irs::byte_type>(std::string_view("\1", 1)) !=
               actual_data) {
             return false;
           }
@@ -3160,7 +3160,7 @@ TEST_P(index_column_test_case,
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       auto visitor = [&count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -3172,12 +3172,12 @@ TEST_P(index_column_test_case,
         }
 
         if (count == BLOCK_SIZE) {
-          if (irs::ref_cast<irs::byte_type>(irs::string_ref("\0", 1)) !=
+          if (irs::ref_cast<irs::byte_type>(std::string_view("\0", 1)) !=
               actual_data) {
             return false;
           }
         } else if (count == MAX_DOCS) {
-          if (irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)) !=
+          if (irs::ref_cast<irs::byte_type>(std::string_view("\1", 1)) !=
               actual_data) {
             return false;
           }
@@ -3205,7 +3205,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t count = 0;
       irs::doc_id_t expected_doc =
@@ -3222,18 +3222,18 @@ TEST_P(index_column_test_case,
         }
 
         if (count == BLOCK_SIZE) {
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("\0", 1)),
+          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("\0", 1)),
                     actual_data);
         } else if (count == MAX_DOCS) {
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)),
+          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("\1", 1)),
                     actual_data);
         } else {
-          ASSERT_EQ(irs::bytes_ref{}, actual_data);
+          ASSERT_EQ(irs::bytes_view{}, actual_data);
         }
       }
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, count);
     }
   }
@@ -3244,7 +3244,7 @@ TEST_P(index_column_test_case,
   // dense_fixed_length_column<dense_fixed_length_block>
 
   irs::index_writer::init_options options;
-  options.column_info = [](const irs::string_ref&) {
+  options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
@@ -3266,12 +3266,12 @@ TEST_P(index_column_test_case,
 
   static const irs::doc_id_t MAX_DOCS = 1500;
   static const irs::doc_id_t BLOCK_SIZE = 1024;
-  static const iresearch::string_ref column_name = "id";
+  static const iresearch::std::string_view column_name = "id";
 
   // write documents
   {
     struct stored {
-      const irs::string_ref& name() { return column_name; }
+      const std::string_view& name() { return column_name; }
 
       irs::features_t features() const { return {}; }
 
@@ -3330,7 +3330,7 @@ TEST_P(index_column_test_case,
       size_t count = 0;
       auto visitor = [&count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -3339,12 +3339,12 @@ TEST_P(index_column_test_case,
         ++count;
 
         if (count == BLOCK_SIZE) {
-          if (irs::ref_cast<irs::byte_type>(irs::string_ref("\0", 1)) !=
+          if (irs::ref_cast<irs::byte_type>(std::string_view("\0", 1)) !=
               actual_data) {
             return false;
           }
         } else if (count == MAX_DOCS) {
-          if (irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)) !=
+          if (irs::ref_cast<irs::byte_type>(std::string_view("\1", 1)) !=
               actual_data) {
             return false;
           }
@@ -3368,7 +3368,7 @@ TEST_P(index_column_test_case,
       size_t count = 0;
       auto visitor = [&count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -3377,12 +3377,12 @@ TEST_P(index_column_test_case,
         ++count;
 
         if (count == BLOCK_SIZE) {
-          if (irs::ref_cast<irs::byte_type>(irs::string_ref("\0", 1)) !=
+          if (irs::ref_cast<irs::byte_type>(std::string_view("\0", 1)) !=
               actual_data) {
             return false;
           }
         } else if (count == MAX_DOCS) {
-          if (irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)) !=
+          if (irs::ref_cast<irs::byte_type>(std::string_view("\1", 1)) !=
               actual_data) {
             return false;
           }
@@ -3410,7 +3410,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t count = 0;
       irs::doc_id_t expected_doc =
@@ -3424,18 +3424,18 @@ TEST_P(index_column_test_case,
         ++count;
 
         if (count == BLOCK_SIZE) {
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("\0", 1)),
+          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("\0", 1)),
                     actual_data);
         } else if (count == MAX_DOCS) {
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("\1", 1)),
+          ASSERT_EQ(irs::ref_cast<irs::byte_type>(std::string_view("\1", 1)),
                     actual_data);
         } else {
-          ASSERT_EQ(irs::bytes_ref{}, actual_data);
+          ASSERT_EQ(irs::bytes_view{}, actual_data);
         }
       }
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, count);
     }
   }
@@ -3445,23 +3445,23 @@ TEST_P(index_column_test_case,
        read_write_doc_attributes_sparse_column_dense_fixed_length) {
   // sparse_column<dense_fixed_length_block>
   irs::index_writer::init_options options;
-  options.column_info = [](const irs::string_ref&) {
+  options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, false};
   };
 
   static const irs::doc_id_t BLOCK_SIZE = 1024;
   static const irs::doc_id_t MAX_DOCS = 1500;
-  static const irs::string_ref column_name = "id";
+  static const std::string_view column_name = "id";
   size_t inserted = 0;
 
   // write documents
   {
     struct stored {
-      explicit stored(const irs::string_ref& name) noexcept
+      explicit stored(const std::string_view& name) noexcept
         : column_name(name) {}
 
-      const irs::string_ref& name() noexcept { return column_name; }
+      const std::string_view& name() noexcept { return column_name; }
 
       irs::features_t features() const { return {}; }
 
@@ -3472,7 +3472,7 @@ TEST_P(index_column_test_case,
       }
 
       uint32_t value{};
-      const irs::string_ref column_name;
+      const std::string_view column_name;
     } field(column_name), gap("gap");
 
     auto writer = irs::index_writer::make(this->dir(), this->codec(),
@@ -3528,13 +3528,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&count, &expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
         if (expected_value !=
             *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
@@ -3564,13 +3564,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&count, &expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
         if (expected_value !=
             *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
@@ -3603,7 +3603,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t count = 0;
       irs::doc_id_t expected_doc =
@@ -3611,7 +3611,7 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
@@ -3628,7 +3628,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(1 + MAX_DOCS), expected_value);
     }
   }
@@ -3656,13 +3656,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&count, &expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
         if (expected_value !=
             *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
@@ -3696,7 +3696,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t count = 0;
       irs::doc_id_t expected_doc =
@@ -3704,7 +3704,7 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
@@ -3721,7 +3721,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(1 + MAX_DOCS), expected_value);
     }
 
@@ -3733,13 +3733,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&count, &expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
         if (expected_value !=
             *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
@@ -3773,7 +3773,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t count = 0;
       irs::doc_id_t expected_doc =
@@ -3781,7 +3781,7 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
@@ -3798,7 +3798,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(1 + MAX_DOCS), expected_value);
     }
   }
@@ -3826,13 +3826,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&count, &expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
         if (expected_value !=
             *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
@@ -3866,7 +3866,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -3880,7 +3880,7 @@ TEST_P(index_column_test_case,
           ASSERT_EQ(expected_doc, it->seek(expected_doc));
         }
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                     actual_value_str.data()));
 
@@ -3890,15 +3890,15 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(1 + MAX_DOCS, expected_value);
     }
 
@@ -3913,7 +3913,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -3921,7 +3921,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                   actual_value_str.data()));
 
@@ -3935,7 +3935,7 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
@@ -3947,7 +3947,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(1 + MAX_DOCS, expected_value);
     }
 
@@ -3962,7 +3962,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -3970,7 +3970,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                   actual_value_str.data()));
 
@@ -3984,7 +3984,7 @@ TEST_P(index_column_test_case,
         }
 
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
@@ -3995,7 +3995,7 @@ TEST_P(index_column_test_case,
       }
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(1 + MAX_DOCS, expected_value);
     }
 
@@ -4010,20 +4010,20 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       auto expected_doc = MAX_DOCS + 1;
       auto expected_value = MAX_DOCS;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                   actual_value_str.data()));
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek to before the end + next
@@ -4037,28 +4037,28 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       auto expected_doc = MAX_DOCS;
       auto expected_value = MAX_DOCS - 1;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                   actual_value_str.data()));
 
       ++expected_doc;
       ++expected_value;
       ASSERT_TRUE(it->next());
-      actual_value_str = irs::to_string<irs::string_ref>(payload->value.data());
+      actual_value_str = irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_doc, it->value());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                   actual_value_str.data()));
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek to after the end + next
@@ -4072,18 +4072,18 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 2));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       // can't seek backwards
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS - 1));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // FIXME revisit
@@ -4105,7 +4105,7 @@ TEST_P(index_column_test_case,
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
       ASSERT_EQ(expected_doc, it->value());
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                   actual_value_str.data()));
 
@@ -4115,7 +4115,7 @@ TEST_P(index_column_test_case,
 
         ASSERT_EQ(expected_doc, it->value());
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                     actual_value_str.data()));
       }
@@ -4137,7 +4137,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -4161,7 +4161,7 @@ TEST_P(index_column_test_case,
         }
 
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                     actual_value_str.data()));
@@ -4175,7 +4175,7 @@ TEST_P(index_column_test_case,
           }
 
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
 
           ASSERT_EQ(next_expected_doc, it->value());
           ASSERT_EQ(
@@ -4198,7 +4198,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(1 + MAX_DOCS, expected_value);
     }
 
@@ -4222,7 +4222,7 @@ TEST_P(index_column_test_case,
         ASSERT_FALSE(!payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                   it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         if (expected_doc == 1025) {
           ASSERT_EQ(expected_doc + 1, it->seek(expected_doc));
@@ -4237,7 +4237,7 @@ TEST_P(index_column_test_case,
         }
 
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ++docs_count;
 
@@ -4253,7 +4253,7 @@ TEST_P(index_column_test_case,
           }
 
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
 
           ASSERT_EQ(next_expected_doc, it->value());
           ASSERT_EQ(
@@ -4283,14 +4283,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       it->seek(expected_doc);
       expected_doc = min_doc;
       expected_value = expected_doc - 1;
       ASSERT_EQ(min_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                   actual_value_str.data()));
 
@@ -4299,7 +4299,7 @@ TEST_P(index_column_test_case,
       for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(next_expected_doc, it->value());
         ASSERT_EQ(next_expected_value, *reinterpret_cast<const irs::doc_id_t*>(
@@ -4323,7 +4323,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = MAX_DOCS;
       irs::doc_id_t expected_value = expected_doc - 1;
@@ -4336,7 +4336,7 @@ TEST_P(index_column_test_case,
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
       }
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                   actual_value_str.data()));
 
@@ -4349,7 +4349,7 @@ TEST_P(index_column_test_case,
         }
 
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(next_expected_doc, it->value());
         ASSERT_EQ(next_expected_value, *reinterpret_cast<const irs::doc_id_t*>(
@@ -4371,13 +4371,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&count, &expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
         if (expected_value !=
             *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
@@ -4411,7 +4411,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t count = 0;
       irs::doc_id_t expected_doc =
@@ -4419,7 +4419,7 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
@@ -4436,7 +4436,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(1 + MAX_DOCS), expected_value);
     }
   }
@@ -4446,18 +4446,18 @@ TEST_P(index_column_test_case,
        read_write_doc_attributes_sparse_column_sparse_mask) {
   // sparse_column<sparse_mask_block>
   irs::index_writer::init_options options;
-  options.column_info = [](const irs::string_ref&) {
+  options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
 
   static const irs::doc_id_t MAX_DOCS = 1500;
-  static const iresearch::string_ref column_name = "id";
+  static const iresearch::std::string_view column_name = "id";
 
   // write documents
   {
     struct stored {
-      const irs::string_ref& name() { return column_name; }
+      const std::string_view& name() { return column_name; }
       irs::features_t features() const { return {}; }
       bool write(irs::data_output& /*out*/) { return true; }
     } field;
@@ -4509,7 +4509,7 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_doc = 2;
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -4535,7 +4535,7 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_doc = 2;
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -4567,13 +4567,13 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc = 2;
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         expected_doc += 2;
         ++docs_count;
@@ -4581,7 +4581,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS / 2), docs_count);
     }
   }
@@ -4607,7 +4607,7 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_doc = 2;
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -4639,13 +4639,13 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc = 2;
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         expected_doc += 2;
         ++docs_count;
@@ -4653,7 +4653,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS / 2), docs_count);
     }
 
@@ -4663,7 +4663,7 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_doc = 2;
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -4695,13 +4695,13 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc = 2;
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         expected_doc += 2;
         ++docs_count;
@@ -4709,7 +4709,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS / 2), docs_count);
     }
   }
@@ -4735,7 +4735,7 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_doc = 2;
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -4767,13 +4767,13 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc = 2;
       for (; expected_doc <= MAX_DOCS;) {
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         expected_doc += 2;
         ++docs_count;
@@ -4781,15 +4781,15 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS / 2), docs_count);
     }
 
@@ -4804,20 +4804,20 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc = 2;
       for (; expected_doc <= MAX_DOCS;) {
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         ASSERT_EQ(
           expected_doc,
           it->seek(
             expected_doc -
             1));  // seek before the existing key (value should remain the same)
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         expected_doc += 2;
         ++docs_count;
@@ -4825,15 +4825,15 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS / 2), docs_count);
     }
 
@@ -4848,18 +4848,18 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = 2;
       size_t docs_count = 0;
       for (; expected_doc <= MAX_DOCS;) {
         ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         ASSERT_EQ(expected_doc,
                   it->seek(expected_doc));  // seek to the existing key (value
                                             // should remain the same)
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         expected_doc += 2;
         ++docs_count;
@@ -4867,15 +4867,15 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS / 2), docs_count);
     }
 
@@ -4890,20 +4890,20 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = 2;
       size_t docs_count = 0;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       expected_doc += 2;
       ++docs_count;
 
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         expected_doc += 2;
         ++docs_count;
@@ -4911,7 +4911,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS / 2), docs_count);
     }
 
@@ -4926,27 +4926,27 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = 2;
       size_t docs_count = 0;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       expected_doc += 2;
       ++docs_count;
 
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         expected_doc += 2;
         ++docs_count;
       }
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS / 2), docs_count);
     }
 
@@ -4961,14 +4961,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(MAX_DOCS, it->seek(MAX_DOCS));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek to before the end + next
@@ -4982,14 +4982,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(MAX_DOCS, it->seek(MAX_DOCS - 1));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek to after the end + next
@@ -5003,18 +5003,18 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       // can't seek backwards
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS - 1));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek + next(x5)
@@ -5030,7 +5030,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = 2;
       size_t docs_count = 0;
@@ -5043,18 +5043,18 @@ TEST_P(index_column_test_case,
         }
 
         ASSERT_EQ(expected_doc, it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         ++docs_count;
 
         auto next_expected_doc = expected_doc + 2;
         for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           ASSERT_EQ(next_expected_doc, it->value());
-          ASSERT_EQ(irs::bytes_ref{}, payload->value);
+          ASSERT_EQ(irs::bytes_view{}, payload->value);
 
           // can't seek backwards
           ASSERT_EQ(next_expected_doc, it->seek(expected_doc));
-          ASSERT_EQ(irs::bytes_ref{}, payload->value);
+          ASSERT_EQ(irs::bytes_view{}, payload->value);
 
           next_expected_doc += 2;
           ++docs_count;
@@ -5065,7 +5065,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS / 2, docs_count);
     }
 
@@ -5088,17 +5088,17 @@ TEST_P(index_column_test_case,
         ASSERT_FALSE(!payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                   it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         ++docs_count;
 
         auto next_expected_doc = expected_doc + 2;
         for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           ASSERT_EQ(next_expected_doc, it->value());
-          ASSERT_EQ(irs::bytes_ref{}, payload->value);
+          ASSERT_EQ(irs::bytes_view{}, payload->value);
 
           next_expected_doc += 2;
         }
@@ -5115,18 +5115,18 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       it->seek(expected_doc);
       expected_doc = min_doc;
       ASSERT_EQ(min_doc, it->seek(expected_doc));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       auto next_expected_doc = expected_doc + 2;
       for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         ASSERT_EQ(next_expected_doc, it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         next_expected_doc += 2;
       }
@@ -5145,24 +5145,24 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = MAX_DOCS;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       auto next_expected_doc = expected_doc + 2;
       for (size_t i = 0; i < steps_forward && it->next(); ++i) {
         ASSERT_EQ(next_expected_doc, it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         next_expected_doc += 2;
       }
 
       expected_doc -= 2;
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek over column (cached)
@@ -5176,13 +5176,13 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = 2;
       size_t docs_count = 0;
       for (; expected_doc <= MAX_DOCS;) {
         ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         expected_doc += 2;
         ++docs_count;
@@ -5190,15 +5190,15 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS / 2), docs_count);
     }
 
@@ -5208,7 +5208,7 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_doc = 2;
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -5240,13 +5240,13 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc = 2;
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         expected_doc += 2;
         ++docs_count;
@@ -5254,7 +5254,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS / 2), docs_count);
     }
   }
@@ -5265,19 +5265,19 @@ TEST_P(index_column_test_case,
   // dense_fixed_length_column<dense_mask_block>
 
   irs::index_writer::init_options options;
-  options.column_info = [](const irs::string_ref&) {
+  options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
 
   static const irs::doc_id_t MAX_DOCS = 1024 * 1024  // full index block
                                         + 2051;      // tail index block
-  static const iresearch::string_ref column_name = "id";
+  static const iresearch::std::string_view column_name = "id";
 
   // write documents
   {
     struct stored {
-      const irs::string_ref& name() { return column_name; }
+      const std::string_view& name() { return column_name; }
       irs::features_t features() const { return {}; }
       bool write(irs::data_output& /*out*/) { return true; }
     } field;
@@ -5326,7 +5326,7 @@ TEST_P(index_column_test_case,
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -5354,7 +5354,7 @@ TEST_P(index_column_test_case,
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -5424,7 +5424,7 @@ TEST_P(index_column_test_case,
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -5478,7 +5478,7 @@ TEST_P(index_column_test_case,
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -5548,7 +5548,7 @@ TEST_P(index_column_test_case,
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -5858,7 +5858,7 @@ TEST_P(index_column_test_case,
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
@@ -5911,18 +5911,18 @@ TEST_P(index_column_test_case,
        read_write_doc_attributes_dense_column_dense_fixed_length) {
   // dense_fixed_length_column<dense_fixed_length_block>
   irs::index_writer::init_options options;
-  options.column_info = [](const irs::string_ref&) {
+  options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
 
   static const irs::doc_id_t MAX_DOCS = 1500;
-  static const iresearch::string_ref column_name = "id";
+  static const iresearch::std::string_view column_name = "id";
 
   // write documents
   {
     struct stored {
-      const irs::string_ref& name() { return column_name; }
+      const std::string_view& name() { return column_name; }
 
       irs::features_t features() const { return {}; }
 
@@ -5978,13 +5978,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
         if (expected_value !=
             *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
@@ -6008,13 +6008,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
         if (expected_value !=
             *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
@@ -6042,14 +6042,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
@@ -6061,7 +6061,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), expected_value);
     }
   }
@@ -6088,13 +6088,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
         if (expected_value !=
             *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
@@ -6122,14 +6122,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
@@ -6141,7 +6141,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), expected_value);
     }
 
@@ -6152,13 +6152,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
         if (expected_value !=
             *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
@@ -6186,14 +6186,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
@@ -6205,7 +6205,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), expected_value);
     }
   }
@@ -6232,13 +6232,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
         if (expected_value !=
             *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
@@ -6266,7 +6266,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -6274,7 +6274,7 @@ TEST_P(index_column_test_case,
       for (; expected_doc <= MAX_DOCS;) {
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                     actual_value_str.data()));
 
@@ -6284,15 +6284,15 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
 
@@ -6307,7 +6307,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -6315,7 +6315,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                   actual_value_str.data()));
 
@@ -6324,7 +6324,7 @@ TEST_P(index_column_test_case,
 
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
@@ -6336,7 +6336,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
 
@@ -6351,7 +6351,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -6359,7 +6359,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                   actual_value_str.data()));
 
@@ -6368,7 +6368,7 @@ TEST_P(index_column_test_case,
 
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
@@ -6379,7 +6379,7 @@ TEST_P(index_column_test_case,
       }
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
 
@@ -6394,20 +6394,20 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       auto expected_doc = MAX_DOCS;
       auto expected_value = MAX_DOCS - 1;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                   actual_value_str.data()));
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek to before the end + next
@@ -6421,28 +6421,28 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       auto expected_doc = MAX_DOCS - 1;
       auto expected_value = expected_doc - 1;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                   actual_value_str.data()));
 
       ++expected_doc;
       ++expected_value;
       ASSERT_TRUE(it->next());
-      actual_value_str = irs::to_string<irs::string_ref>(payload->value.data());
+      actual_value_str = irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_doc, it->value());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                   actual_value_str.data()));
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek to after the end + next
@@ -6456,18 +6456,18 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       // can't seek backwards
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS - 1));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek + next(x5)
@@ -6483,7 +6483,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -6497,7 +6497,7 @@ TEST_P(index_column_test_case,
         }
 
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                     actual_value_str.data()));
@@ -6506,7 +6506,7 @@ TEST_P(index_column_test_case,
         auto next_expected_value = expected_value + 1;
         for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
 
           ASSERT_EQ(next_expected_doc, it->value());
           ASSERT_EQ(
@@ -6529,7 +6529,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
 
@@ -6553,11 +6553,11 @@ TEST_P(index_column_test_case,
         ASSERT_FALSE(!payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                   it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ++docs_count;
 
@@ -6568,7 +6568,7 @@ TEST_P(index_column_test_case,
         auto next_expected_value = expected_value + 1;
         for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
 
           ASSERT_EQ(next_expected_doc, it->value());
           ASSERT_EQ(
@@ -6592,14 +6592,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       it->seek(expected_doc);
       expected_doc = min_doc;
       expected_value = expected_doc - 1;
       ASSERT_EQ(min_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                   actual_value_str.data()));
 
@@ -6608,7 +6608,7 @@ TEST_P(index_column_test_case,
       for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(next_expected_doc, it->value());
         ASSERT_EQ(next_expected_value, *reinterpret_cast<const irs::doc_id_t*>(
@@ -6632,14 +6632,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = MAX_DOCS;
       irs::doc_id_t expected_value = expected_doc - 1;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
                                   actual_value_str.data()));
 
@@ -6647,7 +6647,7 @@ TEST_P(index_column_test_case,
       auto next_expected_value = expected_value + 1;
       for (size_t i = 0; i < steps_forward && it->next(); ++i) {
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(next_expected_doc, it->value());
         ASSERT_EQ(next_expected_value, *reinterpret_cast<const irs::doc_id_t*>(
@@ -6668,13 +6668,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_value =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
         if (expected_value !=
             *reinterpret_cast<const irs::doc_id_t*>(actual_value.data())) {
           return false;
@@ -6702,14 +6702,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(expected_value, *reinterpret_cast<const irs::doc_id_t*>(
@@ -6721,7 +6721,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(irs::doc_id_t(MAX_DOCS), expected_value);
     }
   }
@@ -6731,18 +6731,18 @@ TEST_P(index_column_test_case,
        read_write_doc_attributes_dense_column_dense_variable_length) {
   // sparse_column<dense_block>
   irs::index_writer::init_options options;
-  options.column_info = [](const irs::string_ref&) {
+  options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
 
   static const irs::doc_id_t MAX_DOCS = 1500;
-  static const iresearch::string_ref column_name = "id";
+  static const iresearch::std::string_view column_name = "id";
 
   // write documents
   {
     struct stored {
-      const irs::string_ref& name() { return column_name; }
+      const std::string_view& name() { return column_name; }
 
       irs::features_t features() const { return {}; }
 
@@ -6802,13 +6802,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
@@ -6837,13 +6837,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
@@ -6876,14 +6876,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -6899,7 +6899,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
   }
@@ -6926,13 +6926,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
@@ -6965,14 +6965,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -6988,7 +6988,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
 
@@ -6999,13 +6999,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
@@ -7038,14 +7038,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -7061,7 +7061,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
   }
@@ -7088,13 +7088,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
@@ -7127,7 +7127,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -7135,7 +7135,7 @@ TEST_P(index_column_test_case,
       for (; expected_doc <= MAX_DOCS;) {
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -7150,15 +7150,15 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(expected_doc));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
 
@@ -7173,7 +7173,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -7181,7 +7181,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
@@ -7195,7 +7195,7 @@ TEST_P(index_column_test_case,
 
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -7211,7 +7211,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
 
@@ -7226,7 +7226,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -7234,7 +7234,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
@@ -7248,7 +7248,7 @@ TEST_P(index_column_test_case,
 
       for (; it->next();) {
         const auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -7264,7 +7264,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
 
@@ -7279,14 +7279,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       auto expected_doc = MAX_DOCS;
       auto expected_value = MAX_DOCS - 1;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       const auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
@@ -7297,7 +7297,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek to before the end + next
@@ -7311,14 +7311,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       auto expected_doc = MAX_DOCS - 1;
       auto expected_value = expected_doc - 1;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
@@ -7337,11 +7337,11 @@ TEST_P(index_column_test_case,
       ASSERT_TRUE(it->next());
       ASSERT_EQ(expected_doc, it->value());
       ASSERT_EQ(expected_value_str,
-                irs::to_string<irs::string_ref>(payload->value.data()));
+                irs::to_string<std::string_view>(payload->value.data()));
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek to after the end + next
@@ -7355,18 +7355,18 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS + 1));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       // can't seek backwards
       ASSERT_EQ(irs::doc_limits::eof(), it->seek(MAX_DOCS - 1));
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
 
     // seek + next(x5)
@@ -7382,7 +7382,7 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
@@ -7396,7 +7396,7 @@ TEST_P(index_column_test_case,
         }
 
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -7410,7 +7410,7 @@ TEST_P(index_column_test_case,
         auto next_expected_value = expected_value + 1;
         for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
           auto next_expected_value_str = std::to_string(next_expected_value);
 
           if (next_expected_value % 2) {
@@ -7435,7 +7435,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
 
@@ -7459,11 +7459,11 @@ TEST_P(index_column_test_case,
         ASSERT_FALSE(!payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                   it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         auto actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -7478,7 +7478,7 @@ TEST_P(index_column_test_case,
         auto next_expected_value = expected_value + 1;
         for (size_t i = 0; i < steps_forward && it->next(); ++i) {
           actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
           auto next_expected_value_str = std::to_string(next_expected_value);
 
           if (next_expected_value % 2) {
@@ -7506,14 +7506,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       it->seek(expected_doc);
       expected_doc = min_doc;
       expected_value = expected_doc - 1;
       ASSERT_EQ(min_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
@@ -7527,7 +7527,7 @@ TEST_P(index_column_test_case,
       for (size_t i = 0; i < steps_forward; ++i) {
         ASSERT_TRUE(it->next());
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         auto next_expected_value_str = std::to_string(next_expected_value);
         if (next_expected_value % 2) {
@@ -7556,14 +7556,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc = MAX_DOCS;
       irs::doc_id_t expected_value = expected_doc - 1;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
       auto actual_value_str =
-        irs::to_string<irs::string_ref>(payload->value.data());
+        irs::to_string<std::string_view>(payload->value.data());
       auto expected_value_str = std::to_string(expected_value);
 
       if (expected_value % 2) {
@@ -7576,7 +7576,7 @@ TEST_P(index_column_test_case,
       auto next_expected_value = expected_value + 1;
       for (size_t i = 0; i < steps_forward && it->next(); ++i) {
         actual_value_str =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto next_expected_value_str = std::to_string(next_expected_value);
 
         if (next_expected_value % 2) {
@@ -7602,13 +7602,13 @@ TEST_P(index_column_test_case,
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
-                       const irs::bytes_ref& actual_data) {
+                       const irs::bytes_view& actual_data) {
         if (expected_doc != actual_doc) {
           return false;
         }
 
         const auto actual_str =
-          irs::to_string<irs::string_ref>(actual_data.data());
+          irs::to_string<std::string_view>(actual_data.data());
 
         auto expected_str = std::to_string(expected_value);
         if (expected_value % 2) {
@@ -7641,14 +7641,14 @@ TEST_P(index_column_test_case,
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
         (irs::type_limits<irs::type_t::doc_id_t>::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
         auto expected_value_str = std::to_string(expected_value);
 
         if (expected_value % 2) {
@@ -7663,7 +7663,7 @@ TEST_P(index_column_test_case,
       }
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(MAX_DOCS, expected_value);
     }
   }
@@ -7671,7 +7671,7 @@ TEST_P(index_column_test_case,
 
 TEST_P(index_column_test_case, read_write_doc_attributes_big) {
   irs::index_writer::init_options options;
-  options.column_info = [](const irs::string_ref&) {
+  options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
@@ -7684,7 +7684,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
       insert(std::make_shared<tests::string_field>("label"));
     }
 
-    virtual void value(size_t idx, const irs::string_ref& value) {
+    virtual void value(size_t idx, const std::string_view& value) {
       switch (idx) {
         case 0:
           indexed.get<tests::string_field>("id")->value(value);
@@ -7735,7 +7735,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
     // check 'id' column
     {
-      const iresearch::string_ref column_name = "id";
+      const iresearch::std::string_view column_name = "id";
       auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
 
@@ -7744,7 +7744,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         gen.reset();
         irs::doc_id_t expected_id = 0;
         auto visitor = [&gen, &column_name, &expected_id](
-                         irs::doc_id_t id, const irs::bytes_ref& in) {
+                         irs::doc_id_t id, const irs::bytes_view& in) {
           if (id != ++expected_id) {
             return false;
           }
@@ -7756,7 +7756,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
             return false;
           }
 
-          const auto actual_value = irs::to_string<irs::string_ref>(in.data());
+          const auto actual_value = irs::to_string<std::string_view>(in.data());
           if (field->value() != actual_value) {
             return false;
           }
@@ -7775,7 +7775,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         gen.reset();
         irs::doc_id_t expected_id = 0;
         auto visitor = [&gen, &column_name, &expected_id](
-                         irs::doc_id_t id, const irs::bytes_ref& in) {
+                         irs::doc_id_t id, const irs::bytes_view& in) {
           if (id != ++expected_id) {
             return false;
           }
@@ -7787,7 +7787,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
             return false;
           }
 
-          const auto actual_value = irs::to_string<irs::string_ref>(in.data());
+          const auto actual_value = irs::to_string<std::string_view>(in.data());
           if (field->value() != actual_value) {
             return false;
           }
@@ -7815,7 +7815,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         ASSERT_FALSE(!payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                   it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         for (; it->next();) {
           ++expected_id;
@@ -7825,7 +7825,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           ASSERT_NE(nullptr, field);
 
           const auto actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
 
           ASSERT_EQ(expected_id, it->value());
           ASSERT_EQ(field->value(), actual_value_str);
@@ -7833,14 +7833,14 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         ASSERT_FALSE(it->next());
         ASSERT_EQ(irs::doc_limits::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
         ASSERT_EQ(docs_count, expected_id);
       }
     }
 
     // check 'label' column
     {
-      const iresearch::string_ref column_name = "label";
+      const iresearch::std::string_view column_name = "label";
       auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
 
@@ -7849,7 +7849,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         gen.reset();
         irs::doc_id_t expected_id = 0;
         auto visitor = [&gen, &column_name, &expected_id](
-                         irs::doc_id_t id, const irs::bytes_ref& in) {
+                         irs::doc_id_t id, const irs::bytes_view& in) {
           if (id != ++expected_id) {
             return false;
           }
@@ -7861,7 +7861,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
             return false;
           }
 
-          if (field->value() != irs::to_string<irs::string_ref>(in.data())) {
+          if (field->value() != irs::to_string<std::string_view>(in.data())) {
             return false;
           }
 
@@ -7879,7 +7879,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         gen.reset();
         irs::doc_id_t expected_id = 0;
         auto visitor = [&gen, &column_name, &expected_id](
-                         irs::doc_id_t id, const irs::bytes_ref& in) {
+                         irs::doc_id_t id, const irs::bytes_view& in) {
           if (id != ++expected_id) {
             return false;
           }
@@ -7891,7 +7891,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
             return false;
           }
 
-          if (field->value() != irs::to_string<irs::string_ref>(in.data())) {
+          if (field->value() != irs::to_string<std::string_view>(in.data())) {
             return false;
           }
 
@@ -7918,7 +7918,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         ASSERT_FALSE(!payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                   it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         for (; it->next();) {
           ++expected_id;
@@ -7927,7 +7927,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
 
           ASSERT_EQ(expected_id, it->value());
           ASSERT_EQ(field->value(), actual_value_str);
@@ -7935,7 +7935,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         ASSERT_FALSE(it->next());
         ASSERT_EQ(irs::doc_limits::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
         ASSERT_EQ(docs_count, expected_id);
       }
     }
@@ -7963,7 +7963,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
     // check 'id' column
     {
-      const iresearch::string_ref column_name = "id";
+      const iresearch::std::string_view column_name = "id";
       auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
 
@@ -7972,7 +7972,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         gen.reset();
         irs::doc_id_t expected_id = 0;
         auto visitor = [&gen, &column_name, &expected_id](
-                         irs::doc_id_t id, const irs::bytes_ref& in) {
+                         irs::doc_id_t id, const irs::bytes_view& in) {
           if (id != ++expected_id) {
             return false;
           }
@@ -7984,7 +7984,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
             return false;
           }
 
-          const auto actual_value = irs::to_string<irs::string_ref>(in.data());
+          const auto actual_value = irs::to_string<std::string_view>(in.data());
           if (field->value() != actual_value) {
             return false;
           }
@@ -8012,7 +8012,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         ASSERT_FALSE(!payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                   it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         for (; it->next();) {
           ++expected_id;
@@ -8021,7 +8021,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
 
           ASSERT_EQ(expected_id, it->value());
           ASSERT_EQ(field->value(), actual_value_str);
@@ -8029,7 +8029,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         ASSERT_FALSE(it->next());
         ASSERT_EQ(irs::doc_limits::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
         ASSERT_EQ(docs_count, expected_id);
       }
 
@@ -8038,7 +8038,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         gen.reset();
         irs::doc_id_t expected_id = 0;
         auto visitor = [&gen, &column_name, &expected_id](
-                         irs::doc_id_t id, const irs::bytes_ref& in) {
+                         irs::doc_id_t id, const irs::bytes_view& in) {
           if (id != ++expected_id) {
             return false;
           }
@@ -8050,7 +8050,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
             return false;
           }
 
-          const auto actual_value = irs::to_string<irs::string_ref>(in.data());
+          const auto actual_value = irs::to_string<std::string_view>(in.data());
           if (field->value() != actual_value) {
             return false;
           }
@@ -8078,7 +8078,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         ASSERT_FALSE(!payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                   it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         for (; it->next();) {
           ++expected_id;
@@ -8087,7 +8087,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
 
           ASSERT_EQ(expected_id, it->value());
           ASSERT_EQ(field->value(), actual_value_str);
@@ -8095,14 +8095,14 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         ASSERT_FALSE(it->next());
         ASSERT_EQ(irs::doc_limits::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
         ASSERT_EQ(docs_count, expected_id);
       }
     }
 
     // check 'label' column
     {
-      const iresearch::string_ref column_name = "label";
+      const iresearch::std::string_view column_name = "label";
       auto* meta = segment.column(column_name);
       ASSERT_NE(nullptr, meta);
 
@@ -8111,7 +8111,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         gen.reset();
         irs::doc_id_t expected_id = 0;
         auto visitor = [&gen, &column_name, &expected_id](
-                         irs::doc_id_t id, const irs::bytes_ref& in) {
+                         irs::doc_id_t id, const irs::bytes_view& in) {
           if (id != ++expected_id) {
             return false;
           }
@@ -8123,7 +8123,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
             return false;
           }
 
-          if (field->value() != irs::to_string<irs::string_ref>(in.data())) {
+          if (field->value() != irs::to_string<std::string_view>(in.data())) {
             return false;
           }
 
@@ -8150,7 +8150,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         ASSERT_FALSE(!payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                   it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         for (; it->next();) {
           ++expected_id;
@@ -8159,7 +8159,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
 
           ASSERT_EQ(expected_id, it->value());
           ASSERT_EQ(field->value(), actual_value_str);
@@ -8167,7 +8167,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         ASSERT_FALSE(it->next());
         ASSERT_EQ(irs::doc_limits::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
         ASSERT_EQ(docs_count, expected_id);
       }
 
@@ -8176,7 +8176,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         gen.reset();
         irs::doc_id_t expected_id = 0;
         auto visitor = [&gen, &column_name, &expected_id](
-                         irs::doc_id_t id, const irs::bytes_ref& in) {
+                         irs::doc_id_t id, const irs::bytes_view& in) {
           if (id != ++expected_id) {
             return false;
           }
@@ -8188,7 +8188,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
             return false;
           }
 
-          if (field->value() != irs::to_string<irs::string_ref>(in.data())) {
+          if (field->value() != irs::to_string<std::string_view>(in.data())) {
             return false;
           }
 
@@ -8215,7 +8215,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
         ASSERT_FALSE(!payload);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                   it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
 
         for (; it->next();) {
           ++expected_id;
@@ -8224,7 +8224,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
           auto* field = doc->stored.get<tests::string_field>(column_name);
           ASSERT_NE(nullptr, field);
           const auto actual_value_str =
-            irs::to_string<irs::string_ref>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
 
           ASSERT_EQ(expected_id, it->value());
           ASSERT_EQ(field->value(), actual_value_str);
@@ -8232,7 +8232,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         ASSERT_FALSE(it->next());
         ASSERT_EQ(irs::doc_limits::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref{}, payload->value);
+        ASSERT_EQ(irs::bytes_view{}, payload->value);
         ASSERT_EQ(docs_count, expected_id);
       }
     }
@@ -8241,7 +8241,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
 TEST_P(index_column_test_case, read_write_doc_attributes) {
   irs::index_writer::init_options options;
-  options.column_info = [](const irs::string_ref&) {
+  options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
@@ -8298,16 +8298,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
-      std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
+      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values = {
         {1, "A"}, {2, "B"}, {3, "C"}, {4, "D"}};
 
       size_t i = 0;
       for (; it->next(); ++i) {
         const auto& expected_value = expected_values[i];
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_value.first, it->value());
         ASSERT_EQ(expected_value.second, actual_str_value);
@@ -8315,7 +8315,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(i, expected_values.size());
     }
 
@@ -8330,16 +8330,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
-      std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
+      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values = {
         {1, "abcd"}, {4, "abcde"}};
 
       size_t i = 0;
       for (; it->next(); ++i) {
         const auto& expected_value = expected_values[i];
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_value.first, it->value());
         ASSERT_EQ(expected_value.second, actual_str_value);
@@ -8347,7 +8347,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(i, expected_values.size());
     }
   }
@@ -8374,16 +8374,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
-      std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
+      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values = {
         {1, "A"}, {2, "B"}, {3, "C"}, {4, "D"}};
 
       size_t i = 0;
       for (; it->next(); ++i) {
         const auto& expected_value = expected_values[i];
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_value.first, it->value());
         ASSERT_EQ(expected_value.second, actual_str_value);
@@ -8391,7 +8391,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(i, expected_values.size());
     }
 
@@ -8406,16 +8406,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
-      std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
+      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values = {
         {1, "A"}, {2, "B"}, {3, "C"}, {4, "D"}};
 
       size_t i = 0;
       for (; it->next(); ++i) {
         const auto& expected_value = expected_values[i];
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_value.first, it->value());
         ASSERT_EQ(expected_value.second, actual_str_value);
@@ -8423,7 +8423,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(i, expected_values.size());
     }
 
@@ -8438,16 +8438,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
-      std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
+      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values = {
         {1, "abcd"}, {4, "abcde"}};
 
       size_t i = 0;
       for (; it->next(); ++i) {
         const auto& expected_value = expected_values[i];
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_value.first, it->value());
         ASSERT_EQ(expected_value.second, actual_str_value);
@@ -8455,7 +8455,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(i, expected_values.size());
     }
 
@@ -8470,16 +8470,16 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
       ASSERT_FALSE(!payload);
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
                 it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
-      std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
+      std::vector<std::pair<irs::doc_id_t, std::string_view>> expected_values = {
         {1, "abcd"}, {4, "abcde"}};
 
       size_t i = 0;
       for (; it->next(); ++i) {
         const auto& expected_value = expected_values[i];
         const auto actual_str_value =
-          irs::to_string<irs::string_ref>(payload->value.data());
+          irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_value.first, it->value());
         ASSERT_EQ(expected_value.second, actual_str_value);
@@ -8487,7 +8487,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref{}, payload->value);
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
       ASSERT_EQ(i, expected_values.size());
     }
   }
@@ -8495,7 +8495,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
 TEST_P(index_column_test_case, read_empty_doc_attributes) {
   irs::index_writer::init_options options;
-  options.column_info = [](const irs::string_ref&) {
+  options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };

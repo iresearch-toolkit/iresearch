@@ -64,7 +64,7 @@ struct encryption {
   DECLARE_UNIQUE_PTR(encryption);
 
   // FIXME check if it's possible to rename to iresearch::encryption?
-  static constexpr string_ref type_name() noexcept { return "encryption"; }
+  static constexpr std::string_view type_name() noexcept { return "encryption"; }
 
   virtual ~encryption() = default;
 

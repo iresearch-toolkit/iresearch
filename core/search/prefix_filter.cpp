@@ -35,7 +35,7 @@ using namespace irs;
 
 template<typename Visitor>
 void visit(const sub_reader& segment, const term_reader& reader,
-           bytes_ref prefix, Visitor& visitor) {
+           bytes_view prefix, Visitor& visitor) {
   auto terms = reader.iterator(SeekMode::NORMAL);
 
   // seek to prefix
@@ -71,8 +71,8 @@ void visit(const sub_reader& segment, const term_reader& reader,
 namespace iresearch {
 
 /*static*/ filter::prepared::ptr by_prefix::prepare(
-  const index_reader& index, const Order& ord, score_t boost, string_ref field,
-  bytes_ref prefix, size_t scored_terms_limit) {
+  const index_reader& index, const Order& ord, score_t boost, std::string_view field,
+  bytes_view prefix, size_t scored_terms_limit) {
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector(
     ord.empty() ? 0 : scored_terms_limit);
@@ -99,7 +99,7 @@ namespace iresearch {
 }
 
 /*static*/ void by_prefix::visit(const sub_reader& segment,
-                                 const term_reader& reader, bytes_ref prefix,
+                                 const term_reader& reader, bytes_view prefix,
                                  filter_visitor& visitor) {
   ::visit(segment, reader, prefix, visitor);
 }

@@ -85,7 +85,7 @@ TEST(token_streams_tests, null_stream) {
   ASSERT_EQ(0, null_token_stream::value_null().size());
   ASSERT_NE(nullptr, null_token_stream::value_null().data());
 
-  const auto expected = bytes_ref{};
+  const auto expected = bytes_view{};
   null_token_stream stream;
   auto* inc = irs::get<increment>(stream);
   ASSERT_FALSE(!inc);
@@ -105,8 +105,8 @@ TEST(token_streams_tests, null_stream) {
 
 TEST(string_token_stream_tests, next_end) {
   const std::string str("QBVnCx4NCizekHA");
-  const bytes_ref ref =
-    bytes_ref(reinterpret_cast<const byte_type*>(str.c_str()), str.size());
+  const bytes_view ref =
+    bytes_view(reinterpret_cast<const byte_type*>(str.c_str()), str.size());
   string_token_stream ts;
   ts.reset(str);
 

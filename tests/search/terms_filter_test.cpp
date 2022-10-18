@@ -30,8 +30,8 @@
 namespace {
 
 irs::by_terms make_filter(
-  const irs::string_ref& field,
-  const std::vector<std::pair<irs::string_ref, irs::score_t>>& terms,
+  const std::string_view& field,
+  const std::vector<std::pair<std::string_view, irs::score_t>>& terms,
   size_t min_match = 1) {
   irs::by_terms q;
   *q.mutable_field() = field;
@@ -249,7 +249,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::score_t>>{{"xyz", 1.f}}),
+      (std::vector<std::pair<std::string_view, irs::score_t>>{{"xyz", 1.f}}),
       visitor.term_refs<char>());
   }
 
@@ -268,7 +268,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     irs::by_terms::visit(segment, *reader, filter.options().terms, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(0, visitor.visit_calls_counter());
-    ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{}),
+    ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{}),
               visitor.term_refs<char>());
   }
 
@@ -289,7 +289,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::score_t>>{{"xyz", 1.f}}),
+      (std::vector<std::pair<std::string_view, irs::score_t>>{{"xyz", 1.f}}),
       visitor.term_refs<char>());
   }
 
@@ -308,7 +308,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     irs::by_terms::visit(segment, *reader, filter.options().terms, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(3, visitor.visit_calls_counter());
-    ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{
+    ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{
                 {"abc", 0.5f}, {"abcd", 1.f}, {"abcy", 0.5f}}),
               visitor.term_refs<char>());
   }
@@ -328,7 +328,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     irs::by_terms::visit(segment, *reader, filter.options().terms, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(3, visitor.visit_calls_counter());
-    ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{
+    ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{
                 {"abc", 0.5f}, {"abcd", 1.f}, {"abcy", 0.5f}}),
               visitor.term_refs<char>());
   }
@@ -349,7 +349,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     irs::by_terms::visit(segment, *reader, filter.options().terms, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(3, visitor.visit_calls_counter());
-    ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{
+    ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{
                 {"abc", 0.5f}, {"abcd", 1.f}, {"abcy", 0.5f}}),
               visitor.term_refs<char>());
   }
@@ -393,7 +393,7 @@ TEST_P(terms_filter_test_case, min_match) {
     irs::by_terms::visit(segment, *reader, filter.options().terms, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(2, visitor.visit_calls_counter());
-    ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{
+    ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{
                 {"BusinessEntityID", 1.f}, {"StartDate", 1.f}}),
               visitor.term_refs<char>());
   }

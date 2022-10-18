@@ -84,7 +84,7 @@ class sorted_europarl_doc_template : public tests::europarl_doc_template {
 };  // sorted_europal_doc_template
 
 struct string_comparer : irs::comparer {
-  virtual bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {
+  virtual bool less(irs::bytes_view lhs, irs::bytes_view rhs) const {
     if (lhs.empty() && rhs.empty()) {
       return false;
     } else if (rhs.empty()) {
@@ -93,15 +93,15 @@ struct string_comparer : irs::comparer {
       return false;
     }
 
-    const auto lhs_value = irs::to_string<irs::bytes_ref>(lhs.data());
-    const auto rhs_value = irs::to_string<irs::bytes_ref>(rhs.data());
+    const auto lhs_value = irs::to_string<irs::bytes_view>(lhs.data());
+    const auto rhs_value = irs::to_string<irs::bytes_view>(rhs.data());
 
     return lhs_value > rhs_value;
   }
 };
 
 struct long_comparer : irs::comparer {
-  virtual bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {
+  virtual bool less(irs::bytes_view lhs, irs::bytes_view rhs) const {
     if (irs::IsNull(lhs) && irs::IsNull(rhs)) {
       return false;
     } else if (irs::IsNull(rhs)) {
@@ -120,7 +120,7 @@ struct long_comparer : irs::comparer {
 
 struct custom_feature {
   struct header {
-    explicit header(std::span<const irs::bytes_ref> headers) noexcept {
+    explicit header(std::span<const irs::bytes_view> headers) noexcept {
       for (const auto header : headers) {
         update(header);
       }
@@ -134,7 +134,7 @@ struct custom_feature {
       irs::write<size_t>(p, count);
     }
 
-    void update(irs::bytes_ref in) {
+    void update(irs::bytes_view in) {
       EXPECT_EQ(sizeof(count), in.size());
       auto* p = in.data();
       count += irs::read<decltype(count)>(p);
@@ -144,7 +144,7 @@ struct custom_feature {
   };
 
   struct writer : irs::feature_writer {
-    explicit writer(std::span<const irs::bytes_ref> headers) noexcept
+    explicit writer(std::span<const irs::bytes_view> headers) noexcept
       : hdr{{}} {
       if (!headers.empty()) {
         init_header.emplace(headers);
@@ -164,7 +164,7 @@ struct custom_feature {
       writer(doc).write_int(stats.num_unique);
     }
 
-    virtual void write(irs::data_output& out, irs::bytes_ref payload) {
+    virtual void write(irs::data_output& out, irs::bytes_view payload) {
       if (!payload.empty()) {
         ++hdr.count;
         out.write_bytes(payload.data(), payload.size());
@@ -185,7 +185,7 @@ struct custom_feature {
   };
 
   static irs::feature_writer::ptr make_writer(
-    std::span<const irs::bytes_ref> payload) {
+    std::span<const irs::bytes_view> payload) {
     return irs::memory::make_managed<writer>(payload);
   }
 };
@@ -196,7 +196,7 @@ class sorted_index_test_case : public tests::index_test_base {
  protected:
   bool supports_pluggable_features() const noexcept {
     // old formats don't support pluggable features
-    constexpr irs::string_ref kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
+    constexpr std::string_view kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
                                             "1_3simd"};
 
     return std::end(kOldFormats) == std::find(std::begin(kOldFormats),
@@ -269,7 +269,7 @@ class sorted_index_test_case : public tests::index_test_base {
   void check_feature_header(const irs::sub_reader& segment,
                             const irs::field_meta& field,
                             irs::type_info::type_id type,
-                            irs::bytes_ref header) {
+                            irs::bytes_view header) {
     ASSERT_TRUE(supports_pluggable_features());
     auto feature = field.features.find(type);
     ASSERT_NE(feature, field.features.end());
@@ -292,7 +292,7 @@ class sorted_index_test_case : public tests::index_test_base {
   }
 
   void check_features(const irs::sub_reader& segment,
-                      irs::string_ref field_name, size_t count,
+                      std::string_view field_name, size_t count,
                       bool after_consolidation) {
     auto* field_reader = segment.field(field_name);
     ASSERT_NE(nullptr, field_reader);
@@ -327,7 +327,7 @@ class sorted_index_test_case : public tests::index_test_base {
 };
 
 TEST_P(sorted_index_test_case, simple_sequential) {
-  constexpr irs::string_ref sorted_column = "name";
+  constexpr std::string_view sorted_column = "name";
 
   // Build index
   tests::json_doc_generator gen(
@@ -414,7 +414,7 @@ TEST_P(sorted_index_test_case, simple_sequential) {
     }
 
     // Check regular columns
-    constexpr irs::string_ref column_names[]{"seq", "value", "duplicated",
+    constexpr std::string_view column_names[]{"seq", "value", "duplicated",
                                              "prefix"};
 
     for (auto& column_name : column_names) {
@@ -493,7 +493,7 @@ TEST_P(sorted_index_test_case, simple_sequential) {
 }
 
 TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
-  constexpr irs::string_ref sorted_column = "name";
+  constexpr std::string_view sorted_column = "name";
 
   // Build index
   tests::json_doc_generator gen(
@@ -604,7 +604,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
       }
 
       // Check stored columns
-      constexpr irs::string_ref column_names[]{"seq", "value", "duplicated",
+      constexpr std::string_view column_names[]{"seq", "value", "duplicated",
                                                "prefix"};
 
       for (auto& column_name : column_names) {
@@ -680,14 +680,14 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
         check_features(segment, "same", offset.second, false);
 
         {
-          constexpr irs::string_ref kColumnName = "duplicated";
+          constexpr std::string_view kColumnName = "duplicated";
           auto* column = segment.column(kColumnName);
           ASSERT_NE(nullptr, column);
           check_features(segment, kColumnName, column->size(), false);
         }
 
         {
-          constexpr irs::string_ref kColumnName = "prefix";
+          constexpr std::string_view kColumnName = "prefix";
           auto* column = segment.column(kColumnName);
           ASSERT_NE(nullptr, column);
           check_features(segment, kColumnName, column->size(), false);
@@ -778,7 +778,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
     }
 
     // Check stored columns
-    constexpr irs::string_ref column_names[]{"seq", "value", "duplicated",
+    constexpr std::string_view column_names[]{"seq", "value", "duplicated",
                                              "prefix"};
 
     for (auto& column_name : column_names) {
@@ -859,7 +859,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 }
 
 TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
-  constexpr irs::string_ref sorted_column = "seq";
+  constexpr std::string_view sorted_column = "seq";
 
   // Build index
   tests::json_doc_generator gen(
@@ -947,7 +947,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
     }
 
     // Check stored columns
-    constexpr irs::string_ref column_names[]{"name", "value", "duplicated",
+    constexpr std::string_view column_names[]{"name", "value", "duplicated",
                                              "prefix"};
 
     for (auto& column_name : column_names) {
@@ -1050,10 +1050,10 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
       return true;
     }
 
-    irs::string_ref value;
+    std::string_view value;
   } field;
 
-  tests::string_ref_field same("same");
+  tests::std::string_view_field same("same");
   same.value("A");
 
   // Open writer
@@ -1205,11 +1205,11 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1238,11 +1238,11 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1288,19 +1288,19 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features in consolidated segment
@@ -1411,11 +1411,11 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1446,11 +1446,11 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1495,7 +1495,7 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1526,11 +1526,11 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1577,15 +1577,15 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features in consolidated segment
@@ -1682,7 +1682,7 @@ TEST_P(sorted_index_test_case, doc_removal_same_key_within_trx) {
     auto docs = segment.docs_iterator();
     ASSERT_TRUE(docs->next());
     ASSERT_EQ(docs->value(), values->seek(docs->value()));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value->value.data()));
+    ASSERT_EQ("C", irs::to_string<std::string_view>(actual_value->value.data()));
     ASSERT_FALSE(docs->next());
   }
 }
@@ -1759,7 +1759,7 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_TRUE(actual_value->value.empty());
@@ -1794,7 +1794,7 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_TRUE(actual_value->value.empty());
@@ -1845,11 +1845,11 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.data()));
+                irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_TRUE(actual_value->value.empty());
@@ -1873,7 +1873,7 @@ TEST_P(sorted_index_test_case,
   // whole index because sort is not stable
   //
   //  struct empty_field : tests::ifield {
-  //    irs::string_ref name() const override {
+  //    std::string_view name() const override {
   //      EXPECT_FALSE(true);
   //      throw irs::not_impl_error{};
   //    }

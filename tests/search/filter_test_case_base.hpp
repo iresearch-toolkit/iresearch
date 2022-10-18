@@ -102,7 +102,7 @@ struct custom_sort : public irs::sort {
         }
       }
 
-      virtual void collect(irs::bytes_ref in) override {
+      virtual void collect(irs::bytes_view in) override {
         // NOOP
       }
 
@@ -132,7 +132,7 @@ struct custom_sort : public irs::sort {
         }
       }
 
-      virtual void collect(irs::bytes_ref in) override {
+      virtual void collect(irs::bytes_view in) override {
         // NOOP
       }
 
@@ -272,7 +272,7 @@ struct frequency_sort : public irs::sort {
 
       virtual void reset() noexcept override { docs_count = 0; }
 
-      virtual void collect(irs::bytes_ref in) override {
+      virtual void collect(irs::bytes_view in) override {
         // NOOP
       }
 
@@ -297,7 +297,8 @@ struct frequency_sort : public irs::sort {
                          const irs::sort::term_collector* term) const override {
       auto* term_ptr = dynamic_cast<const term_collector*>(term);
       if (term_ptr) {  // may be null e.g. 'all' filter
-        stats_cast(stats_buf).count = static_cast<irs::doc_id_t>(term_ptr->docs_count);
+        stats_cast(stats_buf).count =
+          static_cast<irs::doc_id_t>(term_ptr->docs_count);
         const_cast<term_collector*>(term_ptr)->docs_count = 0;
       }
     }
@@ -446,10 +447,10 @@ struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
   virtual uint64_t docs_count() const { return 0; }
 
   // less significant term
-  virtual irs::bytes_ref (min)() const { return {}; }
+  virtual irs::bytes_view(min)() const { return {}; }
 
   // most significant term
-  virtual irs::bytes_ref (max)() const { return {}; }
+  virtual irs::bytes_view(max)() const { return {}; }
 };  // empty_term_reader
 
 class empty_filter_visitor : public irs::filter_visitor {
@@ -486,9 +487,9 @@ class empty_filter_visitor : public irs::filter_visitor {
   }
 
   template<typename Char>
-  std::vector<std::pair<irs::basic_string_ref<Char>, irs::score_t>> term_refs()
+  std::vector<std::pair<std::basic_string_view<Char>, irs::score_t>> term_refs()
     const {
-    std::vector<std::pair<irs::basic_string_ref<Char>, irs::score_t>> refs(
+    std::vector<std::pair<std::basic_string_view<Char>, irs::score_t>> refs(
       terms_.size());
     auto begin = refs.begin();
     for (auto& term : terms_) {

@@ -34,7 +34,7 @@
 namespace {
 
 template<typename Filter = irs::by_wildcard>
-Filter make_filter(const irs::string_ref& field, const irs::string_ref term) {
+Filter make_filter(const std::string_view& field, const std::string_view term) {
   Filter q;
   *q.mutable_field() = field;
   q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
@@ -459,7 +459,7 @@ TEST_P(wildcard_filter_test_case, visit) {
   }
 
   std::string fld = "prefix";
-  irs::string_ref field = irs::string_ref(fld);
+  std::string_view field = std::string_view(fld);
 
   // read segment
   auto index = open_reader();
@@ -470,14 +470,14 @@ TEST_P(wildcard_filter_test_case, visit) {
   ASSERT_NE(nullptr, reader);
 
   {
-    auto term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    auto term = irs::ref_cast<irs::byte_type>(std::string_view("abc"));
     tests::empty_filter_visitor visitor;
     auto field_visitor = irs::by_wildcard::visitor(term);
     ASSERT_TRUE(field_visitor);
     field_visitor(segment, *reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
-    ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{
+    ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{
                 {"abc", irs::kNoBoost},
               }),
               visitor.term_refs<char>());
@@ -486,14 +486,14 @@ TEST_P(wildcard_filter_test_case, visit) {
   }
 
   {
-    auto prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("ab%"));
+    auto prefix = irs::ref_cast<irs::byte_type>(std::string_view("ab%"));
     tests::empty_filter_visitor visitor;
     auto field_visitor = irs::by_wildcard::visitor(prefix);
     ASSERT_TRUE(field_visitor);
     field_visitor(segment, *reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(6, visitor.visit_calls_counter());
-    ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{
+    ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{
                 {"abc", irs::kNoBoost},
                 {"abcd", irs::kNoBoost},
                 {"abcde", irs::kNoBoost},
@@ -506,14 +506,14 @@ TEST_P(wildcard_filter_test_case, visit) {
   }
 
   {
-    auto wildcard = irs::ref_cast<irs::byte_type>(irs::string_ref("a_c%"));
+    auto wildcard = irs::ref_cast<irs::byte_type>(std::string_view("a_c%"));
     tests::empty_filter_visitor visitor;
     auto field_visitor = irs::by_wildcard::visitor(wildcard);
     ASSERT_TRUE(field_visitor);
     field_visitor(segment, *reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(5, visitor.visit_calls_counter());
-    ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{
+    ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{
                 {"abc", irs::kNoBoost},
                 {"abcd", irs::kNoBoost},
                 {"abcde", irs::kNoBoost},

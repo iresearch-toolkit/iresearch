@@ -26,7 +26,7 @@
 
 TEST(scorers_tests, duplicate_register) {
   struct dummy_scorer : public irs::sort {
-    static ptr make(irs::string_ref) { return ptr(new dummy_scorer()); }
+    static ptr make(std::string_view) { return ptr(new dummy_scorer()); }
     dummy_scorer() : irs::sort(irs::type<dummy_scorer>::get()) {}
 
     prepared::ptr prepare() const { return nullptr; }
@@ -49,15 +49,15 @@ TEST(scorers_tests, duplicate_register) {
     ASSERT_EQ(nullptr,
               irs::scorers::get(irs::type<dummy_scorer>::name(),
                                 irs::type<irs::text_format::vpack>::get(),
-                                irs::string_ref{}));
+                                std::string_view{}));
     ASSERT_EQ(nullptr,
               irs::scorers::get(irs::type<dummy_scorer>::name(),
                                 irs::type<irs::text_format::json>::get(),
-                                irs::string_ref{}));
+                                std::string_view{}));
     ASSERT_EQ(nullptr,
               irs::scorers::get(irs::type<dummy_scorer>::name(),
                                 irs::type<irs::text_format::text>::get(),
-                                irs::string_ref{}));
+                                std::string_view{}));
 
     irs::scorer_registrar initial0(irs::type<dummy_scorer>::get(),
                                    irs::type<irs::text_format::vpack>::get(),
@@ -98,11 +98,11 @@ TEST(scorers_tests, duplicate_register) {
   ASSERT_NE(nullptr,
             irs::scorers::get(irs::type<dummy_scorer>::name(),
                               irs::type<irs::text_format::vpack>::get(),
-                              irs::string_ref{}));
+                              std::string_view{}));
   ASSERT_NE(nullptr, irs::scorers::get(irs::type<dummy_scorer>::name(),
                                        irs::type<irs::text_format::json>::get(),
-                                       irs::string_ref{}));
+                                       std::string_view{}));
   ASSERT_NE(nullptr, irs::scorers::get(irs::type<dummy_scorer>::name(),
                                        irs::type<irs::text_format::text>::get(),
-                                       irs::string_ref{}));
+                                       std::string_view{}));
 }

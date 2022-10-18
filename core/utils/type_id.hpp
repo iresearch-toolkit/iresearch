@@ -50,7 +50,7 @@ struct type {
   /// @note Do never persist type name provided by detail::ctti<T> as
   ///       it's platform dependent
   //////////////////////////////////////////////////////////////////////////////
-  static constexpr string_ref name() noexcept {
+  static constexpr std::string_view name() noexcept {
     if constexpr (detail::has_member_type_name_v<T>) {
       return T::type_name();
     }

@@ -168,12 +168,12 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   return nullptr;
 }
 
-irs::analysis::analyzer::ptr make_vpack(irs::string_ref args) {
+irs::analysis::analyzer::ptr make_vpack(std::string_view args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
 
-irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
+irs::analysis::analyzer::ptr make_json(std::string_view args) {
   try {
     if (irs::IsNull(args)) {
       IR_FRMT_ERROR(
@@ -237,7 +237,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   return false;
 }
 
-bool normalize_vpack_config(irs::string_ref args, std::string& config) {
+bool normalize_vpack_config(std::string_view args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -247,7 +247,7 @@ bool normalize_vpack_config(irs::string_ref args, std::string& config) {
   return false;
 }
 
-bool normalize_json_config(irs::string_ref args, std::string& definition) {
+bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (irs::IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while normalizing token_stopwords_stream");
@@ -303,7 +303,7 @@ bool token_stopwords_stream::next() {
   return true;
 }
 
-bool token_stopwords_stream::reset(string_ref data) {
+bool token_stopwords_stream::reset(std::string_view data) {
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
   offset.end = uint32_t(data.size());

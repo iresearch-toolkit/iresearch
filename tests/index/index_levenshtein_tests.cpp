@@ -33,8 +33,8 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
  protected:
   void assert_index(irs::index_reader::ptr reader,
                     const irs::parametric_description& description,
-                    const irs::bytes_ref& prefix,
-                    const irs::bytes_ref& target) {
+                    const irs::bytes_view& prefix,
+                    const irs::bytes_view& target) {
     auto acceptor =
       irs::make_levenshtein_automaton(description, prefix, target);
     irs::automaton_table_matcher matcher(acceptor, true);
@@ -105,7 +105,7 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
     irs::make_parametric_description(3, false),
   };
 
-  const irs::string_ref TARGETS[]{"atlas",     "bloom",    "burden", "del",
+  const std::string_view TARGETS[]{"atlas",     "bloom",    "burden", "del",
                                   "survenius", "surbenus", ""};
 
   // add data

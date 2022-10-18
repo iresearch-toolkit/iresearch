@@ -33,7 +33,7 @@
 
 namespace {
 
-irs::bytes_ref eval_term(irs::bstring& buf, irs::bytes_ref data) {
+irs::bytes_view eval_term(irs::bstring& buf, irs::bytes_view data) {
   if (!data.size() || '"' != data[0]) {
     return data;  // not a quoted term (even if quotes inside
   }
@@ -62,11 +62,11 @@ irs::bytes_ref eval_term(irs::bstring& buf, irs::bytes_ref data) {
   }
 
   return start != 1 && start == data.size()
-           ? irs::bytes_ref(buf)
+           ? irs::bytes_view(buf)
            : data;  // return identity for mismatched quotes
 }
 
-size_t find_delimiter(irs::bytes_ref data, irs::bytes_ref delim) {
+size_t find_delimiter(irs::bytes_view data, irs::bytes_view delim) {
   if (irs::IsNull(delim)) {
     return data.size();
   }
@@ -110,7 +110,7 @@ bool parse_vpack_options(const VPackSlice slice, std::string& delimiter) {
 
   switch (slice.type()) {
     case VPackValueType::String:
-      delimiter = irs::get_string<irs::string_ref>(slice);
+      delimiter = irs::get_string<std::string_view>(slice);
       return true;
     case VPackValueType::Object:
       if (slice.hasKey(DELIMITER_PARAM_NAME)) {
@@ -123,7 +123,7 @@ bool parse_vpack_options(const VPackSlice slice, std::string& delimiter) {
             DELIMITER_PARAM_NAME.data());
           return false;
         }
-        delimiter = irs::get_string<irs::string_ref>(delim_type_slice);
+        delimiter = irs::get_string<std::string_view>(delim_type_slice);
         return true;
       }
     default: {
@@ -151,7 +151,7 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-irs::analysis::analyzer::ptr make_vpack(irs::string_ref args) {
+irs::analysis::analyzer::ptr make_vpack(std::string_view args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
@@ -181,7 +181,7 @@ bool normalize_vpack_config(const VPackSlice slice,
   }
 }
 
-bool normalize_vpack_config(irs::string_ref args, std::string& definition) {
+bool normalize_vpack_config(std::string_view args, std::string& definition) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   bool res = normalize_vpack_config(slice, &builder);
@@ -192,7 +192,7 @@ bool normalize_vpack_config(irs::string_ref args, std::string& definition) {
   return res;
 }
 
-irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
+irs::analysis::analyzer::ptr make_json(std::string_view args) {
   try {
     if (irs::IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while constructing delimited_token_stream");
@@ -211,7 +211,7 @@ irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
   return nullptr;
 }
 
-bool normalize_json_config(irs::string_ref args, std::string& definition) {
+bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (irs::IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while normalizing delimited_token_stream");
@@ -237,11 +237,11 @@ bool normalize_json_config(irs::string_ref args, std::string& definition) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a delimiter to use for tokenization
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_text(irs::string_ref args) {
+irs::analysis::analyzer::ptr make_text(std::string_view args) {
   return irs::memory::make_unique<irs::analysis::delimited_token_stream>(args);
 }
 
-bool normalize_text_config(irs::string_ref delimiter, std::string& definition) {
+bool normalize_text_config(std::string_view delimiter, std::string& definition) {
   definition = delimiter;
   return true;
 }
@@ -258,7 +258,7 @@ REGISTER_ANALYZER_TEXT(irs::analysis::delimited_token_stream, make_text,
 namespace iresearch {
 namespace analysis {
 
-delimited_token_stream::delimited_token_stream(string_ref delimiter)
+delimited_token_stream::delimited_token_stream(std::string_view delimiter)
   : analyzer(irs::type<delimited_token_stream>::get()),
     delim_(ref_cast<byte_type>(delimiter)) {
   if (!irs::IsNull(delim_)) {
@@ -267,7 +267,7 @@ delimited_token_stream::delimited_token_stream(string_ref delimiter)
   }
 }
 
-/*static*/ analyzer::ptr delimited_token_stream::make(string_ref delimiter) {
+/*static*/ analyzer::ptr delimited_token_stream::make(std::string_view delimiter) {
   return make_text(delimiter);
 }
 
@@ -303,16 +303,16 @@ bool delimited_token_stream::next() {
   offset.start = start;
   offset.end = uint32_t(end);
   term.value = irs::IsNull(delim_)
-                 ? bytes_ref{data_.data(), size}
-                 : eval_term(term_buf_, bytes_ref(data_.data(), size));
+                 ? bytes_view{data_.data(), size}
+                 : eval_term(term_buf_, bytes_view(data_.data(), size));
   data_ = size >= data_.size()
-            ? bytes_ref{}
-            : bytes_ref{data_.data() + next, data_.size() - next};
+            ? bytes_view{}
+            : bytes_view{data_.data() + next, data_.size() - next};
 
   return true;
 }
 
-bool delimited_token_stream::reset(string_ref data) {
+bool delimited_token_stream::reset(std::string_view data) {
   data_ = ref_cast<byte_type>(data);
 
   auto& offset = std::get<irs::offset>(attrs_);

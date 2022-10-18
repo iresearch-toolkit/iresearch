@@ -54,7 +54,7 @@ class nearest_neighbors_stream final : public analyzer,
     int32_t top_k;
   };
 
-  static constexpr string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "nearest_neighbors";
   }
 
@@ -69,7 +69,7 @@ class nearest_neighbors_stream final : public analyzer,
   }
 
   virtual bool next() override;
-  virtual bool reset(string_ref data) override;
+  virtual bool reset(std::string_view data) override;
 
  private:
   using attributes = std::tuple<increment, offset, term_attribute>;

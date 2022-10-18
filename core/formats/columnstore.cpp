@@ -69,7 +69,7 @@ namespace {
 using namespace iresearch;
 using columnstore::ColumnMetaVersion;
 
-irs::bytes_ref kDummy;  // placeholder for visiting logic in columnstore
+irs::bytes_view kDummy;  // placeholder for visiting logic in columnstore
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct column_meta
@@ -158,7 +158,7 @@ ColumnProperty write_compact(index_output& out, bstring& encode_buf,
 
   // compressor can only handle size of int32_t, so can use the negative flag as
   // a compression flag
-  const bytes_ref compressed =
+  const bytes_view compressed =
     compressor.compress(&data[0], data.size(), encode_buf);
 
   if (is_good_compression_ratio(data.size(), compressed.size())) {
@@ -273,11 +273,11 @@ struct column_ref_eq : value_ref_eq<column_meta*> {
   using self_t::operator();
 
   bool operator()(const ref_t& lhs,
-                  const hashed_string_ref& rhs) const noexcept {
+                  const hashed_std::string_view& rhs) const noexcept {
     return lhs.second->name == rhs;
   }
 
-  bool operator()(const hashed_string_ref& lhs,
+  bool operator()(const hashed_std::string_view& lhs,
                   const ref_t& rhs) const noexcept {
     return this->operator()(rhs, lhs);
   }
@@ -287,16 +287,16 @@ using name_to_column_map = flat_hash_set<column_ref_eq>;
 
 class meta_writer final {
  public:
-  static constexpr string_ref FORMAT_NAME = "iresearch_10_columnmeta";
-  static constexpr string_ref FORMAT_EXT = "cm";
+  static constexpr std::string_view FORMAT_NAME = "iresearch_10_columnmeta";
+  static constexpr std::string_view FORMAT_EXT = "cm";
 
   explicit meta_writer(ColumnMetaVersion version) noexcept : version_(version) {
     assert(version >= ColumnMetaVersion::MIN &&
            version <= ColumnMetaVersion::MAX);
   }
 
-  void prepare(directory& dir, string_ref meta);
-  void write(string_ref name, field_id id);
+  void prepare(directory& dir, std::string_view meta);
+  void write(std::string_view name, field_id id);
   void flush();
 
  private:
@@ -308,7 +308,7 @@ class meta_writer final {
   ColumnMetaVersion version_;
 };  // meta_writer
 
-void meta_writer::prepare(directory& dir, string_ref segment) {
+void meta_writer::prepare(directory& dir, std::string_view segment) {
   auto filename = irs::file_name(segment, meta_writer::FORMAT_EXT);
   assert(0 == count_);  // Make sure there were no writes or flush was called
 
@@ -338,7 +338,7 @@ void meta_writer::prepare(directory& dir, string_ref segment) {
   }
 }
 
-void meta_writer::write(string_ref name, field_id id) {
+void meta_writer::write(std::string_view name, field_id id) {
   assert(out_);
   out_->write_vlong(id);
   write_string(*out_, name);
@@ -598,8 +598,8 @@ class writer final : public irs::columnstore_writer {
   static constexpr int32_t FORMAT_MIN = 0;
   static constexpr int32_t FORMAT_MAX = 1;
 
-  static constexpr string_ref FORMAT_NAME = "iresearch_10_columnstore";
-  static constexpr string_ref FORMAT_EXT = "cs";
+  static constexpr std::string_view FORMAT_NAME = "iresearch_10_columnstore";
+  static constexpr std::string_view FORMAT_EXT = "cs";
 
   explicit writer(Version version, ColumnMetaVersion meta_version) noexcept
     : meta_writer_{meta_version},
@@ -658,7 +658,7 @@ class writer final : public irs::columnstore_writer {
 
     bool empty() const noexcept { return !block_index_.total(); }
 
-    string_ref name() const noexcept { return name_; }
+    std::string_view name() const noexcept { return name_; }
 
     field_id id() const noexcept { return id_; }
 
@@ -813,7 +813,7 @@ class writer final : public irs::columnstore_writer {
       avg_block_size_{};  // average size of the block (tail block is not taken
                           // into account since it may skew distribution)
     doc_id_t max_{doc_limits::invalid()};  // max key (among flushed blocks)
-    string_ref name_;
+    std::string_view name_;
   };  // column
 
   void flush_meta(const flush_state& meta);
@@ -1044,7 +1044,7 @@ class sparse_block : util::noncopyable {
 
       assert(vend >= vbegin);
       assert(payload_ != &kDummy);
-      *payload_ = bytes_ref(data_->c_str() + vbegin,  // start
+      *payload_ = bytes_view(data_->c_str() + vbegin,  // start
                             vend - vbegin);           // length
       return true;
     }
@@ -1079,7 +1079,7 @@ class sparse_block : util::noncopyable {
     }
 
    private:
-    irs::bytes_ref* payload_{&kDummy};
+    irs::bytes_view* payload_{&kDummy};
     irs::doc_id_t value_{doc_limits::invalid()};
     const sparse_block::ref* next_{};  // next position
     const sparse_block::ref* begin_{};
@@ -1193,11 +1193,11 @@ class dense_block : util::noncopyable {
 
       assert(vend >= vbegin);
       assert(payload_ != &kDummy);
-      *payload_ = bytes_ref(data_->c_str() + vbegin,  // start
+      *payload_ = bytes_view(data_->c_str() + vbegin,  // start
                             vend - vbegin);           // length
     }
 
-    irs::bytes_ref* payload_{&kDummy};
+    irs::bytes_view* payload_{&kDummy};
     irs::doc_id_t value_{doc_limits::invalid()};
     const uint32_t* begin_{};
     const uint32_t* it_{};
@@ -1281,7 +1281,7 @@ class dense_fixed_offset_block : util::noncopyable {
 
       assert(payload_ != &kDummy);
       *payload_ =
-        bytes_ref(data_.data() + offset,
+        bytes_view(data_.data() + offset,
                   value_ == value_back_ ? data_.size() - offset : avg_length_);
 
       return true;
@@ -1318,8 +1318,8 @@ class dense_fixed_offset_block : util::noncopyable {
 
    private:
     uint64_t avg_length_{};  // average value length
-    bytes_ref data_;
-    irs::bytes_ref* payload_{&kDummy};
+    bytes_view data_;
+    irs::bytes_view* payload_{&kDummy};
     doc_id_t value_{doc_limits::invalid()};       // current value
     doc_id_t value_next_{doc_limits::invalid()};  // next value
     doc_id_t value_min_{};                        // min doc_id
@@ -1717,11 +1717,11 @@ class column : public irs::column_reader, private util::noncopyable {
 
   virtual field_id id() const final { return id_; }
 
-  virtual string_ref name() const final {
-    return name_.has_value() ? name_.value() : string_ref{};
+  virtual std::string_view name() const final {
+    return name_.has_value() ? name_.value() : std::string_view{};
   }
 
-  virtual bytes_ref payload() const final {
+  virtual bytes_view payload() const final {
     // Implementation doesn't support column headers.
     return {};
   }

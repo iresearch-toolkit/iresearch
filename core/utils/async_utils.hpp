@@ -59,7 +59,7 @@ class thread_pool {
   using func_t = std::function<void()>;
 
   explicit thread_pool(size_t max_threads = 0, size_t max_idle = 0,
-                       basic_string_ref<native_char_t> worker_name =
+                       basic_std::string_view<native_char_t> worker_name =
                          EmptyRef<native_char_t>());
   ~thread_pool();
   size_t max_idle() const;

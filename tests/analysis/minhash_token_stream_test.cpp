@@ -33,7 +33,7 @@ namespace {
 
 class ArrayStream final : public irs::analysis::analyzer {
  public:
-  explicit ArrayStream(irs::string_ref data, const std::string_view* begin,
+  explicit ArrayStream(std::string_view data, const std::string_view* begin,
                        const std::string_view* end) noexcept
     : irs::analysis::analyzer{irs::type<ArrayStream>::get()},
       data_{data},
@@ -61,7 +61,7 @@ class ArrayStream final : public irs::analysis::analyzer {
     return irs::get_mutable(attrs_, id);
   }
 
-  bool reset(irs::string_ref data) override {
+  bool reset(std::string_view data) override {
     std::get<irs::offset>(attrs_) = {};
 
     if (data == data_) {
@@ -78,7 +78,7 @@ class ArrayStream final : public irs::analysis::analyzer {
     std::tuple<irs::term_attribute, irs::increment, irs::offset>;
 
   attributes attrs_;
-  irs::string_ref data_;
+  std::string_view data_;
   const std::string_view* begin_;
   const std::string_view* it_;
   const std::string_view* end_;

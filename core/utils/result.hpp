@@ -49,7 +49,7 @@ class result {
   }
 
   template<Code code>
-  static result make(irs::string_ref msg, irs::string_ref msg2 = {}) {
+  static result make(std::string_view msg, std::string_view msg2 = {}) {
     return result(code, msg, msg2);
   }
 
@@ -92,7 +92,7 @@ class result {
  private:
   std::unique_ptr<char[]> copyState(const char* rhs);
 
-  result(Code code, string_ref msg, string_ref msg2);
+  result(Code code, std::string_view msg, std::string_view msg2);
   explicit result(Code code);
 
   Code code_;

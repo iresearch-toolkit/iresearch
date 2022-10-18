@@ -146,12 +146,12 @@ analyzer::ptr make_vpack(const VPackSlice slice) {
   return nullptr;
 }
 
-analyzer::ptr make_vpack(irs::string_ref args) {
+analyzer::ptr make_vpack(std::string_view args) {
   VPackSlice slice{reinterpret_cast<const uint8_t*>(args.data())};
   return make_vpack(slice);
 }
 
-analyzer::ptr make_json(irs::string_ref args) {
+analyzer::ptr make_json(std::string_view args) {
   try {
     if (irs::IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while constructing classification_stream ");
@@ -189,7 +189,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   return false;
 }
 
-bool normalize_vpack_config(irs::string_ref args, std::string& config) {
+bool normalize_vpack_config(std::string_view args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -199,7 +199,7 @@ bool normalize_vpack_config(irs::string_ref args, std::string& config) {
   return false;
 }
 
-bool normalize_json_config(irs::string_ref args, std::string& definition) {
+bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (irs::IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while normalizing classification_stream ");
@@ -272,12 +272,12 @@ bool classification_stream::next() {
   return true;
 }
 
-bool classification_stream::reset(string_ref data) {
+bool classification_stream::reset(std::string_view data) {
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
   offset.end = static_cast<uint32_t>(data.size());
 
-  bytes_ref_input s_input{ref_cast<byte_type>(data)};
+  bytes_view_input s_input{ref_cast<byte_type>(data)};
   input_buf buf{&s_input};
   std::istream ss{&buf};
   predictions_.clear();

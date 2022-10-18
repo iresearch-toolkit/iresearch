@@ -53,7 +53,7 @@ const index_writer::progress_report_callback kNoProgress =
     // intentionally do nothing
   };
 
-const column_info_provider_t kDefaultColumnInfo = [](string_ref) {
+const column_info_provider_t kDefaultColumnInfo = [](std::string_view) {
   // no compression, no encryption
   return column_info{irs::type<compression::none>::get(), {}, false};
 };
@@ -338,7 +338,7 @@ std::string_view write_document_mask(directory& dir, segment_meta& meta,
 
 // mapping: name -> { new segment, old segment }
 using candidates_mapping_t = absl::flat_hash_map<
-  string_ref,
+  std::string_view,
   std::pair<const segment_meta*,                       // new segment
             std::pair<const segment_meta*, size_t>>>;  // old segment + index
                                                        // within merge_writer

@@ -317,7 +317,7 @@ class NestedFilterTestCase : public tests::FilterTestCaseBase {
 
 void NestedFilterTestCase::InitDataSet() {
   irs::index_writer::init_options opts;
-  opts.column_info = [](irs::string_ref name) {
+  opts.column_info = [](std::string_view name) {
     return irs::column_info{
       .compression = irs::type<irs::compression::none>::get(),
       .options = {},
@@ -1278,7 +1278,7 @@ class NestedFilterFormatsTestCase : public NestedFilterTestCase {
  protected:
   bool HasPrevDocSupport() noexcept {
     // old formats don't support columnstore headers
-    constexpr irs::string_ref kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
+    constexpr std::string_view kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
                                             "1_3simd"};
 
     return std::end(kOldFormats) == std::find(std::begin(kOldFormats),

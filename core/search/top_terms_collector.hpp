@@ -41,7 +41,7 @@ struct top_term {
   using key_type = T;
 
   template<typename U = key_type>
-  top_term(const bytes_ref& term, U&& key)
+  top_term(const bytes_view& term, U&& key)
     : term(term.data(), term.size()), key(std::forward<U>(key)) {}
 
   template<typename CollectorState>
@@ -66,7 +66,7 @@ struct top_term_comparer {
   }
 
   bool operator()(const top_term<T>& lhs, const T& rhs_key,
-                  const bytes_ref& rhs_term) const noexcept {
+                  const bytes_view& rhs_term) const noexcept {
     return lhs.key < rhs_key || (!(rhs_key < lhs.key) && lhs.term < rhs_term);
   }
 };
@@ -85,7 +85,7 @@ struct top_term_state : top_term<T> {
   };
 
   template<typename U = T>
-  top_term_state(const bytes_ref& term, U&& key)
+  top_term_state(const bytes_view& term, U&& key)
     : top_term<T>(term, std::forward<U>(key)) {}
 
   template<typename CollectorState>
@@ -217,14 +217,14 @@ class top_terms_collector : private compact<0, Comparer>,
   }
 
  private:
-  using states_map_t = std::unordered_map<hashed_bytes_ref, state_type>;
+  using states_map_t = std::unordered_map<hashed_bytes_view, state_type>;
 
   // Collector state
   struct collector_state {
     const sub_reader* segment{};
     const term_reader* field{};
     const seek_term_iterator* terms{};
-    const bytes_ref* term{};
+    const bytes_view* term{};
     const uint32_t* docs_count{};
   };
 
@@ -250,14 +250,14 @@ class top_terms_collector : private compact<0, Comparer>,
   }
 
   std::pair<typename states_map_t::iterator, bool> emplace(
-    const hashed_bytes_ref& term, const key_type& key) {
+    const hashed_bytes_view& term, const key_type& key) {
     // replace original reference to 'name' provided by the caller
     // with a reference to the cached copy in 'value'
     return map_utils::try_emplace_update_key(
       terms_,
-      [](const hashed_bytes_ref& key, const state_type& value) noexcept {
+      [](const hashed_bytes_view& key, const state_type& value) noexcept {
         // reuse hash but point ref at value
-        return hashed_bytes_ref(key.hash(), value.term);
+        return hashed_bytes_view(key.hash(), value.term);
       },
       term, term, key);
   }

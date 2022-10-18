@@ -40,7 +40,7 @@ namespace std {
 #endif
 
 // MSVC++ > v14.0 (Visual Studio >2015) already implements this in <xstring>
-// MacOS requires this definition to be before first usage (i.e. in bytes_ref)
+// MacOS requires this definition to be before first usage (i.e. in bytes_view)
 #if !defined(_MSC_VER) || (_MSC_VER <= 1900)
 template<>
 struct char_traits<::iresearch::byte_type> {
@@ -145,9 +145,7 @@ struct char_traits<::iresearch::byte_type> {
 namespace iresearch {
 
 using bstring = std::basic_string<byte_type>;
-
-template<typename Char, typename Traits = std::char_traits<Char>>
-using basic_string_ref = std::basic_string_view<Char, Traits>;
+using bytes_view = std::basic_string_view<byte_type>;
 
 template<typename Char>
 inline size_t common_prefix_length(const Char* lhs, size_t lhs_size,
@@ -179,38 +177,35 @@ inline size_t common_prefix_length(const Char* lhs, size_t lhs_size,
 
 template<typename Char, typename Traits>
 inline size_t common_prefix_length(
-  basic_string_ref<Char, Traits> lhs,
-  basic_string_ref<Char, Traits> rhs) noexcept {
+  std::basic_string_view<Char, Traits> lhs,
+  std::basic_string_view<Char, Traits> rhs) noexcept {
   return common_prefix_length(lhs.data(), lhs.size(), rhs.data(), rhs.size());
 }
 
 template<typename T, typename U>
-inline void assign(std::basic_string<T>& str, basic_string_ref<U> ref) {
+inline void assign(std::basic_string<T>& str, std::basic_string_view<U> ref) {
   static_assert(sizeof(T) == 1 && sizeof(T) == sizeof(U));
   str.assign(reinterpret_cast<const T*>(ref.data()), ref.size());
 }
 
-using string_ref = basic_string_ref<char>;
-using bytes_ref = basic_string_ref<byte_type>;
-
 template<typename Char>
-inline basic_string_ref<Char> EmptyRef() noexcept {
+inline std::basic_string_view<Char> EmptyRef() noexcept {
   return {reinterpret_cast<const Char*>(""), 0};
 }
 
 template<typename Char>
-constexpr bool IsNull(basic_string_ref<Char> str) noexcept {
+constexpr bool IsNull(std::basic_string_view<Char> str) noexcept {
   return str.data() == nullptr;
 }
 
 template<typename ElemDst, typename ElemSrc>
-constexpr inline basic_string_ref<ElemDst> ref_cast(
-  basic_string_ref<ElemSrc> src) noexcept {
+constexpr inline std::basic_string_view<ElemDst> ref_cast(
+  std::basic_string_view<ElemSrc> src) noexcept {
   return {reinterpret_cast<const ElemDst*>(src.data()), src.size()};
 }
 
 template<typename ElemDst, typename ElemSrc>
-constexpr inline basic_string_ref<ElemDst> ref_cast(
+constexpr inline std::basic_string_view<ElemDst> ref_cast(
   std::basic_string<ElemSrc> src) noexcept {
   return {reinterpret_cast<const ElemDst*>(src.c_str()), src.size()};
 }
@@ -220,10 +215,10 @@ namespace hash_utils {
 size_t hash(const char* value, size_t size) noexcept;
 size_t hash(const byte_type* value, size_t size) noexcept;
 
-inline size_t hash(bytes_ref value) noexcept {
+inline size_t hash(bytes_view value) noexcept {
   return hash(value.data(), value.size());
 }
-inline size_t hash(string_ref value) noexcept {
+inline size_t hash(std::string_view value) noexcept {
   return hash(value.data(), value.size());
 }
 inline size_t hash(const char* value) noexcept {
@@ -247,8 +242,8 @@ struct hash<::iresearch::bstring> {
 };
 
 template<>
-struct hash<::iresearch::bytes_ref> {
-  size_t operator()(::iresearch::bytes_ref value) const noexcept {
+struct hash<::iresearch::bytes_view> {
+  size_t operator()(::iresearch::bytes_view value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
 };

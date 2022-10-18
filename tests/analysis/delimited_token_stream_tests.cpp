@@ -55,10 +55,10 @@ TEST_F(delimited_token_stream_tests, consts) {
 }
 
 TEST_F(delimited_token_stream_tests, test_delimiter) {
-  // test delimiter string_ref{}
+  // test delimiter std::string_view{}
   {
-    irs::string_ref data("abc,def\"\",\"\"ghi");
-    irs::analysis::delimited_token_stream stream(irs::string_ref{});
+    std::string_view data("abc,def\"\",\"\"ghi");
+    irs::analysis::delimited_token_stream stream(std::string_view{});
     ASSERT_EQ(irs::type<irs::analysis::delimited_token_stream>::id(),
               stream.type());
 
@@ -76,7 +76,7 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
   // test delimteter ''
   {
-    irs::string_ref data("abc,\"def\"");  // quoted terms should be honoured
+    std::string_view data("abc,\"def\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream("");
 
     ASSERT_TRUE(stream.reset(data));
@@ -111,7 +111,7 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
   // test delimiter ','
   {
-    irs::string_ref data("abc,\"def,\"");  // quoted terms should be honoured
+    std::string_view data("abc,\"def,\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream(",");
 
     ASSERT_TRUE(stream.reset(data));
@@ -134,7 +134,7 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
   // test delimiter '\t'
   {
-    irs::string_ref data("abc,\t\"def\t\"");  // quoted terms should be honoured
+    std::string_view data("abc,\t\"def\t\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream("\t");
 
     ASSERT_TRUE(stream.reset(data));
@@ -157,7 +157,7 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
   // test delimiter '"'
   {
-    irs::string_ref data("abc,\"\"def\t\"");  // quoted terms should be honoured
+    std::string_view data("abc,\"\"def\t\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream("\"");
 
     ASSERT_TRUE(stream.reset(data));
@@ -188,7 +188,7 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 
   // test delimiter 'abc'
   {
-    irs::string_ref data(
+    std::string_view data(
       "abc,123\"def123\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream("123");
 
@@ -214,10 +214,10 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 TEST_F(delimited_token_stream_tests, test_quote) {
   // test quoted field
   {
-    irs::string_ref data(
+    std::string_view data(
       "abc,\"def\",\"\"ghi");  // quoted terms should be honoured
 
-    auto testFunc = [](irs::string_ref data, irs::analysis::analyzer* pStream) {
+    auto testFunc = [](std::string_view data, irs::analysis::analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* offset = irs::get<irs::offset>(*pStream);
@@ -254,7 +254,7 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 
   // test unterminated "
   {
-    irs::string_ref data(
+    std::string_view data(
       "abc,\"def\",\"ghi");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream(",");
 
@@ -282,7 +282,7 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 
   // test unterminated single "
   {
-    irs::string_ref data("abc,\"def\",\"");  // quoted terms should be honoured
+    std::string_view data("abc,\"def\",\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream(",");
 
     ASSERT_TRUE(stream.reset(data));
@@ -309,7 +309,7 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 
   // test " escape
   {
-    irs::string_ref data(
+    std::string_view data(
       "abc,\"\"\"def\",\"\"ghi");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream(",");
 
@@ -337,7 +337,7 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 
   // test non-quoted field with "
   {
-    irs::string_ref data(
+    std::string_view data(
       "abc,\"def\",ghi\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream(",");
 
@@ -369,7 +369,7 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 TEST_F(delimited_token_stream_tests, test_load) {
   // load jSON string
   {
-    irs::string_ref data("abc,def,ghi");  // quoted terms should be honoured
+    std::string_view data("abc,def,ghi");  // quoted terms should be honoured
     auto stream = irs::analysis::analyzers::get(
       "delimiter", irs::type<irs::text_format::json>::get(), "\",\"");
 
@@ -398,7 +398,7 @@ TEST_F(delimited_token_stream_tests, test_load) {
 
   // load jSON object
   {
-    irs::string_ref data("abc,def,ghi");  // quoted terms should be honoured
+    std::string_view data("abc,def,ghi");  // quoted terms should be honoured
     auto stream = irs::analysis::analyzers::get(
       "delimiter", irs::type<irs::text_format::json>::get(),
       "{\"delimiter\":\",\"}");
@@ -430,7 +430,7 @@ TEST_F(delimited_token_stream_tests, test_load) {
   {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
                          "delimiter", irs::type<irs::text_format::json>::get(),
-                         irs::string_ref{}));
+                         std::string_view{}));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
                 "delimiter", irs::type<irs::text_format::json>::get(), "1"));
@@ -447,7 +447,7 @@ TEST_F(delimited_token_stream_tests, test_load) {
 
   // load text
   {
-    irs::string_ref data("abc,def,ghi");  // quoted terms should be honoured
+    std::string_view data("abc,def,ghi");  // quoted terms should be honoured
     auto stream = irs::analysis::analyzers::get(
       "delimiter", irs::type<irs::text_format::text>::get(), ",");
 
@@ -476,7 +476,7 @@ TEST_F(delimited_token_stream_tests, test_load) {
 
   // load text, wide symbols
   {
-    irs::string_ref data(
+    std::string_view data(
       "\x61\x62\x63\x2C\xD0\x9F");  // quoted terms should be honoured
     auto stream = irs::analysis::analyzers::get(
       "delimiter", irs::type<irs::text_format::text>::get(), ",");

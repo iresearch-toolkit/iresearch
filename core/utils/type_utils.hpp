@@ -36,7 +36,7 @@ namespace iresearch {
 /// @brief compile-time type identifier
 ////////////////////////////////////////////////////////////////////////////////
 template<typename T>
-constexpr string_ref ctti() noexcept {
+constexpr std::string_view ctti() noexcept {
   return {IRESEARCH_CURRENT_FUNCTION};
 }
 

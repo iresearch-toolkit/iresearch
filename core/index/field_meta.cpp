@@ -37,7 +37,7 @@ field_meta::field_meta(field_meta&& rhs) noexcept
   rhs.index_features = IndexFeatures::NONE;
 }
 
-field_meta::field_meta(string_ref name, IndexFeatures index_features)
+field_meta::field_meta(std::string_view name, IndexFeatures index_features)
   : name(name.data(), name.size()), index_features(index_features) {}
 
 field_meta& field_meta::operator=(field_meta&& rhs) noexcept {

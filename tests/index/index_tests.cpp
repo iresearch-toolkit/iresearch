@@ -40,7 +40,7 @@
 
 namespace {
 bool visit(const irs::column_reader& reader,
-           const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
+           const std::function<bool(irs::doc_id_t, irs::bytes_view)>& visitor) {
   auto it = reader.iterator(irs::ColumnHint::kConsolidation);
 
   irs::payload dummy;
@@ -843,7 +843,7 @@ class index_test_case : public tests::index_test_base {
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-                  irs::to_string<irs::string_ref>(actual_value->value.data()));
+                  irs::to_string<std::string_view>(actual_value->value.data()));
         ASSERT_FALSE(docsItr->next());
       }
 
@@ -864,7 +864,7 @@ class index_test_case : public tests::index_test_base {
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-                  irs::to_string<irs::string_ref>(actual_value->value.data()));
+                  irs::to_string<std::string_view>(actual_value->value.data()));
         ASSERT_FALSE(docsItr->next());
       }
     }
@@ -950,7 +950,7 @@ class index_test_case : public tests::index_test_base {
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+      ASSERT_EQ("B", irs::to_string<std::string_view>(
                        actual_value->value.data()));  // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
@@ -998,7 +998,7 @@ class index_test_case : public tests::index_test_base {
             auto expected_name =
               expected_doc->stored.get<tests::string_field>("name")->value();
             if (expected_name !=
-                irs::to_string<irs::string_ref>(actual_value->value.data())) {
+                irs::to_string<std::string_view>(actual_value->value.data())) {
               return false;
             }
 
@@ -1059,7 +1059,7 @@ class index_test_case : public tests::index_test_base {
         insert(std::make_shared<tests::string_field>("label"));
       }
 
-      virtual void value(size_t idx, const irs::string_ref& value) {
+      virtual void value(size_t idx, const std::string_view& value) {
         switch (idx) {
           case 0:
             indexed.get<tests::string_field>("id")->value(value);
@@ -1091,7 +1091,7 @@ class index_test_case : public tests::index_test_base {
 
     // read columns
     {
-      auto visit_column = [&segment](const irs::string_ref& column_name) {
+      auto visit_column = [&segment](const std::string_view& column_name) {
         auto* meta = segment.column(column_name);
         if (!meta) {
           return false;
@@ -1102,7 +1102,7 @@ class index_test_case : public tests::index_test_base {
         tests::csv_doc_generator gen(resource("simple_two_column.csv"),
                                      csv_doc_template);
         auto visitor = [&gen, &column_name, &expected_id](
-                         irs::doc_id_t id, const irs::bytes_ref& actual_value) {
+                         irs::doc_id_t id, const irs::bytes_view& actual_value) {
           if (id != ++expected_id) {
             return false;
           }
@@ -1120,7 +1120,7 @@ class index_test_case : public tests::index_test_base {
           }
 
           if (field->value() !=
-              irs::to_string<irs::string_ref>(actual_value.data())) {
+              irs::to_string<std::string_view>(actual_value.data())) {
             return false;
           }
 
@@ -1136,7 +1136,7 @@ class index_test_case : public tests::index_test_base {
         return ::visit(*column, visitor);
       };
 
-      auto read_column_offset = [&segment](const irs::string_ref& column_name,
+      auto read_column_offset = [&segment](const std::string_view& column_name,
                                            irs::doc_id_t offset) {
         auto* meta = segment.column(column_name);
         if (!meta) {
@@ -1181,7 +1181,7 @@ class index_test_case : public tests::index_test_base {
           }
 
           if (field->value() !=
-              irs::to_string<irs::string_ref>(actual_value->value.data())) {
+              irs::to_string<std::string_view>(actual_value->value.data())) {
             return false;
           }
 
@@ -1192,7 +1192,7 @@ class index_test_case : public tests::index_test_base {
         return true;
       };
 
-      auto iterate_column = [&segment](const irs::string_ref& column_name) {
+      auto iterate_column = [&segment](const std::string_view& column_name) {
         auto* meta = segment.column(column_name);
         if (!meta) {
           return false;
@@ -1244,7 +1244,7 @@ class index_test_case : public tests::index_test_base {
           }
 
           if (field->value() !=
-              irs::to_string<irs::string_ref>(payload->value.data())) {
+              irs::to_string<std::string_view>(payload->value.data())) {
             return false;
           }
 
@@ -1258,8 +1258,8 @@ class index_test_case : public tests::index_test_base {
       std::vector<int> results(thread_count, 0);
       std::vector<std::thread> pool;
 
-      const irs::string_ref id_column = "id";
-      const irs::string_ref label_column = "label";
+      const std::string_view id_column = "id";
+      const std::string_view label_column = "label";
 
       std::mutex mutex;
       bool ready = false;
@@ -1326,7 +1326,7 @@ class index_test_case : public tests::index_test_base {
   }
 
   void iterate_fields() {
-    std::vector<irs::string_ref> names{
+    std::vector<std::string_view> names{
       "06D36", "0OY4F", "1DTSP", "1KCSY", "2NGZD", "3ME9S", "4UIR7", "68QRT",
       "6XTTH", "7NDWJ", "9QXBA", "A8MSE", "CNH1B", "I4EWS", "JXQKH", "KPQ7R",
       "LK1MG", "M47KP", "NWCBQ", "OEKKW", "RI1QG", "TD7H7", "U56E5", "UKETS",
@@ -1335,7 +1335,7 @@ class index_test_case : public tests::index_test_base {
     ASSERT_TRUE(std::is_sorted(names.begin(), names.end()));
 
     struct {
-      const irs::string_ref& name() const { return name_; }
+      const std::string_view& name() const { return name_; }
 
       irs::IndexFeatures index_features() const {
         return irs::IndexFeatures::NONE;
@@ -1348,7 +1348,7 @@ class index_test_case : public tests::index_test_base {
         return stream_;
       }
 
-      irs::string_ref name_;
+      std::string_view name_;
       mutable irs::string_token_stream stream_;
     } field;
 
@@ -1428,7 +1428,7 @@ class index_test_case : public tests::index_test_base {
       auto actual = segment.fields();
       auto expected = names.begin();
 
-      const auto key = irs::string_ref("0");
+      const auto key = std::string_view("0");
       ASSERT_TRUE(key < names.front());
       ASSERT_TRUE(actual->seek(key));
       ASSERT_EQ(*expected, actual->value().meta().name);
@@ -1463,7 +1463,7 @@ class index_test_case : public tests::index_test_base {
 
       auto actual = segment.fields();
 
-      const auto key = irs::string_ref("~");
+      const auto key = std::string_view("~");
       ASSERT_TRUE(key > names.back());
       ASSERT_FALSE(actual->seek(key));
       ASSERT_FALSE(actual->next());               // reached the end
@@ -1472,7 +1472,7 @@ class index_test_case : public tests::index_test_base {
 
     // seek in between
     {
-      std::vector<std::pair<irs::string_ref, irs::string_ref>> seeks{
+      std::vector<std::pair<std::string_view, std::string_view>> seeks{
         {"0B", names[1]}, {names[1], names[1]},   {"0", names[1]},
         {"D", names[13]}, {names[13], names[13]}, {names[12], names[13]},
         {"P", names[20]}, {"Z", names[27]}};
@@ -1491,7 +1491,7 @@ class index_test_case : public tests::index_test_base {
         ASSERT_EQ(expected, actual->value().meta().name);
       }
 
-      const auto key = irs::string_ref("~");
+      const auto key = std::string_view("~");
       ASSERT_TRUE(key > names.back());
       ASSERT_FALSE(actual->seek(key));
       ASSERT_FALSE(actual->next());               // reached the end
@@ -1500,7 +1500,7 @@ class index_test_case : public tests::index_test_base {
 
     // seek in between + next
     {
-      std::vector<std::pair<irs::string_ref, size_t>> seeks{
+      std::vector<std::pair<std::string_view, size_t>> seeks{
         {"0B", 1}, {"D", 13}, {"O", 19}, {"P", 20}, {"Z", 27}};
 
       auto reader = irs::directory_reader::open(dir(), codec());
@@ -1528,7 +1528,7 @@ class index_test_case : public tests::index_test_base {
   }
 
   void iterate_attributes() {
-    std::vector<irs::string_ref> names{
+    std::vector<std::string_view> names{
       "06D36", "0OY4F", "1DTSP", "1KCSY", "2NGZD", "3ME9S", "4UIR7", "68QRT",
       "6XTTH", "7NDWJ", "9QXBA", "A8MSE", "CNH1B", "I4EWS", "JXQKH", "KPQ7R",
       "LK1MG", "M47KP", "NWCBQ", "OEKKW", "RI1QG", "TD7H7", "U56E5", "UKETS",
@@ -1537,13 +1537,13 @@ class index_test_case : public tests::index_test_base {
     ASSERT_TRUE(std::is_sorted(names.begin(), names.end()));
 
     struct {
-      const irs::string_ref& name() const { return name_; }
+      const std::string_view& name() const { return name_; }
 
       irs::features_t features() const { return {}; }
 
       bool write(irs::data_output&) const noexcept { return true; }
 
-      irs::string_ref name_;
+      std::string_view name_;
 
     } field;
 
@@ -1623,7 +1623,7 @@ class index_test_case : public tests::index_test_base {
       auto actual = segment.columns();
       auto expected = names.begin();
 
-      const auto key = irs::string_ref("0");
+      const auto key = std::string_view("0");
       ASSERT_TRUE(key < names.front());
       ASSERT_TRUE(actual->seek(key));
       ASSERT_EQ(*expected, actual->value().name());
@@ -1658,7 +1658,7 @@ class index_test_case : public tests::index_test_base {
 
       auto actual = segment.columns();
 
-      const auto key = irs::string_ref("~");
+      const auto key = std::string_view("~");
       ASSERT_TRUE(key > names.back());
       ASSERT_FALSE(actual->seek(key));
       ASSERT_FALSE(actual->next());               // reached the end
@@ -1667,7 +1667,7 @@ class index_test_case : public tests::index_test_base {
 
     // seek in between
     {
-      std::vector<std::pair<irs::string_ref, irs::string_ref>> seeks{
+      std::vector<std::pair<std::string_view, std::string_view>> seeks{
         {"0B", names[1]}, {names[1], names[1]},   {"0", names[1]},
         {"D", names[13]}, {names[13], names[13]}, {names[12], names[13]},
         {"P", names[20]}, {"Z", names[27]}};
@@ -1686,7 +1686,7 @@ class index_test_case : public tests::index_test_base {
         ASSERT_EQ(expected, actual->value().name());
       }
 
-      const auto key = irs::string_ref("~");
+      const auto key = std::string_view("~");
       ASSERT_TRUE(key > names.back());
       ASSERT_FALSE(actual->seek(key));
       ASSERT_FALSE(actual->next());               // reached the end
@@ -1695,7 +1695,7 @@ class index_test_case : public tests::index_test_base {
 
     // seek in between + next
     {
-      std::vector<std::pair<irs::string_ref, size_t>> seeks{
+      std::vector<std::pair<std::string_view, size_t>> seeks{
         {"0B", 1}, {"D", 13}, {"O", 19}, {"P", 20}, {"Z", 27}};
 
       auto reader = irs::directory_reader::open(dir(), codec());
@@ -1725,7 +1725,7 @@ class index_test_case : public tests::index_test_base {
   void insert_doc_with_null_empty_term() {
     class field {
      public:
-      field(std::string&& name, const irs::string_ref& value)
+      field(std::string&& name, const std::string_view& value)
         : stream_(std::make_unique<irs::string_token_stream>()),
           name_(std::move(name)),
           value_(value) {}
@@ -1733,7 +1733,7 @@ class index_test_case : public tests::index_test_base {
         : stream_(std::move(other.stream_)),
           name_(std::move(other.name_)),
           value_(std::move(other.value_)) {}
-      irs::string_ref name() const { return name_; }
+      std::string_view name() const { return name_; }
       irs::token_stream& get_tokens() const {
         stream_->reset(value_);
         return *stream_;
@@ -1746,7 +1746,7 @@ class index_test_case : public tests::index_test_base {
      private:
       mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
-      irs::string_ref value_;
+      std::string_view value_;
     };  // field
 
     // write docs with empty terms
@@ -1755,16 +1755,16 @@ class index_test_case : public tests::index_test_base {
       // doc0: empty, nullptr
       {
         std::vector<field> doc;
-        doc.emplace_back(std::string("name"), irs::string_ref("", 0));
-        doc.emplace_back(std::string("name"), irs::string_ref{});
+        doc.emplace_back(std::string("name"), std::string_view("", 0));
+        doc.emplace_back(std::string("name"), std::string_view{});
         ASSERT_TRUE(tests::insert(*writer, doc.begin(), doc.end()));
       }
       // doc1: nullptr, empty, nullptr
       {
         std::vector<field> doc;
-        doc.emplace_back(std::string("name1"), irs::string_ref{});
-        doc.emplace_back(std::string("name1"), irs::string_ref("", 0));
-        doc.emplace_back(std::string("name"), irs::string_ref{});
+        doc.emplace_back(std::string("name1"), std::string_view{});
+        doc.emplace_back(std::string("name1"), std::string_view("", 0));
+        doc.emplace_back(std::string("name"), std::string_view{});
         ASSERT_TRUE(tests::insert(*writer, doc.begin(), doc.end()));
       }
       writer->commit();
@@ -1812,7 +1812,7 @@ class index_test_case : public tests::index_test_base {
   void writer_bulk_insert() {
     class indexed_and_stored_field {
      public:
-      indexed_and_stored_field(std::string&& name, const irs::string_ref& value,
+      indexed_and_stored_field(std::string&& name, const std::string_view& value,
                                bool stored_valid = true,
                                bool indexed_valid = true)
         : stream_(std::make_unique<irs::string_token_stream>()),
@@ -1829,7 +1829,7 @@ class index_test_case : public tests::index_test_base {
           name_(std::move(other.name_)),
           value_(std::move(other.value_)),
           stored_valid_(other.stored_valid_) {}
-      irs::string_ref name() const { return name_; }
+      std::string_view name() const { return name_; }
       irs::token_stream& get_tokens() const {
         stream_->reset(value_);
         return *stream_;
@@ -1847,14 +1847,14 @@ class index_test_case : public tests::index_test_base {
       std::vector<irs::type_info::type_id> features_;
       mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
-      irs::string_ref value_;
+      std::string_view value_;
       irs::IndexFeatures index_features_{irs::IndexFeatures::NONE};
       bool stored_valid_;
     };  // indexed_and_stored_field
 
     class indexed_field {
      public:
-      indexed_field(std::string&& name, const irs::string_ref& value,
+      indexed_field(std::string&& name, const std::string_view& value,
                     bool valid = true)
         : stream_(std::make_unique<irs::string_token_stream>()),
           name_(std::move(name)),
@@ -1865,7 +1865,7 @@ class index_test_case : public tests::index_test_base {
       }
       indexed_field(indexed_field&& other) noexcept = default;
 
-      irs::string_ref name() const { return name_; }
+      std::string_view name() const { return name_; }
       irs::token_stream& get_tokens() const {
         stream_->reset(value_);
         return *stream_;
@@ -1879,16 +1879,16 @@ class index_test_case : public tests::index_test_base {
       std::vector<irs::type_info::type_id> features_;
       mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
-      irs::string_ref value_;
+      std::string_view value_;
       irs::IndexFeatures index_features_{irs::IndexFeatures::NONE};
     };  // indexed_field
 
     struct stored_field {
-      stored_field(const irs::string_ref& name, const irs::string_ref& value,
+      stored_field(const std::string_view& name, const std::string_view& value,
                    bool valid = true)
         : name_(name), value_(value), valid_(valid) {}
 
-      const irs::string_ref& name() const { return name_; }
+      const std::string_view& name() const { return name_; }
 
       irs::features_t features() const { return {}; }
 
@@ -1897,8 +1897,8 @@ class index_test_case : public tests::index_test_base {
         return valid_;
       }
 
-      irs::string_ref name_;
-      irs::string_ref value_;
+      std::string_view name_;
+      std::string_view value_;
       bool valid_;
     };  // stored_field
 
@@ -2071,7 +2071,7 @@ class index_test_case : public tests::index_test_base {
 
     // error while commiting index (during sync in index_meta_writer)
     {
-      override_sync_directory override_dir(dir(), [](const irs::string_ref&) {
+      override_sync_directory override_dir(dir(), [](const std::string_view&) {
         throw irs::io_error();
         return true;
       });
@@ -2100,7 +2100,7 @@ class index_test_case : public tests::index_test_base {
     // error while commiting index (during sync in index_writer)
     {
       override_sync_directory override_dir(dir(),
-                                           [](const irs::string_ref& name) {
+                                           [](const std::string_view& name) {
                                              if (name.starts_with("_")) {
                                                throw irs::io_error();
                                              }
@@ -2142,7 +2142,7 @@ class index_test_case : public tests::index_test_base {
 };  // index_test_case
 
 void index_test_case::docs_bit_union(irs::IndexFeatures features) {
-  tests::string_ref_field field("0", features);
+  tests::std::string_view_field field("0", features);
   const size_t N = irs::bits_required<uint64_t>(2) + 7;
 
   {
@@ -2151,7 +2151,7 @@ void index_test_case::docs_bit_union(irs::IndexFeatures features) {
     {
       auto docs = writer->documents();
       for (size_t i = 1; i <= N; ++i) {
-        const irs::string_ref value = i % 2 ? "A" : "B";
+        const std::string_view value = i % 2 ? "A" : "B";
         field.value(value);
         ASSERT_TRUE(docs.insert().insert<irs::Action::INDEX>(field));
       }
@@ -2592,7 +2592,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
     thread2.join();
     writer->commit();
 
-    std::unordered_set<irs::string_ref> expected = {
+    std::unordered_set<std::string_view> expected = {
       "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L",
       "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W",
       "X", "Y", "Z", "~", "!", "@", "#", "$", "%"};
@@ -2622,7 +2622,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
       auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       while (docsItr->next()) {
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ(1, expected.erase(irs::to_string<irs::string_ref>(
+        ASSERT_EQ(1, expected.erase(irs::to_string<std::string_view>(
                        actual_value->value.data())));
       }
     }
@@ -2784,7 +2784,7 @@ TEST_P(index_test_case, document_context) {
     std::mutex mutex;
     std::condition_variable wait_cond;
     std::atomic<bool> wait;
-    irs::string_ref name() { return ""; }
+    std::string_view name() { return ""; }
     irs::features_t features() const { return {}; }
     bool write(irs::data_output&) {
       { std::lock_guard cond_lock{cond_mutex}; }
@@ -2989,7 +2989,7 @@ TEST_P(index_test_case, document_context) {
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A",
-              irs::to_string<irs::string_ref>(
+              irs::to_string<std::string_view>(
                 actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
@@ -3059,7 +3059,7 @@ TEST_P(index_test_case, document_context) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
@@ -3134,7 +3134,7 @@ TEST_P(index_test_case, document_context) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
@@ -3209,7 +3209,7 @@ TEST_P(index_test_case, document_context) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
@@ -3249,7 +3249,7 @@ TEST_P(index_test_case, document_context) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
@@ -3292,7 +3292,7 @@ TEST_P(index_test_case, document_context) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
@@ -3339,7 +3339,7 @@ TEST_P(index_test_case, document_context) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
@@ -3397,11 +3397,11 @@ TEST_P(index_test_case, document_context) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("D", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
@@ -3463,7 +3463,7 @@ TEST_P(index_test_case, document_context) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
@@ -3484,7 +3484,7 @@ TEST_P(index_test_case, document_context) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
@@ -3523,7 +3523,7 @@ TEST_P(index_test_case, document_context) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
@@ -3568,11 +3568,11 @@ TEST_P(index_test_case, document_context) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
@@ -3638,7 +3638,7 @@ TEST_P(index_test_case, document_context) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
@@ -3659,7 +3659,7 @@ TEST_P(index_test_case, document_context) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
@@ -3704,7 +3704,7 @@ TEST_P(index_test_case, document_context) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
@@ -3755,11 +3755,11 @@ TEST_P(index_test_case, document_context) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("C", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
@@ -3823,7 +3823,7 @@ TEST_P(index_test_case, document_context) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
@@ -3844,7 +3844,7 @@ TEST_P(index_test_case, document_context) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
@@ -3890,7 +3890,7 @@ TEST_P(index_test_case, document_context) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
@@ -3942,11 +3942,11 @@ TEST_P(index_test_case, document_context) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("C", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
@@ -4012,7 +4012,7 @@ TEST_P(index_test_case, document_context) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
@@ -4033,7 +4033,7 @@ TEST_P(index_test_case, document_context) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
@@ -4086,7 +4086,7 @@ TEST_P(index_test_case, document_context) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
@@ -4107,7 +4107,7 @@ TEST_P(index_test_case, document_context) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
@@ -4168,7 +4168,7 @@ TEST_P(index_test_case, document_context) {
           ASSERT_TRUE(docsItr->next());
           ASSERT_EQ(docsItr->value(),
        values->seek(docsItr->value())); ASSERT_EQ("A",
-       irs::to_string<irs::string_ref>(actual_value->value.data()));
+       irs::to_string<std::string_view>(actual_value->value.data()));
        // 'name' value in doc1 ASSERT_FALSE(docsItr->next());
         }
 
@@ -4189,7 +4189,7 @@ TEST_P(index_test_case, document_context) {
           ASSERT_TRUE(docsItr->next());
           ASSERT_EQ(docsItr->value(),
        values->seek(docsItr->value())); ASSERT_EQ("B",
-       irs::to_string<irs::string_ref>(actual_value->value.data()));
+       irs::to_string<std::string_view>(actual_value->value.data()));
        // 'name' value in doc2 ASSERT_FALSE(docsItr->next());
         }
 
@@ -4210,7 +4210,7 @@ TEST_P(index_test_case, document_context) {
           ASSERT_TRUE(docsItr->next());
           ASSERT_EQ(docsItr->value(),
        values->seek(docsItr->value())); ASSERT_EQ("C",
-       irs::to_string<irs::string_ref>(actual_value->value.data()));
+       irs::to_string<std::string_view>(actual_value->value.data()));
        // 'name' value in doc3 ASSERT_FALSE(docsItr->next());
         }
     */
@@ -4262,7 +4262,7 @@ TEST_P(index_test_case, document_context) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
@@ -4283,7 +4283,7 @@ TEST_P(index_test_case, document_context) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
@@ -4343,7 +4343,7 @@ TEST_P(index_test_case, document_context) {
           ASSERT_TRUE(docsItr->next());
           ASSERT_EQ(docsItr->value(),
        values->seek(docsItr->value())); ASSERT_EQ("A",
-       irs::to_string<irs::string_ref>(actual_value->value.data()));
+       irs::to_string<std::string_view>(actual_value->value.data()));
        // 'name' value in doc1 ASSERT_FALSE(docsItr->next());
         }
 
@@ -4364,7 +4364,7 @@ TEST_P(index_test_case, document_context) {
           ASSERT_TRUE(docsItr->next());
           ASSERT_EQ(docsItr->value(),
        values->seek(docsItr->value())); ASSERT_EQ("B",
-       irs::to_string<irs::string_ref>(actual_value->value.data()));
+       irs::to_string<std::string_view>(actual_value->value.data()));
        // 'name' value in doc2 ASSERT_FALSE(docsItr->next());
         }
 
@@ -4385,7 +4385,7 @@ TEST_P(index_test_case, document_context) {
           ASSERT_TRUE(docsItr->next());
           ASSERT_EQ(docsItr->value(),
        values->seek(docsItr->value())); ASSERT_EQ("C",
-       irs::to_string<irs::string_ref>(actual_value->value.data()));
+       irs::to_string<std::string_view>(actual_value->value.data()));
        // 'name' value in doc3 ASSERT_FALSE(docsItr->next());
         }
     */
@@ -4423,7 +4423,7 @@ TEST_P(index_test_case, document_context) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
@@ -4436,14 +4436,14 @@ TEST_P(index_test_case, document_context) {
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
-      std::unordered_set<irs::string_ref> expected = {"B"};
+      std::unordered_set<std::string_view> expected = {"B"};
       ASSERT_EQ(1, column->size());
       ASSERT_TRUE(::visit(
         *column,
-        [&expected](irs::doc_id_t, const irs::bytes_ref& data) -> bool {
+        [&expected](irs::doc_id_t, const irs::bytes_view& data) -> bool {
           auto* value = data.data();
           auto actual_value =
-            irs::ref_cast<char>(irs::vread_string<irs::string_ref>(value));
+            irs::ref_cast<char>(irs::vread_string<std::string_view>(value));
           return 1 == expected.erase(actual_value);
         }));
       ASSERT_TRUE(expected.empty());
@@ -4495,7 +4495,7 @@ TEST_P(index_test_case, doc_removal) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
@@ -4528,7 +4528,7 @@ TEST_P(index_test_case, doc_removal) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
@@ -4563,7 +4563,7 @@ TEST_P(index_test_case, doc_removal) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
@@ -4599,7 +4599,7 @@ TEST_P(index_test_case, doc_removal) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
@@ -4632,11 +4632,11 @@ TEST_P(index_test_case, doc_removal) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
@@ -4669,7 +4669,7 @@ TEST_P(index_test_case, doc_removal) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
@@ -4707,7 +4707,7 @@ TEST_P(index_test_case, doc_removal) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
@@ -4743,7 +4743,7 @@ TEST_P(index_test_case, doc_removal) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("C", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
@@ -4784,7 +4784,7 @@ TEST_P(index_test_case, doc_removal) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
@@ -4805,7 +4805,7 @@ TEST_P(index_test_case, doc_removal) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
@@ -4849,7 +4849,7 @@ TEST_P(index_test_case, doc_removal) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
@@ -4870,7 +4870,7 @@ TEST_P(index_test_case, doc_removal) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
@@ -4938,7 +4938,7 @@ TEST_P(index_test_case, doc_removal) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
@@ -4959,7 +4959,7 @@ TEST_P(index_test_case, doc_removal) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("E",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc5
       ASSERT_FALSE(docsItr->next());
     }
@@ -4980,7 +4980,7 @@ TEST_P(index_test_case, doc_removal) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("H",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc8
       ASSERT_FALSE(docsItr->next());
     }
@@ -5030,7 +5030,7 @@ TEST_P(index_test_case, doc_update) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
@@ -5063,7 +5063,7 @@ TEST_P(index_test_case, doc_update) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
@@ -5097,7 +5097,7 @@ TEST_P(index_test_case, doc_update) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
@@ -5136,7 +5136,7 @@ TEST_P(index_test_case, doc_update) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
@@ -5157,7 +5157,7 @@ TEST_P(index_test_case, doc_update) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
@@ -5199,7 +5199,7 @@ TEST_P(index_test_case, doc_update) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("D", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
@@ -5243,7 +5243,7 @@ TEST_P(index_test_case, doc_update) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("D", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
@@ -5277,7 +5277,7 @@ TEST_P(index_test_case, doc_update) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
@@ -5313,11 +5313,11 @@ TEST_P(index_test_case, doc_update) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("C", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
@@ -5358,7 +5358,7 @@ TEST_P(index_test_case, doc_update) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
@@ -5379,7 +5379,7 @@ TEST_P(index_test_case, doc_update) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
@@ -5416,7 +5416,7 @@ TEST_P(index_test_case, doc_update) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
@@ -5454,7 +5454,7 @@ TEST_P(index_test_case, doc_update) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
@@ -5495,7 +5495,7 @@ TEST_P(index_test_case, doc_update) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
@@ -5539,7 +5539,7 @@ TEST_P(index_test_case, doc_update) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
@@ -5639,11 +5639,11 @@ TEST_P(index_test_case, doc_update) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
@@ -5681,7 +5681,7 @@ TEST_P(index_test_case, doc_update) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
@@ -5721,11 +5721,11 @@ TEST_P(index_test_case, doc_update) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("C", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
@@ -5767,7 +5767,7 @@ TEST_P(index_test_case, doc_update) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
@@ -5917,11 +5917,11 @@ TEST_P(index_test_case, import_reader) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
@@ -5960,7 +5960,7 @@ TEST_P(index_test_case, import_reader) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
@@ -6002,19 +6002,19 @@ TEST_P(index_test_case, import_reader) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("C", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc3
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("D", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
@@ -6058,11 +6058,11 @@ TEST_P(index_test_case, import_reader) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("D", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
@@ -6106,15 +6106,15 @@ TEST_P(index_test_case, import_reader) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("C", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
@@ -6159,12 +6159,12 @@ TEST_P(index_test_case, import_reader) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
@@ -6186,7 +6186,7 @@ TEST_P(index_test_case, import_reader) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
@@ -6239,11 +6239,11 @@ TEST_P(index_test_case, refresh_reader) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
@@ -6273,11 +6273,11 @@ TEST_P(index_test_case, refresh_reader) {
   auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
   ASSERT_TRUE(docsItr->next());
   ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-  ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+  ASSERT_EQ("A", irs::to_string<std::string_view>(
                    actual_value->value.data()));  // 'name' value in doc1
   ASSERT_TRUE(docsItr->next());
   ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-  ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+  ASSERT_EQ("B", irs::to_string<std::string_view>(
                    actual_value->value.data()));  // 'name' value in doc2
   ASSERT_FALSE(docsItr->next());
 }
@@ -6299,7 +6299,7 @@ TEST_P(index_test_case, refresh_reader) {
   auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
   ASSERT_TRUE(docsItr->next());
   ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-  ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+  ASSERT_EQ("A", irs::to_string<std::string_view>(
                    actual_value->value.data()));  // 'name' value in doc1
   ASSERT_FALSE(docsItr->next());
 }
@@ -6334,7 +6334,7 @@ TEST_P(index_test_case, refresh_reader) {
   ASSERT_TRUE(docsItr->next());
   ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
   ASSERT_EQ("A",
-            irs::to_string<irs::string_ref>(
+            irs::to_string<std::string_view>(
               actual_value->value.data()));  // 'name' value in doc1
   ASSERT_FALSE(docsItr->next());
 
@@ -6356,7 +6356,7 @@ TEST_P(index_test_case, refresh_reader) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
@@ -6376,11 +6376,11 @@ TEST_P(index_test_case, refresh_reader) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("C", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc3
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("D", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
@@ -6414,7 +6414,7 @@ TEST_P(index_test_case, refresh_reader) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
   }
@@ -6434,11 +6434,11 @@ TEST_P(index_test_case, refresh_reader) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("C", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc3
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("D", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
@@ -6460,12 +6460,12 @@ TEST_P(index_test_case, refresh_reader) {
   ASSERT_TRUE(docsItr->next());
   ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
   ASSERT_EQ("C",
-            irs::to_string<irs::string_ref>(
+            irs::to_string<std::string_view>(
               actual_value->value.data()));  // 'name' value in doc3
   ASSERT_TRUE(docsItr->next());
   ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
   ASSERT_EQ("D",
-            irs::to_string<irs::string_ref>(
+            irs::to_string<std::string_view>(
               actual_value->value.data()));  // 'name' value in doc4
   ASSERT_FALSE(docsItr->next());
 }
@@ -6600,7 +6600,7 @@ TEST_P(index_test_case, segment_column_user_system) {
                      doc2->stored.begin(), doc2->stored.end()));
   writer->commit();
 
-  std::unordered_set<irs::string_ref> expectedName = {"A", "B"};
+  std::unordered_set<std::string_view> expectedName = {"A", "B"};
 
   // validate segment
   auto reader = irs::directory_reader::open(dir(), codec());
@@ -6635,7 +6635,7 @@ TEST_P(index_test_case, segment_column_user_system) {
   for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
        docsItr->next();) {
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+    ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                    actual_value->value.data())));
   }
 
@@ -7491,7 +7491,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
@@ -7499,7 +7499,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
 }
 
 TEST_P(index_test_case, segment_consolidate_long_running) {
-  const auto blocker = [this](irs::string_ref segment) {
+  const auto blocker = [this](std::string_view segment) {
     irs::memory_directory dir;
     auto writer = codec()->get_columnstore_writer(false);
 
@@ -7660,7 +7660,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
@@ -7683,7 +7683,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
@@ -7706,12 +7706,12 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
@@ -7833,7 +7833,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
@@ -7856,7 +7856,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_FALSE(docsItr->next());
     }
@@ -7879,7 +7879,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
@@ -8006,17 +8006,17 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc1
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc2
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc3
         ASSERT_FALSE(docsItr->next());
       }
@@ -8033,12 +8033,12 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc2
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc3
         ASSERT_FALSE(docsItr->next());
       }
@@ -8171,22 +8171,22 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc1
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc2
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc3
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("D",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc4
         ASSERT_FALSE(docsItr->next());
       }
@@ -8203,12 +8203,12 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc2
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc3
         ASSERT_FALSE(docsItr->next());
       }
@@ -8488,12 +8488,12 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
@@ -8579,12 +8579,12 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
@@ -8607,12 +8607,12 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc3
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
@@ -8705,12 +8705,12 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
@@ -8733,17 +8733,17 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc3
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc4
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("E",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
@@ -8866,13 +8866,13 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ(expected_name,
-              irs::to_string<irs::string_ref>(
+              irs::to_string<std::string_view>(
                 actual_value->value.data()));  // 'name' value in doc1
     ++expected_name[0];
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ(expected_name,
-              irs::to_string<irs::string_ref>(
+              irs::to_string<std::string_view>(
                 actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
     ++expected_name[0];
@@ -9012,12 +9012,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
@@ -9121,12 +9121,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc3
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
@@ -9149,12 +9149,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
@@ -9271,12 +9271,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc3
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
@@ -9299,12 +9299,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
@@ -9327,12 +9327,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("E",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("F",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
@@ -9444,17 +9444,17 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc3
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc3
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc4
         ASSERT_FALSE(docsItr->next());
       }
@@ -9471,12 +9471,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc3
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc4
         ASSERT_FALSE(docsItr->next());
       }
@@ -9592,22 +9592,22 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc3
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc3
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc4
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("D",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc4
         ASSERT_FALSE(docsItr->next());
       }
@@ -9624,12 +9624,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc3
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc4
         ASSERT_FALSE(docsItr->next());
       }
@@ -9740,22 +9740,22 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
           ASSERT_TRUE(docsItr->next());
           ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
           ASSERT_EQ("A",
-                    irs::to_string<irs::string_ref>(
+                    irs::to_string<std::string_view>(
                       actual_value->value.data()));  // 'name' value in doc3
           ASSERT_TRUE(docsItr->next());
           ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
           ASSERT_EQ("B",
-                    irs::to_string<irs::string_ref>(
+                    irs::to_string<std::string_view>(
                       actual_value->value.data()));  // 'name' value in doc3
           ASSERT_TRUE(docsItr->next());
           ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
           ASSERT_EQ("C",
-                    irs::to_string<irs::string_ref>(
+                    irs::to_string<std::string_view>(
                       actual_value->value.data()));  // 'name' value in doc4
           ASSERT_TRUE(docsItr->next());
           ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
           ASSERT_EQ("D",
-                    irs::to_string<irs::string_ref>(
+                    irs::to_string<std::string_view>(
                       actual_value->value.data()));  // 'name' value in doc4
           ASSERT_FALSE(docsItr->next());
         }
@@ -9772,12 +9772,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
           ASSERT_TRUE(docsItr->next());
           ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
           ASSERT_EQ("B",
-                    irs::to_string<irs::string_ref>(
+                    irs::to_string<std::string_view>(
                       actual_value->value.data()));  // 'name' value in doc3
           ASSERT_TRUE(docsItr->next());
           ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
           ASSERT_EQ("C",
-                    irs::to_string<irs::string_ref>(
+                    irs::to_string<std::string_view>(
                       actual_value->value.data()));  // 'name' value in doc4
           ASSERT_FALSE(docsItr->next());
         }
@@ -10155,22 +10155,22 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc1
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc2
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc3
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("D",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc4
         ASSERT_FALSE(docsItr->next());
       }
@@ -10187,12 +10187,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc3
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc4
         ASSERT_FALSE(docsItr->next());
       }
@@ -10218,7 +10218,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("E",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
     }
   }
@@ -10333,7 +10333,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("E",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
     }
 
@@ -10360,22 +10360,22 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc1
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc2
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc3
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("D",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc4
         ASSERT_FALSE(docsItr->next());
       }
@@ -10392,12 +10392,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc3
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-                  irs::to_string<irs::string_ref>(
+                  irs::to_string<std::string_view>(
                     actual_value->value.data()));  // 'name' value in doc4
         ASSERT_FALSE(docsItr->next());
       }
@@ -10533,12 +10533,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc2
       ASSERT_FALSE(docsItr->next());
     }
@@ -10563,7 +10563,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("E",
-                irs::to_string<irs::string_ref>(
+                irs::to_string<std::string_view>(
                   actual_value->value.data()));  // 'name' value in doc1
     }
   }
@@ -10640,7 +10640,7 @@ doc1->stored.end());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
 
@@ -10651,7 +10651,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -10705,7 +10705,7 @@ doc1->stored.end());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
 
@@ -10716,7 +10716,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -10769,7 +10769,7 @@ doc1->stored.end());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
 
@@ -10780,7 +10780,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -10834,7 +10834,7 @@ doc1->stored.end());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
 
@@ -10845,7 +10845,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -10913,7 +10913,7 @@ doc2->stored.end());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
 
@@ -10924,7 +10924,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -10951,10 +10951,10 @@ in doc1 ASSERT_FALSE(docsItr->next());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_FALSE(docsItr->next());
       }
 
@@ -10965,7 +10965,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -11031,7 +11031,7 @@ doc2->stored.end());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
 
@@ -11042,7 +11042,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -11069,10 +11069,10 @@ in doc1 ASSERT_FALSE(docsItr->next());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_FALSE(docsItr->next());
       }
 
@@ -11083,7 +11083,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -11168,7 +11168,7 @@ doc3->stored.end());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc3 ASSERT_FALSE(docsItr->next());
       }
 
@@ -11179,7 +11179,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc3 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -11206,7 +11206,7 @@ in doc3 ASSERT_FALSE(docsItr->next());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
 
@@ -11217,7 +11217,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -11244,10 +11244,10 @@ in doc1 ASSERT_FALSE(docsItr->next());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_FALSE(docsItr->next());
       }
 
@@ -11258,7 +11258,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -11323,7 +11323,7 @@ doc2->stored.end());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
 
@@ -11334,7 +11334,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -11361,10 +11361,10 @@ in doc1 ASSERT_FALSE(docsItr->next());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_FALSE(docsItr->next());
       }
 
@@ -11375,7 +11375,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -11441,10 +11441,10 @@ doc2->stored.end());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_FALSE(docsItr->next());
       }
 
@@ -11455,10 +11455,10 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -11544,10 +11544,10 @@ consolidated segment that are valid in source segment
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_FALSE(docsItr->next());
       }
 
@@ -11558,7 +11558,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -11585,10 +11585,10 @@ in doc1 ASSERT_FALSE(docsItr->next());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_FALSE(docsItr->next());
       }
 
@@ -11599,7 +11599,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -11626,7 +11626,7 @@ in doc2 ASSERT_FALSE(docsItr->next());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc3 ASSERT_FALSE(docsItr->next());
       }
 
@@ -11637,7 +11637,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc3 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -11738,10 +11738,10 @@ consolidated segment that are valid in source segment
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_FALSE(docsItr->next());
       }
 
@@ -11752,7 +11752,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -11779,10 +11779,10 @@ in doc1 ASSERT_FALSE(docsItr->next());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_FALSE(docsItr->next());
       }
 
@@ -11793,7 +11793,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -11820,10 +11820,10 @@ in doc2 ASSERT_FALSE(docsItr->next());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc3 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("D",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc4 ASSERT_FALSE(docsItr->next());
       }
 
@@ -11834,7 +11834,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc3 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -11861,10 +11861,10 @@ in doc3 ASSERT_FALSE(docsItr->next());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("C",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc3 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("D",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc4 ASSERT_FALSE(docsItr->next());
       }
 
@@ -11875,7 +11875,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("D",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc4 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -11982,10 +11982,10 @@ segment 2 column store + segment 3.0 meta
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_FALSE(docsItr->next());
       }
 
@@ -11996,7 +11996,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -12023,16 +12023,16 @@ in doc1 ASSERT_FALSE(docsItr->next());
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc3 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc4 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("C",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc4 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("D",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc5 ASSERT_FALSE(docsItr->next());
       }
 
@@ -12043,7 +12043,7 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("D",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc5 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -12154,16 +12154,16 @@ meta + segment 5 column store
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("B",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc2 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("C",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc3 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("D",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc4 ASSERT_FALSE(docsItr->next());
       }
 
@@ -12174,10 +12174,10 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("D",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc4 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -12297,10 +12297,10 @@ meta
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("D",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc4 ASSERT_FALSE(docsItr->next());
       }
 
@@ -12311,10 +12311,10 @@ segment.mask(termItr->postings(irs::IndexFeatures::DOCS));
         ASSERT_TRUE(docsItr->next());
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
         ASSERT_EQ("A",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc1 ASSERT_TRUE(docsItr->next()); ASSERT_EQ(docsItr->value(),
 values->seek(docsItr->value())); ASSERT_EQ("D",
-irs::to_string<irs::string_ref>(actual_value->value.data())); // 'name' value
+irs::to_string<std::string_view>(actual_value->value.data())); // 'name' value
 in doc4 ASSERT_FALSE(docsItr->next());
       }
     }
@@ -12565,7 +12565,7 @@ TEST_P(index_test_case, segment_consolidate) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("C", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
@@ -12610,7 +12610,7 @@ TEST_P(index_test_case, segment_consolidate) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("C", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
@@ -12656,7 +12656,7 @@ TEST_P(index_test_case, segment_consolidate) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("C", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
@@ -12702,7 +12702,7 @@ TEST_P(index_test_case, segment_consolidate) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("C", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
@@ -12819,11 +12819,11 @@ TEST_P(index_test_case, segment_consolidate) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("D", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
@@ -12871,11 +12871,11 @@ TEST_P(index_test_case, segment_consolidate) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("D", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
@@ -12924,11 +12924,11 @@ TEST_P(index_test_case, segment_consolidate) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("D", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
@@ -12977,11 +12977,11 @@ TEST_P(index_test_case, segment_consolidate) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("D", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
@@ -13037,15 +13037,15 @@ TEST_P(index_test_case, segment_consolidate) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("D", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc4
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("F", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("F", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc6
     ASSERT_FALSE(docsItr->next());
   }
@@ -13101,15 +13101,15 @@ TEST_P(index_test_case, segment_consolidate) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("D", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc4
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("F", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("F", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc6
     ASSERT_FALSE(docsItr->next());
   }
@@ -13179,33 +13179,33 @@ TEST_P(index_test_case, segment_consolidate) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("D", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc4
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("F", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("F", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc6
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), upper_case_values->seek(docsItr->value()));
     ASSERT_EQ(
       "A",
-      irs::to_string<irs::string_ref>(
+      irs::to_string<std::string_view>(
         upper_case_actual_value->value.data()));  // 'name' value in doc1_1
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), upper_case_values->seek(docsItr->value()));
     ASSERT_EQ(
       "B",
-      irs::to_string<irs::string_ref>(
+      irs::to_string<std::string_view>(
         upper_case_actual_value->value.data()));  // 'name' value in doc1_2
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), upper_case_values->seek(docsItr->value()));
     ASSERT_EQ(
       "C",
-      irs::to_string<irs::string_ref>(
+      irs::to_string<std::string_view>(
         upper_case_actual_value->value.data()));  // 'name' value in doc1_3
     ASSERT_FALSE(docsItr->next());
   }
@@ -13275,33 +13275,33 @@ TEST_P(index_test_case, segment_consolidate) {
     auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("D", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc4
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("F", irs::to_string<irs::string_ref>(
+    ASSERT_EQ("F", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc6
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), upper_case_values->seek(docsItr->value()));
     ASSERT_EQ(
       "A",
-      irs::to_string<irs::string_ref>(
+      irs::to_string<std::string_view>(
         upper_case_actual_value->value.data()));  // 'name' value in doc1_1
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), upper_case_values->seek(docsItr->value()));
     ASSERT_EQ(
       "B",
-      irs::to_string<irs::string_ref>(
+      irs::to_string<std::string_view>(
         upper_case_actual_value->value.data()));  // 'name' value in doc1_2
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), upper_case_values->seek(docsItr->value()));
     ASSERT_EQ(
       "C",
-      irs::to_string<irs::string_ref>(
+      irs::to_string<std::string_view>(
         upper_case_actual_value->value.data()));  // 'name' value in doc1_3
     ASSERT_FALSE(docsItr->next());
   }
@@ -13354,7 +13354,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     // check 1st segment
     {
-      std::unordered_set<irs::string_ref> expectedName = {"A", "B", "C", "D"};
+      std::unordered_set<std::string_view> expectedName = {"A", "B", "C", "D"};
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
@@ -13372,7 +13372,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
            docsItr->next();) {
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                        actual_value->value.data())));
       }
 
@@ -13381,7 +13381,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     // check 2nd (merged) segment
     {
-      std::unordered_set<irs::string_ref> expectedName = {"E", "F"};
+      std::unordered_set<std::string_view> expectedName = {"E", "F"};
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
@@ -13399,7 +13399,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
            docsItr->next();) {
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                        actual_value->value.data())));
       }
 
@@ -13433,7 +13433,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_EQ(2, reader.size());
 
     {
-      std::unordered_set<irs::string_ref> expectedName = {"A", "B", "C", "D"};
+      std::unordered_set<std::string_view> expectedName = {"A", "B", "C", "D"};
 
       auto& segment = reader[0];  // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size(),
@@ -13452,7 +13452,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
            docsItr->next();) {
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                        actual_value->value.data())));
       }
 
@@ -13460,7 +13460,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     }
 
     {
-      std::unordered_set<irs::string_ref> expectedName = {"E"};
+      std::unordered_set<std::string_view> expectedName = {"E"};
 
       auto& segment = reader[1];  // assume 1 is id of second segment
       ASSERT_EQ(expectedName.size(),
@@ -13479,7 +13479,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
            docsItr->next();) {
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                        actual_value->value.data())));
       }
 
@@ -13505,7 +13505,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     // segments merged because segment[0] is a candidate and needs to be
     // merged with something
 
-    std::unordered_set<irs::string_ref> expectedName = {"A", "B"};
+    std::unordered_set<std::string_view> expectedName = {"A", "B"};
 
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
@@ -13526,7 +13526,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
          docsItr->next();) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+      ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                      actual_value->value.data())));
     }
 
@@ -13553,7 +13553,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_EQ(2, reader.size());
 
     {
-      std::unordered_set<irs::string_ref> expectedName = {"A"};
+      std::unordered_set<std::string_view> expectedName = {"A"};
 
       auto& segment = reader[0];  // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size(),
@@ -13572,7 +13572,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
            docsItr->next();) {
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                        actual_value->value.data())));
       }
 
@@ -13580,7 +13580,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     }
 
     {
-      std::unordered_set<irs::string_ref> expectedName = {"B"};
+      std::unordered_set<std::string_view> expectedName = {"B"};
 
       auto& segment = reader[1];  // assume 1 is id of second segment
       ASSERT_EQ(expectedName.size(), segment.docs_count());
@@ -13598,7 +13598,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
            docsItr->next();) {
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                        actual_value->value.data())));
       }
 
@@ -13631,7 +13631,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       options)));  // value garanteeing merge
     writer->commit();
 
-    std::unordered_set<irs::string_ref> expectedName = {"A", "E"};
+    std::unordered_set<std::string_view> expectedName = {"A", "E"};
 
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
@@ -13652,7 +13652,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
          docsItr->next();) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+      ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                      actual_value->value.data())));
     }
 
@@ -13688,7 +13688,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_EQ(2, reader.size());
 
     {
-      std::unordered_set<irs::string_ref> expectedName = {"A"};
+      std::unordered_set<std::string_view> expectedName = {"A"};
 
       auto& segment = reader[0];  // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size() + 3,
@@ -13709,7 +13709,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
              segment.mask(termItr->postings(irs::IndexFeatures::NONE));
            docsItr->next();) {
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                        actual_value->value.data())));
       }
 
@@ -13717,7 +13717,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     }
 
     {
-      std::unordered_set<irs::string_ref> expectedName = {"E"};
+      std::unordered_set<std::string_view> expectedName = {"E"};
 
       auto& segment = reader[1];  // assume 1 is id of second segment
       ASSERT_EQ(expectedName.size(),
@@ -13736,7 +13736,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
            docsItr->next();) {
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                        actual_value->value.data())));
       }
 
@@ -13767,7 +13767,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       options)));  // value garanteeing merge
     writer->commit();
 
-    std::unordered_set<irs::string_ref> expectedName = {"A", "C"};
+    std::unordered_set<std::string_view> expectedName = {"A", "C"};
 
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(1, reader.size());
@@ -13788,7 +13788,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
          docsItr->next();) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+      ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                      actual_value->value.data())));
     }
 
@@ -13822,7 +13822,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_EQ(2, reader.size());
 
     {
-      std::unordered_set<irs::string_ref> expectedName = {"A"};
+      std::unordered_set<std::string_view> expectedName = {"A"};
 
       auto& segment = reader[0];  // assume 0 is id of first segment
       ASSERT_EQ(
@@ -13843,7 +13843,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
              segment.mask(termItr->postings(irs::IndexFeatures::NONE));
            docsItr->next();) {
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                        actual_value->value.data())));
       }
 
@@ -13851,7 +13851,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     }
 
     {
-      std::unordered_set<irs::string_ref> expectedName = {"C"};
+      std::unordered_set<std::string_view> expectedName = {"C"};
 
       auto& segment = reader[1];  // assume 1 is id of second segment
       ASSERT_EQ(
@@ -13872,7 +13872,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
              segment.mask(termItr->postings(irs::IndexFeatures::NONE));
            docsItr->next();) {
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                        actual_value->value.data())));
       }
 
@@ -13950,7 +13950,7 @@ TEST_P(index_test_case, segment_options) {
 
     // check only segment
     {
-      std::unordered_set<irs::string_ref> expectedName = {"A", "B"};
+      std::unordered_set<std::string_view> expectedName = {"A", "B"};
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
@@ -13968,7 +13968,7 @@ TEST_P(index_test_case, segment_options) {
       for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
            docsItr->next();) {
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                        actual_value->value.data())));
       }
 
@@ -13997,7 +13997,7 @@ TEST_P(index_test_case, segment_options) {
 
     // check 1st segment
     {
-      std::unordered_set<irs::string_ref> expectedName = {"A"};
+      std::unordered_set<std::string_view> expectedName = {"A"};
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
@@ -14015,7 +14015,7 @@ TEST_P(index_test_case, segment_options) {
       for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
            docsItr->next();) {
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                        actual_value->value.data())));
       }
 
@@ -14024,7 +14024,7 @@ TEST_P(index_test_case, segment_options) {
 
     // check 2nd segment
     {
-      std::unordered_set<irs::string_ref> expectedName = {"B"};
+      std::unordered_set<std::string_view> expectedName = {"B"};
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
@@ -14042,7 +14042,7 @@ TEST_P(index_test_case, segment_options) {
       for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
            docsItr->next();) {
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                        actual_value->value.data())));
       }
 
@@ -14071,7 +14071,7 @@ TEST_P(index_test_case, segment_options) {
 
     // check 1st segment
     {
-      std::unordered_set<irs::string_ref> expectedName = {"A"};
+      std::unordered_set<std::string_view> expectedName = {"A"};
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
@@ -14089,7 +14089,7 @@ TEST_P(index_test_case, segment_options) {
       for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
            docsItr->next();) {
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                        actual_value->value.data())));
       }
 
@@ -14098,7 +14098,7 @@ TEST_P(index_test_case, segment_options) {
 
     // check 2nd segment
     {
-      std::unordered_set<irs::string_ref> expectedName = {"B"};
+      std::unordered_set<std::string_view> expectedName = {"B"};
       auto& segment = reader[1];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
@@ -14116,7 +14116,7 @@ TEST_P(index_test_case, segment_options) {
       for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
            docsItr->next();) {
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                        actual_value->value.data())));
       }
 
@@ -14154,7 +14154,7 @@ TEST_P(index_test_case, segment_options) {
 
     // check 1st segment
     {
-      std::unordered_set<irs::string_ref> expectedName = {"A", "B"};
+      std::unordered_set<std::string_view> expectedName = {"A", "B"};
       auto& segment = reader[0];
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
@@ -14172,7 +14172,7 @@ TEST_P(index_test_case, segment_options) {
       for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
            docsItr->next();) {
         ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
+        ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
                        actual_value->value.data())));
       }
 
@@ -14477,7 +14477,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
   };
 
   struct empty_field {
-    irs::string_ref name() const { return "test"; };
+    std::string_view name() const { return "test"; };
     irs::IndexFeatures index_features() const {
       return irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
     }
@@ -14554,7 +14554,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     ASSERT_NE(nullptr, payload);
     ASSERT_TRUE(it->next());
     ASSERT_EQ(3, it->value());
-    irs::bytes_ref_input in(payload->value);
+    irs::bytes_view_input in(payload->value);
     const auto value = irs::read_zvfloat(in);
     ASSERT_NE(irs::Norm::DEFAULT(), value);
     ASSERT_FALSE(it->next());
@@ -14642,7 +14642,7 @@ class index_test_case_14 : public index_test_case {
 
  protected:
   struct test_field {
-    irs::string_ref name() const { return "test"; };
+    std::string_view name() const { return "test"; };
     irs::IndexFeatures index_features() const {
       return irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ;
     }
@@ -14671,7 +14671,7 @@ class index_test_case_14 : public index_test_case {
   class feature_writer final : public irs::feature_writer {
    public:
     static auto make(stats& call_stats, irs::doc_id_t filter_doc,
-                     std::span<const irs::bytes_ref> headers)
+                     std::span<const irs::bytes_view> headers)
       -> irs::feature_writer::ptr {
       ++call_stats.num_factory_calls;
 
@@ -14708,7 +14708,7 @@ class index_test_case_14 : public index_test_case {
       min_doc_ = std::min(doc, min_doc_);
     }
 
-    virtual void write(irs::data_output& out, irs::bytes_ref payload) final {
+    virtual void write(irs::data_output& out, irs::bytes_view payload) final {
       ++call_stats_->num_write_consolidation_calls;
 
       if (!payload.empty()) {
@@ -14751,13 +14751,13 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
       irs::feature_writer_factory_t handler{};
 
       if (irs::type<feature1>::id() == id) {
-        handler = [](std::span<const irs::bytes_ref> headers)
+        handler = [](std::span<const irs::bytes_view> headers)
           -> irs::feature_writer::ptr {
           return feature_writer::make(sNumCalls[irs::type<feature1>::id()], 2,
                                       headers);
         };
       } else if (irs::type<feature3>::id() == id) {
-        handler = [](std::span<const irs::bytes_ref> headers)
+        handler = [](std::span<const irs::bytes_view> headers)
           -> irs::feature_writer::ptr {
           return feature_writer::make(sNumCalls[irs::type<feature3>::id()], 1,
                                       headers);
@@ -15004,14 +15004,14 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
     if (irs::type<feature1>::id() == id) {
       handler =
         [](
-          std::span<const irs::bytes_ref> headers) -> irs::feature_writer::ptr {
+          std::span<const irs::bytes_view> headers) -> irs::feature_writer::ptr {
         return feature_writer::make(sNumCalls[irs::type<feature1>::id()], 2,
                                     headers);
       };
     } else if (irs::type<feature3>::id() == id) {
       handler =
         [](
-          std::span<const irs::bytes_ref> headers) -> irs::feature_writer::ptr {
+          std::span<const irs::bytes_view> headers) -> irs::feature_writer::ptr {
         return feature_writer::make(sNumCalls[irs::type<feature3>::id()], 1,
                                     headers);
       };
@@ -15624,7 +15624,7 @@ TEST_P(index_test_case_10, commit_payload) {
 
     payload_committed_tick = 0;
     input_payload =
-      irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+      irs::ref_cast<irs::byte_type>(std::string_view(reader.meta().filename));
     ASSERT_TRUE(writer->begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
 
@@ -15889,7 +15889,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
   irs::index_writer::init_options writer_options;
   uint64_t payload_committed_tick{0};
   irs::bstring input_payload = static_cast<irs::bstring>(
-    irs::ref_cast<irs::byte_type>(irs::string_ref("init")));
+    irs::ref_cast<irs::byte_type>(std::string_view("init")));
   bool payload_provider_result{false};
   writer_options.meta_payload_provider =
     [&payload_provider_result, &payload_committed_tick, &input_payload](
@@ -16005,7 +16005,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload_revert) {
     };
   auto writer = open_writer(irs::OM_CREATE, writer_options);
 
-  input_payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  input_payload = irs::ref_cast<irs::byte_type>(std::string_view("init"));
   payload_committed_tick = 42;
   ASSERT_TRUE(writer->begin());
   ASSERT_EQ(0, payload_committed_tick);
@@ -16046,7 +16046,7 @@ TEST_P(index_test_case_11, initial_commit_payload_revert) {
     };
   auto writer = open_writer(irs::OM_CREATE, writer_options);
 
-  input_payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  input_payload = irs::ref_cast<irs::byte_type>(std::string_view("init"));
   payload_committed_tick = 42;
   writer->commit();
   ASSERT_EQ(0, payload_committed_tick);
@@ -16082,7 +16082,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload) {
     };
   auto writer = open_writer(irs::OM_CREATE, writer_options);
 
-  input_payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  input_payload = irs::ref_cast<irs::byte_type>(std::string_view("init"));
   payload_committed_tick = 42;
   ASSERT_TRUE(writer->begin());
   ASSERT_EQ(0, payload_committed_tick);
@@ -16121,7 +16121,7 @@ TEST_P(index_test_case_11, initial_commit_payload) {
     };
   auto writer = open_writer(irs::OM_CREATE, writer_options);
 
-  input_payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  input_payload = irs::ref_cast<irs::byte_type>(std::string_view("init"));
   payload_committed_tick = 42;
   writer->commit();
   ASSERT_EQ(0, payload_committed_tick);
@@ -16201,7 +16201,7 @@ TEST_P(index_test_case_11, commit_payload) {
     payload_committed_tick = 0;
 
     input_payload =
-      irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+      irs::ref_cast<irs::byte_type>(std::string_view(reader.meta().filename));
     ASSERT_TRUE(writer->begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
 
@@ -16253,7 +16253,7 @@ TEST_P(index_test_case_11, commit_payload) {
     payload_committed_tick = 0;
 
     input_payload =
-      irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+      irs::ref_cast<irs::byte_type>(std::string_view(reader.meta().filename));
     ASSERT_TRUE(writer->begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
 
@@ -16299,7 +16299,7 @@ TEST_P(index_test_case_11, commit_payload) {
     payload_committed_tick = 0;
 
     input_payload =
-      irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+      irs::ref_cast<irs::byte_type>(std::string_view(reader.meta().filename));
     payload_provider_result = false;
     ASSERT_TRUE(writer->begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);

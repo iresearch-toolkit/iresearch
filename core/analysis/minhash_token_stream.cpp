@@ -219,7 +219,7 @@ constexpr std::string_view kNumHashes{"numHashes"};
 
 const offset kEmptyOffset;
 
-std::pair<string_ref, velocypack::Slice> ParseAnalyzer(
+std::pair<std::string_view, velocypack::Slice> ParseAnalyzer(
   velocypack::Slice slice) {
   if (!slice.isObject()) {
     return {};
@@ -308,7 +308,7 @@ analyzer::ptr MakeVPack(velocypack::Slice slice) {
   return nullptr;
 }
 
-irs::analysis::analyzer::ptr MakeVPack(irs::string_ref args) {
+irs::analysis::analyzer::ptr MakeVPack(std::string_view args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return MakeVPack(slice);
 }
@@ -316,7 +316,7 @@ irs::analysis::analyzer::ptr MakeVPack(irs::string_ref args) {
 // `args` is a JSON encoded object with the following attributes:
 // "analyzer"(object) the analyzer definition containing "type"(string) and
 // optional "properties"(object)
-analyzer::ptr MakeJson(irs::string_ref args) {
+analyzer::ptr MakeJson(std::string_view args) {
   try {
     if (IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while constructing MinHashAnalyzer");
@@ -394,7 +394,7 @@ bool NormalizeVPack(velocypack::Slice slice, velocypack::Builder* out) {
   return false;
 }
 
-bool NormalizeVPack(irs::string_ref args, std::string& definition) {
+bool NormalizeVPack(std::string_view args, std::string& definition) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   bool res = NormalizeVPack(slice, &builder);
@@ -405,7 +405,7 @@ bool NormalizeVPack(irs::string_ref args, std::string& definition) {
   return res;
 }
 
-bool NormalizeJson(irs::string_ref args, std::string& definition) {
+bool NormalizeJson(std::string_view args, std::string& definition) {
   try {
     if (IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while normalizing MinHashAnalyzer");
@@ -490,7 +490,7 @@ bool MinHashTokenStream::next() {
   return true;
 }
 
-bool MinHashTokenStream::reset(string_ref data) {
+bool MinHashTokenStream::reset(std::string_view data) {
   begin_ = end_ = {};
   if (opts_.analyzer->reset(data)) {
     ComputeSignature();
@@ -512,7 +512,7 @@ void MinHashTokenStream::ComputeSignature() {
     end = offs->end;
 
     do {
-      const string_ref value = ref_cast<char>(term_->value);
+      const std::string_view value = ref_cast<char>(term_->value);
       const size_t hash_value = ::CityHash64(value.data(), value.size());
 
       minhash_.Insert(hash_value);

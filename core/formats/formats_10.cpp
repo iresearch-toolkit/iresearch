@@ -65,7 +65,7 @@ namespace {
 using namespace irs;
 
 // name of the module holding different formats
-constexpr string_ref MODULE_NAME = "10";
+constexpr std::string_view MODULE_NAME = "10";
 
 template<bool Wand, uint32_t PosMin>
 struct format_traits {
@@ -135,7 +135,7 @@ template<typename T, typename M>
 std::string file_name(const M& meta);
 
 void prepare_output(std::string& str, index_output::ptr& out,
-                    const flush_state& state, string_ref ext, string_ref format,
+                    const flush_state& state, std::string_view ext, std::string_view format,
                     const int32_t version) {
   assert(!out);
   irs::file_name(str, state.name, ext);
@@ -150,7 +150,7 @@ void prepare_output(std::string& str, index_output::ptr& out,
 }
 
 void prepare_input(std::string& str, index_input::ptr& in, IOAdvice advice,
-                   const reader_state& state, string_ref ext, string_ref format,
+                   const reader_state& state, std::string_view ext, std::string_view format,
                    const int32_t min_ver, const int32_t max_ver) {
   assert(!in);
   irs::file_name(str, state.meta->name, ext);
@@ -246,7 +246,7 @@ struct pay_buffer : skip_buffer {
       offs_start_buf{offs_start_buf},
       offs_len_buf{offs_len_buf} {}
 
-  void push_payload(uint32_t i, bytes_ref pay) {
+  void push_payload(uint32_t i, bytes_view pay) {
     if (!pay.empty()) {
       pay_buf_.append(pay.data(), pay.size());
     }
@@ -342,15 +342,15 @@ class postings_writer_base : public irs::postings_writer {
   static constexpr uint32_t kMaxSkipLevels = 10;
   static constexpr uint32_t kSkipN = 8;
 
-  static constexpr string_ref kDocFormatName =
+  static constexpr std::string_view kDocFormatName =
     "iresearch_10_postings_documents";
-  static constexpr string_ref kDocExt = "doc";
-  static constexpr string_ref kPosFormatName =
+  static constexpr std::string_view kDocExt = "doc";
+  static constexpr std::string_view kPosFormatName =
     "iresearch_10_postings_positions";
-  static constexpr string_ref kPosExt = "pos";
-  static constexpr string_ref kPayFormatName = "iresearch_10_postings_payloads";
-  static constexpr string_ref kPayExt = "pay";
-  static constexpr string_ref kTermsFormatName = "iresearch_10_postings_terms";
+  static constexpr std::string_view kPosExt = "pos";
+  static constexpr std::string_view kPayFormatName = "iresearch_10_postings_payloads";
+  static constexpr std::string_view kPayExt = "pay";
+  static constexpr std::string_view kTermsFormatName = "iresearch_10_postings_terms";
 
  protected:
   postings_writer_base(doc_id_t block_size, std::span<doc_id_t> docs,
@@ -1091,7 +1091,7 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
     offs_.start += offs_start_deltas_[this->buf_pos_];
     offs_.end = offs_.start + offs_lengts_[this->buf_pos_];
 
-    pay_.value = bytes_ref(pay_data_.c_str() + pay_data_pos_,
+    pay_.value = bytes_view(pay_data_.c_str() + pay_data_pos_,
                            pay_lengths_[this->buf_pos_]);
     pay_data_pos_ += pay_lengths_[this->buf_pos_];
   }
@@ -1228,7 +1228,7 @@ struct position_impl<IteratorTraits, FieldTraits, false, true>
   }
 
   void read_attributes() noexcept {
-    pay_.value = bytes_ref(pay_data_.c_str() + pay_data_pos_,
+    pay_.value = bytes_view(pay_data_.c_str() + pay_data_pos_,
                            pay_lengths_[this->buf_pos_]);
     pay_data_pos_ += pay_lengths_[this->buf_pos_];
   }
@@ -1649,7 +1649,7 @@ class position final : public irs::position,
 // Empty iterator over positions
 template<typename IteratorTraits, typename FieldTraits>
 struct position<IteratorTraits, FieldTraits, false> : attribute {
-  static constexpr string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return irs::position::type_name();
   }
 
@@ -2593,9 +2593,9 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
 }
 
 struct index_meta_writer final : public irs::index_meta_writer {
-  static constexpr string_ref FORMAT_NAME = "iresearch_10_index_meta";
-  static constexpr string_ref FORMAT_PREFIX = "segments_";
-  static constexpr string_ref FORMAT_PREFIX_TMP = "pending_segments_";
+  static constexpr std::string_view FORMAT_NAME = "iresearch_10_index_meta";
+  static constexpr std::string_view FORMAT_PREFIX = "segments_";
+  static constexpr std::string_view FORMAT_PREFIX_TMP = "pending_segments_";
 
   static constexpr int32_t FORMAT_MIN = 0;
   static constexpr int32_t FORMAT_MAX = 1;
@@ -2630,7 +2630,7 @@ struct index_meta_reader final : public irs::index_meta_reader {
                                   std::string& name) const override;
 
   virtual void read(const directory& dir, index_meta& meta,
-                    string_ref filename = {}) override;  // null == use meta
+                    std::string_view filename = {}) override;  // null == use meta
 };                                                       // index_meta_reader
 
 template<>
@@ -2782,7 +2782,7 @@ bool index_meta_reader::last_segments_file(const directory& dir,
 }
 
 void index_meta_reader::read(const directory& dir, index_meta& meta,
-                             string_ref filename /*= {} */) {
+                             std::string_view filename /*= {} */) {
   const std::string meta_file = IsNull(filename)
                                   ? file_name<irs::index_meta_reader>(meta)
                                   : static_cast<std::string>(filename);
@@ -2836,8 +2836,8 @@ void index_meta_reader::read(const directory& dir, index_meta& meta,
 }
 
 struct segment_meta_writer final : public irs::segment_meta_writer {
-  static constexpr string_ref FORMAT_EXT = "sm";
-  static constexpr string_ref FORMAT_NAME = "iresearch_10_segment_meta";
+  static constexpr std::string_view FORMAT_EXT = "sm";
+  static constexpr std::string_view FORMAT_NAME = "iresearch_10_segment_meta";
 
   static constexpr int32_t FORMAT_MIN = 0;
   static constexpr int32_t FORMAT_MAX = 1;
@@ -2905,11 +2905,11 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file,
 
 struct segment_meta_reader final : public irs::segment_meta_reader {
   virtual void read(const directory& dir, segment_meta& meta,
-                    string_ref filename = {}) override;  // null == use meta
+                    std::string_view filename = {}) override;  // null == use meta
 };
 
 void segment_meta_reader::read(const directory& dir, segment_meta& meta,
-                               string_ref filename /*= {} */) {
+                               std::string_view filename /*= {} */) {
   const std::string meta_file = IsNull(filename)
                                   ? file_name<irs::segment_meta_writer>(meta)
                                   : static_cast<std::string>(filename);
@@ -2987,8 +2987,8 @@ void segment_meta_reader::read(const directory& dir, segment_meta& meta,
 
 class document_mask_writer final : public irs::document_mask_writer {
  public:
-  static constexpr string_ref FORMAT_NAME = "iresearch_10_doc_mask";
-  static constexpr string_ref FORMAT_EXT = "doc_mask";
+  static constexpr std::string_view FORMAT_NAME = "iresearch_10_doc_mask";
+  static constexpr std::string_view FORMAT_EXT = "doc_mask";
 
   static constexpr int32_t FORMAT_MIN = 0;
   static constexpr int32_t FORMAT_MAX = FORMAT_MIN;
@@ -3478,7 +3478,7 @@ class format10 : public irs::version10::format {
  public:
   using format_traits = ::format_traits<false, pos_limits::min()>;
 
-  static constexpr string_ref type_name() noexcept { return "1_0"; }
+  static constexpr std::string_view type_name() noexcept { return "1_0"; }
 
   static ptr make();
 
@@ -3592,7 +3592,7 @@ REGISTER_FORMAT_MODULE(::format10, MODULE_NAME);
 
 class format11 : public format10 {
  public:
-  static constexpr string_ref type_name() noexcept { return "1_1"; }
+  static constexpr std::string_view type_name() noexcept { return "1_1"; }
 
   static ptr make();
 
@@ -3646,7 +3646,7 @@ REGISTER_FORMAT_MODULE(::format11, MODULE_NAME);
 
 class format12 : public format11 {
  public:
-  static constexpr string_ref type_name() noexcept { return "1_2"; }
+  static constexpr std::string_view type_name() noexcept { return "1_2"; }
 
   static ptr make();
 
@@ -3677,7 +3677,7 @@ class format13 : public format12 {
  public:
   using format_traits = ::format_traits<false, pos_limits::invalid()>;
 
-  static constexpr string_ref type_name() noexcept { return "1_3"; }
+  static constexpr std::string_view type_name() noexcept { return "1_3"; }
 
   static ptr make();
 
@@ -3713,7 +3713,7 @@ REGISTER_FORMAT_MODULE(::format13, MODULE_NAME);
 
 class format14 : public format13 {
  public:
-  static constexpr string_ref type_name() noexcept { return "1_4"; }
+  static constexpr std::string_view type_name() noexcept { return "1_4"; }
 
   static ptr make();
 
@@ -3757,7 +3757,7 @@ class format15 : public format14 {
  public:
   using format_traits = ::format_traits<true, pos_limits::invalid()>;
 
-  static constexpr string_ref type_name() noexcept { return "1_5"; }
+  static constexpr std::string_view type_name() noexcept { return "1_5"; }
 
   static ptr make();
 
@@ -3831,7 +3831,7 @@ class format12simd final : public format12 {
  public:
   using format_traits = format_traits_sse4<false, pos_limits::min()>;
 
-  static constexpr string_ref type_name() noexcept { return "1_2simd"; }
+  static constexpr std::string_view type_name() noexcept { return "1_2simd"; }
 
   static ptr make();
 
@@ -3864,7 +3864,7 @@ class format13simd : public format13 {
  public:
   using format_traits = format_traits_sse4<false, pos_limits::invalid()>;
 
-  static constexpr string_ref type_name() noexcept { return "1_3simd"; }
+  static constexpr std::string_view type_name() noexcept { return "1_3simd"; }
 
   static ptr make();
 
@@ -3900,7 +3900,7 @@ class format14simd : public format13simd {
  public:
   using format_traits = format_traits_sse4<true, pos_limits::invalid()>;
 
-  static constexpr string_ref type_name() noexcept { return "1_4simd"; }
+  static constexpr std::string_view type_name() noexcept { return "1_4simd"; }
 
   static ptr make();
 
@@ -3946,7 +3946,7 @@ class format15simd : public format14simd {
  public:
   using format_traits = format_traits_sse4<true, pos_limits::invalid()>;
 
-  static constexpr string_ref type_name() noexcept { return "1_5simd"; }
+  static constexpr std::string_view type_name() noexcept { return "1_5simd"; }
 
   static ptr make();
 

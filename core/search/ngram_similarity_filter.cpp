@@ -67,7 +67,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
   field_collectors field_stats{ord};
   term_collectors term_stats{ord, terms_count};
 
-  const string_ref field_name = this->field();
+  const std::string_view field_name = this->field();
 
   for (const auto& segment : rdr) {
     // get term dictionary for field

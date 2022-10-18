@@ -534,7 +534,7 @@ class term_iterator : public irs::term_iterator {
                          const doc_map* docmap) noexcept
     : postings_(&postings), doc_map_(docmap) {}
 
-  void reset(const field_data& field, bytes_ref min, bytes_ref max) {
+  void reset(const field_data& field, bytes_view min, bytes_view max) {
     field_ = &field;
 
     doc_itr_.reset(field);
@@ -554,7 +554,7 @@ class term_iterator : public irs::term_iterator {
     }
   }
 
-  virtual bytes_ref value() const noexcept override {
+  virtual bytes_view value() const noexcept override {
     assert(it_ != end_);
     return (*it_)->term;
   }
@@ -658,9 +658,9 @@ class term_reader final : public irs::basic_term_reader,
 
   void reset(const field_data& field) { it_.reset(field, min_, max_); }
 
-  virtual irs::bytes_ref(min)() const noexcept override { return min_; }
+  virtual irs::bytes_view(min)() const noexcept override { return min_; }
 
-  virtual irs::bytes_ref(max)() const noexcept override { return max_; }
+  virtual irs::bytes_view(max)() const noexcept override { return max_; }
 
   virtual const irs::field_meta& meta() const noexcept override {
     return it_.meta();
@@ -676,8 +676,8 @@ class term_reader final : public irs::basic_term_reader,
 
  private:
   mutable detail::term_iterator it_;
-  const irs::bytes_ref min_{};
-  const irs::bytes_ref max_{};
+  const irs::bytes_view min_{};
+  const irs::bytes_view max_{};
 };  // term_reader
 
 }  // namespace detail
@@ -694,7 +694,7 @@ class term_reader final : public irs::basic_term_reader,
     // random access: [0] - new term, [1] - add term
     {&field_data::add_term_random_access, &field_data::new_term_random_access}};
 
-field_data::field_data(string_ref name, const features_t& features,
+field_data::field_data(std::string_view name, const features_t& features,
                        const feature_info_provider_t& feature_columns,
                        std::deque<cached_column>& cached_features,
                        columnstore_writer& columns,
@@ -721,7 +721,7 @@ field_data::field_data(string_ref name, const features_t& features,
       columnstore_writer::column_finalizer_f finalizer =
         [writer = feature_writer.get()](bstring& out) {
           writer->finish(out);
-          return string_ref{};
+          return std::string_view{};
         };
 
       if (random_access) {
@@ -1111,7 +1111,7 @@ fields_data::fields_data(const feature_info_provider_t& feature_info,
     byte_writer_(byte_pool_.begin()),
     int_writer_(int_pool_.begin()) {}
 
-field_data* fields_data::emplace(const hashed_string_ref& name,
+field_data* fields_data::emplace(const hashed_std::string_view& name,
                                  IndexFeatures index_features,
                                  const features_t& features,
                                  columnstore_writer& columns) {
@@ -1124,7 +1124,7 @@ field_data* fields_data::emplace(const hashed_string_ref& name,
 
   if (!it->second) {
     try {
-      fields_.emplace_back(static_cast<const string_ref&>(name), features,
+      fields_.emplace_back(static_cast<const std::string_view&>(name), features,
                            *feature_info_, *cached_features_, columns,
                            byte_writer_, int_writer_, index_features,
                            (nullptr != comparator_));

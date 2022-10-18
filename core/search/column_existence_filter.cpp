@@ -90,7 +90,7 @@ class column_prefix_existence_query final : public column_existence_query {
 
     auto& segment = ctx.segment;
     auto& ord = ctx.scorers;
-    const string_ref prefix = field_;
+    const std::string_view prefix = field_;
 
     auto it = segment.columns();
 

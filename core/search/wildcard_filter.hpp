@@ -76,10 +76,10 @@ class by_wildcard final : public filter_base<by_wildcard_options> {
   static ptr make();
 
   static prepared::ptr prepare(const index_reader& index, const Order& order,
-                               score_t boost, string_ref field, bytes_ref term,
+                               score_t boost, std::string_view field, bytes_view term,
                                size_t scored_terms_limit);
 
-  static field_visitor visitor(bytes_ref term);
+  static field_visitor visitor(bytes_view term);
 
   using filter::prepare;
 

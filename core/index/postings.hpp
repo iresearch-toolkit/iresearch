@@ -47,14 +47,14 @@ inline bool memcmp_less(const byte_type* lhs, size_t lhs_size,
   return res < 0;
 }
 
-inline bool memcmp_less(bytes_ref lhs, bytes_ref rhs) noexcept {
+inline bool memcmp_less(bytes_view lhs, bytes_view rhs) noexcept {
   return memcmp_less(lhs.data(), lhs.size(), rhs.data(), rhs.size());
 }
 
 using byte_block_pool = block_pool<byte_type, 32768>;
 
 struct posting {
-  bytes_ref term;
+  bytes_view term;
   uint64_t doc_code;
   // ...........................................................................
   // store pointers to data in the following way:
@@ -90,7 +90,7 @@ class postings : util::noncopyable {
 
   /// @note on error returns std::ptr(nullptr, false)
   /// @note returned poitern remains valid until the next call
-  std::pair<posting*, bool> emplace(bytes_ref term);
+  std::pair<posting*, bool> emplace(bytes_view term);
 
   bool empty() const noexcept { return map_.empty(); }
   size_t size() const noexcept { return map_.size(); }
@@ -104,12 +104,12 @@ class postings : util::noncopyable {
     using self_t::operator();
 
     bool operator()(const ref_t& lhs,
-                    const hashed_bytes_ref& rhs) const noexcept {
+                    const hashed_bytes_view& rhs) const noexcept {
       assert(lhs.second < data_->size());
       return (*data_)[lhs.second].term == rhs;
     }
 
-    bool operator()(const hashed_bytes_ref& lhs,
+    bool operator()(const hashed_bytes_view& lhs,
                     const ref_t& rhs) const noexcept {
       return this->operator()(rhs, lhs);
     }

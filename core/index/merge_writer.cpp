@@ -71,7 +71,7 @@ using doc_id_map_t = std::vector<doc_id_t>;
 // document mapping function
 using doc_map_f = std::function<doc_id_t(doc_id_t)>;
 
-using field_meta_map_t = absl::flat_hash_map<string_ref, const field_meta*>;
+using field_meta_map_t = absl::flat_hash_map<std::string_view, const field_meta*>;
 
 class noop_directory : public directory {
  public:
@@ -492,7 +492,7 @@ class compound_column_iterator final {
       }
 
       const auto& value = it->value();
-      const string_ref key = value.name();
+      const std::string_view key = value.name();
       assert(!IsNull(key));
 
       if (!iterator_mask_.empty() && current_key_ < key) {
@@ -536,7 +536,7 @@ class compound_column_iterator final {
   static_assert(std::is_nothrow_move_constructible_v<iterator_t>);
 
   const column_reader* current_value_{};
-  string_ref current_key_;
+  std::string_view current_key_;
   std::vector<size_t> iterator_mask_;  // valid iterators for current step
   std::vector<iterator_t> iterators_;  // all segment iterators
 };
@@ -580,7 +580,7 @@ class compound_term_iterator final : public term_iterator {
       }
     }
   }
-  virtual bytes_ref value() const override { return current_term_; }
+  virtual bytes_view value() const override { return current_term_; }
 
  private:
   struct term_iterator_t {
@@ -605,7 +605,7 @@ class compound_term_iterator final : public term_iterator {
   compound_term_iterator& operator=(const compound_term_iterator&) =
     delete;  // due to references
 
-  bytes_ref current_term_;
+  bytes_view current_term_;
   const field_meta* meta_{};
   std::vector<size_t> term_iterator_mask_;  // valid iterators for current term
   std::vector<term_iterator_t> term_iterators_;  // all term iterators
@@ -742,9 +742,9 @@ class compound_field_iterator final : public basic_term_reader {
     return *current_meta_;
   }
 
-  virtual bytes_ref(min)() const noexcept override { return min_; }
+  virtual bytes_view(min)() const noexcept override { return min_; }
 
-  virtual bytes_ref(max)() const noexcept override { return max_; }
+  virtual bytes_view(max)() const noexcept override { return max_; }
 
   virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
@@ -778,10 +778,10 @@ class compound_field_iterator final : public basic_term_reader {
     const term_reader* reader;
   };
 
-  string_ref current_field_;
+  std::string_view current_field_;
   const field_meta* current_meta_{&field_meta::kEmpty};
-  bytes_ref min_{};
-  bytes_ref max_{};
+  bytes_view min_{};
+  bytes_view max_{};
   std::vector<term_iterator_t>
     field_iterator_mask_;  // valid iterators for current field
   std::vector<field_iterator_t> field_iterators_;  // all segment iterators
@@ -834,7 +834,7 @@ bool compound_field_iterator::next() {
 
     const auto& field_meta = field_itr.itr->value().meta();
     const auto* field_terms = field_itr.reader->field(field_meta.name);
-    const string_ref field_id = field_meta.name;
+    const std::string_view field_id = field_meta.name;
 
     if (!field_terms ||
         (!field_iterator_mask_.empty() && field_id > current_field_)) {
@@ -1091,7 +1091,7 @@ class SortingCompoundDocIterator : util::noncopyable {
       const auto& [rhs_it, rhs_doc, rhs_pay] = itrs_[rhs];
 
       // FIXME(gnusi): Consider changing comparator to 3-way comparison
-      if (const bytes_ref lhs_value = lhs_pay->value,
+      if (const bytes_view lhs_value = lhs_pay->value,
           rhs_value = rhs_pay->value;
           (*less_)(rhs_value, lhs_value)) {
         return true;
@@ -1150,12 +1150,12 @@ bool write_columns(columnstore& cs, Iterator& columns,
       return false;  // failed to visit all values
     }
 
-    const string_ref column_name = column_itr.value().name();
+    const std::string_view column_name = column_itr.value().name();
 
     const auto res = cs.insert(
       columns, column_info(column_name),
       [column_name](bstring&) { return column_name; },
-      [](data_output& out, bytes_ref payload) {
+      [](data_output& out, bytes_view payload) {
         if (!payload.empty()) {
           out.write_bytes(payload.data(), payload.size());
         }
@@ -1181,7 +1181,7 @@ bool write_fields(columnstore& cs, Iterator& feature_itr,
 
   feature_map_t features;
   irs::type_info::type_id feature{};
-  std::vector<bytes_ref> hdrs;
+  std::vector<bytes_view> hdrs;
   hdrs.reserve(field_itr.size());
 
   auto add_iterators = [&field_itr, &hdrs, &feature](auto& itrs) {
@@ -1254,7 +1254,7 @@ bool write_fields(columnstore& cs, Iterator& feature_itr,
 
       if (feature_writer) {
         auto value_writer = [writer = feature_writer.get()](data_output& out,
-                                                            bytes_ref payload) {
+                                                            bytes_view payload) {
           writer->write(out, payload);
         };
 
@@ -1263,14 +1263,14 @@ bool write_fields(columnstore& cs, Iterator& feature_itr,
           [feature_writer =
              make_move_on_copy(std::move(feature_writer))](bstring& out) {
             feature_writer.value()->finish(out);
-            return string_ref{};
+            return std::string_view{};
           },
           std::move(value_writer));
       } else if (!factory) {  // Otherwise factory has failed to instantiate
                               // writer
         res = cs.insert(
-          feature_itr, info, [](bstring&) { return string_ref{}; },
-          [](data_output& out, bytes_ref payload) {
+          feature_itr, info, [](bstring&) { return std::string_view{}; },
+          [](data_output& out, bytes_view payload) {
             if (!payload.empty()) {
               out.write_bytes(payload.data(), payload.size());
             }

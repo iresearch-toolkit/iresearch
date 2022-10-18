@@ -48,7 +48,7 @@ class value_ref_hash {
   }
 
   template<typename Char>
-  size_t operator()(const hashed_basic_string_ref<Char>& value) const noexcept {
+  size_t operator()(const hashed_basic_std::string_view<Char>& value) const noexcept {
     return value.hash();
   }
 };

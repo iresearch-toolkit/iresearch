@@ -117,7 +117,7 @@ enum class category_t {
   UNKNOWN
 };
 
-category_t parseCategory(irs::string_ref value) {
+category_t parseCategory(std::string_view value) {
   if (value == "HighTerm") return category_t::HighTerm;
   if (value == "MedTerm") return category_t::MedTerm;
   if (value == "LowTerm") return category_t::LowTerm;
@@ -143,7 +143,7 @@ category_t parseCategory(irs::string_ref value) {
   return category_t::UNKNOWN;
 }
 
-irs::string_ref stringCategory(category_t category) {
+std::string_view stringCategory(category_t category) {
   switch (category) {
     case category_t::HighTerm:
       return "HighTerm";
@@ -204,7 +204,7 @@ struct task_t {
 
 struct timers_t {
   std::vector<irs::timer_utils::timer_stat_t*> stat;
-  timers_t(irs::string_ref type) {
+  timers_t(std::string_view type) {
     std::string prefix("Query ");
     prefix.append(type);
     prefix.append(" (");
@@ -216,7 +216,7 @@ struct timers_t {
   }
 };
 
-irs::string_ref splitFreq(const std::string& text) {
+std::string_view splitFreq(const std::string& text) {
   static const std::regex freqPattern1(
     "(\\S+)\\s*#\\s*(.+)");  // single term, prefix
   static const std::regex freqPattern2("\"(.+)\"\\s*#\\s*(.+)");  // phrase
@@ -225,13 +225,13 @@ irs::string_ref splitFreq(const std::string& text) {
   std::smatch res;
 
   if (std::regex_match(text, res, freqPattern1)) {
-    return irs::string_ref(&*(res[1].first),
+    return std::string_view(&*(res[1].first),
                            std::distance(res[1].first, res[1].second));
   } else if (std::regex_match(text, res, freqPattern2)) {
-    return irs::string_ref(&*(res[1].first),
+    return std::string_view(&*(res[1].first),
                            std::distance(res[1].first, res[1].second));
   } else if (std::regex_match(text, res, freqPattern3)) {
-    return irs::string_ref(&*(res[1].first),
+    return std::string_view(&*(res[1].first),
                            std::distance(res[1].first, res[1].second));
   }
 
@@ -243,7 +243,7 @@ irs::filter::prepared::ptr prepareFilter(
   category_t category, const std::string& text,
   const irs::analysis::analyzer::ptr& analyzer, std::string& tmpBuf,
   size_t scored_terms_limit) {
-  irs::string_ref terms;
+  std::string_view terms;
 
   switch (category) {
     case category_t::HighTerm:  // fall through
@@ -321,7 +321,7 @@ irs::filter::prepared::ptr prepareFilter(
         *part.mutable_field() = "body";
         irs::assign(
           part.mutable_options()->term,
-          irs::ref_cast<irs::byte_type>(irs::string_ref(
+          irs::ref_cast<irs::byte_type>(std::string_view(
             tmpBuf.c_str() + 1)));  // +1 for skip '+' at the start of the term
       }
 
@@ -350,7 +350,7 @@ irs::filter::prepared::ptr prepareFilter(
     }
     case category_t::Prefix3: {
       // cut '~' at the end of the text
-      terms = irs::string_ref(text.data(), text.size() - 1);
+      terms = std::string_view(text.data(), text.size() - 1);
 
       irs::by_prefix query;
       *query.mutable_field() = "body";
@@ -361,7 +361,7 @@ irs::filter::prepared::ptr prepareFilter(
       return query.prepare(reader, order);
     }
     case category_t::Wildcard: {
-      terms = irs::string_ref(text.data(), text.size());
+      terms = std::string_view(text.data(), text.size());
 
       irs::by_wildcard query;
       *query.mutable_field() = "body";
@@ -385,7 +385,7 @@ irs::filter::prepared::ptr prepareFilter(
     case category_t::Fuzzy1:
     case category_t::Fuzzy2: {
       const auto pos = text.find('~');
-      const auto term = irs::string_ref(
+      const auto term = std::string_view(
         text.c_str(), pos == std::string::npos ? text.size() : pos);
 
       irs::by_edit_distance query;
@@ -436,7 +436,7 @@ void prepareTasks(std::vector<task_t>& buf, std::istream& in,
     std::getline(in, tmpBuf);
 
     if (std::regex_match(tmpBuf, res, m1)) {
-      auto category = parseCategory(irs::string_ref(
+      auto category = parseCategory(std::string_view(
         &*(res[1].first), std::distance(res[1].first, res[1].second)));
       auto& count = category_counts.emplace(category, 0).first->second;
 
@@ -462,7 +462,7 @@ int search(std::string_view path, std::string_view dir_type,
            size_t tasks_max, size_t repeat, size_t search_threads, size_t limit,
            bool shuffle, bool csv, size_t scored_terms_limit,
            std::string_view scorer, std::string_view scorer_arg_format,
-           irs::string_ref scorer_arg, std::string_view mode_arg) {
+           std::string_view scorer_arg, std::string_view mode_arg) {
   // build parametric descriptions for distances 1 and 2
   irs::default_pdp(1, false);
   irs::default_pdp(1, true);
@@ -806,8 +806,8 @@ int search(const cmdline::parser& args) {
   const size_t scored_terms_limit = args.get<size_t>(SCORED_TERMS_LIMIT);
   const auto scorer = args.get<std::string>(SCORER);
   const auto scorer_arg = args.exist(SCORER_ARG)
-                            ? irs::string_ref(args.get<std::string>(SCORER_ARG))
-                            : irs::string_ref{};
+                            ? std::string_view(args.get<std::string>(SCORER_ARG))
+                            : std::string_view{};
   const auto scorer_arg_format = args.get<std::string>(SCORER_ARG_FMT);
   const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE)
                                              : std::string("mmap");

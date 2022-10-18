@@ -45,7 +45,7 @@ constexpr std::string_view START_MARKER_PARAM_NAME{"startMarker"};
 constexpr std::string_view END_MARKER_PARAM_NAME{"endMarker"};
 
 constexpr frozen::unordered_map<
-  irs::string_ref, irs::analysis::ngram_token_stream_base::InputType, 2>
+  std::string_view, irs::analysis::ngram_token_stream_base::InputType, 2>
   STREAM_TYPE_CONVERT_MAP = {
     {"binary", irs::analysis::ngram_token_stream_base::InputType::Binary},
     {"utf8", irs::analysis::ngram_token_stream_base::InputType::UTF8}};
@@ -62,7 +62,7 @@ bool parse_vpack_options(
   bool preserve_original;
   auto stream_bytes_type =
     irs::analysis::ngram_token_stream_base::InputType::Binary;
-  irs::string_ref start_marker, end_marker;
+  std::string_view start_marker, end_marker;
 
   // min
   auto min_type_slice = slice.get(MIN_PARAM_NAME);
@@ -136,7 +136,7 @@ bool parse_vpack_options(
         START_MARKER_PARAM_NAME.data());
       return false;
     }
-    start_marker = irs::get_string<irs::string_ref>(start_marker_type_slice);
+    start_marker = irs::get_string<std::string_view>(start_marker_type_slice);
   }
   options.start_marker = irs::ref_cast<irs::byte_type>(start_marker);
 
@@ -150,7 +150,7 @@ bool parse_vpack_options(
         END_MARKER_PARAM_NAME.data());
       return false;
     }
-    end_marker = irs::get_string<irs::string_ref>(end_marker_type_slice);
+    end_marker = irs::get_string<std::string_view>(end_marker_type_slice);
   }
   options.end_marker = irs::ref_cast<irs::byte_type>(end_marker);
 
@@ -166,7 +166,7 @@ bool parse_vpack_options(
     }
     auto stream_type = stream_type_slice.stringView();
     auto itr = STREAM_TYPE_CONVERT_MAP.find(
-      irs::string_ref(stream_type.data(), stream_type.size()));
+      std::string_view(stream_type.data(), stream_type.size()));
     if (itr == STREAM_TYPE_CONVERT_MAP.end()) {
       IR_FRMT_WARN(
         "Invalid value in '%s' while constructing ngram_token_stream from "
@@ -253,7 +253,7 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   return nullptr;
 }
 
-irs::analysis::analyzer::ptr make_vpack(irs::string_ref args) {
+irs::analysis::analyzer::ptr make_vpack(std::string_view args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
@@ -270,7 +270,7 @@ bool normalize_vpack_config(const VPackSlice slice,
   }
 }
 
-bool normalize_vpack_config(irs::string_ref args, std::string& config) {
+bool normalize_vpack_config(std::string_view args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -280,7 +280,7 @@ bool normalize_vpack_config(irs::string_ref args, std::string& config) {
   return false;
 }
 
-irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
+irs::analysis::analyzer::ptr make_json(std::string_view args) {
   try {
     if (irs::IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while constructing ngram_token_stream");
@@ -299,7 +299,7 @@ irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
   return nullptr;
 }
 
-bool normalize_json_config(irs::string_ref args, std::string& definition) {
+bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (irs::IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
@@ -415,7 +415,7 @@ void ngram_token_stream_base::emit_original() noexcept {
   next_inc_val_ = 0;
 }
 
-bool ngram_token_stream_base::reset(string_ref value) noexcept {
+bool ngram_token_stream_base::reset(std::string_view value) noexcept {
   if (value.size() > std::numeric_limits<uint32_t>::max()) {
     // can't handle data which is longer than
     // std::numeric_limits<uint32_t>::max()
@@ -511,7 +511,7 @@ bool ngram_token_stream<StreamType>::next() noexcept {
           next_inc_val_ = 0;
           if ((0 != offset.start || start_marker_empty_) &&
               (end_marker_empty_ || ngram_end_ != data_end_)) {
-            term.value = irs::bytes_ref(begin_, ngram_byte_len);
+            term.value = irs::bytes_view(begin_, ngram_byte_len);
           } else if (0 == offset.start && !start_marker_empty_) {
             marked_term_buffer_.clear();
             IRS_ASSERT(marked_term_buffer_.capacity() >=

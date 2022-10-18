@@ -41,13 +41,13 @@ namespace detail {
 //////////////////////////////////////////////////////////////////////////////
 /// @class bytes_input
 //////////////////////////////////////////////////////////////////////////////
-class bytes_input final : public data_input, public bytes_ref {
+class bytes_input final : public data_input, public bytes_view {
  public:
   bytes_input() = default;
-  explicit bytes_input(bytes_ref data);
+  explicit bytes_input(bytes_view data);
   bytes_input(bytes_input&& rhs) noexcept;
   bytes_input& operator=(bytes_input&& rhs) noexcept;
-  bytes_input& operator=(bytes_ref data);
+  bytes_input& operator=(bytes_view data);
 
   void skip(size_t size) {
     assert(pos_ + size <= this->end());
@@ -107,23 +107,23 @@ class bytes_input final : public data_input, public bytes_ref {
 // --SECTION--                                       bytes_input implementation
 // ----------------------------------------------------------------------------
 
-bytes_input::bytes_input(bytes_ref data)
+bytes_input::bytes_input(bytes_view data)
   : buf_(data.data(), data.size()), pos_(this->buf_.c_str()) {
-  static_cast<bytes_ref&>(*this) = {buf_.data(), data.size()};
+  static_cast<bytes_view&>(*this) = {buf_.data(), data.size()};
 }
 
 bytes_input::bytes_input(bytes_input&& other) noexcept
   : buf_(std::move(other.buf_)), pos_(other.pos_) {
-  static_cast<bytes_ref&>(*this) = {buf_.data(), other.size()};
+  static_cast<bytes_view&>(*this) = {buf_.data(), other.size()};
   other.pos_ = other.buf_.c_str();
-  static_cast<bytes_ref&>(other) = {other.data(), 0};
+  static_cast<bytes_view&>(other) = {other.data(), 0};
 }
 
-bytes_input& bytes_input::operator=(bytes_ref data) {
+bytes_input& bytes_input::operator=(bytes_view data) {
   if (this != &data) {
     buf_.assign(data);
     pos_ = this->buf_.c_str();
-    static_cast<bytes_ref&>(*this) = {buf_.data(), data.size()};
+    static_cast<bytes_view&>(*this) = {buf_.data(), data.size()};
   }
 
   return *this;
@@ -133,9 +133,9 @@ bytes_input& bytes_input::operator=(bytes_input&& other) noexcept {
   if (this != &other) {
     buf_ = std::move(other.buf_);
     pos_ = buf_.c_str();
-    static_cast<bytes_ref&>(*this) = {buf_.data(), other.size()};
+    static_cast<bytes_view&>(*this) = {buf_.data(), other.size()};
     other.pos_ = other.buf_.c_str();
-    static_cast<bytes_ref&>(other) = {other.data(), 0};
+    static_cast<bytes_view&>(other) = {other.data(), 0};
   }
 
   return *this;
@@ -245,7 +245,7 @@ void packed_read_write_core(const std::vector<uint32_t>& src) {
 
   // decompress data from stream
   std::vector<uint32_t> read(src.size());
-  irs::bytes_ref_input in(buf);
+  irs::bytes_view_input in(buf);
 
   // read first n compressed blocks
   {
@@ -280,7 +280,7 @@ void packed_read_write_block_core(const std::vector<uint32_t>& src) {
 
   // decompress data from stream
   std::vector<uint32_t> read(src.size());
-  irs::bytes_ref_input in(buf);
+  irs::bytes_view_input in(buf);
   irs::bitpack::read_block32(unpack, in, encoded, BLOCK_SIZE, read.data());
 
   ASSERT_EQ(src, read);
@@ -547,10 +547,10 @@ TEST(store_utils_tests, std_string_read_write) {
 TEST(store_utils_tests, bytes_read_write) {
   tests::detail::read_write_core<bstring>(
     {bstring(),
-     bstring(irs::ref_cast<byte_type>(irs::string_ref("qalsdflsajfd"))),
-     bstring(irs::ref_cast<byte_type>(irs::string_ref("jfdldsflaflj"))),
-     bstring(irs::ref_cast<byte_type>(irs::string_ref("102174174010"))),
-     bstring(irs::ref_cast<byte_type>(irs::string_ref("0182ljdskfaof")))},
+     bstring(irs::ref_cast<byte_type>(std::string_view("qalsdflsajfd"))),
+     bstring(irs::ref_cast<byte_type>(std::string_view("jfdldsflaflj"))),
+     bstring(irs::ref_cast<byte_type>(std::string_view("102174174010"))),
+     bstring(irs::ref_cast<byte_type>(std::string_view("0182ljdskfaof")))},
     irs::read_string<bstring>, irs::write_string<bstring>);
 }
 

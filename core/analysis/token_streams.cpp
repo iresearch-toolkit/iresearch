@@ -65,7 +65,7 @@ bool string_token_stream::next() noexcept {
 // --SECTION--                                       numeric_term implementation
 // -----------------------------------------------------------------------------
 
-bytes_ref numeric_token_stream::numeric_term::value(byte_type* buf,
+bytes_view numeric_token_stream::numeric_term::value(byte_type* buf,
                                                     NumericType type,
                                                     value_t val,
                                                     uint32_t shift) {
@@ -107,7 +107,7 @@ bytes_ref numeric_token_stream::numeric_term::value(byte_type* buf,
   return {};
 }
 
-bool numeric_token_stream::numeric_term::next(increment& inc, bytes_ref& out) {
+bool numeric_token_stream::numeric_term::next(increment& inc, bytes_view& out) {
   constexpr uint32_t INCREMENT_VALUE[]{0, 1};
   constexpr uint32_t BITS_REQUIRED[]{bits_required<int64_t>(),
                                      bits_required<int32_t>()};
@@ -154,21 +154,21 @@ void numeric_token_stream::reset(double_t value,
   num_.reset(value, step);
 }
 
-/*static*/ bytes_ref numeric_token_stream::value(bstring& buf, int32_t value) {
+/*static*/ bytes_view numeric_token_stream::value(bstring& buf, int32_t value) {
   return numeric_term::value(buf, value);
 }
 
-/*static*/ bytes_ref numeric_token_stream::value(bstring& buf, int64_t value) {
+/*static*/ bytes_view numeric_token_stream::value(bstring& buf, int64_t value) {
   return numeric_term::value(buf, value);
 }
 
 #ifndef FLOAT_T_IS_DOUBLE_T
-/*static*/ bytes_ref numeric_token_stream::value(bstring& buf, float_t value) {
+/*static*/ bytes_view numeric_token_stream::value(bstring& buf, float_t value) {
   return numeric_term::value(buf, value);
 }
 #endif
 
-/*static*/ bytes_ref numeric_token_stream::value(bstring& buf, double_t value) {
+/*static*/ bytes_view numeric_token_stream::value(bstring& buf, double_t value) {
   return numeric_term::value(buf, value);
 }
 

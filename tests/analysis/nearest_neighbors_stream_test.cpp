@@ -90,7 +90,7 @@ TEST(nearest_neighbors_stream_test, test_load) {
 #else
     auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
-    irs::string_ref data{"salt"};
+    std::string_view data{"salt"};
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
     auto stream = irs::analysis::analyzers::get(
       "nearest_neighbors", irs::type<irs::text_format::json>::get(),
@@ -175,7 +175,7 @@ TEST(nearest_neighbors_stream_test, test_load) {
 #else
     auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
-    irs::string_ref data{"salt oil"};
+    std::string_view data{"salt oil"};
     auto input_json =
       "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
     auto stream = irs::analysis::analyzers::get(

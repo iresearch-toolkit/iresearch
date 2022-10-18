@@ -36,7 +36,7 @@ namespace iresearch {
 class scorer_registrar {
  public:
   scorer_registrar(const type_info& type, const type_info& args_format,
-                   sort::ptr (*factory)(irs::string_ref args),
+                   sort::ptr (*factory)(std::string_view args),
                    const char* source = nullptr);
   operator bool() const noexcept;
 
@@ -77,7 +77,7 @@ class scorers {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether scorer with a specified name is registered
   ////////////////////////////////////////////////////////////////////////////////
-  static bool exists(string_ref name, const type_info& args_format,
+  static bool exists(std::string_view name, const type_info& args_format,
                      bool load_library = true);
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -85,8 +85,8 @@ class scorers {
   ///        indirect call to <class>::make(...)
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   ////////////////////////////////////////////////////////////////////////////////
-  static sort::ptr get(string_ref name, const type_info& args_format,
-                       string_ref args, bool load_library = true) noexcept;
+  static sort::ptr get(std::string_view name, const type_info& args_format,
+                       std::string_view args, bool load_library = true) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief for static lib reference all known scorers in lib
@@ -104,7 +104,7 @@ class scorers {
   /// @brief visit all loaded scorers, terminate early if visitor returns false
   ////////////////////////////////////////////////////////////////////////////////
   static bool visit(
-    const std::function<bool(string_ref, const type_info&)>& visitor);
+    const std::function<bool(std::string_view, const type_info&)>& visitor);
 
  private:
   scorers() = delete;

@@ -55,7 +55,7 @@ struct ifield {
   virtual irs::features_t features() const = 0;
   virtual irs::IndexFeatures index_features() const = 0;
   virtual irs::token_stream& get_tokens() const = 0;
-  virtual irs::string_ref name() const = 0;
+  virtual std::string_view name() const = 0;
   virtual bool write(irs::data_output& out) const = 0;
 };  // ifield
 
@@ -81,7 +81,7 @@ class field_base : public ifield {
     return index_features_;
   }
 
-  virtual irs::string_ref name() const noexcept override { return name_; }
+  virtual std::string_view name() const noexcept override { return name_; }
 
   void name(std::string name) noexcept { name_ = std::move(name); }
 
@@ -188,7 +188,7 @@ class binary_field : public field_base {
 
   irs::token_stream& get_tokens() const override;
   const irs::bstring& value() const { return value_; }
-  void value(const irs::bytes_ref& value) { value_ = value; }
+  void value(const irs::bytes_view& value) { value_ = value; }
   void value(irs::bstring&& value) { value_ = std::move(value); }
 
   template<typename Iterator>
@@ -224,8 +224,8 @@ class particle : irs::util::noncopyable {
   void push_back(const ifield::ptr& fld) { fields_.emplace_back(fld); }
 
   ifield& back() const { return *fields_.back(); }
-  bool contains(const irs::string_ref& name) const;
-  std::vector<ifield::ptr> find(const irs::string_ref& name) const;
+  bool contains(const std::string_view& name) const;
+  std::vector<ifield::ptr> find(const std::string_view& name) const;
 
   template<typename T>
   T& back() const {
@@ -236,7 +236,7 @@ class particle : irs::util::noncopyable {
     return static_cast<type&>(*fields_.back());
   }
 
-  ifield* get(const irs::string_ref& name) const;
+  ifield* get(const std::string_view& name) const;
 
   template<typename T>
   T& get(size_t i) const {
@@ -248,7 +248,7 @@ class particle : irs::util::noncopyable {
   }
 
   template<typename T>
-  T* get(const irs::string_ref& name) const {
+  T* get(const std::string_view& name) const {
     typedef
       typename std::enable_if<std::is_base_of<tests::ifield, T>::value, T>::type
         type;
@@ -256,7 +256,7 @@ class particle : irs::util::noncopyable {
     return static_cast<type*>(get(name));
   }
 
-  void remove(const irs::string_ref& name);
+  void remove(const std::string_view& name);
 
   iterator begin() { return iterator(fields_.begin()); }
   iterator end() { return iterator(fields_.end()); }
@@ -375,7 +375,7 @@ class csv_doc_generator : public doc_generator_base {
  public:
   struct doc_template : document {
     virtual void init() = 0;
-    virtual void value(size_t idx, const irs::string_ref& value) = 0;
+    virtual void value(size_t idx, const std::string_view& value) = 0;
     virtual void end() {}
     virtual void reset() {}
   };  // doc_template
@@ -408,19 +408,19 @@ class json_doc_generator : public doc_generator_base {
     RAWNUM
   };  // ValueType
 
-  // an irs::string_ref for union inclusion without a user-defined constructor
+  // an std::string_view for union inclusion without a user-defined constructor
   // and non-trivial default constructor for compatibility with MSVC 2013
   struct json_string {
     const char* data;
     size_t size;
 
-    json_string& operator=(irs::string_ref ref) {
+    json_string& operator=(std::string_view ref) {
       data = ref.data();
       size = ref.size();
       return *this;
     }
 
-    operator irs::string_ref() const { return irs::string_ref(data, size); }
+    operator std::string_view() const { return std::string_view(data, size); }
     operator std::string() const { return std::string(data, size); }
   };
 
@@ -557,7 +557,7 @@ class text_field : public tests::field_base {
 
   text_field(text_field&& other) = default;
 
-  irs::string_ref value() const { return value_; }
+  std::string_view value() const { return value_; }
   void value(const T& value) { value_ = value; }
   void value(T&& value) { value_ = std::move(value); }
 
@@ -584,12 +584,12 @@ class string_field : public tests::field_base {
     irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
     const std::vector<irs::type_info::type_id>& extra_features = {});
   string_field(
-    std::string_view name, irs::string_ref value,
+    std::string_view name, std::string_view value,
     irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
     const std::vector<irs::type_info::type_id>& extra_features = {});
 
-  void value(const irs::string_ref& str);
-  irs::string_ref value() const { return value_; }
+  void value(const std::string_view& str);
+  std::string_view value() const { return value_; }
 
   virtual irs::token_stream& get_tokens() const override;
   virtual bool write(irs::data_output& out) const override;
@@ -600,32 +600,32 @@ class string_field : public tests::field_base {
 };  // string_field
 
 // field which uses simple analyzer without tokenization
-class string_ref_field : public tests::field_base {
+class std::string_view_field : public tests::field_base {
  public:
-  string_ref_field(
+  std::string_view_field(
     const std::string& name,
     irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
     const std::vector<irs::type_info::type_id>& extra_features = {});
-  string_ref_field(
-    const std::string& name, const irs::string_ref& value,
+  std::string_view_field(
+    const std::string& name, const std::string_view& value,
     irs::IndexFeatures index_features = irs::IndexFeatures::NONE,
     const std::vector<irs::type_info::type_id>& extra_features = {});
 
-  void value(const irs::string_ref& str);
-  irs::string_ref value() const { return value_; }
+  void value(const std::string_view& str);
+  std::string_view value() const { return value_; }
 
   virtual irs::token_stream& get_tokens() const override;
   virtual bool write(irs::data_output& out) const override;
 
  private:
   mutable irs::string_token_stream stream_;
-  irs::string_ref value_;
+  std::string_view value_;
 };  // string_field
 
 // document template for europarl.subset.text
 class europarl_doc_template : public delim_doc_generator::doc_template {
  public:
-  typedef text_field<irs::string_ref> text_ref_field;
+  typedef text_field<std::string_view> text_ref_field;
 
   virtual void init();
   virtual void value(size_t idx, const std::string& value);

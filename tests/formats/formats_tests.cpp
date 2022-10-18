@@ -75,7 +75,7 @@ TEST(formats_tests, duplicate_register) {
     ASSERT_EQ(nullptr, irs::formats::get(irs::type<dummy_format>::name()));
 
     irs::format_registrar initial(irs::type<dummy_format>::get(),
-                                  irs::string_ref{}, &dummy_format::make);
+                                  std::string_view{}, &dummy_format::make);
     ASSERT_EQ(!initial_expected, !initial);
   }
 

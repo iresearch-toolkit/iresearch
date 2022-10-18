@@ -73,8 +73,8 @@ TEST_P(sorted_column_test_case, flush_empty) {
   ASSERT_NE(nullptr, codec);
 
   struct comparator final : irs::comparer {
-    virtual bool less(irs::bytes_ref lhs,
-                      irs::bytes_ref rhs) const noexcept override {
+    virtual bool less(irs::bytes_view lhs,
+                      irs::bytes_view rhs) const noexcept override {
       const auto* plhs = lhs.data();
       const auto* prhs = rhs.data();
 
@@ -109,7 +109,7 @@ TEST_P(sorted_column_test_case, flush_empty) {
       [](auto&) {
         // Must not be called
         EXPECT_TRUE(false);
-        return irs::string_ref{};
+        return std::string_view{};
       },
       0, less);
     ASSERT_TRUE(col.empty());
@@ -146,8 +146,8 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
     68, 14, 73, 30, 70, 38, 85, 98, 79,  75, 38, 79, 85, 85, 100, 91};
 
   struct comparator final : irs::comparer {
-    virtual bool less(irs::bytes_ref lhs,
-                      irs::bytes_ref rhs) const noexcept override {
+    virtual bool less(irs::bytes_view lhs,
+                      irs::bytes_view rhs) const noexcept override {
       const auto* plhs = lhs.data();
       const auto* prhs = rhs.data();
 
@@ -218,7 +218,7 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
       [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
         out += 42;
-        return irs::string_ref{};
+        return std::string_view{};
       },
       std::size(values), less);
     ASSERT_TRUE(col.empty());
@@ -278,8 +278,8 @@ TEST_P(sorted_column_test_case, sort) {
     68, 14, 73, 30, 70, 38, 85, 98, 79,  75, 38, 79, 85, 85, 100, 91};
 
   struct comparator final : irs::comparer {
-    virtual bool less(irs::bytes_ref lhs,
-                      irs::bytes_ref rhs) const noexcept override {
+    virtual bool less(irs::bytes_view lhs,
+                      irs::bytes_view rhs) const noexcept override {
       const auto* plhs = lhs.data();
       const auto* prhs = rhs.data();
 
@@ -347,7 +347,7 @@ TEST_P(sorted_column_test_case, sort) {
       [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
         out += 42;
-        return irs::string_ref{};
+        return std::string_view{};
       },
       std::size(values), less);
     ASSERT_TRUE(col.empty());

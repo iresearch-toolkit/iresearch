@@ -32,7 +32,7 @@ namespace iresearch {
 struct score : attribute, ScoreFunction {
   static const score kNoScore;
 
-  static constexpr string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "iresearch::score";
   }
 

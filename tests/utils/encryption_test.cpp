@@ -47,15 +47,15 @@ void assert_encryption(size_t block_size, size_t header_lenght) {
   ASSERT_EQ(block_size, cipher->block_size());
 
   // unencrypted part of the header: counter+iv
-  ASSERT_EQ(irs::bytes_ref(encrypted_header.c_str(), 2 * cipher->block_size()),
-            irs::bytes_ref(header.c_str(), 2 * cipher->block_size()));
+  ASSERT_EQ(irs::bytes_view(encrypted_header.c_str(), 2 * cipher->block_size()),
+            irs::bytes_view(header.c_str(), 2 * cipher->block_size()));
 
   // encrypted part of the header
   ASSERT_TRUE(
     encrypted_header.size() == 2 * cipher->block_size() ||
-    (irs::bytes_ref(encrypted_header.c_str() + 2 * cipher->block_size(),
+    (irs::bytes_view(encrypted_header.c_str() + 2 * cipher->block_size(),
                     encrypted_header.size() - 2 * cipher->block_size()) !=
-     irs::bytes_ref(header.c_str() + 2 * cipher->block_size(),
+     irs::bytes_view(header.c_str() + 2 * cipher->block_size(),
                     header.size() - 2 * cipher->block_size())));
 
   const bstring data(
@@ -71,24 +71,24 @@ void assert_encryption(size_t block_size, size_t header_lenght) {
       size_t offset = 0;
       ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
       ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
-      ASSERT_EQ(irs::bytes_ref(data.c_str(), source.size()),
-                irs::bytes_ref(source));
+      ASSERT_EQ(irs::bytes_view(data.c_str(), source.size()),
+                irs::bytes_view(source));
     }
 
     {
       size_t offset = 4;
       ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
       ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
-      ASSERT_EQ(irs::bytes_ref(data.c_str(), source.size()),
-                irs::bytes_ref(source));
+      ASSERT_EQ(irs::bytes_view(data.c_str(), source.size()),
+                irs::bytes_view(source));
     }
 
     {
       size_t offset = 1023;
       ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
       ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
-      ASSERT_EQ(irs::bytes_ref(data.c_str(), source.size()),
-                irs::bytes_ref(source));
+      ASSERT_EQ(irs::bytes_view(data.c_str(), source.size()),
+                irs::bytes_view(source));
     }
   }
 
@@ -100,24 +100,24 @@ void assert_encryption(size_t block_size, size_t header_lenght) {
       size_t offset = 0;
       ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
       ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
-      ASSERT_EQ(irs::bytes_ref(data.c_str(), source.size()),
-                irs::bytes_ref(source));
+      ASSERT_EQ(irs::bytes_view(data.c_str(), source.size()),
+                irs::bytes_view(source));
     }
 
     {
       size_t offset = 4;
       ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
       ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
-      ASSERT_EQ(irs::bytes_ref(data.c_str(), source.size()),
-                irs::bytes_ref(source));
+      ASSERT_EQ(irs::bytes_view(data.c_str(), source.size()),
+                irs::bytes_view(source));
     }
 
     {
       size_t offset = 1023;
       ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
       ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
-      ASSERT_EQ(irs::bytes_ref(data.c_str(), source.size()),
-                irs::bytes_ref(source));
+      ASSERT_EQ(irs::bytes_view(data.c_str(), source.size()),
+                irs::bytes_view(source));
     }
   }
 
@@ -129,24 +129,24 @@ void assert_encryption(size_t block_size, size_t header_lenght) {
       size_t offset = 0;
       ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
       ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
-      ASSERT_EQ(irs::bytes_ref(data.c_str(), source.size()),
-                irs::bytes_ref(source));
+      ASSERT_EQ(irs::bytes_view(data.c_str(), source.size()),
+                irs::bytes_view(source));
     }
 
     {
       size_t offset = 4;
       ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
       ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
-      ASSERT_EQ(irs::bytes_ref(data.c_str(), source.size()),
-                irs::bytes_ref(source));
+      ASSERT_EQ(irs::bytes_view(data.c_str(), source.size()),
+                irs::bytes_view(source));
     }
 
     {
       size_t offset = 1023;
       ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
       ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
-      ASSERT_EQ(irs::bytes_ref(data.c_str(), source.size()),
-                irs::bytes_ref(source));
+      ASSERT_EQ(irs::bytes_view(data.c_str(), source.size()),
+                irs::bytes_view(source));
     }
   }
 }

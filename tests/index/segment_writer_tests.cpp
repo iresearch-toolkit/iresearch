@@ -36,7 +36,7 @@ namespace {
 class segment_writer_tests : public test_base {
  protected:
   static irs::column_info_provider_t default_column_info() {
-    return [](const irs::string_ref&) {
+    return [](const std::string_view&) {
       return irs::column_info{
         .compression = irs::type<irs::compression::lz4>::get(),
         .options = {},
@@ -78,8 +78,8 @@ TEST_F(segment_writer_tests, invalid_actions) {
     float_t boost() const { return 1.f; }
     irs::features_t features() const { return {}; }
     irs::token_stream& get_tokens() { return token_stream; }
-    irs::string_ref& name() const {
-      static irs::string_ref value("test_field");
+    std::string_view& name() const {
+      static std::string_view value("test_field");
       return value;
     }
     bool write(irs::data_output& out) {
@@ -136,8 +136,8 @@ TEST_F(segment_writer_tests, invalid_actions) {
 
 TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
   struct field_t {
-    const irs::string_ref& name() const {
-      static const irs::string_ref value("test_field");
+    const std::string_view& name() const {
+      static const std::string_view value("test_field");
       return value;
     }
 
@@ -148,8 +148,8 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
   } field;
 
   struct comparator final : irs::comparer {
-    virtual bool less(irs::bytes_ref lhs,
-                      irs::bytes_ref rhs) const noexcept override {
+    virtual bool less(irs::bytes_view lhs,
+                      irs::bytes_view rhs) const noexcept override {
       return lhs < rhs;
     }
   } less;
@@ -204,8 +204,8 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
 
 TEST_F(segment_writer_tests, insert_sorted_without_comparator) {
   struct field_t {
-    const irs::string_ref& name() const {
-      static const irs::string_ref value("test_field");
+    const std::string_view& name() const {
+      static const std::string_view value("test_field");
       return value;
     }
 
@@ -215,7 +215,7 @@ TEST_F(segment_writer_tests, insert_sorted_without_comparator) {
     }
   } field;
 
-  decltype(default_column_info()) column_info = [](const irs::string_ref&) {
+  decltype(default_column_info()) column_info = [](const std::string_view&) {
     return irs::column_info{
       irs::type<irs::compression::lz4>::get(),
       irs::compression::options(irs::compression::options::Hint::SPEED), true};
@@ -252,8 +252,8 @@ TEST_F(segment_writer_tests, insert_sorted_without_comparator) {
 
 TEST_F(segment_writer_tests, memory_store_sorted_field) {
   struct field_t {
-    const irs::string_ref& name() const {
-      static const irs::string_ref value("test_field");
+    const std::string_view& name() const {
+      static const std::string_view value("test_field");
       return value;
     }
 
@@ -264,8 +264,8 @@ TEST_F(segment_writer_tests, memory_store_sorted_field) {
   } field;
 
   struct comparator final : irs::comparer {
-    virtual bool less(irs::bytes_ref lhs,
-                      irs::bytes_ref rhs) const noexcept override {
+    virtual bool less(irs::bytes_view lhs,
+                      irs::bytes_view rhs) const noexcept override {
       return lhs < rhs;
     }
   } less;
@@ -303,8 +303,8 @@ TEST_F(segment_writer_tests, memory_store_sorted_field) {
 
 TEST_F(segment_writer_tests, memory_store_field_sorted) {
   struct field_t {
-    const irs::string_ref& name() const {
-      static const irs::string_ref value("test_field");
+    const std::string_view& name() const {
+      static const std::string_view value("test_field");
       return value;
     }
 
@@ -315,8 +315,8 @@ TEST_F(segment_writer_tests, memory_store_field_sorted) {
   } field;
 
   struct comparator final : irs::comparer {
-    virtual bool less(irs::bytes_ref lhs,
-                      irs::bytes_ref rhs) const noexcept override {
+    virtual bool less(irs::bytes_view lhs,
+                      irs::bytes_view rhs) const noexcept override {
       return lhs < rhs;
     }
   } less;
@@ -354,8 +354,8 @@ TEST_F(segment_writer_tests, memory_store_field_sorted) {
 
 TEST_F(segment_writer_tests, memory_store_field_unsorted) {
   struct field_t {
-    const irs::string_ref& name() const {
-      static const irs::string_ref value("test_field");
+    const std::string_view& name() const {
+      static const std::string_view value("test_field");
       return value;
     }
 
@@ -404,8 +404,8 @@ TEST_F(segment_writer_tests, memory_index_field) {
       return irs::IndexFeatures::NONE;
     }
     irs::token_stream& get_tokens() { return token_stream; }
-    irs::string_ref& name() const {
-      static irs::string_ref value("test_field");
+    std::string_view& name() const {
+      static std::string_view value("test_field");
       return value;
     }
   };
@@ -455,8 +455,8 @@ TEST_F(segment_writer_tests, index_field) {
     }
     irs::features_t features() const { return {}; }
     irs::token_stream& get_tokens() { return token_stream; }
-    irs::string_ref& name() const {
-      static irs::string_ref value("test_field");
+    std::string_view& name() const {
+      static std::string_view value("test_field");
       return value;
     }
   };

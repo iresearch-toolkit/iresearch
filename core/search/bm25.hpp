@@ -31,7 +31,7 @@ class bm25_sort : public sort {
  public:
   using score_t = float_t;
 
-  static constexpr string_ref type_name() noexcept { return "bm25"; }
+  static constexpr std::string_view type_name() noexcept { return "bm25"; }
 
   static constexpr float_t K() noexcept { return 1.2f; }
 

@@ -127,7 +127,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-analysis::analyzer::ptr make_vpack(string_ref args) {
+analysis::analyzer::ptr make_vpack(std::string_view args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
@@ -157,7 +157,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   }
 }
 
-bool normalize_vpack_config(string_ref args, std::string& config) {
+bool normalize_vpack_config(std::string_view args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -167,7 +167,7 @@ bool normalize_vpack_config(string_ref args, std::string& config) {
   return false;
 }
 
-analysis::analyzer::ptr make_json(string_ref args) {
+analysis::analyzer::ptr make_json(std::string_view args) {
   try {
     if (IsNull(args)) {
       IR_FRMT_ERROR(
@@ -189,7 +189,7 @@ analysis::analyzer::ptr make_json(string_ref args) {
   return nullptr;
 }
 
-bool normalize_json_config(string_ref args, std::string& definition) {
+bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (IsNull(args)) {
       IR_FRMT_ERROR(
@@ -246,7 +246,7 @@ bool stemming_token_stream::next() {
   return true;
 }
 
-bool stemming_token_stream::reset(string_ref data) {
+bool stemming_token_stream::reset(std::string_view data) {
   if (!stemmer_) {
     // defaults to utf-8
     stemmer_ = make_stemmer_ptr(options_.locale.getLanguage(), nullptr);
@@ -263,7 +263,7 @@ bool stemming_token_stream::reset(string_ref data) {
   term_eof_ = false;
 
   // find the token stem
-  string_ref utf8_data{data};
+  std::string_view utf8_data{data};
 
   if (stemmer_) {
     if (utf8_data.size() >
@@ -279,7 +279,7 @@ bool stemming_token_stream::reset(string_ref data) {
 
     if (value) {
       static_assert(sizeof(byte_type) == sizeof(sb_symbol));
-      term.value = bytes_ref(reinterpret_cast<const byte_type*>(value),
+      term.value = bytes_view(reinterpret_cast<const byte_type*>(value),
                              sb_stemmer_length(stemmer_.get()));
 
       return true;

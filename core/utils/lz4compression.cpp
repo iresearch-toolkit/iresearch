@@ -75,7 +75,7 @@ lz4stream_decode lz4_make_stream_decode() {
 // --SECTION--                                                   lz4 compression
 // -----------------------------------------------------------------------------
 
-bytes_ref lz4::lz4compressor::compress(byte_type* src, size_t size,
+bytes_view lz4::lz4compressor::compress(byte_type* src, size_t size,
                                        bstring& out) {
   assert(size <= static_cast<unsigned>(
                    std::numeric_limits<int>::max()));  // LZ4 API uses int
@@ -94,10 +94,10 @@ bytes_ref lz4::lz4compressor::compress(byte_type* src, size_t size,
     throw index_error("while compressing, error: LZ4 returned negative size");
   }
 
-  return bytes_ref(reinterpret_cast<const byte_type*>(buf), size_t(lz4_size));
+  return bytes_view(reinterpret_cast<const byte_type*>(buf), size_t(lz4_size));
 }
 
-bytes_ref lz4::lz4decompressor::decompress(const byte_type* src,
+bytes_view lz4::lz4decompressor::decompress(const byte_type* src,
                                            size_t src_size, byte_type* dst,
                                            size_t dst_size) {
   assert(src_size <= static_cast<unsigned>(
@@ -115,7 +115,7 @@ bytes_ref lz4::lz4decompressor::decompress(const byte_type* src,
     return {};  // corrupted index
   }
 
-  return bytes_ref{dst, size_t(lz4_size)};
+  return bytes_view{dst, size_t(lz4_size)};
 }
 
 compressor::ptr lz4::compressor(const options& opts) {

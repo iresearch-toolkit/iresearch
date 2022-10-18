@@ -30,74 +30,74 @@ void expect_sign_eq(long double lhs, long double rhs) {
   EXPECT_TRUE((lhs == 0 && rhs == 0) || std::signbit(lhs) == std::signbit(rhs));
 }
 
-TEST(string_ref_tests, common_prefix) {
+TEST(std::string_view_tests, common_prefix) {
   using namespace iresearch;
 
   {
-    const string_ref lhs = "20-MAR-2012 19:56:11.00";
-    const string_ref rhs = "20-MAR-2012 19:56:11.00\0\0";
+    const std::string_view lhs = "20-MAR-2012 19:56:11.00";
+    const std::string_view rhs = "20-MAR-2012 19:56:11.00\0\0";
     EXPECT_EQ(23, common_prefix_length(lhs, rhs));
     EXPECT_EQ(23, common_prefix_length(rhs, lhs));
   }
 
   {
-    const string_ref lhs = "quick brown fox";
-    const string_ref rhs = "quick brown fax";
+    const std::string_view lhs = "quick brown fox";
+    const std::string_view rhs = "quick brown fax";
     EXPECT_EQ(13, common_prefix_length(lhs, rhs));
     EXPECT_EQ(13, common_prefix_length(rhs, lhs));
   }
 
   {
-    const string_ref lhs = "quick brown foxies";
-    const string_ref rhs = "quick brown fax";
+    const std::string_view lhs = "quick brown foxies";
+    const std::string_view rhs = "quick brown fax";
     EXPECT_EQ(13, common_prefix_length(lhs, rhs));
     EXPECT_EQ(13, common_prefix_length(rhs, lhs));
   }
 
   {
-    const string_ref lhs = "quick brown foxies";
-    const string_ref rhs = "fuick brown fax";
+    const std::string_view lhs = "quick brown foxies";
+    const std::string_view rhs = "fuick brown fax";
     EXPECT_EQ(0, common_prefix_length(lhs, rhs));
     EXPECT_EQ(0, common_prefix_length(rhs, lhs));
   }
 
   {
-    const string_ref lhs = "quick brown foxies";
-    const string_ref rhs = "q1ick brown fax";
+    const std::string_view lhs = "quick brown foxies";
+    const std::string_view rhs = "q1ick brown fax";
     EXPECT_EQ(1, common_prefix_length(lhs, rhs));
     EXPECT_EQ(1, common_prefix_length(rhs, lhs));
   }
 
   {
-    const string_ref lhs = "qui";
-    const string_ref rhs = "q1";
+    const std::string_view lhs = "qui";
+    const std::string_view rhs = "q1";
     EXPECT_EQ(1, common_prefix_length(lhs, rhs));
     EXPECT_EQ(1, common_prefix_length(rhs, lhs));
   }
 
   {
-    const string_ref lhs = "qui";
-    const string_ref rhs = "f1";
+    const std::string_view lhs = "qui";
+    const std::string_view rhs = "f1";
     EXPECT_EQ(0, common_prefix_length(lhs, rhs));
     EXPECT_EQ(0, common_prefix_length(rhs, lhs));
   }
 
   {
-    const string_ref lhs = "quick brown foxies";
-    const string_ref rhs = "qui";
+    const std::string_view lhs = "quick brown foxies";
+    const std::string_view rhs = "qui";
     EXPECT_EQ(3, common_prefix_length(lhs, rhs));
     EXPECT_EQ(3, common_prefix_length(rhs, lhs));
   }
 
   {
-    const string_ref str = "quick brown foxies";
-    EXPECT_EQ(0, common_prefix_length(string_ref{}, str));
-    EXPECT_EQ(0, common_prefix_length(str, string_ref{}));
+    const std::string_view str = "quick brown foxies";
+    EXPECT_EQ(0, common_prefix_length(std::string_view{}, str));
+    EXPECT_EQ(0, common_prefix_length(str, std::string_view{}));
   }
 
   {
-    const string_ref str = "quick brown foxies";
-    EXPECT_EQ(0, common_prefix_length(string_ref{""}, str));
-    EXPECT_EQ(0, common_prefix_length(str, string_ref{""}));
+    const std::string_view str = "quick brown foxies";
+    EXPECT_EQ(0, common_prefix_length(std::string_view{""}, str));
+    EXPECT_EQ(0, common_prefix_length(str, std::string_view{""}));
   }
 }

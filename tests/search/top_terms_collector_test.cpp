@@ -79,7 +79,7 @@ struct sort : irs::sort {
         total_term_freq = 0;
       }
 
-      virtual void collect(irs::bytes_ref) override {}
+      virtual void collect(irs::bytes_view) override {}
       virtual void write(irs::data_output&) const override {}
     };
 
@@ -98,7 +98,7 @@ struct sort : irs::sort {
 
       virtual void reset() noexcept override { docs_with_term = 0; }
 
-      virtual void collect(irs::bytes_ref) override {}
+      virtual void collect(irs::bytes_view) override {}
       virtual void write(irs::data_output&) const override {}
     };
 
@@ -140,16 +140,16 @@ struct sort : irs::sort {
 
 class seek_term_iterator final : public irs::seek_term_iterator {
  public:
-  typedef const std::pair<irs::string_ref, term_meta>* iterator_type;
+  typedef const std::pair<std::string_view, term_meta>* iterator_type;
 
   seek_term_iterator(iterator_type begin, iterator_type end)
     : begin_(begin), end_(end), cookie_ptr_(begin) {}
 
-  virtual irs::SeekResult seek_ge(irs::bytes_ref) override {
+  virtual irs::SeekResult seek_ge(irs::bytes_view) override {
     return irs::SeekResult::NOT_FOUND;
   }
 
-  virtual bool seek(irs::bytes_ref) override { return false; }
+  virtual bool seek(irs::bytes_view) override { return false; }
 
   virtual irs::seek_cookie::ptr cookie() const override {
     return irs::memory::make_unique<struct seek_ptr>(cookie_ptr_);
@@ -175,7 +175,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     return true;
   }
 
-  virtual irs::bytes_ref value() const noexcept override { return value_; }
+  virtual irs::bytes_view value() const noexcept override { return value_; }
 
   virtual void read() override {}
 
@@ -196,7 +196,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     }
 
     size_t Hash() const noexcept override {
-      return std::hash<irs::string_ref>{}(ptr->first);
+      return std::hash<std::string_view>{}(ptr->first);
     }
 
     iterator_type ptr;
@@ -204,7 +204,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
 
  private:
   term_meta meta_;
-  irs::bytes_ref value_;
+  irs::bytes_view value_;
   iterator_type begin_;
   iterator_type end_;
   iterator_type cookie_ptr_;
@@ -218,14 +218,14 @@ struct sub_reader final : irs::sub_reader {
   virtual const irs::column_reader* column(irs::field_id) const override {
     return nullptr;
   }
-  virtual const irs::column_reader* column(irs::string_ref) const override {
+  virtual const irs::column_reader* column(std::string_view) const override {
     return nullptr;
   }
   virtual uint64_t docs_count() const override { return 0; }
   virtual irs::doc_iterator::ptr docs_iterator() const override {
     return irs::doc_iterator::empty();
   }
-  virtual const irs::term_reader* field(irs::string_ref) const override {
+  virtual const irs::term_reader* field(std::string_view) const override {
     return nullptr;
   }
   virtual irs::field_iterator::ptr fields() const override {
@@ -245,7 +245,7 @@ struct state {
   struct segment_state {
     const irs::term_reader* field;
     uint32_t docs_count;
-    std::vector<const std::pair<irs::string_ref, term_meta>*> cookies;
+    std::vector<const std::pair<std::string_view, term_meta>*> cookies;
   };
 
   std::map<const irs::sub_reader*, segment_state> segments;
@@ -285,7 +285,7 @@ TEST(top_terms_collector_test, test_top_k) {
   // segment 0
   irs::empty_term_reader term_reader0(42);
   sub_reader segment0(100);
-  const std::pair<irs::string_ref, term_meta> TERMS0[]{
+  const std::pair<std::string_view, term_meta> TERMS0[]{
     {"F", {1, 1}}, {"G", {2, 2}},   {"H", {3, 3}},  {"B", {3, 3}},
     {"C", {3, 3}}, {"A", {3, 3}},   {"H", {2, 2}},  {"D", {5, 5}},
     {"E", {5, 5}}, {"I", {15, 15}}, {"J", {5, 25}}, {"K", {15, 35}},
@@ -303,7 +303,7 @@ TEST(top_terms_collector_test, test_top_k) {
   // segment 1
   irs::empty_term_reader term_reader1(42);
   sub_reader segment1(100);
-  const std::pair<irs::string_ref, term_meta> TERMS1[]{
+  const std::pair<std::string_view, term_meta> TERMS1[]{
     {"F", {1, 1}}, {"G", {2, 2}}, {"H", {3, 3}},   {"B", {3, 3}},
     {"C", {3, 3}}, {"A", {3, 3}}, {"K", {15, 35}},
   };
@@ -351,7 +351,7 @@ TEST(top_terms_collector_test, test_top_0) {
   // segment 0
   irs::empty_term_reader term_reader0(42);
   sub_reader segment0(100);
-  const std::pair<irs::string_ref, term_meta> TERMS0[]{
+  const std::pair<std::string_view, term_meta> TERMS0[]{
     {"F", {1, 1}}, {"G", {2, 2}},   {"H", {3, 3}},  {"B", {3, 3}},
     {"C", {3, 3}}, {"A", {3, 3}},   {"H", {2, 2}},  {"D", {5, 5}},
     {"E", {5, 5}}, {"I", {15, 15}}, {"J", {5, 25}}, {"K", {15, 35}},
@@ -369,7 +369,7 @@ TEST(top_terms_collector_test, test_top_0) {
   // segment 1
   irs::empty_term_reader term_reader1(42);
   sub_reader segment1(100);
-  const std::pair<irs::string_ref, term_meta> TERMS1[]{
+  const std::pair<std::string_view, term_meta> TERMS1[]{
     {"F", {1, 1}}, {"G", {2, 2}}, {"H", {3, 3}},   {"B", {3, 3}},
     {"C", {3, 3}}, {"A", {3, 3}}, {"K", {15, 35}},
   };

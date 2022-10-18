@@ -231,7 +231,7 @@ inline bool utf8_to_utf32(const byte_type* begin, size_t size,
 }
 
 template<bool Checked = true, typename OutputIterator>
-FORCE_INLINE bool utf8_to_utf32(bytes_ref in, OutputIterator out) {
+FORCE_INLINE bool utf8_to_utf32(bytes_view in, OutputIterator out) {
   return utf8_to_utf32<Checked>(in.begin(), in.size(), out);
 }
 
@@ -245,7 +245,7 @@ inline size_t utf8_length(const byte_type* begin, size_t size) noexcept {
   return length;
 }
 
-FORCE_INLINE size_t utf8_length(bytes_ref in) noexcept {
+FORCE_INLINE size_t utf8_length(bytes_view in) noexcept {
   return utf8_length(in.data(), in.size());
 }
 

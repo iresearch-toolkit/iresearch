@@ -156,7 +156,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     irs::analysis::text_token_stream stream(options,
                                             options.explicit_stopwords);
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pOffset = irs::get<irs::offset>(*pStream);
@@ -272,7 +272,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   {
     std::string data = "A qUiCk brOwn FoX";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* value = irs::get<irs::term_attribute>(*pStream);
@@ -311,7 +311,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   {
     std::string data = "A qUiCk brOwn FoX";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* value = irs::get<irs::term_attribute>(*pStream);
@@ -350,7 +350,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   {
     std::string data = "A qUiCk brOwn FoX";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* value = irs::get<irs::term_attribute>(*pStream);
@@ -389,7 +389,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   {
     std::string data = " A thing of some KIND and ANoTher ";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pOffset = irs::get<irs::offset>(*pStream);
@@ -446,7 +446,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       u8"\u0443\u0020\u0441\u0447\u0438\u0442\u0430\u0442\u044c\u0020\u0437"
       u8"\u0432\u0435\u0437\u0434\u044b");
 
-    auto testFunc = [](irs::string_ref data, analyzer* pStream) {
+    auto testFunc = [](std::string_view data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pOffset = irs::get<irs::offset>(*pStream);
@@ -542,7 +542,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       u8"\U00000435\U00000440\U00000430\U0000043c\U00000020\U00000435"
       u8"\U00000436\U00000438\U0000043a");
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pOffset = irs::get<irs::offset>(*pStream);
@@ -619,7 +619,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
     auto locale = "en_US.UTF-8";
     std::string sDataASCII = "A E I O U";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
       auto* pOffset = irs::get<irs::offset>(*pStream);
       ASSERT_NE(nullptr, pOffset);
@@ -707,7 +707,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_no_default_stopwords) {
   {
     const std::string sDataASCII = "A E I O U";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
       auto* pOffset = irs::get<irs::offset>(*pStream);
       ASSERT_NE(nullptr, pOffset);
@@ -775,7 +775,7 @@ TEST_F(TextAnalyzerParserTestSuite,
   {
     const std::string sDataASCII = "A E I O U";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
       auto* pOffset = irs::get<irs::offset>(*pStream);
       ASSERT_NE(nullptr, pOffset);
@@ -816,7 +816,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override) {
 
   std::string sDataASCII = "A E I O U";
 
-  auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+  auto testFunc = [](const std::string_view& data, analyzer* pStream) {
     ASSERT_TRUE(pStream->reset(data));
     auto* pOffset = irs::get<irs::offset>(*pStream);
     ASSERT_NE(nullptr, pOffset);
@@ -1150,7 +1150,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of   quIck ";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
@@ -1182,7 +1182,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of   quIck ";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
@@ -1226,7 +1226,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of   quIck ";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
@@ -1262,7 +1262,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of   quIck ";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
@@ -1288,7 +1288,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of   quIck ";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
@@ -1317,7 +1317,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of   quIck ";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
@@ -1351,7 +1351,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of   quIck ";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
@@ -1374,7 +1374,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
@@ -1400,7 +1400,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
@@ -1430,7 +1430,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
@@ -1464,7 +1464,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
@@ -1498,7 +1498,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
@@ -1535,7 +1535,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       "\xD0\xBC\x20\xD0\xBA\x20\xD0\x9C\xD0\xB5\xD0\xB4\xD0\xB2\xD0\xB5\xD0"
       "\xB6\xD0\xBE\xD0\xBD\xD0\xBA\xD1\x83";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* offset = irs::get<irs::offset>(*pStream);
@@ -1589,7 +1589,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
         "\"edgeNgram\" : {\"min\":1, \"max\":2, "
         "\"preserveOriginal\":false}}");
       ASSERT_NE(nullptr, stream);
-      testFunc(irs::string_ref(sDataUTF8.data(), sDataUTF8.size()),
+      testFunc(std::string_view(sDataUTF8.data(), sDataUTF8.size()),
                stream.get());
     }
   }

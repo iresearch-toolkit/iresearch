@@ -61,8 +61,8 @@ std::pair<doc_map, field_id> sorted_column::flush(
 
   auto get_value = [this](irs::doc_id_t doc) {
     return doc_limits::eof(doc)
-             ? bytes_ref{}
-             : bytes_ref{data_buf_.c_str() + index_[doc].second,
+             ? bytes_view{}
+             : bytes_view{data_buf_.c_str() + index_[doc].second,
                          index_[doc + 1].second - index_[doc].second};
   };
 

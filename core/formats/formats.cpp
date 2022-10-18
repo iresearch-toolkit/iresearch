@@ -38,7 +38,7 @@ constexpr std::string_view kFileNamePrefix{"libformat-"};
 
 // first - format name
 // second - module name, nullptr => matches format name
-typedef std::pair<irs::string_ref, irs::string_ref> key_t;
+typedef std::pair<std::string_view, std::string_view> key_t;
 
 struct equal_to {
   bool operator()(const key_t& lhs, const key_t& rhs) const noexcept {
@@ -54,7 +54,7 @@ struct hash {
 
 class format_register
   : public irs::tagged_generic_register<key_t, irs::format::ptr (*)(),
-                                        irs::string_ref, format_register, hash,
+                                        std::string_view, format_register, hash,
                                         equal_to> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
@@ -93,17 +93,17 @@ namespace iresearch {
   if (payload) {
     meta.payload(std::move(*payload));
   } else {
-    meta.payload(bytes_ref{});
+    meta.payload(bytes_view{});
   }
 }
 
-/*static*/ bool formats::exists(string_ref name, bool load_library /*= true*/) {
-  auto const key = std::make_pair(name, string_ref{});
+/*static*/ bool formats::exists(std::string_view name, bool load_library /*= true*/) {
+  auto const key = std::make_pair(name, std::string_view{});
   return nullptr != format_register::instance().get(key, load_library);
 }
 
-/*static*/ format::ptr formats::get(string_ref name,
-                                    string_ref module /*= {} */,
+/*static*/ format::ptr formats::get(std::string_view name,
+                                    std::string_view module /*= {} */,
                                     bool load_library /*= true*/) noexcept {
   try {
     auto const key = std::make_pair(name, module);
@@ -127,7 +127,7 @@ namespace iresearch {
   load_libraries(path, kFileNamePrefix, "");
 }
 
-/*static*/ bool formats::visit(const std::function<bool(string_ref)>& visitor) {
+/*static*/ bool formats::visit(const std::function<bool(std::string_view)>& visitor) {
   auto visit_all = [&visitor](const format_register::key_type& key) {
     if (!visitor(key.first)) {
       return false;
@@ -142,10 +142,10 @@ namespace iresearch {
 // --SECTION--                                               format registration
 // -----------------------------------------------------------------------------
 
-format_registrar::format_registrar(const type_info& type, string_ref module,
+format_registrar::format_registrar(const type_info& type, std::string_view module,
                                    format::ptr (*factory)(),
                                    const char* source /*= nullptr*/) {
-  string_ref source_ref(source);
+  std::string_view source_ref(source);
 
   auto entry = format_register::instance().set(
     std::make_pair(type.name(), module), factory,
@@ -154,7 +154,7 @@ format_registrar::format_registrar(const type_info& type, string_ref module,
   registered_ = entry.second;
 
   if (!registered_ && factory != entry.first) {
-    const auto key = std::make_pair(type.name(), string_ref{});
+    const auto key = std::make_pair(type.name(), std::string_view{});
     auto* registered_source = format_register::instance().tag(key);
 
     if (source && registered_source) {
