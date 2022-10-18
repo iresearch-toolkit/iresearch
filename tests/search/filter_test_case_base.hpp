@@ -493,7 +493,7 @@ class empty_filter_visitor : public irs::filter_visitor {
       terms_.size());
     auto begin = refs.begin();
     for (auto& term : terms_) {
-      begin->first = irs::ViewCast<Char>(term.first);
+      begin->first = irs::ViewCast<Char>(irs::bytes_view{term.first});
       begin->second = term.second;
       ++begin;
     }

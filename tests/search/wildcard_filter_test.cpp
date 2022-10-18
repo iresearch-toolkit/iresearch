@@ -20,21 +20,22 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
-#include "filter_test_case_base.hpp"
 #include "search/wildcard_filter.hpp"
 
+#include "filter_test_case_base.hpp"
+#include "tests_shared.hpp"
+
 #ifndef IRESEARCH_DLL
-#include "search/term_filter.hpp"
 #include "search/all_filter.hpp"
-#include "search/prefix_filter.hpp"
 #include "search/multiterm_query.hpp"
+#include "search/prefix_filter.hpp"
+#include "search/term_filter.hpp"
 #endif
 
 namespace {
 
 template<typename Filter = irs::by_wildcard>
-Filter make_filter(const std::string_view& field, const std::string_view term) {
+Filter make_filter(std::string_view field, std::string_view term) {
   Filter q;
   *q.mutable_field() = field;
   q.mutable_options()->term = irs::ViewCast<irs::byte_type>(term);

@@ -169,7 +169,7 @@ auto MakeByNumericTerm(std::string_view name, int32_t value) {
   stream.reset(value);
   stream.next();
 
-  irs::Assign(filter->mutable_options()->term, token->value);
+  filter->mutable_options()->term = token->value;
 
   return filter;
 }
@@ -1279,7 +1279,7 @@ class NestedFilterFormatsTestCase : public NestedFilterTestCase {
   bool HasPrevDocSupport() noexcept {
     // old formats don't support columnstore headers
     constexpr std::string_view kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
-                                            "1_3simd"};
+                                             "1_3simd"};
 
     return std::end(kOldFormats) == std::find(std::begin(kOldFormats),
                                               std::end(kOldFormats),
