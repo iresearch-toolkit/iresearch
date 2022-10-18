@@ -179,9 +179,8 @@ inline size_t CommonPrefixLength(
 }
 
 template<typename Char>
-inline std::basic_string_view<Char> EmptyStringView() noexcept {
-  return {reinterpret_cast<const Char*>(""), 0};
-}
+inline std::basic_string_view<Char> kEmptyStringView{
+  reinterpret_cast<const Char*>(""), 0};
 
 template<typename Char>
 constexpr bool IsNull(std::basic_string_view<Char> str) noexcept {

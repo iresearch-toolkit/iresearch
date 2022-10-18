@@ -550,7 +550,7 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
     auto finish = a.AddState();
 
     std::vector<std::pair<irs::bytes_view, irs::automaton::StateId>> arcs{
-      {irs::EmptyStringView<irs::byte_type>(), finish}};
+      {irs::kEmptyStringView<irs::byte_type>, finish}};
     builder.insert(a, start, fst::kNoStateId, arcs.begin(), arcs.end());
 
     assert_properties(a);
@@ -581,7 +581,7 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
     auto intermediate2 = a.NumStates() + 2;
 
     std::vector<std::pair<irs::bytes_view, irs::automaton::StateId>> arcs{
-      {irs::EmptyStringView<irs::byte_type>(), finish}};
+      {irs::kEmptyStringView<irs::byte_type>, finish}};
     builder.insert(a, start, finish, arcs.begin(), arcs.end());
 
     assert_properties(a);
@@ -1272,7 +1272,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     }
 
     ASSERT_FALSE(
-      irs::accept<irs::byte_type>(a, irs::EmptyStringView<irs::byte_type>()));
+      irs::accept<irs::byte_type>(a, irs::kEmptyStringView<irs::byte_type>));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
@@ -1373,7 +1373,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     }
 
     ASSERT_FALSE(
-      irs::accept<irs::byte_type>(a, irs::EmptyStringView<irs::byte_type>()));
+      irs::accept<irs::byte_type>(a, irs::kEmptyStringView<irs::byte_type>));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
@@ -1488,7 +1488,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     }
 
     ASSERT_FALSE(
-      irs::accept<irs::byte_type>(a, irs::EmptyStringView<irs::byte_type>()));
+      irs::accept<irs::byte_type>(a, irs::kEmptyStringView<irs::byte_type>));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
@@ -1615,7 +1615,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_default_arc) {
     }
 
     ASSERT_FALSE(
-      irs::accept<irs::byte_type>(a, irs::EmptyStringView<irs::byte_type>()));
+      irs::accept<irs::byte_type>(a, irs::kEmptyStringView<irs::byte_type>));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
       a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_TRUE(irs::accept<irs::byte_type>(
@@ -1688,7 +1688,7 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
   }
 
   ASSERT_FALSE(
-    irs::accept<irs::byte_type>(a, irs::EmptyStringView<irs::byte_type>()));
+    irs::accept<irs::byte_type>(a, irs::kEmptyStringView<irs::byte_type>));
   ASSERT_TRUE(irs::accept<irs::byte_type>(
     a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
   ASSERT_TRUE(irs::accept<irs::byte_type>(

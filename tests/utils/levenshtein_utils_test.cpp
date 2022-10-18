@@ -108,7 +108,7 @@ void assert_description(
   const irs::parametric_description& description, const irs::bytes_view& target,
   const std::vector<std::tuple<irs::bytes_view, size_t, size_t, size_t>>&
     candidates) {
-  return assert_description(description, irs::EmptyStringView<irs::byte_type>(),
+  return assert_description(description, irs::kEmptyStringView<irs::byte_type>,
                             target, candidates);
 }
 
@@ -493,7 +493,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description, irs::ViewCast<irs::byte_type>("a"sv),
       {
-        {irs::EmptyStringView<irs::byte_type>(), 1, 1, 1},
+        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
         // 1-byte sequence
         {irs::ViewCast<irs::byte_type>("a"sv), 0, 0, 0},
         {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
@@ -527,7 +527,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description, irs::ViewCast<irs::byte_type>("\xD1\x83"sv),
       {
-        {irs::EmptyStringView<irs::byte_type>(), 1, 1, 1},
+        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
         // 1-byte sequence
         {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
         {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
@@ -561,7 +561,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description, irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv),
       {
-        {irs::EmptyStringView<irs::byte_type>(), 1, 1, 1},
+        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
         // 1-byte sequence
         {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
         {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
@@ -597,7 +597,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description, irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv),
       {
-        {irs::EmptyStringView<irs::byte_type>(), 1, 1, 1},
+        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
         // 1-byte sequence
         {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
         {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
@@ -728,7 +728,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description, irs::ViewCast<irs::byte_type>("a"sv),
       {
-        {irs::EmptyStringView<irs::byte_type>(), 1, 1, 1},
+        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
         // 1-byte sequence
         {irs::ViewCast<irs::byte_type>("a"sv), 0, 0, 0},
         {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
@@ -762,7 +762,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description, irs::ViewCast<irs::byte_type>("\xD1\x83"sv),
       {
-        {irs::EmptyStringView<irs::byte_type>(), 1, 1, 1},
+        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
         // 1-byte sequence
         {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
         {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
@@ -796,7 +796,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description, irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv),
       {
-        {irs::EmptyStringView<irs::byte_type>(), 1, 1, 1},
+        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
         // 1-byte sequence
         {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
         {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
@@ -832,7 +832,7 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_description(
       description, irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv),
       {
-        {irs::EmptyStringView<irs::byte_type>(), 1, 1, 1},
+        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
         // 1-byte sequence
         {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
         {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
@@ -904,7 +904,7 @@ TEST(levenshtein_utils_test, test_description_2) {
     assert_description(
       description, irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv),
       {
-        {irs::EmptyStringView<irs::byte_type>(), 1, 1, 1},
+        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
         // 1-byte sequence
         {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
         {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
@@ -1039,7 +1039,7 @@ TEST(levenshtein_utils_test, test_description_2) {
     assert_description(
       description, irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv),
       {
-        {irs::EmptyStringView<irs::byte_type>(), 1, 1, 1},
+        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
         // 1-byte sequence
         {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
         {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},

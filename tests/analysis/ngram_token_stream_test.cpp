@@ -307,21 +307,24 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         1, 1, false, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::EmptyStringView<irs::byte_type>(), irs::EmptyStringView<irs::byte_type>()));
+        irs::kEmptyStringView<irs::byte_type>,
+        irs::kEmptyStringView<irs::byte_type>));
 
     std::u8string utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
 
     const std::vector<utf8token> expected{
       {"a", 0, 1}, {"\xc2\xa2", 1, 3}, {"b", 3, 4},  {"\xc2\xa3", 4, 6},
       {"c", 6, 7}, {"\xc2\xa4", 7, 9}, {"d", 9, 10}, {"\xc2\xa5", 10, 12}};
-    assert_utf8tokens(expected, irs::ViewCast<char>(utf8data), stream);
+    assert_utf8tokens(expected, std::string(utf8data.begin(), utf8data.end()),
+                      stream);
 
     // let`s break utf-8. Cut the last byte of last 2-byte symbol
     utf8data.resize(utf8data.size() - 1);
     const std::vector<utf8token> expected2{
       {"a", 0, 1}, {"\xc2\xa2", 1, 3}, {"b", 3, 4},  {"\xc2\xa3", 4, 6},
       {"c", 6, 7}, {"\xc2\xa4", 7, 9}, {"d", 9, 10}, {"\xc2", 10, 11}};
-    assert_utf8tokens(expected2, irs::ViewCast<char>(utf8data), stream);
+    assert_utf8tokens(expected2, std::string(utf8data.begin(), utf8data.end()),
+                      stream);
   }
 
   {
@@ -330,7 +333,8 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         2, 2, false, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::EmptyStringView<irs::byte_type>(), irs::EmptyStringView<irs::byte_type>()));
+        irs::kEmptyStringView<irs::byte_type>,
+        irs::kEmptyStringView<irs::byte_type>));
 
     constexpr std::u8string_view utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
     const auto data = irs::ViewCast<char>(utf8data);
@@ -363,7 +367,8 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         1, 2, false, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::EmptyStringView<irs::byte_type>(), irs::EmptyStringView<irs::byte_type>()));
+        irs::kEmptyStringView<irs::byte_type>,
+        irs::kEmptyStringView<irs::byte_type>));
 
     constexpr std::u8string_view utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
     const auto data = irs::ViewCast<char>(utf8data);
@@ -404,7 +409,8 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         5, 5, false, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::EmptyStringView<irs::byte_type>(), irs::EmptyStringView<irs::byte_type>()));
+        irs::kEmptyStringView<irs::byte_type>,
+        irs::kEmptyStringView<irs::byte_type>));
 
     constexpr std::u8string_view utf8data = u8"\u00C0\u00C1\u00C2\u00C3\u00C4";
     const auto data = irs::ViewCast<char>(utf8data);
@@ -422,7 +428,7 @@ TEST(ngram_token_stream_test, next_utf8) {
         5, 5, false, irs::analysis::ngram_token_stream_base::InputType::UTF8,
         irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2),
         irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
-                       2)));
+                        2)));
 
     constexpr std::u8string_view utf8data = u8"\u00C0\u00C1\u00C2\u00C3\u00C4";
     const auto data = irs::ViewCast<char>(utf8data);
@@ -441,7 +447,8 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         5, 5, true, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::EmptyStringView<irs::byte_type>(), irs::EmptyStringView<irs::byte_type>()));
+        irs::kEmptyStringView<irs::byte_type>,
+        irs::kEmptyStringView<irs::byte_type>));
     const std::u8string_view utf8data = u8"\u00C0\u00C1\u00C2\u00C3\u00C4";
     const auto data = irs::ViewCast<char>(utf8data);
 
@@ -456,7 +463,8 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         6, 6, true, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::EmptyStringView<irs::byte_type>(), irs::EmptyStringView<irs::byte_type>()));
+        irs::kEmptyStringView<irs::byte_type>,
+        irs::kEmptyStringView<irs::byte_type>));
     constexpr std::u8string_view utf8data = u8"\u00C0\u00C1\u00C2\u00C3\u00C4";
     const auto data = irs::ViewCast<char>(utf8data);
 
@@ -471,7 +479,8 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         6, 6, false, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::EmptyStringView<irs::byte_type>(), irs::EmptyStringView<irs::byte_type>()));
+        irs::kEmptyStringView<irs::byte_type>,
+        irs::kEmptyStringView<irs::byte_type>));
     const std::u8string_view utf8data = u8"\u00C0\u00C1\u00C2\u00C3\u00C4";
     const auto data = irs::ViewCast<char>(utf8data);
 
@@ -486,7 +495,7 @@ TEST(ngram_token_stream_test, next_utf8) {
       stream(irs::analysis::ngram_token_stream_base::Options(
         1, 2, false, irs::analysis::ngram_token_stream_base::InputType::UTF8,
         irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2),
-        irs::EmptyStringView<irs::byte_type>()));
+        irs::kEmptyStringView<irs::byte_type>));
 
     constexpr std::u8string_view utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
     const auto data = irs::ViewCast<char>(utf8data);
@@ -532,7 +541,7 @@ TEST(ngram_token_stream_test, next_utf8) {
       stream(irs::analysis::ngram_token_stream_base::Options(
         1, 2, true, irs::analysis::ngram_token_stream_base::InputType::UTF8,
         irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2),
-        irs::EmptyStringView<irs::byte_type>()));
+        irs::kEmptyStringView<irs::byte_type>));
 
     constexpr std::u8string_view utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
     const auto data = irs::ViewCast<char>(utf8data);
@@ -587,9 +596,9 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         2, 3, true, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::EmptyStringView<irs::byte_type>(),
+        irs::kEmptyStringView<irs::byte_type>,
         irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
-                       2)));
+                        2)));
 
     constexpr std::u8string_view utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
     const auto data = irs::ViewCast<char>(utf8data);
@@ -660,9 +669,9 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         1, 3, true, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::EmptyStringView<irs::byte_type>(),
+        irs::kEmptyStringView<irs::byte_type>,
         irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
-                       2)));
+                        2)));
 
     const std::u8string_view utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
     const auto data = irs::ViewCast<char>(utf8data);
@@ -745,7 +754,7 @@ TEST(ngram_token_stream_test, next_utf8) {
         1, 3, true, irs::analysis::ngram_token_stream_base::InputType::UTF8,
         irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2),
         irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
-                       2)));
+                        2)));
 
     constexpr std::u8string_view utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
     const auto data = irs::ViewCast<char>(utf8data);
@@ -842,7 +851,7 @@ TEST(ngram_token_stream_test, next_utf8) {
         1, 3, false, irs::analysis::ngram_token_stream_base::InputType::UTF8,
         irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2),
         irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
-                       2)));
+                        2)));
 
     const std::u8string_view utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
     const auto data = irs::ViewCast<char>(utf8data);
@@ -917,8 +926,9 @@ TEST(ngram_token_stream_test, reset_too_big) {
     irs::analysis::ngram_token_stream_base::InputType::Binary>
     stream(irs::analysis::ngram_token_stream_base::Options(1, 1, false));
 
-  const std::string_view input(reinterpret_cast<const char*>(&stream),
-                              size_t(std::numeric_limits<uint32_t>::max()) + 1);
+  const std::string_view input(
+    reinterpret_cast<const char*>(&stream),
+    size_t(std::numeric_limits<uint32_t>::max()) + 1);
 
   ASSERT_FALSE(stream.reset(input));
 
@@ -1187,7 +1197,7 @@ TEST(ngram_token_stream_test, next) {
       stream(irs::analysis::ngram_token_stream_base::Options(
         2, 3, true, irs::analysis::ngram_token_stream_base::InputType::Binary,
         irs::ViewCast<irs::byte_type>(std::string_view("$")),
-        irs::EmptyStringView<irs::byte_type>()));
+        irs::kEmptyStringView<irs::byte_type>));
 
     const std::vector<token> expected{{"$qu", 0, 2, "$", ""},
                                       {"$qui", 0, 3, "$", ""},
@@ -1207,7 +1217,7 @@ TEST(ngram_token_stream_test, next) {
       irs::analysis::ngram_token_stream_base::InputType::Binary>
       stream(irs::analysis::ngram_token_stream_base::Options(
         2, 3, true, irs::analysis::ngram_token_stream_base::InputType::Binary,
-        irs::EmptyStringView<irs::byte_type>(),
+        irs::kEmptyStringView<irs::byte_type>,
         irs::ViewCast<irs::byte_type>(std::string_view("^"))));
 
     const std::vector<token> expected{{"qu", 0, 2},

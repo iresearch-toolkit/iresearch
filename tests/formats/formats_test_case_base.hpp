@@ -179,7 +179,7 @@ class format_test_case : public index_test_base {
   bool supports_columnstore_headers() const noexcept {
     // old formats don't support columnstore headers
     constexpr std::string_view kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
-                                            "1_3simd"};
+                                             "1_3simd"};
 
     const auto it = std::find(std::begin(kOldFormats), std::end(kOldFormats),
                               codec()->type().name());
@@ -206,7 +206,7 @@ class format_test_case : public index_test_base {
         return false;
       }
 
-      val_ = irs::ViewCast<irs::byte_type>(*next_);
+      val_ = *next_;
       ++next_;
       return true;
     }

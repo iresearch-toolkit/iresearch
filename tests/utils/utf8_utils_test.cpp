@@ -316,7 +316,7 @@ TEST(utf8_utils_test, find) {
 
   // empty sequence
   {
-    const auto str = irs::EmptyStringView<irs::byte_type>();
+    const auto str = irs::kEmptyStringView<irs::byte_type>;
     ASSERT_EQ(irs::bstring::npos,
               irs::utf8_utils::find<true>(str.begin(), str.size(), 0x80));
     ASSERT_EQ(irs::bstring::npos,

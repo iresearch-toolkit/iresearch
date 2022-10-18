@@ -1292,7 +1292,7 @@ void field_writer::end_field(std::string_view name,
   }
 
   // cause creation of all final blocks
-  push(EmptyStringView<irs::byte_type>());
+  push(kEmptyStringView<irs::byte_type>);
 
   // write root block with empty prefix
   write_blocks(0, stack_.size());

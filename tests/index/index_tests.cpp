@@ -4444,8 +4444,7 @@ TEST_P(index_test_case, document_context) {
         *column,
         [&expected](irs::doc_id_t, const irs::bytes_view& data) -> bool {
           auto* value = data.data();
-          auto actual_value =
-            irs::ViewCast<char>(irs::vread_string<std::string_view>(value));
+          auto actual_value = irs::vread_string<std::string_view>(value);
           return 1 == expected.erase(actual_value);
         }));
       ASSERT_TRUE(expected.empty());
@@ -16367,7 +16366,7 @@ TEST_P(index_test_case_11, commit_payload) {
       ASSERT_NE(reader, new_reader);
       ASSERT_FALSE(irs::IsNull(new_reader.meta().meta.payload()));
       ASSERT_TRUE(new_reader.meta().meta.payload().empty());
-      ASSERT_EQ(irs::EmptyStringView<irs::byte_type>(),
+      ASSERT_EQ(irs::kEmptyStringView<irs::byte_type>,
                 new_reader.meta().meta.payload());
       reader = new_reader;
     }

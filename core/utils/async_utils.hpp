@@ -60,7 +60,7 @@ class thread_pool {
 
   explicit thread_pool(size_t max_threads = 0, size_t max_idle = 0,
                        std::basic_string_view<native_char_t> worker_name =
-                         EmptyStringView<native_char_t>());
+                         kEmptyStringView<native_char_t>);
   ~thread_pool();
   size_t max_idle() const;
   void max_idle(size_t value);
