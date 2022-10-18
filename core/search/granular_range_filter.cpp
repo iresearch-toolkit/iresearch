@@ -57,7 +57,7 @@ irs::bytes_ref mask_granularity(irs::bytes_ref term,
 
 // Return the value portion of the term
 irs::bytes_ref mask_value(irs::bytes_ref term, size_t prefix_size) noexcept {
-  if (IsNull(term)) {
+  if (irs::IsNull(term)) {
     return term;
   }
 
@@ -102,7 +102,7 @@ void collect_terms_between(
   irs::bytes_ref masked_begin_level;
 
   // seek to start of term range for collection
-  if (!IsNull(begin_term)) {
+  if (!irs::IsNull(begin_term)) {
     const auto res = terms.seek_ge(begin_term);  // seek to start
 
     if (irs::SeekResult::END == res) {
@@ -115,7 +115,7 @@ void collect_terms_between(
           return;  // skipped current term and no more terms in segment
         }
       } else if (!include_end_term &&
-                 !IsNull(end_term)  // (begin .. end of granularity range]
+                 !irs::IsNull(end_term)  // (begin .. end of granularity range]
                  && !(mask_value(begin_term, prefix_size) <
                       mask_value(end_term,
                                  prefix_size))) {  // don't use '==' since it
@@ -151,7 +151,8 @@ void collect_terms_between(
       // or granularity level boundary passed or term already covered by a
       // less-granular range
       return masked_current_level == masked_begin_level &&
-             (IsNull(masked_end_term)  // (begin .. end of granularity range]
+             (irs::IsNull(
+                masked_end_term)  // (begin .. end of granularity range]
               || (include_end_term &&
                   masked_current_term <= masked_end_term)  // (being .. end]
               || (!include_end_term &&
@@ -224,7 +225,7 @@ void collect_terms_from(
     auto is_most_granular_term = exact_min_term == &(*current_min_term_itr);
 
     // need a copy of the term since bytes_ref changes on terms.seek(...)
-    if (!IsNull(end_term)) {
+    if (!irs::IsNull(end_term)) {
       end_term_copy.assign(end_term.data(), end_term.size());
       end_term = irs::bytes_ref(end_term_copy);
     }
@@ -235,8 +236,9 @@ void collect_terms_from(
                               // level
       end_term,  // the min term for the previous lesser granularity level
       min_term_inclusive && is_most_granular_term,  // add min_term if requested
-      IsNull(end_term) && is_most_granular_term,    // add end term if required
-                                                    // (for most granular)
+      irs::IsNull(end_term) &&
+        is_most_granular_term,  // add end term if required
+                                // (for most granular)
       visitor);
   }
 }
@@ -451,7 +453,7 @@ void collect_terms_within(
     irs::bstring end_term_copy;
 
     // need a copy of the term since bytes_ref changes on terms.seek(...)
-    if (!IsNull(end_term)) {
+    if (!irs::IsNull(end_term)) {
       end_term_copy.assign(end_term.data(), end_term.size());
       end_term = irs::bytes_ref(end_term_copy);
     }

@@ -128,7 +128,7 @@ irs::sort::ptr make_vpack(const VPackSlice slice) {
 }
 
 irs::sort::ptr make_vpack(irs::string_ref args) {
-  if (IsNull(args)) {
+  if (irs::IsNull(args)) {
     // default args
     return irs::memory::make_unique<irs::tfidf_sort>();
   } else {
@@ -138,7 +138,7 @@ irs::sort::ptr make_vpack(irs::string_ref args) {
 }
 
 irs::sort::ptr make_json(irs::string_ref args) {
-  if (IsNull(args)) {
+  if (irs::IsNull(args)) {
     // default args
     return irs::memory::make_unique<irs::tfidf_sort>();
   } else {

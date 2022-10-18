@@ -49,7 +49,7 @@ hash_combine(size_t seed, T const& v) noexcept(noexcept(std::hash<T>()(v))) {
 template<typename Elem>
 class hashed_basic_string_ref : public basic_string_ref<Elem> {
  public:
-  typedef basic_string_ref<Elem> base_t;
+  using base_t = basic_string_ref<Elem>;
 
   hashed_basic_string_ref(size_t hash, base_t ref) noexcept
     : base_t(ref), hash_(hash) {}
@@ -57,29 +57,18 @@ class hashed_basic_string_ref : public basic_string_ref<Elem> {
   hashed_basic_string_ref(size_t hash, base_t ref, size_t size) noexcept
     : base_t(ref, size), hash_(hash) {}
 
-  hashed_basic_string_ref(size_t hash,
-                          const typename base_t::char_type* ptr) noexcept
+  hashed_basic_string_ref(size_t hash, typename base_t::pointer ptr) noexcept
     : base_t(ptr), hash_(hash) {}
 
-  hashed_basic_string_ref(size_t hash, const typename base_t::char_type* ptr,
+  hashed_basic_string_ref(size_t hash, typename base_t::pointer ptr,
                           size_t size) noexcept
     : base_t(ptr, size), hash_(hash) {}
-
-  //  hashed_basic_string_ref(
-  //    size_t hash,
-  //    const std::basic_string<typename base_t::char_type>& str) noexcept
-  //    : base_t(str), hash_(hash) {}
-
-  //  hashed_basic_string_ref(
-  //    size_t hash, const std::basic_string<typename base_t::char_type>& str,
-  //    size_t size) noexcept
-  //    : base_t(str, size), hash_(hash) {}
 
   size_t hash() const noexcept { return hash_; }
 
  private:
   size_t hash_;
-};  // hashed_basic_string_ref
+};
 
 template<typename Elem, typename Hasher = std::hash<basic_string_ref<Elem>>>
 hashed_basic_string_ref<Elem> make_hashed_ref(basic_string_ref<Elem> ref,

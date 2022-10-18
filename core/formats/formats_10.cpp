@@ -138,7 +138,7 @@ void prepare_output(std::string& str, index_output::ptr& out,
                     const flush_state& state, string_ref ext, string_ref format,
                     const int32_t version) {
   assert(!out);
-  file_name(str, state.name, ext);
+  irs::file_name(str, state.name, ext);
   out = state.dir->create(str);
 
   if (!out) {
@@ -153,7 +153,7 @@ void prepare_input(std::string& str, index_input::ptr& in, IOAdvice advice,
                    const reader_state& state, string_ref ext, string_ref format,
                    const int32_t min_ver, const int32_t max_ver) {
   assert(!in);
-  file_name(str, state.meta->name, ext);
+  irs::file_name(str, state.meta->name, ext);
   in = state.dir->open(str, advice);
 
   if (!in) {
@@ -2621,7 +2621,8 @@ struct index_meta_writer final : public irs::index_meta_writer {
 template<>
 std::string file_name<irs::index_meta_writer, index_meta>(
   const index_meta& meta) {
-  return file_name(index_meta_writer::FORMAT_PREFIX_TMP, meta.generation());
+  return irs::file_name(index_meta_writer::FORMAT_PREFIX_TMP,
+                        meta.generation());
 }
 
 struct index_meta_reader final : public irs::index_meta_reader {
@@ -2635,7 +2636,7 @@ struct index_meta_reader final : public irs::index_meta_reader {
 template<>
 std::string file_name<irs::index_meta_reader, index_meta>(
   const index_meta& meta) {
-  return file_name(index_meta_writer::FORMAT_PREFIX, meta.generation());
+  return irs::file_name(index_meta_writer::FORMAT_PREFIX, meta.generation());
 }
 
 std::string index_meta_writer::filename(const index_meta& meta) const {
@@ -3003,7 +3004,8 @@ class document_mask_writer final : public irs::document_mask_writer {
 template<>
 std::string file_name<irs::document_mask_writer, segment_meta>(
   const segment_meta& meta) {
-  return file_name(meta.name, meta.version, document_mask_writer::FORMAT_EXT);
+  return irs::file_name(meta.name, meta.version,
+                        document_mask_writer::FORMAT_EXT);
 }
 
 std::string document_mask_writer::filename(const segment_meta& meta) const {

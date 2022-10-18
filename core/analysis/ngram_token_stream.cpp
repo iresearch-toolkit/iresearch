@@ -282,7 +282,7 @@ bool normalize_vpack_config(irs::string_ref args, std::string& config) {
 
 irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
   try {
-    if (IsNull(args)) {
+    if (irs::IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while constructing ngram_token_stream");
       return nullptr;
     }
@@ -301,7 +301,7 @@ irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
 
 bool normalize_json_config(irs::string_ref args, std::string& definition) {
   try {
-    if (IsNull(args)) {
+    if (irs::IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
       return false;
     }

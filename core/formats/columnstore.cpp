@@ -2397,7 +2397,7 @@ bool reader::read_meta(const directory& dir, const segment_meta& meta,
   }
 
   // column meta exists
-  return tru
+  return true;
 }
 
 bool reader::prepare(const directory& dir, const segment_meta& meta) {

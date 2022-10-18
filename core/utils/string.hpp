@@ -147,17 +147,7 @@ namespace iresearch {
 using bstring = std::basic_string<byte_type>;
 
 template<typename Char, typename Traits = std::char_traits<Char>>
-struct basic_string_ref : std::basic_string_view<Char, Traits> {
-  using char_type = Char;
-
-  using std::basic_string_view<Char, Traits>::basic_string_view;
-
-  basic_string_ref(std::basic_string_view<Char> str) noexcept
-    : std::basic_string_view<Char>{str} {}
-
-  basic_string_ref(const std::basic_string<Char>& str) noexcept
-    : std::basic_string_view<Char>{str.c_str(), str.size()} {}
-};
+using basic_string_ref = std::basic_string_view<Char, Traits>;
 
 template<typename Char>
 inline size_t common_prefix_length(const Char* lhs, size_t lhs_size,
@@ -225,12 +215,6 @@ constexpr inline basic_string_ref<ElemDst> ref_cast(
   return {reinterpret_cast<const ElemDst*>(src.c_str()), src.size()};
 }
 
-template<typename ElemDst, typename ElemSrc>
-constexpr inline basic_string_ref<ElemDst> ref_cast(
-  std::basic_string_view<ElemSrc> src) {
-  return {reinterpret_cast<const ElemDst*>(src.data()), src.size()};
-}
-
 namespace hash_utils {
 
 size_t hash(const char* value, size_t size) noexcept;
@@ -251,58 +235,23 @@ inline size_t hash(const wchar_t* value) noexcept {
 }
 
 }  // namespace hash_utils
-
-namespace literals {
-
-FORCE_INLINE constexpr irs::string_ref operator"" _sr(const char* src,
-                                                      size_t size) noexcept {
-  return {src, size};
-}
-
-FORCE_INLINE constexpr irs::bytes_ref operator"" _bsr(const char* src,
-                                                      size_t size) noexcept {
-  return irs::ref_cast<irs::byte_type>(irs::string_ref{src, size});
-}
-
-}  // namespace literals
 }  // namespace iresearch
 
 namespace std {
-
-template<>
-struct hash<char*> {
-  size_t operator()(const char* value) const noexcept {
-    return ::iresearch::hash_utils::hash(value);
-  }
-};  // hash
-
-template<>
-struct hash<wchar_t*> {
-  size_t operator()(const wchar_t* value) const noexcept {
-    return ::iresearch::hash_utils::hash(value);
-  }
-};  // hash
 
 template<>
 struct hash<::iresearch::bstring> {
   size_t operator()(const ::iresearch::bstring& value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
-};  // hash
+};
 
 template<>
 struct hash<::iresearch::bytes_ref> {
   size_t operator()(::iresearch::bytes_ref value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
-};  // hash
-
-template<>
-struct hash<::iresearch::string_ref> {
-  size_t operator()(::iresearch::string_ref value) const noexcept {
-    return ::iresearch::hash_utils::hash(value);
-  }
-};  // hash
+};
 
 }  // namespace std
 

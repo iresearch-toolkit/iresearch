@@ -41,7 +41,7 @@ struct by_term_options {
     return term == rhs.term;
   }
 
-  size_t hash() const noexcept { return std::hash<bstring>()(term); }
+  size_t hash() const noexcept { return hash_utils::hash(term); }
 };
 
 // User-side term filter
