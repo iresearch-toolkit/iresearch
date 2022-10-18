@@ -56,8 +56,9 @@ void assert_description(
     const size_t expected_distance_automaton = std::get<2>(entry);
     const size_t expected_distance_precise = std::get<3>(entry);
     SCOPED_TRACE(testing::Message("Target: '")
-                 << irs::ViewCast<char>(target) << "', Candidate: '"
-                 << irs::ViewCast<char>(candidate)
+                 << irs::ViewCast<char>(irs::bytes_view{target})
+                 << "', Candidate: '"
+                 << irs::ViewCast<char>(irs::bytes_view{candidate})
                  << "' , Distance: " << expected_distance
                  << " , Precise distance: " << expected_distance_precise);
 
