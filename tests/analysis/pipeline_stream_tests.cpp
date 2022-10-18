@@ -43,7 +43,7 @@ class pipeline_test_analyzer : public irs::analysis::analyzer,
  public:
   pipeline_test_analyzer(bool has_offset, irs::bytes_ref payload)
     : irs::analysis::analyzer{irs::type<pipeline_test_analyzer>::get()} {
-    if (!IsNull(payload)) {
+    if (!irs::IsNull(payload)) {
       std::get<irs::attribute_ptr<irs::payload>>(attrs_) = &payload_;
     }
     if (has_offset) {

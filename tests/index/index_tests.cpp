@@ -14887,10 +14887,10 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
       auto column_reader = segment.column(feature->second);
       ASSERT_NE(nullptr, column_reader);
       ASSERT_EQ(2, column_reader->size());
-      ASSERT_TRUE(IsNull(column_reader->name()));
+      ASSERT_TRUE(irs::IsNull(column_reader->name()));
       {
         auto header_payload = column_reader->payload();
-        ASSERT_FALSE(IsNull(header_payload));
+        ASSERT_FALSE(irs::IsNull(header_payload));
         ASSERT_EQ(sizeof(irs::doc_id_t), header_payload.size());
         auto* p = header_payload.data();
         ASSERT_EQ(1, irs::read<irs::doc_id_t>(p));
@@ -14941,10 +14941,10 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
       auto column_reader = segment.column(feature->second);
       ASSERT_NE(nullptr, column_reader);
       ASSERT_EQ(2, column_reader->size());
-      ASSERT_TRUE(IsNull(column_reader->name()));
+      ASSERT_TRUE(irs::IsNull(column_reader->name()));
       {
         auto header_payload = column_reader->payload();
-        ASSERT_FALSE(IsNull(header_payload));
+        ASSERT_FALSE(irs::IsNull(header_payload));
         ASSERT_EQ(sizeof(irs::doc_id_t), header_payload.size());
         auto* p = header_payload.data();
         ASSERT_EQ(2, irs::read<irs::doc_id_t>(p));
@@ -15145,10 +15145,10 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
         auto column_reader = segment.column(feature->second);
         ASSERT_NE(nullptr, column_reader);
         ASSERT_EQ(1, column_reader->size());
-        ASSERT_TRUE(IsNull(column_reader->name()));
+        ASSERT_TRUE(irs::IsNull(column_reader->name()));
         {
           auto header_payload = column_reader->payload();
-          ASSERT_FALSE(IsNull(header_payload));
+          ASSERT_FALSE(irs::IsNull(header_payload));
           ASSERT_EQ(sizeof(irs::doc_id_t), header_payload.size());
           auto* p = header_payload.data();
           ASSERT_EQ(1, irs::read<irs::doc_id_t>(p));
@@ -15235,10 +15235,10 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
         auto column_reader = segment.column(feature->second);
         ASSERT_NE(nullptr, column_reader);
         ASSERT_EQ(1, column_reader->size());
-        ASSERT_TRUE(IsNull(column_reader->name()));
+        ASSERT_TRUE(irs::IsNull(column_reader->name()));
         {
           auto header_payload = column_reader->payload();
-          ASSERT_FALSE(IsNull(header_payload));
+          ASSERT_FALSE(irs::IsNull(header_payload));
           ASSERT_EQ(sizeof(irs::doc_id_t), header_payload.size());
           auto* p = header_payload.data();
           ASSERT_EQ(1, irs::read<irs::doc_id_t>(p));
@@ -15325,10 +15325,10 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
         auto column_reader = segment.column(feature->second);
         ASSERT_NE(nullptr, column_reader);
         ASSERT_EQ(1, column_reader->size());
-        ASSERT_TRUE(IsNull(column_reader->name()));
+        ASSERT_TRUE(irs::IsNull(column_reader->name()));
         {
           auto header_payload = column_reader->payload();
-          ASSERT_FALSE(IsNull(header_payload));
+          ASSERT_FALSE(irs::IsNull(header_payload));
           ASSERT_EQ(sizeof(irs::doc_id_t), header_payload.size());
           auto* p = header_payload.data();
           ASSERT_EQ(1, irs::read<irs::doc_id_t>(p));
@@ -15458,10 +15458,10 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       auto column_reader = segment.column(feature->second);
       ASSERT_NE(nullptr, column_reader);
       ASSERT_EQ(3, column_reader->size());
-      ASSERT_TRUE(IsNull(column_reader->name()));
+      ASSERT_TRUE(irs::IsNull(column_reader->name()));
       {
         auto header_payload = column_reader->payload();
-        ASSERT_FALSE(IsNull(header_payload));
+        ASSERT_FALSE(irs::IsNull(header_payload));
         ASSERT_EQ(sizeof(irs::doc_id_t), header_payload.size());
         auto* p = header_payload.data();
         ASSERT_EQ(1, irs::read<irs::doc_id_t>(p));
@@ -15586,7 +15586,7 @@ TEST_P(index_test_case_10, commit_payload) {
   ASSERT_TRUE(writer->begin());  // initial commit
   writer->commit();
   auto reader = irs::directory_reader::open(directory);
-  ASSERT_TRUE(IsNull(reader.meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.meta().meta.payload()));
 
   ASSERT_FALSE(writer->begin());  // transaction hasn't been started, no changes
   writer->commit();
@@ -15637,8 +15637,9 @@ TEST_P(index_test_case_10, commit_payload) {
     {
       auto new_reader = reader.reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_TRUE(IsNull(new_reader.meta().meta.payload()));  // '1_0' doesn't
-                                                              // support payload
+      ASSERT_TRUE(
+        irs::IsNull(new_reader.meta().meta.payload()));  // '1_0' doesn't
+                                                         // support payload
       reader = new_reader;
     }
   }
@@ -15731,8 +15732,9 @@ TEST_P(index_test_case_10, commit_payload) {
     {
       auto new_reader = reader.reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_TRUE(IsNull(new_reader.meta().meta.payload()));  // '1_0' doesn't
-                                                              // support payload
+      ASSERT_TRUE(
+        irs::IsNull(new_reader.meta().meta.payload()));  // '1_0' doesn't
+                                                         // support payload
       reader = new_reader;
     }
   }
@@ -15781,8 +15783,9 @@ TEST_P(index_test_case_10, commit_payload) {
     {
       auto new_reader = reader.reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_TRUE(IsNull(new_reader.meta().meta.payload()));  // '1_0' doesn't
-                                                              // support payload
+      ASSERT_TRUE(
+        irs::IsNull(new_reader.meta().meta.payload()));  // '1_0' doesn't
+                                                         // support payload
       reader = new_reader;
     }
   }
@@ -15806,8 +15809,9 @@ TEST_P(index_test_case_10, commit_payload) {
   {
     auto new_reader = reader.reopen();
     ASSERT_NE(reader, new_reader);
-    ASSERT_TRUE(IsNull(new_reader.meta().meta.payload()));  // '1_0' doesn't
-                                                            // support payload
+    ASSERT_TRUE(
+      irs::IsNull(new_reader.meta().meta.payload()));  // '1_0' doesn't
+                                                       // support payload
     reader = new_reader;
   }
 
@@ -15908,7 +15912,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
 
   {
     auto reader = irs::directory_reader::open(dir());
-    ASSERT_TRUE(IsNull(reader.meta().meta.payload()));
+    ASSERT_TRUE(irs::IsNull(reader.meta().meta.payload()));
   }
   uint64_t expected_tick = 42;
 
@@ -15945,7 +15949,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_no_payload) {
   ASSERT_EQ(0, payload_calls_count);
 
   auto reader = irs::directory_reader::open(directory);
-  ASSERT_TRUE(IsNull(reader.meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.meta().meta.payload()));
 
   // no changes
   writer->commit();
@@ -15971,7 +15975,7 @@ TEST_P(index_test_case_11, initial_commit_no_payload) {
   writer->commit();
 
   auto reader = irs::directory_reader::open(directory);
-  ASSERT_TRUE(IsNull(reader.meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.meta().meta.payload()));
 
   // no changes
   payload_calls_count = 0;
@@ -16013,7 +16017,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload_revert) {
   ASSERT_EQ(0, payload_calls_count);
 
   auto reader = irs::directory_reader::open(directory);
-  ASSERT_TRUE(IsNull(reader.meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.meta().meta.payload()));
 
   // no changes
   writer->commit();
@@ -16048,7 +16052,7 @@ TEST_P(index_test_case_11, initial_commit_payload_revert) {
   ASSERT_EQ(0, payload_committed_tick);
 
   auto reader = irs::directory_reader::open(directory);
-  ASSERT_TRUE(IsNull(reader.meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.meta().meta.payload()));
 
   payload_provider_result = true;
   // no changes
@@ -16158,7 +16162,7 @@ TEST_P(index_test_case_11, commit_payload) {
   ASSERT_TRUE(writer->begin());  // initial commit
   writer->commit();
   auto reader = irs::directory_reader::open(directory);
-  ASSERT_TRUE(IsNull(reader.meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.meta().meta.payload()));
 
   ASSERT_FALSE(writer->begin());  // transaction hasn't been started, no changes
   writer->commit();
@@ -16309,7 +16313,7 @@ TEST_P(index_test_case_11, commit_payload) {
     {
       auto new_reader = reader.reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_TRUE(IsNull(new_reader.meta().meta.payload()));
+      ASSERT_TRUE(irs::IsNull(new_reader.meta().meta.payload()));
       reader = new_reader;
     }
   }
@@ -16361,7 +16365,7 @@ TEST_P(index_test_case_11, commit_payload) {
     {
       auto new_reader = reader.reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_FALSE(IsNull(new_reader.meta().meta.payload()));
+      ASSERT_FALSE(irs::IsNull(new_reader.meta().meta.payload()));
       ASSERT_TRUE(new_reader.meta().meta.payload().empty());
       ASSERT_EQ(irs::EmptyRef<irs::byte_type>(),
                 new_reader.meta().meta.payload());
@@ -16389,7 +16393,7 @@ TEST_P(index_test_case_11, commit_payload) {
   {
     auto new_reader = reader.reopen();
     ASSERT_NE(reader, new_reader);
-    ASSERT_TRUE(IsNull(new_reader.meta().meta.payload()));
+    ASSERT_TRUE(irs::IsNull(new_reader.meta().meta.payload()));
     reader = new_reader;
   }
 

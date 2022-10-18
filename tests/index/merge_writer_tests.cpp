@@ -100,10 +100,10 @@ class test_feature_writer final : public irs::feature_writer {
 struct binary_comparer : public irs::comparer {
  protected:
   bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const override {
-    if (IsNull(rhs) != IsNull(lhs)) {
-      return IsNull(lhs);
+    if (irs::IsNull(rhs) != irs::IsNull(lhs)) {
+      return irs::IsNull(lhs);
     }
-    if (!IsNull(lhs)) {
+    if (!irs::IsNull(lhs)) {
       return lhs < rhs;
     }
     return false;

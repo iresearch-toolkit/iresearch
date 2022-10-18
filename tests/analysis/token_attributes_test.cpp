@@ -44,14 +44,14 @@ TEST(token_attributes_test, term_attribute) {
   static_assert("term_attribute" == irs::type<irs::term_attribute>::name());
 
   irs::term_attribute term;
-  ASSERT_TRUE(IsNull(term.value));
+  ASSERT_TRUE(irs::IsNull(term.value));
 }
 
 TEST(token_attributes_test, payload) {
   static_assert("payload" == irs::type<irs::payload>::name());
 
   irs::payload pay;
-  ASSERT_TRUE(IsNull(pay.value));
+  ASSERT_TRUE(irs::IsNull(pay.value));
 }
 
 TEST(token_attributes_test, document) {

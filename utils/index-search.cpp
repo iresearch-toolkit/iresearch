@@ -249,7 +249,7 @@ irs::filter::prepared::ptr prepareFilter(
     case category_t::HighTerm:  // fall through
     case category_t::MedTerm:   // fall through
     case category_t::LowTerm: {
-      if (IsNull(terms = splitFreq(text))) {
+      if (irs::IsNull(terms = splitFreq(text))) {
         return nullptr;
       }
 
@@ -263,7 +263,7 @@ irs::filter::prepared::ptr prepareFilter(
     case category_t::HighPhrase:  // fall through
     case category_t::MedPhrase:   // fall through
     case category_t::LowPhrase: {
-      if (IsNull(terms = splitFreq(text))) {
+      if (irs::IsNull(terms = splitFreq(text))) {
         return nullptr;
       }
 
@@ -283,7 +283,7 @@ irs::filter::prepared::ptr prepareFilter(
     case category_t::HighNGram:  // fall through
     case category_t::MedNGram:   // fall through
     case category_t::LowNGram: {
-      if (IsNull(terms = splitFreq(text))) {
+      if (irs::IsNull(terms = splitFreq(text))) {
         return nullptr;
       }
       irs::by_ngram_similarity query;
@@ -309,7 +309,7 @@ irs::filter::prepared::ptr prepareFilter(
     case category_t::AndHighHigh:  // fall through
     case category_t::AndHighMed:   // fall through
     case category_t::AndHighLow: {
-      if (IsNull(terms = splitFreq(text))) {
+      if (irs::IsNull(terms = splitFreq(text))) {
         return nullptr;
       }
 
@@ -332,7 +332,7 @@ irs::filter::prepared::ptr prepareFilter(
     case category_t::OrHighHigh:  // fall through
     case category_t::OrHighMed:   // fall through
     case category_t::OrHighLow: {
-      if (IsNull(terms = splitFreq(text))) {
+      if (irs::IsNull(terms = splitFreq(text))) {
         return nullptr;
       }
 
@@ -398,7 +398,7 @@ irs::filter::prepared::ptr prepareFilter(
       return query.prepare(reader, order);
     }
     case category_t::MinMatch2High2Med: {
-      if (IsNull(terms = splitFreq(text))) {
+      if (irs::IsNull(terms = splitFreq(text))) {
         return nullptr;
       }
       irs::Or query;
@@ -489,7 +489,7 @@ int search(std::string_view path, std::string_view dir_type,
   auto scr = irs::scorers::get(scorer, arg_format_itr->second, scorer_arg);
 
   if (!scr) {
-    if (IsNull(scorer_arg)) {
+    if (irs::IsNull(scorer_arg)) {
       std::cerr << "Unable to instantiate scorer '" << scorer
                 << "' with argument format '" << scorer_arg_format
                 << "' with nil arguments" << std::endl;

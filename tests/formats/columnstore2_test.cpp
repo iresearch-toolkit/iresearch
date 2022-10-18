@@ -222,7 +222,7 @@ TEST_P(columnstore2_test_case, empty_column) {
     auto column = reader.column(1);
     ASSERT_NE(nullptr, column);
     ASSERT_EQ(1, column->id());
-    ASSERT_TRUE(IsNull(column->name()));
+    ASSERT_TRUE(irs::IsNull(column->name()));
     ASSERT_EQ(1, column->size());
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
@@ -299,7 +299,7 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
     ASSERT_NE(nullptr, column);
     ASSERT_EQ(kMax / 2, column->size());
     ASSERT_EQ(0, column->id());
-    ASSERT_TRUE(IsNull(column->name()));
+    ASSERT_TRUE(irs::IsNull(column->name()));
 
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
@@ -852,7 +852,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
     ASSERT_EQ(kMax, column->size());
 
     ASSERT_EQ(0, column->id());
-    ASSERT_TRUE(IsNull(column->name()));
+    ASSERT_TRUE(irs::IsNull(column->name()));
 
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
@@ -1035,7 +1035,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
     ASSERT_EQ(kMax, column->size());
 
     ASSERT_EQ(0, column->id());
-    ASSERT_TRUE(IsNull(column->name()));
+    ASSERT_TRUE(irs::IsNull(column->name()));
 
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
@@ -1224,7 +1224,7 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks) {
     ASSERT_EQ(kMax, column->size());
 
     ASSERT_EQ(0, column->id());
-    ASSERT_TRUE(IsNull(column->name()));
+    ASSERT_TRUE(irs::IsNull(column->name()));
 
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
@@ -1411,7 +1411,7 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks_all_equal) {
     ASSERT_EQ(kMax, column->size());
 
     ASSERT_EQ(0, column->id());
-    ASSERT_TRUE(IsNull(column->name()));
+    ASSERT_TRUE(irs::IsNull(column->name()));
 
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
@@ -1596,7 +1596,7 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
       ASSERT_NE(nullptr, document);
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_NE(nullptr, payload);
-      ASSERT_TRUE(IsNull(payload->value));
+      ASSERT_TRUE(irs::IsNull(payload->value));
       auto* cost = irs::get<irs::cost>(*it);
       ASSERT_NE(nullptr, cost);
       ASSERT_EQ(column->size(), cost->estimate());
@@ -1606,11 +1606,11 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
         ASSERT_EQ(doc, it->seek(doc));
-        ASSERT_TRUE(IsNull(payload->value));
+        ASSERT_TRUE(irs::IsNull(payload->value));
         ASSERT_EQ(doc, it->seek(doc));
-        ASSERT_TRUE(IsNull(payload->value));
+        ASSERT_TRUE(irs::IsNull(payload->value));
         ASSERT_EQ(doc, it->seek(doc - 1));
-        ASSERT_TRUE(IsNull(payload->value));
+        ASSERT_TRUE(irs::IsNull(payload->value));
         assert_prev_doc(*it, *prev_it);
       }
     }
@@ -1622,7 +1622,7 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
       ASSERT_NE(nullptr, document);
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_NE(nullptr, payload);
-      ASSERT_TRUE(IsNull(payload->value));
+      ASSERT_TRUE(irs::IsNull(payload->value));
       auto* cost = irs::get<irs::cost>(*it);
       ASSERT_NE(nullptr, cost);
       ASSERT_EQ(column->size(), cost->estimate());
@@ -1631,11 +1631,11 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
       ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
       ASSERT_EQ(doc, it->seek(doc));
-      ASSERT_TRUE(IsNull(payload->value));
+      ASSERT_TRUE(irs::IsNull(payload->value));
       ASSERT_EQ(doc, it->seek(doc));
-      ASSERT_TRUE(IsNull(payload->value));
+      ASSERT_TRUE(irs::IsNull(payload->value));
       ASSERT_EQ(doc, it->seek(doc - 1));
-      ASSERT_TRUE(IsNull(payload->value));
+      ASSERT_TRUE(irs::IsNull(payload->value));
     }
 
     // seek + next
@@ -1684,10 +1684,10 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
       ASSERT_TRUE(it->next());
       ASSERT_EQ(irs::doc_limits::min(), document->value);
       assert_prev_doc(*it, *prev_it);
-      ASSERT_TRUE(IsNull(payload->value));
+      ASSERT_TRUE(irs::IsNull(payload->value));
       ASSERT_EQ(118774, it->seek(118774));
       assert_prev_doc(*it, *prev_it);
-      ASSERT_TRUE(IsNull(payload->value));
+      ASSERT_TRUE(irs::IsNull(payload->value));
       ASSERT_TRUE(irs::doc_limits::eof(it->seek(kMax + 1)));
       ASSERT_TRUE(irs::doc_limits::eof(it->seek(irs::doc_limits::eof())));
     }
@@ -1769,7 +1769,7 @@ TEST_P(columnstore2_test_case, dense_column) {
           assert_prev_doc(*it, *prev_it);
           const auto str = std::to_string(doc);
           if (hint == irs::ColumnHint::kMask) {
-            EXPECT_TRUE(IsNull(payload->value));
+            EXPECT_TRUE(irs::IsNull(payload->value));
           } else {
             EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
           }
@@ -1792,19 +1792,19 @@ TEST_P(columnstore2_test_case, dense_column) {
         const auto str = std::to_string(doc);
         ASSERT_EQ(doc, it->seek(doc));
         if (hint == irs::ColumnHint::kMask) {
-          EXPECT_TRUE(IsNull(payload->value));
+          EXPECT_TRUE(irs::IsNull(payload->value));
         } else {
           EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
         }
         ASSERT_EQ(doc, it->seek(doc));
         if (hint == irs::ColumnHint::kMask) {
-          EXPECT_TRUE(IsNull(payload->value));
+          EXPECT_TRUE(irs::IsNull(payload->value));
         } else {
           EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
         }
         ASSERT_EQ(doc, it->seek(doc - 1));
         if (hint == irs::ColumnHint::kMask) {
-          EXPECT_TRUE(IsNull(payload->value));
+          EXPECT_TRUE(irs::IsNull(payload->value));
         } else {
           EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
         }
@@ -1829,13 +1829,13 @@ TEST_P(columnstore2_test_case, dense_column) {
         const auto str = std::to_string(doc);
         ASSERT_EQ(doc, it->seek(doc));
         if (hint == irs::ColumnHint::kMask) {
-          EXPECT_TRUE(IsNull(payload->value));
+          EXPECT_TRUE(irs::IsNull(payload->value));
         } else {
           EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
         }
         ASSERT_EQ(doc, it->seek(doc));
         if (hint == irs::ColumnHint::kMask) {
-          EXPECT_TRUE(IsNull(payload->value));
+          EXPECT_TRUE(irs::IsNull(payload->value));
         } else {
           EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
         }
@@ -1846,7 +1846,7 @@ TEST_P(columnstore2_test_case, dense_column) {
         ASSERT_NE(nullptr, next_payload);
         ASSERT_EQ(doc, next_it->seek(doc));
         if (hint == irs::ColumnHint::kMask) {
-          EXPECT_TRUE(next_IsNull(payload->value));
+          EXPECT_TRUE(irs::IsNull(next_payload->value));
         } else {
           EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
         }
@@ -1855,7 +1855,7 @@ TEST_P(columnstore2_test_case, dense_column) {
           ASSERT_EQ(next_doc, next_it->value());
           const auto str = std::to_string(next_doc);
           if (hint == irs::ColumnHint::kMask) {
-            EXPECT_TRUE(next_IsNull(payload->value));
+            EXPECT_TRUE(irs::IsNull(next_payload->value));
           } else {
             EXPECT_EQ(str, irs::ref_cast<char>(next_payload->value));
           }
@@ -1883,7 +1883,7 @@ TEST_P(columnstore2_test_case, dense_column) {
         const auto str = std::to_string(118774);
         ASSERT_EQ(118774, it->seek(118774));
         if (hint == irs::ColumnHint::kMask) {
-          EXPECT_TRUE(IsNull(payload->value));
+          EXPECT_TRUE(irs::IsNull(payload->value));
         } else {
           EXPECT_EQ(str, irs::ref_cast<char>(payload->value));
         }
@@ -1945,7 +1945,7 @@ TEST_P(columnstore2_test_case, dense_column_range) {
     ASSERT_EQ(kMax - kMin + 1, column->size());
 
     ASSERT_EQ(0, column->id());
-    ASSERT_TRUE(IsNull(column->name()));
+    ASSERT_TRUE(irs::IsNull(column->name()));
 
     const auto header_payload = column->payload();
     ASSERT_EQ(1, header_payload.size());
@@ -2155,7 +2155,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
       ASSERT_EQ(kMax, column->size());
 
       ASSERT_EQ(0, column->id());
-      ASSERT_TRUE(IsNull(column->name()));
+      ASSERT_TRUE(irs::IsNull(column->name()));
 
       const auto header_payload = column->payload();
       ASSERT_EQ(1, header_payload.size());
@@ -2286,7 +2286,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
       ASSERT_EQ(kMax, column->size());
 
       ASSERT_EQ(1, column->id());
-      ASSERT_TRUE(IsNull(column->name()));
+      ASSERT_TRUE(irs::IsNull(column->name()));
 
       const auto header_payload = column->payload();
       ASSERT_EQ(1, header_payload.size());
@@ -2469,7 +2469,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
       ASSERT_EQ(kMax, column->size());
 
       ASSERT_EQ(0, column->id());
-      ASSERT_TRUE(IsNull(column->name()));
+      ASSERT_TRUE(irs::IsNull(column->name()));
 
       const auto header_payload = column->payload();
       ASSERT_EQ(1, header_payload.size());

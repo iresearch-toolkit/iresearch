@@ -252,12 +252,12 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
       ASSERT_EQ(1, header_payload.size());
       ASSERT_EQ(42, header_payload[0]);
     } else {
-      ASSERT_TRUE(IsNull(header_payload));
+      ASSERT_TRUE(irs::IsNull(header_payload));
     }
 
     auto it = column->iterator(irs::ColumnHint::kNormal);
     auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_TRUE(!payload || IsNull(payload->value));
+    ASSERT_TRUE(!payload || irs::IsNull(payload->value));
 
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
     while (it->next()) {
@@ -396,7 +396,7 @@ TEST_P(sorted_column_test_case, sort) {
       ASSERT_EQ(1, header_payload.size());
       ASSERT_EQ(42, header_payload[0]);
     } else {
-      ASSERT_TRUE(IsNull(header_payload));
+      ASSERT_TRUE(irs::IsNull(header_payload));
     }
 
     auto it = column->iterator(irs::ColumnHint::kNormal);
