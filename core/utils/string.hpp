@@ -20,15 +20,11 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_STRING_H
-#define IRESEARCH_STRING_H
+#pragma once
 
-#include <algorithm>
-#include <bit>
 #include <cassert>
-#include <cmath>
 #include <cstring>
-#include <vector>
+#include <string_view>
 
 #include "shared.hpp"
 
@@ -240,5 +236,3 @@ struct hash<::iresearch::bytes_view> {
 };
 
 }  // namespace std
-
-#endif
