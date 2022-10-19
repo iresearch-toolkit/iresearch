@@ -160,6 +160,9 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     if (type == irs::type<decltype(meta_)>::id()) {
       return &meta_;
     }
+    if (type == irs::type<irs::term_attribute>::id()) {
+      return &value_;
+    }
     return nullptr;
   }
 
@@ -168,14 +171,16 @@ class seek_term_iterator final : public irs::seek_term_iterator {
       return false;
     }
 
-    value_ = irs::ViewCast<irs::byte_type>(begin_->first);
+    value_.value = irs::ViewCast<irs::byte_type>(begin_->first);
     cookie_ptr_ = begin_;
     meta_ = begin_->second;
     ++begin_;
     return true;
   }
 
-  virtual irs::bytes_view value() const noexcept override { return value_; }
+  virtual irs::bytes_view value() const noexcept override {
+    return value_.value;
+  }
 
   virtual void read() override {}
 
@@ -204,7 +209,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
 
  private:
   term_meta meta_;
-  irs::bytes_view value_;
+  irs::term_attribute value_;
   iterator_type begin_;
   iterator_type end_;
   iterator_type cookie_ptr_;

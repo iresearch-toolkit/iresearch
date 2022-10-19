@@ -146,17 +146,24 @@ class top_terms_collector : private compact<0, Comparer>,
   // `terms` segment term-iterator positioned at the current term
   void prepare(const sub_reader& segment, const term_reader& field,
                const seek_term_iterator& terms) noexcept {
-    auto* term = irs::get<term_attribute>(terms);
-    assert(term);
-
     state_.segment = &segment;
     state_.field = &field;
     state_.terms = &terms;
-    state_.term = &term->value;
 
-    // get term metadata
-    auto* meta = irs::get<term_meta>(terms);
-    state_.docs_count = meta ? &meta->docs_count : &no_docs_;
+    if (auto* term = irs::get<term_attribute>(terms); IRS_LIKELY(term)) {
+      state_.term = &term->value;
+    } else {
+      static const bytes_view kNoTerm;
+      assert(false);
+      state_.term = &kNoTerm;
+    }
+
+    if (auto* meta = irs::get<term_meta>(terms); IRS_LIKELY(meta)) {
+      state_.docs_count = &meta->docs_count;
+    } else {
+      const decltype(term_meta::docs_count) kNoDocs{0};
+      state_.docs_count = &kNoDocs;
+    }
   }
 
   // Collect current term
@@ -217,6 +224,8 @@ class top_terms_collector : private compact<0, Comparer>,
   }
 
  private:
+  // We don't use absl hash table implementation as it doesn't guarantee
+  // rehashing won't happen even if enough buckets are reserve()ed
   using states_map_t = std::unordered_map<hashed_bytes_view, state_type>;
 
   // Collector state
@@ -269,7 +278,6 @@ class top_terms_collector : private compact<0, Comparer>,
   states_map_t terms_;
   size_t size_;
   size_t left_{size_};
-  const decltype(term_meta::docs_count) no_docs_{0};
 };
 
 }  // namespace iresearch
