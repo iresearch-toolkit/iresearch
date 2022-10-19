@@ -44,7 +44,7 @@ struct by_range_filter_options {
     return range == rhs.range;
   }
 
-  size_t hash() const noexcept { return std::hash<range_type>()(range); }
+  size_t hash() const noexcept { return range.hash(); }
 };  // by_range_filter_options
 
 ////////////////////////////////////////////////////////////////////////////////

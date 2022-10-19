@@ -206,6 +206,19 @@ struct is_unique_ptr<std::unique_ptr<T[], D>> : std::true_type {};
 template<typename T>
 inline constexpr bool is_unique_ptr_v = is_unique_ptr<T>::value;
 
+///////////////////////////////////////////////////////////////////////////////
+/// @returns if 'T' is 'std::vector<T, A>' provides the member constant
+/// value equal to 'true', or 'false' otherwise
+///////////////////////////////////////////////////////////////////////////////
+template<typename T>
+struct is_vector : std::false_type {};
+
+template<typename T, typename A>
+struct is_vector<std::vector<T, A>> : std::true_type {};
+
+template<typename T>
+inline constexpr bool is_vector_v = is_vector<T>::value;
+
 }  // namespace iresearch
 
 #endif

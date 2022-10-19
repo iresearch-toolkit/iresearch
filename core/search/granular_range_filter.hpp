@@ -63,7 +63,7 @@ struct by_granular_range_options {
   }
 
   size_t hash() const noexcept {
-    return hash_combine(scored_terms_limit, range);
+    return hash_combine(scored_terms_limit, range.hash());
   }
 };  // by_granular_range_options
 
