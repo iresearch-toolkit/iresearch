@@ -97,7 +97,8 @@ namespace iresearch {
   }
 }
 
-/*static*/ bool formats::exists(std::string_view name, bool load_library /*= true*/) {
+/*static*/ bool formats::exists(std::string_view name,
+                                bool load_library /*= true*/) {
   auto const key = std::make_pair(name, std::string_view{});
   return nullptr != format_register::instance().get(key, load_library);
 }
@@ -127,7 +128,8 @@ namespace iresearch {
   load_libraries(path, kFileNamePrefix, "");
 }
 
-/*static*/ bool formats::visit(const std::function<bool(std::string_view)>& visitor) {
+/*static*/ bool formats::visit(
+  const std::function<bool(std::string_view)>& visitor) {
   auto visit_all = [&visitor](const format_register::key_type& key) {
     if (!visitor(key.first)) {
       return false;
@@ -142,14 +144,16 @@ namespace iresearch {
 // --SECTION--                                               format registration
 // -----------------------------------------------------------------------------
 
-format_registrar::format_registrar(const type_info& type, std::string_view module,
+format_registrar::format_registrar(const type_info& type,
+                                   std::string_view module,
                                    format::ptr (*factory)(),
                                    const char* source /*= nullptr*/) {
-  std::string_view source_ref(source);
+  const auto source_view =
+    source ? std::string_view{source} : std::string_view{};
 
   auto entry = format_register::instance().set(
     std::make_pair(type.name(), module), factory,
-    IsNull(source_ref) ? nullptr : &source_ref);
+    IsNull(source_view) ? nullptr : &source_view);
 
   registered_ = entry.second;
 

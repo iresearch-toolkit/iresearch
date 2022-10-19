@@ -140,9 +140,9 @@ TEST(directory_reader_test, open_newest_index) {
   test_format test_codec0(irs::type<test_format0>::get());
   test_format test_codec1(irs::type<test_format1>::get());
   irs::format_registrar test_format0_registrar(irs::type<test_format0>::get(),
-                                               std::string_view{}, &get_codec0);
+                                               "", &get_codec0);
   irs::format_registrar test_format1_registrar(irs::type<test_format1>::get(),
-                                               std::string_view{}, &get_codec1);
+                                               "", &get_codec1);
   test_index_meta_reader& test_reader0 = test_codec0.index_meta_reader;
   test_index_meta_reader& test_reader1 = test_codec1.index_meta_reader;
   codec0 = &test_codec0;

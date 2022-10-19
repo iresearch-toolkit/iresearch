@@ -108,7 +108,8 @@ analyzer_registrar::analyzer_registrar(
   analyzer::ptr (*factory)(std::string_view args),
   bool (*normalizer)(std::string_view args, std::string& config),
   const char* source /*= nullptr*/) {
-  const std::string_view source_ref(source);
+  const auto source_ref =
+    source ? std::string_view{source} : std::string_view{};
   const auto new_entry = ::value(factory, normalizer);
   auto entry = analyzer_register::instance().set(
     ::key(type.name(), args_format), new_entry,
@@ -153,8 +154,9 @@ bool exists(std::string_view name, const type_info& args_format,
             .empty();
 }
 
-bool normalize(std::string& out, std::string_view name, const type_info& args_format,
-               std::string_view args, bool load_library /*= true*/) noexcept {
+bool normalize(std::string& out, std::string_view name,
+               const type_info& args_format, std::string_view args,
+               bool load_library /*= true*/) noexcept {
   try {
     auto* normalizer = analyzer_register::instance()
                          .get(::key(name, args_format), load_library)
@@ -194,7 +196,8 @@ result get(analyzer::ptr& analyzer, std::string_view name,
 }
 
 analyzer::ptr get(std::string_view name, const type_info& args_format,
-                  std::string_view args, bool load_library /*= true*/) noexcept {
+                  std::string_view args,
+                  bool load_library /*= true*/) noexcept {
   try {
     auto* factory = analyzer_register::instance()
                       .get(::key(name, args_format), load_library)
@@ -212,7 +215,8 @@ void load_all(std::string_view path) {
   load_libraries(path, kFileNamePrefix, "");
 }
 
-bool visit(const std::function<bool(std::string_view, const type_info&)>& visitor) {
+bool visit(
+  const std::function<bool(std::string_view, const type_info&)>& visitor) {
   analyzer_register::visitor_t wrapper = [&visitor](const ::key& key) -> bool {
     return visitor(key.type, key.args_format);
   };

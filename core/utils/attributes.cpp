@@ -29,7 +29,8 @@ namespace {
 
 class attribute_register
   : public irs::tagged_generic_register<std::string_view, irs::type_info,
-                                        std::string_view, attribute_register> {};
+                                        std::string_view, attribute_register> {
+};
 
 }  // namespace
 
@@ -56,7 +57,8 @@ namespace iresearch {
 
 attribute_registrar::attribute_registrar(const type_info& type,
                                          const char* source /*= nullptr*/) {
-  std::string_view source_ref(source);
+  const auto source_ref =
+    source ? std::string_view{source} : std::string_view{};
   auto entry = attribute_register::instance().set(
     type.name(), type, IsNull(source_ref) ? nullptr : &source_ref);
 

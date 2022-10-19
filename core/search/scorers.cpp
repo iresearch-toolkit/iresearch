@@ -66,9 +66,10 @@ namespace {
 
 constexpr std::string_view kFileNamePrefix{"libscorer-"};
 
-class scorer_register : public irs::tagged_generic_register<
-                          entry_key_t, irs::sort::ptr (*)(std::string_view args),
-                          std::string_view, scorer_register> {
+class scorer_register
+  : public irs::tagged_generic_register<
+      entry_key_t, irs::sort::ptr (*)(std::string_view args), std::string_view,
+      scorer_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
     auto& name = key.name_;
@@ -88,13 +89,15 @@ class scorer_register : public irs::tagged_generic_register<
 
 namespace iresearch {
 
-/*static*/ bool scorers::exists(std::string_view name, const type_info& args_format,
+/*static*/ bool scorers::exists(std::string_view name,
+                                const type_info& args_format,
                                 bool load_library /*= true*/) {
   return nullptr != scorer_register::instance().get(
                       entry_key_t(name, args_format), load_library);
 }
 
-/*static*/ sort::ptr scorers::get(std::string_view name, const type_info& args_format,
+/*static*/ sort::ptr scorers::get(std::string_view name,
+                                  const type_info& args_format,
                                   std::string_view args,
                                   bool load_library /*= true*/) noexcept {
   try {
@@ -139,7 +142,8 @@ scorer_registrar::scorer_registrar(const type_info& type,
                                    const type_info& args_format,
                                    sort::ptr (*factory)(std::string_view args),
                                    const char* source /*= nullptr*/) {
-  std::string_view source_ref(source);
+  const auto source_ref =
+    source ? std::string_view{source} : std::string_view{};
   auto entry = scorer_register::instance().set(
     entry_key_t(type.name(), args_format), factory,
     IsNull(source_ref) ? nullptr : &source_ref);

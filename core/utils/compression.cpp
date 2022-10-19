@@ -59,8 +59,8 @@ struct value {
 constexpr std::string_view kFileNamePrefix("libcompression-");
 
 class compression_register
-  : public irs::tagged_generic_register<std::string_view, value, std::string_view,
-                                        compression_register> {
+  : public irs::tagged_generic_register<
+      std::string_view, value, std::string_view, compression_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
     std::string filename(kFileNamePrefix.size() + key.size(), 0);
@@ -77,7 +77,7 @@ class compression_register
 
 struct identity_compressor final : irs::compression::compressor {
   virtual irs::bytes_view compress(irs::byte_type* in, size_t size,
-                                  irs::bstring& /*buf*/) override {
+                                   irs::bstring& /*buf*/) override {
     return {in, size};
   }
 
@@ -95,7 +95,8 @@ compression_registrar::compression_registrar(
   const type_info& type, compressor_factory_f compressor_factory,
   decompressor_factory_f decompressor_factory,
   const char* source /*= nullptr*/) {
-  std::string_view const source_ref(source);
+  auto const source_ref =
+    source ? std::string_view{source} : std::string_view{};
   const auto new_entry = ::value(compressor_factory, decompressor_factory);
 
   auto entry = compression_register::instance().set(
@@ -179,9 +180,8 @@ void load_all(std::string_view path) {
 }
 
 bool visit(const std::function<bool(std::string_view)>& visitor) {
-  compression_register::visitor_t wrapper = [&visitor](std::string_view key) -> bool {
-    return visitor(key);
-  };
+  compression_register::visitor_t wrapper =
+    [&visitor](std::string_view key) -> bool { return visitor(key); };
 
   return compression_register::instance().visit(wrapper);
 }
