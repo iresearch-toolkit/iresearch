@@ -45,7 +45,7 @@ void visit(const sub_reader& segment, const term_reader& reader,
 
   auto* term = irs::get<term_attribute>(*terms);
 
-  if (!IRS_UNLIKELY(!term)) {
+  if (IRS_UNLIKELY(!term)) {
     return;
   }
 
@@ -71,8 +71,8 @@ void visit(const sub_reader& segment, const term_reader& reader,
 namespace iresearch {
 
 /*static*/ filter::prepared::ptr by_prefix::prepare(
-  const index_reader& index, const Order& ord, score_t boost, std::string_view field,
-  bytes_view prefix, size_t scored_terms_limit) {
+  const index_reader& index, const Order& ord, score_t boost,
+  std::string_view field, bytes_view prefix, size_t scored_terms_limit) {
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector(
     ord.empty() ? 0 : scored_terms_limit);

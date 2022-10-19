@@ -38,7 +38,7 @@ void collect_terms(const sub_reader& segment, const term_reader& field,
                    seek_term_iterator& terms, Visitor& visitor, Comparer cmp) {
   auto* term = irs::get<term_attribute>(terms);
 
-  if (!IRS_UNLIKELY(!term)) {
+  if (IRS_UNLIKELY(!term)) {
     return;
   }
 
