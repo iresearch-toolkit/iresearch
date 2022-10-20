@@ -34,7 +34,9 @@ namespace iresearch {
  * ------------------------------------------------------------------*/
 
 segment_meta::segment_meta(std::string_view name, format::ptr codec)
-  : name(name.data(), name.size()), codec(codec), column_store(false) {}
+  : name(name.data(), name.size()),
+    codec(std::move(codec)),
+    column_store(false) {}
 
 segment_meta::segment_meta(std::string&& name, format::ptr codec,
                            uint64_t docs_count, uint64_t live_docs_count,
@@ -46,7 +48,7 @@ segment_meta::segment_meta(std::string&& name, format::ptr codec,
     name(std::move(name)),
     docs_count(docs_count),
     live_docs_count(live_docs_count),
-    codec(codec),
+    codec(std::move(codec)),
     size(size),
     sort(sort),
     column_store(column_store) {}

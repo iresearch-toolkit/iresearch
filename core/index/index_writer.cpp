@@ -1116,9 +1116,9 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
 void index_writer::flush_context::reset() noexcept {
   // reset before returning to pool
   for (auto& entry : pending_segment_contexts_) {
-    if (entry.segment_.use_count() == 1) {
+    if (auto& segment = entry.segment_; segment.use_count() == 1) {
       // reset only if segment not tracked anywhere else
-      entry.segment_->reset();
+      segment->reset();
     }
   }
 
@@ -1201,14 +1201,14 @@ index_writer::segment_context::make_update_context(const filter& filter) {
 
 segment_writer::update_context
 index_writer::segment_context::make_update_context(
-  const std::shared_ptr<filter>& filter) {
+  std::shared_ptr<const filter> filter) {
   assert(filter);
   // increment generation due to removal
   auto generation = ++uncomitted_generation_offset_;
   auto update_id = modification_queries_.size();
 
   // -1 for previous generation
-  modification_queries_.emplace_back(filter, generation - 1, true);
+  modification_queries_.emplace_back(std::move(filter), generation - 1, true);
 
   return {generation, update_id};
 }
@@ -1241,13 +1241,13 @@ void index_writer::segment_context::remove(const filter& filter) {
 }
 
 void index_writer::segment_context::remove(
-  const std::shared_ptr<filter>& filter) {
+  std::shared_ptr<const filter> filter) {
   if (!filter) {
     return;  // skip empty filters
   }
 
-  modification_queries_.emplace_back(filter, uncomitted_generation_offset_++,
-                                     false);
+  modification_queries_.emplace_back(std::move(filter),
+                                     uncomitted_generation_offset_++, false);
 }
 
 void index_writer::segment_context::remove(filter::ptr&& filter) {
