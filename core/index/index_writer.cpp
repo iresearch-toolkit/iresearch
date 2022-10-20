@@ -656,10 +656,9 @@ index_writer::active_segment_context::operator=(
     }
 
     ctx_ = std::move(other.ctx_);
-    flush_ctx_ = std::move(other.flush_ctx_);
-    pending_segment_context_offset_ =
-      std::move(other.pending_segment_context_offset_);
-    segments_active_ = std::move(other.segments_active_);
+    flush_ctx_ = other.flush_ctx_;
+    pending_segment_context_offset_ = other.pending_segment_context_offset_;
+    segments_active_ = other.segments_active_;
   }
 
   return *this;
@@ -868,8 +867,9 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
   auto& writer = *segment.writer_;
 
   if (writer.initialized() && !disable_flush) {
-    auto segment_docs_max = writer_.segment_limits_.segment_docs_max.load();
-    auto segment_memory_max = writer_.segment_limits_.segment_memory_max.load();
+    const auto& segment_limits = writer_.segment_limits_;
+    const auto segment_docs_max = segment_limits.segment_docs_max.load();
+    const auto segment_memory_max = segment_limits.segment_memory_max.load();
 
     // if not reached the limit of the current segment then use it
     if ((!segment_docs_max ||
@@ -951,9 +951,8 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
     // this segment_context has not yet been seen by this flush_context
     // or was marked dirty imples flush_context switching making a full-circle
     if (this != flush_ctx || ctx.dirty_) {
-      pending_segment_contexts_.emplace_back(segment.ctx_,
-                                             pending_segment_contexts_.size());
-      freelist_node = &(pending_segment_contexts_.back());
+      freelist_node = &pending_segment_contexts_.emplace_back(
+        segment.ctx_, pending_segment_contexts_.size());
 
       // mark segment as non-reusable if it was peviously registered with a
       // different flush_context NOTE: 'ctx.dirty_' implies flush_context
@@ -2008,11 +2007,13 @@ index_writer::active_segment_context index_writer::get_segment_context(
     ctx.pending_segment_contexts_freelist_.pop());
 
   if (freelist_node) {
+    const auto& segment = freelist_node->segment_;
+
     // +1 for the reference in 'pending_segment_contexts_'
-    assert(freelist_node->segment_.use_count() == 1);
-    assert(!freelist_node->segment_->dirty_);
-    return active_segment_context(freelist_node->segment_, segments_active_,
-                                  &ctx, freelist_node->value);
+    assert(segment.use_count() == 1);
+    assert(!segment->dirty_);
+    return active_segment_context(segment, segments_active_, &ctx,
+                                  freelist_node->value);
   }
 
   // should allocate a new segment_context from the pool

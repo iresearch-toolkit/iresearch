@@ -133,8 +133,9 @@ class index_writer : private util::noncopyable {
       size_t pending_segment_context_offset =
         std::numeric_limits<size_t>::max()) noexcept;
     active_segment_context(active_segment_context&&) = default;
-    ~active_segment_context();
     active_segment_context& operator=(active_segment_context&& other) noexcept;
+
+    ~active_segment_context();
 
     const segment_context_ptr& ctx() const noexcept { return ctx_; }
 
@@ -144,9 +145,9 @@ class index_writer : private util::noncopyable {
     // nullptr will not match any flush_context
     flush_context* flush_ctx_{nullptr};
     // segment offset in flush_ctx_->pending_segment_contexts_
-    size_t pending_segment_context_offset_;
+    size_t pending_segment_context_offset_{};
     // reference to index_writer::segments_active_
-    std::atomic<size_t>* segments_active_;
+    std::atomic<size_t>* segments_active_{};
   };
 
   static_assert(std::is_nothrow_move_constructible_v<active_segment_context>);
@@ -919,13 +920,13 @@ class index_writer : private util::noncopyable {
 
       pending_segment_context(std::shared_ptr<segment_context> segment,
                               size_t pending_segment_context_offset)
-        : doc_id_begin_(segment->uncomitted_doc_id_begin_),
+        : freelist_t::node_type{.value = pending_segment_context_offset},
+          doc_id_begin_(segment->uncomitted_doc_id_begin_),
           doc_id_end_(std::numeric_limits<size_t>::max()),
           modification_offset_begin_(segment->uncomitted_modification_queries_),
           modification_offset_end_(std::numeric_limits<size_t>::max()),
           segment_(std::move(segment)) {
         assert(segment);
-        value = pending_segment_context_offset;
       }
     };
 
