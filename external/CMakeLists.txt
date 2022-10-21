@@ -162,3 +162,5 @@ add_subdirectory(highway)
 ################################################################################
 
 add_subdirectory(text)
+
+add_subdirectory(velocypack)
