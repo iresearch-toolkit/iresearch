@@ -23,11 +23,14 @@
 #ifndef IRESEARCH_COLUMNSTORE2_H
 #define IRESEARCH_COLUMNSTORE2_H
 
+#include "shared.hpp"
+
 #include "formats/formats.hpp"
 #include "formats/sparse_bitmap.hpp"
-#include "shared.hpp"
+
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
+
 #include "utils/bitpack.hpp"
 #include "utils/encryption.hpp"
 #include "utils/math_utils.hpp"
@@ -36,8 +39,9 @@
 namespace iresearch {
 namespace columnstore2 {
 
-enum class Version : int32_t { kMin = 0, kMax = kMin };
-
+////////////////////////////////////////////////////////////////////////////////
+/// @class column
+////////////////////////////////////////////////////////////////////////////////
 class column final : public irs::column_output {
  public:
   static constexpr size_t kBlockSize = sparse_bitmap_writer::kBlockSize;
@@ -52,8 +56,7 @@ class column final : public irs::column_output {
       uint64_t* u64buf;
     };
     bool consolidation;
-    SparseBitmapVersion version;
-  };
+  }; // context
 
   struct column_block {
     uint64_t addr;
@@ -64,12 +67,14 @@ class column final : public irs::column_output {
     uint64_t size;
 #endif
     uint32_t bits;
-  };
+  }; // column_block
 
-  explicit column(const context& ctx, field_id id,
-                  const irs::type_info& compression,
-                  columnstore_writer::column_finalizer_f&& finalizer,
-                  compression::compressor::ptr deflater)
+  explicit column(
+      const context& ctx,
+      field_id id,
+      const irs::type_info& compression,
+      columnstore_writer::column_finalizer_f&& finalizer,
+      compression::compressor::ptr deflater)
     : ctx_{ctx},
       compression_{compression},
       deflater_{std::move(deflater)},
@@ -78,7 +83,9 @@ class column final : public irs::column_output {
     assert(field_limits::valid(id_));
   }
 
-  virtual void write_byte(byte_type b) override { data_.stream.write_byte(b); }
+  virtual void write_byte(byte_type b) override {
+    data_.stream.write_byte(b);
+  }
 
   virtual void write_bytes(const byte_type* b, size_t size) override {
     data_.stream.write_bytes(b, size);
@@ -93,7 +100,7 @@ class column final : public irs::column_output {
    public:
     uint64_t back() const noexcept {
       assert(offset_ > offsets_);
-      return *(offset_ - 1);
+      return *(offset_-1);
     }
 
     void push_back(uint64_t offset) noexcept {
@@ -114,9 +121,13 @@ class column final : public irs::column_output {
       return uint32_t(offset_ - offsets_);
     }
 
-    bool empty() const noexcept { return offset_ == offsets_; }
+    bool empty() const noexcept {
+      return offset_ == offsets_;
+    }
 
-    bool full() const noexcept { return offset_ == std::end(offsets_); }
+    bool full() const noexcept {
+      return offset_ == std::end(offsets_);
+    }
 
     void reset() noexcept {
       std::memset(offsets_, 0, sizeof offsets_);
@@ -130,11 +141,13 @@ class column final : public irs::column_output {
    private:
     uint64_t offsets_[kBlockSize]{};
     uint64_t* offset_{offsets_};
-  };
+  }; // address_table
 
   void prepare(doc_id_t key);
 
-  bool empty() const noexcept { return addr_table_.empty() && !docs_count_; }
+  bool empty() const noexcept {
+    return addr_table_.empty() && !docs_count_;
+  }
 
   void flush() {
     if (!addr_table_.empty()) {
@@ -163,37 +176,40 @@ class column final : public irs::column_output {
   irs::type_info compression_;
   compression::compressor::ptr deflater_;
   columnstore_writer::column_finalizer_f finalizer_;
-  std::vector<column_block> blocks_;  // at most 65536 blocks
+  std::vector<column_block> blocks_; // at most 65536 blocks
   memory_output data_{*ctx_.alloc};
   memory_output docs_{*ctx_.alloc};
-  sparse_bitmap_writer docs_writer_{docs_.stream, ctx_.version};
+  sparse_bitmap_writer docs_writer_{docs_.stream};
   address_table addr_table_;
   bstring payload_;
   string_ref name_;
   uint64_t prev_avg_{};
   doc_id_t docs_count_{};
-  doc_id_t prev_{};  // last committed doc_id_t
-  doc_id_t pend_{};  // last pushed doc_id_t
+  doc_id_t prev_{}; // last committed doc_id_t
+  doc_id_t pend_{}; // last pushed doc_id_t
   field_id id_;
   bool fixed_length_{true};
 #ifdef IRESEARCH_DEBUG
   bool sealed_{false};
 #endif
-};
+}; // column
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class writer
+////////////////////////////////////////////////////////////////////////////////
 class writer final : public columnstore_writer {
  public:
   static constexpr string_ref kDataFormatName = "iresearch_11_columnstore_data";
-  static constexpr string_ref kIndexFormatName =
-    "iresearch_11_columnstore_index";
+  static constexpr string_ref kIndexFormatName = "iresearch_11_columnstore_index";
   static constexpr string_ref kDataFormatExt = "csd";
   static constexpr string_ref kIndexFormatExt = "csi";
 
-  writer(Version version, bool consolidation);
+  explicit writer(bool consolidation);
 
   virtual void prepare(directory& dir, const segment_meta& meta) override;
-  virtual column_t push_column(const column_info& info,
-                               column_finalizer_f finalizer) override;
+  virtual column_t push_column(
+      const column_info& info,
+      column_finalizer_f finalizer) override;
   virtual bool commit(const flush_state& state) override;
   virtual void rollback() noexcept override;
 
@@ -201,100 +217,150 @@ class writer final : public columnstore_writer {
   directory* dir_;
   std::string data_filename_;
   memory_allocator* alloc_;
-  std::deque<column> columns_;  // pointers remain valid
+  std::deque<column> columns_; // pointers remain valid
   std::vector<column*> sorted_columns_;
   index_output::ptr data_out_;
   encryption::stream::ptr data_cipher_;
   std::unique_ptr<byte_type[]> buf_;
-  Version ver_;
   bool consolidation_;
-};
+}; // writer
 
+////////////////////////////////////////////////////////////////////////////////
+/// @enum ColumnType
+////////////////////////////////////////////////////////////////////////////////
 enum class ColumnType : uint16_t {
-  // Variable length data
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief variable length data
+  //////////////////////////////////////////////////////////////////////////////
   kSparse = 0,
 
-  // No data
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief no data
+  //////////////////////////////////////////////////////////////////////////////
   kMask,
 
-  // Fixed length data
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief fixed length data
+  //////////////////////////////////////////////////////////////////////////////
   kFixed,
 
-  // Fixed length data in adjacent blocks
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief fixed length data in adjacent blocks
+  //////////////////////////////////////////////////////////////////////////////
   kDenseFixed
-};
+}; // ColumnType
 
+////////////////////////////////////////////////////////////////////////////////
+/// @enum ColumnProperty
+////////////////////////////////////////////////////////////////////////////////
 enum class ColumnProperty : uint16_t {
-  // Regular column
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Regular column
+  //////////////////////////////////////////////////////////////////////////////
   kNormal = 0,
 
-  // Encrytped data
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Encrytped data
+  //////////////////////////////////////////////////////////////////////////////
   kEncrypt = 1,
 
-  // Annonymous column
-  kNoName = 2,
-
-  // Support accessing previous document
-  kPrevDoc = 4
-};
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Annonymous column
+  //////////////////////////////////////////////////////////////////////////////
+  kNoName = 2
+}; // ColumnProperty
 
 ENABLE_BITMASK_ENUM(ColumnProperty);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @struct column_header
+////////////////////////////////////////////////////////////////////////////////
 struct column_header {
-  // Bitmap index offset, 0 if not present.
-  // 0 - not present, meaning dense column
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief bitmap index offset, 0 if not present
+  /// @note 0 - not present, meaning dense column
+  //////////////////////////////////////////////////////////////////////////////
   uint64_t docs_index{};
 
-  // Column identifier
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief column identifier
+  //////////////////////////////////////////////////////////////////////////////
   field_id id{field_limits::invalid()};
 
-  // Total number of docs in a column
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief total number of docs in a column
+  //////////////////////////////////////////////////////////////////////////////
   doc_id_t docs_count{};
 
-  // Min document identifier
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief min document identifier
+  //////////////////////////////////////////////////////////////////////////////
   doc_id_t min{doc_limits::invalid()};
 
-  // Column properties
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief column properties
+  //////////////////////////////////////////////////////////////////////////////
   ColumnProperty props{ColumnProperty::kNormal};
 
-  // Column type
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief column type
+  //////////////////////////////////////////////////////////////////////////////
   ColumnType type{ColumnType::kSparse};
-};
+}; // column_header
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class reader
+////////////////////////////////////////////////////////////////////////////////
 class reader final : public columnstore_reader {
  public:
-  virtual bool prepare(const directory& dir, const segment_meta& meta) override;
+  virtual bool prepare(
+    const directory& dir,
+    const segment_meta& meta,
+    const options& opts = options{}) override;
 
   const column_header* header(field_id field) const;
 
   virtual const column_reader* column(field_id field) const override {
     return field >= columns_.size()
-             ? nullptr  // can't find column with the specified identifier
-             : columns_[field];
+      ? nullptr // can't find column with the specified identifier
+      : columns_[field];
   }
 
   virtual bool visit(const column_visitor_f& visitor) const override;
 
-  virtual size_t size() const override { return columns_.size(); }
+  virtual size_t size() const override {
+    return columns_.size();
+  }
 
  private:
   using column_ptr = std::unique_ptr<column_reader>;
 
-  void prepare_data(const directory& dir, std::string_view filename);
+  void prepare_data(
+    const directory& dir,
+    const std::string& filename);
 
-  void prepare_index(const directory& dir, const segment_meta& meta,
-                     std::string_view filename);
+  void prepare_index(
+    const directory& dir,
+    const segment_meta& meta,
+    const std::string& filename,
+    const std::string& data_filename,
+    const options& opts);
 
   std::vector<column_ptr> sorted_columns_;
   std::vector<const column_ptr::element_type*> columns_;
   encryption::stream::ptr data_cipher_;
   index_input::ptr data_in_;
+}; // reader
+
+enum class Version : int32_t {
+  kMin = 0,
+  kMax = kMin
 };
 
-irs::columnstore_writer::ptr make_writer(Version version, bool consolidation);
-irs::columnstore_reader::ptr make_reader();
+IRESEARCH_API irs::columnstore_writer::ptr make_writer(Version version, bool consolidation);
+IRESEARCH_API irs::columnstore_reader::ptr make_reader();
 
-}  // namespace columnstore2
-}  // namespace iresearch
+} // columnstore2
+} // iresearch
 
-#endif  // IRESEARCH_COLUMNSTORE2_H
+#endif // IRESEARCH_COLUMNSTORE2_H

@@ -21,26 +21,24 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_param.hpp"
-
 #include "tests_shared.hpp"
-#ifdef IRESEARCH_URING
-#include "store/async_directory.hpp"
-#endif
+#include "tests_param.hpp"
 #include "store/fs_directory.hpp"
-#include "store/memory_directory.hpp"
 #include "store/mmap_directory.hpp"
+#include "store/memory_directory.hpp"
 #include "utils/file_utils.hpp"
 
 namespace tests {
 
 std::shared_ptr<irs::directory> memory_directory(
-  const test_base* /*test*/, irs::directory_attributes attrs) {
+    const test_base* /*test*/,
+    irs::directory_attributes attrs) {
   return std::make_shared<irs::memory_directory>(std::move(attrs));
 }
 
-std::shared_ptr<irs::directory> fs_directory(const test_base* test,
-                                             irs::directory_attributes attrs) {
+std::shared_ptr<irs::directory> fs_directory(
+    const test_base* test,
+    irs::directory_attributes attrs) {
   std::shared_ptr<irs::directory> impl;
 
   if (test) {
@@ -54,37 +52,15 @@ std::shared_ptr<irs::directory> fs_directory(const test_base* test,
       [dir](irs::fs_directory* p) {
         irs::file_utils::remove(dir.c_str());
         delete p;
-      });
+    });
   }
 
   return impl;
 }
-
-#ifdef IRESEARCH_URING
-std::shared_ptr<irs::directory> async_directory(
-  const test_base* test, irs::directory_attributes attrs) {
-  std::shared_ptr<irs::directory> impl;
-
-  if (test) {
-    auto dir = test->test_dir();
-
-    dir /= "index";
-    irs::file_utils::mkdir(dir.c_str(), false);
-
-    impl = std::shared_ptr<irs::async_directory>(
-      new irs::async_directory(dir, std::move(attrs)),
-      [dir](irs::fs_directory* p) {
-        irs::file_utils::remove(dir.c_str());
-        delete p;
-      });
-  }
-
-  return impl;
-}
-#endif
 
 std::shared_ptr<irs::directory> mmap_directory(
-  const test_base* test, irs::directory_attributes attrs) {
+    const test_base* test,
+    irs::directory_attributes attrs) {
   std::shared_ptr<irs::directory> impl;
 
   if (test) {
@@ -98,10 +74,10 @@ std::shared_ptr<irs::directory> mmap_directory(
       [dir](irs::mmap_directory* p) {
         irs::file_utils::remove(dir.c_str());
         delete p;
-      });
+    });
   }
 
   return impl;
 }
 
-}  // namespace tests
+} // tests

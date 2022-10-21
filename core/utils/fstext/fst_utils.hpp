@@ -40,24 +40,19 @@ struct EmptyLabel {
   constexpr bool operator>(EmptyLabel) const noexcept { return false; }
   constexpr operator Label() const noexcept { return kNoLabel; }
   constexpr operator Label() noexcept { return kNoLabel; }
-  constexpr void Write(std::ostream&) const noexcept {}
+  constexpr void Write(std::ostream&) const noexcept { }
 
   friend constexpr bool operator==(Label, EmptyLabel) noexcept { return true; }
   friend constexpr bool operator!=(Label, EmptyLabel) noexcept { return false; }
-  friend constexpr std::ostream& operator<<(std::ostream& strm,
-                                            EmptyLabel) noexcept {
+  friend constexpr std::ostream& operator<<(std::ostream& strm, EmptyLabel) noexcept {
     return strm;
   }
-};  // EmptyLabel
+}; // EmptyLabel
 
 template<typename Label, typename T>
-constexpr bool operator==(EmptyLabel<Label>, const T&) noexcept {
-  return true;
-}
+constexpr bool operator==(EmptyLabel<Label>, const T&) noexcept { return true; }
 template<typename Label, typename T>
-constexpr bool operator!=(EmptyLabel<Label>, const T&) noexcept {
-  return false;
-}
+constexpr bool operator!=(EmptyLabel<Label>, const T&) noexcept { return false; }
 
 template<typename Weight>
 struct EmptyWeight {
@@ -66,10 +61,7 @@ struct EmptyWeight {
   constexpr EmptyWeight& operator=(Weight) noexcept { return *this; }
 
   constexpr ReverseWeight Reverse() const noexcept { return *this; }
-  constexpr EmptyWeight Quantize(
-    [[maybe_unused]] float delta = kDelta) const noexcept {
-    return {};
-  }
+  constexpr EmptyWeight Quantize([[maybe_unused]]float delta = kDelta) const noexcept { return {};  }
   constexpr operator Weight() const noexcept { return Weight::One(); }
   constexpr operator Weight() noexcept { return Weight::One(); }
   constexpr bool operator==(EmptyWeight) const noexcept { return true; }
@@ -84,7 +76,7 @@ struct EmptyWeight {
     Weight().Read(strm);
     return strm;
   }
-};  // EmptyWeight
+}; // EmptyWeight
 
 template<typename W, typename L = int32_t>
 struct ILabelArc {
@@ -92,7 +84,7 @@ struct ILabelArc {
   using Label = L;
   using StateId = int32_t;
 
-  static const std::string& Type() {
+  static const std::string &Type() {
     static const std::string type("ILabelArc");
     return type;
   }
@@ -107,42 +99,46 @@ struct ILabelArc {
   constexpr ILabelArc() = default;
 
   constexpr ILabelArc(Label ilabel, StateId nextstate)
-    : ilabel(ilabel), nextstate(nextstate) {}
+    : ilabel(ilabel),
+      nextstate(nextstate) {
+  }
 
   // satisfy openfst API
   constexpr ILabelArc(Label ilabel, Label, Weight, StateId nextstate)
-    : ilabel(ilabel), nextstate(nextstate) {}
+    : ilabel(ilabel),
+      nextstate(nextstate) {
+  }
 
   // satisfy openfst API
   constexpr ILabelArc(Label ilabel, Label, StateId nextstate)
-    : ilabel(ilabel), nextstate(nextstate) {}
-};  // ILabelArc
+    : ilabel(ilabel),
+      nextstate(nextstate) {
+  }
+}; // ILabelArc
 
-}  // namespace fstext
-}  // namespace fst
+} // fstext
+} // fst
 
 namespace std {
 
 template<typename L>
-inline void swap(typename ::fst::fstext::EmptyLabel<L>& /*lhs*/,
-                 L& rhs) noexcept {
+inline void swap(typename ::fst::fstext::EmptyLabel<L>& /*lhs*/, L& rhs) noexcept {
   rhs = ::fst::kNoLabel;
 }
 
 template<typename L>
-inline void swap(L& lhs,
-                 typename ::fst::fstext::EmptyLabel<L>& /*rhs*/) noexcept {
+inline void swap(L& lhs, typename ::fst::fstext::EmptyLabel<L>& /*rhs*/) noexcept {
   lhs = ::fst::kNoLabel;
 }
 
 template<typename L>
 struct hash<typename ::fst::fstext::EmptyLabel<L>> {
-  constexpr size_t operator()(
-    typename ::fst::fstext::EmptyLabel<L>) const noexcept {
+  constexpr size_t operator()(typename ::fst::fstext::EmptyLabel<L>) const noexcept {
     return 0;
   }
 };
 
-}  // namespace std
+} // std
 
-#endif  // IRESEARCH_FST_UTILS_H
+#endif // IRESEARCH_FST_UTILS_H
+

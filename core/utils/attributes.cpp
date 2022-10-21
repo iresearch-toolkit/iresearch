@@ -21,44 +21,58 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "shared.hpp"
+#include "utils/register.hpp"
 #include "attributes.hpp"
 
-#include "utils/register.hpp"
+#include <cassert>
 
 namespace {
 
 class attribute_register
-  : public irs::tagged_generic_register<irs::string_ref, irs::type_info,
-                                        irs::string_ref, attribute_register> {};
+    : public irs::tagged_generic_register<irs::string_ref, irs::type_info,
+                                          irs::string_ref, attribute_register> {
+};
 
-}  // namespace
+
+}
 
 namespace iresearch {
 
-/*static*/ bool attributes::exists(string_ref name,
-                                   bool load_library /*= true*/) {
-  return static_cast<bool>(
-    attribute_register::instance().get(name, load_library));
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        attributes
+// -----------------------------------------------------------------------------
+
+/*static*/ bool attributes::exists(
+    const string_ref& name,
+    bool load_library /*= true*/) {
+  return static_cast<bool>(attribute_register::instance().get(name, load_library));
 }
 
-/*static*/ type_info attributes::get(string_ref name,
-                                     bool load_library /*= true*/) noexcept {
+/*static*/ type_info attributes::get(
+    const string_ref& name,
+    bool load_library /*= true*/) noexcept {
   try {
     return attribute_register::instance().get(name, load_library);
   } catch (...) {
-    IR_FRMT_ERROR(
-      "Caught exception while getting an attribute instance");  // cppcheck-suppress
-                                                                // syntaxError
+    IR_FRMT_ERROR("Caught exception while getting an attribute instance"); // cppcheck-suppress syntaxError
   }
 
-  return {};  // invalid type id
+  return {}; // invalid type id
 }
 
-attribute_registrar::attribute_registrar(const type_info& type,
-                                         const char* source /*= nullptr*/) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                            attribute registration
+// -----------------------------------------------------------------------------
+
+attribute_registrar::attribute_registrar(
+    const type_info& type,
+    const char* source /*= nullptr*/) {
   irs::string_ref source_ref(source);
   auto entry = attribute_register::instance().set(
-    type.name(), type, source_ref.null() ? nullptr : &source_ref);
+    type.name(),
+    type,
+    source_ref.null() ? nullptr : &source_ref);
 
   registered_ = entry.second;
 
@@ -67,28 +81,34 @@ attribute_registrar::attribute_registrar(const type_info& type,
 
     if (source && registered_source) {
       IR_FRMT_WARN(
-        "type name collision detected while registering attribute, ignoring: "
-        "type '%s' from %s, previously from %s",
-        type.name().c_str(), source, registered_source->c_str());
+        "type name collision detected while registering attribute, ignoring: type '%s' from %s, previously from %s",
+        type.name().c_str(),
+        source,
+        registered_source->c_str()
+      );
     } else if (source) {
       IR_FRMT_WARN(
-        "type name collision detected while registering attribute, ignoring: "
-        "type '%s' from %s",
-        type.name().c_str(), source);
+        "type name collision detected while registering attribute, ignoring: type '%s' from %s",
+        type.name().c_str(),
+        source
+      );
     } else if (registered_source) {
       IR_FRMT_WARN(
-        "type name collision detected while registering attribute, ignoring: "
-        "type '%s', previously from %s",
-        type.name().c_str(), registered_source->c_str());
+        "type name collision detected while registering attribute, ignoring: type '%s', previously from %s",
+        type.name().c_str(),
+        registered_source->c_str()
+      );
     } else {
       IR_FRMT_WARN(
-        "type name collision detected while registering attribute, ignoring: "
-        "type '%s'",
-        type.name().c_str());
+        "type name collision detected while registering attribute, ignoring: type '%s'",
+        type.name().c_str()
+      );
     }
   }
 }
 
-attribute_registrar::operator bool() const noexcept { return registered_; }
+attribute_registrar::operator bool() const noexcept {
+  return registered_;
+}
 
-}  // namespace iresearch
+}

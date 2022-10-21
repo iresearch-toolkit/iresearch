@@ -1,5 +1,5 @@
 # tags files
-tags/
+tags
 
 # Compiled Object files
 *.slo
@@ -9,7 +9,7 @@ tags/
 *.pdb
 
 # idea files
-.idea/
+.idea
 
 # Compiled Dynamic libraries
 *.so
@@ -50,8 +50,7 @@ tags/
 *.user
 
 # VS Code specific
-.vscode/
+.vscode
 
 # Builds
-build*/
-cmake-build*/
+/build*/

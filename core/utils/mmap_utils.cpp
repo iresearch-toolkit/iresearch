@@ -29,8 +29,8 @@
 namespace iresearch {
 namespace mmap_utils {
 
-int flush(int fd, void* addr, size_t size, int flags) noexcept {
-  if (fd < 0) {  // an invalid file descriptor of course means an invalid handle
+int flush(int fd, void* addr, size_t size, int flags) noexcept {  
+  if (fd < 0) { // an invalid file descriptor of course means an invalid handle
     return 0;
   }
 
@@ -54,7 +54,7 @@ int flush(int fd, void* addr, size_t size, int flags) noexcept {
     return -1;
   }
 #endif
-
+  
   return 0;
 }
 
@@ -65,7 +65,7 @@ void mmap_handle::close() noexcept {
     }
     munmap(addr_, size_);
   }
-
+ 
   if (fd_ >= 0) {
     ::posix_close(static_cast<int>(fd_));
   }
@@ -87,9 +87,7 @@ bool mmap_handle::open(const file_path_t path) noexcept {
   const int fd = ::posix_open(path, O_RDONLY);
 
   if (fd < 0) {
-    IR_FRMT_ERROR(
-      "Failed to open input file, error: %d, path: " IR_FILEPATH_SPECIFIER,
-      errno, path);
+    IR_FRMT_ERROR("Failed to open input file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
     close();
     return false;
   }
@@ -99,10 +97,7 @@ bool mmap_handle::open(const file_path_t path) noexcept {
   uint64_t size;
 
   if (!irs::file_utils::byte_size(size, fd)) {
-    IR_FRMT_ERROR(
-      "Failed to get stats for input file, error: %d, "
-      "path: " IR_FILEPATH_SPECIFIER,
-      errno, path);
+    IR_FRMT_ERROR("Failed to get stats for input file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
     close();
     return false;
   }
@@ -113,9 +108,7 @@ bool mmap_handle::open(const file_path_t path) noexcept {
     void* addr = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
 
     if (MAP_FAILED == addr) {
-      IR_FRMT_ERROR(
-        "Failed to mmap input file, error: %d, path: " IR_FILEPATH_SPECIFIER,
-        errno, path);
+      IR_FRMT_ERROR("Failed to mmap input file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
       close();
       return false;
     }
@@ -126,5 +119,5 @@ bool mmap_handle::open(const file_path_t path) noexcept {
   return true;
 }
 
-}  // namespace mmap_utils
-}  // namespace iresearch
+} // mmap_utils
+} // ROOT

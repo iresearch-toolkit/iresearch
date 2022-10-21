@@ -24,41 +24,54 @@
 #define IRESEARCH_ATTRIBUTES_PROVIDER_H
 
 #include "type_id.hpp"
+#include "utils/noncopyable.hpp"
 
 namespace iresearch {
 
-// Base struct for all attribute types that can be used with attribute_provider.
-struct attribute {};
+struct attribute;
 
-// Base class for all objects with externally visible attributes
-struct attribute_provider {
+////////////////////////////////////////////////////////////////////////////////
+/// @class attribute_provider
+/// @brief base class for all objects with externally visible attributes
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API attribute_provider {
   virtual ~attribute_provider() = default;
 
-  // Return pointer to attribute of a specified type.
-  // External users should prefer using const version.
-  // External users should avoid modifying attributes treat that as UB.
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return pointer to attribute of a specified type
+  /// @note external users should prefer using const version
+  /// @note external users should avoid modifying attributes treat that as UB
+  //////////////////////////////////////////////////////////////////////////////
   virtual attribute* get_mutable(type_info::type_id type) = 0;
 
-  // Const pointer to attribute of a specified type.
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return const pointer to attribute of a specified type
+  //////////////////////////////////////////////////////////////////////////////
   const attribute* get(type_info::type_id type) const {
     return const_cast<attribute_provider*>(this)->get_mutable(type);
   }
-};
+}; // attribute_provider
 
-// Convenient helper for getting immutable attribute of a specific type.
-template<typename T, typename Provider,
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convenient helper for getting immutable attribute of a specific type
+////////////////////////////////////////////////////////////////////////////////
+template<typename T,
+         typename Provider,
          typename = std::enable_if_t<std::is_base_of_v<attribute, T>>>
 inline const T* get(const Provider& attrs) {
   return static_cast<const T*>(attrs.get(type<T>::id()));
 }
 
-// Convenient helper for getting mutable attribute of a specific type.
-template<typename T, typename Provider,
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convenient helper for getting mutable attribute of a specific type
+////////////////////////////////////////////////////////////////////////////////
+template<typename T,
+         typename Provider,
          typename = std::enable_if_t<std::is_base_of_v<attribute, T>>>
 inline T* get_mutable(Provider* attrs) {
   return static_cast<T*>(attrs->get_mutable(type<T>::id()));
 }
 
-}  // namespace iresearch
+}
 
 #endif

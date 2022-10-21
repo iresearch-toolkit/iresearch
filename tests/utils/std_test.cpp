@@ -30,35 +30,15 @@ using namespace iresearch;
 TEST(std_test, input_output_iterator) {
   irs::memory_directory dir;
 
-  const std::vector<uint32_t> data{55166,
-                                   20924,
-                                   23894,
-                                   46071,
-                                   81213,
-                                   81092,
-                                   38660,
-                                   6758,
-                                   4597,
-                                   9303,
-                                   66094,
-                                   47660,
-                                   27789,
-                                   30110,
-                                   50809,
-                                   90418,
-                                   49504,
-                                   49175,
-                                   50150,
-                                   2151,
-                                   1,
-                                   18,
-                                   5,
-                                   128,
-                                   9000,
-                                   782,
-                                   8974,
-                                   std::numeric_limits<uint32_t>::max(),
-                                   std::numeric_limits<uint32_t>::min()};
+  const std::vector<uint32_t> data {
+    55166,20924,23894,46071,81213,
+    81092,38660,6758,4597,9303,
+    66094,47660,27789,30110,50809,
+    90418,49504,49175,50150,2151,
+    1, 18, 5, 128, 9000, 782, 8974,
+    std::numeric_limits<uint32_t>::max(),
+    std::numeric_limits<uint32_t>::min()
+  };
 
   // write data
   {
@@ -85,62 +65,66 @@ TEST(std_test, input_output_iterator) {
     auto istrm_iterator = irs::irstd::make_istream_iterator(istrm);
 
     for (const auto& v : data) {
-      ASSERT_EQ(v, irs::vread<uint32_t>(istrm_iterator));
+     ASSERT_EQ(v, irs::vread<uint32_t>(istrm_iterator));
     }
 
-    ASSERT_TRUE(in->eof());  // reached the end
+    ASSERT_TRUE(in->eof()); // reached the end
   }
 }
 
 TEST(std_test, head_for_each_if) {
   /* usual case */
   {
-    std::vector<int> src = {0, 7, 28, 1, 2, 5, 7, 9, 1, 3, 65,
-                            0, 0, 0,  1, 2, 3, 0, 4, 0, 0, 1};
+    std::vector<int> src = {
+      0, 7, 28, 1, 2, 5, 7, 9, 1, 3, 65, 0, 0, 0, 1, 2, 3, 0, 4, 0, 0, 1
+    };
 
     /* create min heap */
-    std::make_heap(src.begin(), src.end(), std::greater<int>());
-    const std::vector<int> expected(7, 0);
+    std::make_heap( src.begin(), src.end(), std::greater<int>() );
+    const std::vector<int> expected( 7, 0 );
 
     std::vector<int> result;
     std::vector<const int*> refs;
     irstd::heap::for_each_if(
-      src.begin(), src.end(), [](int i) { return 0 == i; },
-      [&result, &refs](const int& i) {
-        result.push_back(i);
-        refs.push_back(&i);
-      });
+     src.begin(), src.end(),
+     [](int i) { return 0 == i; },
+     [&result,&refs] (const int& i) {
+       result.push_back(i);
+       refs.push_back(&i);
+    });
 
-    refs.erase(std::unique(refs.begin(), refs.end()), refs.end());
+    refs.erase(std::unique(refs.begin(),refs.end()), refs.end());
     ASSERT_EQ(expected, result);
     /* check that elements are different */
-    ASSERT_EQ(result.size(), refs.size());
+    ASSERT_EQ(result.size(),refs.size());
   }
 }
 
 TEST(std_test, heap_for_each_top) {
   /* usual case */
   {
-    std::vector<int> src = {0, 7, 28, 1, 2, 5, 7, 9, 1, 3, 65,
-                            0, 0, 0,  1, 2, 3, 0, 4, 0, 0, 1};
+    std::vector<int> src = {
+      0, 7, 28, 1, 2, 5, 7, 9, 1, 3, 65, 0, 0, 0, 1, 2, 3, 0, 4, 0, 0, 1
+    };
 
     /* create min heap */
-    std::make_heap(src.begin(), src.end(), std::greater<int>());
+    std::make_heap( src.begin(), src.end(), std::greater<int>() );
 
-    const std::vector<int> expected(7, 0);
+    const std::vector<int> expected( 7, 0 );
 
     std::vector<int> result;
     std::vector<const int*> refs;
-    irstd::heap::for_each_top(src.begin(), src.end(),
-                              [&result, &refs](const int& i) {
-                                result.push_back(i);
-                                refs.push_back(&i);
-                              });
+    irstd::heap::for_each_top(
+      src.begin(), src.end(),
+      [&result,&refs] (const int& i) {
+      result.push_back(i);
+      refs.push_back(&i);
+    });
 
-    refs.erase(std::unique(refs.begin(), refs.end()), refs.end());
+    refs.erase(std::unique(refs.begin(),refs.end()), refs.end());
     ASSERT_EQ(expected, result);
     /* check that elements are different */
-    ASSERT_EQ(result.size(), refs.size());
+    ASSERT_EQ(result.size(),refs.size());
   }
 
   /* empty */
@@ -149,53 +133,55 @@ TEST(std_test, heap_for_each_top) {
 
     std::vector<int> result;
     std::vector<const int*> refs;
-    irstd::heap::for_each_top(src.begin(), src.end(),
-                              [&result, &refs](const int& i) {
-                                result.push_back(i);
-                                refs.push_back(&i);
-                              });
+    irstd::heap::for_each_top(
+      src.begin(), src.end(),
+      [&result,&refs] ( const int& i ) {
+        result.push_back( i );
+        refs.push_back(&i);
+    } );
 
-    refs.erase(std::unique(refs.begin(), refs.end()), refs.end());
+    refs.erase(std::unique(refs.begin(),refs.end()), refs.end());
     ASSERT_EQ(src, result);
     /* check that elements are different */
-    ASSERT_EQ(result.size(), refs.size());
+    ASSERT_EQ(result.size(),refs.size());
   }
 
   /* all equals */
   {
-    const std::vector<int> src(15, 1);
+    const std::vector<int> src( 15, 1 );
 
     std::vector<int> result;
     std::vector<const int*> refs;
-    irstd::heap::for_each_top(src.begin(), src.end(),
-                              [&result, &refs](const int& i) {
-                                result.push_back(i);
-                                refs.push_back(&i);
-                              });
+    irstd::heap::for_each_top(
+      src.begin(), src.end(),
+      [&result,&refs] (const int& i ) {
+      result.push_back( i );
+      refs.push_back(&i);
+    } );
 
-    refs.erase(std::unique(refs.begin(), refs.end()), refs.end());
+    refs.erase(std::unique(refs.begin(),refs.end()), refs.end());
     ASSERT_EQ(src, result);
     /* check that elements are different */
-    ASSERT_EQ(result.size(), refs.size());
+    ASSERT_EQ(result.size(),refs.size());
   }
 }
 
 TEST(std_test, ALL_EQUAL) {
   /* equals */
   {
-    const std::vector<int> src(10, 0);
-    ASSERT_TRUE(irstd::all_equal(src.begin(), src.end()));
+    const std::vector<int> src( 10, 0 );
+    ASSERT_TRUE( irstd::all_equal( src.begin(), src.end() ) );
   }
 
   /* empty */
   {
     const std::vector<int> src;
-    ASSERT_TRUE(irstd::all_equal(src.begin(), src.end()));
+    ASSERT_TRUE( irstd::all_equal( src.begin(), src.end() ) );
   }
 
   /* not equals */
   {
-    const std::vector<int> src{0, 4, 1, 3, 4, 1, 2, 51, 21, 32};
-    ASSERT_FALSE(irstd::all_equal(src.begin(), src.end()));
+    const std::vector<int> src{ 0, 4, 1, 3, 4, 1, 2, 51, 21, 32 };
+    ASSERT_FALSE( irstd::all_equal( src.begin(), src.end() ) );
   }
 }

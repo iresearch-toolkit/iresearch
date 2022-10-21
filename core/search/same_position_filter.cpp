@@ -24,53 +24,54 @@
 
 #include <boost/functional/hash.hpp>
 
-#include "analysis/token_attributes.hpp"
-#include "index/field_meta.hpp"
-#include "search/collectors.hpp"
-#include "search/conjunction.hpp"
-#include "search/states/term_state.hpp"
-#include "search/states_cache.hpp"
 #include "shared.hpp"
+#include "term_query.hpp"
+#include "collectors.hpp"
+#include "conjunction.hpp"
+#include "index/field_meta.hpp"
+#include "analysis/token_attributes.hpp"
 #include "utils/misc.hpp"
 
 namespace {
 
 using namespace irs;
 
-template<typename Conjunction>
-class same_position_iterator final : public Conjunction {
+using conjunction_t = conjunction<irs::doc_iterator::ptr> ;
+
+class same_position_iterator final : public conjunction_t {
  public:
   typedef std::vector<position::ref> positions_t;
 
-  same_position_iterator(typename Conjunction::doc_iterators_t&& itrs,
-                         typename Conjunction::merger_type&& merger,
-                         positions_t&& pos)
-    : Conjunction(std::move(itrs), std::move(merger)), pos_(std::move(pos)) {
+  same_position_iterator(
+      conjunction_t::doc_iterators_t&& itrs,
+      const order::prepared& ord,
+      positions_t&& pos)
+    : conjunction_t(std::move(itrs), ord),
+      pos_(std::move(pos)) {
     assert(!pos_.empty());
   }
 
 #if defined(_MSC_VER)
-#pragma warning(disable : 4706)
-#elif defined(__GNUC__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wparentheses"
+  #pragma warning(disable : 4706)
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
   virtual bool next() override {
     bool next = false;
-    while (true == (next = Conjunction::next()) && !find_same_position()) {
-    }
+    while (true == (next = conjunction_t::next()) && !find_same_position()) {}
     return next;
   }
 
 #if defined(_MSC_VER)
-#pragma warning(default : 4706)
-#elif defined(__GNUC__)
-#pragma GCC diagnostic pop
+  #pragma warning(default : 4706)
+#elif defined (__GNUC__)
+  #pragma GCC diagnostic pop
 #endif
 
   virtual doc_id_t seek(doc_id_t target) override {
-    const auto doc = Conjunction::seek(target);
+    const auto doc = conjunction_t::seek(target);
 
     if (doc_limits::eof(doc) || find_same_position()) {
       return doc;
@@ -102,28 +103,29 @@ class same_position_iterator final : public Conjunction {
   }
 
   positions_t pos_;
-};
+}; // same_position_iterator
 
 class same_position_query final : public filter::prepared {
  public:
-  typedef std::vector<TermState> terms_states_t;
+  typedef std::vector<term_query::term_state> terms_states_t;
   typedef states_cache<terms_states_t> states_t;
   typedef std::vector<bstring> stats_t;
 
-  explicit same_position_query(states_t&& states, stats_t&& stats,
-                               score_t boost)
-    : prepared(boost), states_(std::move(states)), stats_(std::move(stats)) {}
+  explicit same_position_query(
+      states_t&& states,
+      stats_t&& stats,
+      boost_t boost)
+    : prepared(boost),
+      states_(std::move(states)),
+      stats_(std::move(stats)) {
+  }
 
   using filter::prepared::execute;
 
-  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
-    // FIXME(gnusi): implement
-  }
-
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
-    auto& segment = ctx.segment;
-    auto& ord = ctx.scorers;
-
+  virtual doc_iterator::ptr execute(
+      const sub_reader& segment,
+      const order::prepared& ord,
+      const attribute_provider* /*ctx*/) const override {
     // get query state for the specified reader
     auto query_state = states_.find(segment);
     if (!query_state) {
@@ -132,13 +134,12 @@ class same_position_query final : public filter::prepared {
     }
 
     // get features required for query & order
-    const IndexFeatures features =
-      ord.features() | by_same_position::kRequiredFeatures;
+    const IndexFeatures features = ord.features() | by_same_position::required();
 
-    std::vector<score_iterator_adapter<irs::doc_iterator::ptr>> itrs;
+    same_position_iterator::doc_iterators_t itrs;
     itrs.reserve(query_state->size());
 
-    std::vector<position::ref> positions;
+    same_position_iterator::positions_t positions;
     positions.reserve(itrs.size());
 
     const bool no_score = ord.empty();
@@ -165,8 +166,12 @@ class same_position_query final : public filter::prepared {
         auto* score = irs::get_mutable<irs::score>(docs.get());
 
         if (score) {
-          *score = CompileScore(ord.buckets(), segment, *term_state.reader,
-                                term_stats->c_str(), *docs, boost());
+          order::prepared::scorers scorers(
+            ord, segment, *term_state.reader,
+            term_stats->c_str(), score->realloc(ord),
+            *docs, boost());
+
+          irs::reset(*score, std::move(scorers));
         }
       }
 
@@ -176,29 +181,27 @@ class same_position_query final : public filter::prepared {
       ++term_stats;
     }
 
-    return irs::ResoveMergeType(
-      irs::sort::MergeType::kSum, ord.buckets().size(),
-      [&]<typename Aggregator>(
-        Aggregator&& aggregator) -> irs::doc_iterator::ptr {
-        using conjunction_t = conjunction<doc_iterator::ptr, Aggregator>;
-
-        return MakeConjunction<same_position_iterator<conjunction_t>>(
-          std::move(itrs), std::move(aggregator), std::move(positions));
-      });
+    return make_conjunction<same_position_iterator>(
+      std::move(itrs), ord, std::move(positions)
+    );
   }
 
  private:
   states_t states_;
   stats_t stats_;
-};
+}; // same_position_query
 
-}  // namespace
+}
 
 namespace iresearch {
 
+DEFINE_FACTORY_DEFAULT(by_same_position) // cppcheck-suppress unknownMacro
+
 filter::prepared::ptr by_same_position::prepare(
-  const index_reader& index, const Order& ord, score_t boost,
-  const attribute_provider* /*ctx*/) const {
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    const attribute_provider* /*ctx*/) const {
   auto& terms = options().terms;
   const auto size = terms.size();
 
@@ -214,9 +217,11 @@ filter::prepared::ptr by_same_position::prepare(
   same_position_query::states_t::state_type term_states;
   term_states.reserve(size);
 
-  // !!! FIXME !!!
-  // that's completely wrong, we have to collect stats for each field
-  // instead of aggregating them using a single collector
+  //////////////////////////////////////////////////////////////////////////////
+  /// !!! FIXME !!!
+  /// that's completely wrong, we have to collect stats for each field
+  /// instead of aggregating them using a single collector
+  //////////////////////////////////////////////////////////////////////////////
   field_collectors field_stats(ord);
 
   // prepare phrase stats (collector for each term)
@@ -226,8 +231,7 @@ filter::prepared::ptr by_same_position::prepare(
     size_t term_idx = 0;
 
     for (const auto& branch : terms) {
-      auto next_stats =
-        irs::make_finally([&term_idx]() noexcept { ++term_idx; });
+      auto next_stats = irs::make_finally([&term_idx]()noexcept{ ++term_idx; });
 
       // get term dictionary for field
       const term_reader* field = segment.field(branch.first);
@@ -236,13 +240,11 @@ filter::prepared::ptr by_same_position::prepare(
       }
 
       // check required features
-      if (kRequiredFeatures !=
-          (field->meta().index_features & kRequiredFeatures)) {
+      if (required() != (field->meta().index_features & required())) {
         continue;
       }
 
-      field_stats.collect(segment,
-                          *field);  // collect field statistics once per segment
+      field_stats.collect(segment, *field); // collect field statistics once per segment
 
       // find terms
       seek_term_iterator::ptr term = field->iterator(SeekMode::NORMAL);
@@ -251,13 +253,13 @@ filter::prepared::ptr by_same_position::prepare(
         if (ord.empty()) {
           break;
         } else {
-          // continue here because we should collect
+          // continue here because we should collect 
           // stats for other terms in phrase
           continue;
         }
       }
 
-      term->read();  // read term attributes
+      term->read(); // read term attributes
       term_stats.collect(segment, *field, term_idx, *term);
       term_states.emplace_back();
 
@@ -289,7 +291,9 @@ filter::prepared::ptr by_same_position::prepare(
   }
 
   return memory::make_managed<same_position_query>(
-    std::move(query_states), std::move(stats), this->boost() * boost);
+    std::move(query_states),
+    std::move(stats),
+    this->boost() * boost);
 }
 
-}  // namespace iresearch
+} // ROOT

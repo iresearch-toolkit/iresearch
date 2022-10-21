@@ -214,11 +214,6 @@ constexpr auto make_set(const T (&args)[N]) {
   return set<T, N>(args);
 }
 
-template <typename T, std::size_t N>
-constexpr auto make_set(std::array<T, N> const &args) {
-  return set<T, N>(args);
-}
-
 
 } // namespace frozen
 

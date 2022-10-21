@@ -34,8 +34,7 @@
 #include "log.hpp"
 #include "string.hpp"
 
-// use busywait implementation for Win32 since std::mutex cannot be used in
-// calls going through dllmain()
+// use busywait implementation for Win32 since std::mutex cannot be used in calls going through dllmain()
 #ifdef _WIN32
 #include "async_utils.hpp"
 
@@ -46,7 +45,7 @@ typedef irs::async_utils::busywait_mutex mutex_t;
 #include <mutex>
 
 namespace {
-typedef std::mutex mutex_t;
+  typedef std::mutex mutex_t;
 }
 #endif
 
@@ -54,10 +53,13 @@ namespace iresearch {
 
 // Generic class representing globally-stored correspondence
 // between object of KeyType and EntryType
-template<typename KeyType, typename EntryType, typename RegisterType,
-         typename Hash = absl::Hash<KeyType>,
-         typename Pred = std::equal_to<KeyType>>
-class generic_register : public singleton<RegisterType> {
+template<
+  typename KeyType,
+  typename EntryType,
+  typename RegisterType,
+  typename Hash = absl::Hash<KeyType>,
+  typename Pred = std::equal_to<KeyType>
+> class generic_register : public singleton<RegisterType> {
  public:
   typedef KeyType key_type;
   typedef EntryType entry_type;
@@ -68,8 +70,9 @@ class generic_register : public singleton<RegisterType> {
   virtual ~generic_register() = default;
 
   // @return the entry registered under the key and inf an insertion took place
-  std::pair<entry_type, bool> set(const key_type& key,
-                                  const entry_type& entry) {
+  std::pair<entry_type, bool> set(
+      const key_type& key,
+      const entry_type& entry) {
     std::lock_guard<mutex_t> lock(mutex_);
     auto itr = reg_map_.emplace(key, entry);
     return std::make_pair(itr.first->second, itr.second);
@@ -94,7 +97,7 @@ class generic_register : public singleton<RegisterType> {
   bool visit(const visitor_t& visitor) {
     std::lock_guard<mutex_t> lock(mutex_);
 
-    for (auto& entry : reg_map_) {
+    for (auto& entry: reg_map_) {
       if (!visitor(entry.first)) {
         return false;
       }
@@ -104,8 +107,7 @@ class generic_register : public singleton<RegisterType> {
   }
 
  protected:
-  typedef std::function<bool(const key_type& key, const entry_type& value)>
-    protected_visitor_t;
+  typedef std::function<bool(const key_type& key, const entry_type& value)> protected_visitor_t;
 
   // Should override this in order to initialize with new library handle
   virtual bool add_so_handle(void* /* handle */) { return true; }
@@ -121,19 +123,16 @@ class generic_register : public singleton<RegisterType> {
       return entry_type();
     }
 
-    auto* this_ptr = const_cast<
-      generic_register<KeyType, EntryType, RegisterType, Hash, Pred>*>(this);
+    auto* this_ptr = const_cast<generic_register<KeyType, EntryType, RegisterType, Hash, Pred>*>(this);
 
     {
       std::lock_guard<mutex_t> lock(mutex_);
 
-      this_ptr->so_handles_.emplace_back(
-        handle, [](void* handle) -> void { iresearch::free_library(handle); });
+      this_ptr->so_handles_.emplace_back(handle, [] (void* handle)->void {iresearch::free_library(handle); });
     }
 
     if (!this_ptr->add_so_handle(handle)) {
-      IR_FRMT_ERROR("%s : init failed in shared object : %s", __FUNCTION__,
-                    file.c_str());
+      IR_FRMT_ERROR("%s : init failed in shared object : %s", __FUNCTION__, file.c_str());
       return entry_type();
     }
 
@@ -141,8 +140,7 @@ class generic_register : public singleton<RegisterType> {
     // that performs registration
     const entry_type* entry = lookup(key);
     if (nullptr == entry) {
-      IR_FRMT_ERROR("%s : lookup failed in shared object : %s", __FUNCTION__,
-                    file.c_str());
+      IR_FRMT_ERROR("%s : lookup failed in shared object : %s", __FUNCTION__, file.c_str());
       return entry_type();
     }
 
@@ -163,7 +161,7 @@ class generic_register : public singleton<RegisterType> {
   bool visit(const protected_visitor_t& visitor) {
     std::lock_guard<mutex_t> lock(mutex_);
 
-    for (auto& entry : reg_map_) {
+    for (auto& entry: reg_map_) {
       if (!visitor(entry.first, entry.second)) {
         return false;
       }
@@ -173,24 +171,24 @@ class generic_register : public singleton<RegisterType> {
   }
 
  private:
-  using register_map_t =
-    absl::flat_hash_map<key_type, entry_type, hash_type, pred_type>;
+  using register_map_t = absl::flat_hash_map<key_type, entry_type, hash_type, pred_type>;
 
   mutable mutex_t mutex_;
   register_map_t reg_map_;
   std::vector<std::unique_ptr<void, std::function<void(void*)>>> so_handles_;
-};  // generic_register
+}; // generic_register
 
 // A generic_registrar capable of storing an associated tag for each entry
-template<typename KeyType, typename EntryType, typename TagType,
-         typename RegisterType, typename Hash = absl::Hash<KeyType>,
-         typename Pred = std::equal_to<KeyType>>
-class tagged_generic_register
-  : public generic_register<KeyType, EntryType, RegisterType, Hash, Pred> {
+template<
+  typename KeyType,
+  typename EntryType,
+  typename TagType,
+  typename RegisterType,
+  typename Hash = absl::Hash<KeyType>,
+  typename Pred = std::equal_to<KeyType>
+> class tagged_generic_register : public generic_register<KeyType, EntryType, RegisterType, Hash, Pred> {
  public:
-  typedef
-    typename irs::generic_register<KeyType, EntryType, RegisterType, Hash, Pred>
-      parent_type;
+  typedef typename irs::generic_register<KeyType, EntryType, RegisterType, Hash, Pred> parent_type;
   typedef typename parent_type::key_type key_type;
   typedef typename parent_type::entry_type entry_type;
   typedef typename parent_type::hash_type hash_type;
@@ -198,8 +196,10 @@ class tagged_generic_register
   typedef TagType tag_type;
 
   // @return the entry registered under the key and if an insertion took place
-  std::pair<entry_type, bool> set(const key_type& key, const entry_type& entry,
-                                  const tag_type* tag = nullptr) {
+  std::pair<entry_type, bool> set(
+      const key_type& key,
+      const entry_type& entry,
+      const tag_type* tag = nullptr) {
     auto itr = parent_type::set(key, entry);
 
     if (tag && itr.second) {
@@ -217,14 +217,13 @@ class tagged_generic_register
     return itr == tag_map_.end() ? nullptr : &(itr->second);
   }
 
- private:
-  using tag_map_t =
-    absl::flat_hash_map<key_type, tag_type, hash_type, pred_type>;
+  private:
+   using tag_map_t = absl::flat_hash_map<key_type, tag_type, hash_type, pred_type>;
 
-  mutable mutex_t mutex_;
-  tag_map_t tag_map_;
+   mutable mutex_t mutex_;
+   tag_map_t tag_map_;
 };
 
-}  // namespace iresearch
+}
 
 #endif

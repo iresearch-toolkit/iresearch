@@ -3,7 +3,7 @@ PROJECT(snowball C)
 cmake_minimum_required(VERSION 2.8)
 
 SET(SNOWBALL_VERSION_MAJOR 2)
-SET(SNOWBALL_VERSION_MINOR 2)
+SET(SNOWBALL_VERSION_MINOR 0)
 SET(SNOWBALL_VERSION_PATCH 0)
 
 SET(SNOWBALL_VERSION         "${SNOWBALL_VERSION_MAJOR}.${SNOWBALL_VERSION_MINOR}.${SNOWBALL_VERSION_PATCH}")
@@ -155,7 +155,7 @@ ENDIF(ENABLE_STATIC MATCHES "ON")
 
 # End of configuration
 SET(LIBSTEM_ALGORITHMS
-  arabic armenian basque catalan danish dutch english
+  arabic basque catalan danish dutch english
   finnish french german hungarian indonesian
   irish italian norwegian porter portuguese
   romanian russian spanish swedish tamil turkish
@@ -189,7 +189,6 @@ SET(COMPILER_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_pascal.c
   ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_python.c
   ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_rust.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_ada.c
 )
 
 ADD_EXECUTABLE(snowball ${COMPILER_SOURCES})

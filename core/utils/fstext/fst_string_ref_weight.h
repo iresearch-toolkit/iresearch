@@ -24,14 +24,13 @@
 #define IRESEARCH_FST_STRING_REF_WEIGHT_H
 
 #if defined(_MSC_VER)
-#pragma warning(disable : 4267)  // conversion from 'size_t' to 'uint32_t',
-                                 // possible loss of data
+  #pragma warning(disable : 4267) // conversion from 'size_t' to 'uint32_t', possible loss of data
 #endif
 
 #include <fst/string-weight.h>
 
 #if defined(_MSC_VER)
-#pragma warning(default : 4267)
+  #pragma warning(default: 4267)
 #endif
 
 #include "utils/string.hpp"
@@ -39,10 +38,10 @@
 namespace fst {
 namespace fstext {
 
-template<typename Label>
+template <typename Label>
 class StringRefWeight;
 
-template<typename Label>
+template <typename Label>
 struct StringRefWeightTraits {
   static const StringRefWeight<Label> Zero();
 
@@ -51,9 +50,9 @@ struct StringRefWeightTraits {
   static const StringRefWeight<Label> NoWeight();
 
   static bool Member(const StringRefWeight<Label>& weight);
-};  // StringRefWeightTraits
+}; // StringRefWeightTraits
 
-template<typename Label>
+template <typename Label>
 class StringRefWeight : public StringRefWeightTraits<Label> {
  public:
   using str_t = irs::basic_string_ref<Label>;
@@ -63,21 +62,25 @@ class StringRefWeight : public StringRefWeightTraits<Label> {
     return type;
   }
 
-  friend bool operator==(const StringRefWeight& lhs,
-                         const StringRefWeight& rhs) noexcept {
+  friend bool operator==(
+      const StringRefWeight& lhs,
+      const StringRefWeight& rhs) noexcept {
     return lhs.str_ == rhs.str_;
   }
 
   StringRefWeight() = default;
 
-  template<typename Iterator>
-  StringRefWeight(Iterator begin, Iterator end) noexcept : str_(begin, end) {}
+  template <typename Iterator>
+  StringRefWeight(Iterator begin, Iterator end) noexcept
+    : str_(begin, end) {
+  }
 
   StringRefWeight(const StringRefWeight&) = default;
   StringRefWeight(StringRefWeight&&) = default;
 
   explicit StringRefWeight(const irs::basic_string_ref<Label>& rhs) noexcept
-    : str_(rhs.c_str(), rhs.size()) {}
+    : str_(rhs.c_str(), rhs.size()) {
+  }
 
   StringRefWeight& operator=(StringRefWeight&&) = default;
   StringRefWeight& operator=(const StringRefWeight&) = default;
@@ -91,10 +94,12 @@ class StringRefWeight : public StringRefWeightTraits<Label> {
     return StringRefWeightTraits<Label>::Member(*this);
   }
 
-  size_t Hash() const noexcept { return std::hash<str_t>()(str_); }
+  size_t Hash() const noexcept {
+    return std::hash<str_t>()(str_);
+  }
 
   StringRefWeight Quantize(float delta = kDelta) const noexcept {
-    return *this;
+    return *this; 
   }
 
   static uint64_t Properties() noexcept {
@@ -102,41 +107,57 @@ class StringRefWeight : public StringRefWeightTraits<Label> {
     return props;
   }
 
-  Label& operator[](size_t i) noexcept { return str_[i]; }
+  Label& operator[](size_t i) noexcept {
+    return str_[i];
+  }
 
-  const Label& operator[](size_t i) const noexcept { return str_[i]; }
+  const Label& operator[](size_t i) const noexcept {
+    return str_[i];
+  }
 
-  const Label* c_str() const noexcept { return str_.c_str(); }
+  const Label* c_str() const noexcept {
+    return str_.c_str();
+  }
 
-  bool Empty() const noexcept { return str_.empty(); }
+  bool Empty() const noexcept {
+    return str_.empty();
+  }
 
-  void Clear() noexcept { str_.clear(); }
+  void Clear() noexcept {
+    str_.clear();
+  }
 
-  size_t Size() const noexcept { return str_.size(); }
+  size_t Size() const noexcept { 
+    return str_.size(); 
+  }
 
   const Label* begin() const noexcept { return str_.begin(); }
   const Label* end() const noexcept { return str_.end(); }
 
   // intentionally implicit
-  operator irs::basic_string_ref<Label>() const noexcept { return str_; }
+  operator irs::basic_string_ref<Label>() const noexcept {
+    return str_;
+  }
 
  private:
   str_t str_;
-};  // StringRefWeight
+}; // StringRefWeight
 
-template<typename Label>
-inline bool operator!=(const StringRefWeight<Label>& w1,
-                       const StringRefWeight<Label>& w2) {
+template <typename Label>
+inline bool operator!=(
+    const StringRefWeight<Label>& w1,
+    const StringRefWeight<Label>& w2) {
   return !(w1 == w2);
 }
 
-template<typename Label>
-inline std::ostream& operator<<(std::ostream& strm,
-                                const StringRefWeight<Label>& weight) {
+template <typename Label>
+inline std::ostream& operator<<(
+    std::ostream& strm,
+    const StringRefWeight<Label>& weight) {
   if (weight.Empty()) {
     return strm << "Epsilon";
   }
-
+  
   auto begin = weight.begin();
   const auto& first = *begin;
 
@@ -154,7 +175,7 @@ inline std::ostream& operator<<(std::ostream& strm,
       strm << kStringSeparator << *begin;
     }
   }
-
+  
   return strm;
 }
 
@@ -162,7 +183,7 @@ inline std::ostream& operator<<(std::ostream& strm,
 // --SECTION--                               StringRefWeight<irs::byte_type>
 // -----------------------------------------------------------------------------
 
-template<>
+template <>
 struct StringRefWeightTraits<irs::byte_type> {
   static constexpr StringRefWeight<irs::byte_type> Zero() noexcept {
     return {};
@@ -176,15 +197,15 @@ struct StringRefWeightTraits<irs::byte_type> {
     return Zero();
   }
 
-  static constexpr bool Member(
-    const StringRefWeight<irs::byte_type>& weight) noexcept {
+  static constexpr bool Member(const StringRefWeight<irs::byte_type>& weight) noexcept {
     // always a member
     return true;
   }
-};  // StringRefWeightTraits
+}; // StringRefWeightTraits
 
-inline std::ostream& operator<<(std::ostream& strm,
-                                const StringRefWeight<irs::byte_type>& weight) {
+inline std::ostream& operator<<(
+    std::ostream& strm,
+    const StringRefWeight<irs::byte_type>& weight) {
   if (weight.Empty()) {
     return strm << "Epsilon";
   }
@@ -203,7 +224,7 @@ inline std::ostream& operator<<(std::ostream& strm,
   return strm;
 }
 
-}  // namespace fstext
-}  // namespace fst
+} // fstext
+} // fst
 
 #endif  // IRESEARCH_FST_STRING_REF_WEIGHT_H

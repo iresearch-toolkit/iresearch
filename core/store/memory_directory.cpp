@@ -21,23 +21,23 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "shared.hpp"
 #include "memory_directory.hpp"
 
-#include <algorithm>
-#include <cassert>
-#include <cstring>
-
 #include "error/error.hpp"
-#include "shared.hpp"
-#include "utils/bytes_utils.hpp"
-#include "utils/crc.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
-#include "utils/numeric_utils.hpp"
-#include "utils/std.hpp"
 #include "utils/string.hpp"
 #include "utils/thread_utils.hpp"
+#include "utils/std.hpp"
+#include "utils/bytes_utils.hpp"
+#include "utils/numeric_utils.hpp"
+#include "utils/crc.hpp"
 
+#include <cassert>
+#include <cstring>
+#include <algorithm>
+  
 namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
@@ -45,20 +45,22 @@ namespace iresearch {
 //////////////////////////////////////////////////////////////////////////////
 class single_instance_lock : public index_lock {
  public:
-  single_instance_lock(std::string_view name, memory_directory* parent)
-    : name{name}, parent(parent) {
+  single_instance_lock(
+      const std::string& name, 
+      memory_directory* parent)
+    : name(name), parent(parent) {
     assert(parent);
   }
 
   virtual bool lock() override {
     // cppcheck-suppress unreadVariable
-    std::lock_guard lock{parent->llock_};
+    auto lock = make_lock_guard(parent->llock_);
     return parent->locks_.insert(name).second;
   }
 
   virtual bool is_locked(bool& result) const noexcept override {
     try {
-      std::lock_guard lock{parent->llock_};
+      auto lock_guard = make_lock_guard(parent->llock_);
 
       result = parent->locks_.find(name) != parent->locks_.end();
 
@@ -69,9 +71,9 @@ class single_instance_lock : public index_lock {
     return false;
   }
 
-  virtual bool unlock() noexcept override {
+  virtual bool unlock() noexcept override{
     try {
-      std::lock_guard lock{parent->llock_};
+      auto lock_guard = make_lock_guard(parent->llock_);
 
       return parent->locks_.erase(name) > 0;
     } catch (...) {
@@ -83,14 +85,15 @@ class single_instance_lock : public index_lock {
  private:
   std::string name;
   memory_directory* parent;
-};  // single_instance_lock
+}; // single_instance_lock
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                 memory_index_input implementation
+// --SECTION--                                 memory_index_imput implementation
 // -----------------------------------------------------------------------------
 
 memory_index_input::memory_index_input(const memory_file& file) noexcept
-  : file_(&file) {}
+  : file_(&file) {
+}
 
 index_input::ptr memory_index_input::dup() const {
   return ptr(new memory_index_input(*this));
@@ -144,7 +147,7 @@ bool memory_index_input::eof() const {
 }
 
 index_input::ptr memory_index_input::reopen() const {
-  return dup();  // memory_file pointers are thread-safe
+  return dup(); // memory_file pointers are thread-safe
 }
 
 void memory_index_input::switch_buffer(size_t pos) {
@@ -162,7 +165,9 @@ void memory_index_input::switch_buffer(size_t pos) {
   begin_ = buf_ + (pos - start_);
 }
 
-size_t memory_index_input::length() const { return file_->length(); }
+size_t memory_index_input::length() const {
+  return file_->length();
+}
 
 size_t memory_index_input::file_pointer() const {
   return start_ + std::distance(buf_, begin_);
@@ -180,15 +185,16 @@ void memory_index_input::seek(size_t pos) {
   switch_buffer(pos);
 }
 
-const byte_type* memory_index_input::read_buffer(size_t offset, size_t size,
-                                                 BufferHint /*hint*/) noexcept {
+const byte_type* memory_index_input::read_buffer(
+    size_t offset,
+    size_t size,
+    BufferHint /*hint*/) noexcept {
   const auto idx = file_->buffer_offset(offset);
   assert(idx < file_->buffer_count());
   const auto& buf = file_->get_buffer(idx);
   const auto begin = buf.data + offset - buf.offset;
   const auto end = begin + size;
-  const auto buf_end =
-    buf.data + std::min(buf.size, file_->length() - buf.offset);
+  const auto buf_end = buf.data + std::min(buf.size, file_->length() - buf.offset);
 
   if (end <= buf_end) {
     buf_ = buf.data;
@@ -201,8 +207,9 @@ const byte_type* memory_index_input::read_buffer(size_t offset, size_t size,
   return nullptr;
 }
 
-const byte_type* memory_index_input::read_buffer(size_t size,
-                                                 BufferHint /*hint*/) noexcept {
+const byte_type* memory_index_input::read_buffer(
+    size_t size,
+    BufferHint /*hint*/) noexcept {
   const auto* begin = begin_ + size;
 
   if (begin > end_) {
@@ -221,8 +228,8 @@ byte_type memory_index_input::read_byte() {
   return *begin_++;
 }
 
-size_t memory_index_input::read_bytes(byte_type* b, size_t left) {
-  const size_t bytes_left = left;  // initial length
+size_t memory_index_input::read_bytes(byte_type* b, size_t left) {  
+  const size_t bytes_left = left; // initial length
   while (left) {
     if (begin_ >= end_) {
       if (eof()) {
@@ -242,30 +249,33 @@ size_t memory_index_input::read_bytes(byte_type* b, size_t left) {
 }
 
 int16_t memory_index_input::read_short() {
-  return remain() < sizeof(uint16_t) ? data_input::read_short()
-                                     : irs::read<uint16_t>(begin_);
+  return remain() < sizeof(uint16_t)
+    ? data_input::read_short()
+    : irs::read<uint16_t>(begin_);
 }
 
 int32_t memory_index_input::read_int() {
-  return remain() < sizeof(uint32_t) ? irs::read<uint32_t>(*this)
-                                     : irs::read<uint32_t>(begin_);
+  return remain() < sizeof(uint32_t)
+    ? data_input::read_int()
+    : irs::read<uint32_t>(begin_);
 }
 
 int64_t memory_index_input::read_long() {
-  return remain() < sizeof(uint64_t) ? irs::read<uint64_t>(*this)
-                                     : irs::read<uint64_t>(begin_);
+  return remain() < sizeof(uint64_t)
+    ? data_input::read_long()
+    : irs::read<uint64_t>(begin_);
 }
 
 uint32_t memory_index_input::read_vint() {
   return remain() < bytes_io<uint32_t>::const_max_vsize
-           ? irs::vread<uint32_t>(*this)
-           : irs::vread<uint32_t>(begin_);
+    ? data_input::read_vint()
+    : irs::vread<uint32_t>(begin_);
 }
 
 uint64_t memory_index_input::read_vlong() {
   return remain() < bytes_io<uint64_t>::const_max_vsize
-           ? irs::vread<uint64_t>(*this)
-           : irs::vread<uint64_t>(begin_);
+    ? data_input::read_vlong()
+    : irs::vread<uint64_t>(begin_);
 }
 
 // -----------------------------------------------------------------------------
@@ -304,7 +314,7 @@ class checksum_memory_index_output final : public memory_index_output {
  private:
   mutable byte_type* crc_begin_;
   mutable crc32c crc_;
-};  // checksum_memory_index_output
+}; // checksum_memory_index_output
 
 memory_index_output::memory_index_output(memory_file& file) noexcept
   : file_(file) {
@@ -322,8 +332,7 @@ void memory_index_output::reset() noexcept {
 void memory_index_output::seek(size_t pos) {
   auto idx = file_.buffer_offset(pos);
 
-  buf_ =
-    idx < file_.buffer_count() ? file_.get_buffer(idx) : file_.push_buffer();
+  buf_ = idx < file_.buffer_count() ? file_.get_buffer(idx) : file_.push_buffer();
   pos_ = buf_.data + pos - buf_.offset;
   end_ = buf_.data + buf_.size;
 }
@@ -331,15 +340,14 @@ void memory_index_output::seek(size_t pos) {
 void memory_index_output::switch_buffer() {
   auto idx = file_.buffer_offset(file_pointer());
 
-  buf_ =
-    idx < file_.buffer_count() ? file_.get_buffer(idx) : file_.push_buffer();
+  buf_ = idx < file_.buffer_count() ? file_.get_buffer(idx) : file_.push_buffer();
   pos_ = buf_.data;
   end_ = buf_.data + buf_.size;
 }
 
 void memory_index_output::write_long(int64_t value) {
   if (remain() < sizeof(uint64_t)) {
-    irs::write<uint64_t>(*this, value);
+    index_output::write_long(value);
   } else {
     irs::write<uint64_t>(pos_, value);
   }
@@ -347,7 +355,7 @@ void memory_index_output::write_long(int64_t value) {
 
 void memory_index_output::write_int(int32_t value) {
   if (remain() < sizeof(uint32_t)) {
-    irs::write<uint32_t>(*this, value);
+    index_output::write_int(value);
   } else {
     irs::write<uint32_t>(pos_, value);
   }
@@ -355,7 +363,7 @@ void memory_index_output::write_int(int32_t value) {
 
 void memory_index_output::write_vlong(uint64_t v) {
   if (remain() < bytes_io<uint64_t>::const_max_vsize) {
-    irs::vwrite<uint64_t>(*this, v);
+    index_output::write_vlong(v);
   } else {
     irs::vwrite<uint64_t>(pos_, v);
   }
@@ -363,7 +371,7 @@ void memory_index_output::write_vlong(uint64_t v) {
 
 void memory_index_output::write_vint(uint32_t v) {
   if (remain() < bytes_io<uint32_t>::const_max_vsize) {
-    irs::vwrite<uint32_t>(*this, v);
+    index_output::write_vint(v);
   } else {
     irs::vwrite<uint32_t>(pos_, v);
   }
@@ -377,7 +385,7 @@ void memory_index_output::write_byte(byte_type byte) {
   *pos_++ = byte;
 }
 
-void memory_index_output::write_bytes(const byte_type* b, size_t len) {
+void memory_index_output::write_bytes( const byte_type* b, size_t len ) {
   assert(b || !len);
 
   for (size_t to_copy = 0; len; len -= to_copy) {
@@ -392,7 +400,9 @@ void memory_index_output::write_bytes(const byte_type* b, size_t len) {
   }
 }
 
-void memory_index_output::close() { flush(); }
+void memory_index_output::close() {
+  flush();
+}
 
 void memory_index_output::flush() {
   file_.length(memory_index_output::file_pointer());
@@ -402,41 +412,47 @@ size_t memory_index_output::file_pointer() const {
   return buf_.offset + std::distance(buf_.data, pos_);
 }
 
-int64_t memory_index_output::checksum() const { throw not_supported(); }
+int64_t memory_index_output::checksum() const {
+  throw not_supported();
+}
 
-void memory_index_output::operator>>(data_output& out) { file_ >> out; }
+void memory_index_output::operator>>( data_output& out ) {
+  file_ >> out;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                   memory_directory implementation
 // -----------------------------------------------------------------------------
 
 memory_directory::memory_directory(directory_attributes attrs)
-  : attrs_{std::move(attrs)} {}
+  : attrs_{std::move(attrs)} {
+}
 
 memory_directory::~memory_directory() noexcept {
   // cppcheck-suppress unreadVariable
-  std::lock_guard lock{flock_};
+  auto lock = make_lock_guard(flock_);
 
   files_.clear();
 }
 
-bool memory_directory::exists(bool& result,
-                              std::string_view name) const noexcept {
+bool memory_directory::exists(
+    bool& result, const std::string& name) const noexcept {
   // cppcheck-suppress unreadVariable
-  std::shared_lock lock{flock_};
+  auto lock = make_shared_lock(flock_);
 
   result = files_.find(name) != files_.end();
 
   return true;
 }
 
-index_output::ptr memory_directory::create(std::string_view name) noexcept {
+index_output::ptr memory_directory::create(const std::string& name) noexcept {
   try {
-    std::lock_guard lock{flock_};
+    auto lock = make_lock_guard(flock_);
 
-    auto res =
-      files_.emplace(std::piecewise_construct, std::forward_as_tuple(name),
-                     std::forward_as_tuple());
+    auto res = files_.emplace(
+      std::piecewise_construct,
+      std::forward_as_tuple(name),
+      std::forward_as_tuple());
 
     auto& file = res.first->second;
 
@@ -447,16 +463,16 @@ index_output::ptr memory_directory::create(std::string_view name) noexcept {
     file->reset(attrs_.allocator());
 
     return index_output::make<checksum_memory_index_output>(*file);
-  } catch (...) {
+  } catch(...) {
   }
 
   return nullptr;
 }
 
-bool memory_directory::length(uint64_t& result,
-                              std::string_view name) const noexcept {
+bool memory_directory::length(
+    uint64_t& result, const std::string& name) const noexcept {
   // cppcheck-suppress unreadVariable
-  std::shared_lock lock{flock_};
+  auto lock = make_shared_lock(flock_);
 
   const auto it = files_.find(name);
 
@@ -469,7 +485,8 @@ bool memory_directory::length(uint64_t& result,
   return true;
 }
 
-index_lock::ptr memory_directory::make_lock(std::string_view name) noexcept {
+index_lock::ptr memory_directory::make_lock(
+    const std::string& name) noexcept {
   try {
     return index_lock::make<single_instance_lock>(name, this);
   } catch (...) {
@@ -479,10 +496,11 @@ index_lock::ptr memory_directory::make_lock(std::string_view name) noexcept {
   return nullptr;
 }
 
-bool memory_directory::mtime(std::time_t& result,
-                             std::string_view name) const noexcept {
+bool memory_directory::mtime(
+    std::time_t& result,
+    const std::string& name) const noexcept {
   // cppcheck-suppress unreadVariable
-  std::shared_lock lock{flock_};
+  auto lock = make_shared_lock(flock_);
 
   const auto it = files_.find(name);
 
@@ -495,10 +513,11 @@ bool memory_directory::mtime(std::time_t& result,
   return true;
 }
 
-index_input::ptr memory_directory::open(std::string_view name,
-                                        IOAdvice /*advice*/) const noexcept {
+index_input::ptr memory_directory::open(
+    const std::string& name,
+    IOAdvice /*advice*/) const noexcept {
   try {
-    std::shared_lock lock{flock_};
+    auto lock = make_shared_lock(flock_);
 
     const auto it = files_.find(name);
 
@@ -506,21 +525,19 @@ index_input::ptr memory_directory::open(std::string_view name,
       return memory::make_unique<memory_index_input>(*it->second);
     }
 
-    IR_FRMT_ERROR("Failed to open input file, error: File not found, path: %s",
-                  std::string{name}.c_str());
+    IR_FRMT_ERROR("Failed to open input file, error: File not found, path: %s", name.c_str());
 
     return nullptr;
-  } catch (...) {
-    IR_FRMT_ERROR("Failed to open input file, path: %s",
-                  std::string{name}.c_str());
+  } catch(...) {
+    IR_FRMT_ERROR("Failed to open input file, path: %s", name.c_str());
   }
 
   return nullptr;
 }
 
-bool memory_directory::remove(std::string_view name) noexcept {
+bool memory_directory::remove(const std::string& name) noexcept {
   try {
-    std::lock_guard lock{flock_};
+    auto lock = make_lock_guard(flock_);
 
     return files_.erase(name) > 0;
   } catch (...) {
@@ -529,10 +546,11 @@ bool memory_directory::remove(std::string_view name) noexcept {
   return false;
 }
 
-bool memory_directory::rename(std::string_view src,
-                              std::string_view dst) noexcept {
+bool memory_directory::rename(
+    const std::string& src,
+    const std::string& dst) noexcept {
   try {
-    std::lock_guard lock{flock_};
+    auto lock = make_lock_guard(flock_);
 
     const auto res = files_.try_emplace(dst);
     auto it = files_.find(src);
@@ -554,7 +572,9 @@ bool memory_directory::rename(std::string_view src,
   return false;
 }
 
-bool memory_directory::sync(std::string_view /*name*/) noexcept { return true; }
+bool memory_directory::sync(const std::string& /*name*/) noexcept {
+  return true;
+}
 
 bool memory_directory::visit(const directory::visitor_f& visitor) const {
   std::vector<std::string> files;
@@ -563,7 +583,7 @@ bool memory_directory::visit(const directory::visitor_f& visitor) const {
   // to avoid potential recursive read locks in visitor
   {
     // cppcheck-suppress unreadVariable
-    std::shared_lock lock{flock_};
+    auto lock = make_shared_lock(flock_);
 
     files.reserve(files_.size());
 
@@ -582,4 +602,4 @@ bool memory_directory::visit(const directory::visitor_f& visitor) const {
   return true;
 }
 
-}  // namespace iresearch
+}

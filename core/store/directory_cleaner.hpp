@@ -39,19 +39,18 @@ struct directory;
 /// @brief represents a cleaner for directory files without any references
 //////////////////////////////////////////////////////////////////////////////
 
-class directory_cleaner {
+class IRESEARCH_API directory_cleaner {
  public:
-  typedef std::function<bool(std::string_view)> removal_acceptor_t;
+  typedef std::function<bool(const std::string& filename)> removal_acceptor_t;
 
   // @param acceptor returns if removal candidates should actually be removed
   // @return count of files removed
   static size_t clean(
     directory& dir,
-    const removal_acceptor_t& acceptor = [](std::string_view) -> bool {
-      return true;
-    });
+    const removal_acceptor_t& acceptor =
+      [](const std::string&)->bool { return true; });
 };
 
-}  // namespace iresearch
+}
 
 #endif

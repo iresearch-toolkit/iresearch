@@ -25,13 +25,13 @@
 
 #include <absl/container/flat_hash_map.h>
 
+#include "shared.hpp"
 #include "analysis/token_attributes.hpp"
-#include "index/index_reader.hpp"
-#include "index/iterators.hpp"
 #include "search/collectors.hpp"
 #include "search/filter_visitor.hpp"
 #include "search/multiterm_query.hpp"
-#include "shared.hpp"
+#include "index/index_reader.hpp"
+#include "index/iterators.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/string.hpp"
 
@@ -58,9 +58,10 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
  public:
   explicit limited_sample_collector(size_t scored_terms_limit,
                                     const comparer_type& comparer = {})
-    : comparer_rep(comparer), scored_terms_limit_(scored_terms_limit) {
-    scored_states_.reserve(scored_terms_limit);
-    scored_states_heap_.reserve(scored_terms_limit);
+    : comparer_rep(comparer),
+      scored_terms_limit_(scored_terms_limit) {
+      scored_states_.reserve(scored_terms_limit);
+      scored_states_heap_.reserve(scored_terms_limit);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -69,8 +70,9 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
   /// @param state state containing this scored term
   /// @param terms segment term-iterator positioned at the current term
   //////////////////////////////////////////////////////////////////////////////
-  void prepare(const sub_reader& segment, const seek_term_iterator& terms,
-               MultiTermState& scored_state) noexcept {
+  void prepare(const sub_reader& segment,
+               const seek_term_iterator& terms,
+               multiterm_state& scored_state) noexcept {
     state_.state = &scored_state;
     state_.segment = &segment;
     state_.terms = &terms;
@@ -91,7 +93,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
 
       state_.state->unscored_terms.emplace_back(state_.terms->cookie());
       state_.state->unscored_states_estimation += *state_.docs_count;
-      return;  // nothing to collect (optimization)
+      return; // nothing to collect (optimization)
     }
 
     if (scored_states_.size() < scored_terms_limit_) {
@@ -134,10 +136,11 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finish collecting and evaluate stats
   //////////////////////////////////////////////////////////////////////////////
-  void score(const index_reader& index, const Order& order,
+  void score(const index_reader& index,
+             const order::prepared& order,
              std::vector<bstring>& stats) {
     if (!scored_terms_limit_) {
-      return;  // nothing to score (optimization)
+      return; // nothing to score (optimization)
     }
 
     // stats for a specific term
@@ -150,19 +153,20 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       auto& field = *scored_state.state->reader;
 
       // find the stats for the current term
-      const auto res =
-        term_stats.try_emplace(make_hashed_ref(bytes_ref(scored_state.term)),
-                               index, field, order, stats_offset);
+      const auto res = term_stats.try_emplace(
+        make_hashed_ref(bytes_ref(scored_state.term)),
+        index, field, order, stats_offset);
+
 
       auto& stats_entry = res.first->second;
 
       // collect statistics, 0 because only 1 term
-      stats_entry.term_stats.collect(*scored_state.segment, field, 0,
-                                     *scored_state.cookie);
+      stats_entry.term_stats.collect(*scored_state.segment, field, 0, *scored_state.cookie);
 
       scored_state.state->scored_states.emplace_back(
-        std::move(scored_state.cookie), stats_entry.stats_offset,
-        static_cast<score_t>(scored_state.key));
+        std::move(scored_state.cookie),
+        stats_entry.stats_offset,
+        static_cast<boost_t>(scored_state.key));
 
       // update estimation for scored state
       scored_state.state->scored_states_estimation += scored_state.docs_count;
@@ -175,25 +179,24 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       stats_entry.resize(order.stats_size());
       auto* stats_buf = const_cast<byte_type*>(stats_entry.data());
 
-      entry.second.term_stats.finish(stats_buf, 0, entry.second.field_stats,
-                                     index);
+      entry.second.term_stats.finish(stats_buf, 0, entry.second.field_stats, index);
     }
   }
 
  private:
   struct stats_state {
-    explicit stats_state(const irs::index_reader& index,
-                         const irs::term_reader& field, const irs::Order& order,
-                         uint32_t& state_offset)
+    explicit stats_state(
+        const irs::index_reader& index,
+        const irs::term_reader& field,
+        const irs::order::prepared& order,
+        uint32_t& state_offset)
       : field_stats(order),
-        term_stats(order, 1) {  // 1 term per bstring because a range is
-                                // treated as a disjunction
+        term_stats(order, 1) { // 1 term per bstring because a range is treated as a disjunction
 
       // once per every 'state' collect field statistics over the entire index
-      for (auto& segment : index) {
+      for (auto& segment: index) {
         // FIXME
-        field_stats.collect(
-          segment, field);  // collect field statistics once per segment
+        field_stats.collect(segment, field); // collect field statistics once per segment
       }
 
       stats_offset = state_offset++;
@@ -210,7 +213,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
   struct collector_state {
     const sub_reader* segment{};
     const seek_term_iterator* terms{};
-    MultiTermState* state{};
+    multiterm_state* state{};
     const uint32_t* docs_count{};
   };
 
@@ -232,49 +235,54 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
     scored_term_state& operator=(scored_term_state&&) = default;
 
     Key key;
-    seek_cookie::ptr cookie;         // term offset cache
-    MultiTermState* state;           // state containing this scored term
-    const irs::sub_reader* segment;  // segment reader for the current term
-    bstring term;                    // actual term value this state is for
+    seek_term_iterator::cookie_ptr cookie; // term offset cache
+    multiterm_state* state; // state containing this scored term
+    const irs::sub_reader* segment; // segment reader for the current term
+    bstring term; // actual term value this state is for
     uint32_t docs_count;
   };
 
   void push() noexcept {
-    std::push_heap(scored_states_heap_.begin(), scored_states_heap_.end(),
-                   [this](const size_t lhs, const size_t rhs) noexcept {
-                     return comparer()(scored_states_[rhs].key,
-                                       scored_states_[lhs].key);
-                   });
+    std::push_heap(
+      scored_states_heap_.begin(),
+      scored_states_heap_.end(),
+      [this](const size_t lhs, const size_t rhs) noexcept {
+        return comparer()(scored_states_[rhs].key, scored_states_[lhs].key);
+    });
   }
 
   void pop() noexcept {
-    std::pop_heap(scored_states_heap_.begin(), scored_states_heap_.end(),
-                  [this](const size_t lhs, const size_t rhs) noexcept {
-                    return comparer()(scored_states_[rhs].key,
-                                      scored_states_[lhs].key);
-                  });
+    std::pop_heap(
+      scored_states_heap_.begin(),
+      scored_states_heap_.end(),
+      [this](const size_t lhs, const size_t rhs) noexcept {
+        return comparer()(scored_states_[rhs].key, scored_states_[lhs].key);
+    });
   }
 
-  const comparer_type& comparer() const noexcept { return comparer_rep::get(); }
+  const comparer_type& comparer() const noexcept {
+    return comparer_rep::get();
+  }
 
   const decltype(term_meta::docs_count) no_docs_ = 0;
   collector_state state_;
   std::vector<scored_term_state> scored_states_;
-  std::vector<size_t>
-    scored_states_heap_;  // use external heap as states are big
+  std::vector<size_t> scored_states_heap_; // use external heap as states are big
   size_t scored_terms_limit_;
-};
+}; // limited_sample_collector
 
 struct term_frequency {
   uint32_t offset;
   uint32_t frequency;
-  score_t boost;
+  boost_t boost;
 
-  explicit operator score_t() const noexcept { return boost; }
+  explicit operator boost_t() const noexcept {
+    return boost;
+  }
 
   bool operator<(const term_frequency& rhs) const noexcept {
-    return frequency < rhs.frequency ||
-           (frequency == rhs.frequency && offset < rhs.offset);
+    return frequency < rhs.frequency
+        || (frequency == rhs.frequency && offset < rhs.offset);
   }
 };
 
@@ -285,12 +293,16 @@ struct term_frequency {
 template<typename States>
 class multiterm_visitor {
  public:
-  multiterm_visitor(limited_sample_collector<term_frequency>& collector,
-                    States& states)
-    : collector_(collector), states_(states) {}
+  multiterm_visitor(
+      limited_sample_collector<term_frequency>& collector,
+      States& states)
+    : collector_(collector), states_(states) {
+  }
 
-  void prepare(const sub_reader& segment, const term_reader& reader,
-               const seek_term_iterator& terms) {
+  void prepare(
+      const sub_reader& segment,
+      const term_reader& reader,
+      const seek_term_iterator& terms) {
     // get term metadata
     auto* meta = irs::get<term_meta>(terms);
 
@@ -309,7 +321,7 @@ class multiterm_visitor {
   }
 
   // FIXME can incorporate boost into collecting logic
-  void visit(score_t boost) {
+  void visit(boost_t boost) {
     // fill scoring candidates
     assert(docs_count_);
     key_.frequency = *docs_count_;
@@ -324,8 +336,8 @@ class multiterm_visitor {
   States& states_;
   term_frequency key_;
   const decltype(term_meta::docs_count)* docs_count_ = nullptr;
-};
+}; // multiterm_visitor
 
-}  // namespace iresearch
+}
 
-#endif  // IRESEARCH_LIMITED_SAMPLE_COLLECTOR_H
+#endif // IRESEARCH_LIMITED_SAMPLE_COLLECTOR_H

@@ -44,13 +44,15 @@ constexpr bool TEST_AUTOMATON_PROPS = false;
 struct filter_visitor;
 
 inline automaton_table_matcher make_automaton_matcher(
-  const automaton& a, bool test_props = TEST_AUTOMATON_PROPS) {
+    const automaton& a,
+    bool test_props = TEST_AUTOMATON_PROPS) {
   return automaton_table_matcher(a, test_props);
 }
 
 template<typename Char, typename Matcher>
-inline automaton::Weight match(Matcher& matcher,
-                               const basic_string_ref<Char>& target) {
+inline automaton::Weight match(
+    Matcher& matcher,
+    const basic_string_ref<Char>& target) {
   auto state = matcher.GetFst().Start();
   matcher.SetState(state);
 
@@ -62,14 +64,13 @@ inline automaton::Weight match(Matcher& matcher,
     matcher.SetState(state);
   }
 
-  return begin == end ? matcher.Final(state) : automaton::Weight::Zero();
+  return begin == end ? matcher.Final(state)
+                      : automaton::Weight::Zero();
 }
 
 template<typename Char>
-inline automaton::Weight accept(const automaton& a,
-                                const basic_string_ref<Char>& target) {
-  using matcher_t =
-    fst::SortedRangeExplicitMatcher<automaton, fst::MatchType::MATCH_INPUT>;
+inline automaton::Weight accept(const automaton& a, const basic_string_ref<Char>& target) {
+  using matcher_t = fst::SortedRangeExplicitMatcher<automaton, fst::MatchType::MATCH_INPUT>;
 
   matcher_t matcher(&a);
   return match(matcher, target);
@@ -83,13 +84,17 @@ class automaton_term_iterator final : public seek_term_iterator {
     value_ = &it_->value();
   }
 
-  virtual const bytes_ref& value() const noexcept override { return *value_; }
+  virtual const bytes_ref& value() const noexcept override {
+    return *value_;
+  }
 
   virtual doc_iterator::ptr postings(IndexFeatures features) const override {
     return it_->postings(features);
   }
 
-  virtual void read() override { it_->read(); }
+  virtual void read() override {
+    it_->read();
+  }
 
   virtual bool next() override {
     bool next = it_->next();
@@ -119,7 +124,13 @@ class automaton_term_iterator final : public seek_term_iterator {
     return SeekResult::FOUND == seek_ge(target);
   }
 
-  virtual seek_cookie::ptr cookie() const override { return it_->cookie(); }
+  virtual bool seek(const bytes_ref& target, const seek_cookie& cookie) override {
+    return it_->seek(target, cookie);
+  }
+
+  virtual seek_cookie::ptr cookie() const override {
+    return it_->cookie();
+  }
 
  private:
   bool accept() { return irs::match(matcher_, *value_); }
@@ -128,21 +139,24 @@ class automaton_term_iterator final : public seek_term_iterator {
   fst::SortedRangeExplicitMatcher<automaton> matcher_;
   seek_term_iterator::ptr it_;
   const bytes_ref* value_;
-};  // automaton_term_iterator
+}; // automaton_term_iterator
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief add a new transition to "to" state denoted by "label" or expands
 ///        the last already existing one
 //////////////////////////////////////////////////////////////////////////////
-inline void add_or_expand_arc(automaton& a, automaton::StateId from,
-                              range_label label, automaton::StateId to) {
+inline void add_or_expand_arc(
+    automaton& a,
+    automaton::StateId from,
+    range_label label,
+    automaton::StateId to) {
   assert(fst::kILabelSorted == a.Properties(fst::kILabelSorted, true));
 
   fst::ArcIteratorData<automaton::Arc> data;
   a.InitArcIterator(from, &data);
 
   if (data.narcs) {
-    auto& prev = const_cast<automaton::Arc&>(data.arcs[data.narcs - 1]);
+    auto& prev = const_cast<automaton::Arc&>(data.arcs[data.narcs-1]);
     assert(prev < label);
     if (prev.nextstate == to && label.min - prev.max <= 1) {
       prev.ilabel = range_label{prev.min, label.max};
@@ -159,13 +173,17 @@ inline void add_or_expand_arc(automaton& a, automaton::StateId from,
 ///        a specified root, a default (rho) state and a set of arcs with
 ///        UTF-8 encoded labels
 //////////////////////////////////////////////////////////////////////////////
-class utf8_transitions_builder {
+class IRESEARCH_API utf8_transitions_builder {
  public:
-  utf8_transitions_builder() : states_map_(16, state_emplace(weight_)) {}
+  utf8_transitions_builder()
+    : states_map_(16, state_emplace(weight_)) {
+  }
 
   template<typename Iterator>
-  void insert(automaton& a, automaton::StateId from,
-              automaton::StateId rho_state, Iterator begin, Iterator end) {
+  void insert(automaton& a,
+              automaton::StateId from,
+              automaton::StateId rho_state,
+              Iterator begin, Iterator end) {
     last_ = bytes_ref::EMPTY;
     states_map_.reset();
 
@@ -202,13 +220,18 @@ class utf8_transitions_builder {
 
   struct arc : public range_label, private util::noncopyable {
     arc(automaton::Arc::Label label, state* target) noexcept
-      : range_label{label}, target{target} {}
+      : range_label{label},
+        target{target} {
+    }
 
     arc(automaton::Arc::Label label, automaton::StateId target) noexcept
-      : range_label{label}, id{target} {}
+      : range_label{label},
+        id{target} {
+    }
 
     bool operator==(const automaton::Arc& rhs) const noexcept {
-      return ilabel == rhs.ilabel && id == rhs.nextstate;
+      return ilabel == rhs.ilabel
+        && id == rhs.nextstate;
     }
 
     bool operator!=(const automaton::Arc& rhs) const noexcept {
@@ -219,7 +242,7 @@ class utf8_transitions_builder {
       state* target;
       automaton::StateId id;
     };
-  };  // arc
+  }; // arc
 
   struct state : private util::noncopyable {
     void clear() noexcept {
@@ -243,7 +266,7 @@ class utf8_transitions_builder {
 
     automaton::StateId id{fst::kNoStateId};
     std::vector<arc> arcs;
-  };  // state
+  }; // state
 
   static_assert(std::is_nothrow_move_constructible_v<state>);
 
@@ -256,7 +279,7 @@ class utf8_transitions_builder {
       size_t hash = 0;
       auto& arcs = s.arcs;
 
-      for (auto& arc : arcs) {
+      for (auto& arc: arcs) {
         hash = hash_combine(hash, arc.ilabel);
         // cppcheck-suppress redundantAssignment
         hash = hash_combine(hash, arc.id);
@@ -265,8 +288,7 @@ class utf8_transitions_builder {
       return hash;
     }
 
-    size_t operator()(automaton::StateId id,
-                      const automaton& fst) const noexcept {
+    size_t operator()(automaton::StateId id, const automaton& fst) const noexcept {
       fst::ArcIteratorData<automaton::Arc> arcs;
       fst.InitArcIterator(id, &arcs);
 
@@ -282,11 +304,10 @@ class utf8_transitions_builder {
 
       return hash;
     }
-  };  // state_hash
+  }; // state_hash
 
   struct state_equal {
-    bool operator()(const state& lhs, automaton::StateId rhs,
-                    const automaton& fst) const noexcept {
+    bool operator()(const state& lhs, automaton::StateId rhs, const automaton& fst) const noexcept {
       if (lhs.id != fst::kNoStateId) {
         // already a part of automaton
         return lhs.id == rhs;
@@ -309,12 +330,13 @@ class utf8_transitions_builder {
 
       return true;
     }
-  };  // state_equal
+  }; // state_equal
 
   class state_emplace {
    public:
     explicit state_emplace(const automaton::Weight& weight) noexcept
-      : weight_(&weight) {}
+      : weight_(&weight) {
+    }
 
     automaton::StateId operator()(const state& s, automaton& fst) const {
       auto id = s.id;
@@ -333,38 +355,39 @@ class utf8_transitions_builder {
 
    private:
     const automaton::Weight* weight_;
-  };  // state_emplace
+  }; // state_emplace
 
-  using automaton_states_map =
-    fst_states_map<automaton, state, state_emplace, state_hash, state_equal,
-                   fst::kNoStateId>;
+  using automaton_states_map = fst_states_map<
+    automaton, state,
+    state_emplace, state_hash,
+    state_equal, fst::kNoStateId>;
 
   void minimize(automaton& a, size_t prefix);
 
-  void insert(automaton& a, const byte_type* label_data,
-              const size_t label_size, automaton::StateId target);
+
+  void insert(automaton& a,
+              const byte_type* label_data,
+              const size_t label_size,
+              automaton::StateId target);
 
   void finish(automaton& a, automaton::StateId from);
 
   // FIXME use a memory pool for arcs
   automaton::Weight weight_;
   automaton::StateId rho_states_[4];
-  state states_[utf8_utils::MAX_CODE_POINT_SIZE + 1];  // +1 for root state
+  state states_[utf8_utils::MAX_CODE_POINT_SIZE + 1]; // +1 for root state
   automaton_states_map states_map_;
   bytes_ref last_;
-};  // utf8_automaton_builder
+}; // utf8_automaton_builder
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief validate a specified automaton and print message on error
 //////////////////////////////////////////////////////////////////////////////
-inline bool validate(const automaton& a,
-                     bool test_props = TEST_AUTOMATON_PROPS) {
-  if (fst::kError ==
-      a.Properties(automaton_table_matcher::FST_PROPERTIES, test_props)) {
-    IR_FRMT_ERROR(
-      "Expected deterministic, epsilon-free acceptor, "
-      "got the following properties " IR_UINT64_T_SPECIFIER "",
-      a.Properties(automaton_table_matcher::FST_PROPERTIES, false));
+inline bool validate(const automaton& a, bool test_props = TEST_AUTOMATON_PROPS) {
+  if (fst::kError == a.Properties(automaton_table_matcher::FST_PROPERTIES, test_props)) {
+    IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
+                  "got the following properties " IR_UINT64_T_SPECIFIER "",
+                  a.Properties(automaton_table_matcher::FST_PROPERTIES, false));
 
     return false;
   }
@@ -380,8 +403,11 @@ inline bool validate(const automaton& a,
 /// @param visitor visitor
 //////////////////////////////////////////////////////////////////////////////
 template<typename Visitor>
-void visit(const sub_reader& segment, const term_reader& reader,
-           automaton_table_matcher& matcher, Visitor& visitor) {
+void visit(
+    const sub_reader& segment,
+    const term_reader& reader,
+    automaton_table_matcher& matcher,
+    Visitor& visitor) {
   assert(fst::kError != matcher.Properties(0));
   auto terms = reader.iterator(matcher);
 
@@ -395,7 +421,7 @@ void visit(const sub_reader& segment, const term_reader& reader,
     do {
       terms->read();
 
-      visitor.visit(kNoBoost);
+      visitor.visit(no_boost());
     } while (terms->next());
   }
 }
@@ -404,24 +430,32 @@ void visit(const sub_reader& segment, const term_reader& reader,
 /// @brief establish UTF-8 labeled connection between specified source and
 ///        target states
 //////////////////////////////////////////////////////////////////////////////
-void utf8_emplace_arc(automaton& a, automaton::StateId from, bytes_ref label,
-                      automaton::StateId to);
+IRESEARCH_API void utf8_emplace_arc(
+  automaton& a,
+  automaton::StateId from,
+  const bytes_ref& label,
+  automaton::StateId to);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief establish UTF-8 labeled connection between specified source (from)
 ///        and target (to) states with the fallback to default (rho_state)
 ///        state
 //////////////////////////////////////////////////////////////////////////////
-void utf8_emplace_arc(automaton& a, automaton::StateId from,
-                      automaton::StateId rho_state, bytes_ref label,
-                      automaton::StateId to);
+IRESEARCH_API void utf8_emplace_arc(
+  automaton& a,
+  automaton::StateId from,
+  automaton::StateId rho_state,
+  const bytes_ref& label,
+  automaton::StateId to);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief establish default connnection between specified source (from) and
 ///        and target (to)
 //////////////////////////////////////////////////////////////////////////////
-void utf8_emplace_rho_arc(automaton& a, automaton::StateId from,
-                          automaton::StateId to);
+IRESEARCH_API void utf8_emplace_rho_arc(
+  automaton& a,
+  automaton::StateId from,
+  automaton::StateId to);
 
 /*
 //////////////////////////////////////////////////////////////////////////////
@@ -429,7 +463,7 @@ void utf8_emplace_rho_arc(automaton& a, automaton::StateId from,
 ///        defined over the alphabet of { [0..255], fst::fsa::kRho }
 /// @returns fst::kNoStateId on success, otherwise first failed state id
 //////////////////////////////////////////////////////////////////////////////
-automaton::StateId utf8_expand_labels(automaton& a);
+IRESEARCH_API automaton::StateId utf8_expand_labels(automaton& a);
 */
 
 inline automaton make_char(const uint32_t c) {
@@ -441,7 +475,7 @@ inline automaton make_char(const uint32_t c) {
   return a;
 }
 
-inline automaton make_char(bytes_ref c) {
+inline automaton make_char(const bytes_ref& c) {
   automaton a;
   a.AddStates(2);
   a.SetStart(0);
@@ -476,10 +510,14 @@ inline automaton make_all() {
 /// @param bool query boost
 /// @returns compiled filter
 //////////////////////////////////////////////////////////////////////////////
-filter::prepared::ptr prepare_automaton_filter(
-  string_ref field, const automaton& acceptor, size_t scored_terms_limit,
-  const index_reader& index, const Order& order, score_t boost);
+IRESEARCH_API filter::prepared::ptr prepare_automaton_filter(
+  const string_ref& field,
+  const automaton& acceptor,
+  size_t scored_terms_limit,
+  const index_reader& index,
+  const order::prepared& order,
+  boost_t boost);
 
-}  // namespace iresearch
+}
 
 #endif

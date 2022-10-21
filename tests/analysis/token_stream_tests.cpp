@@ -31,16 +31,13 @@ TEST(token_streams_tests, boolean_stream) {
   ASSERT_EQ(1, boolean_token_stream::value_false().size());
   ASSERT_EQ(0, boolean_token_stream::value_false().front());
   ASSERT_EQ(1, boolean_token_stream::value_true().size());
-  ASSERT_EQ(irs::byte_type(0xFF),
-            irs::byte_type(boolean_token_stream::value_true().front()));
+  ASSERT_EQ(irs::byte_type(0xFF), irs::byte_type(boolean_token_stream::value_true().front()));
 
-  ASSERT_NE(boolean_token_stream::value_false(),
-            boolean_token_stream::value_true());
+  ASSERT_NE(boolean_token_stream::value_false(), boolean_token_stream::value_true());
 
   // 'false' stream
   {
-    const auto expected =
-      irs::ref_cast<irs::byte_type>(boolean_token_stream::value_false());
+    const auto expected = irs::ref_cast<irs::byte_type>(boolean_token_stream::value_false());
     boolean_token_stream stream(false);
 
     auto* inc = irs::get<increment>(stream);
@@ -61,8 +58,7 @@ TEST(token_streams_tests, boolean_stream) {
 
   // 'true' stream
   {
-    auto expected =
-      irs::ref_cast<irs::byte_type>(boolean_token_stream::value_true());
+    auto expected = irs::ref_cast<irs::byte_type>(boolean_token_stream::value_true());
     boolean_token_stream stream(true);
     auto* inc = irs::get<increment>(stream);
     ASSERT_FALSE(!inc);
@@ -103,17 +99,17 @@ TEST(token_streams_tests, null_stream) {
   ASSERT_FALSE(stream.next());
 }
 
-TEST(string_token_stream_tests, next_end) {
+TEST( string_token_stream_tests, next_end) {
   const std::string str("QBVnCx4NCizekHA");
-  const bytes_ref ref =
-    bytes_ref(reinterpret_cast<const byte_type*>(str.c_str()), str.size());
+  const bytes_ref ref = bytes_ref(reinterpret_cast<const byte_type*>( str.c_str()),
+                                  str.size());
   string_token_stream ts;
   ts.reset(str);
 
   // check attributes
   auto* term = irs::get<term_attribute>(ts);
   ASSERT_FALSE(!term);
-  ASSERT_TRUE(term->value.null());
+  ASSERT_TRUE( term->value.null());
   auto* offs = irs::get<offset>(ts);
   ASSERT_FALSE(!offs);
   ASSERT_EQ(0, offs->start);
@@ -125,6 +121,9 @@ TEST(string_token_stream_tests, next_end) {
   ASSERT_EQ(ref.size(), offs->end);
   ASSERT_FALSE(ts.next());
   ASSERT_FALSE(ts.next());
+  ASSERT_EQ(irs::bytes_ref::NIL, term->value);
+  ASSERT_EQ(0, offs->start);
+  ASSERT_EQ(0, offs->end);
 
   ts.reset(str);
   ASSERT_TRUE(ts.next());
@@ -147,9 +146,9 @@ TEST(numeric_token_stream_tests, value) {
 
     auto value = numeric_token_stream::value(buf, 35);
     ASSERT_EQ(true, ts.next());
-    ASSERT_EQ(term->value, value);  // value same as 1st
+    ASSERT_EQ(term->value, value); // value same as 1st
     ASSERT_EQ(true, ts.next());
-    ASSERT_NE(term->value, value);  // value not same as 2nd
+    ASSERT_NE(term->value, value); // value not same as 2nd
     ASSERT_EQ(true, !ts.next());
   }
 
@@ -163,13 +162,13 @@ TEST(numeric_token_stream_tests, value) {
 
     auto value = numeric_token_stream::value(buf, int64_t(75));
     ASSERT_EQ(true, ts.next());
-    ASSERT_EQ(term->value, value);  // value same as 1st
+    ASSERT_EQ(term->value, value); // value same as 1st
     ASSERT_EQ(true, ts.next());
-    ASSERT_NE(term->value, value);  // value not same as 2nd
+    ASSERT_NE(term->value, value); // value not same as 2nd
     ASSERT_EQ(true, ts.next());
-    ASSERT_NE(term->value, value);  // value not same as 3rd
+    ASSERT_NE(term->value, value); // value not same as 3rd
     ASSERT_EQ(true, ts.next());
-    ASSERT_NE(term->value, value);  // value not same as 4th
+    ASSERT_NE(term->value, value); // value not same as 4th
     ASSERT_EQ(true, !ts.next());
   }
 
@@ -183,9 +182,9 @@ TEST(numeric_token_stream_tests, value) {
 
     auto value = numeric_token_stream::value(buf, (float_t)35.f);
     ASSERT_EQ(true, ts.next());
-    ASSERT_EQ(term->value, value);  // value same as 1st
+    ASSERT_EQ(term->value, value); // value same as 1st
     ASSERT_EQ(true, ts.next());
-    ASSERT_NE(term->value, value);  // value not same as 2nd
+    ASSERT_NE(term->value, value); // value not same as 2nd
     ASSERT_EQ(true, !ts.next());
   }
 
@@ -199,13 +198,13 @@ TEST(numeric_token_stream_tests, value) {
 
     auto value = numeric_token_stream::value(buf, (double_t)35.);
     ASSERT_EQ(true, ts.next());
-    ASSERT_EQ(term->value, value);  // value same as 1st
+    ASSERT_EQ(term->value, value); // value same as 1st
     ASSERT_EQ(true, ts.next());
-    ASSERT_NE(term->value, value);  // value not same as 2nd
+    ASSERT_NE(term->value, value); // value not same as 2nd
     ASSERT_EQ(true, ts.next());
-    ASSERT_NE(term->value, value);  // value not same as 3rd
+    ASSERT_NE(term->value, value); // value not same as 3rd
     ASSERT_EQ(true, ts.next());
-    ASSERT_NE(term->value, value);  // value not same as 4th
+    ASSERT_NE(term->value, value); // value not same as 4th
     ASSERT_EQ(true, !ts.next());
   }
 }

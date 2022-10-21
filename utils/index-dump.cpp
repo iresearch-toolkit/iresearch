@@ -22,26 +22,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #if defined(_MSC_VER)
-#pragma warning(disable : 4101)
-#pragma warning(disable : 4267)
+  #pragma warning(disable: 4101)
+  #pragma warning(disable: 4267)
 #endif
 
-#include <cmdline.h>
+  #include <cmdline.h>
 
 #if defined(_MSC_VER)
-#pragma warning(default : 4267)
-#pragma warning(default : 4101)
+  #pragma warning(default: 4267)
+  #pragma warning(default: 4101)
 #endif
 
-#include <fstream>
-#include <iostream>
-
-#include "analysis/token_attributes.hpp"
+#include "shared.hpp"
 #include "common.hpp"
 #include "index-dump.hpp"
 #include "index/directory_reader.hpp"
 #include "index/field_meta.hpp"
-#include "shared.hpp"
+#include "analysis/token_attributes.hpp"
+
+#include <fstream>
+#include <iostream>
 
 namespace {
 
@@ -50,57 +50,61 @@ const std::string INDEX_DIR = "index-dir";
 const std::string DIR_TYPE = "dir-type";
 const std::string OUTPUT = "out";
 
-}  // namespace
+}
 
-int dump(const std::string& path, const std::string& dir_type,
-         std::ostream& stream) {
+int dump(
+    const std::string& path,
+    const std::string& dir_type,
+    std::ostream& stream) {
   auto dir = create_directory(dir_type, path);
 
   if (!dir) {
-    std::cerr << "Unable to create directory of type '" << dir_type << "'"
-              << std::endl;
+    std::cerr << "Unable to create directory of type '" << dir_type << "'" << std::endl;
     return 1;
   }
 
   auto reader = irs::directory_reader::open(*dir);
 
-  stream << "Index"
+  stream << "Index" 
          << " segmentsCount=" << reader.size()
          << " docsCount=" << reader.docs_count()
          << " liveDocsCount=" << reader.live_docs_count() << std::endl;
 
   size_t i = 0;
   for (auto& segment : reader) {
-    stream << "Segment id=" << i << " docsCount=" << segment.docs_count()
+    stream << "Segment id=" << i 
+           << " docsCount=" << segment.docs_count()
            << " liveDocsCount=" << segment.live_docs_count() << std::endl;
 
-    for (auto fields = segment.fields(); fields->next();) {
+    for (auto fields = segment.fields();fields->next();) {
       auto& field = fields->value();
       auto& meta = field.meta();
       stream << "Field name=" << meta.name
              << " indexFeatures=" << static_cast<uint32_t>(meta.index_features)
-             << " minTerm=" << irs::ref_cast<char>(field.min())
+             << " minTerm=" << irs::ref_cast<char>(field.min()) 
              << " maxTerm=" << irs::ref_cast<char>(field.max())
              << " termsCount=" << field.size()
-             << " docsCount=" << field.docs_count() << std::endl;
+             << " docsCount=" << field.docs_count()
+             << std::endl;
 
       auto term = field.iterator(irs::SeekMode::NORMAL);
       auto const& term_meta = irs::get<irs::term_meta>(*term);
       stream << "Values" << std::endl;
-      for (; term->next();) {
+      for (; term->next(); ) {
         term->read();
         stream << "Term value=" << irs::ref_cast<char>(term->value()) << ""
-               << " docsCount=" << term_meta->docs_count << std::endl;
+               << " docsCount=" << term_meta->docs_count
+               << std::endl;
       }
     }
 
     for (auto columns = segment.columns(); columns->next();) {
       auto& reader = columns->value();
 
-      stream << "Column id=" << reader.id() << " name=" << reader.name()
-             << '\n';
+      stream << "Column id=" << reader.id()
+             << " name=" << reader.name() << '\n';
 
-      auto it = reader.iterator(irs::ColumnHint::kConsolidation);
+      auto it = reader.iterator(true);
       auto* payload = irs::get<irs::payload>(*it);
       auto* doc = irs::get<irs::document>(*it);
 
@@ -130,8 +134,9 @@ int dump(const cmdline::parser& args) {
     return 1;
   }
 
-  const auto dir_type =
-    args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("fs");
+  const auto dir_type = args.exist(DIR_TYPE)
+    ? args.get<std::string>(DIR_TYPE) 
+    : std::string("fs");
 
   if (args.exist(OUTPUT)) {
     const auto& file = args.get<std::string>(OUTPUT);
@@ -151,8 +156,7 @@ int dump(int argc, char* argv[]) {
   cmdline::parser cmddump;
   cmddump.add(HELP, '?', "Produce help message");
   cmddump.add<std::string>(INDEX_DIR, 0, "Path to index directory", true);
-  cmddump.add<std::string>(DIR_TYPE, 0, "Directory type (fs|mmap)", false,
-                           std::string("fs"));
+  cmddump.add<std::string>(DIR_TYPE, 0, "Directory type (fs|mmap)", false, std::string("fs"));
   cmddump.add<std::string>(OUTPUT, 0, "Output file", false);
 
   cmddump.parse(argc, argv);

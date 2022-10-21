@@ -27,18 +27,25 @@
 
 namespace iresearch {
 
-// Filter returning all documents
-class all : public filter {
+////////////////////////////////////////////////////////////////////////////////
+/// @class all
+/// @brief filter that returns all documents
+////////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API all: public filter {
  public:
+  static ptr make();
+
   all() noexcept;
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& reader, const Order& order, score_t filter_boost,
+    const index_reader& reader,
+    const order::prepared& order,
+    boost_t filter_boost,
     const attribute_provider* ctx) const override;
-};
+}; // all
 
-}  // namespace iresearch
+} // ROOT
 
 #endif

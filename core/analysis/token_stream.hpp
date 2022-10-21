@@ -30,7 +30,7 @@
 
 namespace iresearch {
 
-class token_stream : public attribute_provider {
+class IRESEARCH_API token_stream : public attribute_provider {
  public:
   using ptr = std::unique_ptr<token_stream>;
 
@@ -38,6 +38,6 @@ class token_stream : public attribute_provider {
   virtual bool next() = 0;
 };
 
-}  // namespace iresearch
+}
 
 #endif

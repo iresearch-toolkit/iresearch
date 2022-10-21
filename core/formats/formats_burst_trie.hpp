@@ -52,15 +52,17 @@ enum class Version : int32_t {
   /// max supported version
   ////////////////////////////////////////////////////////////////////////////
   MAX = IMMUTABLE_FST
-};  // Version
+}; // Version
 
-irs::field_writer::ptr make_writer(Version version,
-                                   irs::postings_writer::ptr&& writer,
-                                   bool consolidation);
+IRESEARCH_API irs::field_writer::ptr make_writer(
+  Version version,
+  irs::postings_writer::ptr&& writer,
+  bool consolidation);
 
-irs::field_reader::ptr make_reader(irs::postings_reader::ptr&& reader);
+IRESEARCH_API irs::field_reader::ptr make_reader(
+  irs::postings_reader::ptr&& reader);
 
-}  // namespace burst_trie
-}  // namespace iresearch
+} // burst_trie
+} // ROOT
 
 #endif

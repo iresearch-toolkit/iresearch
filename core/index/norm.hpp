@@ -31,8 +31,12 @@
 namespace iresearch {
 
 struct NormReaderContext {
-  bool Reset(const sub_reader& segment, field_id column, const document& doc);
-  bool Valid() const noexcept { return doc != nullptr; }
+  bool Reset(const sub_reader& segment,
+             field_id column,
+             const document& doc);
+  bool Valid() const noexcept {
+    return doc != nullptr;
+  }
 
   bytes_ref header;
   doc_iterator::ptr it;
@@ -43,16 +47,20 @@ struct NormReaderContext {
 static_assert(std::is_nothrow_move_constructible_v<NormReaderContext>);
 static_assert(std::is_nothrow_move_assignable_v<NormReaderContext>);
 
-class Norm : public attribute {
+class IRESEARCH_API Norm : public attribute {
  public:
   using Context = NormReaderContext;
 
   // DO NOT CHANGE NAME
-  static constexpr string_ref type_name() noexcept { return "norm"; }
+  static constexpr string_ref type_name() noexcept {
+    return "norm";
+  }
 
-  FORCE_INLINE static constexpr float_t DEFAULT() noexcept { return 1.f; }
+  FORCE_INLINE static constexpr float_t DEFAULT() noexcept {
+    return 1.f;
+  }
 
-  static feature_writer::ptr MakeWriter(std::span<const bytes_ref> payload);
+  static feature_writer::ptr MakeWriter(range<const bytes_ref> payload);
 
   static auto MakeReader(Context&& ctx) {
     assert(ctx.it);
@@ -60,7 +68,8 @@ class Norm : public attribute {
     assert(ctx.doc);
 
     return [ctx = std::move(ctx)]() mutable -> float_t {
-      if (const auto doc = ctx.doc->value; doc != ctx.it->seek(doc)) {
+      if (const auto doc = ctx.doc->value;
+          doc != ctx.it->seek(doc)) {
         return Norm::DEFAULT();
       }
       bytes_ref_input in{ctx.payload->value};
@@ -72,7 +81,9 @@ class Norm : public attribute {
 static_assert(std::is_nothrow_move_constructible_v<Norm>);
 static_assert(std::is_nothrow_move_assignable_v<Norm>);
 
-enum class Norm2Version : byte_type { kMin = 0 };
+enum class Norm2Version : byte_type {
+  kMin = 0
+};
 
 enum class Norm2Encoding : byte_type {
   Byte = sizeof(byte_type),
@@ -80,19 +91,21 @@ enum class Norm2Encoding : byte_type {
   Int = sizeof(uint32_t)
 };
 
-class Norm2Header final {
+class IRESEARCH_API Norm2Header final {
  public:
   constexpr static size_t ByteSize() noexcept {
-    return sizeof(Norm2Version) + sizeof(encoding_) + sizeof(min_) +
-           sizeof(max_);
+    return sizeof(Norm2Version) + sizeof(encoding_) +
+           sizeof(min_) + sizeof(max_);
   }
 
   constexpr static bool CheckNumBytes(size_t num_bytes) noexcept {
-    return num_bytes == sizeof(byte_type) || num_bytes == sizeof(uint16_t) ||
+    return num_bytes == sizeof(byte_type) ||
+           num_bytes == sizeof(uint16_t) ||
            num_bytes == sizeof(uint32_t);
   }
 
-  explicit Norm2Header(Norm2Encoding encoding) noexcept : encoding_{encoding} {
+  explicit Norm2Header(Norm2Encoding encoding) noexcept
+    : encoding_{encoding} {
     assert(CheckNumBytes(static_cast<size_t>(encoding_)));
   }
 
@@ -113,7 +126,9 @@ class Norm2Header final {
     }
   }
 
-  size_t NumBytes() const noexcept { return static_cast<size_t>(encoding_); }
+  size_t NumBytes() const noexcept {
+    return static_cast<size_t>(encoding_);
+  }
 
   static void Write(const Norm2Header& hdr, bstring& out);
   static std::optional<Norm2Header> Read(irs::bytes_ref payload) noexcept;
@@ -121,20 +136,25 @@ class Norm2Header final {
  private:
   uint32_t min_{std::numeric_limits<uint32_t>::max()};
   uint32_t max_{std::numeric_limits<uint32_t>::min()};
-  Norm2Encoding encoding_;  // Number of bytes used for encoding
+  Norm2Encoding encoding_; // Number of bytes used for encoding
 };
 
 template<typename T>
 class Norm2Writer final : public feature_writer {
  public:
-  static_assert(std::is_same_v<T, byte_type> || std::is_same_v<T, uint16_t> ||
+  static_assert(std::is_same_v<T, byte_type> ||
+                std::is_same_v<T, uint16_t>  ||
                 std::is_same_v<T, uint32_t>);
 
-  explicit Norm2Writer() noexcept : hdr_{Norm2Encoding{sizeof(T)}} {}
+  explicit Norm2Writer() noexcept
+    : hdr_{Norm2Encoding{sizeof(T)}} {
+  }
 
-  virtual void write(const field_stats& stats, doc_id_t doc,
-                     // cppcheck-suppress constParameter
-                     columnstore_writer::values_writer_f& writer) final {
+  virtual void write(
+      const field_stats& stats,
+      doc_id_t doc,
+      // cppcheck-suppress constParameter
+      columnstore_writer::values_writer_f& writer) final {
     hdr_.Reset(stats.len);
 
     auto& stream = writer(doc);
@@ -164,7 +184,9 @@ class Norm2Writer final : public feature_writer {
     WriteValue(out, value);
   }
 
-  virtual void finish(bstring& out) final { Norm2Header::Write(hdr_, out); }
+  virtual void finish(bstring& out) final {
+    Norm2Header::Write(hdr_, out);
+  }
 
  private:
   static void WriteValue(data_output& out, uint32_t value) {
@@ -185,16 +207,17 @@ class Norm2Writer final : public feature_writer {
 };
 
 struct Norm2ReaderContext : NormReaderContext {
-  bool Reset(const sub_reader& segment, field_id column, const document& doc);
+  bool Reset(const sub_reader& segment,
+             field_id column,
+             const document& doc);
   bool Valid() const noexcept {
     return NormReaderContext::Valid() && num_bytes;
   }
 
   uint32_t num_bytes{};
-  uint32_t max_num_bytes{};
 };
 
-class Norm2 : public attribute {
+class IRESEARCH_API Norm2 : public attribute {
  public:
   using ValueType = uint32_t;
   using Context = Norm2ReaderContext;
@@ -204,11 +227,12 @@ class Norm2 : public attribute {
     return "iresearch::norm2";
   }
 
-  static feature_writer::ptr MakeWriter(std::span<const bytes_ref> payload);
+  static feature_writer::ptr MakeWriter(range<const bytes_ref> payload);
 
   template<typename T>
   static auto MakeReader(Context&& ctx) {
-    static_assert(std::is_same_v<T, byte_type> || std::is_same_v<T, uint16_t> ||
+    static_assert(std::is_same_v<T, byte_type> ||
+                  std::is_same_v<T, uint16_t>  ||
                   std::is_same_v<T, uint32_t>);
     assert(ctx.num_bytes == sizeof(T));
     assert(ctx.it);
@@ -253,6 +277,6 @@ class Norm2 : public attribute {
 static_assert(std::is_nothrow_move_constructible_v<Norm2>);
 static_assert(std::is_nothrow_move_assignable_v<Norm2>);
 
-}  // namespace iresearch
+} // iresearch
 
-#endif  // IRESEARCH_NORM_H
+#endif // IRESEARCH_NORM_H

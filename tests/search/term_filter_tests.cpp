@@ -29,42 +29,44 @@
 
 namespace {
 
-irs::by_term make_filter(const irs::string_ref& field,
-                         const irs::string_ref term) {
+irs::by_term make_filter(
+    const irs::string_ref& field,
+    const irs::string_ref term) {
   irs::by_term q;
   *q.mutable_field() = field;
   q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
   return q;
 }
 
-class term_filter_test_case : public tests::FilterTestCaseBase {
+class term_filter_test_case : public tests::filter_test_case_base {
  protected:
   void by_term_sequential_cost() {
     // add segment
     {
-      tests::json_doc_generator gen(resource("simple_sequential.json"),
-                                    &tests::generic_json_field_factory);
+      tests::json_doc_generator gen(
+        resource("simple_sequential.json"),
+        &tests::generic_json_field_factory);
       add_segment(gen);
     }
 
     // read segment
     auto rdr = open_reader();
 
-    CheckQuery(irs::by_term(), Docs{}, Costs{0}, rdr);
+    check_query(irs::by_term(), docs_t{ }, costs_t{0}, rdr);
 
     // empty term
-    CheckQuery(make_filter("name", ""), Docs{}, Costs{0}, rdr);
+    check_query(make_filter("name", ""), docs_t{}, costs_t{0}, rdr);
 
     // empty field
-    CheckQuery(make_filter("", "xyz"), Docs{}, Costs{0}, rdr);
+    check_query(make_filter("", "xyz"), docs_t{}, costs_t{0}, rdr);
 
     // search : invalid field
-    CheckQuery(make_filter("invalid_field", "A"), Docs{}, Costs{0}, rdr);
+    check_query(make_filter("invalid_field", "A"), docs_t{}, costs_t{0}, rdr);
 
     // search : single term
-    CheckQuery(make_filter("name", "A"), Docs{1}, Costs{1}, rdr);
+    check_query(make_filter("name", "A"), docs_t{1}, costs_t{1}, rdr);
 
-    {
+    { 
       irs::by_term q = make_filter("name", "A");
 
       auto prepared = q.prepare(rdr);
@@ -79,22 +81,24 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
     }
 
     // search : all terms
-    CheckQuery(
-      make_filter("same", "xyz"),
-      Docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
-           17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-      Costs{32}, rdr);
+    check_query(
+      make_filter("same" , "xyz"),
+      docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
+      costs_t{ 32 },
+      rdr
+    );
 
     // search : empty result
-    CheckQuery(make_filter("same", "invalid_term"), Docs{}, Costs{0}, rdr);
+    check_query(make_filter("same", "invalid_term"), docs_t{}, costs_t{0}, rdr);
   }
 
   void by_term_sequential_boost() {
     // add segment
     {
-      tests::json_doc_generator gen(resource("simple_sequential.json"),
-                                    &tests::generic_json_field_factory);
-      add_segment(gen);
+      tests::json_doc_generator gen(
+        resource("simple_sequential.json"),
+        &tests::generic_json_field_factory);
+      add_segment( gen );
     }
 
     // read segment
@@ -105,7 +109,9 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
     filter.boost(0.f);
 
     // create order
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    irs::order ord;
+    ord.add<tests::sort::boost>(false);
+    auto pord = ord.prepare();
 
     // without boost
     {
@@ -121,9 +127,8 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       // first hit
       {
         ASSERT_TRUE(docs->next());
-        irs::score_t score_value;
-        (*scr)(&score_value);
-        ASSERT_EQ(irs::score_t(0), score_value);
+        auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
+        ASSERT_EQ(irs::boost_t(0), doc_boost);
         ASSERT_EQ(docs->value(), doc->value);
       }
 
@@ -133,7 +138,7 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
 
     // with boost
     {
-      const irs::score_t value = 5;
+      const irs::boost_t value = 5;
       filter.boost(value);
 
       auto prep = filter.prepare(rdr, pord);
@@ -145,9 +150,8 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       // first hit
       {
         ASSERT_TRUE(docs->next());
-        irs::score_t score_value;
-        (*scr)(&score_value);
-        ASSERT_EQ(irs::score_t(value), score_value);
+        auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->evaluate(), 0);
+        ASSERT_EQ(irs::boost_t(value), doc_boost);
       }
 
       ASSERT_FALSE(docs->next());
@@ -159,28 +163,29 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
     {
       tests::json_doc_generator gen(
         resource("simple_sequential.json"),
-        [](tests::document& doc, const std::string& name,
+        [](tests::document& doc,
+           const std::string& name,
            const tests::json_doc_generator::json_value& data) {
           if (data.is_string()) {
-            doc.insert(std::make_shared<tests::string_field>(name, data.str));
+            doc.insert(std::make_shared<tests::string_field>(
+              name,
+              data.str
+            ));
           } else if (data.is_null()) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(name);
-            field.value(irs::ref_cast<irs::byte_type>(
-              irs::null_token_stream::value_null()));
+            field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
           } else if (data.is_bool() && data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(name);
-            field.value(irs::ref_cast<irs::byte_type>(
-              irs::boolean_token_stream::value_true()));
+            field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
           } else if (data.is_bool() && !data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(name);
-            field.value(irs::ref_cast<irs::byte_type>(
-              irs::boolean_token_stream::value_true()));
+            field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
           } else if (data.is_number()) {
             const double dValue = data.as_number<double_t>();
             {
@@ -193,7 +198,7 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
 
             const float fValue = data.as_number<float_t>();
             {
-              // 'value' can be interpreted as a float
+              // 'value' can be interpreted as a float 
               doc.insert(std::make_shared<tests::float_field>());
               auto& field = (doc.indexed.end() - 1).as<tests::float_field>();
               field.name(name);
@@ -232,12 +237,12 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{21};
+      std::vector<irs::doc_id_t> expected { 21 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
-        for (; docs->next();) {
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
+        for (;docs->next();) {
           actual.push_back(docs->value());
         }
       }
@@ -255,15 +260,15 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{22};
+      std::vector<irs::doc_id_t> expected { 22 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -271,27 +276,26 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(expected, actual);
     }
 
-    // double (90.564)
+    // double (90.564) 
     {
       irs::numeric_token_stream stream;
       stream.reset((double_t)90.564);
       auto* term = irs::get<irs::term_attribute>(stream);
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query =
-        make_filter("value", irs::ref_cast<char>(term->value));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{13};
+      std::vector<irs::doc_id_t> expected { 13 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -299,27 +303,26 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(expected, actual);
     }
 
-    // float (90.564)
+    // float (90.564) 
     {
       irs::numeric_token_stream stream;
       stream.reset((float_t)90.564f);
       auto* term = irs::get<irs::term_attribute>(stream);
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query =
-        make_filter("value", irs::ref_cast<char>(term->value));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{13};
+      std::vector<irs::doc_id_t> expected { 13 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -334,20 +337,19 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       auto* term = irs::get<irs::term_attribute>(stream);
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query =
-        make_filter("value", irs::ref_cast<char>(term->value));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{1, 5, 7, 9, 10};
+      std::vector<irs::doc_id_t> expected { 1, 5, 7, 9, 10 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -362,20 +364,19 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       auto* term = irs::get<irs::term_attribute>(stream);
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query =
-        make_filter("value", irs::ref_cast<char>(term->value));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{1, 5, 7, 9, 10};
+      std::vector<irs::doc_id_t> expected { 1, 5, 7, 9, 10 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -390,20 +391,19 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       auto* term = irs::get<irs::term_attribute>(stream);
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query =
-        make_filter("value", irs::ref_cast<char>(term->value));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{1, 5, 7, 9, 10};
+      std::vector<irs::doc_id_t> expected { 1, 5, 7, 9, 10 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -418,20 +418,19 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       auto* term = irs::get<irs::term_attribute>(stream);
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query =
-        make_filter("value", irs::ref_cast<char>(term->value));
+      irs::by_term query = make_filter("value", irs::ref_cast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{1, 5, 7, 9, 10};
+      std::vector<irs::doc_id_t> expected { 1, 5, 7, 9, 10 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -443,8 +442,9 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
   void by_term_sequential_order() {
     // add segment
     {
-      tests::json_doc_generator gen(resource("simple_sequential.json"),
-                                    &tests::generic_json_field_factory);
+      tests::json_doc_generator gen(
+        resource("simple_sequential.json"),
+        &tests::generic_json_field_factory);
       add_segment(gen);
     }
 
@@ -459,38 +459,35 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
       size_t finish_count = 0;
-
-      tests::sort::custom_sort scorer;
+      irs::order ord;
+      auto& scorer = ord.add<tests::sort::custom_sort>(false);
 
       scorer.collector_collect_field = [&collect_field_count](
-                                         const irs::sub_reader&,
-                                         const irs::term_reader&) -> void {
+          const irs::sub_reader&, const irs::term_reader&)->void{
         ++collect_field_count;
       };
-      scorer.collector_collect_term =
-        [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
-                              const irs::attribute_provider&) -> void {
+      scorer.collector_collect_term = [&collect_term_count](
+          const irs::sub_reader&,
+          const irs::term_reader&,
+          const irs::attribute_provider&)->void{
         ++collect_term_count;
       };
       scorer.collectors_collect_ = [&finish_count](
-                                     irs::byte_type*, const irs::index_reader&,
-                                     const irs::sort::field_collector*,
-                                     const irs::sort::term_collector*) -> void {
+          irs::byte_type*,
+          const irs::index_reader&,
+          const irs::sort::field_collector*,
+          const irs::sort::term_collector*)->void {
         ++finish_count;
       };
-      scorer.prepare_field_collector_ =
-        [&scorer]() -> irs::sort::field_collector::ptr {
-        return irs::memory::make_unique<
-          tests::sort::custom_sort::prepared::field_collector>(scorer);
+      scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
       };
-      scorer.prepare_term_collector_ =
-        [&scorer]() -> irs::sort::term_collector::ptr {
-        return irs::memory::make_unique<
-          tests::sort::custom_sort::prepared::term_collector>(scorer);
+      scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
 
-      std::set<irs::doc_id_t> expected{31, 32};
-      auto pord = irs::Order::Prepare(scorer);
+      std::set<irs::doc_id_t> expected{ 31, 32 };
+      auto pord = ord.prepare();
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
 
@@ -498,53 +495,53 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_FALSE(!scr);
 
       while (docs->next()) {
-        irs::score_t score_value;
-        (*scr)(&score_value);
+        const auto* score_value = scr->evaluate();
         UNUSED(score_value);
         ASSERT_EQ(1, expected.erase(docs->value()));
       }
 
       ASSERT_TRUE(expected.empty());
-      ASSERT_EQ(1, collect_field_count);  // 1 field in 1 segment
-      ASSERT_EQ(1, collect_term_count);   // 1 term in 1 field in 1 segment
-      ASSERT_EQ(1, finish_count);         // 1 unique term
+      ASSERT_EQ(1, collect_field_count); // 1 field in 1 segment
+      ASSERT_EQ(1, collect_term_count); // 1 term in 1 field in 1 segment
+      ASSERT_EQ(1, finish_count); // 1 unique term
     }
   }
 
   void by_term_sequential() {
     // add segment
     {
-      tests::json_doc_generator gen(resource("simple_sequential.json"),
-                                    &tests::generic_json_field_factory);
-      add_segment(gen);
+      tests::json_doc_generator gen(
+        resource("simple_sequential.json"),
+        &tests::generic_json_field_factory);
+      add_segment( gen );
     }
 
     auto rdr = open_reader();
 
     // empty query
-    CheckQuery(irs::by_term(), Docs{}, rdr);
+    check_query(irs::by_term(), docs_t{ }, rdr);
 
     // empty term
-    CheckQuery(make_filter("name", ""), Docs{}, rdr);
+    check_query(make_filter("name", ""), docs_t{ }, rdr);
 
     // empty field
-    CheckQuery(make_filter("", "xyz"), Docs{}, rdr);
+    check_query(make_filter("", "xyz"), docs_t{ }, rdr);
 
     // search : invalid field
-    CheckQuery(make_filter("invalid_field", "A"), Docs{}, rdr);
+    check_query(make_filter("invalid_field",  "A"), docs_t{ }, rdr );
 
     // search : single term
-    CheckQuery(make_filter("name", "A"), Docs{1}, rdr);
+    check_query(make_filter("name", "A"), docs_t{ 1 }, rdr);
 
     // search : all terms
-    CheckQuery(
-      make_filter("same", "xyz"),
-      Docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
-           17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
-      rdr);
+    check_query(
+      make_filter("same" , "xyz"),
+      docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
+      rdr
+    );
 
     // search : empty result
-    CheckQuery(make_filter("same", "invalid_term"), Docs{}, rdr);
+    check_query(make_filter("same", "invalid_term"), docs_t{}, rdr);
   }
 
   void by_term_schemas() {
@@ -553,49 +550,68 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       auto writer = open_writer(irs::OM_CREATE);
 
       std::vector<tests::doc_generator_base::ptr> gens;
-      gens.emplace_back(
-        new tests::json_doc_generator(resource("AdventureWorks2014.json"),
-                                      &tests::generic_json_field_factory));
-      gens.emplace_back(
-        new tests::json_doc_generator(resource("AdventureWorks2014Edges.json"),
-                                      &tests::generic_json_field_factory));
       gens.emplace_back(new tests::json_doc_generator(
-        resource("Northwnd.json"), &tests::generic_json_field_factory));
+        resource("AdventureWorks2014.json"),
+        &tests::generic_json_field_factory
+      ));
       gens.emplace_back(new tests::json_doc_generator(
-        resource("NorthwndEdges.json"), &tests::generic_json_field_factory));
+        resource("AdventureWorks2014Edges.json"),
+        &tests::generic_json_field_factory
+      ));
       gens.emplace_back(new tests::json_doc_generator(
-        resource("Northwnd.json"), &tests::generic_json_field_factory));
+        resource("Northwnd.json"),
+        &tests::generic_json_field_factory
+      ));
       gens.emplace_back(new tests::json_doc_generator(
-        resource("NorthwndEdges.json"), &tests::generic_json_field_factory));
+        resource("NorthwndEdges.json"),
+        &tests::generic_json_field_factory
+      ));
+      gens.emplace_back(new tests::json_doc_generator(
+        resource("Northwnd.json"),
+        &tests::generic_json_field_factory
+      ));
+      gens.emplace_back(new tests::json_doc_generator(
+        resource("NorthwndEdges.json"),
+        &tests::generic_json_field_factory
+      ));
       add_segments(*writer, gens);
     }
 
     auto rdr = open_reader();
-    CheckQuery(make_filter("Fields", "FirstName"), Docs{28, 167, 194}, rdr);
+    check_query(make_filter("Fields", "FirstName"), docs_t{ 28, 167, 194 }, rdr);
 
     // address to the [SDD-179]
-    CheckQuery(make_filter("Name", "Product"), Docs{32}, rdr);
+    check_query(make_filter("Name", "Product"), docs_t{ 32 }, rdr);
   }
-};  // term_filter_test_case
+}; // term_filter_test_case
 
 TEST_P(term_filter_test_case, by_term) {
   by_term_sequential();
   by_term_schemas();
 }
 
-TEST_P(term_filter_test_case, by_term_numeric) { by_term_sequential_numeric(); }
+TEST_P(term_filter_test_case, by_term_numeric) {
+  by_term_sequential_numeric();
+}
 
-TEST_P(term_filter_test_case, by_term_order) { by_term_sequential_order(); }
+TEST_P(term_filter_test_case, by_term_order) {
+  by_term_sequential_order();
+}
 
-TEST_P(term_filter_test_case, by_term_boost) { by_term_sequential_boost(); }
+TEST_P(term_filter_test_case, by_term_boost) {
+  by_term_sequential_boost();
+}
 
-TEST_P(term_filter_test_case, by_term_cost) { by_term_sequential_cost(); }
+TEST_P(term_filter_test_case, by_term_cost) {
+  by_term_sequential_cost();
+}
 
 TEST_P(term_filter_test_case, visit) {
   // add segment
   {
-    tests::json_doc_generator gen(resource("simple_sequential.json"),
-                                  &tests::generic_json_field_factory);
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      &tests::generic_json_field_factory);
     add_segment(gen);
   }
 
@@ -615,8 +631,7 @@ TEST_P(term_filter_test_case, visit) {
   irs::by_term::visit(segment, *reader, term, visitor);
   ASSERT_EQ(1, visitor.prepare_calls_counter());
   ASSERT_EQ(1, visitor.visit_calls_counter());
-  ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{
-              {"abc", irs::kNoBoost}}),
+  ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"abc", irs::no_boost()}}),
             visitor.term_refs<char>());
   visitor.reset();
 }
@@ -631,10 +646,10 @@ TEST(by_term_test, ctor) {
   ASSERT_EQ(irs::type<irs::by_term>::id(), q.type());
   ASSERT_EQ(irs::by_term_options{}, q.options());
   ASSERT_EQ("", q.field());
-  ASSERT_EQ(irs::kNoBoost, q.boost());
+  ASSERT_EQ(irs::no_boost(), q.boost());
 }
 
-TEST(by_term_test, equal) {
+TEST(by_term_test, equal) { 
   irs::by_term q = make_filter("field", "term");
   ASSERT_EQ(q, make_filter("field", "term"));
   ASSERT_NE(q, make_filter("field1", "term"));
@@ -646,12 +661,12 @@ TEST(by_term_test, boost) {
     irs::by_term q = make_filter("field", "term");
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::kNoBoost, prepared->boost());
+    ASSERT_EQ(irs::no_boost(), prepared->boost());
   }
 
   // with boost
   {
-    irs::score_t boost = 1.5f;
+    irs::boost_t boost = 1.5f;
     irs::by_term q = make_filter("field", "term");
     q.boost(boost);
 
@@ -661,12 +676,15 @@ TEST(by_term_test, boost) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-  term_filter_test, term_filter_test_case,
+  term_filter_test,
+  term_filter_test_case,
   ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
     ::testing::Values("1_0")),
-  term_filter_test_case::to_string);
+  term_filter_test_case::to_string
+);
 
-}  // namespace
+}

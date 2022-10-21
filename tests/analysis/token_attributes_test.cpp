@@ -68,8 +68,7 @@ TEST(token_attributes_test, frequency) {
 }
 
 TEST(token_attributes_test, granularity_prefix) {
-  static_assert("iresearch::granularity_prefix" ==
-                irs::type<irs::granularity_prefix>::name());
+  static_assert("iresearch::granularity_prefix" == irs::type<irs::granularity_prefix>::name());
 }
 
 TEST(token_attributes_test, Norm) {
@@ -86,6 +85,5 @@ TEST(token_attributes_test, position) {
 }
 
 TEST(token_attributes_test, attribute_provider_change) {
-  static_assert("attribute_provider_change" ==
-                irs::type<irs::attribute_provider_change>::name());
+  static_assert("attribute_provider_change" == irs::type<irs::attribute_provider_change>::name());
 }

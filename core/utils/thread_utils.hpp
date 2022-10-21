@@ -29,20 +29,51 @@
 #include "shared.hpp"
 
 #ifdef _WIN32
-#define thread_name_t wchar_t*
+  #define thread_name_t wchar_t*
 #else
-#define thread_name_t char*
+  #define thread_name_t char*
 #endif
 
 namespace iresearch {
 
-// Set name of a current thread
-// Returns true if a specified name if succesully set, false - otherwise
-bool set_thread_name(const thread_name_t name) noexcept;
+template<typename Mutex>
+[[nodiscard]] inline std::unique_lock<Mutex> make_unique_lock(Mutex& mtx) {
+  return std::unique_lock<Mutex>(mtx);
+}
 
-bool get_thread_name(
-  std::basic_string<std::remove_pointer_t<thread_name_t>>& name);
+template<typename Mutex, typename Mode>
+[[nodiscard]] inline std::unique_lock<Mutex> make_unique_lock(Mutex& mtx, Mode mode) {
+  return std::unique_lock<Mutex>(mtx, mode);
+}
 
-}  // namespace iresearch
+template<typename Mutex>
+[[nodiscard]] inline std::lock_guard<Mutex> make_lock_guard(Mutex& mtx) {
+  return std::lock_guard<Mutex>(mtx);
+}
 
-#endif  // IRESEARCH_THREAD_UTILS_H
+template<typename Mutex, typename Mode>
+[[nodiscard]] inline std::lock_guard<Mutex> make_lock_guard(Mutex& mtx, Mode mode) {
+  return std::lock_guard<Mutex>(mtx, mode);
+}
+
+template<typename Mutex>
+[[nodiscard]] inline std::shared_lock<Mutex> make_shared_lock(Mutex& mtx) {
+  return std::shared_lock<Mutex>(mtx);
+}
+
+template<typename Mutex, typename Mode>
+[[nodiscard]] inline std::shared_lock<Mutex> make_shared_lock(Mutex& mtx, Mode mode) {
+  return std::shared_lock<Mutex>(mtx, mode);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief set name of a current thread
+/// @returns true if a specified name if succesully set, false - otherwise
+//////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API bool set_thread_name(const thread_name_t name) noexcept;
+
+IRESEARCH_API bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& name);
+
+}
+
+#endif // IRESEARCH_THREAD_UTILS_H

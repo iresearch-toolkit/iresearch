@@ -28,29 +28,34 @@
 #include "analyzers.hpp"
 #include "token_stream.hpp"
 #include "token_attributes.hpp"
-#include "utils/attribute_helper.hpp"
+#include "utils/frozen_attributes.hpp"
 
 namespace iresearch {
 namespace analysis {
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class pipeline_token_stream
 /// @brief an analyser capable of chaining other analyzers
 ////////////////////////////////////////////////////////////////////////////////
-class pipeline_token_stream final : public analyzer, private util::noncopyable {
+class pipeline_token_stream final
+  : public analyzer,
+    private util::noncopyable {
  public:
   using options_t = std::vector<irs::analysis::analyzer::ptr>;
 
   static constexpr string_ref type_name() noexcept { return "pipeline"; }
-  static void init();  // for triggering registration in a static build
+  static void init(); // for triggering registration in a static build
 
   explicit pipeline_token_stream(options_t&& options);
   virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
     auto attr = irs::get_mutable(attrs_, id);
     if (!attr) {
-      // if attribute is not strictly pipeline-controlled let`s find nearest to
-      // end provider with desired attribute
-      if (irs::type<payload>::id() != id && irs::type<offset>::id() != id) {
+      // if attribute is not strictly pipeline-controlled let`s find nearest to end
+      // provider with desired attribute
+      if(irs::type<payload>::id() != id &&
+         irs::type<offset>::id() != id) {
         for (auto it = rbegin(pipeline_); it != rend(pipeline_); ++it) {
           attr = const_cast<analyzer&>(it->get_stream()).get_mutable(id);
           if (attr) {
@@ -62,10 +67,10 @@ class pipeline_token_stream final : public analyzer, private util::noncopyable {
     return attr;
   }
   virtual bool next() override;
-  virtual bool reset(string_ref data) override;
+  virtual bool reset(const string_ref& data) override;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief calls visitor on pipeline members in respective order. Visiting is
+  /// @brief calls visitor on pipeline members in respective order. Visiting is 
   /// interrupted on first visitor returning false.
   /// @param visitor visitor to call
   /// @return true if all visits returned true, false otherwise
@@ -73,14 +78,11 @@ class pipeline_token_stream final : public analyzer, private util::noncopyable {
   template<typename Visitor>
   bool visit_members(Visitor&& visitor) const {
     for (const auto& sub : pipeline_) {
-      if (sub.get_stream().type() ==
-          type()) {  // pipe inside pipe - forward visiting
+      if (sub.get_stream().type() == type()) { //pipe inside pipe - forward visiting
 #if IRESEARCH_DEBUG
-        const auto& sub_pipe =
-          dynamic_cast<const pipeline_token_stream&>(sub.get_stream());
+        const auto& sub_pipe = dynamic_cast<const pipeline_token_stream&>(sub.get_stream());
 #else
-        const auto& sub_pipe =
-          static_cast<const pipeline_token_stream&>(sub.get_stream());
+        const auto& sub_pipe = static_cast<const pipeline_token_stream&>(sub.get_stream());
 #endif
         if (!sub_pipe.visit_members(visitor)) {
           return false;
@@ -99,7 +101,7 @@ class pipeline_token_stream final : public analyzer, private util::noncopyable {
     explicit sub_analyzer_t(irs::analysis::analyzer::ptr a, bool track_offset);
     sub_analyzer_t();
 
-    bool reset(uint32_t start, uint32_t end, string_ref data) {
+    bool reset(uint32_t start, uint32_t end, const string_ref& data) {
       data_size = data.size();
       data_start = start;
       data_end = end;
@@ -121,16 +123,17 @@ class pipeline_token_stream final : public analyzer, private util::noncopyable {
 
     uint32_t end() const noexcept {
       assert(offs);
-      return offs->end == data_size ? data_end
-                                    : start() + offs->end - offs->start;
+      return offs->end == data_size
+        ? data_end
+        : start() + offs->end - offs->start;
     }
     const term_attribute* term;
     const increment* inc;
     const offset* offs;
-    size_t data_size{0};
-    uint32_t data_start{0};
-    uint32_t data_end{0};
-    uint32_t pos{std::numeric_limits<uint32_t>::max()};
+    size_t data_size{ 0 };
+    uint32_t data_start{ 0 };
+    uint32_t data_end{ 0 };
+    uint32_t pos{ std::numeric_limits<uint32_t>::max() };
 
     const irs::analysis::analyzer& get_stream() const noexcept {
       assert(analyzer);
@@ -143,8 +146,11 @@ class pipeline_token_stream final : public analyzer, private util::noncopyable {
     irs::analysis::analyzer::ptr analyzer;
   };
   using pipeline_t = std::vector<sub_analyzer_t>;
-  using attributes = std::tuple<increment, attribute_ptr<term_attribute>,
-                                attribute_ptr<offset>, attribute_ptr<payload>>;
+  using attributes = std::tuple<
+    increment,
+    attribute_ptr<term_attribute>,
+    attribute_ptr<offset>,
+    attribute_ptr<payload>>;
 
   pipeline_t pipeline_;
   pipeline_t::iterator current_;
@@ -154,7 +160,7 @@ class pipeline_token_stream final : public analyzer, private util::noncopyable {
   attributes attrs_;
 };
 
-}  // namespace analysis
-}  // namespace iresearch
+}
+}
 
-#endif  // IRESEARCH_PIPELINE_TOKEN_STREAM_H
+#endif // IRESEARCH_PIPELINE_TOKEN_STREAM_H

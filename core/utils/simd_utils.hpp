@@ -60,23 +60,25 @@ std::pair<T, T> maxmin(const T* begin, size_t size) noexcept {
   constexpr HWY_FULL(T) simd_tag;
   using simd_helper = simd_helper<Aligned>;
   constexpr size_t Step = MaxLanes(simd_tag);
-  constexpr size_t Unroll = 2 * Step;
+  constexpr size_t Unroll = 2*Step;
 
   const auto end = begin + size;
   auto minacc = Set(simd_tag, std::numeric_limits<T>::max());
   auto maxacc = Set(simd_tag, std::numeric_limits<T>::min());
 
-  for (size_t step = size / (Unroll * Step); step; --step) {
+  for (size_t step = size / (Unroll*Step); step; --step) {
     for (size_t j = 0; j < Unroll; ++j) {
-      const auto v = simd_helper::load(simd_tag, begin + j * Step);
+      const auto v = simd_helper::load(simd_tag, begin + j*Step);
       minacc = Min(minacc, v);
       maxacc = Max(maxacc, v);
     }
-    begin += Unroll * Step;
+    begin += Unroll*Step;
   }
 
-  std::pair<T, T> minmax = {GetLane(MinOfLanes(minacc)),
-                            GetLane(MaxOfLanes(maxacc))};
+  std::pair<T, T> minmax = {
+    GetLane(MinOfLanes(minacc)),
+    GetLane(MaxOfLanes(maxacc))
+  };
 
   for (; begin != end; ++begin) {
     minmax.first = std::min(*begin, minmax.first);
@@ -96,16 +98,16 @@ uint32_t maxbits(const T* begin, size_t size) noexcept {
   using simd_helper = simd_helper<Aligned>;
   constexpr HWY_FULL(T) simd_tag;
   constexpr size_t Step = MaxLanes(simd_tag);
-  constexpr size_t Unroll = 2 * Step;
+  constexpr size_t Unroll = 2*Step;
 
   const auto end = begin + size;
 
   auto oracc = Zero(simd_tag);
-  for (size_t steps = size / (Unroll * Step); steps; --steps) {
+  for (size_t steps = size / (Unroll*Step); steps; --steps) {
     for (size_t j = 0; j < Unroll; ++j) {
-      oracc = Or(oracc, simd_helper::load(simd_tag, begin + j * Step));
+      oracc = Or(oracc, simd_helper::load(simd_tag, begin + j*Step));
     }
-    begin += Unroll * Step;
+    begin += Unroll*Step;
   }
 
   // FIXME use OrOfLanes instead
@@ -135,13 +137,13 @@ bool all_equal(const T* begin, size_t size) noexcept {
   const auto value = *begin;
   const auto vvalue = Set(simd_tag, value);
 
-  for (size_t steps = size / (Unroll * Step); steps; --steps) {
+  for (size_t steps = size / (Unroll*Step); steps; --steps) {
     for (size_t j = 0; j < Unroll; ++j) {
-      if (!AllTrue(vvalue == simd_helper::load(simd_tag, begin + j * Step))) {
+      if (!AllTrue(vvalue == simd_helper::load(simd_tag, begin + j*Step))) {
         return false;
       }
     }
-    begin += Unroll * Step;
+    begin += Unroll*Step;
   }
 
   for (; begin != end; ++begin) {
@@ -154,31 +156,31 @@ bool all_equal(const T* begin, size_t size) noexcept {
 }
 
 FORCE_INLINE Vec<HWY_FULL(uint32_t)> zig_zag_encode(
-  Vec<HWY_FULL(int32_t)> v) noexcept {
+    Vec<HWY_FULL(int32_t)> v) noexcept {
   constexpr HWY_FULL(uint32_t) simd_tag;
   const auto uv = BitCast(simd_tag, v);
   return ((uv >> Set(simd_tag, 31)) ^ (uv << Set(simd_tag, 1)));
 }
 
 FORCE_INLINE Vec<HWY_FULL(int32_t)> zig_zag_decode(
-  Vec<HWY_FULL(uint32_t)> uv) noexcept {
+    Vec<HWY_FULL(uint32_t)> uv) noexcept {
   constexpr HWY_FULL(int32_t) simd_tag;
   const auto v = BitCast(simd_tag, uv);
-  return ((v >> Set(simd_tag, 1)) ^ (Zero(simd_tag) - (v & Set(simd_tag, 1))));
+  return ((v >> Set(simd_tag, 1)) ^ (Zero(simd_tag)-(v & Set(simd_tag, 1))));
 }
 
 FORCE_INLINE Vec<HWY_FULL(uint64_t)> zig_zag_encode(
-  Vec<HWY_FULL(int64_t)> v) noexcept {
+    Vec<HWY_FULL(int64_t)> v) noexcept {
   constexpr HWY_FULL(uint64_t) simd_tag;
   const auto uv = BitCast(simd_tag, v);
   return ((uv >> Set(simd_tag, 63)) ^ (uv << Set(simd_tag, 1)));
 }
 
 FORCE_INLINE Vec<HWY_FULL(int64_t)> zig_zag_decode(
-  Vec<HWY_FULL(uint64_t)> uv) noexcept {
+    Vec<HWY_FULL(uint64_t)> uv) noexcept {
   constexpr HWY_FULL(int64_t) simd_tag;
   const auto v = BitCast(simd_tag, uv);
-  return ((v >> Set(simd_tag, 1)) ^ (Zero(simd_tag) - (v & Set(simd_tag, 1))));
+  return ((v >> Set(simd_tag, 1)) ^ (Zero(simd_tag)-(v & Set(simd_tag, 1))));
 }
 
 // FIXME do we need this?
@@ -187,17 +189,17 @@ void subtract(T* begin, T value) noexcept {
   using simd_helper = simd_helper<Aligned>;
   constexpr HWY_FULL(T) simd_tag;
   constexpr size_t Step = MaxLanes(simd_tag);
-  constexpr size_t Unroll = 2 * Step;
-  static_assert(0 == (Length % (Unroll * Step)));
+  constexpr size_t Unroll = 2*Step;
+  static_assert(0 == (Length % (Unroll*Step)));
 
   size_t i = 0;
 
   const auto rhs = Set(simd_tag, value);
-  for (; i < Length; i += Unroll * Step) {
+  for (; i < Length; i += Unroll*Step) {
     auto* p = begin + i;
     for (size_t j = 0; j < Unroll; ++j) {
-      const auto lhs = simd_helper::load(simd_tag, p + j * Step);
-      simd_helper::store(lhs - rhs, simd_tag, p + j * Step);
+      const auto lhs = simd_helper::load(simd_tag, p + j*Step);
+      simd_helper::store(lhs - rhs, simd_tag, p + j*Step);
     }
   }
 }
@@ -208,7 +210,7 @@ void delta_encode(T* begin, T init) noexcept {
   using simd_helper = simd_helper<Aligned>;
   assert(std::is_sorted(begin, begin + Length));
 
-  if constexpr (O == 1) {  // 256-bit and greater
+  if constexpr (O == 1) { // 256-bit and greater
     constexpr HWY_FULL(T) simd_tag;
     constexpr size_t Step = MaxLanes(simd_tag);
     static_assert(0 == (Length % Step));
@@ -234,7 +236,7 @@ void delta_encode(T* begin, T init) noexcept {
       const auto vec = simd_helper::load(simd_tag, begin + i);
       simd_helper::store(vec - prev, simd_tag, begin + i);
     }
-  } else if constexpr (O == 0) {  // 128-bit
+  } else if constexpr (O == 0) { // 128-bit
     // FIXME this is true only for 32-bit values
     constexpr HWY_CAPPED(T, 4) simd_tag;
     const size_t Step = Lanes(simd_tag);
@@ -255,9 +257,12 @@ void delta_encode(T* begin, T init) noexcept {
 
 // Encodes block denoted by [begin;end) using average encoding algorithm
 // Returns block std::pair{ base, average }
-template<size_t Length, bool Aligned, typename T,
-         typename = std::enable_if_t<std::is_integral_v<T>>>
-std::pair<T, T> avg_encode(T* begin) noexcept {
+template<
+  size_t Length,
+  bool Aligned,
+  typename T,
+  typename = std::enable_if_t<std::is_integral_v<T>>
+> std::pair<T, T> avg_encode(T* begin) noexcept {
   using simd_helper = simd_helper<Aligned>;
   using signed_type = hwy::MakeSigned<T>;
   using unsigned_type = hwy::MakeUnsigned<T>;
@@ -265,27 +270,24 @@ std::pair<T, T> avg_encode(T* begin) noexcept {
   constexpr HWY_FULL(signed_type) simd_tag;
   constexpr HWY_FULL(unsigned_type) simd_unsigned_tag;
   constexpr size_t Step = MaxLanes(simd_tag);
-  constexpr size_t Unroll = 2 * Step;
+  constexpr size_t Unroll = 2*Step;
   static_assert(Length);
-  static_assert(0 == (Length % (Unroll * Step)));
-  assert(begin[Length - 1] >= begin[0]);
+  static_assert(0 == (Length % (Unroll*Step)));
+  assert(begin[Length-1] >= begin[0]);
 
   const unsigned_type base = *begin;
 
   const signed_type avg = static_cast<signed_type>(
-    static_cast<float_type>(begin[Length - 1] - begin[0]) /
-    std::max(size_t(1), Length - 1));
+    static_cast<float_type>(begin[Length-1] - begin[0]) / std::max(size_t(1), Length - 1));
 
   auto vbase = Iota(simd_tag, 0) * Set(simd_tag, avg) + Set(simd_tag, base);
   const auto vavg = Set(simd_tag, avg) * Set(simd_tag, Step);
 
-  for (size_t i = 0; i < Length; i += Unroll * Step) {
+  for (size_t i = 0; i < Length; i += Unroll*Step) {
     auto* p = begin + i;
     for (size_t j = 0; j < Unroll; j++) {
-      const auto v = simd_helper::load(
-                       simd_tag, reinterpret_cast<signed_type*>(p + j * Step)) -
-                     vbase;
-      simd_helper::store(zig_zag_encode(v), simd_unsigned_tag, p + j * Step);
+      const auto v = simd_helper::load(simd_tag, reinterpret_cast<signed_type*>(p + j*Step)) - vbase;
+      simd_helper::store(zig_zag_encode(v), simd_unsigned_tag, p + j*Step);
       vbase += vavg;
     }
   }
@@ -296,36 +298,38 @@ std::pair<T, T> avg_encode(T* begin) noexcept {
   return std::make_pair(base, avg);
 }
 
-template<size_t Length, bool Aligned, typename T,
-         typename = std::enable_if_t<std::is_integral_v<T>>>
-void avg_decode(const T* begin, T* out, T base, T avg) noexcept {
+template<
+  size_t Length,
+  bool Aligned,
+  typename T,
+  typename = std::enable_if_t<std::is_integral_v<T>>
+> void avg_decode(const T* begin, T* out, T base, T avg) noexcept {
   using simd_helper = simd_helper<Aligned>;
   using signed_type = hwy::MakeSigned<T>;
   using unsigned_type = hwy::MakeUnsigned<T>;
   constexpr HWY_FULL(signed_type) simd_tag;
   constexpr HWY_FULL(unsigned_type) simd_unsigned_tag;
   constexpr size_t Step = MaxLanes(simd_tag);
-  constexpr size_t Unroll = 2 * Step;
+  constexpr size_t Unroll = 2*Step;
   static_assert(Length);
-  static_assert(0 == (Length % (Unroll * Step)));
-  assert(begin[Length - 1] >= begin[0]);
+  static_assert(0 == (Length % (Unroll*Step)));
+  assert(begin[Length-1] >= begin[0]);
 
   auto vbase = Iota(simd_tag, 0) * Set(simd_tag, avg) + Set(simd_tag, base);
   const auto vavg = Set(simd_tag, avg) * Set(simd_tag, Step);
 
-  for (size_t i = 0; i < Length; i += Unroll * Step) {
+  for (size_t i = 0; i < Length; i += Unroll*Step) {
     auto* pin = begin + i;
     auto* pout = out + i;
     for (size_t j = 0; j < Unroll; j++) {
-      const auto v = simd_helper::load(simd_unsigned_tag, pin + j * Step);
-      simd_helper::store(zig_zag_decode(v) + vbase, simd_tag,
-                         reinterpret_cast<signed_type*>(pout + j * Step));
+      const auto v = simd_helper::load(simd_unsigned_tag, pin + j*Step);
+      simd_helper::store(zig_zag_decode(v) + vbase, simd_tag, reinterpret_cast<signed_type*>(pout + j*Step));
       vbase += vavg;
     }
   }
 }
 
-}  // namespace simd
-}  // namespace iresearch
+}
+}
 
-#endif  // IRESEARCH_SIMD_UTILS_H
+#endif // IRESEARCH_SIMD_UTILS_H

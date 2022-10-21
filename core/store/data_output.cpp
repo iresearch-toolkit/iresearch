@@ -35,10 +35,12 @@ namespace iresearch {
 // --SECTION--                                         output_buf implementation
 // -----------------------------------------------------------------------------
 
-output_buf::output_buf(index_output* out) : out_(out) { assert(out_); }
+output_buf::output_buf(index_output* out) : out_(out) {
+  assert(out_);
+}
 
 std::streamsize output_buf::xsputn(const char_type* c, std::streamsize size) {
-  out_->write_bytes(reinterpret_cast<const byte_type*>(c), size);
+  out_->write_bytes(reinterpret_cast< const byte_type* >(c), size);
   return size;
 }
 
@@ -53,7 +55,7 @@ output_buf::int_type output_buf::overflow(int_type c) {
 
 void buffered_index_output::write_int(int32_t value) {
   if (remain() < sizeof(uint32_t)) {
-    irs::write<uint32_t>(*this, value);
+    index_output::write_int(value);
   } else {
     irs::write<uint32_t>(pos_, value);
   }
@@ -61,7 +63,7 @@ void buffered_index_output::write_int(int32_t value) {
 
 void buffered_index_output::write_long(int64_t value) {
   if (remain() < sizeof(uint64_t)) {
-    irs::write<uint64_t>(*this, value);
+    index_output::write_long(value);
   } else {
     irs::write<uint64_t>(pos_, value);
   }
@@ -69,7 +71,7 @@ void buffered_index_output::write_long(int64_t value) {
 
 void buffered_index_output::write_vint(uint32_t v) {
   if (remain() < bytes_io<uint32_t>::const_max_vsize) {
-    irs::vwrite<uint32_t>(*this, v);
+    index_output::write_vint(v);
   } else {
     irs::vwrite<uint32_t>(pos_, v);
   }
@@ -77,7 +79,7 @@ void buffered_index_output::write_vint(uint32_t v) {
 
 void buffered_index_output::write_vlong(uint64_t v) {
   if (remain() < bytes_io<uint64_t>::const_max_vsize) {
-    irs::vwrite<uint64_t>(*this, v);
+    index_output::write_vlong(v);
   } else {
     irs::vwrite<uint64_t>(pos_, v);
   }
@@ -113,7 +115,7 @@ void buffered_index_output::write_bytes(const byte_type* b, size_t length) {
       start_ += length;
     } else {
       // we fill/flush the buffer (until the input is written)
-      size_t slice_pos_ = 0;  // pos_ition in the input data
+      size_t slice_pos_ = 0; // pos_ition in the input data
 
       while (slice_pos_ < length) {
         auto slice_len = std::min(length - slice_pos_, left);
@@ -141,19 +143,17 @@ size_t buffered_index_output::file_pointer() const {
 void buffered_index_output::flush() {
   assert(buf_ <= pos_);
   const auto size = size_t(std::distance(buf_, pos_));
-  if (size) {
-    flush_buffer(buf_, size);
-    start_ += size;
-    pos_ = buf_;
-  }
+  flush_buffer(buf_, size);
+  start_ += size;
+  pos_ = buf_;
 }
 
 void buffered_index_output::close() {
   if (pos_ > buf_) {
-    flush_buffer(buf_, size_t(std::distance(buf_, pos_)));
+    flush();
   }
   start_ = 0;
   pos_ = buf_;
 }
 
-}  // namespace iresearch
+}

@@ -33,8 +33,9 @@
 
 namespace iresearch {
 
-inline bool memcmp_less(const byte_type* lhs, size_t lhs_size,
-                        const byte_type* rhs, size_t rhs_size) noexcept {
+inline bool memcmp_less(
+    const byte_type* lhs, size_t lhs_size,
+    const byte_type* rhs, size_t rhs_size) noexcept {
   assert(lhs && rhs);
 
   const size_t size = std::min(lhs_size, rhs_size);
@@ -47,7 +48,9 @@ inline bool memcmp_less(const byte_type* lhs, size_t lhs_size,
   return res < 0;
 }
 
-inline bool memcmp_less(bytes_ref lhs, bytes_ref rhs) noexcept {
+inline bool memcmp_less(
+    const bytes_ref& lhs,
+    const bytes_ref& rhs) noexcept {
   return memcmp_less(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
 }
 
@@ -67,30 +70,31 @@ struct posting {
   doc_id_t doc;
   uint32_t freq;
   uint32_t pos;
-  uint32_t offs{0};
-  doc_id_t size{1};  // length of postings
+  uint32_t offs{ 0 };
+  doc_id_t size{ 1 }; // length of postings
 };
 
-class postings : util::noncopyable {
+class IRESEARCH_API postings : util::noncopyable {
  public:
   using writer_t = byte_block_pool::inserter;
 
   // cppcheck-suppress constParameter
   explicit postings(writer_t& writer)
-    : map_{0, value_ref_hash{}, term_id_eq{postings_}}, writer_(writer) {}
+    : map_{0, value_ref_hash{}, term_id_eq{postings_}},
+      writer_(writer) {
+  }
 
   void clear() noexcept {
     map_.clear();
     postings_.clear();
   }
 
-  /// @brief fill a provided vector with terms and corresponding postings in
-  /// sorted order
+  /// @brief fill a provided vector with terms and corresponding postings in sorted order
   void get_sorted_postings(std::vector<const posting*>& postings) const;
 
   /// @note on error returns std::ptr(nullptr, false)
   /// @note returned poitern remains valid until the next call
-  std::pair<posting*, bool> emplace(bytes_ref term);
+  std::pair<posting*, bool> emplace(const bytes_ref& term);
 
   bool empty() const noexcept { return map_.empty(); }
   size_t size() const noexcept { return map_.size(); }
@@ -99,18 +103,17 @@ class postings : util::noncopyable {
   class term_id_eq : public value_ref_eq<size_t> {
    public:
     explicit term_id_eq(const std::vector<posting>& data) noexcept
-      : data_(&data) {}
+      : data_(&data) {
+    }
 
     using self_t::operator();
 
-    bool operator()(const ref_t& lhs,
-                    const hashed_bytes_ref& rhs) const noexcept {
+    bool operator()(const ref_t& lhs, const hashed_bytes_ref& rhs) const noexcept {
       assert(lhs.second < data_->size());
       return (*data_)[lhs.second].term == rhs;
     }
 
-    bool operator()(const hashed_bytes_ref& lhs,
-                    const ref_t& rhs) const noexcept {
+    bool operator()(const hashed_bytes_ref& lhs, const ref_t& rhs) const noexcept {
       return this->operator()(rhs, lhs);
     }
 
@@ -120,11 +123,13 @@ class postings : util::noncopyable {
 
   using map_t = flat_hash_set<term_id_eq>;
 
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::vector<posting> postings_;
   map_t map_;
   writer_t& writer_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
-}  // namespace iresearch
+}
 
 #endif

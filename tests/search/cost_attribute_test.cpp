@@ -29,8 +29,7 @@
 
 TEST(cost_attribute_test, consts) {
   static_assert("iresearch::cost" == irs::type<irs::cost>::name());
-  static_assert((std::numeric_limits<irs::cost::cost_t>::max)() ==
-                irs::cost::kMax);
+  static_assert((std::numeric_limits<irs::cost::cost_t>::max)() == irs::cost::MAX);
 }
 
 TEST(cost_attribute_test, ctor) {
@@ -52,12 +51,12 @@ TEST(cost_attribute_test, estimation) {
       ASSERT_EQ(est, cost.estimate());
     }
   }
-
+  
   // implicit estimation
   {
     auto evaluated = false;
     auto est = 7;
-
+  
     cost.reset([&evaluated, est]() {
       evaluated = true;
       return est;
@@ -99,19 +98,19 @@ TEST(cost_attribute_test, lazy_estimation) {
     evaluated = false;
     cost.reset([&evaluated, est]() {
       evaluated = true;
-      return est + 1;
+      return est+1;
     });
     ASSERT_FALSE(evaluated);
-    ASSERT_EQ(est + 1, cost.estimate());
+    ASSERT_EQ(est+1, cost.estimate());
     ASSERT_TRUE(evaluated);
   }
 
   // set value directly
   {
     evaluated = false;
-    cost.reset(est + 2);
+    cost.reset(est+2);
     ASSERT_FALSE(evaluated);
-    ASSERT_EQ(est + 2, cost.estimate());
+    ASSERT_EQ(est+2, cost.estimate());
     ASSERT_FALSE(evaluated);
   }
 }
@@ -119,13 +118,17 @@ TEST(cost_attribute_test, lazy_estimation) {
 TEST(cost_attribute_test, extract) {
   struct basic_attribute_provider : irs::attribute_provider {
     irs::attribute* get_mutable(irs::type_info::type_id type) noexcept {
-      return type == irs::type<irs::cost>::id() ? cost : nullptr;
+      return type == irs::type<irs::cost>::id()
+        ? cost : nullptr;
     }
 
     irs::cost* cost{};
   } attrs;
 
-  ASSERT_EQ(irs::cost::cost_t(irs::cost::kMax), irs::cost::extract(attrs));
+  ASSERT_EQ(
+    irs::cost::cost_t(irs::cost::MAX),
+    irs::cost::extract(attrs)
+  );
 
   ASSERT_EQ(5, irs::cost::extract(attrs, 5));
 
@@ -151,17 +154,17 @@ TEST(cost_attribute_test, extract) {
     evaluated = false;
     cost.reset([&evaluated, est]() {
       evaluated = true;
-      return est + 1;
+      return est+1;
     });
     ASSERT_FALSE(evaluated);
-    ASSERT_EQ(est + 1, irs::cost::extract(attrs, 3));
+    ASSERT_EQ(est+1, irs::cost::extract(attrs, 3));
     ASSERT_TRUE(evaluated);
   }
 
   // clear
   {
     evaluated = false;
-    ASSERT_EQ(est + 1, irs::cost::extract(attrs, 3));
+    ASSERT_EQ(est+1, irs::cost::extract(attrs, 3));
     ASSERT_FALSE(evaluated);
   }
 }

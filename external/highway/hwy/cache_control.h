@@ -20,9 +20,7 @@
 
 #include "hwy/base.h"
 
-// Requires SSE2; fails to compile on 32-bit Clang 7 (see
-// https://github.com/gperftools/gperftools/issues/946).
-#if !defined(__SSE2__) || (HWY_COMPILER_CLANG && HWY_ARCH_X86_32)
+#ifndef __SSE2__
 #undef HWY_DISABLE_CACHE_CONTROL
 #define HWY_DISABLE_CACHE_CONTROL
 #endif
@@ -31,14 +29,6 @@
 #if HWY_ARCH_X86 && !defined(HWY_DISABLE_CACHE_CONTROL) && !HWY_COMPILER_MSVC
 #include <emmintrin.h>  // SSE2
 #endif
-
-// Windows.h #defines these, which causes infinite recursion. Temporarily
-// undefine them in this header; these functions are anyway deprecated.
-// TODO(janwas): remove when these functions are removed.
-#pragma push_macro("LoadFence")
-#pragma push_macro("StoreFence")
-#undef LoadFence
-#undef StoreFence
 
 namespace hwy {
 
@@ -55,28 +45,20 @@ namespace hwy {
 // Delays subsequent loads until prior loads are visible. On Intel CPUs, also
 // serves as a full fence (waits for all prior instructions to complete).
 // No effect on non-x86.
-// DEPRECATED due to differing behavior across architectures AND vendors.
 HWY_INLINE HWY_ATTR_CACHE void LoadFence() {
 #if HWY_ARCH_X86 && !defined(HWY_DISABLE_CACHE_CONTROL)
   _mm_lfence();
 #endif
 }
 
-// Ensures values written by previous `Stream` calls are visible on the current
-// core. This is NOT sufficient for synchronizing across cores; when `Stream`
-// outputs are to be consumed by other core(s), the producer must publish
-// availability (e.g. via mutex or atomic_flag) after `FlushStream`.
-HWY_INLINE HWY_ATTR_CACHE void FlushStream() {
+// Ensures previous weakly-ordered stores are visible. No effect on non-x86.
+HWY_INLINE HWY_ATTR_CACHE void StoreFence() {
 #if HWY_ARCH_X86 && !defined(HWY_DISABLE_CACHE_CONTROL)
   _mm_sfence();
 #endif
 }
 
-// DEPRECATED, replace with `FlushStream`.
-HWY_INLINE HWY_ATTR_CACHE void StoreFence() { FlushStream(); }
-
-// Optionally begins loading the cache line containing "p" to reduce latency of
-// subsequent actual loads.
+// Begins loading the cache line containing "p".
 template <typename T>
 HWY_INLINE HWY_ATTR_CACHE void Prefetch(const T* p) {
 #if HWY_ARCH_X86 && !defined(HWY_DISABLE_CACHE_CONTROL)
@@ -90,7 +72,7 @@ HWY_INLINE HWY_ATTR_CACHE void Prefetch(const T* p) {
 #endif
 }
 
-// Invalidates and flushes the cache line containing "p", if possible.
+// Invalidates and flushes the cache line containing "p". No effect on non-x86.
 HWY_INLINE HWY_ATTR_CACHE void FlushCacheline(const void* p) {
 #if HWY_ARCH_X86 && !defined(HWY_DISABLE_CACHE_CONTROL)
   _mm_clflush(p);
@@ -99,17 +81,6 @@ HWY_INLINE HWY_ATTR_CACHE void FlushCacheline(const void* p) {
 #endif
 }
 
-// When called inside a spin-loop, may reduce power consumption.
-HWY_INLINE HWY_ATTR_CACHE void Pause() {
-#if HWY_ARCH_X86 && !defined(HWY_DISABLE_CACHE_CONTROL)
-  _mm_pause();
-#endif
-}
-
 }  // namespace hwy
-
-// TODO(janwas): remove when these functions are removed. (See above.)
-#pragma pop_macro("StoreFence")
-#pragma pop_macro("LoadFence")
 
 #endif  // HIGHWAY_HWY_CACHE_CONTROL_H_

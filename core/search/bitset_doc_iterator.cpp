@@ -26,22 +26,25 @@
 
 namespace iresearch {
 
-bitset_doc_iterator::bitset_doc_iterator(const word_t* begin,
-                                         const word_t* end) noexcept
-  : cost_(math::popcount(begin, end)),
-    doc_(cost_.estimate() ? doc_limits::invalid() : doc_limits::eof()),
+bitset_doc_iterator::bitset_doc_iterator(
+    const word_t* begin,
+    const word_t* end) noexcept
+  : cost_(math::math_traits<word_t>::pop(begin, end)),
+    doc_(cost_.estimate()
+      ? doc_limits::invalid()
+      : doc_limits::eof()),
     begin_(begin),
     end_(end) {
   reset();
 }
 
-attribute* bitset_doc_iterator::get_mutable(
-  irs::type_info::type_id id) noexcept {
+attribute* bitset_doc_iterator::get_mutable(irs::type_info::type_id id) noexcept {
   if (type<document>::id() == id) {
     return &doc_;
   }
 
-  return type<cost>::id() == id ? &cost_ : nullptr;
+  return type<cost>::id() == id
+    ? &cost_ : nullptr;
 }
 
 bool bitset_doc_iterator::next() noexcept {
@@ -64,7 +67,7 @@ bool bitset_doc_iterator::next() noexcept {
   }
 
   // FIXME remove conversion
-  const doc_id_t delta = doc_id_t(std::countr_zero(word_));
+  const doc_id_t delta = doc_id_t(math::math_traits<word_t>::ctz(word_));
   assert(delta < bits_required<word_t>());
 
   word_ = (word_ >> delta) >> 1;
@@ -105,4 +108,4 @@ doc_id_t bitset_doc_iterator::seek(doc_id_t target) noexcept {
   return doc_.value;
 }
 
-}  // namespace iresearch
+} // ROOT

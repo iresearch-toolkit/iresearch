@@ -27,7 +27,9 @@
 
 #include "store/directory.hpp"
 
-irs::directory::ptr create_directory(std::string_view type,
-                                     std::string_view path);
+irs::directory::ptr create_directory(
+  const std::string& type,
+  const std::string& path
+);
 
-#endif  // IRESEARCH_UTILS_COMMON_H
+#endif // IRESEARCH_UTILS_COMMON_H

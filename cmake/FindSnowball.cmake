@@ -8,16 +8,16 @@
 
 if ("${SNOWBALL_ROOT}" STREQUAL "")
   set(SNOWBALL_ROOT "$ENV{SNOWBALL_ROOT}")
-  if (NOT "${SNOWBALL_ROOT}" STREQUAL "")
+  if (NOT "${SNOWBALL_ROOT}" STREQUAL "") 
     string(REPLACE "\"" "" SNOWBALL_ROOT ${SNOWBALL_ROOT})
-  endif ()
-endif ()
+  endif()
+endif()
 
 if (NOT "${SNOWBALL_ROOT}" STREQUAL "")
   set(Snowball_SEARCH_HEADER_PATHS
     ${SNOWBALL_ROOT}/include
     ${SNOWBALL_ROOT}/include/libstemmer
-    )
+  )
 
   set(Snowball_SEARCH_LIB_PATHS
     ${SNOWBALL_ROOT}/lib
@@ -26,7 +26,7 @@ if (NOT "${SNOWBALL_ROOT}" STREQUAL "")
     ${SNOWBALL_ROOT}/build/Release
     ${SNOWBALL_ROOT}/Debug
     ${SNOWBALL_ROOT}/build/Debug
-    )
+  )
 
   set(Snowball_SEARCH_SRC_PATHS
     ${SNOWBALL_ROOT}
@@ -35,40 +35,40 @@ if (NOT "${SNOWBALL_ROOT}" STREQUAL "")
     ${SNOWBALL_ROOT}/src
     ${SNOWBALL_ROOT}/src/libstemmer
     ${SNOWBALL_ROOT}/src/libstemmer/libstemmer
-    )
+  )
 elseif (NOT MSVC)
   set(Snowball_SEARCH_HEADER_PATHS
-    "/usr/include"
-    "/usr/include/libstemmer"
-    "/usr/include/x86_64-linux-gnu"
-    "/usr/include/x86_64-linux-gnu/libstemmer"
-    )
+      "/usr/include"
+      "/usr/include/libstemmer"
+      "/usr/include/x86_64-linux-gnu"
+      "/usr/include/x86_64-linux-gnu/libstemmer"
+  )
 
   set(Snowball_SEARCH_LIB_PATHS
-    "/lib"
-    "/lib/x86_64-linux-gnu"
-    "/usr/lib"
-    "/usr/lib/x86_64-linux-gnu"
-    )
+      "/lib"
+      "/lib/x86_64-linux-gnu"
+      "/usr/lib"
+      "/usr/lib/x86_64-linux-gnu"
+  )
 
   set(Snowball_SEARCH_SRC_PATHS
-    "/usr/src"
-    "/usr/src/libstemmer"
-    "/usr/src/libstemmer/libstemmer"
-    )
-endif ()
+      "/usr/src"
+      "/usr/src/libstemmer"
+      "/usr/src/libstemmer/libstemmer"
+  )
+endif()
 
 find_path(Snowball_INCLUDE_DIR
   libstemmer.h
   PATHS ${Snowball_SEARCH_HEADER_PATHS}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
-  )
+)
 
 find_path(Snowball_SRC_DIR_LIBSTEMMER
   libstemmer_c.in
   PATHS ${Snowball_SEARCH_SRC_PATHS}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
-  )
+)
 
 # found the cmake enabled source directory
 if (Snowball_INCLUDE_DIR AND Snowball_SRC_DIR_LIBSTEMMER)# AND Snowball_SRC_DIR_CMAKE)
@@ -84,7 +84,7 @@ if (Snowball_INCLUDE_DIR AND Snowball_SRC_DIR_LIBSTEMMER)# AND Snowball_SRC_DIR_
   set(Snowball_STATIC_LIB stemmer-static)
 
   return()
-endif ()
+endif()
 
 include(Utils)
 
@@ -92,13 +92,13 @@ include(Utils)
 if (MSVC)
   set(Snowball_LIBRARY_PREFIX "")
   set(Snowball_LIBRARY_SUFFIX ".lib")
-elseif (APPLE)
+elseif(APPLE)
   set(Snowball_LIBRARY_PREFIX "lib")
   set(Snowball_LIBRARY_SUFFIX ".dylib")
-else ()
+else()
   set(Snowball_LIBRARY_PREFIX "lib")
   set(Snowball_LIBRARY_SUFFIX ".so")
-endif ()
+endif()
 set_find_library_options("${Snowball_LIBRARY_PREFIX}" "${Snowball_LIBRARY_SUFFIX}")
 
 # find library
@@ -106,7 +106,7 @@ find_library(Snowball_SHARED_LIB
   NAMES stemmer
   PATHS ${Snowball_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
-  )
+)
 
 # restore initial options
 restore_find_library_options()
@@ -116,10 +116,10 @@ restore_find_library_options()
 if (MSVC)
   set(Snowball_LIBRARY_PREFIX "")
   set(Snowball_LIBRARY_SUFFIX ".lib")
-else ()
+else()
   set(Snowball_LIBRARY_PREFIX "lib")
   set(Snowball_LIBRARY_SUFFIX ".a")
-endif ()
+endif()
 set_find_library_options("${Snowball_LIBRARY_PREFIX}" "${Snowball_LIBRARY_SUFFIX}")
 
 # find library
@@ -127,7 +127,7 @@ find_library(Snowball_STATIC_LIB
   NAMES stemmer
   PATHS ${Snowball_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
-  )
+)
 
 # restore initial options
 restore_find_library_options()
@@ -140,22 +140,22 @@ if (Snowball_INCLUDE_DIR AND Snowball_SHARED_LIB AND Snowball_STATIC_LIB)
     CACHE PATH
     "Directory containing Snowball libraries"
     FORCE
-    )
+  )
 
   add_library(stemmer-shared IMPORTED SHARED)
   set_target_properties(stemmer-shared PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${Snowball_INCLUDE_DIR}"
     IMPORTED_LOCATION "${Snowball_SHARED_LIB}"
-    )
+  )
 
   add_library(stemmer-static IMPORTED STATIC)
   set_target_properties(stemmer-static PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${Snowball_INCLUDE_DIR}"
     IMPORTED_LOCATION "${Snowball_STATIC_LIB}"
-    )
+  )
 else ()
   set(Snowball_FOUND FALSE)
-endif ()
+endif()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Snowball
@@ -163,7 +163,7 @@ find_package_handle_standard_args(Snowball
   Snowball_INCLUDE_DIR
   Snowball_SHARED_LIB
   Snowball_STATIC_LIB
-  )
+)
 message("Snowball_INCLUDE_DIR: " ${Snowball_INCLUDE_DIR})
 message("Snowball_LIBRARY_DIR: " ${Snowball_LIBRARY_DIR})
 message("Snowball_SHARED_LIB: " ${Snowball_SHARED_LIB})

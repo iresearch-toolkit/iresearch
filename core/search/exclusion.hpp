@@ -43,7 +43,9 @@ class exclusion final : public doc_iterator {
     assert(excl_doc_);
   }
 
-  virtual doc_id_t value() const override { return incl_doc_->value; }
+  virtual doc_id_t value() const override {
+    return incl_doc_->value;
+  }
 
   virtual bool next() override {
     if (!incl_->next()) {
@@ -79,7 +81,7 @@ class exclusion final : public doc_iterator {
       excl = excl_->seek(target);
     }
 
-    for (; excl == target;) {
+    for (; excl == target; ) {
       if (!incl_->next()) {
         return incl_doc_->value;
       }
@@ -98,8 +100,8 @@ class exclusion final : public doc_iterator {
   doc_iterator::ptr excl_;
   const document* incl_doc_;
   const document* excl_doc_;
-};  // exclusion
+}; // exclusion
 
-}  // namespace iresearch
+} // ROOT
 
-#endif  // IRESEARCH_EXCLUSION_H
+#endif // IRESEARCH_EXCLUSION_H

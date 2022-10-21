@@ -23,12 +23,11 @@
 #ifndef IRESEARCH_STATES_CACHE_H
 #define IRESEARCH_STATES_CACHE_H
 
+#include <vector>
 #include <absl/container/flat_hash_map.h>
 
-#include <vector>
-
-#include "index/index_reader.hpp"
 #include "shared.hpp"
+#include "index/index_reader.hpp"
 
 namespace iresearch {
 
@@ -50,16 +49,13 @@ class states_cache : private util::noncopyable {
   states_cache(states_cache&&) = default;
   states_cache& operator=(states_cache&&) = default;
 
-  state_type& insert(const sub_reader& rdr) { return states_[&rdr]; }
+  state_type& insert(const sub_reader& rdr) {
+    return states_[&rdr];
+  }
 
   const state_type* find(const sub_reader& rdr) const noexcept {
     auto it = states_.find(&rdr);
     return states_.end() == it ? nullptr : &(it->second);
-  }
-
-  template<typename Pred>
-  void erase_if(Pred pred) {
-    absl::erase_if(states_, [&pred](const auto& v) { return pred(v.second); });
   }
 
   bool empty() const noexcept { return states_.empty(); }
@@ -69,8 +65,8 @@ class states_cache : private util::noncopyable {
 
   // FIXME use vector instead?
   states_map states_;
-};  // states_cache
+}; // states_cache
 
-}  // namespace iresearch
+}
 
-#endif  // IRESEARCH_STATES_CACHE_H
+#endif // IRESEARCH_STATES_CACHE_H

@@ -29,7 +29,7 @@
 
 namespace iresearch {
 
-class result {
+class IRESEARCH_API result {
  public:
   enum Code : byte_type {
     OK = 0,
@@ -44,9 +44,7 @@ class result {
   };
 
   template<Code code>
-  static result make() {
-    return result(code);
-  }
+  static result make() { return result(code); }
 
   template<Code code>
   static result make(irs::string_ref const& msg,
@@ -54,14 +52,16 @@ class result {
     return result(code, msg, msg2);
   }
 
-  result() noexcept : code_(OK) {}
+  result() noexcept : code_(OK) { }
 
   result(const result& rhs)
     : code_(rhs.code_),
-      state_(rhs.state_ ? copyState(rhs.state_.get()) : nullptr) {}
+      state_(rhs.state_ ? copyState(rhs.state_.get()) : nullptr) {
+  }
 
   result(result&& rhs) noexcept
-    : code_(rhs.code_), state_(std::move(rhs.state_)) {
+    : code_(rhs.code_),
+      state_(std::move(rhs.state_)) {
     rhs.code_ = OK;
   }
 
@@ -87,19 +87,24 @@ class result {
   Code code() const noexcept { return code_; }
   const char* c_str() const noexcept { return state_.get(); }
 
-  bool operator==(const result& rhs) noexcept { return code_ == rhs.code_; }
-  bool operator!=(const result& rhs) noexcept { return !(*this == rhs); }
+  bool operator==(const result& rhs) noexcept {
+    return code_ == rhs.code_;
+  }
+  bool operator!=(const result& rhs) noexcept {
+    return !(*this == rhs);
+  }
 
  private:
   std::unique_ptr<char[]> copyState(const char* rhs);
 
-  result(Code code, string_ref msg, string_ref msg2);
+  result(Code code, const string_ref& msg, const string_ref& msg2);
   explicit result(Code code);
 
   Code code_;
   std::unique_ptr<char[]> state_;
-};  // result
+}; // result
 
-}  // namespace iresearch
+}
 
-#endif  // IRESEARCH_STATUS_H
+#endif // IRESEARCH_STATUS_H
+

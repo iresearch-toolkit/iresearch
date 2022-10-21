@@ -40,8 +40,8 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
 
   // check that there are no files in a directory
   std::vector<std::string> files;
-  auto list_files = [&files](std::string_view name) {
-    files.emplace_back(name);
+  auto list_files = [&files] (std::string& name) {
+    files.emplace_back(std::move(name));
     return true;
   };
   ASSERT_TRUE(dir.visit(list_files));
@@ -99,8 +99,8 @@ TEST(index_meta_tests, memory_directory_read_write_11) {
 
   // check that there are no files in a directory
   std::vector<std::string> files;
-  auto list_files = [&files](std::string_view name) {
-    files.emplace_back(name);
+  auto list_files = [&files] (std::string& name) {
+    files.emplace_back(std::move(name));
     return true;
   };
   ASSERT_TRUE(dir.visit(list_files));
@@ -152,8 +152,7 @@ TEST(index_meta_tests, ctor) {
   EXPECT_EQ(0, meta.counter());
   EXPECT_EQ(0, meta.size());
   EXPECT_TRUE(meta.payload().null());
-  EXPECT_EQ(irs::type_limits<type_t::index_gen_t>::invalid(),
-            meta.generation());
+  EXPECT_EQ(irs::type_limits<type_t::index_gen_t>::invalid(), meta.generation());
 }
 
 TEST(index_meta_tests, last_generation) {
@@ -175,7 +174,7 @@ TEST(index_meta_tests, last_generation) {
   names.emplace_back("segments_965");
   names.emplace_back("segments_164");
   names.emplace_back("segments_117");
-
+  
   // get max value
   uint64_t max = 0;
   for (const auto& s : names) {
@@ -184,7 +183,7 @@ TEST(index_meta_tests, last_generation) {
       max = num;
     }
   }
-
+  
   // populate directory
   irs::memory_directory dir;
   for (auto& name : names) {

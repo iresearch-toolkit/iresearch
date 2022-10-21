@@ -1,32 +1,36 @@
+set (IResearchTests_TARGET_NAME 
+  "iresearch-tests"
+  CACHE INTERNAL
+  ""
+)
+
 find_package(GTestLocal
   REQUIRED
-  )
+)
 
 SOURCE_GROUP("analysis" ./analysis/*)
 SOURCE_GROUP("store" ./store/*)
 SOURCE_GROUP("index" ./index/*)
 SOURCE_GROUP("formats" ./formats/*)
 SOURCE_GROUP("search" ./search/*)
+SOURCE_GROUP("iql" ./iql/*)
 SOURCE_GROUP("utils" ./utils/*)
 
 set(IReSearch_generated_INCLUDE_DIR
   ${CMAKE_CURRENT_BINARY_DIR}
-  )
+)
 
 set(IResearchTests_INCLUDE_DIR
   "${PROJECT_SOURCE_DIR}/tests"
   CACHE INTERNAL
   ""
-  )
+)
 
 set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
   ./analysis/delimited_token_stream_tests.cpp
   ./analysis/collation_token_stream_test.cpp
-  ./analysis/classification_stream_test.cpp
-  ./analysis/nearest_neighbors_stream_test.cpp
   ./analysis/ngram_token_stream_test.cpp
-  ./analysis/minhash_token_stream_test.cpp
   ./analysis/pipeline_stream_tests.cpp
   ./analysis/segmentation_stream_tests.cpp
   ./analysis/text_token_normalizing_stream_tests.cpp
@@ -60,7 +64,6 @@ set(IReSearch_tests_sources
   ./index/segment_writer_tests.cpp
   ./index/consolidation_policy_tests.cpp
   ./search/empty_filter_tests.cpp
-  ./search/nested_filter_test.cpp
   ./search/granular_range_filter_tests.cpp
   ./search/wildcard_filter_test.cpp
   ./search/levenshtein_filter_test.cpp
@@ -84,7 +87,8 @@ set(IReSearch_tests_sources
   ./search/same_position_filter_tests.cpp
   ./search/ngram_similarity_filter_tests.cpp
   ./search/top_terms_collector_test.cpp
-  ./search/proxy_filter_test.cpp
+  ./iql/parser_common_test.cpp
+  ./iql/query_builder_test.cpp
   ./utils/async_utils_tests.cpp
   ./utils/automaton_test.cpp
   ./utils/bitvector_tests.cpp
@@ -105,7 +109,6 @@ set(IReSearch_tests_sources
   ./utils/wildcard_utils_test.cpp
   ./utils/ref_counter_tests.cpp
   ./utils/memory_tests.cpp
-  ./utils/minhash_utils_test.cpp
   ./utils/string_tests.cpp
   ./utils/simd_utils_test.cpp
   ./utils/bitset_tests.cpp
@@ -123,7 +126,9 @@ set(IReSearch_tests_sources
   ./utils/ngram_match_utils_tests.cpp
   ./tests_param.cpp
   ./tests_main.cpp
-  )
+)
+
+
 
 set(IReSearch_tests_headers
   ./index/assert_format.hpp
@@ -133,22 +138,31 @@ set(IReSearch_tests_headers
   ./formats/formats_test_case_base.hpp
   ./tests_config.hpp
   ${IReSearch_generated_INCLUDE_DIR}/tests_config.hpp # auto generated
-  )
+)
 
 if (MSVC)
   # disable "checked iterators" feature
-  add_definitions(-D_SCL_SECURE_NO_WARNINGS)
+  add_definitions(-D_SCL_SECURE_NO_WARNINGS) 
 
   # when compiling or linking against GTEST on MSVC2017 the following
   # definition is required: /D _SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING
   add_definitions(-D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING)
-endif ()
+endif()
 
-add_custom_target(iresearch-tests
-  DEPENDS iresearch-tests-static
-  )
+add_custom_target(${IResearchTests_TARGET_NAME}
+  DEPENDS ${IResearchTests_TARGET_NAME}-shared ${IResearchTests_TARGET_NAME}-static
+)
 
-add_executable(iresearch-tests-static
+add_executable(${IResearchTests_TARGET_NAME}-shared
+  EXCLUDE_FROM_ALL ${IReSearch_sources}
+  ${IReSearch_tests_sources} ${IReSearch_tests_headers}
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst>
+)
+
+set_ipo(${IResearchTests_TARGET_NAME}-shared)
+add_sanitizers(${IResearchTests_TARGET_NAME}-shared)
+
+add_executable(${IResearchTests_TARGET_NAME}-static
   EXCLUDE_FROM_ALL ${IReSearch_sources}
   ${IReSearch_tests_sources} ${IReSearch_tests_headers}
   ./analysis/text_analyzer_tests.cpp
@@ -157,69 +171,197 @@ add_executable(iresearch-tests-static
   ./formats/formats_12_tests.cpp
   ./formats/formats_13_tests.cpp
   ./formats/formats_14_tests.cpp
-  ./formats/formats_15_tests.cpp
-  )
+  ./iql/parser_test.cpp
+)
 
-set_ipo(iresearch-tests-static)
-add_sanitizers(iresearch-tests-static)
+set_ipo(${IResearchTests_TARGET_NAME}-static)
+add_sanitizers(${IResearchTests_TARGET_NAME}-static)
 
-add_dependencies(iresearch-tests-static
-  iresearch-analyzer-delimiter-static
-  iresearch-analyzer-ngram-static
-  iresearch-analyzer-text-static
-  iresearch-analyzer-norm-static
-  iresearch-analyzer-stem-static
-  iresearch-analyzer-stopwords-static
-  iresearch-analyzer-pipeline-static
-  iresearch-analyzer-segmentation-static
-  iresearch-analyzer-minhash-static
-  iresearch-format-1_0-static
-  iresearch-scorer-tfidf-static
-  iresearch-scorer-bm25-static
-  )
 
-target_include_directories(iresearch-tests-static
+add_dependencies(${IResearchTests_TARGET_NAME}-shared
+  ${IResearch_TARGET_NAME}-analyzer-delimiter-shared
+  ${IResearch_TARGET_NAME}-analyzer-ngram-shared
+  ${IResearch_TARGET_NAME}-analyzer-text-shared
+  ${IResearch_TARGET_NAME}-analyzer-norm-shared
+  ${IResearch_TARGET_NAME}-analyzer-stem-shared
+  ${IResearch_TARGET_NAME}-analyzer-stopwords-shared
+  ${IResearch_TARGET_NAME}-analyzer-pipeline-shared
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-shared
+  ${IResearch_TARGET_NAME}-format-1_0-shared
+  ${IResearch_TARGET_NAME}-scorer-tfidf-shared
+  ${IResearch_TARGET_NAME}-scorer-bm25-shared
+)
+
+add_dependencies(${IResearchTests_TARGET_NAME}-static
+  ${IResearch_TARGET_NAME}-analyzer-delimiter-static
+  ${IResearch_TARGET_NAME}-analyzer-ngram-static
+  ${IResearch_TARGET_NAME}-analyzer-text-static
+  ${IResearch_TARGET_NAME}-analyzer-norm-static
+  ${IResearch_TARGET_NAME}-analyzer-stem-static
+  ${IResearch_TARGET_NAME}-analyzer-stopwords-static
+  ${IResearch_TARGET_NAME}-analyzer-pipeline-static
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  ${IResearch_TARGET_NAME}-format-1_0-static
+  ${IResearch_TARGET_NAME}-scorer-tfidf-static
+  ${IResearch_TARGET_NAME}-scorer-bm25-static
+)
+
+target_include_directories(${IResearchTests_TARGET_NAME}-shared
   PRIVATE ${PROJECT_BINARY_DIR}/core
+)
+
+target_include_directories(${IResearchTests_TARGET_NAME}-static
+  PRIVATE ${PROJECT_BINARY_DIR}/core
+)
+
+if(MSVC)
+  target_compile_options(${IResearchTests_TARGET_NAME}-shared
+    PRIVATE "/bigobj"
   )
 
-if (MSVC)
-  target_compile_options(iresearch-tests-static
+  target_compile_options(${IResearchTests_TARGET_NAME}-static
     PRIVATE "/bigobj"
-    )
-endif ()
+  )
+endif()
 
-set_target_properties(iresearch-tests-static
+set_target_properties(${IResearchTests_TARGET_NAME}-shared
+  PROPERTIES
+  OUTPUT_NAME iresearch-tests
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING;IRESEARCH_DLL;BOOST_ALL_DYN_LINK"
+)
+
+set_target_properties(${IResearchTests_TARGET_NAME}-static
   PROPERTIES
   OUTPUT_NAME iresearch-tests-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING"
+)
 
-target_link_libraries(iresearch-tests-static
+target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
-  iresearch-static
+  ${IResearch_TARGET_NAME}-shared
+  ${IResearch_TARGET_NAME}-analyzer-delimiter-shared
+  ${IResearch_TARGET_NAME}-analyzer-ngram-shared
+  ${IResearch_TARGET_NAME}-analyzer-text-shared
+  ${IResearch_TARGET_NAME}-analyzer-norm-shared
+  ${IResearch_TARGET_NAME}-analyzer-stem-shared
+  ${IResearch_TARGET_NAME}-analyzer-stopwords-shared
+  ${IResearch_TARGET_NAME}-analyzer-pipeline-shared
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-shared
+  ${IResearch_TARGET_NAME}-format-1_0-shared
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
-  )
+)
+
+target_link_libraries(${IResearchTests_TARGET_NAME}-static
+  ${GCOV_LIBRARY}
+  ${IResearch_TARGET_NAME}-static-allinone
+  ${GTEST_STATIC_LIBS}
+  ${PTHREAD_LIBRARY}
+)
 
 # setup CRT
-if (MSVC)
-  target_compile_options(iresearch-tests-static
+if(MSVC)
+  target_compile_options(${IResearchTests_TARGET_NAME}-shared
     PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
-    )
-endif ()
+  )
 
-include_directories(iresearch-tests-static
+  target_compile_options(${IResearchTests_TARGET_NAME}-static
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
+  )
+endif()
+
+include_directories(${IResearchTests_TARGET_NAME}-shared
+  ${IResearchTests_INCLUDE_DIR}
+  ${IReSearch_generated_INCLUDE_DIR}
+  ${IResearch_INCLUDE_DIR}
+  ${ICU_INCLUDE_DIR}
+  ${GTEST_INCLUDE_DIR}
+  ${Boost_INCLUDE_DIRS}
+  ${FROZEN_INCLUDE_DIR}
+  $<TARGET_PROPERTY:absl-static,INTERFACE_INCLUDE_DIRECTORIES>
+  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
+)
+
+include_directories(${IResearchTests_TARGET_NAME}-static
   ${EXTERNAL_INCLUDE_DIRS}
   ${IResearchTests_INCLUDE_DIR}
   ${IReSearch_generated_INCLUDE_DIR}
   ${IResearch_INCLUDE_DIR}
   ${ICU_INCLUDE_DIR}
-  ${Fasttext_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
   ${FROZEN_INCLUDE_DIR}
-  $<TARGET_PROPERTY:iresearch-cmdline,INTERFACE_INCLUDE_DIRECTORIES>
-  $<TARGET_PROPERTY:iresearch-rapidjson,INTERFACE_INCLUDE_DIRECTORIES>
-  $<TARGET_PROPERTY:iresearch-ofst,INTERFACE_INCLUDE_DIRECTORIES>
-  $<TARGET_PROPERTY:iresearch-utfcpp,INTERFACE_INCLUDE_DIRECTORIES>
+  $<TARGET_PROPERTY:absl-static,INTERFACE_INCLUDE_DIRECTORIES>
+  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-cmdline,INTERFACE_INCLUDE_DIRECTORIES>
+  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-rapidjson,INTERFACE_INCLUDE_DIRECTORIES>
+  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
+  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-utfcpp,INTERFACE_INCLUDE_DIRECTORIES>
+)
+
+################################################################################
+### @brief copy Boost shared dependencies
+################################################################################
+foreach(ELEMENT ${Boost_SHARED_sharedRT_LIB_RESOURCES})
+  if (APPLE)
+    set(CP_OPTS "-f") # MacOS does not support hard-linking
+  else()
+    set(CP_OPTS "-lf")
+  endif()
+
+  add_custom_command(
+    TARGET ${IResearchTests_TARGET_NAME}-shared POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>"
+    COMMAND cp ${CP_OPTS} ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
   )
+endforeach()
+
+################################################################################
+### @brief copy ICU shared dependencies
+################################################################################
+foreach(ELEMENT ${ICU_SHARED_LIB_RESOURCES})
+  if (APPLE)
+    set(CP_OPTS "-f") # MacOS does not support hard-linking
+  else()
+    set(CP_OPTS "-lf")
+  endif()
+
+  add_custom_command(
+    TARGET ${IResearchTests_TARGET_NAME}-shared POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>"
+    COMMAND cp ${CP_OPTS} ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
+  )
+endforeach()
+
+################################################################################
+### @brief copy BFD shared dependencies
+################################################################################
+foreach(ELEMENT ${BFD_SHARED_LIB_RESOURCES})
+  if (APPLE)
+    set(CP_OPTS "-f") # MacOS does not support hard-linking
+  else()
+    set(CP_OPTS "-lf")
+  endif()
+
+  add_custom_command(
+    TARGET ${IResearchTests_TARGET_NAME}-shared POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>"
+    COMMAND cp ${CP_OPTS} ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
+  )
+endforeach()
+
+################################################################################
+### @brief copy Unwind shared dependencies
+################################################################################
+foreach(ELEMENT ${Unwind_SHARED_LIB_RESOURCES})
+  if (APPLE)
+    set(CP_OPTS "-f") # MacOS does not support hard-linking
+  else()
+    set(CP_OPTS "-lf")
+  endif()
+
+  add_custom_command(
+    TARGET ${IResearchTests_TARGET_NAME}-shared POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>"
+    COMMAND cp ${CP_OPTS} ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
+  )
+endforeach()

@@ -35,10 +35,10 @@ struct noncopyable {
   noncopyable& operator=(noncopyable&&) = default;
 
   noncopyable(const noncopyable&) = delete;
-  noncopyable& operator=(const noncopyable&) = delete;
+  noncopyable& operator= (const noncopyable&) = delete;
 };
 
-}  // namespace util
-}  // namespace iresearch
+}
+}
 
 #endif

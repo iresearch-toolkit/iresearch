@@ -31,39 +31,48 @@ using namespace irs;
 
 class column_existence_query : public irs::filter::prepared {
  public:
-  column_existence_query(std::string_view field, bstring&& stats, score_t boost)
-    : filter::prepared(boost), field_{field}, stats_(std::move(stats)) {}
+  explicit column_existence_query(
+      const std::string& field,
+      bstring&& stats,
+      boost_t boost)
+    : filter::prepared(boost),
+      field_(field),
+      stats_(std::move(stats)) {
+  }
 
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
-    const auto& segment = ctx.segment;
+  virtual doc_iterator::ptr execute(
+      const sub_reader& segment,
+      const order::prepared& ord,
+      const attribute_provider* /*ctx*/) const override {
     const auto* column = segment.column(field_);
 
     if (!column) {
       return doc_iterator::empty();
     }
 
-    return iterator(segment, *column, ctx.scorers);
-  }
-
-  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
-    // No terms to visit
+    return iterator(segment, *column, ord);
   }
 
  protected:
-  doc_iterator::ptr iterator(const sub_reader& segment,
-                             const column_reader& column,
-                             const Order& ord) const {
-    auto it = column.iterator(ColumnHint::kMask);
+  doc_iterator::ptr iterator(
+      const sub_reader& segment,
+      const column_reader& column,
+      const order::prepared& ord) const {
+    auto it = column.iterator(false);
 
     if (IRS_UNLIKELY(!it)) {
       return doc_iterator::empty();
     }
 
     if (!ord.empty()) {
-      if (auto* score = irs::get_mutable<irs::score>(it.get()); score) {
-        *score =
-          CompileScore(ord.buckets(), segment, empty_term_reader(column.size()),
-                       stats_.c_str(), *it, boost());
+      auto* score = irs::get_mutable<irs::score>(it.get());
+
+      if (score) {
+        order::prepared::scorers scorers(
+          ord, segment, empty_term_reader(column.size()),
+          stats_.c_str(), score->realloc(ord), *it, boost());
+
+        irs::reset(*score, std::move(scorers));
       }
     }
 
@@ -72,24 +81,24 @@ class column_existence_query : public irs::filter::prepared {
 
   std::string field_;
   bstring stats_;
-};
+}; // column_existence_query
 
 class column_prefix_existence_query final : public column_existence_query {
  public:
-  column_prefix_existence_query(std::string_view prefix, bstring&& stats,
-                                const ColumnAcceptor& acceptor, score_t boost)
-    : column_existence_query{prefix, std::move(stats), boost},
-      acceptor_{acceptor} {
-    assert(acceptor_);
+  explicit column_prefix_existence_query(
+      const std::string& prefix,
+      bstring&& stats,
+      boost_t boost)
+    : column_existence_query(prefix, std::move(stats), boost) {
   }
 
-  irs::doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
-    using adapter_t = irs::score_iterator_adapter<irs::doc_iterator::ptr>;
+  virtual irs::doc_iterator::ptr execute(
+      const irs::sub_reader& segment,
+      const irs::order::prepared& ord,
+      const irs::attribute_provider* /*ctx*/) const override {
+    using scored_disjunction_t = irs::scored_disjunction_iterator<irs::doc_iterator::ptr>;
+    using disjunction_t = irs::disjunction_iterator<irs::doc_iterator::ptr>;
 
-    assert(acceptor_);
-
-    auto& segment = ctx.segment;
-    auto& ord = ctx.scorers;
     const string_ref prefix = field_;
 
     auto it = segment.columns();
@@ -99,57 +108,58 @@ class column_prefix_existence_query final : public column_existence_query {
       return irs::doc_iterator::empty();
     }
 
-    const auto* column = &it->value();
+    disjunction_t::doc_iterators_t itrs;
 
-    std::vector<adapter_t> itrs;
-    for (; irs::starts_with(column->name(), prefix); column = &it->value()) {
-      if (acceptor_(column->name(), prefix)) {
-        itrs.emplace_back(iterator(segment, *column, ord));
+    while (irs::starts_with(it->value().name(), prefix)) {
+      const auto* column = segment.column(it->value().id());
+
+      if (!column) {
+        continue;
       }
+
+      itrs.emplace_back(iterator(segment, *column, ord));
 
       if (!it->next()) {
         break;
       }
     }
 
-    return ResoveMergeType(
-      sort::MergeType::kSum, ord.buckets().size(),
-      [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using disjunction_t =
-          irs::disjunction_iterator<irs::doc_iterator::ptr, A>;
+    if (ord.empty()) {
+      return irs::make_disjunction<disjunction_t>(std::move(itrs));
+    }
 
-        return irs::MakeDisjunction<disjunction_t>(std::move(itrs),
-                                                   std::move(aggregator));
-      });
+    return irs::make_disjunction<scored_disjunction_t>(std::move(itrs), ord);
   }
+}; // column_prefix_existence_query
 
- private:
-  ColumnAcceptor acceptor_;
-};
-
-}  // namespace
+}
 
 namespace iresearch {
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                by_column_existence implementation
+// -----------------------------------------------------------------------------
+
+DEFINE_FACTORY_DEFAULT(by_column_existence) // cppcheck-suppress unknownMacro
+
 filter::prepared::ptr by_column_existence::prepare(
-  const index_reader& reader, const Order& order, score_t filter_boost,
-  const attribute_provider* /*ctx*/) const {
+    const index_reader& reader,
+    const order::prepared& order,
+    boost_t filter_boost,
+    const attribute_provider* /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
   bstring stats(order.stats_size(), 0);
   auto* stats_buf = const_cast<byte_type*>(stats.data());
 
-  PrepareCollectors(order.buckets(), stats_buf, reader);
+  order.prepare_collectors(stats_buf, reader);
 
   filter_boost *= boost();
 
-  auto& acceptor = options().acceptor;
-
-  return acceptor ? memory::make_managed<column_prefix_existence_query>(
-                      field(), std::move(stats), acceptor, filter_boost)
-                  : memory::make_managed<column_existence_query>(
-                      field(), std::move(stats), filter_boost);
+  return options().prefix_match
+    ? memory::make_managed<column_prefix_existence_query>(field(), std::move(stats), filter_boost)
+    : memory::make_managed<column_existence_query>(field(), std::move(stats), filter_boost);
 }
 
-}  // namespace iresearch
+} // ROOT

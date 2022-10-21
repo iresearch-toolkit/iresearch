@@ -39,11 +39,20 @@ namespace iresearch {
 
 struct sub_reader;
 
+using column_warmup_callback_f =
+    std::function<bool(const segment_meta& meta, const field_reader& fields,
+                       const column_reader& column)>;
+
+struct index_reader_options {
+  column_warmup_callback_f warmup_columns;
+  memory_accounting_f pinned_memory_accounting;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct index_reader
 /// @brief generic interface for accessing an index
 ////////////////////////////////////////////////////////////////////////////////
-struct index_reader {
+struct IRESEARCH_API index_reader {
   class reader_iterator {
    public:
     using iterator_category = std::forward_iterator_tag;
@@ -58,7 +67,9 @@ struct index_reader {
       return (*reader_)[i_];
     }
 
-    pointer operator->() const { return &(**this); }
+    pointer operator->() const {
+      return &(**this);
+    }
 
     reader_iterator& operator++() noexcept {
       ++i_;
@@ -84,11 +95,12 @@ struct index_reader {
     friend struct index_reader;
 
     explicit reader_iterator(const index_reader& reader, size_t i = 0) noexcept
-      : reader_(&reader), i_(i) {}
+      : reader_(&reader), i_(i) {
+    }
 
     const index_reader* reader_;
     size_t i_;
-  };  // reader_iterator
+  }; // reader_iterator
 
   using ptr = std::shared_ptr<const index_reader>;
 
@@ -107,17 +119,21 @@ struct index_reader {
   virtual size_t size() const = 0;
 
   // first sub-segment
-  reader_iterator begin() const noexcept { return reader_iterator(*this, 0); }
+  reader_iterator begin() const noexcept {
+    return reader_iterator(*this, 0);
+  }
 
   // after the last sub-segment
-  reader_iterator end() const { return reader_iterator(*this, size()); }
-};  // index_reader
+  reader_iterator end() const {
+    return reader_iterator(*this, size());
+  }
+}; // index_reader
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct sub_reader
 /// @brief generic interface for accessing an index segment
 ////////////////////////////////////////////////////////////////////////////////
-struct sub_reader : index_reader {
+struct IRESEARCH_API sub_reader : index_reader {
   using ptr = std::shared_ptr<const sub_reader>;
 
   static const sub_reader& empty() noexcept;
@@ -147,7 +163,7 @@ struct sub_reader : index_reader {
   virtual const irs::column_reader* column(string_ref field) const = 0;
 
   virtual const irs::column_reader* sort() const = 0;
-};  // sub_reader
+}; // sub_reader
 
 template<typename Visitor, typename FilterVisitor>
 void visit(const index_reader& index, string_ref field,
@@ -161,6 +177,8 @@ void visit(const index_reader& index, string_ref field,
   }
 }
 
-}  // namespace iresearch
+}
+// sub_reader::value_visitor_f
+MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t)>;) // cppcheck-suppress unknownMacro 
 
 #endif

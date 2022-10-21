@@ -21,42 +21,56 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "filter.hpp"
-
 #include "utils/singleton.hpp"
 
 namespace {
 
-using namespace irs;
-
-// Represents a query returning empty result set
-struct empty_query final : public filter::prepared,
-                           public singleton<empty_query> {
+//////////////////////////////////////////////////////////////////////////////
+/// @class emtpy_query
+/// @brief represent a query returns empty result set 
+//////////////////////////////////////////////////////////////////////////////
+struct empty_query final
+    : public irs::filter::prepared,
+      public irs::singleton<empty_query> {
  public:
-  doc_iterator::ptr execute(const ExecutionContext&) const override {
+  virtual irs::doc_iterator::ptr execute(
+      const irs::sub_reader&,
+      const irs::order::prepared&,
+      const irs::attribute_provider*) const override {
     return irs::doc_iterator::empty();
   }
+}; // empty_query
 
-  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
-    // No terms to visit
-  }
-};
-
-}  // namespace
+} // LOCAL
 
 namespace iresearch {
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                            filter
+// -----------------------------------------------------------------------------
+
 filter::filter(const type_info& type) noexcept
-  : boost_(irs::kNoBoost), type_(type.id()) {}
+  : boost_(irs::no_boost()), type_(type.id()) {
+}
 
 filter::prepared::ptr filter::prepared::empty() {
   return memory::to_managed<filter::prepared, false>(&empty_query::instance());
 }
 
-empty::empty() : filter(irs::type<empty>::get()) {}
+// -----------------------------------------------------------------------------
+// --SECTION--                                                             empty
+// -----------------------------------------------------------------------------
 
-filter::prepared::ptr empty::prepare(const index_reader&, const Order&, score_t,
-                                     const attribute_provider*) const {
+DEFINE_FACTORY_DEFAULT(irs::empty) // cppcheck-suppress unknownMacro
+
+empty::empty() : filter(irs::type<empty>::get()) { }
+
+filter::prepared::ptr empty::prepare(
+    const index_reader&,
+    const order::prepared&,
+    boost_t,
+    const attribute_provider*) const {
   return memory::to_managed<filter::prepared, false>(&empty_query::instance());
 }
 
-}  // namespace iresearch
+} // ROOT

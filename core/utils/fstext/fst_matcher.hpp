@@ -34,9 +34,8 @@ namespace fst {
 // used to look-up explicit label matches, this class saves the user
 // from having to check for and discard the unwanted implicit matches
 // themselves.
-template<class MatcherImpl>
-class explicit_matcher final
-  : public MatcherBase<typename MatcherImpl::FST::Arc> {
+template <class MatcherImpl>
+class explicit_matcher final : public MatcherBase<typename MatcherImpl::FST::Arc> {
  public:
   typedef typename MatcherImpl::FST FST;
   typedef typename FST::Arc Arc;
@@ -48,23 +47,28 @@ class explicit_matcher final
   explicit explicit_matcher(Args&&... args)
     : matcher_(std::forward<Args>(args)...),
 #ifdef IRESEARCH_DEBUG
-      match_type_(matcher_.Type(true))  // test fst properties
+      match_type_(matcher_.Type(true)) // test fst properties
 #else
-      match_type_(matcher_.Type(false))  // read type without checks
+      match_type_(matcher_.Type(false)) // read type without checks
 #endif
-  {
-  }
+  { }
 
   explicit_matcher(const explicit_matcher& rhs, bool safe = false)
-    : matcher_(rhs.matcher_, safe), match_type_(rhs.match_type_) {}
+    : matcher_(rhs.matcher_, safe),
+      match_type_(rhs.match_type_) {
+  }
 
   explicit_matcher* Copy(bool safe = false) const override {
     return new explicit_matcher(*this, safe);
   }
 
-  MatchType Type(bool test) const override { return matcher_.Type(test); }
+  MatchType Type(bool test) const override {
+    return matcher_.Type(test);
+  }
 
-  void SetState(StateId s) override { matcher_.SetState(s); }
+  void SetState(StateId s) override {
+    matcher_.SetState(s);
+  }
 
   bool Find(Label match_label) override {
     matcher_.Find(match_label);
@@ -81,17 +85,25 @@ class explicit_matcher final
     CheckArc();
   }
 
-  Weight Final(StateId s) const override { return matcher_.Final(s); }
+  Weight Final(StateId s) const override {
+    return matcher_.Final(s);
+  }
 
-  ssize_t Priority(StateId s) override { return matcher_.Priority(s); }
+  ssize_t Priority(StateId s) override {
+    return  matcher_.Priority(s);
+  }
 
-  const FST& GetFst() const override { return matcher_.GetFst(); }
+  const FST& GetFst() const override {
+    return matcher_.GetFst();
+  }
 
   uint64 Properties(uint64 inprops) const override {
     return matcher_.Properties(inprops);
   }
 
-  uint32 Flags() const override { return matcher_.Flags(); }
+  uint32 Flags() const override {
+    return matcher_.Flags();
+  }
 
  private:
   // Checks current arc if available and explicit. If not available, stops. If
@@ -106,8 +118,8 @@ class explicit_matcher final
 
   MatcherImpl matcher_;
   MatchType match_type_;  // Type of match requested.
-};                        // explicit_matcher
+}; // explicit_matcher
 
-}  // namespace fst
+} // fst
 
 #endif  // IRESEARCH_FST_MATHCER_H

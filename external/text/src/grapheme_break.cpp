@@ -3582,9 +3582,9 @@ constexpr std::array<unsigned char, 63832> compressed = {{
 }};
 }
 
-absl::flat_hash_map<uint32_t, grapheme_property> make_grapheme_prop_map()
+iresearch_absl::flat_hash_map<uint32_t, grapheme_property> make_grapheme_prop_map()
 {
-absl::flat_hash_map<uint32_t, grapheme_property> retval;
+iresearch_absl::flat_hash_map<uint32_t, grapheme_property> retval;
 container::small_vector<unsigned char, 256> buf;
 std::copy(
     compressed.begin(),

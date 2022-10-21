@@ -1,41 +1,42 @@
 # set version components
-if (NOT IResearch_version_major)
-  set(IResearch_version_major "1")
-endif ()
+if (NOT IResearch_version_major) 
+  set(IResearch_version_major "1") 
+endif()
 if (NOT IResearch_version_minor)
-  set(IResearch_version_minor "3")
-endif ()
+  set(IResearch_version_minor "1")
+endif()
 if (NOT IResearch_version_revision)
   set(IResearch_version_revision "0")
-endif ()
+endif()
 if (NOT IResearch_version_patch)
   set(IResearch_version_patch "0")
-endif ()
+endif()
 
+set(SIMD_LIBRARY_SHARED "simdcomp-shared")
 set(SIMD_LIBRARY_STATIC "simdcomp-static")
-set(FASTTEXT_LIBRARY_STATIC "fasttext-static")
+set(ABSL_LIBRARY_STATIC "absl-static")
 
 # set libatomic library 
 # (not available on Windows and Mac)
 if (NOT MSVC AND NOT APPLE)
   set(ATOMIC_LIBRARY atomic)
-endif ()
+endif()
 
 # calculate version
-math(EXPR IResearch_int_version "(${IResearch_version_major} * 1000000) + (${IResearch_version_minor} * 10000) + (${IResearch_version_revision} * 100) + (${IResearch_version_patch} * 1)")
+math(EXPR IResearch_int_version "(${IResearch_version_major} * 1000000) + (${IResearch_version_minor} * 10000) + (${IResearch_version_revision} * 100) + (${IResearch_version_patch} * 1)" )
 set(IResearch_version "${IResearch_version_major}.${IResearch_version_minor}.${IResearch_version_revision}.${IResearch_version_patch}")
 
 # generate version_defines.hpp
 configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/utils/version_defines.template.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/utils/version_defines.template.hpp" 
   "${CMAKE_CURRENT_BINARY_DIR}/utils/version_defines.hpp"
 )
 
-set(IResearch_INCLUDE_DIR
-  "${PROJECT_SOURCE_DIR}/core"
+set(IResearch_INCLUDE_DIR 
+  "${PROJECT_SOURCE_DIR}/core" 
   CACHE INTERNAL
   ""
-  )
+)
 
 
 #for some reason TARGET_PROPERTY generator expression does not work for this target
@@ -50,30 +51,31 @@ if (MSVC)
   # set OS specific sources
   set(IResearch_core_os_specific_sources
     ./utils/mman_win32.cpp
-    )
+  )
 
   # set OS specific headers
   set(IResearch_core_os_specific_headers
     ./utils/mman_win32.hpp
-    )
-else ()
+  )
+else()
   add_definitions(-Wall)
 
   if (NOT APPLE)
     set(CMAKE_CXX_FLAGS_RELEASE "-s ${CMAKE_CXX_FLAGS_RELEASE}")
-  endif ()
+  endif()
 
   # set OS specific headers
   set(IResearch_core_os_specific_headers
     ./utils/mman_posix.hpp
-    )
-endif ()
+  )
+endif()
 
 source_group("analysis" ./analysis/*)
 source_group("document" ./document/*)
 source_group("error" ./error/*)
 source_group("formats" ./formats/*)
 source_group("index" ./index/*)
+source_group("iql" ./iql/*)
 source_group("search" ./search/*)
 source_group("store" ./store/*)
 source_group("utils" ./utils/*)
@@ -105,7 +107,10 @@ set(IResearch_core_sources
   ./index/segment_reader.cpp
   ./index/segment_writer.cpp
   ./index/sorted_column.cpp
-  ./search/all_docs_provider.cpp
+  ./iql/parser.cc
+  ./iql/parser_common.cpp
+  ./iql/parser_context.cpp
+  ./iql/query_builder.cpp
   ./search/all_filter.cpp
   ./search/all_iterator.cpp
   ./search/boost_sort.cpp
@@ -118,12 +123,10 @@ set(IResearch_core_sources
   ./search/bitset_doc_iterator.cpp
   ./search/filter.cpp
   ./search/term_filter.cpp
-  ./search/nested_filter.cpp
   ./search/terms_filter.cpp
   ./search/prefix_filter.cpp
   ./search/range_filter.cpp
   ./search/phrase_filter.cpp
-  ./search/phrase_query.cpp
   ./search/column_existence_filter.cpp
   ./search/same_position_filter.cpp
   ./search/wildcard_filter.cpp
@@ -132,11 +135,9 @@ set(IResearch_core_sources
   ./search/term_query.cpp
   ./search/boolean_filter.cpp
   ./search/ngram_similarity_filter.cpp
-  ./search/ngram_similarity_query.cpp
-  ./search/proxy_filter.cpp
-  ./store/data_input.cpp
-  ./store/data_output.cpp
-  ./store/directory.cpp
+  ./store/data_input.cpp 
+  ./store/data_output.cpp 
+  ./store/directory.cpp 
   ./store/directory_attributes.cpp
   ./store/directory_cleaner.cpp
   ./store/fs_directory.cpp
@@ -154,10 +155,11 @@ set(IResearch_core_sources
   ./utils/delta_compression.cpp
   ./utils/lz4compression.cpp
   ./utils/directory_utils.cpp
-  ./utils/file_utils.cpp
-  ./utils/mmap_utils.cpp
-  ./utils/math_utils.cpp
+  ./utils/file_utils.cpp 
+  ./utils/mmap_utils.cpp 
+  ./utils/hash_utils.cpp
   ./utils/index_utils.cpp
+  ./utils/math_utils.cpp 
   ./utils/levenshtein_utils.cpp
   ./utils/wildcard_utils.cpp
   ./utils/levenshtein_default_pdp.cpp
@@ -170,10 +172,11 @@ set(IResearch_core_sources
   ./utils/so_utils.cpp
   ./utils/process_utils.cpp
   ./utils/network_utils.cpp
+  ./utils/cpuinfo.cpp
   ./utils/numeric_utils.cpp
   ${IResearch_core_os_specific_sources}
   ${IResearch_core_optimized_sources}
-  )
+)
 
 set(IResearch_core_headers
   ./analysis/analyzer.hpp
@@ -195,6 +198,9 @@ set(IResearch_core_headers
   ./index/segment_reader.hpp
   ./index/segment_writer.hpp
   ./index/index_writer.hpp
+  ./iql/parser_common.hpp
+  ./iql/parser_context.hpp
+  ./iql/query_builder.hpp
   ./search/all_filter.hpp
   ./search/all_iterator.hpp
   ./search/boost_sort.hpp
@@ -204,7 +210,6 @@ set(IResearch_core_headers
   ./search/cost.hpp
   ./search/filter.hpp
   ./search/term_filter.hpp
-  ./search/nested_filter.hpp
   ./search/phrase_filter.hpp
   ./search/same_position_filter.hpp
   ./search/prefix_filter.hpp
@@ -218,7 +223,6 @@ set(IResearch_core_headers
   ./search/exclusion.hpp
   ./search/ngram_similarity_filter.hpp
   ./search/filter_visitor.hpp
-  ./search/proxy_filter.hpp
   ./store/data_input.hpp
   ./store/data_output.hpp
   ./store/directory.hpp
@@ -257,6 +261,7 @@ set(IResearch_core_headers
   ./utils/so_utils.hpp
   ./utils/process_utils.hpp
   ./utils/network_utils.hpp
+  ./utils/cpuinfo.hpp
   ./utils/numeric_utils.hpp
   ./utils/version_utils.hpp
   ./utils/bitset.hpp
@@ -264,43 +269,65 @@ set(IResearch_core_headers
   ./utils/type_id.hpp
   ./shared.hpp
   ./types.hpp
-  )
-
-if (uring_FOUND)
-  list(APPEND IResearch_core_sources ./store/async_directory.cpp)
-endif ()
+)
 
 # TODO: use FindLibDL and check linux distr version
 if (NOT MSVC)
   set(DL_LIBRARY dl)
-endif ()
+endif()
 
-include_directories(
+include_directories( 
   ${IResearch_INCLUDE_DIR}
 )
 
 set(IRESEARCH_EXTERNAL_INCLUDES
-  ${EXTERNAL_INCLUDE_DIRS}
-  ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
-  ${BFD_INCLUDE_DIR}
-  ${Lz4_INCLUDE_DIR}
-  ${Fasttext_INCLUDE_DIR}
-  ${Unwind_INCLUDE_DIR}
-  ${FROZEN_INCLUDE_DIR})
+    ${EXTERNAL_INCLUDE_DIRS}
+    $<TARGET_PROPERTY:${ABSL_LIBRARY_STATIC},INTERFACE_INCLUDE_DIRECTORIES>
+    ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
+    ${BFD_INCLUDE_DIR}
+    ${Lz4_INCLUDE_DIR}
+    ${Unwind_INCLUDE_DIR}
+    ${FROZEN_INCLUDE_DIR})
 
 if (SUPPRESS_EXTERNAL_WARNINGS)
-  include_directories(SYSTEM ${IRESEARCH_EXTERNAL_INCLUDES})
+  include_directories(SYSTEM  ${IRESEARCH_EXTERNAL_INCLUDES})
 else ()
   include_directories(${IRESEARCH_EXTERNAL_INCLUDES})
 endif ()
 
-add_library(iresearch-static
+add_library(${IResearch_TARGET_NAME}-shared
+  SHARED
+  ${IResearch_core_sources} ${IResearch_core_headers}
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst>
+)
+
+set_ipo(${IResearch_TARGET_NAME}-shared)
+
+add_library(${IResearch_TARGET_NAME}-static
   STATIC
   ${IResearch_core_sources} ${IResearch_core_headers}
-  )
+)
 
-set_ipo(iresearch-static)
-add_sanitizers(iresearch-static)
+set_ipo(${IResearch_TARGET_NAME}-static)
+
+add_sanitizers(${IResearch_TARGET_NAME}-shared)
+
+add_sanitizers(${IResearch_TARGET_NAME}-static)
+
+# generate IQL grammar
+# force dependency modification validation by comparing with local copy of the
+# source file to suppress file regeneration by scripts generated for MSVC and to
+# suppress file regeneration by scripts generated for 'make' due to equal
+# dependency and generated file timestamp
+add_custom_command(
+  OUTPUT iql/parser.cc
+  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+  COMMAND ${CMAKE_COMMAND} -E make_directory iql
+  COMMAND ${CMAKE_COMMAND} -E md5sum iql/parser.cc || ${CMAKE_COMMAND} -E remove iql/parser.yy
+  COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy || bison --graph --report=all -Wnone -o iql/parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy
+)
 
 # trigger generation of BUILD_IDENTIFIER if needed
 add_custom_command(
@@ -318,7 +345,7 @@ add_custom_command(
 )
 
 add_custom_target(
-  iresearch-build_identifier
+  ${IResearch_TARGET_NAME}-build_identifier
   DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/utils/build_identifier.csx
 )
 
@@ -338,426 +365,768 @@ add_custom_command(
 )
 
 add_custom_target(
-  iresearch-build_version
+  ${IResearch_TARGET_NAME}-build_version
   DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/utils/build_version.csx
 )
 
-add_dependencies(iresearch-static
-  iresearch-build_identifier
-  iresearch-build_version
-  iresearch-analyzer-delimiter-static
-  iresearch-analyzer-ngram-static
-  iresearch-analyzer-text-static
-  iresearch-analyzer-norm-static
-  iresearch-analyzer-collation-static
-  iresearch-analyzer-stem-static
-  iresearch-analyzer-stopwords-static
-  iresearch-analyzer-pipeline-static
-  iresearch-analyzer-segmentation-static
-  iresearch-analyzer-nearest-neighbors-static
-  iresearch-analyzer-classification-static
-  iresearch-analyzer-minhash-static
-  iresearch-format-1_0-static
-  iresearch-scorer-tfidf-static
-  iresearch-scorer-bm25-static
+add_dependencies(${IResearch_TARGET_NAME}-shared
+  ${IResearch_TARGET_NAME}-build_identifier
+  ${IResearch_TARGET_NAME}-build_version
+)
+
+add_dependencies(${IResearch_TARGET_NAME}-static
+  ${IResearch_TARGET_NAME}-build_identifier
+  ${IResearch_TARGET_NAME}-build_version
+  ${IResearch_TARGET_NAME}-analyzer-delimiter-static
+  ${IResearch_TARGET_NAME}-analyzer-ngram-static
+  ${IResearch_TARGET_NAME}-analyzer-text-static
+  ${IResearch_TARGET_NAME}-analyzer-norm-static
+  ${IResearch_TARGET_NAME}-analyzer-collation-static
+  ${IResearch_TARGET_NAME}-analyzer-stem-static
+  ${IResearch_TARGET_NAME}-analyzer-stopwords-static
+  ${IResearch_TARGET_NAME}-analyzer-pipeline-static
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  ${IResearch_TARGET_NAME}-format-1_0-static
+  ${IResearch_TARGET_NAME}-scorer-tfidf-static
+  ${IResearch_TARGET_NAME}-scorer-bm25-static
   hwy
   velocypack
-  )
+)
 
-target_include_directories(iresearch-static
+target_include_directories(${IResearch_TARGET_NAME}-shared
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
-  PRIVATE ${URING_INCLUDE_DIR}
-  PRIVATE $<TARGET_PROPERTY:iresearch-ofst,INTERFACE_INCLUDE_DIRECTORIES>
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
+  PUBLIC $<TARGET_PROPERTY:hwy,INTERFACE_INCLUDE_DIRECTORIES>
+)
+
+target_include_directories(${IResearch_TARGET_NAME}-static
+  PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  PRIVATE ${ICU_INCLUDE_DIR}
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
   PUBLIC ${VPACK_INCLUDE_PATH}
   PUBLIC $<TARGET_PROPERTY:hwy,INTERFACE_INCLUDE_DIRECTORIES>
-  PUBLIC $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_STATIC},INTERFACE_INCLUDE_DIRECTORIES>
-  )
+)
 
 # setup MSVC specific compiler flags
-if (MSVC)
-  target_compile_options(iresearch-static
+if(MSVC)
+  target_compile_options(${IResearch_TARGET_NAME}-shared
     PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
     PRIVATE "/EHa"
-    )
-endif ()
+  )
 
-set_target_properties(iresearch-static
+  target_compile_options(${IResearch_TARGET_NAME}-static
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
+    PRIVATE "/EHa"
+  )
+endif()
+
+set_target_properties(${IResearch_TARGET_NAME}-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME iresearch
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;BOOST_ALL_DYN_LINK;$<$<CONFIG:Debug>:YYDEBUG=1>"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-static
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME iresearch-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
+)
 
 if (USE_IWYU)
-  set_property(TARGET iresearch-static PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${IWYU_PATH})
-endif ()
+  set_property(TARGET ${IResearch_TARGET_NAME}-static PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${IWYU_PATH})
+endif()
 
 if (MSVC)
   set(MSVC_ONLY_LIBRARIES "Dbghelp.lib")
-else ()
+else()
   set(MSVC_ONLY_LIBRARIES "")
-endif ()
+endif()
 
-target_link_libraries(iresearch-static
-  PUBLIC iresearch-analyzer-delimiter-static
-  PUBLIC iresearch-analyzer-ngram-static
-  PUBLIC iresearch-analyzer-text-static
-  PUBLIC iresearch-analyzer-norm-static
-  PUBLIC iresearch-analyzer-minhash-static
-  PUBLIC iresearch-analyzer-collation-static
-  PUBLIC iresearch-analyzer-stem-static
-  PUBLIC iresearch-analyzer-stopwords-static
-  PUBLIC iresearch-analyzer-pipeline-static
-  PUBLIC iresearch-analyzer-segmentation-static
-  PUBLIC iresearch-analyzer-classification-static
-  PUBLIC iresearch-analyzer-nearest-neighbors-static
-  PUBLIC iresearch-format-1_0-static
-  PUBLIC iresearch-scorer-bm25-static
-  PUBLIC iresearch-scorer-tfidf-static
-  PUBLIC ${ICU_STATIC_LIBS}
-  ${URING_LIBRARIES}
-  PUBLIC absl::flat_hash_map
-  PUBLIC absl::flat_hash_set
+target_link_libraries(${IResearch_TARGET_NAME}-shared
+  ${GCOV_LIBRARY}
+  ${BFD_SHARED_LIBS}
+  ${Lz4_SHARED_LIB}
+  ${ICU_SHARED_LIBS}
+  ${Unwind_SHARED_LIBS}
+  ${DL_LIBRARY}
+  ${MSVC_ONLY_LIBRARIES}
+  ${SIMD_LIBRARY_SHARED}
+  ${ATOMIC_LIBRARY}
+  ${ABSL_LIBRARY_STATIC}
+  velocypack
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-static
+  ${IResearch_TARGET_NAME}-analyzer-delimiter-static
+  ${IResearch_TARGET_NAME}-analyzer-ngram-static
+  ${IResearch_TARGET_NAME}-analyzer-text-static
+  ${IResearch_TARGET_NAME}-analyzer-norm-static
+  ${IResearch_TARGET_NAME}-analyzer-collation-static
+  ${IResearch_TARGET_NAME}-analyzer-stem-static
+  ${IResearch_TARGET_NAME}-analyzer-stopwords-static
+  ${IResearch_TARGET_NAME}-analyzer-pipeline-static
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  ${IResearch_TARGET_NAME}-format-1_0-static
+  ${IResearch_TARGET_NAME}-scorer-bm25-static
+  ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${GCOV_LIBRARY}
   ${BFD_STATIC_LIBS}
   ${Lz4_STATIC_LIB}
+  ${ICU_STATIC_LIBS}
   ${Unwind_STATIC_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_STATIC}
+  ${ABSL_LIBRARY_STATIC}
   velocypack
-  )
+)
+
+
+target_include_directories(${IResearch_TARGET_NAME}-shared
+  PUBLIC ${VPACK_INCLUDE_PATH}
+)
+
 
 if (CLANG_TIDY_EXE)
   set_target_properties(
-    iresearch-static
+    ${IResearch_TARGET_NAME}-static
     PROPERTIES
     CXX_CLANG_TIDY "${CLANG_TIDY_EXE};-header-filter=.;-checks=clang-analyzer-cplusplus*,google-*,performance-*,readability-*"
   )
-endif ()
+endif()
+
+unset(IResearch_STATIC_LIBRARIES)
+
+set(IRESEARCH_STATIC_DEPENDENCIES
+  ${BFD_STATIC_LIBS}
+  ${Unwind_STATIC_LIBS}
+  ${ICU_STATIC_LIBS}
+  "$<TARGET_FILE:lz4_static>"
+  "$<TARGET_FILE:stemmer-static>"
+  "$<TARGET_FILE:${ABSL_LIBRARY_STATIC}>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimiter-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-ngram-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-norm-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-collation-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stem-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stopwords-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-pipeline-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-segmentation-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
+  "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>"
+  "$<TARGET_FILE:velocypack>"
+  "$<TARGET_FILE:text>"
+)
+
+if (TARGET zlibstatic)
+  set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES} "$<TARGET_FILE:zlibstatic>")
+else()
+  set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES}  ${ZLIB_STATIC_LIBRARIES})
+endif()
+
+if (MSVC)
+  foreach(ELEMENT
+      ${IRESEARCH_STATIC_DEPENDENCIES})
+    set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} \"${ELEMENT}\"")
+  endforeach()
+
+  set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(IResearch_STATIC_LIBRARIES_CMD "lib.exe \"/OUT:${IResearch_STATIC_LIBRARIES_OUT}\" \"$<TARGET_FILE:${IResearch_TARGET_NAME}-static>\" ${IResearch_STATIC_LIBRARIES}")
+  string(REPLACE " " ";" IResearch_STATIC_LIBRARIES_CMD "${IResearch_STATIC_LIBRARIES_CMD}") # COMMAND requires ';' instead of ' ' (this is required for MSVC, cannot use VERBATIM)
+  add_custom_command(
+    OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"
+    DEPENDS ${IResearch_TARGET_NAME}-static
+    COMMAND ${IResearch_STATIC_LIBRARIES_CMD}
+    #VERBATIM - this causes error: "The input line is too long."
+  )
+
+  add_library(${IResearch_TARGET_NAME}-static-allinone
+    STATIC IMPORTED GLOBAL
+  )
+
+  add_custom_target(${IResearch_TARGET_NAME}-static-allinone-build
+    DEPENDS "${IResearch_STATIC_LIBRARIES_OUT}"
+  )
+
+  set_target_properties(${IResearch_TARGET_NAME}-static-allinone
+    PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static,INTERFACE_INCLUDE_DIRECTORIES>"
+    IMPORTED_LOCATION "${IResearch_STATIC_LIBRARIES_OUT}"
+  )
+
+  set_property(TARGET ${IResearch_TARGET_NAME}-static-allinone
+    PROPERTY
+    INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
+    ${ATOMIC_LIBRARY} # non-static library
+    ${DL_LIBRARY} # non-static library
+    ${MSVC_ONLY_LIBRARIES} # non-static library
+  )
+
+  add_dependencies(${IResearch_TARGET_NAME}-static-allinone
+    ${IResearch_TARGET_NAME}-static-allinone-build
+  )
+
+elseif (APPLE)
+  foreach(ELEMENT
+      ${IRESEARCH_STATIC_DEPENDENCIES})
+    set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} '${ELEMENT}'")
+  endforeach ()
+
+  set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(IResearch_STATIC_LIBRARIES_CMD "libtool -static -o '${IResearch_STATIC_LIBRARIES_OUT}' -a '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' ${IResearch_STATIC_LIBRARIES}")
+  add_custom_command(
+    OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"
+    DEPENDS ${IResearch_TARGET_NAME}-static
+    COMMAND sh -c ${IResearch_STATIC_LIBRARIES_CMD}
+    VERBATIM
+  )
+
+  add_library(${IResearch_TARGET_NAME}-static-allinone
+    STATIC IMPORTED GLOBAL
+  )
+
+  add_custom_target(${IResearch_TARGET_NAME}-static-allinone-build
+    DEPENDS "${IResearch_STATIC_LIBRARIES_OUT}"
+  )
+
+  set_target_properties(${IResearch_TARGET_NAME}-static-allinone
+    PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static,INTERFACE_INCLUDE_DIRECTORIES>"
+    IMPORTED_LOCATION "${IResearch_STATIC_LIBRARIES_OUT}"
+  )
+
+  set_property(TARGET ${IResearch_TARGET_NAME}-static-allinone
+    PROPERTY
+    INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
+    ${ATOMIC_LIBRARY} # non-static library
+    ${DL_LIBRARY} # non-static library
+    ${MSVC_ONLY_LIBRARIES} # non-static library
+  )
+
+  add_dependencies(${IResearch_TARGET_NAME}-static-allinone
+    ${IResearch_TARGET_NAME}-static-allinone-build
+  )
+else()
+  foreach(ELEMENT
+      ${IRESEARCH_STATIC_DEPENDENCIES})
+    set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} addlib '${ELEMENT}'\\n")
+  endforeach ()
+
+  set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(IResearch_STATIC_LIBRARIES_CMD "`which echo` -e \"create '${IResearch_STATIC_LIBRARIES_OUT}'\\n addlib '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'\\n ${IResearch_STATIC_LIBRARIES} save\\n end\" | ar -M")
+  add_custom_command(
+    OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"
+    DEPENDS ${IResearch_TARGET_NAME}-static
+    COMMAND sh -c ${IResearch_STATIC_LIBRARIES_CMD}
+    VERBATIM
+  )
+
+  add_library(${IResearch_TARGET_NAME}-static-allinone
+    STATIC IMPORTED GLOBAL
+  )
+
+  add_custom_target(${IResearch_TARGET_NAME}-static-allinone-build
+    DEPENDS "${IResearch_STATIC_LIBRARIES_OUT}"
+  )
+
+  set_target_properties(${IResearch_TARGET_NAME}-static-allinone
+    PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static,INTERFACE_INCLUDE_DIRECTORIES>"
+    IMPORTED_LOCATION "${IResearch_STATIC_LIBRARIES_OUT}"
+  )
+
+  set_property(TARGET ${IResearch_TARGET_NAME}-static-allinone
+    PROPERTY
+    INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
+    ${ATOMIC_LIBRARY} # non-static library
+    ${DL_LIBRARY} # non-static library
+    ${MSVC_ONLY_LIBRARIES} # non-static library
+  )
+
+  add_dependencies(${IResearch_TARGET_NAME}-static-allinone
+    ${IResearch_TARGET_NAME}-static-allinone-build
+  )
+endif()
 
 ################################################################################
 ### analysis plugin : delimiter
 ################################################################################
 
-add_library(iresearch-analyzer-delimiter-static
+add_library(${IResearch_TARGET_NAME}-analyzer-delimiter-shared
+  SHARED
+  ./analysis/delimited_token_stream.cpp
+  ./analysis/delimited_token_stream.hpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-delimiter-shared)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-delimiter-static
   STATIC
   ./analysis/delimited_token_stream.cpp
-  )
+)
 
-set_ipo(iresearch-analyzer-delimiter-static)
+set_ipo(${IResearch_TARGET_NAME}-analyzer-delimiter-static)
 
-set_target_properties(iresearch-analyzer-delimiter-static
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-delimiter-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-delimiter
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-delimiter-static
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-delimiter-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
+)
 
 
-target_link_libraries(iresearch-analyzer-delimiter-static
-  iresearch-static
-  )
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-delimiter-shared
+  ${IResearch_TARGET_NAME}-shared
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-delimiter-static
+  ${IResearch_TARGET_NAME}-static
+)
 
 ################################################################################
 ### analysis plugin : text
 ################################################################################
 
-add_library(iresearch-analyzer-text-static
+add_library(${IResearch_TARGET_NAME}-analyzer-text-shared
+  SHARED
+  ./analysis/text_token_stream.cpp
+  ./analysis/text_token_stream.hpp
+  ./utils/snowball_stemmer.cpp
+  ./utils/snowball_stemmer.hpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-text-shared)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-text-static
   STATIC
   ./analysis/text_token_stream.cpp
   ./utils/snowball_stemmer.cpp
-  )
+)
 
-set_ipo(iresearch-analyzer-text-static)
+set_ipo(${IResearch_TARGET_NAME}-analyzer-text-static)
 
-target_include_directories(iresearch-analyzer-text-static
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-shared
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
   PRIVATE ${Snowball_INCLUDE_DIR}
-  )
+)
 
-set_target_properties(iresearch-analyzer-text-static
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-static
+  PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
+  PRIVATE ${Snowball_INCLUDE_DIR}
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-text-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-text
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-text-static
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-text-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
+)
 
-target_link_libraries(iresearch-analyzer-text-static
-  iresearch-static
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-shared
+  ${IResearch_TARGET_NAME}-shared
+  stemmer-shared
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-static
+  ${IResearch_TARGET_NAME}-static
   stemmer-static
-  )
+)
 
 ################################################################################
 ### analysis plugin : collation token stream
 ################################################################################
 
-add_library(iresearch-analyzer-collation-static
+add_library(${IResearch_TARGET_NAME}-analyzer-collation-shared
+  SHARED
+  ./analysis/collation_token_stream.cpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-collation-shared)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-collation-static
   STATIC
   ./analysis/collation_token_stream.cpp
-  )
+)
 
-set_ipo(iresearch-analyzer-collation-static)
+set_ipo(${IResearch_TARGET_NAME}-analyzer-collation-static)
 
-target_include_directories(iresearch-analyzer-collation-static
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-collation-shared
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
-  )
+)
 
-set_target_properties(iresearch-analyzer-collation-static
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-collation-static
+  PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-collation-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-collation
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-collation-static
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-collation-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
+)
 
-target_link_libraries(iresearch-analyzer-collation-static
-  iresearch-static
-  )
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-collation-shared
+  ${IResearch_TARGET_NAME}-shared
+)
 
-################################################################################
-### analysis plugin : minhash
-################################################################################
-
-add_library(iresearch-analyzer-minhash-static
-  STATIC
-  ./analysis/minhash_token_stream.cpp
-  )
-
-set_ipo(iresearch-analyzer-minhash-static)
-
-set_target_properties(iresearch-analyzer-minhash-static
-  PROPERTIES
-  PREFIX lib
-  IMPORT_PREFIX lib
-  OUTPUT_NAME analyzer-minhash-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
-
-target_link_libraries(iresearch-analyzer-minhash-static
-  iresearch-static
-  )
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-collation-static
+  ${IResearch_TARGET_NAME}-static
+)
 
 ################################################################################
 ### analysis plugin : text token normalizing
 ################################################################################
 
-add_library(iresearch-analyzer-norm-static
+add_library(${IResearch_TARGET_NAME}-analyzer-norm-shared
+  SHARED
+  ./analysis/text_token_normalizing_stream.cpp
+  ./analysis/text_token_normalizing_stream.hpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-norm-shared)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-norm-static
   STATIC
   ./analysis/text_token_normalizing_stream.cpp
-  )
+)
 
-set_ipo(iresearch-analyzer-norm-static)
+set_ipo(${IResearch_TARGET_NAME}-analyzer-norm-static)
 
-target_include_directories(iresearch-analyzer-norm-static
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-norm-shared
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
-  )
+)
 
-set_target_properties(iresearch-analyzer-norm-static
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-norm-static
+  PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-norm-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-norm
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-norm-static
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-norm-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
+)
 
-target_link_libraries(iresearch-analyzer-norm-static
-  iresearch-static
-  )
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-norm-shared
+  ${IResearch_TARGET_NAME}-shared
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-norm-static
+  ${IResearch_TARGET_NAME}-static
+)
 
 ################################################################################
 ### analysis plugin : text token stemming
 ################################################################################
 
-add_library(iresearch-analyzer-stem-static
+add_library(${IResearch_TARGET_NAME}-analyzer-stem-shared
+  SHARED
+  ./analysis/text_token_stemming_stream.cpp
+  ./analysis/text_token_stemming_stream.hpp
+  ./utils/snowball_stemmer.cpp
+  ./utils/snowball_stemmer.hpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-shared)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-stem-static
   STATIC
   ./analysis/text_token_stemming_stream.cpp
   ./utils/snowball_stemmer.cpp
-  )
+)
 
-set_ipo(iresearch-analyzer-stem-static)
+set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-static)
 
-target_include_directories(iresearch-analyzer-stem-static
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-stem-shared
   PRIVATE ${Snowball_INCLUDE_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
-  )
+)
 
-set_target_properties(iresearch-analyzer-stem-static
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-stem-static
+  PRIVATE ${Snowball_INCLUDE_DIR}
+  PRIVATE ${ICU_INCLUDE_DIR} 
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-stem-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-stem
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-stem-static
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-stem-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
+)
 
-target_link_libraries(iresearch-analyzer-stem-static
-  iresearch-static
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-stem-shared
+  ${IResearch_TARGET_NAME}-shared
+  stemmer-shared
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-stem-static
+  ${IResearch_TARGET_NAME}-static
   stemmer-static
-  )
+)
 
 ################################################################################
 ### analysis plugin : token stopwords
 ################################################################################
 
-add_library(iresearch-analyzer-stopwords-static
+add_library(${IResearch_TARGET_NAME}-analyzer-stopwords-shared
+  SHARED
+  ./analysis/token_stopwords_stream.cpp
+  ./analysis/token_stopwords_stream.hpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-stopwords-shared)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-stopwords-static
   STATIC
   ./analysis/token_stopwords_stream.cpp
-  )
+)
 
-set_ipo(iresearch-analyzer-stopwords-static)
+set_ipo(${IResearch_TARGET_NAME}-analyzer-stopwords-static)
 
-set_target_properties(iresearch-analyzer-stopwords-static
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-stopwords-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-stopwords
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-stopwords-static
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-stopwords-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
+)
 
-target_link_libraries(iresearch-analyzer-stopwords-static
-  iresearch-static
-  )
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-stopwords-shared
+  ${IResearch_TARGET_NAME}-shared
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-stopwords-static
+  ${IResearch_TARGET_NAME}-static
+)
 
 ################################################################################
 ### analysis plugin : ngram
 ################################################################################
 
-add_library(iresearch-analyzer-ngram-static
+add_library(${IResearch_TARGET_NAME}-analyzer-ngram-shared
+  SHARED
+  ./analysis/ngram_token_stream.cpp
+  ./analysis/ngram_token_stream.hpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-ngram-shared)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-ngram-static
   STATIC
   ./analysis/ngram_token_stream.cpp
-  )
+)
 
-set_ipo(iresearch-analyzer-ngram-static)
+set_ipo(${IResearch_TARGET_NAME}-analyzer-ngram-static)
 
-set_target_properties(iresearch-analyzer-ngram-static
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-ngram-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-ngram
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-ngram-static
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-ngram-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
+)
 
-target_link_libraries(iresearch-analyzer-ngram-static
-  iresearch-static
-  )
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-ngram-shared
+  ${IResearch_TARGET_NAME}-shared
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-ngram-static
+  ${IResearch_TARGET_NAME}-static
+)
 
 ################################################################################
 ### analysis plugin : pipeline
 ################################################################################
 
-add_library(iresearch-analyzer-pipeline-static
+add_library(${IResearch_TARGET_NAME}-analyzer-pipeline-shared
+  SHARED
+  ./analysis/pipeline_token_stream.cpp
+  ./analysis/pipeline_token_stream.hpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-pipeline-shared)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-pipeline-static
   STATIC
   ./analysis/pipeline_token_stream.cpp
-  )
+)
 
-set_ipo(iresearch-analyzer-pipeline-static)
+set_ipo(${IResearch_TARGET_NAME}-analyzer-pipeline-static)
 
 
-set_target_properties(iresearch-analyzer-pipeline-static
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-pipeline-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-pipeline
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-pipeline-static
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-pipeline-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
+)
 
-target_link_libraries(iresearch-analyzer-pipeline-static
-  iresearch-static
-  )
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-pipeline-shared
+  ${IResearch_TARGET_NAME}-shared
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-pipeline-static
+  ${IResearch_TARGET_NAME}-static
+)
 
 ################################################################################
 ### analysis plugin : text segmentation
 ################################################################################
 
-add_library(iresearch-analyzer-segmentation-static
-  STATIC
+add_library(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
+  SHARED
   ./analysis/segmentation_token_stream.cpp
-  )
-
-target_link_libraries(
-  iresearch-analyzer-segmentation-static
-  text
+  ./analysis/segmentation_token_stream.hpp
 )
 
-set_ipo(iresearch-analyzer-segmentation-static)
+target_link_libraries(
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-shared
+  text)
 
-set_target_properties(iresearch-analyzer-segmentation-static
+set_ipo(${IResearch_TARGET_NAME}-analyzer-segmentation-shared)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  STATIC
+  ./analysis/segmentation_token_stream.cpp
+)
+target_link_libraries(
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  text)
+
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-segmentation-static)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-segmentation
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-segmentation-static
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-segmentation-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
+)
 
-target_include_directories(iresearch-analyzer-segmentation-static
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
   PRIVATE $<TARGET_PROPERTY:text,INTERFACE_INCLUDE_DIRECTORIES>
-  )
+)
 
-target_link_libraries(iresearch-analyzer-segmentation-static
-  iresearch-static
-  )
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  PRIVATE $<TARGET_PROPERTY:text,INTERFACE_INCLUDE_DIRECTORIES>
+)
 
-################################################################################
-### analysis plugin: embedding classification
-################################################################################
 
-add_library(iresearch-analyzer-classification-static
-  STATIC
-  analysis/classification_stream.cpp
-  )
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
+  ${IResearch_TARGET_NAME}-shared
+)
 
-set_ipo(iresearch-analyzer-classification-static)
-
-set_target_properties(iresearch-analyzer-classification-static
-  PROPERTIES
-  PREFIX lib
-  IMPORT_PREFIX lib
-  OUTPUT_NAME analyzer-classification-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
-
-target_link_libraries(iresearch-analyzer-classification-static
-  iresearch-static
-  ${FASTTEXT_LIBRARY_STATIC}
-  )
-
-target_include_directories(iresearch-analyzer-classification-static
-  SYSTEM
-  PRIVATE $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_STATIC},INCLUDE_DIRECTORIES>
-  )
-
-################################################################################
-### analysis plugin: nearest neighbors
-################################################################################
-
-add_library(iresearch-analyzer-nearest-neighbors-static
-  STATIC
-  analysis/nearest_neighbors_stream.cpp
-  )
-
-set_ipo(iresearch-analyzer-nearest-neighbors-static)
-
-set_target_properties(iresearch-analyzer-nearest-neighbors-static
-  PROPERTIES
-  PREFIX lib
-  IMPORT_PREFIX lib
-  OUTPUT_NAME analyzer-nearest-neighbors-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
-
-target_link_libraries(iresearch-analyzer-nearest-neighbors-static
-  iresearch-static
-  ${FASTTEXT_LIBRARY_STATIC}
-  )
-
-target_include_directories(iresearch-analyzer-nearest-neighbors-static
-  SYSTEM
-  PRIVATE $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_STATIC},INCLUDE_DIRECTORIES>
-  )
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  ${IResearch_TARGET_NAME}-static
+)
 
 ################################################################################
 ### format plugin: format-1_0
@@ -770,34 +1139,66 @@ set(IResearch_format-1_0_source
   ./formats/formats_10.hpp
   ./formats/formats_10_attributes.hpp
   ./formats/formats_burst_trie.hpp
-  )
+)
 
-add_library(iresearch-format-1_0-static
+set(shared_format_library_name ${IResearch_TARGET_NAME}-format-1_0-shared)
+set(static_format_library_name ${IResearch_TARGET_NAME}-format-1_0-static)
+
+add_library(${shared_format_library_name}
+  SHARED
+  ${IResearch_format-1_0_source}
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst> # used by formats_burst_trie
+)
+  
+set_ipo(${shared_format_library_name})
+
+add_library(${static_format_library_name}
   STATIC
   ${IResearch_format-1_0_source}
-  $<TARGET_OBJECTS:iresearch-ofst> # used by formats_burst_trie
-  )
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst> # used by formats_burst_trie
+)
 
-set_ipo(iresearch-format-1_0-static)
+set_ipo(${static_format_library_name})
 
-set_target_properties(iresearch-format-1_0-static
+set_target_properties(${shared_format_library_name}
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME format-1_0
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;FST_NO_DYNAMIC_LINKING;${FORMAT_10_EXTRA_DEFS}"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${static_format_library_name}
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME format-1_0-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;${FORMAT_10_EXTRA_DEFS}"
-  )
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING;${FORMAT_10_EXTRA_DEFS}"
+)
 
-target_include_directories(iresearch-format-1_0-static
+target_include_directories(${shared_format_library_name}
   SYSTEM
-  PRIVATE $<TARGET_PROPERTY:iresearch-ofst,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
-  )
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
+)
 
-target_link_libraries(iresearch-format-1_0-static
-  iresearch-static
+target_include_directories(${static_format_library_name}
+  SYSTEM
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
+)
+
+target_link_libraries(${shared_format_library_name}
+  ${IResearch_TARGET_NAME}-shared
+  ${ATOMIC_LIBRARY}
+  ${FORMAT_10_EXTRA_LIBS_SHARED}
+)
+
+target_link_libraries(${static_format_library_name}
+  ${IResearch_TARGET_NAME}-static
   ${ATOMIC_LIBRARY}
   ${FORMAT_10_EXTRA_LIBS_STATIC}
-  )
+)
 
 ################################################################################
 ### scorer plugin : TF-IDF
@@ -806,50 +1207,109 @@ target_link_libraries(iresearch-format-1_0-static
 set(IResearch_tfidf_source
   ./search/tfidf.cpp
   ./search/tfidf.hpp
-  )
+)
 
-add_library(iresearch-scorer-tfidf-static
+add_library(${IResearch_TARGET_NAME}-scorer-tfidf-shared
+  SHARED
+  ${IResearch_tfidf_source}
+)
+
+set_ipo(${IResearch_TARGET_NAME}-scorer-tfidf-shared)
+
+add_library(${IResearch_TARGET_NAME}-scorer-tfidf-static
   STATIC
   ${IResearch_tfidf_source}
-  )
+)
 
-set_ipo(iresearch-scorer-tfidf-static)
+set_ipo(${IResearch_TARGET_NAME}-scorer-tfidf-static)
 
-set_target_properties(iresearch-scorer-tfidf-static
+set_target_properties(${IResearch_TARGET_NAME}-scorer-tfidf-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME scorer-tfidf
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_IMPORTS;IRESEARCH_DLL_PLUGIN"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-scorer-tfidf-static
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME scorer-tfidf-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
+)
 
-target_link_libraries(iresearch-scorer-tfidf-static
-  iresearch-static
-  )
+target_link_libraries(${IResearch_TARGET_NAME}-scorer-tfidf-shared
+  ${IResearch_TARGET_NAME}-shared
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-scorer-tfidf-static
+  ${IResearch_TARGET_NAME}-static
+)
 ################################################################################
 ### scorer plugin : BM25
 ################################################################################
-
+    
 set(IResearch_bm25_source
   ./search/bm25.cpp
   ./search/bm25.hpp
-  )
+)
 
-add_library(iresearch-scorer-bm25-static
+add_library(${IResearch_TARGET_NAME}-scorer-bm25-shared
+  SHARED
+  ${IResearch_bm25_source}
+)
+  
+set_ipo(${IResearch_TARGET_NAME}-scorer-bm25-shared)
+
+add_library(${IResearch_TARGET_NAME}-scorer-bm25-static
   STATIC
   ${IResearch_bm25_source}
-  )
+)
 
-set_ipo(iresearch-scorer-bm25-static)
+set_ipo(${IResearch_TARGET_NAME}-scorer-bm25-static)
 
-set_target_properties(iresearch-scorer-bm25-static
+set_target_properties(${IResearch_TARGET_NAME}-scorer-bm25-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME scorer-bm25
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_IMPORTS;IRESEARCH_DLL_PLUGIN"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-scorer-bm25-static
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME scorer-bm25-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
+)
 
-target_link_libraries(iresearch-scorer-bm25-static
-  iresearch-static
-  )
+target_link_libraries(${IResearch_TARGET_NAME}-scorer-bm25-shared
+  ${IResearch_TARGET_NAME}-shared
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-scorer-bm25-static
+  ${IResearch_TARGET_NAME}-static
+) 
+################################################################################
+### installation
+################################################################################
+
+install(TARGETS ${IResearch_TARGET_NAME}-shared
+  DESTINATION lib
+)
+
+install(TARGETS ${IResearch_TARGET_NAME}-static
+  DESTINATION lib
+)
+
+install(DIRECTORY analysis document error
+  DESTINATION include
+  PATTERN "*.cpp" EXCLUDE
+  PATTERN "*.mk" EXCLUDE
+)

@@ -23,28 +23,37 @@
 #include "term_filter.hpp"
 
 #include "index/index_reader.hpp"
-#include "search/collectors.hpp"
 #include "search/filter_visitor.hpp"
+#include "search/collectors.hpp"
 #include "search/term_query.hpp"
 
 namespace {
 
 using namespace irs;
 
-// Filter visitor for term queries
+//////////////////////////////////////////////////////////////////////////////
+/// @class term_visitor
+/// @brief filter visitor for term queries
+//////////////////////////////////////////////////////////////////////////////
 class term_visitor : private util::noncopyable {
  public:
-  term_visitor(const term_collectors& term_stats, TermQuery::States& states)
-    : term_stats_(term_stats), states_(states) {}
+  term_visitor(
+      const term_collectors& term_stats,
+      term_query::states_t& states)
+    : term_stats_(term_stats),
+      states_(states) {
+  }
 
-  void prepare(const sub_reader& segment, const term_reader& field,
-               const seek_term_iterator& terms) noexcept {
+  void prepare(
+      const sub_reader& segment,
+      const term_reader& field,
+      const seek_term_iterator& terms) noexcept {
     segment_ = &segment;
     reader_ = &field;
     terms_ = &terms;
   }
 
-  void visit(score_t /*boost*/) {
+  void visit(boost_t /*boost*/) {
     // collect statistics
     assert(segment_ && reader_ && terms_);
     term_stats_.collect(*segment_, *reader_, 0, *terms_);
@@ -59,15 +68,18 @@ class term_visitor : private util::noncopyable {
 
  private:
   const term_collectors& term_stats_;
-  TermQuery::States& states_;
+  term_query::states_t& states_;
   const sub_reader* segment_{};
   const term_reader* reader_{};
   const seek_term_iterator* terms_{};
 };
 
 template<typename Visitor>
-void visit(const sub_reader& segment, const term_reader& field, bytes_ref term,
-           Visitor& visitor) {
+void visit(
+    const sub_reader& segment,
+    const term_reader& field,
+    const bytes_ref& term,
+    Visitor& visitor) {
   // find term
   auto terms = field.iterator(SeekMode::RANDOM_ONLY);
 
@@ -80,22 +92,33 @@ void visit(const sub_reader& segment, const term_reader& field, bytes_ref term,
   // read term attributes
   terms->read();
 
-  visitor.visit(kNoBoost);
+  visitor.visit(no_boost());
 }
 
-}  // namespace
+}
 
 namespace iresearch {
 
-void by_term::visit(const sub_reader& segment, const term_reader& field,
-                    bytes_ref term, filter_visitor& visitor) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                            by_term implementation
+// -----------------------------------------------------------------------------
+DEFINE_FACTORY_DEFAULT(by_term)
+
+/*static*/ void by_term::visit(
+    const sub_reader& segment,
+    const term_reader& field,
+    const bytes_ref& term,
+    filter_visitor& visitor) {
   ::visit(segment, field, term, visitor);
 }
 
-filter::prepared::ptr by_term::prepare(const index_reader& index,
-                                       const Order& ord, score_t boost,
-                                       string_ref field, bytes_ref term) {
-  TermQuery::States states(index);
+/*static*/ filter::prepared::ptr by_term::prepare(
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    const string_ref& field,
+    const bytes_ref& term) {
+  term_query::states_t states(index);
   field_collectors field_stats(ord);
   term_collectors term_stats(ord, 1);
 
@@ -110,8 +133,7 @@ filter::prepared::ptr by_term::prepare(const index_reader& index,
       continue;
     }
 
-    field_stats.collect(segment,
-                        *reader);  // collect field statistics once per segment
+    field_stats.collect(segment, *reader); // collect field statistics once per segment
 
     ::visit(segment, *reader, term, visitor);
   }
@@ -121,8 +143,8 @@ filter::prepared::ptr by_term::prepare(const index_reader& index,
 
   term_stats.finish(stats_buf, 0, field_stats, index);
 
-  return memory::make_managed<TermQuery>(std::move(states), std::move(stats),
-                                         boost);
+  return memory::make_managed<term_query>(
+    std::move(states), std::move(stats), boost);
 }
 
-}  // namespace iresearch
+} // ROOT

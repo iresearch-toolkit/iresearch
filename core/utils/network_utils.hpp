@@ -25,9 +25,9 @@
 
 namespace iresearch {
 
-int get_host_name(char* name, size_t size);
+IRESEARCH_API int get_host_name(char* name, size_t size);
 bool is_same_hostname(const char* rhs, size_t size);
 
-}  // namespace iresearch
+} // ROOT
 
-#endif  // IRESEARCH_NETWORK_UTILS_H
+#endif // IRESEARCH_NETWORK_UTILS_H

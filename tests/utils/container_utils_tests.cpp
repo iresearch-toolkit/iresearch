@@ -42,18 +42,21 @@ TEST(container_utils_tests, test_bucket_allocator) {
   // how many buckets to cache for each level
   irs::container_utils::memory::bucket_allocator<bucket_builder, 16> alloc(1);
 
-  typedef irs::container_utils::raw_block_vector<16,  // total number of levels
-                                                 8,   // size of the first block
-                                                      // 2^8
-                                                 decltype(alloc)  // allocator
-                                                 >
-    raw_block_vector_t;
+  typedef irs::container_utils::raw_block_vector<
+    16, // total number of levels
+    8,  // size of the first block 2^8
+    decltype(alloc) // allocator
+  > raw_block_vector_t;
 
-  static_assert(16 == raw_block_vector_t::NUM_BUCKETS,
-                "invalid number of buckets");
+  static_assert(
+    16 == raw_block_vector_t::NUM_BUCKETS,
+    "invalid number of buckets"
+  );
 
-  static_assert(256 == raw_block_vector_t::FIRST_BUCKET_SIZE,
-                "invalid size of the first bucket");
+  static_assert(
+    256 == raw_block_vector_t::FIRST_BUCKET_SIZE,
+    "invalid size of the first bucket"
+  );
 
   raw_block_vector_t blocks(alloc);
 
@@ -65,18 +68,18 @@ TEST(container_utils_tests, test_bucket_allocator) {
   ACTUAL_SIZE = 0;
   WAS_MADE = false;
   blocks.push_buffer();
-  ASSERT_TRUE(WAS_MADE);        // buffer was actually built by builder
-  ASSERT_EQ(256, ACTUAL_SIZE);  // first bucket 2^8
+  ASSERT_TRUE(WAS_MADE); // buffer was actually built by builder
+  ASSERT_EQ(256, ACTUAL_SIZE); // first bucket 2^8
   ASSERT_TRUE(1 == blocks.buffer_count());
   ASSERT_TRUE(!blocks.empty());
-  blocks.pop_buffer();  // pop recently pushed buffer
+  blocks.pop_buffer(); // pop recently pushed buffer
   ASSERT_TRUE(blocks.empty());
   ASSERT_TRUE(0 == blocks.buffer_count());
   ACTUAL_SIZE = 0;
   WAS_MADE = false;
   blocks.push_buffer();
-  ASSERT_FALSE(WAS_MADE);     // buffer has been reused from the pool
-  ASSERT_EQ(0, ACTUAL_SIZE);  // didn't change
+  ASSERT_FALSE(WAS_MADE); // buffer has been reused from the pool
+  ASSERT_EQ(0, ACTUAL_SIZE); // didn't change
   ASSERT_TRUE(1 == blocks.buffer_count());
   ASSERT_TRUE(!blocks.empty());
 
@@ -84,18 +87,18 @@ TEST(container_utils_tests, test_bucket_allocator) {
   ACTUAL_SIZE = 0;
   WAS_MADE = false;
   blocks.push_buffer();
-  ASSERT_TRUE(WAS_MADE);        // buffer was actually built by builder
-  ASSERT_EQ(512, ACTUAL_SIZE);  // first bucket 2^9
+  ASSERT_TRUE(WAS_MADE); // buffer was actually built by builder
+  ASSERT_EQ(512, ACTUAL_SIZE); // first bucket 2^9
   ASSERT_TRUE(2 == blocks.buffer_count());
   ASSERT_TRUE(!blocks.empty());
-  blocks.pop_buffer();  // pop recently pushed buffer
+  blocks.pop_buffer(); // pop recently pushed buffer
   ASSERT_TRUE(!blocks.empty());
   ASSERT_TRUE(1 == blocks.buffer_count());
   ACTUAL_SIZE = 0;
   WAS_MADE = false;
   blocks.push_buffer();
-  ASSERT_FALSE(WAS_MADE);     // buffer has been reused from the pool
-  ASSERT_EQ(0, ACTUAL_SIZE);  // didn't change
+  ASSERT_FALSE(WAS_MADE); // buffer has been reused from the pool
+  ASSERT_EQ(0, ACTUAL_SIZE); // didn't change
   ASSERT_TRUE(2 == blocks.buffer_count());
   ASSERT_TRUE(!blocks.empty());
 
@@ -194,76 +197,80 @@ TEST(container_utils_tests, test_compute_bucket_meta) {
 TEST(container_utils_tests, compute_bucket_offset) {
   // test boundaries for skip bits == 0
   {
-    ASSERT_EQ(0, (iresearch::container_utils::compute_bucket_offset<0>(0)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<0>(1)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<0>(2)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<0>(3)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<0>(4)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<0>(5)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<0>(6)));
-    ASSERT_EQ(3, (iresearch::container_utils::compute_bucket_offset<0>(7)));
+     ASSERT_EQ(0, (iresearch::container_utils::compute_bucket_offset<0>(0)));
+     ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<0>(1)));
+     ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<0>(2)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<0>(3)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<0>(4)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<0>(5)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<0>(6)));
+     ASSERT_EQ(3, (iresearch::container_utils::compute_bucket_offset<0>(7)));
   }
 
   // test boundaries for skip bits == 2
   {
-    ASSERT_EQ(0, (iresearch::container_utils::compute_bucket_offset<2>(0)));
-    ASSERT_EQ(0, (iresearch::container_utils::compute_bucket_offset<2>(1)));
-    ASSERT_EQ(0, (iresearch::container_utils::compute_bucket_offset<2>(2)));
-    ASSERT_EQ(0, (iresearch::container_utils::compute_bucket_offset<2>(3)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(4)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(5)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(6)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(7)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(8)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(9)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(10)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(11)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(12)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(13)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(14)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(15)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(16)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(17)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(18)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(19)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(20)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(21)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(22)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(23)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(24)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(25)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(26)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(27)));
-    ASSERT_EQ(3, (iresearch::container_utils::compute_bucket_offset<2>(28)));
+     ASSERT_EQ(0, (iresearch::container_utils::compute_bucket_offset<2>(0)));
+     ASSERT_EQ(0, (iresearch::container_utils::compute_bucket_offset<2>(1)));
+     ASSERT_EQ(0, (iresearch::container_utils::compute_bucket_offset<2>(2)));
+     ASSERT_EQ(0, (iresearch::container_utils::compute_bucket_offset<2>(3)));
+     ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(4)));
+     ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(5)));
+     ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(6)));
+     ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(7)));
+     ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(8)));
+     ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(9)));
+     ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(10)));
+     ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(11)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(12)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(13)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(14)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(15)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(16)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(17)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(18)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(19)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(20)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(21)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(22)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(23)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(24)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(25)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(26)));
+     ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(27)));
+     ASSERT_EQ(3, (iresearch::container_utils::compute_bucket_offset<2>(28)));
   }
 }
 
 TEST(container_utils_array_tests, check_alignment) {
   typedef irs::container_utils::array<size_t, 5> array_size_t;
 
-  static_assert(alignof(array_size_t) == alignof(size_t),
-                "wrong data alignment");
+  static_assert(
+    alignof(array_size_t) == alignof(size_t),
+    "wrong data alignment"
+  );
 
   typedef irs::container_utils::array<std::max_align_t, 5> array_aligned_max_t;
 
-  static_assert(alignof(array_aligned_max_t) == alignof(std::max_align_t),
-                "wrong data alignment");
+  static_assert(
+    alignof(array_aligned_max_t) == alignof(std::max_align_t),
+    "wrong data alignment"
+  );
 
-  struct alignas(16) aligned16 {
-    char c;
-  };
+  struct alignas(16) aligned16 { char c; };
   typedef irs::container_utils::array<aligned16, 5> array_aligned16_t;
 
-  static_assert(alignof(array_aligned16_t) == alignof(aligned16),
-                "wrong data alignment");
+  static_assert(
+    alignof(array_aligned16_t) == alignof(aligned16),
+    "wrong data alignment"
+  );
 
-  struct alignas(32) aligned32 {
-    char c;
-  };
+  struct alignas(32) aligned32 { char c; };
   typedef irs::container_utils::array<aligned32, 5> array_aligned32_t;
 
-  static_assert(alignof(array_aligned32_t) == alignof(aligned32),
-                "wrong data alignment");
+  static_assert(
+    alignof(array_aligned32_t) == alignof(aligned32),
+    "wrong data alignment"
+  );
 }
 
 TEST(container_utils_array_tests, construct) {
@@ -271,9 +278,13 @@ TEST(container_utils_array_tests, construct) {
   static size_t NON_DEFAULT_CTOR;
 
   struct object {
-    object() { ++DEFAULT_CTOR; }
+    object() {
+      ++DEFAULT_CTOR;
+    }
 
-    explicit object(int i) noexcept : i(i) { ++NON_DEFAULT_CTOR; }
+    explicit object(int i) noexcept : i(i) {
+      ++NON_DEFAULT_CTOR;
+    }
 
     int i{3};
   };
@@ -285,8 +296,10 @@ TEST(container_utils_array_tests, construct) {
 
     irs::container_utils::array<object, 0> objects;
 
-    static_assert(irs::container_utils::array<object, 0>::SIZE == 0,
-                  "invalid array size");
+    static_assert(
+      irs::container_utils::array<object, 0>::SIZE == 0,
+      "invalid array size"
+    );
 
     ASSERT_EQ(0, objects.size());
     ASSERT_TRUE(objects.empty());
@@ -303,8 +316,10 @@ TEST(container_utils_array_tests, construct) {
 
     irs::container_utils::array<object, 2> objects;
 
-    static_assert(irs::container_utils::array<object, 2>::SIZE == 2,
-                  "invalid array size");
+    static_assert(
+      irs::container_utils::array<object, 2>::SIZE == 2,
+      "invalid array size"
+    );
 
     ASSERT_EQ(2, objects.size());
     ASSERT_FALSE(objects.empty());
@@ -315,7 +330,7 @@ TEST(container_utils_array_tests, construct) {
     ASSERT_EQ(3, objects.front().i);
     ASSERT_EQ(3, objects.back().i);
     ASSERT_EQ(objects.begin(), &objects.front());
-    ASSERT_EQ(objects.end() - 1, &objects.back());
+    ASSERT_EQ(objects.end()-1, &objects.back());
     ASSERT_EQ(&objects[0], &objects.front());
     ASSERT_EQ(&objects[1], &objects.back());
   }
@@ -327,8 +342,10 @@ TEST(container_utils_array_tests, construct) {
 
     const irs::container_utils::array<object, 2> objects(5);
 
-    static_assert(irs::container_utils::array<object, 2>::SIZE == 2,
-                  "invalid array size");
+    static_assert(
+      irs::container_utils::array<object, 2>::SIZE == 2,
+      "invalid array size"
+    );
 
     ASSERT_EQ(2, objects.size());
     ASSERT_FALSE(objects.empty());
@@ -339,7 +356,7 @@ TEST(container_utils_array_tests, construct) {
     ASSERT_EQ(5, objects.front().i);
     ASSERT_EQ(5, objects.back().i);
     ASSERT_EQ(objects.begin(), &objects.front());
-    ASSERT_EQ(objects.end() - 1, &objects.back());
+    ASSERT_EQ(objects.end()-1, &objects.back());
     ASSERT_EQ(&objects[0], &objects.front());
     ASSERT_EQ(&objects[1], &objects.back());
   }

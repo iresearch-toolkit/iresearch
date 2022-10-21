@@ -26,8 +26,8 @@
 
 #include "shared.hpp"
 
-#if defined(_MSC_VER) && _MSC_VER < 1900  // before MSVC2015
-#define snprintf _snprintf
+#if defined(_MSC_VER) && _MSC_VER < 1900 // before MSVC2015
+  #define snprintf _snprintf
 #endif
 
 #include "utils/math_utils.hpp"
@@ -35,14 +35,14 @@
 namespace iresearch {
 namespace string_utils {
 
-inline size_t oversize(size_t chunk_size, size_t size,
-                       size_t min_size) noexcept {
+inline size_t oversize(
+    size_t chunk_size, size_t size, size_t min_size) noexcept {
   assert(chunk_size);
   assert(min_size > size);
 
   typedef math::math_traits<size_t> math_traits;
 
-  return size + math_traits::ceil(min_size - size, chunk_size);
+  return size + math_traits::ceil(min_size-size, chunk_size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,9 +52,10 @@ template<typename T>
 inline std::basic_string<T>& oversize(
   // 31 == 32 - 1: because std::basic_string reserves a \0 at the end
   // 32 is the original default value used in bytes_builder
-  std::basic_string<T>& buf, size_t size = 31) {
+  std::basic_string<T>& buf, size_t size = 31
+) {
   buf.resize(size);
-  buf.resize(buf.capacity());  // use up the entire buffer
+  buf.resize(buf.capacity()); // use up the entire buffer
   return buf;
 }
 
@@ -62,12 +63,9 @@ inline std::basic_string<T>& oversize(
 /// @param destination buffer
 /// @return as per sprintf(...)
 ////////////////////////////////////////////////////////////////////////////////
-template<typename... Args>
+template <typename... Args>
 inline int to_string(std::string& buf, const char* format, Args&&... args) {
-  auto result =
-    snprintf(nullptr, 0, format,
-             std::forward<Args>(args)...);  // MSVC requires 'nullptr' buffer
-                                            // and '0' size to get expected size
+  auto result = snprintf(nullptr, 0, format, std::forward<Args>(args)...); // MSVC requires 'nullptr' buffer and '0' size to get expected size
 
   if (result <= 0) {
     return result;
@@ -75,7 +73,7 @@ inline int to_string(std::string& buf, const char* format, Args&&... args) {
 
   auto start = buf.size();
 
-  ++result;  // +1 because snprintf(...) requires space for '\0'
+  ++result; // +1 because snprintf(...) requires space for '\0'
   buf.resize(buf.size() + result);
 
   try {
@@ -95,7 +93,7 @@ inline int to_string(std::string& buf, const char* format, Args&&... args) {
 /// @return formatted string
 /// @note asserts on failure
 ////////////////////////////////////////////////////////////////////////////////
-template<typename... Args>
+template <typename... Args>
 inline std::string to_string(const char* format, Args&&... args) {
   std::string buf;
   const auto result = to_string(buf, format, std::forward<Args>(args)...);
@@ -107,7 +105,7 @@ inline std::string to_string(const char* format, Args&&... args) {
   return buf;
 }
 
-}  // namespace string_utils
-}  // namespace iresearch
+} // string_utils
+}
 
 #endif

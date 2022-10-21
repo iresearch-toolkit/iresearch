@@ -21,20 +21,53 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef IRESEARCH_FORMAT_TEST_CASE_BASE
+#define IRESEARCH_FORMAT_TEST_CASE_BASE
 
-#include "analysis/token_attributes.hpp"
+#include "tests_shared.hpp"
+
+#include "search/cost.hpp"
+
 #include "index/doc_generator.hpp"
 #include "index/index_tests.hpp"
-#include "search/cost.hpp"
+#include "iql/query_builder.hpp"
+
+#include "analysis/token_attributes.hpp"
 #include "store/memory_directory.hpp"
-#include "tests_shared.hpp"
 #include "utils/version_utils.hpp"
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                   Base test case
+// ----------------------------------------------------------------------------
 
 namespace tests {
 
 class format_test_case : public index_test_base {
  public:
+  irs::column_info lz4_column_info() const noexcept;
+  irs::column_info none_column_info() const noexcept;
+
+  bool supports_encryption() const noexcept {
+    // old formats don't support columnstore headers
+    constexpr irs::string_ref kOldFormats[] { "1_0" };
+
+    const auto it = std::find(std::begin(kOldFormats),
+                              std::end(kOldFormats),
+                              codec()->type().name());
+    return std::end(kOldFormats) == it;
+  }
+
+  bool supports_columnstore_headers() const noexcept {
+    // old formats don't support columnstore headers
+    constexpr irs::string_ref kOldFormats[] {
+      "1_0", "1_1", "1_2", "1_3", "1_3simd" };
+
+    const auto it = std::find(std::begin(kOldFormats),
+                              std::end(kOldFormats),
+                              codec()->type().name());
+    return std::end(kOldFormats) == it;
+  }
+
   class postings;
 
   class position final : public irs::position {
@@ -69,11 +102,9 @@ class format_test_case : public index_test_base {
       }
 
       ++value_;
-      EXPECT_TRUE(irs::pos_limits::valid(value_));
 
       const auto written = sprintf(pay_data_, "%d", value_);
-      pay_.value = irs::bytes_ref(
-        reinterpret_cast<const irs::byte_type*>(pay_data_), written);
+      pay_.value = irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(pay_data_), written);
 
       offs_.start = value_;
       offs_.end = offs_.start + written;
@@ -86,7 +117,7 @@ class format_test_case : public index_test_base {
     }
 
     virtual void reset() override {
-      assert(false);  // unsupported
+      assert(false); // unsupported
     }
 
    private:
@@ -97,21 +128,23 @@ class format_test_case : public index_test_base {
     irs::payload pay_;
     irs::offset* poffs_{};
     irs::payload* ppay_{};
-    char pay_data_[21];  // enough to hold numbers up to max of uint64_t
+    char pay_data_[21]; // enough to hold numbers up to max of uint64_t
   };
 
-  class postings : public irs::doc_iterator {
+  class postings: public irs::doc_iterator {
    public:
-    // DocId + Freq
-    using docs_t = std::span<const std::pair<irs::doc_id_t, uint32_t>>;
+    typedef std::vector<irs::doc_id_t> docs_t;
+    typedef std::vector<irs::cost::cost_t> costs_t;
 
-    postings(std::span<const std::pair<irs::doc_id_t, uint32_t>> docs,
-             irs::IndexFeatures features = irs::IndexFeatures::NONE)
-      : next_(std::begin(docs)), end_(std::end(docs)), pos_(features) {
+    postings(
+        const docs_t::const_iterator& begin,
+        const docs_t::const_iterator& end,
+        irs::IndexFeatures features = irs::IndexFeatures::NONE)
+      : next_(begin), end_(end), pos_(features) {
       attrs_[irs::type<irs::document>::id()] = &doc_;
       attrs_[irs::type<irs::attribute_provider_change>::id()] = &callback_;
       if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::FREQ)) {
-        freq_.value = 0;
+        freq_.value = 10;
         attrs_[irs::type<irs::frequency>::id()] = &freq_;
         if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::POS)) {
           attrs_[irs::type<irs::position>::id()] = &pos_;
@@ -129,77 +162,52 @@ class format_test_case : public index_test_base {
         return false;
       }
 
-      std::tie(doc_.value, freq_.value) = *next_;
-
-      EXPECT_TRUE(irs::doc_limits::valid(doc_.value));
+      doc_.value = *next_;
       pos_.value_ = doc_.value;
-      EXPECT_TRUE(irs::pos_limits::valid(pos_.value_));
-      pos_.end_ = pos_.value_ + freq_.value;
+      pos_.end_ = pos_.value_ + 10;
       pos_.clear();
       ++next_;
 
       return true;
     }
 
-    irs::doc_id_t value() const override { return doc_.value; }
+    irs::doc_id_t value() const override {
+      return doc_.value;
+    }
 
     irs::doc_id_t seek(irs::doc_id_t target) override {
       irs::seek(*this, target);
       return value();
     }
 
-    irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+    irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
       const auto it = attrs_.find(type);
       return it == attrs_.end() ? nullptr : it->second;
     }
 
    private:
     std::map<irs::type_info::type_id, irs::attribute*> attrs_;
-    docs_t::iterator next_;
-    docs_t::iterator end_;
+    docs_t::const_iterator next_;
+    docs_t::const_iterator end_;
     irs::frequency freq_;
     irs::attribute_provider_change callback_;
-    format_test_case::position pos_;
+    tests::format_test_case::position pos_;
     irs::document doc_;
-  };
-
-  irs::column_info lz4_column_info() const noexcept;
-  irs::column_info none_column_info() const noexcept;
-
-  bool supports_encryption() const noexcept {
-    // old formats don't support columnstore headers
-    constexpr irs::string_ref kOldFormats[]{"1_0"};
-
-    const auto it = std::find(std::begin(kOldFormats), std::end(kOldFormats),
-                              codec()->type().name());
-    return std::end(kOldFormats) == it;
-  }
-
-  bool supports_columnstore_headers() const noexcept {
-    // old formats don't support columnstore headers
-    constexpr irs::string_ref kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
-                                            "1_3simd"};
-
-    const auto it = std::find(std::begin(kOldFormats), std::end(kOldFormats),
-                              codec()->type().name());
-    return std::end(kOldFormats) == it;
-  }
+  }; // postings 
 
   template<typename Iterator>
-  class terms : public irs::term_iterator {
+  class terms: public irs::term_iterator {
    public:
-    using docs_type = std::vector<std::pair<irs::doc_id_t, uint32_t>>;
-
     terms(const Iterator& begin, const Iterator& end)
       : next_(begin), end_(end) {
-      docs_.emplace_back((irs::type_limits<irs::type_t::doc_id_t>::min)(), 0);
+      docs_.push_back((irs::type_limits<irs::type_t::doc_id_t>::min)());
     }
 
     terms(const Iterator& begin, const Iterator& end,
-          docs_type::const_iterator doc_begin,
-          docs_type::const_iterator doc_end)
-      : docs_(doc_begin, doc_end), next_(begin), end_(end) {}
+        std::vector<irs::doc_id_t>::const_iterator doc_begin,
+        std::vector<irs::doc_id_t>::const_iterator doc_end)
+      : docs_(doc_begin, doc_end), next_(begin), end_(end) {
+    }
 
     bool next() {
       if (next_ == end_) {
@@ -211,13 +219,16 @@ class format_test_case : public index_test_base {
       return true;
     }
 
-    const irs::bytes_ref& value() const { return val_; }
-
-    irs::doc_iterator::ptr postings(irs::IndexFeatures /*features*/) const {
-      return irs::memory::make_managed<format_test_case::postings>(docs_);
+    const irs::bytes_ref& value() const {
+      return val_;
     }
 
-    void read() {}
+    irs::doc_iterator::ptr postings(irs::IndexFeatures /*features*/) const {
+      return irs::memory::make_managed<format_test_case::postings>(
+        docs_.begin(), docs_.end());
+    }
+
+    void read() { }
 
     irs::attribute* get_mutable(irs::type_info::type_id) noexcept {
       return nullptr;
@@ -225,27 +236,61 @@ class format_test_case : public index_test_base {
 
    private:
     irs::bytes_ref val_;
-    docs_type docs_;
+    std::vector<irs::doc_id_t> docs_;
     Iterator next_;
     Iterator end_;
-  };  // terms
-
-  void assert_frequency_and_positions(irs::doc_iterator& expected,
-                                      irs::doc_iterator& actual);
+  }; // terms
 
   void assert_no_directory_artifacts(
-    const iresearch::directory& dir, const iresearch::format& codec,
-    const std::unordered_set<std::string>& expect_additional = {});
+      const iresearch::directory& dir,
+      const iresearch::format& codec,
+      const std::unordered_set<std::string>& expect_additional = {}) {
+    std::vector<std::string> dir_files;
+    auto visitor = [&dir_files] (std::string& file) {
+      // ignore lock file present in fs_directory
+      if (iresearch::index_writer::WRITE_LOCK_NAME != file) {
+        dir_files.emplace_back(std::move(file));
+      }      
+      return true;
+    };
+    ASSERT_TRUE(dir.visit(visitor));
+
+    iresearch::index_meta index_meta;
+    std::string segment_file;
+
+    auto reader = codec.get_index_meta_reader();
+    std::unordered_set<std::string> index_files(expect_additional.begin(), expect_additional.end());
+    const bool exists = reader->last_segments_file(dir, segment_file);
+
+    if (exists) {
+      reader->read(dir, index_meta, segment_file);
+
+      index_meta.visit_files([&index_files] (const std::string& file) {
+        index_files.emplace(file);
+        return true;
+      });
+
+      index_files.insert(segment_file);
+    }
+
+    for (auto& file: dir_files) {
+      ASSERT_TRUE(index_files.erase(file) == 1);
+    }
+
+    ASSERT_TRUE(index_files.empty());
+  }
 };
 
-class format_test_case_with_encryption : public format_test_case {};
+class format_test_case_with_encryption : public format_test_case { };
 
-}  // namespace tests
+} // tests
 
 namespace iresearch {
 
 // use base irs::position type for ancestors
 template<>
-struct type<tests::format_test_case::position> : type<irs::position> {};
+struct type<tests::format_test_case::position> : type<irs::position> { };
 
-}  // namespace iresearch
+}
+
+#endif // IRESEARCH_FORMAT_TEST_CASE_BASE

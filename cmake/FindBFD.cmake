@@ -11,45 +11,45 @@ if ("${BFD_ROOT}" STREQUAL "")
   set(BFD_ROOT "$ENV{BFD_ROOT}")
   if (NOT "${BFD_ROOT}" STREQUAL "")
     string(REPLACE "\"" "" BFD_ROOT ${BFD_ROOT})
-  endif ()
-endif ()
+  endif()
+endif()
 
 if (NOT "${BFD_ROOT}" STREQUAL "")
   set(BFD_SEARCH_HEADER_PATHS
     ${BFD_ROOT}/bfd
     ${BFD_ROOT}/include
-    )
+  )
 
   set(BFD_SEARCH_LIB_PATHS
     ${BFD_ROOT}/lib
     ${BFD_ROOT}/bfd/.libs
     ${BFD_ROOT}/libiberty
     ${BFD_ROOT}/zlib
-    )
+  )
 elseif (NOT MSVC)
   set(BFD_SEARCH_HEADER_PATHS
-    "/usr/include"
-    "/usr/include/x86_64-linux-gnu"
-    )
+      "/usr/include"
+      "/usr/include/x86_64-linux-gnu"
+  )
 
   set(BFD_SEARCH_LIB_PATHS
-    "/lib"
-    "/lib/x86_64-linux-gnu"
-    "/usr/lib"
-    "/usr/lib/x86_64-linux-gnu"
-    )
-endif ()
+      "/lib"
+      "/lib/x86_64-linux-gnu"
+      "/usr/lib"
+      "/usr/lib/x86_64-linux-gnu"
+  )
+endif()
 
 find_path(BFD_INCLUDE_DIR_ANSIDECL
   ansidecl.h
   PATHS ${BFD_SEARCH_HEADER_PATHS}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
-  )
+)
 find_path(BFD_INCLUDE_DIR_BFD
   bfd.h
   PATHS ${BFD_SEARCH_HEADER_PATHS}
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
-  )
+)
 
 include(Utils)
 
@@ -57,10 +57,10 @@ include(Utils)
 if (MSVC)
   set(BFD_LIBRARY_PREFIX "")
   set(BFD_LIBRARY_SUFFIX ".lib")
-else ()
+else()
   set(BFD_LIBRARY_PREFIX "lib")
   set(BFD_LIBRARY_SUFFIX ".so")
-endif ()
+endif()
 set_find_library_options("${BFD_LIBRARY_PREFIX}" "${BFD_LIBRARY_SUFFIX}")
 
 # find library
@@ -68,7 +68,7 @@ find_library(BFD_SHARED_LIB
   NAMES bfd
   PATHS ${BFD_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
-  )
+)
 
 # restore initial options
 restore_find_library_options()
@@ -78,10 +78,10 @@ restore_find_library_options()
 if (MSVC)
   set(BFD_LIBRARY_PREFIX "")
   set(BFD_LIBRARY_SUFFIX ".lib")
-else ()
+else()
   set(BFD_LIBRARY_PREFIX "lib")
   set(BFD_LIBRARY_SUFFIX ".a")
-endif ()
+endif()
 set_find_library_options("${BFD_LIBRARY_PREFIX}" "${BFD_LIBRARY_SUFFIX}")
 
 # find library
@@ -89,17 +89,17 @@ find_library(BFD_STATIC_LIB
   NAMES bfd
   PATHS ${BFD_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
-  )
+)
 find_library(BFD_STATIC_LIB_IBERTY
   NAMES iberty
   PATHS ${BFD_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
-  )
+)
 find_library(BFD_STATIC_LIB_Z
   NAMES z
   PATHS ${BFD_SEARCH_LIB_PATHS}
   NO_DEFAULT_PATH
-  )
+)
 
 # restore initial options
 restore_find_library_options()
@@ -115,29 +115,29 @@ if (BFD_INCLUDE_DIR_ANSIDECL AND BFD_INCLUDE_DIR_BFD AND BFD_SHARED_LIB AND BFD_
   set_target_properties(bfd-shared PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${BFD_INCLUDE_DIR}"
     IMPORTED_LOCATION "${BFD_SHARED_LIBS}"
-    )
+  )
 
   add_library(bfd-static IMPORTED STATIC)
   set_target_properties(bfd-static PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${BFD_INCLUDE_DIR}"
     IMPORTED_LOCATION "${BFD_STATIC_LIBS}"
-    )
+  )
 
   set(BFD_LIBRARY_DIR
     "${BFD_SEARCH_LIB_PATHS}"
     CACHE PATH
     "Directory containing bfd libraries"
     FORCE
-    )
+  )
 
   # build a list of shared libraries (staticRT)
-  foreach (ELEMENT ${BFD_SHARED_LIBS})
+  foreach(ELEMENT ${BFD_SHARED_LIBS})
     get_filename_component(ELEMENT_FILENAME ${ELEMENT} NAME)
     string(REGEX MATCH "^(.*)\\.(lib|so)$" ELEMENT_MATCHES ${ELEMENT_FILENAME})
 
-    if (NOT ELEMENT_MATCHES)
+    if(NOT ELEMENT_MATCHES)
       continue()
-    endif ()
+    endif()
 
     get_filename_component(ELEMENT_DIRECTORY ${ELEMENT} DIRECTORY)
     file(GLOB ELEMENT_LIB
@@ -145,15 +145,15 @@ if (BFD_INCLUDE_DIR_ANSIDECL AND BFD_INCLUDE_DIR_BFD AND BFD_SHARED_LIB AND BFD_
       "${ELEMENT_DIRECTORY}/lib${CMAKE_MATCH_1}.so"
       "${ELEMENT_DIRECTORY}/${CMAKE_MATCH_1}-[0-9\.]*.so"
       "${ELEMENT_DIRECTORY}/lib${CMAKE_MATCH_1}-[0-9\.]*.so"
-      )
+    )
 
-    if (ELEMENT_LIB)
+    if(ELEMENT_LIB)
       list(APPEND BFD_SHARED_LIB_RESOURCES ${ELEMENT_LIB})
-    endif ()
-  endforeach ()
+    endif()
+  endforeach()
 else ()
   set(BFD_FOUND FALSE)
-endif ()
+endif()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(BFD
@@ -167,7 +167,7 @@ find_package_handle_standard_args(BFD
   BFD_STATIC_LIB
   BFD_STATIC_LIB_IBERTY
   BFD_STATIC_LIB_Z
-  )
+)
 message("BFD_INCLUDE_DIR: " ${BFD_INCLUDE_DIR})
 message("BFD_LIBRARY_DIR: " ${BFD_LIBRARY_DIR})
 message("BFD_SHARED_LIBS: " ${BFD_SHARED_LIBS})

@@ -23,37 +23,39 @@
 
 #include "index/comparer.hpp"
 #include "index/norm.hpp"
-#include "index_tests.hpp"
-#include "search/term_filter.hpp"
-#include "tests_shared.hpp"
+#include "iql/query_builder.hpp"
 #include "utils/index_utils.hpp"
 
-namespace {
+#include "tests_shared.hpp"
+#include "index_tests.hpp"
 
-auto MakeByTerm(std::string_view name, std::string_view value) {
-  auto filter = std::make_unique<irs::by_term>();
-  *filter->mutable_field() = name;
-  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
-  return filter;
-}
+namespace {
 
 class sorted_europarl_doc_template : public tests::europarl_doc_template {
  public:
   explicit sorted_europarl_doc_template(
-    std::string field, std::vector<irs::type_info::type_id> field_features)
-    : field_{std::move(field)}, field_features_{std::move(field_features)} {}
+      std::string field,
+      std::vector<irs::type_info::type_id> field_features)
+    : field_{std::move(field)},
+      field_features_{std::move(field_features)} {
+  }
 
   virtual void init() override {
-    indexed.push_back(std::make_shared<tests::string_field>(
-      "title", irs::IndexFeatures::ALL, field_features_));
     indexed.push_back(
-      std::make_shared<text_ref_field>("title_anl", false, field_features_));
+      std::make_shared<tests::string_field>(
+        "title", irs::IndexFeatures::ALL, field_features_));
     indexed.push_back(
-      std::make_shared<text_ref_field>("title_anl_pay", true, field_features_));
+      std::make_shared<text_ref_field>(
+        "title_anl", false, field_features_));
     indexed.push_back(
-      std::make_shared<text_ref_field>("body_anl", false, field_features_));
+      std::make_shared<text_ref_field>(
+        "title_anl_pay", true, field_features_));
     indexed.push_back(
-      std::make_shared<text_ref_field>("body_anl_pay", true, field_features_));
+      std::make_shared<text_ref_field>(
+        "body_anl", false, field_features_));
+    indexed.push_back(
+      std::make_shared<text_ref_field>(
+        "body_anl_pay", true, field_features_));
     {
       insert(std::make_shared<tests::long_field>());
       auto& field = static_cast<tests::long_field&>(indexed.back());
@@ -79,12 +81,12 @@ class sorted_europarl_doc_template : public tests::europarl_doc_template {
   }
 
  private:
-  std::string field_;  // sorting field
+  std::string field_; // sorting field
   std::vector<irs::type_info::type_id> field_features_;
-};  // sorted_europal_doc_template
+}; // sorted_europal_doc_template
 
 struct string_comparer : irs::comparer {
-  virtual bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {
+  virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
     if (lhs.empty() && rhs.empty()) {
       return false;
     } else if (rhs.empty()) {
@@ -101,7 +103,7 @@ struct string_comparer : irs::comparer {
 };
 
 struct long_comparer : irs::comparer {
-  virtual bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {
+  virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
     if (lhs.null() && rhs.null()) {
       return false;
     } else if (rhs.null()) {
@@ -120,7 +122,7 @@ struct long_comparer : irs::comparer {
 
 struct custom_feature {
   struct header {
-    explicit header(std::span<const irs::bytes_ref> headers) noexcept {
+    explicit header(irs::range<const irs::bytes_ref> headers) noexcept {
       for (const auto header : headers) {
         update(header);
       }
@@ -144,16 +146,18 @@ struct custom_feature {
   };
 
   struct writer : irs::feature_writer {
-    explicit writer(std::span<const irs::bytes_ref> headers) noexcept
+    explicit writer(irs::range<const irs::bytes_ref> headers) noexcept
       : hdr{{}} {
       if (!headers.empty()) {
         init_header.emplace(headers);
       }
     }
 
-    virtual void write(const irs::field_stats& stats, irs::doc_id_t doc,
-                       // cppcheck-suppress constParameter
-                       irs::columnstore_writer::values_writer_f& writer) final {
+    virtual void write(
+        const irs::field_stats& stats,
+        irs::doc_id_t doc,
+        // cppcheck-suppress constParameter
+        irs::columnstore_writer::values_writer_f& writer) final {
       ++hdr.count;
 
       // We intentionally call `writer(doc)` multiple
@@ -164,7 +168,9 @@ struct custom_feature {
       writer(doc).write_int(stats.num_unique);
     }
 
-    virtual void write(irs::data_output& out, irs::bytes_ref payload) {
+    virtual void write(
+        data_output& out,
+        irs::bytes_ref payload) {
       if (!payload.empty()) {
         ++hdr.count;
         out.write_bytes(payload.c_str(), payload.size());
@@ -185,7 +191,7 @@ struct custom_feature {
   };
 
   static irs::feature_writer::ptr make_writer(
-    std::span<const irs::bytes_ref> payload) {
+      irs::range<const irs::bytes_ref> payload) {
     return irs::memory::make_managed<writer>(payload);
   }
 };
@@ -196,12 +202,12 @@ class sorted_index_test_case : public tests::index_test_base {
  protected:
   bool supports_pluggable_features() const noexcept {
     // old formats don't support pluggable features
-    constexpr irs::string_ref kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
-                                            "1_3simd"};
+    constexpr irs::string_ref kOldFormats[] {
+        "1_0", "1_1", "1_2", "1_3", "1_3simd" };
 
-    return std::end(kOldFormats) == std::find(std::begin(kOldFormats),
-                                              std::end(kOldFormats),
-                                              codec()->type().name());
+     return std::end(kOldFormats) == std::find(std::begin(kOldFormats),
+                                               std::end(kOldFormats),
+                                               codec()->type().name());
   }
 
   irs::feature_info_provider_t features() {
@@ -213,55 +219,51 @@ class sorted_index_test_case : public tests::index_test_base {
       }
 
       if (supports_pluggable_features()) {
-        if (irs::type<irs::Norm2>::id() == id) {
-          return std::make_pair(
-            irs::column_info{
-              irs::type<irs::compression::none>::get(), {}, false},
-            &irs::Norm2::MakeWriter);
-        } else if (irs::type<custom_feature>::id() == id) {
-          return std::make_pair(
-            irs::column_info{
-              irs::type<irs::compression::none>::get(), {}, false},
-            &custom_feature::make_writer);
-        }
+          if (irs::type<irs::Norm2>::id() == id) {
+            return std::make_pair(
+                irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
+                &irs::Norm2::MakeWriter);
+          } else if (irs::type<custom_feature>::id() == id) {
+            return std::make_pair(
+                irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
+                &custom_feature::make_writer);
+          }
       }
 
       return std::make_pair(
-        irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
-        irs::feature_writer_factory_t{});
+          irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
+          irs::feature_writer_factory_t{});
     };
   }
 
   std::vector<irs::type_info::type_id> field_features() {
     return supports_pluggable_features()
-             ? std::vector<
-                 irs::type_info::type_id>{irs::type<irs::Norm>::id(),
-                                          irs::type<irs::Norm2>::id(),
-                                          irs::type<custom_feature>::id()}
-             : std::vector<irs::type_info::type_id>{irs::type<irs::Norm>::id()};
+      ? std::vector<irs::type_info::type_id>{ irs::type<irs::Norm>::id(),
+                                              irs::type<irs::Norm2>::id(),
+                                              irs::type<custom_feature>::id() }
+      : std::vector<irs::type_info::type_id>{ irs::type<irs::Norm>::id() };
   }
 
-  void assert_index(size_t skip = 0,
-                    irs::automaton_table_matcher* matcher = nullptr) const {
+  void assert_index(size_t skip = 0, irs::automaton_table_matcher* matcher = nullptr) const {
     index_test_base::assert_index(irs::IndexFeatures::NONE, skip, matcher);
     index_test_base::assert_index(
       irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ, skip, matcher);
-    index_test_base::assert_index(irs::IndexFeatures::NONE |
-                                    irs::IndexFeatures::FREQ |
-                                    irs::IndexFeatures::POS,
-                                  skip, matcher);
     index_test_base::assert_index(
-      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ |
-        irs::IndexFeatures::POS | irs::IndexFeatures::OFFS,
+      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ
+        | irs::IndexFeatures::POS,
       skip, matcher);
     index_test_base::assert_index(
-      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ |
-        irs::IndexFeatures::POS | irs::IndexFeatures::PAY,
+      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ
+        | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS,
       skip, matcher);
     index_test_base::assert_index(
-      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ |
-        irs::IndexFeatures::POS | irs::IndexFeatures::OFFS |
-        irs::IndexFeatures::PAY,
+      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ
+        | irs::IndexFeatures::POS | irs::IndexFeatures::PAY,
+      skip, matcher);
+    index_test_base::assert_index(
+      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ
+        | irs::IndexFeatures::POS | irs::IndexFeatures::OFFS
+        | irs::IndexFeatures::PAY,
       skip, matcher);
     index_test_base::assert_columnstore();
   }
@@ -292,37 +294,40 @@ class sorted_index_test_case : public tests::index_test_base {
   }
 
   void check_features(const irs::sub_reader& segment,
-                      irs::string_ref field_name, size_t count,
-                      bool after_consolidation) {
-    auto* field_reader = segment.field(field_name);
-    ASSERT_NE(nullptr, field_reader);
-    auto& field = field_reader->meta();
-    ASSERT_EQ(3, field.features.size());
+                      irs::string_ref field_name,
+                      size_t count, bool after_consolidation) {
+     auto* field_reader = segment.field(field_name);
+     ASSERT_NE(nullptr, field_reader);
+     auto& field = field_reader->meta();
+     ASSERT_EQ(3, field.features.size());
 
-    // irs::norm, nothing is written since all values are equal to 1
-    check_empty_feature(segment, field, irs::type<irs::Norm>::id());
+     // irs::norm, nothing is written since all values are equal to 1
+     check_empty_feature(segment, field, irs::type<irs::Norm>::id());
 
-    // custom_feature
-    {
-      irs::byte_type buf[sizeof(count)];
-      auto* p = buf;
-      irs::write<size_t>(p, count);
+     // custom_feature
+     {
+       irs::byte_type buf[sizeof(count)];
+       auto* p = buf;
+       irs::write<size_t>(p, count);
 
-      check_feature_header(segment, field, irs::type<custom_feature>::id(),
-                           {buf, sizeof buf});
-    }
+       check_feature_header(segment, field,
+                            irs::type<custom_feature>::id(),
+                            { buf, sizeof buf });
+     }
 
-    // irs::Norm2
-    {
-      irs::Norm2Header hdr{after_consolidation ? irs::Norm2Encoding::Byte
-                                               : irs::Norm2Encoding::Int};
-      hdr.Reset(1);
+     // irs::Norm2
+     {
+       irs::Norm2Header hdr{after_consolidation ? irs::Norm2Encoding::Byte
+                                                : irs::Norm2Encoding::Int};
+       hdr.Reset(1);
 
-      irs::bstring buf;
-      irs::Norm2Header::Write(hdr, buf);
+       irs::bstring buf;
+       irs::Norm2Header::Write(hdr, buf);
 
-      check_feature_header(segment, field, irs::type<irs::Norm2>::id(), buf);
-    }
+       check_feature_header(segment, field,
+                            irs::type<irs::Norm2>::id(),
+                            buf);
+     }
   }
 };
 
@@ -332,11 +337,13 @@ TEST_P(sorted_index_test_case, simple_sequential) {
   // Build index
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [&sorted_column, this](tests::document& doc, const std::string& name,
+    [&sorted_column, this](tests::document& doc,
+                           const std::string& name,
                            const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::string_field>(
-          name, data.str, irs::IndexFeatures::ALL, field_features());
+          name, data.str, irs::IndexFeatures::ALL,
+          field_features());
 
         doc.insert(field);
 
@@ -350,7 +357,7 @@ TEST_P(sorted_index_test_case, simple_sequential) {
 
         doc.insert(field);
       }
-    });
+  });
 
   string_comparer less;
 
@@ -358,7 +365,7 @@ TEST_P(sorted_index_test_case, simple_sequential) {
   opts.comparator = &less;
   opts.features = features();
 
-  add_segment(gen, irs::OM_CREATE, opts);  // add segment
+  add_segment(gen, irs::OM_CREATE, opts); // add segment
 
   // Check index
   assert_index();
@@ -389,15 +396,16 @@ TEST_P(sorted_index_test_case, simple_sequential) {
 
       ASSERT_EQ(column_payload.size(), segment.docs_count());
 
-      std::sort(column_payload.begin(), column_payload.end(),
-                [&less](const irs::bstring& lhs, const irs::bstring& rhs) {
-                  return less(lhs, rhs);
-                });
+      std::sort(
+        column_payload.begin(), column_payload.end(),
+        [&less](const irs::bstring& lhs, const irs::bstring& rhs) {
+          return less(lhs, rhs);
+      });
 
       auto& sorted_column = *segment.sort();
       ASSERT_EQ(segment.docs_count(), sorted_column.size());
 
-      auto sorted_column_it = sorted_column.iterator(irs::ColumnHint::kNormal);
+      auto sorted_column_it = sorted_column.iterator(false);
       ASSERT_NE(nullptr, sorted_column_it);
 
       auto* payload = irs::get<irs::payload>(*sorted_column_it);
@@ -414,12 +422,12 @@ TEST_P(sorted_index_test_case, simple_sequential) {
     }
 
     // Check regular columns
-    constexpr irs::string_ref column_names[]{"seq", "value", "duplicated",
-                                             "prefix"};
+    constexpr irs::string_ref column_names[] {
+        "seq", "value", "duplicated", "prefix" };
 
     for (auto& column_name : column_names) {
       struct doc {
-        irs::doc_id_t id{irs::doc_limits::eof()};
+        irs::doc_id_t id{ irs::doc_limits::eof() };
         irs::bstring order;
         irs::bstring value;
       };
@@ -428,7 +436,7 @@ TEST_P(sorted_index_test_case, simple_sequential) {
       column_docs.reserve(segment.docs_count());
 
       gen.reset();
-      irs::doc_id_t id{irs::doc_limits::min()};
+      irs::doc_id_t id{ irs::doc_limits::min() };
       while (auto* doc = gen.next()) {
         auto* sorted = doc->stored.get(sorted_column);
         ASSERT_NE(nullptr, sorted);
@@ -443,31 +451,32 @@ TEST_P(sorted_index_test_case, simple_sequential) {
 
         if (column) {
           value.id = id++;
-          irs::bytes_output value_out(value.value);
+        irs::bytes_output value_out(value.value);
           column->write(value_out);
         }
       }
 
-      std::sort(column_docs.begin(), column_docs.end(),
-                [&less](const doc& lhs, const doc& rhs) {
-                  return less(lhs.order, rhs.order);
-                });
+      std::sort(
+        column_docs.begin(), column_docs.end(),
+        [&less](const doc& lhs, const doc& rhs) {
+          return less(lhs.order, rhs.order);
+      });
 
       auto* column_meta = segment.column(column_name);
       ASSERT_NE(nullptr, column_meta);
       auto* column = segment.column(column_meta->id());
       ASSERT_NE(nullptr, column);
 
-      ASSERT_EQ(id - 1, column->size());
+      ASSERT_EQ(id-1, column->size());
 
-      auto column_it = column->iterator(irs::ColumnHint::kNormal);
+      auto column_it = column->iterator(false);
       ASSERT_NE(nullptr, column_it);
 
       auto* payload = irs::get<irs::payload>(*column_it);
       ASSERT_TRUE(payload);
 
       irs::doc_id_t doc = 0;
-      for (auto& expected_value : column_docs) {
+      for (auto& expected_value: column_docs) {
         ++doc;
 
         if (irs::doc_limits::eof(expected_value.id)) {
@@ -498,11 +507,13 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
   // Build index
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [&sorted_column, this](tests::document& doc, const std::string& name,
+    [&sorted_column, this](tests::document& doc,
+                           const std::string& name,
                            const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::string_field>(
-          name, data.str, irs::IndexFeatures::ALL, field_features());
+          name, data.str, irs::IndexFeatures::ALL,
+          field_features());
 
         doc.insert(field);
 
@@ -516,9 +527,10 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
         doc.insert(field);
       }
-    });
+  });
 
-  constexpr std::pair<size_t, size_t> segment_offsets[]{{0, 15}, {15, 17}};
+  constexpr std::pair<size_t, size_t> segment_offsets[] {
+      { 0, 15 }, { 15, 17 } };
 
   string_comparer less;
 
@@ -553,8 +565,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
     size_t i = 0;
     for (auto& segment : *reader) {
       auto& offset = segment_offsets[i++];
-      tests::limiting_doc_generator segment_gen(gen, offset.first,
-                                                offset.second);
+      tests::limiting_doc_generator segment_gen(gen, offset.first, offset.second);
 
       ASSERT_EQ(offset.second, segment.docs_count());
       ASSERT_EQ(segment.docs_count(), segment.live_docs_count());
@@ -576,18 +587,18 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
         ASSERT_EQ(column_payload.size(), segment.docs_count());
 
-        std::sort(column_payload.begin(), column_payload.end(),
-                  [&less](const irs::bstring& lhs, const irs::bstring& rhs) {
-                    return less(lhs, rhs);
-                  });
+        std::sort(
+          column_payload.begin(), column_payload.end(),
+          [&less](const irs::bstring& lhs, const irs::bstring& rhs) {
+            return less(lhs, rhs);
+        });
 
         auto& sorted_column = *segment.sort();
         ASSERT_EQ(segment.docs_count(), sorted_column.size());
         ASSERT_TRUE(sorted_column.name().null());
         ASSERT_TRUE(sorted_column.payload().empty());
 
-        auto sorted_column_it =
-          sorted_column.iterator(irs::ColumnHint::kNormal);
+        auto sorted_column_it = sorted_column.iterator(false);
         ASSERT_NE(nullptr, sorted_column_it);
 
         auto* payload = irs::get<irs::payload>(*sorted_column_it);
@@ -604,12 +615,12 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
       }
 
       // Check stored columns
-      constexpr irs::string_ref column_names[]{"seq", "value", "duplicated",
-                                               "prefix"};
+      constexpr irs::string_ref column_names[] {
+          "seq", "value", "duplicated", "prefix" };
 
       for (auto& column_name : column_names) {
         struct doc {
-          irs::doc_id_t id{irs::doc_limits::eof()};
+          irs::doc_id_t id{ irs::doc_limits::eof() };
           irs::bstring order;
           irs::bstring value;
         };
@@ -618,7 +629,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
         column_docs.reserve(segment.docs_count());
 
         segment_gen.reset();
-        irs::doc_id_t id{irs::doc_limits::min()};
+        irs::doc_id_t id{ irs::doc_limits::min() };
         while (auto* doc = segment_gen.next()) {
           auto* sorted = doc->stored.get(sorted_column);
           ASSERT_NE(nullptr, sorted);
@@ -638,10 +649,11 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
           }
         }
 
-        std::sort(column_docs.begin(), column_docs.end(),
-                  [&less](const doc& lhs, const doc& rhs) {
-                    return less(lhs.order, rhs.order);
-                  });
+        std::sort(
+          column_docs.begin(), column_docs.end(),
+          [&less](const doc& lhs, const doc& rhs) {
+            return less(lhs.order, rhs.order);
+        });
 
         auto* column_meta = segment.column(column_name);
         ASSERT_NE(nullptr, column_meta);
@@ -650,16 +662,16 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
         ASSERT_EQ(column_meta, column);
         ASSERT_TRUE(column->payload().empty());
 
-        ASSERT_EQ(id - 1, column->size());
+        ASSERT_EQ(id-1, column->size());
 
-        auto column_it = column->iterator(irs::ColumnHint::kNormal);
+        auto column_it = column->iterator(false);
         ASSERT_NE(nullptr, column_it);
 
         auto* payload = irs::get<irs::payload>(*column_it);
         ASSERT_TRUE(payload);
 
         irs::doc_id_t doc = 0;
-        for (auto& expected_value : column_docs) {
+        for (auto& expected_value: column_docs) {
           ++doc;
 
           if (irs::doc_limits::eof(expected_value.id)) {
@@ -699,8 +711,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
   // Consolidate segments
   {
     irs::index_utils::consolidate_count consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
     writer->commit();
 
     // simulate consolidation
@@ -730,8 +741,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
     ASSERT_EQ(1, reader.size());
 
     auto& segment = reader[0];
-    ASSERT_EQ(segment_offsets[0].second + segment_offsets[1].second,
-              segment.docs_count());
+    ASSERT_EQ(segment_offsets[0].second + segment_offsets[1].second, segment.docs_count());
     ASSERT_EQ(segment.docs_count(), segment.live_docs_count());
     ASSERT_NE(nullptr, segment.sort());
 
@@ -751,17 +761,18 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
 
       ASSERT_EQ(column_payload.size(), segment.docs_count());
 
-      std::sort(column_payload.begin(), column_payload.end(),
-                [&less](const irs::bstring& lhs, const irs::bstring& rhs) {
-                  return less(lhs, rhs);
-                });
+      std::sort(
+        column_payload.begin(), column_payload.end(),
+        [&less](const irs::bstring& lhs, const irs::bstring& rhs) {
+          return less(lhs, rhs);
+      });
 
       auto& sorted_column = *segment.sort();
       ASSERT_EQ(segment.docs_count(), sorted_column.size());
       ASSERT_TRUE(sorted_column.payload().empty());
       ASSERT_TRUE(sorted_column.name().null());
 
-      auto sorted_column_it = sorted_column.iterator(irs::ColumnHint::kNormal);
+      auto sorted_column_it = sorted_column.iterator(false);
       ASSERT_NE(nullptr, sorted_column_it);
 
       auto* payload = irs::get<irs::payload>(*sorted_column_it);
@@ -778,12 +789,12 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
     }
 
     // Check stored columns
-    constexpr irs::string_ref column_names[]{"seq", "value", "duplicated",
-                                             "prefix"};
+    constexpr irs::string_ref column_names[] {
+        "seq", "value", "duplicated", "prefix" };
 
     for (auto& column_name : column_names) {
       struct doc {
-        irs::doc_id_t id{irs::doc_limits::eof()};
+        irs::doc_id_t id{ irs::doc_limits::eof() };
         irs::bstring order;
         irs::bstring value;
       };
@@ -792,7 +803,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
       column_docs.reserve(segment.docs_count());
 
       gen.reset();
-      irs::doc_id_t id{irs::doc_limits::min()};
+      irs::doc_id_t id{ irs::doc_limits::min() };
       while (auto* doc = gen.next()) {
         auto* sorted = doc->stored.get(sorted_column);
         ASSERT_NE(nullptr, sorted);
@@ -812,10 +823,11 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
         }
       }
 
-      std::sort(column_docs.begin(), column_docs.end(),
-                [&less](const doc& lhs, const doc& rhs) {
-                  return less(lhs.order, rhs.order);
-                });
+      std::sort(
+        column_docs.begin(), column_docs.end(),
+        [&less](const doc& lhs, const doc& rhs) {
+          return less(lhs.order, rhs.order);
+      });
 
       auto* column_meta = segment.column(column_name);
       ASSERT_NE(nullptr, column_meta);
@@ -824,16 +836,16 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
       ASSERT_EQ(column_meta, column);
       ASSERT_TRUE(column->payload().empty());
 
-      ASSERT_EQ(id - 1, column->size());
+      ASSERT_EQ(id-1, column->size());
 
-      auto column_it = column->iterator(irs::ColumnHint::kNormal);
+      auto column_it = column->iterator(false);
       ASSERT_NE(nullptr, column_it);
 
       auto* payload = irs::get<irs::payload>(*column_it);
       ASSERT_TRUE(payload);
 
       irs::doc_id_t doc = 0;
-      for (auto& expected_value : column_docs) {
+      for (auto& expected_value: column_docs) {
         ++doc;
 
         if (irs::doc_limits::eof(expected_value.id)) {
@@ -864,11 +876,13 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
   // Build index
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [&sorted_column, this](tests::document& doc, const std::string& name,
+    [&sorted_column, this](tests::document& doc,
+                           const std::string& name,
                            const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::string_field>(
-          name, data.str, irs::IndexFeatures::ALL, field_features());
+          name, data.str, irs::IndexFeatures::ALL,
+          field_features());
 
         doc.insert(field);
 
@@ -883,14 +897,14 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
           doc.sorted = field;
         }
       }
-    });
+  });
 
   long_comparer less;
   irs::index_writer::init_options opts;
   opts.comparator = &less;
   opts.features = features();
 
-  add_segment(gen, irs::OM_CREATE, opts);  // add segment
+  add_segment(gen, irs::OM_CREATE, opts); // add segment
 
   assert_index();
 
@@ -920,17 +934,18 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
 
       ASSERT_EQ(column_payload.size(), segment.docs_count());
 
-      std::sort(column_payload.begin(), column_payload.end(),
-                [&less](const irs::bstring& lhs, const irs::bstring& rhs) {
-                  return less(lhs, rhs);
-                });
+      std::sort(
+        column_payload.begin(), column_payload.end(),
+        [&less](const irs::bstring& lhs, const irs::bstring& rhs) {
+          return less(lhs, rhs);
+      });
 
       auto& sorted_column = *segment.sort();
       ASSERT_EQ(segment.docs_count(), sorted_column.size());
       ASSERT_TRUE(sorted_column.name().null());
       ASSERT_TRUE(sorted_column.payload().empty());
 
-      auto sorted_column_it = sorted_column.iterator(irs::ColumnHint::kNormal);
+      auto sorted_column_it = sorted_column.iterator(false);
       ASSERT_NE(nullptr, sorted_column_it);
 
       auto* payload = irs::get<irs::payload>(*sorted_column_it);
@@ -947,12 +962,12 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
     }
 
     // Check stored columns
-    constexpr irs::string_ref column_names[]{"name", "value", "duplicated",
-                                             "prefix"};
+    constexpr irs::string_ref column_names[] {
+        "name", "value", "duplicated", "prefix" };
 
     for (auto& column_name : column_names) {
       struct doc {
-        irs::doc_id_t id{irs::doc_limits::eof()};
+        irs::doc_id_t id{ irs::doc_limits::eof() };
         irs::bstring order;
         irs::bstring value;
       };
@@ -961,7 +976,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
       column_docs.reserve(segment.docs_count());
 
       gen.reset();
-      irs::doc_id_t id{irs::doc_limits::min()};
+      irs::doc_id_t id{ irs::doc_limits::min() };
       while (auto* doc = gen.next()) {
         auto* sorted = doc->stored.get(sorted_column);
         ASSERT_NE(nullptr, sorted);
@@ -981,10 +996,11 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
         }
       }
 
-      std::sort(column_docs.begin(), column_docs.end(),
-                [&less](const doc& lhs, const doc& rhs) {
-                  return less(lhs.order, rhs.order);
-                });
+      std::sort(
+        column_docs.begin(), column_docs.end(),
+        [&less](const doc& lhs, const doc& rhs) {
+          return less(lhs.order, rhs.order);
+      });
 
       auto* column_meta = segment.column(column_name);
       ASSERT_NE(nullptr, column_meta);
@@ -993,16 +1009,16 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
       ASSERT_EQ(column_meta, column);
       ASSERT_EQ(0, column->payload().size());
 
-      ASSERT_EQ(id - 1, column->size());
+      ASSERT_EQ(id-1, column->size());
 
-      auto column_it = column->iterator(irs::ColumnHint::kNormal);
+      auto column_it = column->iterator(false);
       ASSERT_NE(nullptr, column_it);
 
       auto* payload = irs::get<irs::payload>(*column_it);
       ASSERT_TRUE(payload);
 
       irs::doc_id_t doc = 0;
-      for (auto& expected_value : column_docs) {
+      for (auto& expected_value: column_docs) {
         ++doc;
 
         if (irs::doc_limits::eof(expected_value.id)) {
@@ -1074,10 +1090,8 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
       auto doc = docs.insert();
 
       // Compound sorted field
-      field.value = "A";
-      doc.insert<irs::Action::STORE_SORTED>(field);
-      field.value = "B";
-      doc.insert<irs::Action::STORE_SORTED>(field);
+      field.value = "A"; doc.insert<irs::Action::STORE_SORTED>(field);
+      field.value = "B"; doc.insert<irs::Action::STORE_SORTED>(field);
 
       // Indexed field
       doc.insert<irs::Action::INDEX>(same);
@@ -1087,10 +1101,8 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
       auto doc = docs.insert();
 
       // Compound sorted field
-      field.value = "C";
-      doc.insert<irs::Action::STORE_SORTED>(field);
-      field.value = "D";
-      doc.insert<irs::Action::STORE_SORTED>(field);
+      field.value = "C"; doc.insert<irs::Action::STORE_SORTED>(field);
+      field.value = "D"; doc.insert<irs::Action::STORE_SORTED>(field);
 
       // Indexed field
       doc.insert<irs::Action::INDEX>(same);
@@ -1112,7 +1124,7 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_TRUE(column->payload().empty());
-      auto values = column->iterator(irs::ColumnHint::kNormal);
+      auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1136,11 +1148,13 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
 TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [this](tests::document& doc, const std::string& name,
+    [this](tests::document& doc,
+           const std::string& name,
            const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::string_field>(
-          name, data.str, irs::IndexFeatures::ALL, field_features());
+          name, data.str, irs::IndexFeatures::ALL,
+          field_features());
 
         doc.insert(field);
 
@@ -1148,12 +1162,12 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
           doc.sorted = field;
         }
       }
-    });
+  });
 
-  auto* doc0 = gen.next();  // name == 'A'
-  auto* doc1 = gen.next();  // name == 'B'
-  auto* doc2 = gen.next();  // name == 'C'
-  auto* doc3 = gen.next();  // name == 'D'
+  auto* doc0 = gen.next(); // name == 'A'
+  auto* doc1 = gen.next(); // name == 'B'
+  auto* doc2 = gen.next(); // name == 'C'
+  auto* doc3 = gen.next(); // name == 'D'
 
   string_comparer less;
 
@@ -1167,17 +1181,25 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
   ASSERT_EQ(&less, writer->comparator());
 
   // Segment 0
-  ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
-                     doc0->stored.begin(), doc0->stored.end(), doc0->sorted));
-  ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
-                     doc2->stored.begin(), doc2->stored.end(), doc2->sorted));
+  ASSERT_TRUE(insert(*writer,
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end(),
+    doc0->sorted));
+  ASSERT_TRUE(insert(*writer,
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end(),
+   doc2->sorted));
   writer->commit();
 
   // Segment 1
-  ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
-                     doc1->stored.begin(), doc1->stored.end(), doc1->sorted));
-  ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
-                     doc3->stored.begin(), doc3->stored.end(), doc3->sorted));
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end(),
+    doc1->sorted));
+  ASSERT_TRUE(insert(*writer,
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end(),
+    doc3->sorted));
   writer->commit();
 
   // Read documents
@@ -1193,7 +1215,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_TRUE(column->payload().empty());
-      auto values = column->iterator(irs::ColumnHint::kNormal);
+      auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1204,12 +1226,10 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1226,7 +1246,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       auto& segment = reader[1];
       const auto* column = segment.sort();
       ASSERT_NE(nullptr, column);
-      auto values = column->iterator(irs::ColumnHint::kNormal);
+      auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1237,12 +1257,10 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1258,8 +1276,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
   // Consolidate segments
   {
     irs::index_utils::consolidate_count consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
     writer->commit();
   }
 
@@ -1276,7 +1293,7 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_TRUE(column->payload().empty());
-      auto values = column->iterator(irs::ColumnHint::kNormal);
+      auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1287,20 +1304,16 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features in consolidated segment
@@ -1316,18 +1329,22 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
   // Create expected index
   auto& expected_index = index();
   expected_index.emplace_back(writer->feature_info());
-  expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
-                               doc0->stored.begin(), doc0->stored.end(),
-                               doc0->sorted.get());
-  expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end(),
-                               doc2->stored.begin(), doc2->stored.end(),
-                               doc2->sorted.get());
-  expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end(),
-                               doc1->stored.begin(), doc1->stored.end(),
-                               doc1->sorted.get());
-  expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end(),
-                               doc3->stored.begin(), doc3->stored.end(),
-                               doc3->sorted.get());
+  expected_index.back().insert(
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end(),
+    doc0->sorted.get());
+  expected_index.back().insert(
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end(),
+   doc2->sorted.get());
+  expected_index.back().insert(
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end(),
+    doc1->sorted.get());
+  expected_index.back().insert(
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end(),
+    doc3->sorted.get());
   expected_index.back().sort(*writer->comparator());
   for (auto& column : expected_index.back().columns()) {
     column.rewrite();
@@ -1335,15 +1352,16 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
   assert_index();
 }
 
-TEST_P(sorted_index_test_case,
-       check_document_order_after_consolidation_dense_with_removals) {
+TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense_with_removals) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [this](tests::document& doc, const std::string& name,
+    [this](tests::document& doc,
+           const std::string& name,
            const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::string_field>(
-          name, data.str, irs::IndexFeatures::ALL, field_features());
+          name, data.str, irs::IndexFeatures::ALL,
+          field_features());
 
         doc.insert(field);
 
@@ -1351,12 +1369,12 @@ TEST_P(sorted_index_test_case,
           doc.sorted = field;
         }
       }
-    });
+  });
 
-  auto* doc0 = gen.next();  // name == 'A'
-  auto* doc1 = gen.next();  // name == 'B'
-  auto* doc2 = gen.next();  // name == 'C'
-  auto* doc3 = gen.next();  // name == 'D'
+  auto* doc0 = gen.next(); // name == 'A'
+  auto* doc1 = gen.next(); // name == 'B'
+  auto* doc2 = gen.next(); // name == 'C'
+  auto* doc3 = gen.next(); // name == 'D'
 
   tests::string_field empty_field{"", irs::IndexFeatures::NONE};
   ASSERT_FALSE(empty_field.value().null());
@@ -1373,17 +1391,25 @@ TEST_P(sorted_index_test_case,
   ASSERT_EQ(&less, writer->comparator());
 
   // segment 0
-  ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
-                     doc0->stored.begin(), doc0->stored.end(), doc0->sorted));
-  ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
-                     doc2->stored.begin(), doc2->stored.end(), doc2->sorted));
+  ASSERT_TRUE(insert(*writer,
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end(),
+    doc0->sorted));
+  ASSERT_TRUE(insert(*writer,
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end(),
+    doc2->sorted));
   writer->commit();
 
   // segment 1
-  ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
-                     doc1->stored.begin(), doc1->stored.end(), doc1->sorted));
-  ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
-                     doc3->stored.begin(), doc3->stored.end(), doc3->sorted));
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end(),
+    doc1->sorted));
+  ASSERT_TRUE(insert(*writer,
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end(),
+    doc3->sorted));
   writer->commit();
 
   // Read documents
@@ -1399,7 +1425,7 @@ TEST_P(sorted_index_test_case,
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_TRUE(column->payload().empty());
-      auto values = column->iterator(irs::ColumnHint::kNormal);
+      auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1410,12 +1436,10 @@ TEST_P(sorted_index_test_case,
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("C",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1434,7 +1458,7 @@ TEST_P(sorted_index_test_case,
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_EQ(0, column->payload().size());
-      auto values = column->iterator(irs::ColumnHint::kNormal);
+      auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1445,12 +1469,10 @@ TEST_P(sorted_index_test_case,
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1465,8 +1487,8 @@ TEST_P(sorted_index_test_case,
 
   // Remove document
   {
-    auto query_doc1 = MakeByTerm("name", "C");
-    writer->documents().remove(*query_doc1);
+    auto query_doc1 = irs::iql::query_builder().build("name==C", "C");
+    writer->documents().remove(*query_doc1.filter);
     writer->commit();
   }
 
@@ -1483,7 +1505,7 @@ TEST_P(sorted_index_test_case,
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_EQ(0, column->payload().size());
-      auto values = column->iterator(irs::ColumnHint::kNormal);
+      auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1494,8 +1516,7 @@ TEST_P(sorted_index_test_case,
       auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1514,7 +1535,7 @@ TEST_P(sorted_index_test_case,
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_EQ(0, column->payload().size());
-      auto values = column->iterator(irs::ColumnHint::kNormal);
+      auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1525,12 +1546,10 @@ TEST_P(sorted_index_test_case,
       auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features
@@ -1546,8 +1565,7 @@ TEST_P(sorted_index_test_case,
   // Consolidate segments
   {
     irs::index_utils::consolidate_count consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
     writer->commit();
   }
 
@@ -1565,7 +1583,7 @@ TEST_P(sorted_index_test_case,
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_EQ(0, column->payload().size());
-      auto values = column->iterator(irs::ColumnHint::kNormal);
+      auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1576,16 +1594,13 @@ TEST_P(sorted_index_test_case,
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("D",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_FALSE(docsItr->next());
 
       // Check pluggable features in consolidated segment
@@ -1601,15 +1616,18 @@ TEST_P(sorted_index_test_case,
   // Create expected index
   auto& expected_index = index();
   expected_index.emplace_back(writer->feature_info());
-  expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
-                               doc0->stored.begin(), doc0->stored.end(),
-                               doc0->sorted.get());
-  expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end(),
-                               doc1->stored.begin(), doc1->stored.end(),
-                               doc1->sorted.get());
-  expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end(),
-                               doc3->stored.begin(), doc3->stored.end(),
-                               doc3->sorted.get());
+  expected_index.back().insert(
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end(),
+    doc0->sorted.get());
+  expected_index.back().insert(
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end(),
+    doc1->sorted.get());
+  expected_index.back().insert(
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end(),
+    doc3->sorted.get());
   for (auto& column : expected_index.back().columns()) {
     column.rewrite();
   }
@@ -1618,85 +1636,14 @@ TEST_P(sorted_index_test_case,
   assert_index();
 }
 
-TEST_P(sorted_index_test_case, doc_removal_same_key_within_trx) {
+TEST_P(sorted_index_test_case, check_document_order_after_consolidation_sparse) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
-    [](tests::document& doc, std::string_view name,
-       const tests::json_doc_generator::json_value& data) {
-      if (name == "name" && data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(name, data.str);
-        doc.sorted = field;
-        doc.insert(field);
-      }
-    });
-
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
-
-  auto query_doc1 = MakeByTerm("name", "A");
-  auto query_doc2 = MakeByTerm("name", "B");
-
-  {
-    string_comparer less;
-
-    // open writer
-    irs::index_writer::init_options opts;
-    opts.comparator = &less;
-    opts.features = features();
-    auto writer = open_writer(irs::OM_CREATE, opts);
-    ASSERT_NE(nullptr, writer);
-    ASSERT_EQ(&less, writer->comparator());
-
-    ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
-                       doc1->stored.begin(), doc1->stored.end(), doc1->sorted));
-    writer->documents().remove(*(query_doc1));
-    ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
-                       doc2->stored.begin(), doc2->stored.end(), doc2->sorted));
-    writer->documents().remove(*(query_doc2));
-    ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
-                       doc3->stored.begin(), doc3->stored.end(), doc3->sorted));
-    ASSERT_TRUE(writer->commit());
-  }
-
-  // Check consolidated segment
-  {
-    auto reader = irs::directory_reader::open(dir(), codec());
-    ASSERT_TRUE(reader);
-    ASSERT_EQ(1, reader.size());
-    ASSERT_EQ(3, reader->docs_count());
-    ASSERT_EQ(1, reader->live_docs_count());
-
-    // Check segment 0
-    auto& segment = reader[0];
-    const auto* column = segment.sort();
-    ASSERT_NE(nullptr, column);
-    ASSERT_TRUE(column->name().null());
-    ASSERT_EQ(0, column->payload().size());
-    auto values = column->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, values);
-    auto* actual_value = irs::get<irs::payload>(*values);
-    ASSERT_NE(nullptr, actual_value);
-    auto terms = segment.field("name");
-    ASSERT_NE(nullptr, terms);
-    auto docs = segment.docs_iterator();
-    ASSERT_TRUE(docs->next());
-    ASSERT_EQ(docs->value(), values->seek(docs->value()));
-    ASSERT_EQ("C",
-              irs::to_string<irs::string_ref>(actual_value->value.c_str()));
-    ASSERT_FALSE(docs->next());
-  }
-}
-
-TEST_P(sorted_index_test_case,
-       check_document_order_after_consolidation_sparse) {
-  tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [this](tests::document& doc, const std::string& name,
-           const tests::json_doc_generator::json_value& data) {
+    [this] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         auto field = std::make_shared<tests::string_field>(
-          name, data.str, irs::IndexFeatures::ALL, field_features());
+          name, data.str, irs::IndexFeatures::ALL,
+          field_features());
 
         doc.insert(field);
 
@@ -1704,12 +1651,12 @@ TEST_P(sorted_index_test_case,
           doc.sorted = field;
         }
       }
-    });
+  });
 
-  auto* doc0 = gen.next();  // name == 'A'
-  auto* doc1 = gen.next();  // name == 'B'
-  auto* doc2 = gen.next();  // name == 'C'
-  auto* doc3 = gen.next();  // name == 'D'
+  auto* doc0 = gen.next(); // name == 'A'
+  auto* doc1 = gen.next(); // name == 'B'
+  auto* doc2 = gen.next(); // name == 'C'
+  auto* doc3 = gen.next(); // name == 'D'
 
   string_comparer less;
   irs::index_writer::init_options opts;
@@ -1721,17 +1668,23 @@ TEST_P(sorted_index_test_case,
   ASSERT_NE(nullptr, writer->comparator());
 
   // Create segment 0
-  ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
-                     doc2->stored.begin(), doc2->stored.end()));
-  ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
-                     doc0->stored.begin(), doc0->stored.end(), doc0->sorted));
+  ASSERT_TRUE(insert(*writer,
+    doc2->indexed.begin(), doc2->indexed.end(),
+    doc2->stored.begin(), doc2->stored.end()));
+  ASSERT_TRUE(insert(*writer,
+    doc0->indexed.begin(), doc0->indexed.end(),
+    doc0->stored.begin(), doc0->stored.end(),
+    doc0->sorted));
   writer->commit();
 
   // Create segment 1
-  ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
-                     doc1->stored.begin(), doc1->stored.end(), doc1->sorted));
-  ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
-                     doc3->stored.begin(), doc3->stored.end()));
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end(),
+    doc1->sorted));
+  ASSERT_TRUE(insert(*writer,
+    doc3->indexed.begin(), doc3->indexed.end(),
+    doc3->stored.begin(), doc3->stored.end()));
   writer->commit();
 
   // Read documents
@@ -1748,7 +1701,7 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(column->name().null());
       ASSERT_EQ(0, column->payload().size());
       ASSERT_EQ(2, column->size());
-      auto values = column->iterator(irs::ColumnHint::kNormal);
+      auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1759,8 +1712,7 @@ TEST_P(sorted_index_test_case,
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_TRUE(actual_value->value.empty());
@@ -1783,7 +1735,7 @@ TEST_P(sorted_index_test_case,
       ASSERT_TRUE(column->name().null());
       ASSERT_EQ(0, column->payload().size());
       ASSERT_EQ(2, column->size());
-      auto values = column->iterator(irs::ColumnHint::kNormal);
+      auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1794,8 +1746,7 @@ TEST_P(sorted_index_test_case,
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_TRUE(actual_value->value.empty());
@@ -1814,8 +1765,7 @@ TEST_P(sorted_index_test_case,
   // Consolidate segments
   {
     irs::index_utils::consolidate_count consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all)));
     writer->commit();
   }
 
@@ -1834,7 +1784,7 @@ TEST_P(sorted_index_test_case,
       ASSERT_NE(nullptr, column);
       ASSERT_TRUE(column->name().null());
       ASSERT_EQ(0, column->payload().size());
-      auto values = column->iterator(irs::ColumnHint::kNormal);
+      auto values = column->iterator(false);
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
@@ -1845,12 +1795,10 @@ TEST_P(sorted_index_test_case,
       auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("B",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("A",
-                irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_TRUE(actual_value->value.empty());
@@ -1929,26 +1877,32 @@ TEST_P(sorted_index_test_case,
   //  assert_index();
 }
 
-// Separate definition as MSVC parser fails to do conditional defines in macro
-// expansion
+// Separate definition as MSVC parser fails to do conditional defines in macro expansion
 #ifdef IRESEARCH_SSE2
 const auto kSortedIndexTestCaseValues = ::testing::Values(
-  tests::format_info{"1_1", "1_0"}, tests::format_info{"1_2", "1_0"},
-  tests::format_info{"1_3", "1_0"}, tests::format_info{"1_4", "1_0"},
-  tests::format_info{"1_3simd", "1_0"}, tests::format_info{"1_4simd", "1_0"});
+    tests::format_info{"1_1", "1_0"},
+    tests::format_info{"1_2", "1_0"},
+    tests::format_info{"1_3", "1_0"},
+    tests::format_info{"1_4", "1_0"},
+    tests::format_info{"1_3simd", "1_0"},
+    tests::format_info{"1_4simd", "1_0"});
 #else
 const auto kSortedIndexTestCaseValues = ::testing::Values(
-  tests::format_info{"1_1", "1_0"}, tests::format_info{"1_2", "1_0"},
-  tests::format_info{"1_3", "1_0"}, tests::format_info{"1_4", "1_0"});
+    tests::format_info{"1_1", "1_0"},
+    tests::format_info{"1_2", "1_0"},
+    tests::format_info{"1_3", "1_0"},
+    tests::format_info{"1_4", "1_0"});
 #endif
 
 INSTANTIATE_TEST_SUITE_P(
-  sorted_index_test, sorted_index_test_case,
+  sorted_index_test,
+  sorted_index_test_case,
   ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
     kSortedIndexTestCaseValues),
   sorted_index_test_case::to_string);
 
-}  // namespace
+}

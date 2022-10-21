@@ -30,51 +30,68 @@
 
 namespace iresearch {
 
-// Represents an estimated cost of the query execution.
-class cost final : public attribute {
+//////////////////////////////////////////////////////////////////////////////
+/// @class cost
+/// @brief represents an estimated cost of the query execution
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API cost final : public attribute {
  public:
   using cost_t = uint64_t;
-  using cost_f = std::function<cost_t()>;
+  using cost_f = std::function<cost_t()> ;
 
-  static constexpr string_ref type_name() noexcept { return "iresearch::cost"; }
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::cost";
+  }
 
-  static constexpr cost_t kMax = std::numeric_limits<cost_t>::max();
+  static constexpr cost_t MAX = std::numeric_limits<cost_t>::max();
 
   cost() = default;
 
-  explicit cost(cost_t value) noexcept : value_(value), init_(true) {}
-
-  explicit cost(cost_f&& func) noexcept(
-    std::is_nothrow_move_constructible_v<cost_f>)
-    : func_(std::move(func)), init_(false) {}
-
-  // Returns a value of the "cost" attribute in the specified "src"
-  // collection, or "def" value if there is no "cost" attribute in "src".
-  template<typename Provider>
-  static cost_t extract(const Provider& src, cost_t def = kMax) noexcept {
-    if (auto* attr = irs::get<irs::cost>(src); attr) {
-      return attr->estimate();
-    } else {
-      return def;
-    }
+  explicit cost(cost_t value) noexcept
+    : value_(value),
+      init_(true) {
   }
 
-  // Sets the estimation value.
+  explicit cost(cost_f&& func) noexcept(std::is_nothrow_move_constructible_v<cost_f>)
+    : func_(std::move(func)),
+      init_(false) {
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns a value of the "cost" attribute in the specified "src"
+  /// collection, or "def" value if there is no "cost" attribute in "src"
+  //////////////////////////////////////////////////////////////////////////////
+  template<typename Provider>
+  static cost_t extract(const Provider& src, cost_t def = MAX) noexcept {
+    cost::cost_t est = def;
+    auto* attr = irs::get<irs::cost>(src);
+    if (attr) {
+      est = attr->estimate();
+    }
+    return est;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief sets the estimation value 
+  //////////////////////////////////////////////////////////////////////////////
   void reset(cost_t value) noexcept {
     value_ = value;
     init_ = true;
   }
 
-  // Sets the estimation rule.
-  void reset(cost_f&& eval) noexcept(
-    std::is_nothrow_move_assignable_v<cost_f>) {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief sets the estimation rule
+  //////////////////////////////////////////////////////////////////////////////
+  void reset(cost_f&& eval) noexcept(std::is_nothrow_move_assignable_v<cost_f>) {
     assert(eval);
     func_ = std::move(eval);
     init_ = false;
   }
 
-  // Estimate the query according to the provided estimation function.
-  // Return estimated cost.
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief estimate the query according to the provided estimation function
+  /// @return estimated cost
+  //////////////////////////////////////////////////////////////////////////////
   cost_t estimate() const {
     if (!init_) {
       assert(func_);
@@ -85,11 +102,13 @@ class cost final : public attribute {
   }
 
  private:
-  cost_f func_{[] { return 0; }};  // evaluation function
-  mutable cost_t value_{0};
-  mutable bool init_{true};
-};
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  cost_f func_{[]{ return 0; }}; // evaluation function
+  mutable cost_t value_{ 0 };
+  mutable bool init_{ true };
+  IRESEARCH_API_PRIVATE_VARIABLES_END
+}; // cost
 
-}  // namespace iresearch
+} // ROOT
 
-#endif  // IRESEARCH_COST_H
+#endif // IRESEARCH_COST_H

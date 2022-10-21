@@ -22,12 +22,11 @@
 
 #include "multiterm_query.hpp"
 
+#include "shared.hpp"
 #include "search/bitset_doc_iterator.hpp"
 #include "search/disjunction.hpp"
-#include "search/min_match_disjunction.hpp"
-#include "search/prepared_state_visitor.hpp"
-#include "shared.hpp"
 #include "utils/bitset.hpp"
+#include "utils/range.hpp"
 
 namespace {
 
@@ -36,19 +35,23 @@ using namespace irs;
 class lazy_bitset_iterator final : public bitset_doc_iterator {
  public:
   lazy_bitset_iterator(
-    const sub_reader& segment, const term_reader& field,
-    std::span<const MultiTermState::UnscoredTermState> states,
-    cost::cost_t estimation) noexcept
+      const sub_reader& segment,
+      const term_reader& field,
+      const order::prepared& ord,
+      const std::vector<multiterm_state::unscored_term_state>& states,
+      cost::cost_t estimation) noexcept
     : bitset_doc_iterator(estimation),
+      score_(ord),
       field_(&field),
       segment_(&segment),
-      states_(states) {
+      states_(states.data(), states.size()) {
     assert(!states_.empty());
   }
 
   virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
-    return irs::type<score>::id() == id ? &score_
-                                        : bitset_doc_iterator::get_mutable(id);
+    return irs::type<score>::id() == id
+      ? &score_
+      : bitset_doc_iterator::get_mutable(id);
   }
 
  protected:
@@ -59,10 +62,12 @@ class lazy_bitset_iterator final : public bitset_doc_iterator {
   std::unique_ptr<word_t[]> set_;
   const term_reader* field_;
   const sub_reader* segment_;
-  std::span<const MultiTermState::UnscoredTermState> states_;
-};
+  range<const multiterm_state::unscored_term_state> states_;
+}; // lazy_bitset_iterator
 
-bool lazy_bitset_iterator::refill(const word_t** begin, const word_t** end) {
+bool lazy_bitset_iterator::refill(
+    const word_t** begin,
+    const word_t** end) {
   if (!field_) {
     return false;
   }
@@ -70,11 +75,10 @@ bool lazy_bitset_iterator::refill(const word_t** begin, const word_t** end) {
   const size_t bits = segment_->docs_count() + irs::doc_limits::min();
   const size_t words = bitset::bits_to_words(bits);
   set_ = memory::make_unique<word_t[]>(words);
-  std::memset(set_.get(), 0, sizeof(word_t) * words);
+  std::memset(set_.get(), 0, sizeof(word_t)*words);
 
-  auto provider = [begin = states_.begin(),
-                   end =
-                     states_.end()]() mutable noexcept -> const seek_cookie* {
+  auto provider = [begin = states_.begin(), end = states_.end()]() mutable noexcept
+      -> const seek_cookie* {
     if (begin != end) {
       auto* cookie = begin->get();
       // cppcheck-suppress unreadVariable
@@ -100,20 +104,16 @@ bool lazy_bitset_iterator::refill(const word_t** begin, const word_t** end) {
   return false;
 }
 
-}  // namespace
+}
 
 namespace iresearch {
 
-void MultiTermQuery::visit(const sub_reader& segment,
-                           PreparedStateVisitor& visitor, score_t boost) const {
-  if (auto state = states_.find(segment); state) {
-    visitor.Visit(*this, *state, boost * this->boost());
-  }
-}
-
-doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
-  auto& segment = ctx.segment;
-  auto& ord = ctx.scorers;
+doc_iterator::ptr multiterm_query::execute(
+    const sub_reader& segment,
+    const order::prepared& ord,
+    const attribute_provider* /*ctx*/) const {
+  using scored_disjunction_t = scored_disjunction_iterator<doc_iterator::ptr>;
+  using disjunction_t = disjunction_iterator<doc_iterator::ptr>;
 
   // get term state for the specified reader
   auto state = states_.find(segment);
@@ -126,15 +126,15 @@ doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
   auto* reader = state->reader;
   assert(reader);
 
-  // Get required features
+  // get required features for order
   const IndexFeatures features = ord.features();
-  const std::span stats{stats_};
+  auto& stats = this->stats();
 
   const bool has_unscored_terms = !state->unscored_terms.empty();
 
-  std::vector<score_iterator_adapter<doc_iterator::ptr>> itrs(
+  disjunction_t::doc_iterators_t itrs(
     state->scored_states.size() + size_t(has_unscored_terms));
-  auto it = std::begin(itrs);
+  auto it = itrs.begin();
 
   // add an iterator for each of the scored states
   const bool no_score = ord.empty();
@@ -153,35 +153,41 @@ doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
         assert(entry.stat_offset < stats.size());
         auto* stat = stats[entry.stat_offset].c_str();
 
-        *score = CompileScore(ord.buckets(), segment, *state->reader, stat,
-                              *docs, entry.boost * boost());
+        order::prepared::scorers scorers(
+          ord, segment, *state->reader, stat,
+          score->realloc(ord), *docs, entry.boost*boost());
+
+        irs::reset(*score, std::move(scorers));
       }
     }
 
-    assert(it != std::end(itrs));
     *it = std::move(docs);
     ++it;
   }
 
   if (has_unscored_terms) {
-    assert(it != std::end(itrs));
-    *it = {memory::make_managed<::lazy_bitset_iterator>(
-      segment, *state->reader, state->unscored_terms,
-      state->unscored_states_estimation)};
+    *it = {
+      memory::make_managed<::lazy_bitset_iterator>(
+        segment, *state->reader, ord,
+        state->unscored_terms,
+        state->unscored_states_estimation)
+    };
     ++it;
   }
 
-  itrs.erase(it, std::end(itrs));
+  if (IRS_UNLIKELY(it != itrs.end())) {
+    itrs.erase(it, itrs.end());
+  }
 
-  return ResoveMergeType(
-    merge_type_, ord.buckets().size(),
-    [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-      using disjunction_t = min_match_iterator<doc_iterator::ptr, A>;
+  if (ord.empty()) {
+    return make_disjunction<disjunction_t>(
+      std::move(itrs), ord, merge_type_,
+      state->estimation());
+  }
 
-      return MakeWeakDisjunction<disjunction_t>(std::move(itrs), min_match_,
-                                                std::move(aggregator),
-                                                state->estimation());
-    });
+  return make_disjunction<scored_disjunction_t>(
+    std::move(itrs), ord, merge_type_,
+    state->estimation());
 }
 
-}  // namespace iresearch
+} // ROOT

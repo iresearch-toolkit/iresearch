@@ -26,15 +26,16 @@
 #include "analysis/token_stream.hpp"
 #include "utils/type_info.hpp"
 
-namespace iresearch::analysis {
+namespace iresearch {
+namespace analysis {
 
-class analyzer : public token_stream {
+class IRESEARCH_API analyzer : public token_stream {
  public:
   using ptr = std::unique_ptr<analyzer>;
 
   explicit analyzer(const type_info& type) noexcept;
 
-  virtual bool reset(string_ref data) = 0;
+  virtual bool reset(const string_ref& data) = 0;
 
   constexpr type_info::type_id type() const noexcept { return type_; }
 
@@ -42,21 +43,7 @@ class analyzer : public token_stream {
   type_info::type_id type_;
 };
 
-class empty_analyzer final : public analyzer {
- public:
-  static constexpr string_ref type_name() noexcept { return "empty_analyzer"; }
-
-  empty_analyzer() noexcept;
-
-  virtual attribute* get_mutable(irs::type_info::type_id) override {
-    return nullptr;
-  }
-
-  virtual bool next() override { return false; }
-
-  virtual bool reset(string_ref) override { return false; }
-};
-
-}  // namespace iresearch::analysis
+} // analysis
+} // ROOT
 
 #endif

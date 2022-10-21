@@ -22,31 +22,31 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #if defined(_MSC_VER)
-#pragma warning(disable : 4101)
-#pragma warning(disable : 4267)
+  #pragma warning(disable: 4101)
+  #pragma warning(disable: 4267)
 #endif
 
-#include <cmdline.h>
+  #include <cmdline.h>
 
 #if defined(_MSC_VER)
-#pragma warning(default : 4267)
-#pragma warning(default : 4101)
+  #pragma warning(default: 4267)
+  #pragma warning(default: 4101)
 #endif
 
 #if !defined(_MSC_VER)
-#include <dlfcn.h>  // for RTLD_NEXT
+  #include <dlfcn.h> // for RTLD_NEXT
 #endif
 
-#include <signal.h>  // for signal(...)/raise(...)
+#include <signal.h> // for signal(...)/raise(...)
 
 #if defined(_MSC_VER)
-#pragma warning(disable : 4229)
+  #pragma warning(disable: 4229)
 #endif
 
-#include <unicode/uclean.h>  // for u_cleanup
+  #include <unicode/uclean.h> // for u_cleanup
 
 #if defined(_MSC_VER)
-#pragma warning(default : 4229)
+  #pragma warning(default: 4229)
 #endif
 
 #include "tests_shared.hpp"
@@ -68,23 +68,22 @@
 #include <unicode/udata.h>
 
 #ifdef _MSC_VER
-// +1 for \0 at end of string
-#define mkdtemp(templ)                                                    \
-  0 == _mkdir(0 == _mktemp_s(templ, strlen(templ) + 1) ? templ : nullptr) \
-    ? templ                                                               \
-    : nullptr
+  // +1 for \0 at end of string
+  #define mkdtemp(templ) 0 == _mkdir(0 == _mktemp_s(templ, strlen(templ) + 1) ? templ : nullptr) ? templ : nullptr
 #endif
 
 namespace {
-/// @brief custom ICU data
+/// @brief custom ICU data 
 irs::mmap_utils::mmap_handle icu_data;
-}  // namespace
+}
 /* -------------------------------------------------------------------
- * iteration_tracker
- * ------------------------------------------------------------------*/
+* iteration_tracker
+* ------------------------------------------------------------------*/
 
 struct iteration_tracker : ::testing::Environment {
-  virtual void SetUp() { ++iteration; }
+  virtual void SetUp() {
+    ++iteration;
+  }
 
   static uint32_t iteration;
 };
@@ -92,8 +91,8 @@ struct iteration_tracker : ::testing::Environment {
 uint32_t iteration_tracker::iteration = (std::numeric_limits<uint32_t>::max)();
 
 /* -------------------------------------------------------------------
- * test_base
- * ------------------------------------------------------------------*/
+* test_base
+* ------------------------------------------------------------------*/
 
 const std::string IRES_HELP("help");
 const std::string IRES_LOG_LEVEL("ires_log_level");
@@ -117,9 +116,11 @@ int test_env::argc_;
 char** test_env::argv_;
 decltype(test_env::argv_ires_output_) test_env::argv_ires_output_;
 
-uint32_t test_env::iteration() { return iteration_tracker::iteration; }
+uint32_t test_env::iteration() {
+  return iteration_tracker::iteration;
+}
 
-irs::utf8_path test_env::resource(const std::string& name) {
+irs::utf8_path test_env::resource( const std::string& name ) {
   return resource_dir_ / name;
 }
 
@@ -131,17 +132,14 @@ bool test_env::prepare(const cmdline::parser& parser) {
   if (parser.exist(IRES_ICU_DATA)) {
     // icu initialize for data file
     irs::utf8_path icu_data_file_path{parser.get<std::string>(IRES_ICU_DATA)};
-    IR_FRMT_INFO("Loading custom ICU data file: " IR_FILEPATH_SPECIFIER,
-                 icu_data_file_path.c_str());
-    bool data_exists{false};
-    if (irs::file_utils::exists(data_exists, icu_data_file_path.c_str()) &&
-        data_exists) {
+    IR_FRMT_INFO("Loading custom ICU data file: " IR_FILEPATH_SPECIFIER, icu_data_file_path.c_str());
+    bool data_exists{ false };
+    if (irs::file_utils::exists(data_exists, icu_data_file_path.c_str()) && data_exists) {
       if (icu_data.open(icu_data_file_path.c_str())) {
-        UErrorCode status{U_ZERO_ERROR};
+        UErrorCode status{ U_ZERO_ERROR };
         udata_setCommonData(icu_data.addr(), &status);
         if (!U_SUCCESS(status)) {
-          IR_FRMT_FATAL("Failed to set custom ICU data file with status: %d",
-                        status);
+          IR_FRMT_FATAL("Failed to set custom ICU data file with status: %d", status);
           return false;
         }
       }
@@ -156,17 +154,17 @@ bool test_env::prepare(const cmdline::parser& parser) {
   {
     auto log_level = parser.get<irs::logger::level_t>(IRES_LOG_LEVEL);
 
-    irs::logger::output_le(log_level, stderr);  // set desired log level
+    irs::logger::output_le(log_level, stderr); // set desired log level
 
     if (parser.get<bool>(IRES_LOG_STACK)) {
-      irs::logger::stack_trace_level(log_level);  // force enable stack trace
+      irs::logger::stack_trace_level(log_level); // force enable stack trace
     }
   }
 
   if (parser.exist(IRES_OUTPUT)) {
     std::unique_ptr<char*[]> argv(new char*[2 + argc_]);
-    std::memcpy(argv.get(), argv_, sizeof(char*) * (argc_));
-    argv_ires_output_.append("--gtest_output=xml:").append(res_path_.string());
+    std::memcpy(argv.get(), argv_, sizeof(char*)*(argc_));
+    argv_ires_output_.append("--gtest_output=xml:").append(res_path_.u8string());
     argv[argc_++] = &argv_ires_output_[0];
 
     // let last argv equals to nullptr
@@ -181,25 +179,18 @@ void test_env::make_directories() {
   auto path_parts = irs::file_utils::path_parts(exec_path.c_str());
 
   exec_path_ = exec_path;
-  exec_file_ = irs::utf8_path{
-    std::basic_string_view<irs::utf8_path::value_type>(path_parts.basename)};
-  exec_dir_ = irs::utf8_path{
-    std::basic_string_view<irs::utf8_path::value_type>(path_parts.dirname)};
-  test_name_ =
-    irs::utf8_path{
-      std::basic_string_view<irs::utf8_path::value_type>(path_parts.stem)}
-      .string();
+  exec_file_ = irs::utf8_path{std::basic_string_view<irs::utf8_path::value_type>(path_parts.basename)};
+  exec_dir_ = irs::utf8_path{std::basic_string_view<irs::utf8_path::value_type>(path_parts.dirname)};
+  test_name_ = irs::utf8_path{std::basic_string_view<irs::utf8_path::value_type>(path_parts.stem)}.u8string();
 
   if (out_dir_.native().empty()) {
     out_dir_ = exec_dir_;
   }
 
-  std::cout << "launching: " << exec_path_.string() << std::endl;
+  std::cout << "launching: " << exec_path_.u8string() << std::endl;
   std::cout << "options:" << std::endl;
-  std::cout << "\t" << IRES_OUTPUT_PATH << ": " << out_dir_.string()
-            << std::endl;
-  std::cout << "\t" << IRES_RESOURCE_DIR << ": " << resource_dir_.string()
-            << std::endl;
+  std::cout << "\t" << IRES_OUTPUT_PATH << ": " << out_dir_.u8string() << std::endl;
+  std::cout << "\t" << IRES_RESOURCE_DIR << ": " << resource_dir_.u8string() << std::endl;
 
   irs::file_utils::ensure_absolute(out_dir_);
   (res_dir_ = out_dir_) /= test_name_;
@@ -225,22 +216,21 @@ void test_env::make_directories() {
     res_dir_ += std::string_view{templ, sizeof templ - 1};
   }
 
-  auto res_dir_templ = res_dir_.string();
+  auto res_dir_templ = res_dir_.u8string();
 
   res_dir_ = mkdtemp(res_dir_templ.data());
   (res_path_ = res_dir_) /= test_results;
 }
 
 void test_env::parse_command_line(cmdline::parser& cmd) {
-  static const auto log_level_reader =
-    [](const std::string& s) -> irs::logger::level_t {
+  static const auto log_level_reader = [](const std::string &s)->irs::logger::level_t {
     static const std::map<std::string, irs::logger::level_t> log_levels = {
-      {"FATAL", irs::logger::level_t::IRL_FATAL},
-      {"ERROR", irs::logger::level_t::IRL_ERROR},
-      {"WARN", irs::logger::level_t::IRL_WARN},
-      {"INFO", irs::logger::level_t::IRL_INFO},
-      {"DEBUG", irs::logger::level_t::IRL_DEBUG},
-      {"TRACE", irs::logger::level_t::IRL_TRACE},
+      { "FATAL", irs::logger::level_t::IRL_FATAL },
+      { "ERROR", irs::logger::level_t::IRL_ERROR },
+      { "WARN", irs::logger::level_t::IRL_WARN },
+      { "INFO", irs::logger::level_t::IRL_INFO },
+      { "DEBUG", irs::logger::level_t::IRL_DEBUG },
+      { "TRACE", irs::logger::level_t::IRL_TRACE },
     };
     auto itr = log_levels.find(s);
 
@@ -252,14 +242,11 @@ void test_env::parse_command_line(cmdline::parser& cmd) {
   };
 
   cmd.add(IRES_HELP, '?', "print this message");
-  cmd.add(IRES_LOG_LEVEL, 0,
-          "threshold log level <FATAL|ERROR|WARN|INFO|DEBUG|TRACE>", false,
-          irs::logger::level_t::IRL_FATAL, log_level_reader);
+  cmd.add(IRES_LOG_LEVEL, 0, "threshold log level <FATAL|ERROR|WARN|INFO|DEBUG|TRACE>", false, irs::logger::level_t::IRL_FATAL, log_level_reader);
   cmd.add(IRES_LOG_STACK, 0, "always log stack trace", false, false);
   cmd.add(IRES_OUTPUT, 0, "generate an XML report");
-  cmd.add(IRES_OUTPUT_PATH, 0, "output directory", false, out_dir_.string());
-  cmd.add(IRES_RESOURCE_DIR, 0, "resource directory", false,
-          irs::utf8_path(IResearch_test_resource_dir).string());
+  cmd.add(IRES_OUTPUT_PATH, 0, "output directory", false, out_dir_.u8string());
+  cmd.add(IRES_RESOURCE_DIR, 0, "resource directory", false, irs::utf8_path(IResearch_test_resource_dir).u8string());
   cmd.add(IRES_ICU_DATA, 0, "custom icu data file", false, std::string());
   cmd.parse(argc_, argv_);
 
@@ -292,8 +279,7 @@ void stack_trace_handler(int sig) {
   // reset to default handler
   signal(sig, SIG_DFL);
   // print stack trace
-  iresearch::logger::stack_trace(
-    iresearch::logger::IRL_FATAL);  // IRL_FATAL is logged to stderr above
+  iresearch::logger::stack_trace(iresearch::logger::IRL_FATAL); // IRL_FATAL is logged to stderr above
   // re-signal to default handler (so we still get core dump if needed...)
   raise(sig);
 }
@@ -303,40 +289,35 @@ void install_stack_trace_handler() {
   signal(SIGSEGV, stack_trace_handler);
   signal(SIGABRT, stack_trace_handler);
 
-#ifndef _MSC_VER
-  signal(SIGBUS, stack_trace_handler);
-#endif
+  #ifndef _MSC_VER
+    signal(SIGBUS, stack_trace_handler);
+  #endif
 }
 
 #ifndef _MSC_VER
-// override GCC 'throw' handler to print stack trace before throw
-extern "C" {
-#if defined(__clang__)
-void __cxa_throw(void* ex, struct std::type_info* info, void (*dest)(void*)) {
-  static void (*rethrow)(void*, struct std::type_info*, void (*)(void*)) =
-    (void (*)(void*, struct std::type_info*, void (*)(void*)))dlsym(
-      RTLD_NEXT, "__cxa_throw");
+  // override GCC 'throw' handler to print stack trace before throw
+  extern "C" {
+    #if defined(__clang__)
+      void __cxa_throw(void* ex, struct std::type_info* info, void(*dest)(void *)) {
+        static void(*rethrow)(void*,struct std::type_info*,void(*)(void*)) =
+          (void(*)(void*,struct std::type_info*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
 
-  IR_FRMT_DEBUG("exception type: %s",
-                reinterpret_cast<const std::type_info*>(info)->name());
-  IR_LOG_STACK_TRACE();
-  rethrow(ex, info, dest);
-  abort();  // otherwise MacOS reports "function declared 'noreturn' should not
-            // return"
-}
-#else
-void __cxa_throw(void* ex, void* info, void (*dest)(void*)) {
-  static void (*rethrow)(void*, void*, void (*)(void*))
-    __attribute__((noreturn)) =
-      (void (*)(void*, void*, void (*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
+        IR_FRMT_DEBUG("exception type: %s", reinterpret_cast<const std::type_info*>(info)->name());
+        IR_LOG_STACK_TRACE();
+        rethrow(ex, info, dest);
+        abort(); // otherwise MacOS reports "function declared 'noreturn' should not return"
+      }
+    #else
+      void __cxa_throw(void* ex, void* info, void(*dest)(void*)) {
+        static void(*rethrow)(void*,void*,void(*)(void*)) __attribute__ ((noreturn)) =
+          (void(*)(void*,void*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
 
-  IR_FRMT_DEBUG("exception type: %s",
-                reinterpret_cast<const std::type_info*>(info)->name());
-  IR_LOG_STACK_TRACE();
-  rethrow(ex, info, dest);
-}
-#endif
-}
+        IR_FRMT_DEBUG("exception type: %s", reinterpret_cast<const std::type_info*>(info)->name());
+        IR_LOG_STACK_TRACE();
+        rethrow(ex, info, dest);
+      }
+    #endif
+  }
 #endif
 
 void test_base::SetUp() {
@@ -349,10 +330,10 @@ void test_base::SetUp() {
 
   test_case_dir_ = test_results_dir();
 
-  if (::testing::FLAGS_gtest_repeat > 1 || ::testing::FLAGS_gtest_repeat < 0) {
-    test_case_dir_ /=
-      std::string("iteration ").append(std::to_string(iteration()));
-  }
+  //if (::testing::FLAGS_gtest_repeat > 1 || ::testing::FLAGS_gtest_repeat < 0) {
+  //  test_case_dir_ /=
+  //    std::string("iteration ").append(std::to_string(iteration()));
+  //}
 
   test_case_dir_ /= ti->test_case_name();
   (test_dir_ = test_case_dir_) /= ti->name();
@@ -363,15 +344,16 @@ void test_base::SetUp() {
 // --SECTION--                                                              main
 // -----------------------------------------------------------------------------
 
-int main(int argc, char* argv[]) {
+int main( int argc, char* argv[] ) {
   install_stack_trace_handler();
 
-  const int code = test_env::initialize(argc, argv);
+  const int code = test_env::initialize( argc, argv );
 
-  std::cout << "Path to test result directory: "
-            << test_env::test_results_dir().string() << std::endl;
+  std::cout << "Path to test result directory: " 
+            << test_env::test_results_dir().u8string()
+            << std::endl;
 
-  u_cleanup();  // cleanup ICU resources
+  u_cleanup(); // cleanup ICU resources
 
   return code;
 }

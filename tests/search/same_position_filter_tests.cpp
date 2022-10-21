@@ -23,32 +23,28 @@
 
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
-#include "formats/formats_10.hpp"
+#include "formats/formats_10.hpp" 
 #include "store/memory_directory.hpp"
 #include "filter_test_case_base.hpp"
 #include "analysis/token_attributes.hpp"
 #include "search/same_position_filter.hpp"
-#include "search/term_filter.hpp"
+#include "search/term_filter.hpp" 
 
-class same_position_filter_test_case : public tests::FilterTestCaseBase {
+class same_position_filter_test_case : public tests::filter_test_case_base {
  protected:
   void sub_objects_ordered() {
     // add segment
     {
       tests::json_doc_generator gen(
         resource("phrase_sequential.json"),
-        [](tests::document& doc, const std::string& name,
-           const tests::json_doc_generator::json_value& data) {
-          if (data.is_string()) {  // field
-            doc.insert(
-              std::make_shared<tests::text_field<std::string>>(name, data.str),
-              true, false);
-          } else if (data.is_number()) {  // seq
+        [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+          if (data.is_string()) { // field
+            doc.insert(std::make_shared<tests::text_field<std::string>>(name, data.str), true, false);
+          } else if (data.is_number()) { // seq
             const auto value = std::to_string(data.as_number<uint64_t>());
-            doc.insert(std::make_shared<tests::string_field>(name, value),
-                       false, true);
+            doc.insert(std::make_shared<tests::string_field>(name, value), false, true);
           }
-        });
+      });
       add_segment(gen);
       gen.reset();
       add_segment(gen, irs::OM_APPEND);
@@ -64,136 +60,123 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
       size_t finish_count = 0;
-
-      tests::sort::custom_sort scorer;
+      irs::order order;
+      auto& scorer = order.add<tests::sort::custom_sort>(false);
 
       scorer.collector_collect_field = [&collect_field_count](
-                                         const irs::sub_reader&,
-                                         const irs::term_reader&) -> void {
+          const irs::sub_reader&, const irs::term_reader&)->void{
         ++collect_field_count;
       };
-      scorer.collector_collect_term =
-        [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
-                              const irs::attribute_provider&) -> void {
+      scorer.collector_collect_term = [&collect_term_count](
+          const irs::sub_reader&,
+          const irs::term_reader&,
+          const irs::attribute_provider&)->void{
         ++collect_term_count;
       };
       scorer.collectors_collect_ = [&finish_count](
-                                     irs::byte_type*, const irs::index_reader&,
-                                     const irs::sort::field_collector*,
-                                     const irs::sort::term_collector*) -> void {
+          irs::byte_type*,
+          const irs::index_reader&,
+          const irs::sort::field_collector*,
+          const irs::sort::term_collector*)->void {
         ++finish_count;
       };
-      scorer.prepare_field_collector_ =
-        [&scorer]() -> irs::sort::field_collector::ptr {
-        return irs::memory::make_unique<
-          tests::sort::custom_sort::prepared::field_collector>(scorer);
+      scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr{
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
       };
-      scorer.prepare_term_collector_ =
-        [&scorer]() -> irs::sort::term_collector::ptr {
-        return irs::memory::make_unique<
-          tests::sort::custom_sort::prepared::term_collector>(scorer);
+      scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr{
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
 
-      auto pord = irs::Order::Prepare(scorer);
+      auto pord = order.prepare();
       auto prepared = filter.prepare(index, pord);
-      ASSERT_EQ(0, collect_field_count);  // should not be executed
-      ASSERT_EQ(0, collect_term_count);   // should not be executed
-      ASSERT_EQ(0, finish_count);         // no terms optimization
+      ASSERT_EQ(0, collect_field_count); // should not be executed
+      ASSERT_EQ(0, collect_term_count); // should not be executed
+      ASSERT_EQ(0, finish_count); // no terms optimization
     }
 
     // collector count (single term)
     {
       irs::by_same_position filter;
-      filter.mutable_options()->terms.emplace_back(
-        "phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      filter.mutable_options()->terms.emplace_back("phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
 
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
       size_t finish_count = 0;
-
-      tests::sort::custom_sort scorer;
+      irs::order order;
+      auto& scorer = order.add<tests::sort::custom_sort>(false);
 
       scorer.collector_collect_field = [&collect_field_count](
-                                         const irs::sub_reader&,
-                                         const irs::term_reader&) -> void {
+          const irs::sub_reader&, const irs::term_reader&)->void{
         ++collect_field_count;
       };
-      scorer.collector_collect_term =
-        [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
-                              const irs::attribute_provider&) -> void {
+      scorer.collector_collect_term = [&collect_term_count](
+          const irs::sub_reader&,
+          const irs::term_reader&,
+          const irs::attribute_provider&)->void{
         ++collect_term_count;
       };
       scorer.collectors_collect_ = [&finish_count](
-                                     irs::byte_type*, const irs::index_reader&,
-                                     const irs::sort::field_collector*,
-                                     const irs::sort::term_collector*) -> void {
+          irs::byte_type*,
+          const irs::index_reader&,
+          const irs::sort::field_collector*,
+          const irs::sort::term_collector*)->void {
         ++finish_count;
       };
-      scorer.prepare_field_collector_ =
-        [&scorer]() -> irs::sort::field_collector::ptr {
-        return irs::memory::make_unique<
-          tests::sort::custom_sort::prepared::field_collector>(scorer);
+      scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
       };
-      scorer.prepare_term_collector_ =
-        [&scorer]() -> irs::sort::term_collector::ptr {
-        return irs::memory::make_unique<
-          tests::sort::custom_sort::prepared::term_collector>(scorer);
+      scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
 
-      auto pord = irs::Order::Prepare(scorer);
+      auto pord = order.prepare();
       auto prepared = filter.prepare(index, pord);
-      ASSERT_EQ(2, collect_field_count);  // 1 field in 2 segments
-      ASSERT_EQ(2, collect_term_count);   // 1 term in 2 segments
-      ASSERT_EQ(1, finish_count);         // 1 unique term
+      ASSERT_EQ(2, collect_field_count); // 1 field in 2 segments
+      ASSERT_EQ(2, collect_term_count); // 1 term in 2 segments
+      ASSERT_EQ(1, finish_count); // 1 unique term
     }
 
     // collector count (multiple terms)
     {
       irs::by_same_position filter;
-      filter.mutable_options()->terms.emplace_back(
-        "phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
-      filter.mutable_options()->terms.emplace_back(
-        "phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+      filter.mutable_options()->terms.emplace_back("phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      filter.mutable_options()->terms.emplace_back("phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
 
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
       size_t finish_count = 0;
-
-      tests::sort::custom_sort scorer;
+      irs::order order;
+      auto& scorer = order.add<tests::sort::custom_sort>(false);
 
       scorer.collector_collect_field = [&collect_field_count](
-                                         const irs::sub_reader&,
-                                         const irs::term_reader&) -> void {
+          const irs::sub_reader&, const irs::term_reader&)->void{
         ++collect_field_count;
       };
-      scorer.collector_collect_term =
-        [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
-                              const irs::attribute_provider&) -> void {
+      scorer.collector_collect_term = [&collect_term_count](
+          const irs::sub_reader&,
+          const irs::term_reader&,
+          const irs::attribute_provider&)->void{
         ++collect_term_count;
       };
       scorer.collectors_collect_ = [&finish_count](
-                                     irs::byte_type*, const irs::index_reader&,
-                                     const irs::sort::field_collector*,
-                                     const irs::sort::term_collector*) -> void {
+          irs::byte_type*,
+          const irs::index_reader&,
+          const irs::sort::field_collector*,
+          const irs::sort::term_collector*)->void {
         ++finish_count;
       };
-      scorer.prepare_field_collector_ =
-        [&scorer]() -> irs::sort::field_collector::ptr {
-        return irs::memory::make_unique<
-          tests::sort::custom_sort::prepared::field_collector>(scorer);
+      scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
       };
-      scorer.prepare_term_collector_ =
-        [&scorer]() -> irs::sort::term_collector::ptr {
-        return irs::memory::make_unique<
-          tests::sort::custom_sort::prepared::term_collector>(scorer);
+      scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
 
-      auto pord = irs::Order::Prepare(scorer);
+      auto pord = order.prepare();
       auto prepared = filter.prepare(index, pord);
-      ASSERT_EQ(4, collect_field_count);  // 2 fields (1 per term since treated
-                                          // as a disjunction) in 2 segments
-      ASSERT_EQ(4, collect_term_count);   // 2 term in 2 segments
-      ASSERT_EQ(2, finish_count);         // 2 unique terms
+      ASSERT_EQ(4, collect_field_count); // 2 fields (1 per term since treated as a disjunction) in 2 segments
+      ASSERT_EQ(4, collect_term_count); // 2 term in 2 segments
+      ASSERT_EQ(2, finish_count); // 2 unique terms
     }
   }
 
@@ -201,8 +184,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
     // add segment
     tests::json_doc_generator gen(
       resource("same_position.json"),
-      [](tests::document& doc, const std::string& name,
-         const tests::json_doc_generator::json_value& data) {
+      [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         typedef tests::text_field<std::string> text_field;
         if (data.is_string()) {
           // a || b || c
@@ -217,7 +199,8 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
           field.name(name);
           field.value(lValue);
         }
-      });
+
+    });
     add_segment(gen);
 
     // read segment
@@ -241,16 +224,14 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(docs->value(), doc->value);
     }
 
-    // { a: 100 } - equal to 'by_term'
+    // { a: 100 } - equal to 'by_term' 
     {
       irs::by_same_position query;
-      query.mutable_options()->terms.emplace_back(
-        "a", irs::ref_cast<irs::byte_type>(irs::string_ref("100")));
+      query.mutable_options()->terms.emplace_back("a", irs::ref_cast<irs::byte_type>(irs::string_ref("100")));
 
       irs::by_term expected_query;
       *expected_query.mutable_field() = "a";
-      expected_query.mutable_options()->term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("100"));
+      expected_query.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("100"));
 
       auto prepared = query.prepare(index);
       auto expected_prepared = expected_query.prepare(index);
@@ -261,12 +242,11 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(docs->value(), doc->value);
       auto expected_docs = prepared->execute(segment);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
-                docs->value());
+      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
       while (expected_docs->next()) {
         ASSERT_TRUE(docs->next());
         ASSERT_EQ(expected_docs->value(), docs->value());
-        ASSERT_EQ(docs->value(), doc->value);
+      ASSERT_EQ(docs->value(), doc->value);
       }
       ASSERT_FALSE(docs->next());
       ASSERT_EQ(irs::doc_limits::eof(), docs->value());
@@ -276,18 +256,14 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
     // { a: 300, b:90, c:9 }
     {
       irs::by_same_position q;
-      q.mutable_options()->terms.emplace_back(
-        "a", irs::ref_cast<irs::byte_type>(irs::string_ref("300")));
-      q.mutable_options()->terms.emplace_back(
-        "b", irs::ref_cast<irs::byte_type>(irs::string_ref("90")));
-      q.mutable_options()->terms.emplace_back(
-        "c", irs::ref_cast<irs::byte_type>(irs::string_ref("9")));
+      q.mutable_options()->terms.emplace_back("a", irs::ref_cast<irs::byte_type>(irs::string_ref("300")));
+      q.mutable_options()->terms.emplace_back("b", irs::ref_cast<irs::byte_type>(irs::string_ref("90")));
+      q.mutable_options()->terms.emplace_back("c", irs::ref_cast<irs::byte_type>(irs::string_ref("9")));
       auto prepared = q.prepare(index);
       auto docs = prepared->execute(segment);
       auto* doc = irs::get<irs::document>(*docs);
       ASSERT_EQ(docs->value(), doc->value);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
-                docs->value());
+      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
       ASSERT_TRUE(docs->next());
       ASSERT_EQ(1, docs->value());
     }
@@ -295,18 +271,15 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
     // { a: 100, b:30, c:6 }
     {
       irs::by_same_position q;
-      q.mutable_options()->terms.emplace_back(
-        "a", irs::ref_cast<irs::byte_type>(irs::string_ref("100")));
-      q.mutable_options()->terms.emplace_back(
-        "b", irs::ref_cast<irs::byte_type>(irs::string_ref("30")));
-      q.mutable_options()->terms.emplace_back(
-        "c", irs::ref_cast<irs::byte_type>(irs::string_ref("6")));
+      q.mutable_options()->terms.emplace_back("a", irs::ref_cast<irs::byte_type>(irs::string_ref("100")));
+      q.mutable_options()->terms.emplace_back("b", irs::ref_cast<irs::byte_type>(irs::string_ref("30")));
+      q.mutable_options()->terms.emplace_back("c", irs::ref_cast<irs::byte_type>(irs::string_ref("6")));
 
       auto prepared = q.prepare(index);
 
       // next
       {
-        auto values = column->iterator(irs::ColumnHint::kNormal);
+        auto values = column->iterator(false);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -315,8 +288,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
-                  docs->value());
+        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
         ASSERT_TRUE(docs->next());
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
@@ -331,7 +303,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
 
       // seek
       {
-        auto values = column->iterator(irs::ColumnHint::kNormal);
+        auto values = column->iterator(false);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -340,22 +312,17 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
-                  docs->value());
-        ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 6,
-                  docs->seek((irs::type_limits<irs::type_t::doc_id_t>::min)()));
+        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
+        ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 6, docs->seek((irs::type_limits<irs::type_t::doc_id_t>::min)()));
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
         ASSERT_EQ(6, irs::read_zvlong(in));
-        ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 27,
-                  docs->seek(27));
+        ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 27, docs->seek(27));
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
         ASSERT_EQ(27, irs::read_zvlong(in));
-        ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 27,
-                  docs->seek(8));  // seek backwards
-        ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 27,
-                  docs->seek(27));  // seek to same position
+        ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 27, docs->seek(8)); // seek backwards
+        ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 27, docs->seek(27)); // seek to same position
         ASSERT_FALSE(docs->next());
         ASSERT_EQ(irs::doc_limits::eof(), docs->value());
       }
@@ -364,18 +331,15 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
     // { c: 8, b:80, a:700 }
     {
       irs::by_same_position q;
-      q.mutable_options()->terms.emplace_back(
-        "c", irs::ref_cast<irs::byte_type>(irs::string_ref("8")));
-      q.mutable_options()->terms.emplace_back(
-        "b", irs::ref_cast<irs::byte_type>(irs::string_ref("80")));
-      q.mutable_options()->terms.emplace_back(
-        "a", irs::ref_cast<irs::byte_type>(irs::string_ref("700")));
+      q.mutable_options()->terms.emplace_back("c", irs::ref_cast<irs::byte_type>(irs::string_ref("8")));
+      q.mutable_options()->terms.emplace_back("b", irs::ref_cast<irs::byte_type>(irs::string_ref("80")));
+      q.mutable_options()->terms.emplace_back("a", irs::ref_cast<irs::byte_type>(irs::string_ref("700")));
 
       auto prepared = q.prepare(index);
 
       // next
       {
-        auto values = column->iterator(irs::ColumnHint::kNormal);
+        auto values = column->iterator(false);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -384,8 +348,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
-                  docs->value());
+        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
         ASSERT_TRUE(docs->next());
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
@@ -400,7 +363,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
 
       // seek
       {
-        auto values = column->iterator(irs::ColumnHint::kNormal);
+        auto values = column->iterator(false);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -409,17 +372,13 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
-                  docs->value());
-        ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 91,
-                  docs->seek(27));
+        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
+        ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 91, docs->seek(27));
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
         ASSERT_EQ(91, irs::read_zvlong(in));
-        ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 91,
-                  docs->seek(8));  // seek backwards
-        ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 91,
-                  docs->seek(27));  // seek to same position
+        ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 91, docs->seek(8)); // seek backwards
+        ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 91, docs->seek(27)); // seek to same position
         ASSERT_FALSE(docs->next());
         ASSERT_EQ(irs::doc_limits::eof(), docs->value());
       }
@@ -428,16 +387,14 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
     // { a: 700, b:*, c: 7 }
     {
       irs::by_same_position q;
-      q.mutable_options()->terms.emplace_back(
-        "a", irs::ref_cast<irs::byte_type>(irs::string_ref("700")));
-      q.mutable_options()->terms.emplace_back(
-        "c", irs::ref_cast<irs::byte_type>(irs::string_ref("7")));
+      q.mutable_options()->terms.emplace_back("a", irs::ref_cast<irs::byte_type>(irs::string_ref("700")));
+      q.mutable_options()->terms.emplace_back("c", irs::ref_cast<irs::byte_type>(irs::string_ref("7")));
 
       auto prepared = q.prepare(index);
 
       // next
       {
-        auto values = column->iterator(irs::ColumnHint::kNormal);
+        auto values = column->iterator(false);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -446,59 +403,45 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
-                  docs->value());
+        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));  in.reset(actual_value->value);
         ASSERT_EQ(1, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));  in.reset(actual_value->value);
         ASSERT_EQ(6, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));  in.reset(actual_value->value);
         ASSERT_EQ(11, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));  in.reset(actual_value->value);
         ASSERT_EQ(17, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));  in.reset(actual_value->value);
         ASSERT_EQ(18, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(23, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(24, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(28, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(38, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(51, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(66, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(79, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(89, irs::read_zvlong(in));
         ASSERT_FALSE(docs->next());
         ASSERT_EQ(irs::doc_limits::eof(), docs->value());
@@ -506,7 +449,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
 
       // seek + next
       {
-        auto values = column->iterator(irs::ColumnHint::kNormal);
+        auto values = column->iterator(false);
         ASSERT_NE(nullptr, values);
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
@@ -517,33 +460,25 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         ASSERT_EQ(docs->value(), doc->value);
         ASSERT_EQ(irs::doc_limits::invalid(), docs->value());
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(1, irs::read_zvlong(in));
-        ASSERT_EQ((irs::doc_limits::min)() + 28,
-                  docs->seek((irs::doc_limits::min)() + 28));
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ((irs::doc_limits::min)() + 28, docs->seek((irs::doc_limits::min)() + 28));
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(28, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(38, irs::read_zvlong(in));
         ASSERT_EQ((irs::doc_limits::min)() + 51, docs->seek(45));
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(51, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(66, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(79, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(89, irs::read_zvlong(in));
         ASSERT_FALSE(docs->next());
         ASSERT_EQ(irs::doc_limits::eof(), docs->value());
@@ -562,7 +497,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
       }
     }
   }
-};  // same_position_filter_test_case
+}; // same_position_filter_test_case 
 
 TEST_P(same_position_filter_test_case, by_same_position) {
   sub_objects_ordered();
@@ -570,7 +505,7 @@ TEST_P(same_position_filter_test_case, by_same_position) {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                      by_same_position base tests
+// --SECTION--                                      by_same_position base tests 
 // ----------------------------------------------------------------------------
 
 TEST(by_same_position_test, options) {
@@ -582,81 +517,78 @@ TEST(by_same_position_test, ctor) {
   irs::by_same_position q;
   ASSERT_EQ(irs::type<irs::by_same_position>::id(), q.type());
   ASSERT_EQ(irs::by_same_position_options{}, q.options());
-  ASSERT_EQ(irs::kNoBoost, q.boost());
+  ASSERT_EQ(irs::no_boost(), q.boost());
 
-  static_assert((irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) ==
-                irs::by_same_position::kRequiredFeatures);
+  static_assert(
+    (irs::IndexFeatures::FREQ | irs::IndexFeatures::POS) ==
+    irs::by_same_position::required());
 }
 
 TEST(by_same_position_test, boost) {
   // no boost
-  {// no branches
-   {irs::by_same_position q;
-
-  auto prepared = q.prepare(irs::sub_reader::empty());
-  ASSERT_EQ(irs::kNoBoost, prepared->boost());
-}
-
-// single term
-{
-  irs::by_same_position q;
-  q.mutable_options()->terms.emplace_back(
-    "field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
-
-  auto prepared = q.prepare(irs::sub_reader::empty());
-  ASSERT_EQ(irs::kNoBoost, prepared->boost());
-}
-
-// multiple terms
-{
-  irs::by_same_position q;
-  q.mutable_options()->terms.emplace_back(
-    "field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
-  q.mutable_options()->terms.emplace_back(
-    "field", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
-
-  auto prepared = q.prepare(irs::sub_reader::empty());
-  ASSERT_EQ(irs::kNoBoost, prepared->boost());
-}
-}
-
-// with boost
-{
-  irs::score_t boost = 1.5f;
-
-  // no terms, return empty query
   {
-    irs::by_same_position q;
-    q.boost(boost);
+    // no branches 
+    {
+      irs::by_same_position q;
 
-    auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::kNoBoost, prepared->boost());
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(irs::no_boost(), prepared->boost());
+    }
+
+    // single term
+    {
+      irs::by_same_position q;
+      q.mutable_options()->terms.emplace_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(irs::no_boost(), prepared->boost());
+    }
+
+    // multiple terms
+    {
+      irs::by_same_position q;
+      q.mutable_options()->terms.emplace_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      q.mutable_options()->terms.emplace_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(irs::no_boost(), prepared->boost());
+    }
   }
 
-  // single term
+  // with boost
   {
-    irs::by_same_position q;
-    q.mutable_options()->terms.emplace_back(
-      "field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
-    q.boost(boost);
+    irs::boost_t boost = 1.5f;
+    
+    // no terms, return empty query
+    {
+      irs::by_same_position q;
+      q.boost(boost);
 
-    auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(boost, prepared->boost());
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(irs::no_boost(), prepared->boost());
+    }
+
+    // single term
+    {
+      irs::by_same_position q;
+      q.mutable_options()->terms.emplace_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      q.boost(boost);
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(boost, prepared->boost());
+    }
+
+    // single multiple terms 
+    {
+      irs::by_same_position q;
+      q.mutable_options()->terms.emplace_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      q.mutable_options()->terms.emplace_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+      q.boost(boost);
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(boost, prepared->boost());
+    }
   }
-
-  // single multiple terms
-  {
-    irs::by_same_position q;
-    q.mutable_options()->terms.emplace_back(
-      "field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
-    q.mutable_options()->terms.emplace_back(
-      "field", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
-    q.boost(boost);
-
-    auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(boost, prepared->boost());
-  }
-}
 }
 
 TEST(by_same_position_test, equal) {
@@ -664,82 +596,65 @@ TEST(by_same_position_test, equal) {
 
   {
     irs::by_same_position q0;
-    q0.mutable_options()->terms.emplace_back(
-      "speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
-    q0.mutable_options()->terms.emplace_back(
-      "color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+    q0.mutable_options()->terms.emplace_back("speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    q0.mutable_options()->terms.emplace_back("color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
 
     irs::by_same_position q1;
-    q1.mutable_options()->terms.emplace_back(
-      "speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
-    q1.mutable_options()->terms.emplace_back(
-      "color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+    q1.mutable_options()->terms.emplace_back("speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    q1.mutable_options()->terms.emplace_back("color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
     ASSERT_EQ(q0, q1);
   }
 
   {
     irs::by_same_position q0;
-    q0.mutable_options()->terms.emplace_back(
-      "speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
-    q0.mutable_options()->terms.emplace_back(
-      "color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
-    q0.mutable_options()->terms.emplace_back(
-      "name", irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
+    q0.mutable_options()->terms.emplace_back("speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    q0.mutable_options()->terms.emplace_back("color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+    q0.mutable_options()->terms.emplace_back("name", irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
 
     irs::by_same_position q1;
-    q1.mutable_options()->terms.emplace_back(
-      "speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
-    q1.mutable_options()->terms.emplace_back(
-      "color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
-    q1.mutable_options()->terms.emplace_back(
-      "name", irs::ref_cast<irs::byte_type>(irs::string_ref("squirrel")));
+    q1.mutable_options()->terms.emplace_back("speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    q1.mutable_options()->terms.emplace_back("color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+    q1.mutable_options()->terms.emplace_back("name", irs::ref_cast<irs::byte_type>(irs::string_ref("squirrel")));
     ASSERT_NE(q0, q1);
   }
 
   {
     irs::by_same_position q0;
-    q0.mutable_options()->terms.emplace_back(
-      "Speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
-    q0.mutable_options()->terms.emplace_back(
-      "color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
-    q0.mutable_options()->terms.emplace_back(
-      "name", irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
+    q0.mutable_options()->terms.emplace_back("Speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    q0.mutable_options()->terms.emplace_back("color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+    q0.mutable_options()->terms.emplace_back("name", irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
 
     irs::by_same_position q1;
-    q1.mutable_options()->terms.emplace_back(
-      "speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
-    q1.mutable_options()->terms.emplace_back(
-      "color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
-    q1.mutable_options()->terms.emplace_back(
-      "name", irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
+    q1.mutable_options()->terms.emplace_back("speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    q1.mutable_options()->terms.emplace_back("color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+    q1.mutable_options()->terms.emplace_back("name", irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
     ASSERT_NE(q0, q1);
   }
 
   {
     irs::by_same_position q0;
-    q0.mutable_options()->terms.emplace_back(
-      "speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
-    q0.mutable_options()->terms.emplace_back(
-      "color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+    q0.mutable_options()->terms.emplace_back("speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    q0.mutable_options()->terms.emplace_back("color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
 
     irs::by_same_position q1;
-    q1.mutable_options()->terms.emplace_back(
-      "speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
-    q1.mutable_options()->terms.emplace_back(
-      "color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
-    q1.mutable_options()->terms.emplace_back(
-      "name", irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
+    q1.mutable_options()->terms.emplace_back("speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    q1.mutable_options()->terms.emplace_back("color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+    q1.mutable_options()->terms.emplace_back("name", irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
     ASSERT_NE(q0, q1);
   }
 }
 
 INSTANTIATE_TEST_SUITE_P(
-  same_position_filter_test, same_position_filter_test_case,
+  same_position_filter_test,
+  same_position_filter_test_case,
   ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values(tests::format_info{"1_0"},
-                      tests::format_info{"1_1", "1_0"},
-                      tests::format_info{"1_3", "1_0"})),
-  same_position_filter_test_case::to_string);
+    ::testing::Values(
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(
+      tests::format_info{"1_0"},
+      tests::format_info{"1_1", "1_0"},
+      tests::format_info{"1_3", "1_0"})),
+  same_position_filter_test_case::to_string
+);

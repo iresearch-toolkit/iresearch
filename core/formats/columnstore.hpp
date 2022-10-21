@@ -54,13 +54,14 @@ enum class Version : int32_t {
   /// * per column compression
   ////////////////////////////////////////////////////////////////////////////
   MAX = 1,
-};  // Version
+}; // Version
 
-irs::columnstore_writer::ptr make_writer(Version version,
-                                         ColumnMetaVersion meta_version);
-irs::columnstore_reader::ptr make_reader();
+IRESEARCH_API irs::columnstore_writer::ptr make_writer(
+    Version version,
+    ColumnMetaVersion meta_version);
+IRESEARCH_API irs::columnstore_reader::ptr make_reader();
 
-}  // namespace columnstore
-}  // namespace iresearch
+} // columnstore
+} // iresearch
 
-#endif  // IRESEARCH_COLUMNSTORE_H
+#endif // IRESEARCH_COLUMNSTORE_H

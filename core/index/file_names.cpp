@@ -26,18 +26,18 @@
 #include <cinttypes>
 
 #if defined(_MSC_VER)
-#pragma warning(disable : 4996)
+  #pragma warning (disable : 4996)
 #endif
 
 namespace iresearch {
 
 std::string file_name(uint64_t gen) {
-  char buf[22] = "_";  // can hold : -2^63 .. 2^64-1, plus '_' prefix, plus 0
+  char buf[22] = "_"; // can hold : -2^63 .. 2^64-1, plus '_' prefix, plus 0
   return std::string(buf, 1 + std::sprintf(buf + 1, "%" PRIu64, gen));
 }
 
-std::string file_name(string_ref prefix, uint64_t gen) {
-  char buf[21];  // can hold : -2^63 .. 2^64-1, plus 0
+std::string file_name(const string_ref& prefix, uint64_t gen) {
+  char buf[21]; // can hold : -2^63 .. 2^64-1, plus 0
   auto buf_size = sprintf(buf, "%" PRIu64, gen);
 
   std::string str;
@@ -48,7 +48,7 @@ std::string file_name(string_ref prefix, uint64_t gen) {
   return str;
 }
 
-std::string file_name(string_ref name, string_ref ext) {
+std::string file_name(const string_ref& name, const string_ref& ext) {
   std::string out;
   out.reserve(1 + name.size() + ext.size());
   out.append(name.c_str(), name.size());
@@ -58,7 +58,7 @@ std::string file_name(string_ref name, string_ref ext) {
   return out;
 }
 
-void file_name(std::string& out, string_ref name, string_ref ext) {
+void file_name(std::string& out, const string_ref& name, const string_ref& ext) {
   out.clear();
   out.reserve(1 + name.size() + ext.size());
   out.append(name.c_str(), name.size());
@@ -66,8 +66,8 @@ void file_name(std::string& out, string_ref name, string_ref ext) {
   out.append(ext.c_str(), ext.size());
 }
 
-std::string file_name(string_ref name, uint64_t gen, string_ref ext) {
-  char buf[21];  // can hold : -2^63 .. 2^64-1, plus 0
+std::string file_name(const string_ref& name, uint64_t gen, const string_ref& ext) {
+  char buf[21]; // can hold : -2^63 .. 2^64-1, plus 0
   auto buf_size = sprintf(buf, "%" PRIu64, gen);
 
   std::string out;
@@ -81,8 +81,8 @@ std::string file_name(string_ref name, uint64_t gen, string_ref ext) {
   return out;
 }
 
-}  // namespace iresearch
+}
 
 #if defined(_MSC_VER)
-#pragma warning(default : 4996)
+  #pragma warning (default : 4996)
 #endif

@@ -36,5 +36,5 @@ REGISTER_ATTRIBUTE(documents);
 // --SECTION--                                                         term_meta
 // -----------------------------------------------------------------------------
 
-}  // namespace version10
-}  // namespace iresearch
+} // version10
+} // ROOT

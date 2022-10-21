@@ -23,39 +23,40 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #if defined(_MSC_VER)
-#pragma warning(disable : 4101)
-#pragma warning(disable : 4267)
+  #pragma warning(disable: 4101)
+  #pragma warning(disable: 4267)
 #endif
 
-#include <cmdline.h>
+  #include <cmdline.h>
 
 #if defined(_MSC_VER)
-#pragma warning(default : 4267)
-#pragma warning(default : 4101)
+  #pragma warning(default: 4267)
+  #pragma warning(default: 4101)
 #endif
 
 #if defined(_MSC_VER)
-#pragma warning(disable : 4229)
+  #pragma warning(disable: 4229)
 #endif
 
-#include <unicode/uclean.h>  // for u_cleanup
+  #include <unicode/uclean.h> // for u_cleanup
 
 #if defined(_MSC_VER)
-#pragma warning(default : 4229)
+  #pragma warning(default: 4229)
 #endif
 
-#include <absl/container/flat_hash_map.h>
-
-#include <functional>
-
-#include "index-put.hpp"
 #include "index-search.hpp"
+#include "index-put.hpp"
+#include "utils/timer_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/misc.hpp"
-#include "utils/timer_utils.hpp"
 
-using handlers_t =
-  absl::flat_hash_map<std::string, std::function<int(int argc, char* argv[])>>;
+#include <unordered_map>
+#include <functional>
+
+typedef std::unordered_map<
+  std::string,
+  std::function<int(int argc, char* argv[])>
+> handlers_t;
 
 bool init_handlers(handlers_t&);
 
@@ -73,7 +74,7 @@ std::string get_modes_description(const handlers_t& handlers) {
   return message;
 }
 
-}  // namespace
+}
 
 int main(int argc, char* argv[]) {
   handlers_t handlers;
@@ -85,14 +86,11 @@ int main(int argc, char* argv[]) {
 
   // init timers
   irs::timer_utils::init_stats(true);
-  auto output_stats = irs::make_finally([]() noexcept {
-    irs::timer_utils::visit(
-      [](const std::string& key, size_t count, size_t time_us) -> bool {
-        std::cout << key << " calls:" << count << ", time: " << time_us
-                  << " us, avg call: " << time_us / double(count) << " us"
-                  << std::endl;
-        return true;
-      });
+  auto output_stats = irs::make_finally([]()->void {
+    irs::timer_utils::visit([](const std::string& key, size_t count, size_t time_us)->bool {
+      std::cout << key << " calls:" << count << ", time: " << time_us << " us, avg call: " << time_us/double(count) << " us"<< std::endl;
+      return true;
+    });
   });
 
   // set error level
@@ -115,7 +113,7 @@ int main(int argc, char* argv[]) {
     return entry->second(argc, argv);
   }
 
-  u_cleanup();  // cleanup ICU resources
+  u_cleanup(); // cleanup ICU resources
 
   return 0;
 }

@@ -29,8 +29,7 @@
 
 TEST(map_utils_tests, try_emplace_update_key) {
   struct key_updater_t {
-    irs::hashed_string_ref operator()(const irs::hashed_string_ref& key,
-                                      const std::string& value) const {
+    irs::hashed_string_ref operator()(const irs::hashed_string_ref& key, const std::string& value) const {
       return irs::hashed_string_ref(key.hash(), value);
     }
   } updater;
@@ -41,64 +40,55 @@ TEST(map_utils_tests, try_emplace_update_key) {
 
     // new element
     {
-      auto key1 = irs::make_hashed_ref(irs::string_ref("abc"),
-                                       std::hash<irs::string_ref>());
-      irs::map_utils::try_emplace_update_key(map, updater, std::move(key1),
-                                             "abc");
+      auto key1 = irs::make_hashed_ref(irs::string_ref("abc"), std::hash<irs::string_ref>());
+      irs::map_utils::try_emplace_update_key(map, updater, std::move(key1), "abc");
       ASSERT_EQ(1, map.size());
-      auto key2 = irs::make_hashed_ref(irs::string_ref("def"),
-                                       std::hash<irs::string_ref>());
-      irs::map_utils::try_emplace_update_key(map, updater, std::move(key2),
-                                             "def");
+      auto key2 = irs::make_hashed_ref(irs::string_ref("def"), std::hash<irs::string_ref>());
+      irs::map_utils::try_emplace_update_key(map, updater, std::move(key2), "def");
       ASSERT_EQ(2, map.size());
 
-      for (auto& entry : map) {
+      for (auto& entry: map) {
         ASSERT_EQ(entry.first.c_str(), entry.second.c_str());
       }
     }
 
     // existing element
     {
-      auto key1 = irs::make_hashed_ref(irs::string_ref("abc"),
-                                       std::hash<irs::string_ref>());
-      irs::map_utils::try_emplace_update_key(map, updater, std::move(key1),
-                                             "ghi");
+      auto key1 = irs::make_hashed_ref(irs::string_ref("abc"), std::hash<irs::string_ref>());
+      irs::map_utils::try_emplace_update_key(map, updater, std::move(key1), "ghi");
       ASSERT_EQ(2, map.size());
 
-      for (auto& entry : map) {
+      for (auto& entry: map) {
         ASSERT_EQ(entry.first.c_str(), entry.second.c_str());
       }
     }
   }
-
+  
   // copy constructed
   {
     std::map<irs::hashed_string_ref, std::string> map;
 
     // new element
     {
-      auto key1 = irs::make_hashed_ref(irs::string_ref("abc"),
-                                       std::hash<irs::string_ref>());
+      auto key1 = irs::make_hashed_ref(irs::string_ref("abc"), std::hash<irs::string_ref>());
       irs::map_utils::try_emplace_update_key(map, updater, key1, "abc");
       ASSERT_EQ(1, map.size());
-      auto key2 = irs::make_hashed_ref(irs::string_ref("def"),
-                                       std::hash<irs::string_ref>());
+      auto key2 = irs::make_hashed_ref(irs::string_ref("def"), std::hash<irs::string_ref>());
       irs::map_utils::try_emplace_update_key(map, updater, key2, "def");
       ASSERT_EQ(2, map.size());
 
-      for (auto& entry : map) {
+      for (auto& entry: map) {
         ASSERT_EQ(entry.first.c_str(), entry.second.c_str());
       }
     }
 
     // existing element
     {
-      auto key1 = irs::make_hashed_ref(irs::string_ref("abc"),
-                                       std::hash<irs::string_ref>());
+      auto key1 = irs::make_hashed_ref(irs::string_ref("abc"), std::hash<irs::string_ref>());
       irs::map_utils::try_emplace_update_key(map, updater, key1, "ghi");
       ASSERT_EQ(2, map.size());
 
-      for (auto& entry : map) {
+      for (auto& entry: map) {
         ASSERT_EQ(entry.first.c_str(), entry.second.c_str());
       }
     }

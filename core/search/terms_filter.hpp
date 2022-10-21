@@ -25,7 +25,6 @@
 
 #include <set>
 
-#include "search/all_docs_provider.hpp"
 #include "search/filter.hpp"
 #include "utils/string.hpp"
 
@@ -34,19 +33,24 @@ namespace iresearch {
 class by_terms;
 struct filter_visitor;
 
-/// Options for terms filter
-struct by_terms_options {
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_terms_options
+/// @brief options for terms filter
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API by_terms_options {
   struct search_term {
     bstring term;
-    score_t boost;
+    boost_t boost;
 
     search_term() = default;
 
-    explicit search_term(bstring&& term, score_t boost = kNoBoost) noexcept
-      : term(std::move(term)), boost(boost) {}
+    explicit search_term(bstring&& term, boost_t boost = no_boost()) noexcept
+      : term(std::move(term)), boost(boost) {
+    }
 
-    explicit search_term(bytes_ref term, score_t boost = kNoBoost)
-      : term(term.c_str(), term.size()), boost(boost) {}
+    explicit search_term(const bytes_ref& term, boost_t boost = no_boost())
+      : term(term.c_str(), term.size()), boost(boost) {
+    }
 
     bool operator==(const search_term& rhs) const noexcept {
       return term == rhs.term && boost == rhs.boost;
@@ -65,8 +69,6 @@ struct by_terms_options {
   using search_terms = std::set<search_term>;
 
   search_terms terms;
-  size_t min_match{1};
-  sort::MergeType merge_type{sort::MergeType::kSum};
 
   bool operator==(const by_terms_options& rhs) const noexcept {
     return terms == rhs.terms;
@@ -79,26 +81,33 @@ struct by_terms_options {
     }
     return hash;
   }
-};
+}; // by_terms_options
 
-// Filter by a set of terms
-class by_terms final : public filter_base<by_terms_options>,
-                       public AllDocsProvider {
+////////////////////////////////////////////////////////////////////////////////
+/// @class by_terms
+/// @brief user-side filter by a set of terms
+////////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API by_terms final
+    : public filter_base<by_terms_options> {
  public:
   static ptr make();
 
-  static void visit(const sub_reader& segment, const term_reader& field,
-                    const by_terms_options::search_terms& terms,
-                    filter_visitor& visitor);
+  static void visit(
+    const sub_reader& segment,
+    const term_reader& field,
+    const by_terms_options::search_terms& terms,
+    filter_visitor& visitor);
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& index, const Order& order, score_t boost,
+    const index_reader& index,
+    const order::prepared& order,
+    boost_t boost,
     const attribute_provider* /*ctx*/) const override;
-};
+}; // by_terms
 
-}  // namespace iresearch
+}
 
 namespace std {
 
@@ -109,6 +118,7 @@ struct hash<::iresearch::by_terms_options> {
   }
 };
 
-}  // namespace std
+}
 
-#endif  // IRESEARCH_TERMS_FILTER_H
+#endif // IRESEARCH_TERMS_FILTER_H
+

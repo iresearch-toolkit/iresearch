@@ -24,53 +24,61 @@
 #ifndef IRESEARCH_FIELD_META_H
 #define IRESEARCH_FIELD_META_H
 
-#include <set>
-
 #include "index/index_features.hpp"
+#include "utils/range.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/attributes.hpp"
 
 namespace iresearch {
 
+//////////////////////////////////////////////////////////////////////////////
+/// @struct field_stats
+//////////////////////////////////////////////////////////////////////////////
 struct field_stats {
-  // Total number of terms
+  /// @brief total number of terms
   uint32_t len{};
-  // Number of overlapped terms
+  /// @brief number of overlapped terms
   uint32_t num_overlap{};
-  // Maximum number of terms in a field
+  /// @brief maximum number of terms in a field
   uint32_t max_term_freq{};
-  // Number of unique terms
+  /// @brief number of unique terms
   uint32_t num_unique{};
-};
+}; // field_stats
+
 
 using feature_map_t = std::map<type_info::type_id, field_id>;
 using feature_set_t = std::set<type_info::type_id>;
-using features_t = std::span<const type_info::type_id>;
+using features_t = range<const type_info::type_id>;
 
-// Represents field metadata
-struct field_meta {
+//////////////////////////////////////////////////////////////////////////////
+/// @struct field_meta 
+/// @brief represents field metadata
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API field_meta { 
  public:
-  static const field_meta kEmpty;
+  static const field_meta EMPTY;
 
   field_meta() = default;
   field_meta(const field_meta&) = default;
   field_meta(field_meta&& rhs) noexcept;
-  field_meta(string_ref field, IndexFeatures index_features);
+  field_meta(const string_ref& field, IndexFeatures index_features);
 
   field_meta& operator=(field_meta&& rhs) noexcept;
   field_meta& operator=(const field_meta&) = default;
 
   bool operator==(const field_meta& rhs) const;
-  bool operator!=(const field_meta& rhs) const { return !(*this == rhs); }
+  bool operator!=(const field_meta& rhs) const {
+    return !(*this == rhs);
+  }
 
   feature_map_t features;
   std::string name;
   IndexFeatures index_features{IndexFeatures::NONE};
-};
+}; // field_meta
 
 static_assert(std::is_move_constructible<field_meta>::value,
               "default move constructor expected");
 
-}  // namespace iresearch
+}
 
 #endif

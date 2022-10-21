@@ -26,27 +26,32 @@
 #include "memory.hpp"
 #include "utils/string.hpp"
 
-#define MAKE_DELETER(method)                                               \
-  template<typename T>                                                     \
-  struct auto_##method : std::default_delete<T> {                          \
-    typedef T type;                                                        \
-    typedef std::default_delete<type> base;                                \
-    typedef std::unique_ptr<type, auto_##method<type>> ptr;                \
-    void operator()(type* p) const noexcept {                              \
-      if (p) {                                                             \
-        try {                                                              \
-          p->method();                                                     \
-          base::operator()(p);                                             \
-        } catch (const std::exception& e) {                                \
-          IR_FRMT_ERROR("caught exception while closing i/o stream: '%s'", \
-                        e.what());                                         \
-        } catch (...) {                                                    \
-          IR_FRMT_ERROR(                                                   \
-            "caught an unspecified exception while closing i/o stream");   \
-        }                                                                  \
-      }                                                                    \
-    }                                                                      \
-  }
+#define MAKE_DELETER(method) \
+template<typename T> \
+struct auto_##method : std::default_delete<T> \
+{ \
+  typedef T type; \
+  typedef std::default_delete<type> base; \
+  typedef std::unique_ptr< type, auto_##method<type> > ptr; \
+  void operator()(type* p) const noexcept \
+  { \
+    if (p) { \
+      try { \
+        p->method(); \
+        base::operator()(p); \
+      } catch (const std::exception& e) { \
+        IR_FRMT_ERROR( \
+          "caught exception while closing i/o stream: '%s'", \
+          e.what() \
+        ); \
+      } catch (...) { \
+        IR_FRMT_ERROR( \
+          "caught an unspecified exception while closing i/o stream" \
+        ); \
+      } \
+    } \
+  } \
+}
 
 namespace iresearch {
 namespace io_utils {
@@ -54,10 +59,10 @@ namespace io_utils {
 MAKE_DELETER(close);
 MAKE_DELETER(unlock);
 
-}  // namespace io_utils
-}  // namespace iresearch
+}
+}
 
 #define DECLARE_IO_PTR(class_name, method) \
-  typedef ::iresearch::io_utils::auto_##method<class_name>::ptr ptr
+  typedef iresearch::io_utils::auto_##method< class_name >::ptr ptr
 
 #endif

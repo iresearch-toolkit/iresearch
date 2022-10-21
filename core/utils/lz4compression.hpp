@@ -46,39 +46,41 @@ typedef std::unique_ptr<void, LZ4_streamDecode_deleter> lz4stream_decode;
 lz4stream lz4_make_stream();
 lz4stream_decode lz4_make_stream_decode();
 
-struct lz4 {
+struct IRESEARCH_API lz4 {
   static constexpr string_ref type_name() noexcept {
     return "iresearch::compression::lz4";
   }
 
-  class lz4compressor final : public compression::compressor {
+  class IRESEARCH_API lz4compressor final : public compression::compressor {
    public:
     explicit lz4compressor(int acceleration = 0) noexcept
-      : acceleration_(acceleration) {}
+      : acceleration_(acceleration) {
+    }
 
     int acceleration() const noexcept { return acceleration_; }
 
-    virtual bytes_ref compress(byte_type* src, size_t size,
-                               bstring& out) override
-      IRESEARCH_ATTRIBUTE_NONNULL();
+    virtual bytes_ref compress(
+      byte_type* src,
+      size_t size,
+      bstring& out) override IRESEARCH_ATTRIBUTE_NONNULL();
 
    private:
-    const int acceleration_{0};  // 0 - default acceleration
+    const int acceleration_{0}; // 0 - default acceleration
   };
 
-  class lz4decompressor final : public compression::decompressor {
+  class IRESEARCH_API lz4decompressor final : public compression::decompressor {
    public:
-    virtual bytes_ref decompress(const byte_type* src, size_t src_size,
-                                 byte_type* dst, size_t dst_size) override
-      IRESEARCH_ATTRIBUTE_NONNULL();
+    virtual bytes_ref decompress(
+      const byte_type* src, size_t src_size,
+      byte_type* dst, size_t dst_size) override IRESEARCH_ATTRIBUTE_NONNULL();
   };
 
   static void init();
   static compression::compressor::ptr compressor(const options& opts);
   static compression::decompressor::ptr decompressor();
-};  // lz4basic
+}; // lz4basic
 
-}  // namespace compression
-}  // namespace iresearch
+} // compression
+} // namespace iresearch {
 
 #endif

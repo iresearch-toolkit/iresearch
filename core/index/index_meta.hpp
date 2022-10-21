@@ -42,32 +42,35 @@ namespace iresearch {
 class format;
 typedef std::shared_ptr<const format> format_ptr;
 
-}  // namespace iresearch
+}
 
 // format_ptr
-MSVC_ONLY(                                             // cppcheck-suppress
-  template class std::shared_ptr<const irs::format>;)  // unknownMacro
+MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<const irs::format>;) // cppcheck-suppress unknownMacro 
 
 namespace iresearch {
 
 struct directory;
 class index_writer;
 
-struct segment_meta {
+struct IRESEARCH_API segment_meta {
   using file_set = absl::flat_hash_set<std::string>;
 
   segment_meta() = default;
   segment_meta(const segment_meta&) = default;
-  segment_meta(segment_meta&& rhs) noexcept(
-    noexcept(std::is_nothrow_move_constructible_v<file_set>));
-  segment_meta(string_ref name, format_ptr codec);
-  segment_meta(std::string&& name, format_ptr codec, uint64_t docs_count,
-               uint64_t live_docs_count, bool column_store, file_set&& files,
+  segment_meta(segment_meta&& rhs)
+      noexcept(noexcept(std::is_nothrow_move_constructible_v<file_set>));
+  segment_meta(const string_ref& name, format_ptr codec);
+  segment_meta(std::string&& name,
+               format_ptr codec,
+               uint64_t docs_count,
+               uint64_t live_docs_count,
+               bool column_store,
+               file_set&& files,
                size_t size = 0,
                field_id sort = field_limits::invalid()) noexcept;
 
-  segment_meta& operator=(segment_meta&& rhs) noexcept(
-    noexcept(std::is_nothrow_move_assignable_v<file_set>));
+  segment_meta& operator=(segment_meta&& rhs)
+    noexcept(noexcept(std::is_nothrow_move_assignable_v<file_set>));
   segment_meta& operator=(const segment_meta&) = default;
 
   bool operator==(const segment_meta& other) const noexcept;
@@ -75,12 +78,12 @@ struct segment_meta {
 
   file_set files;
   std::string name;
-  uint64_t docs_count{};       // Total number of documents in a segment
-  uint64_t live_docs_count{};  // Total number of live documents in a segment
+  uint64_t docs_count{}; // Total number of documents in a segment
+  uint64_t live_docs_count{}; // Total number of live documents in a segment
   format_ptr codec;
-  size_t size{};  // Size of a segment in bytes
+  size_t size{}; // Size of a segment in bytes
   uint64_t version{};
-  field_id sort{field_limits::invalid()};
+  field_id sort{ field_limits::invalid() };
   bool column_store{};
 };
 
@@ -97,9 +100,9 @@ inline bool has_columnstore(const segment_meta& meta) noexcept {
 static_assert(std::is_nothrow_move_constructible_v<segment_meta>);
 static_assert(std::is_nothrow_move_assignable_v<segment_meta>);
 
-class index_meta {
+class IRESEARCH_API index_meta {
  public:
-  struct index_segment_t {
+  struct IRESEARCH_API index_segment_t {
     index_segment_t() = default;
     // cppcheck-suppress noExplicitConstructor
     index_segment_t(segment_meta&& meta);
@@ -113,7 +116,7 @@ class index_meta {
 
     std::string filename;
     segment_meta meta;
-  };  // index_segment_t
+  }; // index_segment_t
 
   static_assert(std::is_nothrow_move_constructible_v<index_segment_t>);
   static_assert(std::is_nothrow_move_assignable_v<index_segment_t>);
@@ -211,21 +214,27 @@ class index_meta {
     return segments_[i];
   }
 
-  const index_segments_t& segments() const noexcept { return segments_; }
+  const index_segments_t& segments() const noexcept {
+    return segments_;
+  }
 
-  const bytes_ref& payload() const noexcept { return payload_; }
+  const bytes_ref& payload() const noexcept {
+    return payload_;
+  }
 
  private:
   friend class index_writer;
   friend struct index_meta_reader;
   friend struct index_meta_writer;
 
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   uint64_t gen_;
   uint64_t last_gen_;
   std::atomic<uint64_t> seg_counter_;
   index_segments_t segments_;
   bstring payload_buf_;
   bytes_ref payload_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
 
   uint64_t next_generation() const noexcept;
 
@@ -243,8 +252,8 @@ class index_meta {
       payload_ = payload_buf_;
     }
   }
-};  // index_meta
+}; // index_meta
 
-}  // namespace iresearch
+}
 
 #endif

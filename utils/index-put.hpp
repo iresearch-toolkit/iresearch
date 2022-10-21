@@ -31,8 +31,8 @@ namespace cmdline {
 
 class parser;
 
-}  // namespace cmdline
+} // cmdline
 
 int put(int argc, char* argv[]);
 
-#endif  // IRESEARCH_INDEX_PUT_H
+#endif // IRESEARCH_INDEX_PUT_H

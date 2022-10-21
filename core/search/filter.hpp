@@ -23,64 +23,64 @@
 #ifndef IRESEARCH_QUERY_H
 #define IRESEARCH_QUERY_H
 
-#include <absl/container/node_hash_map.h>
-
 #include <functional>
 
-#include "index/iterators.hpp"
-#include "search/sort.hpp"
+#include <absl/container/node_hash_map.h>
+
 #include "shared.hpp"
+#include "search/sort.hpp"
+#include "index/iterators.hpp"
 #include "utils/hash_utils.hpp"
 
 namespace iresearch {
 
 struct index_reader;
-struct PreparedStateVisitor;
 
-enum class ExecutionMode : uint32_t {
-  kAll,  // Access all documents
-  kTop   // Access only top matched documents
-};
-
-struct ExecutionContext {
-  const sub_reader& segment;
-  const Order& scorers;
-  const attribute_provider* ctx{};
-  ExecutionMode mode{ExecutionMode::kAll};
-};
-
-// Base class for all user-side filters
-class filter {
+////////////////////////////////////////////////////////////////////////////////
+/// @class filter
+/// @brief base class for all user-side filters
+////////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API filter {
  public:
-  // Base class for all prepared(compiled) queries
-  class prepared {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @class query
+  /// @brief base class for all prepared(compiled) queries
+  //////////////////////////////////////////////////////////////////////////////
+  class IRESEARCH_API prepared {
    public:
     using ptr = memory::managed_ptr<const prepared>;
 
     static prepared::ptr empty();
 
-    explicit prepared(score_t boost = kNoBoost) noexcept : boost_(boost) {}
+    explicit prepared(boost_t boost = no_boost()) noexcept
+      : boost_(boost) {
+    }
     virtual ~prepared() = default;
 
-    doc_iterator::ptr execute(const sub_reader& segment,
-                              const Order& scorers = Order::kUnordered,
-                              ExecutionMode mode = ExecutionMode::kAll) const {
-      return execute({.segment = segment, .scorers = scorers, .mode = mode});
+    doc_iterator::ptr execute(
+        const sub_reader& rdr) const {
+      return execute(rdr, order::prepared::unordered());
     }
 
-    virtual doc_iterator::ptr execute(const ExecutionContext& ctx) const = 0;
+    doc_iterator::ptr execute(
+        const sub_reader& rdr,
+        const order::prepared& ord) const {
+      return execute(rdr, ord, nullptr);
+    }
 
-    virtual void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
-                       score_t boost) const = 0;
+    virtual doc_iterator::ptr execute(
+      const sub_reader& rdr,
+      const order::prepared& ord,
+      const attribute_provider* ctx) const = 0;
 
-    score_t boost() const noexcept { return boost_; }
+    boost_t boost() const noexcept { return boost_; }
 
    protected:
-    void boost(score_t boost) noexcept { boost_ *= boost; }
+    void boost(boost_t boost) noexcept { boost_ *= boost; }
 
    private:
-    score_t boost_;
-  };
+    boost_t boost_;
+  }; // prepared
 
   using ptr = std::unique_ptr<filter>;
 
@@ -91,37 +91,48 @@ class filter {
     return std::hash<type_info::type_id>()(type_);
   }
 
-  bool operator==(const filter& rhs) const noexcept { return equals(rhs); }
+  bool operator==(const filter& rhs) const noexcept {
+    return equals(rhs);
+  }
 
-  bool operator!=(const filter& rhs) const noexcept { return !(*this == rhs); }
+  bool operator!=(const filter& rhs) const noexcept {
+    return !(*this == rhs);
+  }
 
   // boost - external boost
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr, const Order& ord, score_t boost,
-    const attribute_provider* ctx) const = 0;
+      const index_reader& rdr,
+      const order::prepared& ord,
+      boost_t boost,
+      const attribute_provider* ctx) const = 0;
 
-  filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
-                                const attribute_provider* ctx) const {
-    return prepare(rdr, ord, irs::kNoBoost, ctx);
+  filter::prepared::ptr prepare(
+      const index_reader& rdr,
+      const order::prepared& ord,
+      const attribute_provider* ctx) const {
+    return prepare(rdr, ord, irs::no_boost(), ctx);
   }
 
-  filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
-                                score_t boost) const {
+  filter::prepared::ptr prepare(
+      const index_reader& rdr,
+      const order::prepared& ord,
+      boost_t boost) const {
     return prepare(rdr, ord, boost, nullptr);
   }
 
-  filter::prepared::ptr prepare(const index_reader& rdr,
-                                const Order& ord) const {
-    return prepare(rdr, ord, irs::kNoBoost);
+  filter::prepared::ptr prepare(
+      const index_reader& rdr,
+      const order::prepared& ord) const {
+    return prepare(rdr, ord, irs::no_boost());
   }
 
   filter::prepared::ptr prepare(const index_reader& rdr) const {
-    return prepare(rdr, Order::kUnordered);
+    return prepare(rdr, order::prepared::unordered());
   }
 
-  score_t boost() const noexcept { return boost_; }
+  boost_t boost() const noexcept { return boost_; }
 
-  filter& boost(score_t boost) noexcept {
+  filter& boost(boost_t boost) noexcept {
     boost_ = boost;
     return *this;
   }
@@ -134,21 +145,26 @@ class filter {
   }
 
  private:
-  score_t boost_;
+  boost_t boost_;
   type_info::type_id type_;
-};
+}; // filter
 
 // boost::hash_combine support
-inline size_t hash_value(const filter& q) noexcept { return q.hash(); }
+inline size_t hash_value(const filter& q) noexcept {
+  return q.hash();
+}
 
-// Convenient base class filters with options
+////////////////////////////////////////////////////////////////////////////////
+/// @class filter_with_options
+/// @brief convenient base class filters with options
+////////////////////////////////////////////////////////////////////////////////
 template<typename Options>
 class filter_with_options : public filter {
  public:
   using options_type = Options;
   using filter_type = typename options_type::filter_type;
 
-  filter_with_options() : filter(irs::type<filter_type>::get()) {}
+  filter_with_options() : filter(irs::type<filter_type>::get()) { }
 
   const options_type& options() const noexcept { return options_; }
   options_type* mutable_options() noexcept { return &options_; }
@@ -160,21 +176,32 @@ class filter_with_options : public filter {
  protected:
   virtual bool equals(const filter& rhs) const noexcept override {
     return filter::equals(rhs) &&
-           options_ == down_cast<filter_type>(rhs).options_;
+      options_ ==
+#ifdef IRESEARCH_DEBUG
+        dynamic_cast<const filter_type&>(rhs).options_
+#else
+        static_cast<const filter_type&>(rhs).options_
+#endif
+      ;
   }
 
  private:
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   options_type options_;
-};
+  IRESEARCH_API_PRIVATE_VARIABLES_END
+}; // filter_with_options
 
-// Convenient base class for single field filters
+////////////////////////////////////////////////////////////////////////////////
+/// @class filter_base
+/// @brief convenient base class for single field filters
+////////////////////////////////////////////////////////////////////////////////
 template<typename Options>
 class filter_base : public filter_with_options<Options> {
  public:
   using options_type = typename filter_with_options<Options>::options_type;
   using filter_type = typename options_type::filter_type;
 
-  std::string_view field() const noexcept { return field_; }
+  const std::string& field() const noexcept { return field_; }
   std::string* mutable_field() noexcept { return &field_; }
 
   virtual size_t hash() const noexcept override {
@@ -185,28 +212,42 @@ class filter_base : public filter_with_options<Options> {
  protected:
   virtual bool equals(const filter& rhs) const noexcept override {
     return filter_with_options<options_type>::equals(rhs) &&
-           field_ == down_cast<filter_type>(rhs).field_;
+      field_ ==
+#ifdef IRESEARCH_DEBUG
+        dynamic_cast<const filter_type&>(rhs).field_
+#else
+        static_cast<const filter_type&>(rhs).field_
+#endif
+      ;
   }
 
  private:
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::string field_;
-};
+  IRESEARCH_API_PRIVATE_VARIABLES_END
+}; // filter_base
 
-// Filter which returns no documents
-class empty final : public filter {
+////////////////////////////////////////////////////////////////////////////////
+/// @class empty
+/// @brief filter which returns no documents
+////////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API empty final : public filter {
  public:
+  static ptr make();
+
   empty();
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr, const Order& ord, score_t boost,
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost,
     const attribute_provider* ctx) const override;
-};
+}; // empty
 
 struct filter_visitor;
-using field_visitor =
-  std::function<void(const sub_reader&, const term_reader&, filter_visitor&)>;
+using field_visitor = std::function<void(const sub_reader&, const term_reader&, filter_visitor&)>;
 
-}  // namespace iresearch
+}
 
 namespace std {
 
@@ -215,9 +256,11 @@ struct hash<iresearch::filter> {
   typedef iresearch::filter argument_type;
   typedef size_t result_type;
 
-  result_type operator()(const argument_type& key) const { return key.hash(); }
+  result_type operator()(const argument_type& key) const {
+    return key.hash();
+  }
 };
 
-}  // namespace std
+} // std
 
 #endif

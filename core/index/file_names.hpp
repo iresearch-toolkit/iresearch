@@ -34,15 +34,15 @@ namespace iresearch {
 std::string file_name(uint64_t gen);
 
 // returns string in the following format : {prefix}{gen}
-std::string file_name(string_ref prefix, uint64_t gen);
+std::string IRESEARCH_API file_name(const string_ref& prefix, uint64_t gen);
 
 // returns string in the following format : {name}.{ext}
-std::string file_name(string_ref name, string_ref ext);
-void file_name(std::string& out, string_ref name, string_ref ext);
+std::string IRESEARCH_API file_name(const string_ref& name, const string_ref& ext);
+void IRESEARCH_API file_name(std::string& out, const string_ref& name, const string_ref& ext);
 
 // returns string in the following format : {name}.{gen}.{ext}
-std::string file_name(string_ref name, uint64_t gen, string_ref ext);
+std::string IRESEARCH_API file_name(const string_ref& name, uint64_t gen, const string_ref& ext);
 
-}  // namespace iresearch
+}
 
 #endif

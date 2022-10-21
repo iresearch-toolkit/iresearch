@@ -30,13 +30,19 @@ namespace iresearch {
 
 class by_same_position;
 
-// Options for "by same position" filter
-struct by_same_position_options {
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_terms_options
+/// @brief options for "by same position" filter
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API by_same_position_options {
   using filter_type = by_same_position;
 
   using search_term = std::pair<std::string, bstring>;
   using search_terms = std::vector<search_term>;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief search terms
+  //////////////////////////////////////////////////////////////////////////////
   search_terms terms;
 
   bool operator==(const by_same_position_options& rhs) const noexcept {
@@ -51,21 +57,32 @@ struct by_same_position_options {
     }
     return hash;
   }
-};
+}; // by_same_position_options
 
-class by_same_position : public filter_with_options<by_same_position_options> {
+//////////////////////////////////////////////////////////////////////////////
+/// @class by_same_position
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API by_same_position
+    : public filter_with_options<by_same_position_options> {
  public:
-  // Returns features required for the filter
-  static constexpr IndexFeatures kRequiredFeatures =
-    IndexFeatures::FREQ | IndexFeatures::POS;
+  static ptr make();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns features required for filter
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr IndexFeatures required() noexcept {
+    return IndexFeatures::FREQ | IndexFeatures::POS;
+  }
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr, const Order& ord, score_t boost,
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost,
     const attribute_provider* ctx) const override;
-};
+}; // by_same_position
 
-}  // namespace iresearch
+} // ROOT
 
-#endif  // IRESEARCH_SAME_POSITION_FILTER_H
+#endif // IRESEARCH_SAME_POSITION_FILTER_H

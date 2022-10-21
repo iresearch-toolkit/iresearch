@@ -1,25 +1,3 @@
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Andrey Abramov
-////////////////////////////////////////////////////////////////////////////////
-
 #include <benchmark/benchmark.h>
 
 extern "C" {
@@ -27,7 +5,6 @@ extern "C" {
 }
 
 #include "store/store_utils.hpp"
-#include "utils/misc.hpp"
 #include "utils/simd_utils.hpp"
 #include "utils/misc.hpp"
 
@@ -35,7 +12,7 @@ namespace {
 
 constexpr size_t BLOCK_SIZE = 65536;
 
-struct HWY_ALIGN aligned_type {};
+struct HWY_ALIGN aligned_type { };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             delta
@@ -55,7 +32,7 @@ void BM_delta_encode_simd_unaligned(benchmark::State& state) {
   uint32_t values[BLOCK_SIZE];
   for (auto _ : state) {
     std::iota(std::begin(values), std::end(values), 0);
-    irs::simd::delta_encode<std::size(values), false>(values, 0U);
+    irs::simd::delta_encode<IRESEARCH_COUNTOF(values), false>(values, 0U);
   }
 }
 
@@ -79,7 +56,7 @@ void BM_avg_encode32_simd_aligned(benchmark::State& state) {
   HWY_ALIGN uint32_t values[BLOCK_SIZE];
   for (auto _ : state) {
     std::iota(std::begin(values), std::end(values), ::rand());
-    irs::simd::avg_encode<std::size(values), true>(values);
+    irs::simd::avg_encode<IRESEARCH_COUNTOF(values), true>(values);
   }
 }
 
@@ -89,7 +66,7 @@ void BM_avg_encode32_simd_unaligned(benchmark::State& state) {
   uint32_t values[BLOCK_SIZE];
   for (auto _ : state) {
     std::iota(std::begin(values), std::end(values), ::rand());
-    irs::simd::avg_encode<std::size(values), false>(values);
+    irs::simd::avg_encode<IRESEARCH_COUNTOF(values), false>(values);
   }
 }
 
@@ -137,7 +114,7 @@ void BM_maxmin64_simd_aligned(benchmark::State& state) {
   HWY_ALIGN uint64_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
-    auto maxmin = irs::simd::maxmin<std::size(values), true>(values);
+    auto maxmin = irs::simd::maxmin<IRESEARCH_COUNTOF(values), true>(values);
     benchmark::DoNotOptimize(maxmin);
   }
 }
@@ -148,7 +125,7 @@ void BM_maxmin64_simd_unaligned(benchmark::State& state) {
   uint64_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
-    auto maxmin = irs::simd::maxmin<std::size(values), false>(values);
+    auto maxmin = irs::simd::maxmin<IRESEARCH_COUNTOF(values), false>(values);
     benchmark::DoNotOptimize(maxmin);
   }
 }
@@ -182,7 +159,7 @@ void BM_maxmin32_simd_aligned(benchmark::State& state) {
   HWY_ALIGN uint32_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
-    auto maxmin = irs::simd::maxmin<std::size(values), true>(values);
+    auto maxmin = irs::simd::maxmin<IRESEARCH_COUNTOF(values), true>(values);
     benchmark::DoNotOptimize(maxmin);
   }
 }
@@ -193,7 +170,7 @@ void BM_maxmin32_simd_unaligned(benchmark::State& state) {
   uint32_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
-    auto maxmin = irs::simd::maxmin<std::size(values), false>(values);
+    auto maxmin = irs::simd::maxmin<IRESEARCH_COUNTOF(values), false>(values);
     benchmark::DoNotOptimize(maxmin);
   }
 }
@@ -219,7 +196,7 @@ void BM_maxbits64_simd_aligned(benchmark::State& state) {
   HWY_ALIGN uint64_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
-    auto bits = irs::simd::maxbits<std::size(values), true>(values);
+    auto bits = irs::simd::maxbits<IRESEARCH_COUNTOF(values), true>(values);
     benchmark::DoNotOptimize(bits);
   }
 }
@@ -230,7 +207,7 @@ void BM_maxbits64_simd_unaligned(benchmark::State& state) {
   uint64_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
-    auto maxbits = irs::simd::maxbits<std::size(values), false>(values);
+    auto maxbits = irs::simd::maxbits<IRESEARCH_COUNTOF(values), false>(values);
     benchmark::DoNotOptimize(maxbits);
   }
 }
@@ -259,8 +236,7 @@ void BM_maxbits32_lemire(benchmark::State& state) {
 
   for (auto _ : state) {
     uint32_t bits = 0;
-    for (auto begin = values; begin != std::end(values);
-         begin += SIMDBlockSize) {
+    for (auto begin = values; begin != std::end(values); begin += SIMDBlockSize) {
       bits = std::max(maxbits(begin), bits);
     }
     benchmark::DoNotOptimize(bits);
@@ -274,7 +250,7 @@ void BM_maxbits32_simd_aligned(benchmark::State& state) {
   std::iota(std::begin(values), std::end(values), ::rand());
 
   for (auto _ : state) {
-    auto maxbits = irs::simd::maxbits<std::size(values), false>(values);
+    auto maxbits = irs::simd::maxbits<IRESEARCH_COUNTOF(values), false>(values);
     benchmark::DoNotOptimize(maxbits);
   }
 }
@@ -286,7 +262,7 @@ void BM_maxbits32_simd_unaligned(benchmark::State& state) {
   std::iota(std::begin(values), std::end(values), ::rand());
 
   for (auto _ : state) {
-    auto maxbits = irs::simd::maxbits<std::size(values), false>(values);
+    auto maxbits = irs::simd::maxbits<IRESEARCH_COUNTOF(values), false>(values);
     benchmark::DoNotOptimize(maxbits);
   }
 }
@@ -299,7 +275,7 @@ BENCHMARK(BM_maxbits32_simd_unaligned);
 
 void BM_all_equal32(benchmark::State& state) {
   uint32_t values[BLOCK_SIZE];
-  std::fill_n(std::begin(values), std::size(values), ::rand());
+  std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
 
   for (auto _ : state) {
     auto res = irs::irstd::all_equal(std::begin(values), std::end(values));
@@ -311,11 +287,10 @@ BENCHMARK(BM_all_equal32);
 
 void BM_all_equal32_simd_unaligned(benchmark::State& state) {
   uint32_t values[BLOCK_SIZE];
-  std::fill_n(std::begin(values), std::size(values), ::rand());
+  std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
 
   for (auto _ : state) {
-    auto res =
-      irs::simd::all_equal<false>(std::begin(values), std::size(values));
+    auto res = irs::simd::all_equal<false>(std::begin(values), IRESEARCH_COUNTOF(values));
     benchmark::DoNotOptimize(res);
   }
 }
@@ -324,7 +299,7 @@ BENCHMARK(BM_all_equal32_simd_unaligned);
 
 void BM_all_equal32_small(benchmark::State& state) {
   uint32_t values[32];
-  std::fill_n(std::begin(values), std::size(values), ::rand());
+  std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
 
   for (auto _ : state) {
     auto res = irs::irstd::all_equal(std::begin(values), std::end(values));
@@ -336,11 +311,10 @@ BENCHMARK(BM_all_equal32_small);
 
 void BM_all_equal32_small_simd_unaligned(benchmark::State& state) {
   uint32_t values[32];
-  std::fill_n(std::begin(values), std::size(values), ::rand());
+  std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
 
   for (auto _ : state) {
-    auto res =
-      irs::simd::all_equal<false>(std::begin(values), std::size(values));
+    auto res = irs::simd::all_equal<false>(std::begin(values), IRESEARCH_COUNTOF(values));
     benchmark::DoNotOptimize(res);
   }
 }
@@ -353,7 +327,7 @@ BENCHMARK(BM_all_equal32_small_simd_unaligned);
 
 void BM_all_equal64(benchmark::State& state) {
   uint64_t values[BLOCK_SIZE];
-  std::fill_n(std::begin(values), std::size(values), ::rand());
+  std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
 
   for (auto _ : state) {
     auto res = irs::irstd::all_equal(std::begin(values), std::end(values));
@@ -365,11 +339,10 @@ BENCHMARK(BM_all_equal64);
 
 void BM_all_equal64_simd_unaligned(benchmark::State& state) {
   uint64_t values[BLOCK_SIZE];
-  std::fill_n(std::begin(values), std::size(values), ::rand());
+  std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
 
   for (auto _ : state) {
-    auto res =
-      irs::simd::all_equal<false>(std::begin(values), std::size(values));
+    auto res = irs::simd::all_equal<false>(std::begin(values), IRESEARCH_COUNTOF(values));
     benchmark::DoNotOptimize(res);
   }
 }
@@ -378,7 +351,7 @@ BENCHMARK(BM_all_equal64_simd_unaligned);
 
 void BM_all_equal64_small(benchmark::State& state) {
   uint64_t values[64];
-  std::fill_n(std::begin(values), std::size(values), ::rand());
+  std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
 
   for (auto _ : state) {
     auto res = irs::irstd::all_equal(std::begin(values), std::end(values));
@@ -390,15 +363,14 @@ BENCHMARK(BM_all_equal64_small);
 
 void BM_all_equal64_small_simd_unaligned(benchmark::State& state) {
   uint64_t values[64];
-  std::fill_n(std::begin(values), std::size(values), ::rand());
+  std::fill_n(std::begin(values), IRESEARCH_COUNTOF(values), ::rand());
 
   for (auto _ : state) {
-    auto res =
-      irs::simd::all_equal<false>(std::begin(values), std::size(values));
+    auto res = irs::simd::all_equal<false>(std::begin(values), IRESEARCH_COUNTOF(values));
     benchmark::DoNotOptimize(res);
   }
 }
 
 BENCHMARK(BM_all_equal64_small_simd_unaligned);
 
-}  // namespace
+}

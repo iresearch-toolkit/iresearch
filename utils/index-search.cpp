@@ -22,15 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #if defined(_MSC_VER)
-#pragma warning(disable : 4101)
-#pragma warning(disable : 4267)
+  #pragma warning(disable: 4101)
+  #pragma warning(disable: 4267)
 #endif
 
-#include <cmdline.h>
+  #include <cmdline.h>
 
 #if defined(_MSC_VER)
-#pragma warning(default : 4267)
-#pragma warning(default : 4101)
+  #pragma warning(default: 4267)
+  #pragma warning(default: 4101)
 #endif
 
 #include <fstream>
@@ -39,16 +39,14 @@
 #include <thread>
 
 #if defined(_MSC_VER)
-#pragma warning(disable : 4229)
+  #pragma warning(disable: 4229)
 #endif
 
-#include <unicode/uclean.h>  // for u_cleanup
+  #include <unicode/uclean.h> // for u_cleanup
 
 #if defined(_MSC_VER)
-#pragma warning(default : 4229)
+  #pragma warning(default: 4229)
 #endif
-
-#include <frozen/map.h>
 
 #include "common.hpp"
 #include "analysis/analyzers.hpp"
@@ -66,7 +64,6 @@
 #include "store/fs_directory.hpp"
 #include "utils/memory_pool.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
-#include "utils/timer_utils.hpp"
 
 #include "index-search.hpp"
 
@@ -88,9 +85,8 @@ const std::string SCORER_ARG = "scorer-arg";
 const std::string SCORER_ARG_FMT = "scorer-arg-format";
 const std::string DIR_TYPE = "dir-type";
 const std::string FORMAT = "format";
-const std::string SEARCH_MODE = "search-mode";
 
-}  // namespace
+}
 
 enum class category_t {
   HighTerm,
@@ -145,59 +141,37 @@ category_t parseCategory(const irs::string_ref& value) {
 }
 
 irs::string_ref stringCategory(category_t category) {
-  switch (category) {
-    case category_t::HighTerm:
-      return "HighTerm";
-    case category_t::MedTerm:
-      return "MedTerm";
-    case category_t::LowTerm:
-      return "LowTerm";
-    case category_t::HighPhrase:
-      return "HighPhrase";
-    case category_t::MedPhrase:
-      return "MedPhrase";
-    case category_t::LowPhrase:
-      return "LowPhrase";
-    case category_t::AndHighHigh:
-      return "AndHighHigh";
-    case category_t::AndHighMed:
-      return "AndHighMed";
-    case category_t::AndHighLow:
-      return "AndHighLow";
-    case category_t::OrHighHigh:
-      return "OrHighHigh";
-    case category_t::OrHighMed:
-      return "OrHighMed";
-    case category_t::OrHighLow:
-      return "OrHighLow";
-    case category_t::Prefix3:
-      return "Prefix3";
-    case category_t::Wildcard:
-      return "Wildcard";
-    case category_t::Fuzzy1:
-      return "Fuzzy1";
-    case category_t::Fuzzy2:
-      return "Fuzzy2";
-    case category_t::Or4High:
-      return "Or4High";
-    case category_t::Or6High4Med2Low:
-      return "Or6High4Med2Low";
-    case category_t::MinMatch2High2Med:
-      return "MinMatch2High2Med";
-    case category_t::HighNGram:
-      return "HighNGram";
-    case category_t::MedNGram:
-      return "MedNGram";
-    case category_t::LowNGram:
-      return "LowNGram";
-    default:
-      return "<unknown>";
+  switch(category) {
+   case category_t::HighTerm: return "HighTerm";
+   case category_t::MedTerm: return "MedTerm";
+   case category_t::LowTerm: return "LowTerm";
+   case category_t::HighPhrase: return "HighPhrase";
+   case category_t::MedPhrase: return "MedPhrase";
+   case category_t::LowPhrase: return "LowPhrase";
+   case category_t::AndHighHigh: return "AndHighHigh";
+   case category_t::AndHighMed: return "AndHighMed";
+   case category_t::AndHighLow: return "AndHighLow";
+   case category_t::OrHighHigh: return "OrHighHigh";
+   case category_t::OrHighMed: return "OrHighMed";
+   case category_t::OrHighLow: return "OrHighLow";
+   case category_t::Prefix3: return "Prefix3";
+   case category_t::Wildcard: return "Wildcard";
+   case category_t::Fuzzy1: return "Fuzzy1";
+   case category_t::Fuzzy2: return "Fuzzy2";
+   case category_t::Or4High: return "Or4High";
+   case category_t::Or6High4Med2Low: return "Or6High4Med2Low";
+   case category_t::MinMatch2High2Med: return "MinMatch2High2Med";
+   case category_t::HighNGram: return "HighNGram";
+   case category_t::MedNGram: return "MedNGram";
+   case category_t::LowNGram: return "LowNGram";
+   default: return "<unknown>";
   }
 }
 
 struct task_t {
   task_t(category_t category, std::string&& text) noexcept
-    : category(category), text(std::move(text)) {}
+    : category(category), text(std::move(text)) {
+  }
 
   category_t category;
   std::string text;
@@ -211,221 +185,207 @@ struct timers_t {
     prefix.append(" (");
 
     for (size_t i = 0, count = size_t(category_t::UNKNOWN); i < count; ++i) {
-      stat.emplace_back(&irs::timer_utils::get_stat(
-        prefix + stringCategory(category_t(i)).c_str() + ") time"));
+      stat.emplace_back(&irs::timer_utils::get_stat(prefix + stringCategory(category_t(i)).c_str() + ") time"));
     }
   }
 };
 
 irs::string_ref splitFreq(const std::string& text) {
-  static const std::regex freqPattern1(
-    "(\\S+)\\s*#\\s*(.+)");  // single term, prefix
-  static const std::regex freqPattern2("\"(.+)\"\\s*#\\s*(.+)");  // phrase
-  static const std::regex freqPattern3(
-    "((?:\\S+\\s+)+)\\s*#\\s*(.+)");  // AND/OR groups
+  static const std::regex freqPattern1("(\\S+)\\s*#\\s*(.+)"); // single term, prefix
+  static const std::regex freqPattern2("\"(.+)\"\\s*#\\s*(.+)"); // phrase
+  static const std::regex freqPattern3("((?:\\S+\\s+)+)\\s*#\\s*(.+)"); // AND/OR groups
   std::smatch res;
 
   if (std::regex_match(text, res, freqPattern1)) {
-    return irs::string_ref(&*(res[1].first),
-                           std::distance(res[1].first, res[1].second));
+    return irs::string_ref(&*(res[1].first), std::distance(res[1].first, res[1].second));
   } else if (std::regex_match(text, res, freqPattern2)) {
-    return irs::string_ref(&*(res[1].first),
-                           std::distance(res[1].first, res[1].second));
+    return irs::string_ref(&*(res[1].first), std::distance(res[1].first, res[1].second));
   } else if (std::regex_match(text, res, freqPattern3)) {
-    return irs::string_ref(&*(res[1].first),
-                           std::distance(res[1].first, res[1].second));
+    return irs::string_ref(&*(res[1].first), std::distance(res[1].first, res[1].second));
   }
 
   return irs::string_ref::NIL;
 }
 
 irs::filter::prepared::ptr prepareFilter(
-  const irs::directory_reader& reader, const irs::Order& order,
-  category_t category, const std::string& text,
-  const irs::analysis::analyzer::ptr& analyzer, std::string& tmpBuf,
-  size_t scored_terms_limit) {
+    const irs::directory_reader& reader,
+    const irs::order::prepared& order,
+    category_t category,
+    const std::string& text,
+    const irs::analysis::analyzer::ptr& analyzer,
+    std::string& tmpBuf,
+    size_t scored_terms_limit) {
   irs::string_ref terms;
 
   switch (category) {
-    case category_t::HighTerm:  // fall through
-    case category_t::MedTerm:   // fall through
-    case category_t::LowTerm: {
-      if ((terms = splitFreq(text)).null()) {
-        return nullptr;
-      }
-
-      irs::by_term query;
-      *query.mutable_field() = "body";
-      irs::assign(query.mutable_options()->term,
-                  irs::ref_cast<irs::byte_type>(terms));
-
-      return query.prepare(reader, order);
-    }
-    case category_t::HighPhrase:  // fall through
-    case category_t::MedPhrase:   // fall through
-    case category_t::LowPhrase: {
-      if ((terms = splitFreq(text)).null()) {
-        return nullptr;
-      }
-
-      irs::by_phrase query;
-      *query.mutable_field() = "body";
-      auto* opts = query.mutable_options();
-
-      analyzer->reset(terms);
-
-      for (auto* term = irs::get<irs::term_attribute>(*analyzer);
-           analyzer->next();) {
-        irs::assign(opts->push_back<irs::by_term_options>().term, term->value);
-      }
-
-      return query.prepare(reader, order);
-    }
-    case category_t::HighNGram:  // fall through
-    case category_t::MedNGram:   // fall through
-    case category_t::LowNGram: {
-      if ((terms = splitFreq(text)).null()) {
-        return nullptr;
-      }
-      irs::by_ngram_similarity query;
-      *query.mutable_field() = "body";
-      auto* opts = query.mutable_options();
-
-      bool reading_threshold = true;
-      // the first 'term' should be threshold in tenth - e.g. if value is 7 this
-      // means 0.7
-      for (std::istringstream in(static_cast<std::string>(terms));
-           std::getline(in, tmpBuf, ' ');) {
-        if (reading_threshold) {
-          reading_threshold = false;
-          opts->threshold = float_t(std::stoll(tmpBuf)) / 10.f;
-        } else {
-          opts->ngrams.emplace_back(
-            reinterpret_cast<const irs::byte_type*>(tmpBuf.c_str()),
-            tmpBuf.size());
-        }
-      }
-      return query.prepare(reader, order);
-    }
-    case category_t::AndHighHigh:  // fall through
-    case category_t::AndHighMed:   // fall through
-    case category_t::AndHighLow: {
-      if ((terms = splitFreq(text)).null()) {
-        return nullptr;
-      }
-
-      irs::And query;
-
-      for (std::istringstream in(static_cast<std::string>(terms));
-           std::getline(in, tmpBuf, ' ');) {
-        auto& part = query.add<irs::by_term>();
-        *part.mutable_field() = "body";
-        irs::assign(
-          part.mutable_options()->term,
-          irs::ref_cast<irs::byte_type>(irs::string_ref(
-            tmpBuf.c_str() + 1)));  // +1 for skip '+' at the start of the term
-      }
-
-      return query.prepare(reader, order);
-    }
-    case category_t::Or4High:
-    case category_t::Or6High4Med2Low:
-    case category_t::OrHighHigh:  // fall through
-    case category_t::OrHighMed:   // fall through
-    case category_t::OrHighLow: {
-      if ((terms = splitFreq(text)).null()) {
-        return nullptr;
-      }
-
-      irs::Or query;
-
-      for (std::istringstream in(static_cast<std::string>(terms));
-           std::getline(in, tmpBuf, ' ');) {
-        auto& part = query.add<irs::by_term>();
-        *part.mutable_field() = "body";
-        irs::assign(part.mutable_options()->term,
-                    irs::ref_cast<irs::byte_type>(tmpBuf));
-      }
-
-      return query.prepare(reader, order);
-    }
-    case category_t::Prefix3: {
-      terms = irs::string_ref(
-        text, text.size() - 1);  // cut '~' at the end of the text
-
-      irs::by_prefix query;
-      *query.mutable_field() = "body";
-      auto* opts = query.mutable_options();
-      opts->scored_terms_limit = scored_terms_limit;
-      irs::assign(opts->term, irs::ref_cast<irs::byte_type>(terms));
-
-      return query.prepare(reader, order);
-    }
-    case category_t::Wildcard: {
-      terms = irs::string_ref(text, text.size());
-
-      irs::by_wildcard query;
-      *query.mutable_field() = "body";
-      auto* opts = query.mutable_options();
-      irs::assign(opts->term, irs::ref_cast<irs::byte_type>(terms));
-      opts->scored_terms_limit = scored_terms_limit;
-
-      for (auto& b : opts->term) {
-        switch (b) {
-          case '*':
-            b = '%';
-            break;  // '*' => '%'
-          case '?':
-            b = '_';
-            break;  // '?' => '_'
-        }
-      }
-
-      return query.prepare(reader, order);
-    }
-    case category_t::Fuzzy1:
-    case category_t::Fuzzy2: {
-      const auto pos = text.find('~');
-      const auto term = irs::string_ref(
-        text.c_str(), pos == std::string::npos ? text.size() : pos);
-
-      irs::by_edit_distance query;
-      *query.mutable_field() = "body";
-      auto* opts = query.mutable_options();
-      opts->max_terms = 50;  // same as Lucene by default
-      opts->max_distance = (category == category_t::Fuzzy1 ? 1 : 2);
-      irs::assign(opts->term, irs::ref_cast<irs::byte_type>(term));
-
-      return query.prepare(reader, order);
-    }
-    case category_t::MinMatch2High2Med: {
-      if ((terms = splitFreq(text)).null()) {
-        return nullptr;
-      }
-      irs::Or query;
-      // the first 'term' should be number of minimum matched
-      bool reading_min_match = true;
-      for (std::istringstream in(static_cast<std::string>(terms));
-           std::getline(in, tmpBuf, ' ');) {
-        if (reading_min_match) {
-          reading_min_match = false;
-          query.min_match_count(std::stoll(tmpBuf));
-        } else {
-          auto& part = query.add<irs::by_term>();
-          *part.mutable_field() = "body";
-          irs::assign(part.mutable_options()->term,
-                      irs::ref_cast<irs::byte_type>(tmpBuf));
-        }
-      }
-      return query.prepare(reader, order);
-    }
-    default:
+   case category_t::HighTerm: // fall through
+   case category_t::MedTerm: // fall through
+   case category_t::LowTerm: {
+    if ((terms = splitFreq(text)).null()) {
       return nullptr;
+    }
+
+    irs::by_term query;
+    *query.mutable_field() = "body";
+    irs::assign(query.mutable_options()->term,
+                irs::ref_cast<irs::byte_type>(terms));
+
+    return query.prepare(reader, order);
+   }
+   case category_t::HighPhrase: // fall through
+   case category_t::MedPhrase: // fall through
+   case category_t::LowPhrase: {
+    if ((terms = splitFreq(text)).null()) {
+      return nullptr;
+    }
+
+    irs::by_phrase query;
+    *query.mutable_field() = "body";
+    auto* opts = query.mutable_options();
+
+    analyzer->reset(terms);
+
+    for (auto* term = irs::get<irs::term_attribute>(*analyzer); analyzer->next();) {
+      irs::assign(opts->push_back<irs::by_term_options>().term, term->value);
+    }
+
+    return query.prepare(reader, order);
+   }
+   case category_t::HighNGram: // fall through
+   case category_t::MedNGram: // fall through
+   case category_t::LowNGram: {
+     if ((terms = splitFreq(text)).null()) {
+       return nullptr;
+     }
+     irs::by_ngram_similarity query;
+     *query.mutable_field() = "body";
+     auto* opts = query.mutable_options();
+
+     bool reading_threshold = true;
+     // the first 'term' should be threshold in tenth - e.g. if value is 7 this means 0.7
+     for (std::istringstream in(static_cast<std::string>(terms)); std::getline(in, tmpBuf, ' ');) {
+       if (reading_threshold) {
+         reading_threshold = false;
+         opts->threshold = float_t(std::stoll(tmpBuf))/ 10.f;
+       } else {
+         opts->ngrams.emplace_back(reinterpret_cast<const irs::byte_type*>(tmpBuf.c_str()),
+                                   tmpBuf.size());
+       }
+     }
+     return query.prepare(reader, order);
+   }
+   case category_t::AndHighHigh: // fall through
+   case category_t::AndHighMed: // fall through
+   case category_t::AndHighLow: {
+    if ((terms = splitFreq(text)).null()) {
+      return nullptr;
+    }
+
+    irs::And query;
+
+    for (std::istringstream in(static_cast<std::string>(terms)); std::getline(in, tmpBuf, ' ');) {
+      auto& part = query.add<irs::by_term>();
+      *part.mutable_field() = "body";
+      irs::assign(
+        part.mutable_options()->term,
+        irs::ref_cast<irs::byte_type>(irs::string_ref(tmpBuf.c_str() + 1))); // +1 for skip '+' at the start of the term
+    }
+
+    return query.prepare(reader, order);
+   }
+   case category_t::Or4High:
+   case category_t::Or6High4Med2Low:
+   case category_t::OrHighHigh: // fall through
+   case category_t::OrHighMed: // fall through
+   case category_t::OrHighLow: {
+    if ((terms = splitFreq(text)).null()) {
+      return nullptr;
+    }
+
+    irs::Or query;
+
+    for (std::istringstream in(static_cast<std::string>(terms)); std::getline(in, tmpBuf, ' ');) {
+      auto& part = query.add<irs::by_term>();
+      *part.mutable_field() = "body";
+      irs::assign(
+        part.mutable_options()->term,
+        irs::ref_cast<irs::byte_type>(tmpBuf));
+    }
+
+    return query.prepare(reader, order);
+   }
+   case category_t::Prefix3: {
+    terms = irs::string_ref(text, text.size() - 1); // cut '~' at the end of the text
+
+    irs::by_prefix query;
+    *query.mutable_field() = "body";
+    auto* opts = query.mutable_options();
+    opts->scored_terms_limit = scored_terms_limit;
+    irs::assign(opts->term, irs::ref_cast<irs::byte_type>(terms));
+
+    return query.prepare(reader, order);
+   }
+   case category_t::Wildcard: {
+    terms = irs::string_ref(text, text.size());
+
+    irs::by_wildcard query;
+    *query.mutable_field() = "body";
+    auto* opts = query.mutable_options();
+    irs::assign(opts->term, irs::ref_cast<irs::byte_type>(terms));
+    opts->scored_terms_limit = scored_terms_limit;
+
+    for (auto& b : opts->term) {
+      switch (b) {
+        case '*': b = '%'; break; // '*' => '%'
+        case '?': b = '_'; break; // '?' => '_'
+      }
+    }
+
+
+    return query.prepare(reader, order);
+   }
+   case category_t::Fuzzy1:
+   case category_t::Fuzzy2: {
+     const auto pos = text.find('~');
+     const auto term = irs::string_ref(
+       text.c_str(), 
+       pos == std::string::npos ? text.size() : pos);
+
+     irs::by_edit_distance query;
+     *query.mutable_field() = "body";
+     auto* opts = query.mutable_options();
+     opts->max_terms = 50; // same as Lucene by default
+     opts->max_distance = (category == category_t::Fuzzy1 ? 1 : 2);
+     irs::assign(opts->term, irs::ref_cast<irs::byte_type>(term));
+
+     return query.prepare(reader, order);
+   }
+   case category_t::MinMatch2High2Med: {
+     if ((terms = splitFreq(text)).null()) {
+       return nullptr;
+     }
+     irs::Or query;
+     // the first 'term' should be number of minimum matched
+     bool reading_min_match = true;
+     for (std::istringstream in(static_cast<std::string>(terms)); std::getline(in, tmpBuf, ' ');) {
+       if (reading_min_match) {
+         reading_min_match = false;
+         query.min_match_count(std::stoll(tmpBuf));
+       } else {
+         auto& part = query.add<irs::by_term>();
+         *part.mutable_field() = "body";
+         irs::assign(part.mutable_options()->term,
+                     irs::ref_cast<irs::byte_type>(tmpBuf));
+       }
+     }
+     return query.prepare(reader, order);
+   }
+   default:
+    return nullptr;
   }
 }
 
-void prepareTasks(std::vector<task_t>& buf, std::istream& in,
-                  size_t tasks_per_category) {
+void prepareTasks(std::vector<task_t>& buf, std::istream& in, size_t tasks_per_category) {
   std::map<category_t, size_t> category_counts;
   std::string tmpBuf;
 
@@ -437,8 +397,7 @@ void prepareTasks(std::vector<task_t>& buf, std::istream& in,
     std::getline(in, tmpBuf);
 
     if (std::regex_match(tmpBuf, res, m1)) {
-      auto category = parseCategory(irs::string_ref(
-        &*(res[1].first), std::distance(res[1].first, res[1].second)));
+      auto category = parseCategory(irs::string_ref(&*(res[1].first), std::distance(res[1].first, res[1].second)));
       auto& count = category_counts.emplace(category, 0).first->second;
 
       if (++count <= tasks_per_category) {
@@ -448,42 +407,34 @@ void prepareTasks(std::vector<task_t>& buf, std::istream& in,
   }
 }
 
-static constexpr frozen::map<std::string_view, irs::ExecutionMode, 2>
-  kSearchModes = {{"all", irs::ExecutionMode::kAll},
-                  {"wand", irs::ExecutionMode::kTop}};
-
-static constexpr frozen::map<std::string_view, irs::type_info, 2> kTextFormats =
-  {
-    {"json", irs::type<irs::text_format::json>::get()},
-    {"text", irs::type<irs::text_format::text>::get()},
-};
-
-int search(std::string_view path, std::string_view dir_type,
-           std::string_view format, std::istream& in, std::ostream& out,
-           size_t tasks_max, size_t repeat, size_t search_threads, size_t limit,
-           bool shuffle, bool csv, size_t scored_terms_limit,
-           std::string_view scorer, std::string_view scorer_arg_format,
-           irs::string_ref scorer_arg, std::string_view mode_arg) {
+int search(
+    const std::string& path,
+    const std::string& dir_type,
+    const std::string& format,
+    std::istream& in,
+    std::ostream& out,
+    size_t tasks_max,
+    size_t repeat,
+    size_t search_threads,
+    size_t limit,
+    bool shuffle,
+    bool csv,
+    size_t scored_terms_limit,
+    const std::string& scorer,
+    const std::string& scorer_arg_format,
+    const irs::string_ref& scorer_arg) {
   // build parametric descriptions for distances 1 and 2
-  irs::default_pdp(1, false);
-  irs::default_pdp(1, true);
-  irs::default_pdp(2, false);
-  irs::default_pdp(2, true);
+  irs::default_pdp(1, false); irs::default_pdp(1, true);
+  irs::default_pdp(2, false); irs::default_pdp(2, true);
 
-  irs::ExecutionMode mode{irs::ExecutionMode::kAll};
+  static const std::map<std::string, irs::type_info> text_formats = {
+    { "json", irs::type<irs::text_format::json>::get() },
+    { "text", irs::type<irs::text_format::text>::get() },
+  };
+  auto arg_format_itr = text_formats.find(scorer_arg_format);
 
-  if (auto it = kSearchModes.find(mode_arg); it == kSearchModes.end()) {
-    std::cerr << "Unknown search mode '" << mode_arg << "'" << std::endl;
-    return 1;
-  } else {
-    mode = it->second;
-  }
-
-  auto arg_format_itr = kTextFormats.find(scorer_arg_format);
-
-  if (arg_format_itr == kTextFormats.end()) {
-    std::cerr << "Unknown scorer argument format '" << scorer_arg_format << "'"
-              << std::endl;
+  if (arg_format_itr == text_formats.end()) {
+    std::cerr << "Unknown scorer argument format '" << scorer_arg_format << "'" << std::endl;
     return 1;
   }
 
@@ -491,13 +442,9 @@ int search(std::string_view path, std::string_view dir_type,
 
   if (!scr) {
     if (scorer_arg.null()) {
-      std::cerr << "Unable to instantiate scorer '" << scorer
-                << "' with argument format '" << scorer_arg_format
-                << "' with nil arguments" << std::endl;
+      std::cerr << "Unable to instantiate scorer '" << scorer << "' with argument format '" << scorer_arg_format << "' with nil arguments" << std::endl;
     } else {
-      std::cerr << "Unable to instantiate scorer '" << scorer
-                << "' with argument format '" << scorer_arg_format
-                << "' with arguments '" << scorer_arg << "'" << std::endl;
+      std::cerr << "Unable to instantiate scorer '" << scorer << "' with argument format '" << scorer_arg_format << "' with arguments '" << scorer_arg << "'" << std::endl;
     }
     return 1;
   }
@@ -505,20 +452,18 @@ int search(std::string_view path, std::string_view dir_type,
   auto dir = create_directory(dir_type, path);
 
   if (!dir) {
-    std::cerr << "Unable to create directory of type '" << dir_type << "'"
-              << std::endl;
+    std::cerr << "Unable to create directory of type '" << dir_type << "'" << std::endl;
     return 1;
   }
 
   auto codec = irs::formats::get(format);
 
   if (!codec) {
-    std::cerr << "Unable to find format of type '" << format << "'"
-              << std::endl;
+    std::cerr << "Unable to find format of type '" << format << "'" << std::endl;
     return 1;
   }
 
-  limit = (std::max)(size_t(1), limit);  // ensure limit is greater than 0
+  limit = (std::max)(size_t(1), limit); // ensure limit is greater than 0
   repeat = (std::max)(size_t(1), repeat);
   search_threads = (std::max)(size_t(1), search_threads);
   scored_terms_limit = (std::max)(size_t(1), scored_terms_limit);
@@ -539,7 +484,7 @@ int search(std::string_view path, std::string_view dir_type,
   SCOPED_TIMER("Total Time");
 
   irs::directory_reader reader;
-  irs::Order order;
+  irs::order::prepared order;
   irs::async_utils::thread_pool thread_pool(search_threads);
 
   {
@@ -553,8 +498,10 @@ int search(std::string_view path, std::string_view dir_type,
 
   {
     SCOPED_TIMER("Order build time");
+    irs::order sort;
 
-    order = irs::Order::Prepare(std::span{&scr, 1});
+    sort.add(true, std::move(scr));
+    order = sort.prepare();
   }
 
   struct task_provider_t {
@@ -562,7 +509,9 @@ int search(std::string_view path, std::string_view dir_type,
 
     struct node_type : freelist_t::node_type {
       node_type() = default;
-      node_type(const node_type& rhs) noexcept { *this = rhs; }
+      node_type(const node_type& rhs) noexcept {
+        *this = rhs;
+      }
 
       node_type& operator=(const node_type& rhs) noexcept {
         if (this != &rhs) {
@@ -579,23 +528,21 @@ int search(std::string_view path, std::string_view dir_type,
     freelist_t task_list;
 
     void reset(std::vector<task_t>&& lines, size_t repeat, bool shuffle) {
-      repeat = std::max(repeat, size_t(1));  // repeat at least once
+      repeat = std::max(repeat, size_t(1)); // repeat at least once
 
-      for (; !task_list.empty(); task_list.pop())
-        ;  // empty free list
+      for (; !task_list.empty(); task_list.pop()); // empty free list
 
       tasks = std::move(lines);
-      task_ids.resize(tasks.size() * repeat);
+      task_ids.resize(tasks.size()*repeat);
 
-      for (auto begin = task_ids.begin(), end = task_ids.end(); begin != end;) {
+      for (auto begin = task_ids.begin(), end = task_ids.end(); begin != end; ) {
         for (size_t i = 0; i < tasks.size(); ++i, ++begin) {
           begin->value = i;
         }
       }
 
       if (shuffle) {
-        for (auto begin = task_ids.begin(), end = task_ids.end();
-             begin != end;) {
+        for (auto begin = task_ids.begin(), end = task_ids.end(); begin != end; ) {
           auto batch_end = begin + tasks.size();
           std::shuffle(begin, batch_end, randomizer);
           begin = batch_end;
@@ -630,14 +577,10 @@ int search(std::string_view path, std::string_view dir_type,
 
   // indexer threads
   for (size_t i = search_threads; i; --i) {
-    thread_pool.run([&task_provider, &reader, &order, limit, &out, csv,
-                     scored_terms_limit, mode]() -> void {
+    thread_pool.run([&task_provider, &reader, &order, limit, &out, csv, scored_terms_limit]()->void {
       static const std::string analyzer_name("text");
-      static const std::string analyzer_args(
-        "{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", "
-        "\"ghi\"]}");  // from index-put
-      auto analyzer = irs::analysis::analyzers::get(
-        analyzer_name, irs::type<irs::text_format::json>::get(), analyzer_args);
+      static const std::string analyzer_args("{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", \"ghi\"]}"); // from index-put
+      auto analyzer = irs::analysis::analyzers::get(analyzer_name, irs::type<irs::text_format::json>::get(), analyzer_args);
       irs::filter::prepared::ptr filter;
       std::string tmpBuf;
       const timers_t building_timers("building");
@@ -650,9 +593,9 @@ int search(std::string_view path, std::string_view dir_type,
       for (const task_t* task; (task = task_provider.pop()) != nullptr;) {
         // this sleep circumvents context-switching penalties for CPU
         // and makes thread planner life easier
-        std::this_thread::sleep_for(std::chrono::milliseconds(
-          static_cast<unsigned>(100. * (static_cast<double>(rand()) /
-                                        static_cast<double>(RAND_MAX)))));
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(
+                static_cast<unsigned>(100. * (static_cast<double>(rand()) / static_cast<double>(RAND_MAX)))));
         size_t doc_count = 0;
         const auto start = std::chrono::system_clock::now();
 
@@ -660,10 +603,8 @@ int search(std::string_view path, std::string_view dir_type,
 
         // parse task
         {
-          irs::timer_utils::scoped_timer timer(
-            *(building_timers.stat[size_t(task->category)]));
-          filter = prepareFilter(reader, order, task->category, task->text,
-                                 analyzer, tmpBuf, scored_terms_limit);
+          irs::timer_utils::scoped_timer timer(*(building_timers.stat[size_t(task->category)]));
+          filter = prepareFilter(reader, order, task->category, task->text, analyzer, tmpBuf, scored_terms_limit);
 
           if (!filter) {
             continue;
@@ -672,103 +613,75 @@ int search(std::string_view path, std::string_view dir_type,
 
         // execute task
         {
-          irs::timer_utils::scoped_timer timer(
-            *(execution_timers.stat[size_t(task->category)]));
+          irs::timer_utils::scoped_timer timer(*(execution_timers.stat[size_t(task->category)]));
 
-          irs::score_threshold tmp;
-          for (auto left = limit; auto& segment : reader) {
-            auto docs = filter->execute(segment, order, mode);
-            assert(docs);
-
-            const irs::document* doc = irs::get<irs::document>(*docs);
+          for (auto& segment: reader) {
+            auto docs = filter->execute(segment, order); // query segment
             const irs::score* score = irs::get<irs::score>(*docs);
+            assert(score);
+            const irs::document* doc = irs::get<irs::document>(*docs);
+            assert(doc);
 
-            auto* threshold =
-              irs::get_mutable<irs::score_threshold>(docs.get());
-            if (!threshold) {
-              threshold = &tmp;
-            }
-
-            if (!left) {
-              assert(!sorted.empty());
-              assert(std::is_heap(
-                std::begin(sorted), std::end(sorted),
-                [](const std::pair<float_t, irs::doc_id_t>& lhs,
-                   const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
-                  return lhs.first > rhs.first;
-                }));
-              threshold->value = sorted.front().first;
-            }
-
-            for (float_t score_value; docs->next();) {
+            while (docs->next()) {
               ++doc_count;
+              const float_t score_value = *reinterpret_cast<const float_t*>(score->evaluate());
 
-              (*score)(&score_value);
-
-              if (left) {
+              if (sorted.size() < limit) {
                 sorted.emplace_back(score_value, doc->value);
 
-                if (0 == --left) {
-                  std::make_heap(
-                    std::begin(sorted), std::end(sorted),
-                    [](const std::pair<float_t, irs::doc_id_t>& lhs,
-                       const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
-                      return lhs.first > rhs.first;
-                    });
-
-                  threshold->value = sorted.front().first;
-                }
+                std::push_heap(
+                  sorted.begin(), sorted.end(),
+                  [](const std::pair<float_t, irs::doc_id_t>& lhs,
+                     const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
+                    return lhs.first < rhs.first;
+                });
               } else if (sorted.front().first < score_value) {
                 std::pop_heap(
-                  std::begin(sorted), std::end(sorted),
+                  sorted.begin(), sorted.end(),
                   [](const std::pair<float_t, irs::doc_id_t>& lhs,
                      const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
-                    return lhs.first > rhs.first;
-                  });
+                    return lhs.first < rhs.first;
+                });
 
-                auto& [score, doc_id] = sorted.back();
-                score = score_value;
-                doc_id = doc->value;
+                auto& back = sorted.back();
+                back.first = score_value;
+                back.second = doc->value;
 
                 std::push_heap(
-                  std::begin(sorted), std::end(sorted),
+                  sorted.begin(), sorted.end(),
                   [](const std::pair<float_t, irs::doc_id_t>& lhs,
                      const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
-                    return lhs.first > rhs.first;
-                  });
-
-                threshold->value = sorted.front().first;
+                    return lhs.first < rhs.first;
+                });
               }
             }
           }
 
-          std::sort(std::begin(sorted), std::end(sorted),
-                    [](const std::pair<float_t, irs::doc_id_t>& lhs,
-                       const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
-                      return lhs.first > rhs.first;
-                    });
+          auto end = sorted.end();
+          for (auto begin = sorted.begin(); begin != end; --end) {
+            std::pop_heap(
+              begin, end,
+              [](const std::pair<float_t, irs::doc_id_t>& lhs,
+                 const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
+                return lhs.first < rhs.first;
+            });
+          }
         }
 
-        const auto tdiff =
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now() - start);
+        const auto tdiff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
 
         // output task results
         {
           std::stringstream ss;
           if (csv) {
-            ss << stringCategory(task->category) << "," << task->text << ","
-               << doc_count << "," << tdiff.count() / 1000. << ","
-               << tdiff.count() << '\n';
+            ss << stringCategory(task->category) << "," << task->text << "," << doc_count << "," << tdiff.count() / 1000. << "," << tdiff.count() << '\n';
           } else {
-            ss << "TASK: cat=" << stringCategory(task->category)
-               << " q='body:" << task->text << "' hits=" << doc_count << '\n'
-               << "  " << tdiff.count() / 1000. << " msec\n"
-               << "  thread " << std::this_thread::get_id() << '\n';
+            ss << "TASK: cat=" << stringCategory(task->category) << " q='body:" << task->text << "' hits=" << doc_count << '\n'
+                << "  " << tdiff.count() / 1000. << " msec\n"
+                << "  thread " << std::this_thread::get_id() << '\n';
 
             for (auto& entry : sorted) {
-              ss << "  doc=" << entry.second << " score=" << entry.first
-                 << '\n';
+              ss << "  doc=" << entry.second << " score=" << entry.first << '\n';
             }
 
             ss << '\n';
@@ -806,30 +719,21 @@ int search(const cmdline::parser& args) {
   const bool csv = args.exist(CSV);
   const size_t scored_terms_limit = args.get<size_t>(SCORED_TERMS_LIMIT);
   const auto scorer = args.get<std::string>(SCORER);
-  const auto scorer_arg = args.exist(SCORER_ARG)
-                            ? irs::string_ref(args.get<std::string>(SCORER_ARG))
-                            : irs::string_ref::NIL;
+  const auto scorer_arg = args.exist(SCORER_ARG) ? irs::string_ref(args.get<std::string>(SCORER_ARG)) : irs::string_ref::NIL;
   const auto scorer_arg_format = args.get<std::string>(SCORER_ARG_FMT);
-  const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE)
-                                             : std::string("mmap");
-  const auto format =
-    args.exist(FORMAT) ? args.get<std::string>(FORMAT) : std::string("1_0");
-  const auto mode = args.exist(SEARCH_MODE) ? args.get<std::string>(SEARCH_MODE)
-                                            : std::string("all");
+  const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("mmap");
+  const auto format = args.exist(FORMAT) ? args.get<std::string>(FORMAT) : std::string("1_0");
 
-  std::cout << "Max tasks in category=" << maxtasks << '\n'
-            << "Task repeat count=" << repeat << '\n'
-            << "Do task list shuffle=" << shuffle << '\n'
-            << "Search threads=" << thrs << '\n'
-            << "Number of top documents to collect=" << topN << '\n'
-            << "Number of terms to in range/prefix queries="
-            << scored_terms_limit << '\n'
-            << "Scorer used for ranking query results=" << scorer << '\n'
-            << "Configuration argument format for query scorer="
-            << scorer_arg_format << '\n'
-            << "Configuration argument for query scorer=" << scorer_arg << '\n'
-            << "Search mode=" << mode << '\n'
-            << "Output CSV=" << csv << std::endl;
+  std::cout << "Max tasks in category="                      << maxtasks           << '\n'
+            << "Task repeat count="                          << repeat             << '\n'
+            << "Do task list shuffle="                       << shuffle            << '\n'
+            << "Search threads="                             << thrs               << '\n'
+            << "Number of top documents to collect="         << topN               << '\n'
+            << "Number of terms to in range/prefix queries=" << scored_terms_limit << '\n'
+            << "Scorer used for ranking query results="      << scorer             << '\n'
+            << "Configuration argument format for query scorer=" << scorer_arg_format << '\n'
+            << "Configuration argument for query scorer="    << scorer_arg         << '\n'
+            << "Output CSV="                                 << csv                << std::endl;
 
   std::fstream in(args.get<std::string>(INPUT), std::fstream::in);
 
@@ -838,21 +742,19 @@ int search(const cmdline::parser& args) {
   }
 
   if (args.exist(OUTPUT)) {
-    std::fstream out(args.get<std::string>(OUTPUT),
-                     std::fstream::out | std::fstream::trunc);
+    std::fstream out(
+      args.get<std::string>(OUTPUT),
+      std::fstream::out | std::fstream::trunc
+    );
 
     if (!out) {
       return 1;
     }
 
-    return search(path, dir_type, format, in, out, maxtasks, repeat, thrs, topN,
-                  shuffle, csv, scored_terms_limit, scorer, scorer_arg_format,
-                  scorer_arg, mode);
+    return search(path, dir_type, format, in, out, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit, scorer, scorer_arg_format, scorer_arg);
   }
 
-  return search(path, dir_type, format, in, std::cout, maxtasks, repeat, thrs,
-                topN, shuffle, csv, scored_terms_limit, scorer,
-                scorer_arg_format, scorer_arg, mode);
+  return search(path, dir_type, format, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit, scorer, scorer_arg_format, scorer_arg);
 }
 
 int search(int argc, char* argv[]) {
@@ -860,29 +762,18 @@ int search(int argc, char* argv[]) {
   cmdline::parser cmdsearch;
   cmdsearch.add(HELP, '?', "Produce help message");
   cmdsearch.add<std::string>(INDEX_DIR, 0, "Path to index directory", true);
-  cmdsearch.add<std::string>(DIR_TYPE, 0, "Directory type (fs|mmap)", false,
-                             std::string("mmap"));
-  cmdsearch.add(FORMAT, 0, "Format (1_0|1_1|1_2|1_2simd)", false,
-                std::string("1_0"));
+  cmdsearch.add<std::string>(DIR_TYPE, 0, "Directory type (fs|mmap)", false, std::string("mmap"));
+  cmdsearch.add(FORMAT, 0, "Format (1_0|1_1|1_2|1_2simd)", false, std::string("1_0"));
   cmdsearch.add<std::string>(INPUT, 0, "Task file", true);
   cmdsearch.add<std::string>(OUTPUT, 0, "Stats file", false);
   cmdsearch.add<size_t>(MAX, 0, "Maximum tasks per category", false, size_t(1));
   cmdsearch.add<size_t>(RPT, 0, "Task repeat count", false, size_t(20));
   cmdsearch.add<size_t>(THR, 0, "Number of search threads", false, size_t(1));
-  cmdsearch.add<size_t>(TOPN, 0, "Number of top search results", false,
-                        size_t(10));
-  cmdsearch.add<size_t>(SCORED_TERMS_LIMIT, 0,
-                        "Number of terms to score in range/prefix queries",
-                        false, size_t(1024));
-  cmdsearch.add<std::string>(SCORER, 0, "Scorer used for ranking query results",
-                             false, "bm25");
-  cmdsearch.add<std::string>(SCORER_ARG, 0,
-                             "Configuration argument for query scorer", false);
-  cmdsearch.add<std::string>(
-    SCORER_ARG_FMT, 0, "Configuration argument format for query scorer", false,
-    "json");  // 'json' is the argument format for 'bm25'
-  cmdsearch.add<std::string>(SEARCH_MODE, 0, "Search mode (all|wand)", false,
-                             "all");
+  cmdsearch.add<size_t>(TOPN, 0, "Number of top search results", false, size_t(10));
+  cmdsearch.add<size_t>(SCORED_TERMS_LIMIT, 0, "Number of terms to score in range/prefix queries", false, size_t(1024));
+  cmdsearch.add<std::string>(SCORER, 0, "Scorer used for ranking query results", false, "bm25");
+  cmdsearch.add<std::string>(SCORER_ARG, 0, "Configuration argument for query scorer", false);
+  cmdsearch.add<std::string>(SCORER_ARG_FMT, 0, "Configuration argument format for query scorer", false, "json"); // 'json' is the argument format for 'bm25'
   cmdsearch.add(RND, 0, "Shuffle tasks");
   cmdsearch.add(CSV, 0, "CSV output");
 

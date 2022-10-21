@@ -25,39 +25,37 @@
 
 #include <vector>
 
-#include "search/all_docs_provider.hpp"
-#include "search/filter.hpp"
+#include "filter.hpp"
+#include "all_filter.hpp"
 #include "utils/iterator.hpp"
 
 namespace iresearch {
 
-// Represents user-side boolean filter as the container for other
-// filters.
-class boolean_filter : public filter, public AllDocsProvider {
+//////////////////////////////////////////////////////////////////////////////
+/// @class boolean_filter
+/// @brief defines user-side boolean filter, as the container for other 
+/// filters
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
  public:
-  auto begin() const { return ptr_iterator{std::begin(filters_)}; }
-  auto end() const { return ptr_iterator{std::end(filters_)}; }
+  typedef std::vector<filter::ptr> filters_t;
+  typedef ptr_iterator< filters_t::const_iterator > const_iterator;
+  typedef ptr_iterator< filters_t::iterator > iterator;
 
-  auto begin() { return ptr_iterator{std::begin(filters_)}; }
-  auto end() { return ptr_iterator{std::end(filters_)}; }
+  const_iterator begin() const { return const_iterator( filters_.begin() ); }
+  const_iterator end() const { return const_iterator( filters_.end() ); }
 
-  sort::MergeType merge_type() const noexcept { return merge_type_; }
+  iterator begin() { return iterator( filters_.begin() ); }
+  iterator end() { return iterator( filters_.end() ); }
 
-  void merge_type(sort::MergeType merge_type) noexcept {
-    merge_type_ = merge_type;
-  }
+  template<typename T>
+  T& add() {
+    typedef typename std::enable_if <
+      std::is_base_of<filter, T>::value, T
+    >::type type;
 
-  template<typename T, typename... Args>
-  T& add(Args&&... args) {
-    static_assert(std::is_base_of_v<filter, T>);
-
-    return static_cast<T&>(*filters_.emplace_back(
-      memory::make_unique<T>(std::forward<Args>(args)...)));
-  }
-
-  filter& add(filter::ptr&& filter) {
-    assert(filter);
-    return *filters_.emplace_back(std::move(filter));
+    filters_.emplace_back(type::make());
+    return static_cast<type&>(*filters_.back());
   }
 
   virtual size_t hash() const noexcept override;
@@ -67,91 +65,120 @@ class boolean_filter : public filter, public AllDocsProvider {
   size_t size() const { return filters_.size(); }
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr, const Order& ord, score_t boost,
-    const attribute_provider* ctx) const override;
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost,
+    const attribute_provider* ctx) const override final;
 
  protected:
   explicit boolean_filter(const type_info& type) noexcept;
   virtual bool equals(const filter& rhs) const noexcept override;
 
   virtual filter::prepared::ptr prepare(
-    std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-    const index_reader& rdr, const Order& ord, score_t boost,
+    std::vector<const filter*>& incl,
+    std::vector<const filter*>& excl,
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost,
     const attribute_provider* ctx) const = 0;
 
  private:
-  void group_filters(filter::ptr& all_docs_no_boost,
-                     std::vector<const filter*>& incl,
-                     std::vector<const filter*>& excl) const;
+  void group_filters(
+    std::vector<const filter*>& incl,
+    std::vector<const filter*>& excl) const;
 
-  std::vector<filter::ptr> filters_;
-  sort::MergeType merge_type_{sort::MergeType::kSum};
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  filters_t filters_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
-// Represents conjunction
-class And final : public boolean_filter {
+//////////////////////////////////////////////////////////////////////////////
+/// @class And
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API And: public boolean_filter {
  public:
+  static ptr make();
+
   And() noexcept;
 
   using filter::prepare;
 
  protected:
   virtual filter::prepared::ptr prepare(
-    std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-    const index_reader& rdr, const Order& ord, score_t boost,
+    std::vector<const filter*>& incl,
+    std::vector<const filter*>& excl,
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost,
     const attribute_provider* ctx) const override;
-};
+}; // And
 
-// Represents disjunction
-class Or final : public boolean_filter {
+//////////////////////////////////////////////////////////////////////////////
+/// @class Or
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API Or : public boolean_filter {
  public:
+  static ptr make();
+
   Or() noexcept;
 
-  // Return minimum number of subqueries which must be satisfied
+  using filter::prepare;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return minimum number of subqueries which must be satisfied
+  //////////////////////////////////////////////////////////////////////////////
   size_t min_match_count() const { return min_match_count_; }
 
-  // Sets minimum number of subqueries which must be satisfied
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief sets minimum number of subqueries which must be satisfied
+  //////////////////////////////////////////////////////////////////////////////
   Or& min_match_count(size_t count) {
     min_match_count_ = count;
     return *this;
   }
 
-  using filter::prepare;
-  filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
-                                score_t boost,
-                                const attribute_provider* ctx) const final;
-
  protected:
   virtual filter::prepared::ptr prepare(
-    std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-    const index_reader& rdr, const Order& ord, score_t boost,
+    std::vector<const filter*>& incl,
+    std::vector<const filter*>& excl,
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost,
     const attribute_provider* ctx) const override;
 
  private:
   size_t min_match_count_;
-};
+}; // Or
 
-// Represents negation
-class Not : public filter, public AllDocsProvider {
+//////////////////////////////////////////////////////////////////////////////
+/// @class not
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API Not: public filter {
  public:
+  static ptr make();
+
   Not() noexcept;
 
-  const irs::filter* filter() const { return filter_.get(); }
+  const irs::filter* filter() const { 
+    return filter_.get(); 
+  }
 
   template<typename T>
   const T* filter() const {
-    using type =
-      typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
+    typedef typename std::enable_if <
+      std::is_base_of<irs::filter, T>::value, T
+    >::type type;
 
     return static_cast<const type*>(filter_.get());
   }
 
-  template<typename T, typename... Args>
-  T& filter(Args&&... args) {
-    using type =
-      typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
+  template<typename T>
+  T& filter() {
+    typedef typename std::enable_if <
+      std::is_base_of<irs::filter, T >::value, T
+    >::type type;
 
-    filter_ = memory::make_unique<type>(std::forward<Args>(args)...);
+    filter_ = type::make();
     return static_cast<type&>(*filter_);
   }
 
@@ -160,8 +187,10 @@ class Not : public filter, public AllDocsProvider {
 
   using filter::prepare;
 
-  virtual filter::prepared::ptr prepare(
-    const index_reader& rdr, const Order& ord, score_t boost,
+  virtual filter::prepared::ptr prepare( 
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost,
     const attribute_provider* ctx) const override;
 
   virtual size_t hash() const noexcept override;
@@ -170,9 +199,11 @@ class Not : public filter, public AllDocsProvider {
   virtual bool equals(const irs::filter& rhs) const noexcept override;
 
  private:
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   filter::ptr filter_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
-}  // namespace iresearch
+}
 
 #endif

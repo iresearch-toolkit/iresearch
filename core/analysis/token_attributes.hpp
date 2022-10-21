@@ -36,8 +36,11 @@
 
 namespace iresearch {
 
-// Represents token offset in a stream
-struct offset final : attribute {
+//////////////////////////////////////////////////////////////////////////////
+/// @class offset 
+/// @brief represents token offset in a stream 
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API offset final : attribute {
   static constexpr string_ref type_name() noexcept { return "offset"; }
 
   void clear() noexcept {
@@ -49,61 +52,85 @@ struct offset final : attribute {
   uint32_t end{0};
 };
 
-// Represents token increment in a stream
-struct increment final : attribute {
+//////////////////////////////////////////////////////////////////////////////
+/// @class increment 
+/// @brief represents token increment in a stream 
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API increment final : attribute {
   static constexpr string_ref type_name() noexcept { return "increment"; }
 
   uint32_t value{1};
 };
 
-// Represents term value in a stream
-struct term_attribute final : attribute {
+//////////////////////////////////////////////////////////////////////////////
+/// @class term_attribute 
+/// @brief represents term value in a stream 
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API term_attribute final : attribute {
   static constexpr string_ref type_name() noexcept { return "term_attribute"; }
 
   bytes_ref value;
 };
 
-// Represents an arbitrary byte sequence associated with
-// the particular term position in a field
-struct payload final : attribute {
+//////////////////////////////////////////////////////////////////////////////
+/// @class payload
+/// @brief represents an arbitrary byte sequence associated with
+///        the particular term position in a field
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API payload final : attribute {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "payload"; }
 
   bytes_ref value;
 };
 
-// Contains a document identifier
-struct document : attribute {
+//////////////////////////////////////////////////////////////////////////////
+/// @class document 
+/// @brief contains a document identifier
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API document : attribute {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "document"; }
 
   explicit document(irs::doc_id_t doc = irs::doc_limits::invalid()) noexcept
-    : value(doc) {}
+    : value(doc) {
+  }
 
   doc_id_t value;
 };
 
-// Number of occurences of a term in a document
-struct frequency final : attribute {
+//////////////////////////////////////////////////////////////////////////////
+/// @class frequency 
+/// @brief how many times term appears in a document
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API frequency final : attribute {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "frequency"; }
 
   uint32_t value{0};
-};
+}; // frequency
 
-// Indexed tokens are prefixed with one byte indicating granularity
-// this is marker attribute only used in field::features and by_range
-// exact values are prefixed with 0
-// the less precise the token the greater its granularity prefix value
-struct granularity_prefix final {
+//////////////////////////////////////////////////////////////////////////////
+/// @class granularity_prefix
+/// @brief indexed tokens are prefixed with one byte indicating granularity
+///        this is marker attribute only used in field::features and by_range
+///        exact values are prefixed with 0
+///        the less precise the token the greater its granularity prefix value
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API granularity_prefix final {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept {
     return "iresearch::granularity_prefix";
   }
-};
+}; // granularity_prefix
 
-// Iterator representing term positions in a document
-class position : public attribute, public attribute_provider {
+//////////////////////////////////////////////////////////////////////////////
+/// @class position 
+/// @brief iterator represents term positions in a document
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API position
+  : public attribute,
+    public attribute_provider {
  public:
   using value_t = uint32_t;
   using ref = std::reference_wrapper<position>;
@@ -120,22 +147,26 @@ class position : public attribute, public attribute_provider {
   }
 
   virtual value_t seek(value_t target) {
-    while ((value_ < target) && next())
-      ;
+    while ((value_< target) && next());
     return value_;
   }
 
-  value_t value() const noexcept { return value_; }
+  value_t value() const noexcept {
+    return value_;
+  }
 
   virtual void reset() = 0;
 
   virtual bool next() = 0;
 
  protected:
-  value_t value_{pos_limits::invalid()};
-};
+  value_t value_{ pos_limits::invalid() };
+}; // position
 
-// Subscription for attribute provider change
+//////////////////////////////////////////////////////////////////////////////
+/// @class attribute_provider_change
+/// @brief subscription for attribute provider change
+//////////////////////////////////////////////////////////////////////////////
 class attribute_provider_change final : public attribute {
  public:
   using callback_f = std::function<void(attribute_provider&)>;
@@ -158,24 +189,11 @@ class attribute_provider_change final : public attribute {
   }
 
  private:
-  static void noop(attribute_provider&) noexcept {}
+  static void noop(attribute_provider&) noexcept { }
 
   mutable callback_f callback_{&noop};
-};
+}; // attribute_provider_change
 
-// Score threshold can be set by document consumers
-struct score_threshold final : public attribute {
-  using value_type = uint32_t;
-
-  // DO NOT CHANGE NAME
-  static constexpr string_ref type_name() noexcept {
-    return "iresearch::score_threshold";
-  }
-
-  value_type value;
-  std::span<const value_type> skip_scores;
-};
-
-}  // namespace iresearch
+} // ROOT
 
 #endif

@@ -25,9 +25,9 @@
 #include "utils/file_utils.hpp"
 
 #ifdef _WIN32
-#define STRING(str) L##str
+  #define STRING(str) L ## str
 #else
-#define STRING(str) str
+  #define STRING(str) str
 #endif
 
 TEST(file_utils_tests, path_parts) {
@@ -85,7 +85,7 @@ TEST(file_utils_tests, path_parts) {
     ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
     ASSERT_EQ(ref_t::NIL, parts.extension);
   }
-
+  
   // no parent, stem(non-empty), extension(empty)
   {
     auto data = STRING("abc.");
@@ -264,8 +264,7 @@ TEST(file_utils_tests, path_parts) {
     ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
   }
 
-  // parent(non-empty), stem(non-empty), extension(non-empty) (multi-parent,
-  // multi-extension)
+  // parent(non-empty), stem(non-empty), extension(non-empty) (multi-parent, multi-extension)
   {
     auto data = STRING("/123/klm/abc.def..xyz");
     auto parts = irs::file_utils::path_parts(data);
@@ -275,90 +274,89 @@ TEST(file_utils_tests, path_parts) {
     ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
   }
 
-#ifdef _WIN32
-  // ...........................................................................
-  // win32 non-empty parent
-  // ...........................................................................
+  #ifdef _WIN32
+    // ...........................................................................
+    // win32 non-empty parent
+    // ...........................................................................
 
-  // parent(non-empty), stem(empty), no extension
-  {
-    auto data = STRING("klm\\");
-    auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
-    ASSERT_EQ(ref_t(STRING("")), parts.basename);
-    ASSERT_EQ(ref_t(STRING("")), parts.stem);
-    ASSERT_EQ(ref_t::NIL, parts.extension);
-  }
+    // parent(non-empty), stem(empty), no extension
+    {
+      auto data = STRING("klm\\");
+      auto parts = irs::file_utils::path_parts(data);
+      ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
+      ASSERT_EQ(ref_t(STRING("")), parts.basename);
+      ASSERT_EQ(ref_t(STRING("")), parts.stem);
+      ASSERT_EQ(ref_t::NIL, parts.extension);
+    }
 
-  // parent(non-empty), stem(empty), extension(empty)
-  {
-    auto data = STRING("klm\\.");
-    auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
-    ASSERT_EQ(ref_t(STRING(".")), parts.basename);
-    ASSERT_EQ(ref_t(STRING("")), parts.stem);
-    ASSERT_EQ(ref_t(STRING("")), parts.extension);
-  }
+    // parent(non-empty), stem(empty), extension(empty)
+    {
+      auto data = STRING("klm\\.");
+      auto parts = irs::file_utils::path_parts(data);
+      ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
+      ASSERT_EQ(ref_t(STRING(".")), parts.basename);
+      ASSERT_EQ(ref_t(STRING("")), parts.stem);
+      ASSERT_EQ(ref_t(STRING("")), parts.extension);
+    }
 
-  // parent(non-empty), stem(empty), extension(non-empty)
-  {
-    auto data = STRING("klm\\.xyz");
-    auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
-    ASSERT_EQ(ref_t(STRING(".xyz")), parts.basename);
-    ASSERT_EQ(ref_t(STRING("")), parts.stem);
-    ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
-  }
+    // parent(non-empty), stem(empty), extension(non-empty)
+    {
+      auto data = STRING("klm\\.xyz");
+      auto parts = irs::file_utils::path_parts(data);
+      ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
+      ASSERT_EQ(ref_t(STRING(".xyz")), parts.basename);
+      ASSERT_EQ(ref_t(STRING("")), parts.stem);
+      ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
+    }
 
-  // parent(non-empty), stem(non-empty), no extension
-  {
-    auto data = STRING("klm\\abc");
-    auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
-    ASSERT_EQ(ref_t(STRING("abc")), parts.basename);
-    ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
-    ASSERT_EQ(ref_t::NIL, parts.extension);
-  }
+    // parent(non-empty), stem(non-empty), no extension
+    {
+      auto data = STRING("klm\\abc");
+      auto parts = irs::file_utils::path_parts(data);
+      ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
+      ASSERT_EQ(ref_t(STRING("abc")), parts.basename);
+      ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
+      ASSERT_EQ(ref_t::NIL, parts.extension);
+    }
 
-  // parent(non-empty), stem(non-empty), extension(empty)
-  {
-    auto data = STRING("klm\\abc.");
-    auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
-    ASSERT_EQ(ref_t(STRING("abc.")), parts.basename);
-    ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
-    ASSERT_EQ(ref_t(STRING("")), parts.extension);
-  }
+    // parent(non-empty), stem(non-empty), extension(empty)
+    {
+      auto data = STRING("klm\\abc.");
+      auto parts = irs::file_utils::path_parts(data);
+      ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
+      ASSERT_EQ(ref_t(STRING("abc.")), parts.basename);
+      ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
+      ASSERT_EQ(ref_t(STRING("")), parts.extension);
+    }
 
-  // parent(non-empty), stem(non-empty), extension(non-empty)
-  {
-    auto data = STRING("klm\\abc.xyz");
-    auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
-    ASSERT_EQ(ref_t(STRING("abc.xyz")), parts.basename);
-    ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
-    ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
-  }
+    // parent(non-empty), stem(non-empty), extension(non-empty)
+    {
+      auto data = STRING("klm\\abc.xyz");
+      auto parts = irs::file_utils::path_parts(data);
+      ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
+      ASSERT_EQ(ref_t(STRING("abc.xyz")), parts.basename);
+      ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
+      ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
+    }
 
-  // parent(non-empty), stem(non-empty), extension(non-empty) (multi-extension)
-  {
-    auto data = STRING("klm\\abc.def..xyz");
-    auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
-    ASSERT_EQ(ref_t(STRING("abc.def..xyz")), parts.basename);
-    ASSERT_EQ(ref_t(STRING("abc.def.")), parts.stem);
-    ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
-  }
+    // parent(non-empty), stem(non-empty), extension(non-empty) (multi-extension)
+    {
+      auto data = STRING("klm\\abc.def..xyz");
+      auto parts = irs::file_utils::path_parts(data);
+      ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
+      ASSERT_EQ(ref_t(STRING("abc.def..xyz")), parts.basename);
+      ASSERT_EQ(ref_t(STRING("abc.def.")), parts.stem);
+      ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
+    }
 
-  // parent(non-empty), stem(non-empty), extension(non-empty) (multi-parent,
-  // multi-extension)
-  {
-    auto data = STRING("/123\\klm/abc.def..xyz");
-    auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t(STRING("/123\\klm")), parts.dirname);
-    ASSERT_EQ(ref_t(STRING("abc.def..xyz")), parts.basename);
-    ASSERT_EQ(ref_t(STRING("abc.def.")), parts.stem);
-    ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
-  }
-#endif
+    // parent(non-empty), stem(non-empty), extension(non-empty) (multi-parent, multi-extension)
+    {
+      auto data = STRING("/123\\klm/abc.def..xyz");
+      auto parts = irs::file_utils::path_parts(data);
+      ASSERT_EQ(ref_t(STRING("/123\\klm")), parts.dirname);
+      ASSERT_EQ(ref_t(STRING("abc.def..xyz")), parts.basename);
+      ASSERT_EQ(ref_t(STRING("abc.def.")), parts.stem);
+      ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
+    }
+  #endif
 }

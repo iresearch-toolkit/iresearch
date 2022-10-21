@@ -30,15 +30,17 @@ namespace iresearch {
 //////////////////////////////////////////////////////////////////////////////
 /// @class mmap_directory
 //////////////////////////////////////////////////////////////////////////////
-class mmap_directory : public fs_directory {
+class IRESEARCH_API mmap_directory : public fs_directory {
  public:
-  explicit mmap_directory(utf8_path dir,
-                          directory_attributes attrs = directory_attributes{});
+  explicit mmap_directory(
+    utf8_path dir,
+    directory_attributes attrs = directory_attributes{});
 
-  virtual index_input::ptr open(std::string_view name,
-                                IOAdvice advice) const noexcept override final;
-};  // mmap_directory
+  virtual index_input::ptr open(
+    const std::string& name,
+    IOAdvice advice) const noexcept override final;
+}; // mmap_directory
 
-}  // namespace iresearch
+} // ROOT
 
-#endif  // IRESEARCH_MMAP_DIRECTORY_H
+#endif // IRESEARCH_MMAP_DIRECTORY_H

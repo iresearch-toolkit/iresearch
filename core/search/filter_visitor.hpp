@@ -35,21 +35,22 @@ struct seek_term_iterator;
 /// @class filter_visitor
 /// @brief base filter visitor interface
 //////////////////////////////////////////////////////////////////////////////
-struct filter_visitor {
+struct IRESEARCH_API filter_visitor {
   virtual ~filter_visitor() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief makes preparations for a visitor
   //////////////////////////////////////////////////////////////////////////////
-  virtual void prepare(const sub_reader& segment, const term_reader& field,
+  virtual void prepare(const sub_reader& segment,
+                       const term_reader& field,
                        const seek_term_iterator& terms) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief applies actions to a current term iterator
   //////////////////////////////////////////////////////////////////////////////
-  virtual void visit(score_t boost) = 0;
-};  // filter_visitor
+  virtual void visit(boost_t boost) = 0;
+}; // filter_visitor
 
-}  // namespace iresearch
+}
 
-#endif  // IRESEARCH_FILTER_VISITOR_H
+#endif // IRESEARCH_FILTER_VISITOR_H

@@ -22,20 +22,23 @@
 
 #include "prefix_filter.hpp"
 
+#include "shared.hpp"
+#include "search/limited_sample_collector.hpp"
+#include "search/states_cache.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
-#include "search/limited_sample_collector.hpp"
-#include "search/states_cache.hpp"
-#include "shared.hpp"
 
 namespace {
 
 using namespace irs;
 
 template<typename Visitor>
-void visit(const sub_reader& segment, const term_reader& reader,
-           bytes_ref prefix, Visitor& visitor) {
+void visit(
+    const sub_reader& segment,
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    Visitor& visitor) {
   auto terms = reader.iterator(SeekMode::NORMAL);
 
   // seek to prefix
@@ -50,7 +53,7 @@ void visit(const sub_reader& segment, const term_reader& reader,
     visitor.prepare(segment, reader, *terms);
 
     do {
-      visitor.visit(kNoBoost);
+      visitor.visit(no_boost());
 
       if (!terms->next()) {
         break;
@@ -61,21 +64,24 @@ void visit(const sub_reader& segment, const term_reader& reader,
   }
 }
 
-}  // namespace
+}
 
 namespace iresearch {
+DEFINE_FACTORY_DEFAULT(by_prefix) // cppcheck-suppress unknownMacro
 
 /*static*/ filter::prepared::ptr by_prefix::prepare(
-  const index_reader& index, const Order& ord, score_t boost, string_ref field,
-  bytes_ref prefix, size_t scored_terms_limit) {
-  // object for collecting order stats
-  limited_sample_collector<term_frequency> collector(
-    ord.empty() ? 0 : scored_terms_limit);
-  MultiTermQuery::States states{index};
-  multiterm_visitor mtv{collector, states};
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    const string_ref& field,
+    const bytes_ref& prefix,
+    size_t scored_terms_limit) {
+  limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
+  multiterm_query::states_t states(index);
+  multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 
   // iterate over the segments
-  for (const auto& segment : index) {
+  for (const auto& segment: index) {
     // get term dictionary for field
     const auto* reader = segment.field(field);
 
@@ -89,14 +95,17 @@ namespace iresearch {
   std::vector<bstring> stats;
   collector.score(index, ord, stats);
 
-  return memory::make_managed<MultiTermQuery>(
-    std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
+  return memory::make_managed<multiterm_query>(
+    std::move(states), std::move(stats),
+    boost, sort::MergeType::AGGREGATE);
 }
 
-/*static*/ void by_prefix::visit(const sub_reader& segment,
-                                 const term_reader& reader, bytes_ref prefix,
-                                 filter_visitor& visitor) {
+/*static*/ void by_prefix::visit(
+    const sub_reader& segment,
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    filter_visitor& visitor) {
   ::visit(segment, reader, prefix, visitor);
 }
 
-}  // namespace iresearch
+} // ROOT

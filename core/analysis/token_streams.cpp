@@ -32,9 +32,9 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 
 boolean_token_stream::boolean_token_stream(bool value /*= false*/) noexcept
-  : basic_token_stream(irs::type<boolean_token_stream>::get()),
-    in_use_(false),
-    value_(value) {}
+  : basic_token_stream(irs::type<boolean_token_stream>::get()), in_use_(false),
+    value_(value) {
+}
 
 bool boolean_token_stream::next() noexcept {
   const auto in_use = in_use_;
@@ -48,7 +48,8 @@ bool boolean_token_stream::next() noexcept {
 // -----------------------------------------------------------------------------
 
 string_token_stream::string_token_stream() noexcept
-  : analysis::analyzer(irs::type<string_token_stream>::get()), in_use_(false) {}
+   : analysis::analyzer(irs::type<string_token_stream>::get()), in_use_(false) {
+}
 
 bool string_token_stream::next() noexcept {
   const auto in_use = in_use_;
@@ -56,6 +57,7 @@ bool string_token_stream::next() noexcept {
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
   offset.end = static_cast<uint32_t>(value_.size());
+  value_ = irs::bytes_ref::NIL;
   in_use_ = true;
   return !in_use;
 }
@@ -64,40 +66,35 @@ bool string_token_stream::next() noexcept {
 // --SECTION--                                       numeric_term implementation
 // -----------------------------------------------------------------------------
 
-bytes_ref numeric_token_stream::numeric_term::value(byte_type* buf,
-                                                    NumericType type,
-                                                    value_t val,
-                                                    uint32_t shift) {
+bytes_ref numeric_token_stream::numeric_term::value(
+    byte_type* buf, NumericType type,
+    value_t val, uint32_t shift) {
   switch (type) {
     case NT_LONG: {
-      using traits_t = numeric_utils::numeric_traits<int64_t>;
-      static_assert(
-        traits_t::size() <=
-        std::size(decltype(numeric_token_stream::numeric_term::data_){}));
+      using traits_t = numeric_utils::numeric_traits<int64_t> ;
+      static_assert(traits_t::size() <=
+        IRESEARCH_COUNTOF(decltype(numeric_token_stream::numeric_term::data_){}));
 
       return {buf, traits_t::encode(val.i64, buf, shift)};
     }
     case NT_DBL: {
       using traits_t = numeric_utils::numeric_traits<double_t>;
-      static_assert(
-        traits_t::size() <=
-        std::size(decltype(numeric_token_stream::numeric_term::data_){}));
+      static_assert(traits_t::size() <=
+        IRESEARCH_COUNTOF(decltype(numeric_token_stream::numeric_term::data_){}));
 
       return {buf, traits_t::encode(val.i64, buf, shift)};
     }
     case NT_INT: {
       using traits_t = numeric_utils::numeric_traits<int32_t>;
-      static_assert(
-        traits_t::size() <=
-        std::size(decltype(numeric_token_stream::numeric_term::data_){}));
+      static_assert(traits_t::size() <=
+        IRESEARCH_COUNTOF(decltype(numeric_token_stream::numeric_term::data_){}));
 
       return {buf, traits_t::encode(val.i32, buf, shift)};
     }
     case NT_FLOAT: {
       using traits_t = numeric_utils::numeric_traits<float_t>;
-      static_assert(
-        traits_t::size() <=
-        std::size(decltype(numeric_token_stream::numeric_term::data_){}));
+      static_assert(traits_t::size() <=
+        IRESEARCH_COUNTOF(decltype(numeric_token_stream::numeric_term::data_){}));
 
       return {buf, traits_t::encode(val.i32, buf, shift)};
     }
@@ -107,9 +104,10 @@ bytes_ref numeric_token_stream::numeric_term::value(byte_type* buf,
 }
 
 bool numeric_token_stream::numeric_term::next(increment& inc, bytes_ref& out) {
-  constexpr uint32_t INCREMENT_VALUE[]{0, 1};
-  constexpr uint32_t BITS_REQUIRED[]{bits_required<int64_t>(),
-                                     bits_required<int32_t>()};
+  constexpr uint32_t INCREMENT_VALUE[] { 0, 1 };
+  constexpr uint32_t BITS_REQUIRED[] {
+    bits_required<int64_t>(),
+    bits_required<int32_t>() };
 
   if (shift_ >= BITS_REQUIRED[type_ > NT_DBL]) {
     return false;
@@ -127,29 +125,34 @@ bool numeric_token_stream::numeric_term::next(increment& inc, bytes_ref& out) {
 // -----------------------------------------------------------------------------
 
 bool numeric_token_stream::next() {
-  return num_.next(std::get<increment>(attrs_),
-                   std::get<term_attribute>(attrs_).value);
+  return num_.next(
+    std::get<increment>(attrs_),
+    std::get<term_attribute>(attrs_).value);
 }
 
-void numeric_token_stream::reset(int32_t value,
-                                 uint32_t step /* = PRECISION_STEP_DEF */) {
+void numeric_token_stream::reset(
+    int32_t value, 
+    uint32_t step /* = PRECISION_STEP_DEF */) { 
   num_.reset(value, step);
 }
 
-void numeric_token_stream::reset(int64_t value,
-                                 uint32_t step /* = PRECISION_STEP_DEF */) {
+void numeric_token_stream::reset(
+    int64_t value, 
+    uint32_t step /* = PRECISION_STEP_DEF */) { 
   num_.reset(value, step);
 }
 
 #ifndef FLOAT_T_IS_DOUBLE_T
-void numeric_token_stream::reset(float_t value,
-                                 uint32_t step /* = PRECISION_STEP_DEF */) {
+void numeric_token_stream::reset(
+    float_t value, 
+    uint32_t step /* = PRECISION_STEP_DEF */) { 
   num_.reset(value, step);
 }
 #endif
 
-void numeric_token_stream::reset(double_t value,
-                                 uint32_t step /* = PRECISION_STEP_DEF */) {
+void numeric_token_stream::reset(
+    double_t value, 
+    uint32_t step /* = PRECISION_STEP_DEF */) { 
   num_.reset(value, step);
 }
 
@@ -162,9 +165,9 @@ void numeric_token_stream::reset(double_t value,
 }
 
 #ifndef FLOAT_T_IS_DOUBLE_T
-/*static*/ bytes_ref numeric_token_stream::value(bstring& buf, float_t value) {
-  return numeric_term::value(buf, value);
-}
+  /*static*/ bytes_ref numeric_token_stream::value(bstring& buf, float_t value) {
+    return numeric_term::value(buf, value);
+  }
 #endif
 
 /*static*/ bytes_ref numeric_token_stream::value(bstring& buf, double_t value) {
@@ -178,9 +181,8 @@ void numeric_token_stream::reset(double_t value,
 bool null_token_stream::next() noexcept {
   const auto in_use = in_use_;
   in_use_ = true;
-  std::get<term_attribute>(attrs_).value =
-    irs::ref_cast<byte_type>(value_null());
+  std::get<term_attribute>(attrs_).value = irs::ref_cast<byte_type>(value_null());
   return !in_use;
 }
 
-}  // namespace iresearch
+}

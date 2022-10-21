@@ -23,16 +23,23 @@
 #ifndef IRESEARCH_SO_UTILS_H
 #define IRESEARCH_SO_UTILS_H
 
-#include <string_view>
+#include <functional>
 
 namespace iresearch {
+
+// #define RTLD_LAZY   1
+// #define RTLD_NOW    2
+// #define RTLD_GLOBAL 4
 
 void* load_library(const char* soname, int mode = 2);
 void* get_function(void* handle, const char* fname);
 bool free_library(void* handle);
-void load_libraries(std::string_view path, std::string_view prefix,
-                    std::string_view suffix);
+void load_libraries(
+  const std::string& path,
+  const std::string& prefix,
+  const std::string& suffix
+);
 
-}  // namespace iresearch
+}
 
-#endif  // IRESEARCH_SO_UTILS_H
+#endif // IRESEARCH_SO_UTILS_H

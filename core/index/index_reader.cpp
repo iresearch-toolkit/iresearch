@@ -30,8 +30,7 @@
 
 namespace {
 
-struct empty_sub_reader final : irs::singleton<empty_sub_reader>,
-                                irs::sub_reader {
+struct empty_sub_reader final : irs::singleton<empty_sub_reader>, irs::sub_reader {
   virtual irs::column_iterator::ptr columns() const override {
     return irs::column_iterator::empty();
   }
@@ -41,7 +40,9 @@ struct empty_sub_reader final : irs::singleton<empty_sub_reader>,
   virtual const irs::column_reader* column(irs::string_ref) const override {
     return nullptr;
   }
-  virtual uint64_t docs_count() const override { return 0; }
+  virtual uint64_t docs_count() const override {
+    return 0;
+  }
   virtual irs::doc_iterator::ptr docs_iterator() const override {
     return irs::doc_iterator::empty();
   }
@@ -51,18 +52,21 @@ struct empty_sub_reader final : irs::singleton<empty_sub_reader>,
   virtual irs::field_iterator::ptr fields() const override {
     return irs::field_iterator::empty();
   }
-  virtual uint64_t live_docs_count() const override { return 0; }
+  virtual uint64_t live_docs_count() const override {
+    return 0;
+  }
   virtual const irs::sub_reader& operator[](size_t) const override {
     throw std::out_of_range("index out of range");
   }
   virtual size_t size() const override { return 0; }
-  virtual const irs::column_reader* sort() const override { return nullptr; }
-};  // index_reader
+  virtual const irs::column_reader* sort() const override {
+    return nullptr;
+  }
+}; // index_reader
 
-}  // namespace
+} // LOCAL
 
 namespace iresearch {
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                         sub_reader implementation
 // -----------------------------------------------------------------------------
@@ -71,4 +75,4 @@ namespace iresearch {
   return empty_sub_reader::instance();
 }
 
-}  // namespace iresearch
+}

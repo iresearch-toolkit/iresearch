@@ -31,18 +31,33 @@ class bm25_sort : public sort {
  public:
   using score_t = float_t;
 
-  static constexpr string_ref type_name() noexcept { return "bm25"; }
+  static constexpr string_ref type_name() noexcept {
+    return "bm25";
+  }
 
-  static constexpr float_t K() noexcept { return 1.2f; }
+  static constexpr float_t K() noexcept {
+    return 1.2f;
+  }
 
-  static constexpr float_t B() noexcept { return 0.75f; }
+  static constexpr float_t B() noexcept {
+    return 0.75f;
+  }
 
-  static constexpr bool BOOST_AS_SCORE() noexcept { return false; }
+  static constexpr bool BOOST_AS_SCORE() noexcept {
+    return false;
+  }
 
-  static void init();  // for trigering registration in a static build
+  static void init(); // for trigering registration in a static build
 
-  explicit bm25_sort(float_t k = K(), float_t b = B(),
-                     bool boost_as_score = BOOST_AS_SCORE()) noexcept;
+  static ptr make(
+    float_t k = K(),
+    float_t b = B(),
+    bool boost_as_score = BOOST_AS_SCORE());
+
+  explicit bm25_sort(
+   float_t k = K(),
+   float_t b = B(),
+   bool boost_as_score = BOOST_AS_SCORE()) noexcept;
 
   float_t k() const noexcept { return k_; }
   void k(float_t k) noexcept { k_ = k; }
@@ -51,23 +66,31 @@ class bm25_sort : public sort {
   void b(float_t b) noexcept { b_ = b; }
 
   // use boost as score even if frequency is not set
-  bool use_boost_as_score() const noexcept { return boost_as_score_; }
-  void use_boost_as_score(bool use) noexcept { boost_as_score_ = use; }
+  bool use_boost_as_score() const noexcept {
+    return boost_as_score_;
+  }
+  void use_boost_as_score(bool use) noexcept {
+    boost_as_score_ = use;
+  }
 
   // returns 'true' if current scorer is 'bm11'
-  bool bm11() const noexcept { return b_ == 1.f; }
+  bool bm11() const noexcept {
+    return b_ == 1.f;
+  }
 
   // returns 'true' if current scorer is 'bm15'
-  bool bm15() const noexcept { return b_ == 0.f; }
+  bool bm15() const noexcept {
+    return b_ == 0.f;
+  }
 
   virtual sort::prepared::ptr prepare() const override;
 
  private:
-  float_t k_;  // [1.2 .. 2.0]
-  float_t b_;  // 0.75
+  float_t k_; // [1.2 .. 2.0]
+  float_t b_; // 0.75
   bool boost_as_score_;
-};
+}; // bm25_sort
 
-}  // namespace iresearch
+}
 
 #endif

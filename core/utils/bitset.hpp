@@ -38,36 +38,35 @@ template<typename Alloc>
 class dynamic_bitset_base : irs::compact<0, Alloc> {
  public:
   typedef size_t word_t;
-  typedef typename std::allocator_traits<Alloc>::template rebind_alloc<word_t>
-    allocator_type;
+  typedef typename std::allocator_traits<Alloc>::template rebind_alloc<word_t> allocator_type;
 
  protected:
-  typedef memory::allocator_array_deallocator<allocator_type>
-    word_ptr_deleter_t;
+  typedef memory::allocator_array_deallocator<allocator_type> word_ptr_deleter_t;
   typedef std::unique_ptr<word_t[], word_ptr_deleter_t> word_ptr_t;
 
   dynamic_bitset_base(const Alloc& alloc = Alloc())
-    : compact<0, allocator_type>(alloc) {}
+    : compact<0, allocator_type>(alloc) {
+  }
 
   allocator_type& allocator() noexcept {
     return compact<0, allocator_type>::get();
   }
-};  // bitset_base
+}; // bitset_base
 
 template<typename Alloc>
 class dynamic_bitset : public dynamic_bitset_base<Alloc> {
  public:
   typedef dynamic_bitset_base<Alloc> base_t;
 
-  using typename base_t::word_ptr_deleter_t;
   using typename base_t::word_ptr_t;
+  using typename base_t::word_ptr_deleter_t;
   using typename base_t::word_t;
 
   typedef size_t index_t;
 
   constexpr FORCE_INLINE static size_t bits_to_words(size_t bits) noexcept {
-    return bits / bits_required<word_t>() +
-           size_t(0 != (bits % bits_required<word_t>()));
+    return bits / bits_required<word_t>()
+        + size_t(0 != (bits % bits_required<word_t>()));
   }
 
   // returns corresponding bit index within a word for the
@@ -88,17 +87,16 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
 
   dynamic_bitset(const Alloc& alloc = Alloc())
     : base_t(alloc),
-      data_(static_cast<typename word_ptr_t::pointer>(
-              nullptr),  // workaround for broken check in MSVC2015
-            word_ptr_deleter_t(this->allocator(), 0)) {}
+      data_(static_cast<typename word_ptr_t::pointer>(nullptr), // workaround for broken check in MSVC2015
+            word_ptr_deleter_t(this->allocator(), 0)) {
+  }
 
   explicit dynamic_bitset(size_t bits, const Alloc& alloc = Alloc())
     : dynamic_bitset(alloc) {
     reset(bits);
   }
 
-  dynamic_bitset(dynamic_bitset&& rhs) noexcept(
-    std::is_nothrow_move_constructible<base_t>::value)
+  dynamic_bitset(dynamic_bitset&& rhs) noexcept(std::is_nothrow_move_constructible<base_t>::value)
     : base_t(std::move(rhs)),
       bits_(rhs.bits_),
       words_(rhs.words_),
@@ -107,8 +105,7 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
     rhs.words_ = 0;
   }
 
-  dynamic_bitset& operator=(dynamic_bitset&& rhs) noexcept(
-    std::is_nothrow_move_assignable<base_t>::value) {
+  dynamic_bitset& operator=(dynamic_bitset&& rhs) noexcept(std::is_nothrow_move_assignable<base_t>::value) {
     if (this != &rhs) {
       base_t::operator=(std::move(rhs));
       bits_ = rhs.bits_;
@@ -125,8 +122,9 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
     const auto num_words = bits_to_words(bits);
 
     if (num_words > words_) {
-      data_ = memory::allocate_unique<word_t[]>(this->allocator(), num_words,
-                                                memory::allocate_only);
+      data_ = memory::allocate_unique<word_t[]>(
+        this->allocator(), num_words, memory::allocate_only
+      );
     }
 
     words_ = num_words;
@@ -150,7 +148,9 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
   size_t size() const noexcept { return bits_; }
 
   // capacity in bits
-  size_t capacity() const noexcept { return bits_required<word_t>() * words_; }
+  size_t capacity() const noexcept {
+    return bits_required<word_t>()*words_;
+  }
 
   size_t words() const noexcept { return words_; }
 
@@ -170,13 +170,17 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
   }
 
   void memset(const void* src, size_t size) noexcept {
-    std::memcpy(data_.get(), src, std::min(size, words() * sizeof(word_t)));
+    std::memcpy(data_.get(), src, std::min(size, words()*sizeof(word_t)));
     sanitize();
   }
 
-  void set(size_t i) noexcept { set_bit(data_[word(i)], bit(i)); }
+  void set(size_t i) noexcept {
+    set_bit(data_[word(i)], bit(i));
+  }
 
-  void unset(size_t i) noexcept { unset_bit(data_[word(i)], bit(i)); }
+  void unset(size_t i) noexcept {
+    unset_bit(data_[word(i)], bit(i));
+  }
 
   void reset(size_t i, bool set) noexcept {
     set_bit(data_[word(i)], bit(i), set);
@@ -187,22 +191,31 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
   }
 
   bool any() const noexcept {
-    return std::any_of(begin(), end(), [](word_t w) { return w != 0; });
+    return std::any_of(
+      begin(), end(),
+      [] (word_t w) { return w != 0; }
+    );
   }
 
-  bool none() const noexcept { return !any(); }
+  bool none() const noexcept {
+    return !any();
+  }
 
-  bool all() const noexcept { return (count() == size()); }
+  bool all() const noexcept {
+    return (count() == size());
+  }
 
   void clear() noexcept {
     if (data_) {
       // passing nullptr to `std::memset` is undefined behavior
-      std::memset(data_.get(), 0, sizeof(word_t) * words_);
+      std::memset(data_.get(), 0, sizeof(word_t)*words_);
     }
   }
 
   // counts bits set
-  word_t count() const noexcept { return math::popcount(begin(), end()); }
+  word_t count() const noexcept {
+    return math::math_traits<word_t>::pop(begin(), end());
+  }
 
  private:
   void sanitize() noexcept {
@@ -210,7 +223,7 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
     auto last_word_bits = bits_ % bits_required<word_t>();
 
     if (!last_word_bits) {
-      return;  // no words or last word has all bits set
+      return; // no words or last word has all bits set
     }
 
     const auto mask = ~(~word_t(0) << (bits_ % bits_required<word_t>()));
@@ -218,13 +231,13 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
     data_[words_ - 1] &= mask;
   }
 
-  size_t bits_{};    // number of bits in a bitset
-  size_t words_{};   // number of words used for storing data
-  word_ptr_t data_;  // words array
-};                   // dynamic_bitset
+  size_t bits_{};   // number of bits in a bitset
+  size_t words_{};  // number of words used for storing data
+  word_ptr_t data_; // words array
+}; // dynamic_bitset
 
 typedef dynamic_bitset<std::allocator<size_t>> bitset;
 
-}  // namespace iresearch
+}
 
 #endif

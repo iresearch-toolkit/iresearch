@@ -27,4 +27,5 @@
 
 int dump(int argc, char* argv[]);
 
-#endif  // IRESEARCH_INDEX_DUMP_H
+#endif // IRESEARCH_INDEX_DUMP_H
+

@@ -27,16 +27,21 @@
 
 namespace iresearch {
 
-struct boost_sort final : public sort {
-  static constexpr string_ref type_name() noexcept { return "boostscore"; }
+struct IRESEARCH_API boost_sort final : public sort {
+  static constexpr string_ref type_name() noexcept {
+    return "boostscore";
+  }
+
+  static ptr make(); // for use with irs::order::add<T>() and default args
 
   static void init();
 
   boost_sort() noexcept;
 
   virtual sort::prepared::ptr prepare() const override;
-};  // boost_sort
+}; // boost_sort
 
-}  // namespace iresearch
+}
 
-#endif  // IRESEARCH_BOOST_H
+#endif // IRESEARCH_BOOST_H
+

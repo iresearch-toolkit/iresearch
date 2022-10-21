@@ -36,7 +36,7 @@ namespace iresearch {
 /// @struct data_output
 /// @brief base interface for all low-level output data streams
 //////////////////////////////////////////////////////////////////////////////
-struct data_output {
+struct IRESEARCH_API data_output {
   using iterator_category = std::output_iterator_tag;
   using value_type = void;
   using pointer = void;
@@ -49,15 +49,25 @@ struct data_output {
 
   virtual void write_bytes(const byte_type* b, size_t len) = 0;
 
-  void write_short(int16_t i) { irs::write<uint16_t>(*this, i); }
+  void write_short(int16_t i) {
+    irs::write<uint16_t>(*this, i);
+  }
 
-  virtual void write_int(int32_t i) { irs::write<uint32_t>(*this, i); }
+  virtual void write_int(int32_t i) {
+    irs::write<uint32_t>(*this, i);
+  }
 
-  virtual void write_long(int64_t i) { irs::write<uint64_t>(*this, i); }
+  virtual void write_long(int64_t i) {
+    irs::write<uint64_t>(*this, i);
+  }
 
-  virtual void write_vint(uint32_t i) { irs::vwrite<uint32_t>(*this, i); }
+  virtual void write_vint(uint32_t i) {
+    irs::vwrite<uint32_t>(*this, i);
+  }
 
-  virtual void write_vlong(uint64_t i) { irs::vwrite<uint64_t>(*this, i); }
+  virtual void write_vlong(uint64_t i) {
+    irs::vwrite<uint64_t>(*this, i);
+  }
 
   data_output& operator=(byte_type b) {
     write_byte(b);
@@ -66,12 +76,12 @@ struct data_output {
   data_output& operator*() noexcept { return *this; }
   data_output& operator++() noexcept { return *this; }
   data_output& operator++(int) noexcept { return *this; }
-};  // data_output
+}; // data_output
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct index_output
 //////////////////////////////////////////////////////////////////////////////
-struct index_output : public data_output {
+struct IRESEARCH_API index_output : public data_output {
  public:
   DECLARE_IO_PTR(index_output, close);
   DEFINE_FACTORY_INLINE(index_output);
@@ -83,20 +93,22 @@ struct index_output : public data_output {
   virtual size_t file_pointer() const = 0;
 
   virtual int64_t checksum() const = 0;
-};  // index_output
+}; // index_output
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class output_buf
 //////////////////////////////////////////////////////////////////////////////
-class output_buf final : public std::streambuf, util::noncopyable {
+class IRESEARCH_API output_buf final : public std::streambuf, util::noncopyable {
  public:
   typedef std::streambuf::char_type char_type;
   typedef std::streambuf::int_type int_type;
 
   explicit output_buf(index_output* out);
 
-  virtual std::streamsize xsputn(const char_type* c,
-                                 std::streamsize size) override;
+  virtual std::streamsize xsputn(
+    const char_type* c,
+    std::streamsize size
+  ) override;
 
   virtual int_type overflow(int_type c) override;
 
@@ -104,12 +116,12 @@ class output_buf final : public std::streambuf, util::noncopyable {
 
  private:
   index_output* out_;
-};  // output_buf
+}; // output_buf
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class buffered_index_output
 //////////////////////////////////////////////////////////////////////////////
-class buffered_index_output : public index_output, util::noncopyable {
+class IRESEARCH_API buffered_index_output : public index_output, util::noncopyable {
  public:
   virtual void flush() override;
 
@@ -129,39 +141,32 @@ class buffered_index_output : public index_output, util::noncopyable {
 
   virtual void write_long(int64_t v) override final;
 
-  buffered_index_output& operator=(byte_type b) {
-    write_byte(b);
-    return *this;
-  }
-  buffered_index_output& operator*() noexcept { return *this; }
-  buffered_index_output& operator++() noexcept { return *this; }
-  buffered_index_output& operator++(int) noexcept { return *this; }
-
  protected:
   void reset(byte_type* buf, size_t size) noexcept {
     buf_ = buf;
     pos_ = buf;
     end_ = buf + size;
     buf_size_ = size;
+    start_ = 0;
   }
 
   virtual void flush_buffer(const byte_type* b, size_t len) = 0;
 
-  byte_type* buffer() const noexcept { return buf_; }
-
-  size_t buffer_offset() const noexcept { return start_; }
-
   // returns number of reamining bytes in the buffer
-  FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
+  FORCE_INLINE size_t remain() const {
+    return std::distance(pos_, end_);
+  }
 
  private:
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   byte_type* buf_{};
-  byte_type* pos_{};  // position in buffer
+  byte_type* pos_{}; // position in buffer
   byte_type* end_{};
-  size_t start_{};  // position of buffer in a file
+  size_t start_{};   // position of buffer in a file
   size_t buf_size_{};
-};  // buffered_index_output
+  IRESEARCH_API_PRIVATE_VARIABLES_END
+}; // buffered_index_output
 
-}  // namespace iresearch
+}
 
-#endif  // IRESEARCH_DATAOUTPUT_H
+#endif // IRESEARCH_DATAOUTPUT_H

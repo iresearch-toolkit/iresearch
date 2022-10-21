@@ -57,16 +57,16 @@ namespace boost { namespace text { namespace detail {
         }
     };
 
-    using case_map_t = absl::flat_hash_map<uint32_t, case_elements>;
+    using case_map_t = iresearch_absl::flat_hash_map<uint32_t, case_elements>;
 
     BOOST_TEXT_DECL case_map_t make_to_lower_map();
     BOOST_TEXT_DECL case_map_t make_to_title_map();
     BOOST_TEXT_DECL case_map_t make_to_upper_map();
-    BOOST_TEXT_DECL absl::flat_hash_set<uint32_t> make_cased_cps();
-    BOOST_TEXT_DECL absl::flat_hash_set<uint32_t> make_case_ignorable_cps();
-    BOOST_TEXT_DECL absl::flat_hash_set<uint32_t> make_changes_when_uppered_cps();
-    BOOST_TEXT_DECL absl::flat_hash_set<uint32_t> make_changes_when_lowered_cps();
-    BOOST_TEXT_DECL absl::flat_hash_set<uint32_t> make_changes_when_titled_cps();
+    BOOST_TEXT_DECL iresearch_absl::flat_hash_set<uint32_t> make_cased_cps();
+    BOOST_TEXT_DECL iresearch_absl::flat_hash_set<uint32_t> make_case_ignorable_cps();
+    BOOST_TEXT_DECL iresearch_absl::flat_hash_set<uint32_t> make_changes_when_uppered_cps();
+    BOOST_TEXT_DECL iresearch_absl::flat_hash_set<uint32_t> make_changes_when_lowered_cps();
+    BOOST_TEXT_DECL iresearch_absl::flat_hash_set<uint32_t> make_changes_when_titled_cps();
     BOOST_TEXT_DECL std::array<uint32_t, 3007> make_case_cps();
     BOOST_TEXT_DECL std::array<case_mapping_to, 2926> make_case_mapping_to();
 

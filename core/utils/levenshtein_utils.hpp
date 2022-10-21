@@ -25,9 +25,9 @@
 
 #include <vector>
 #include <numeric>
-#include <span>
 
 #include "string.hpp"
+#include "range.hpp"
 #include "automaton_decl.hpp"
 
 namespace iresearch {
@@ -36,8 +36,8 @@ struct data_output;
 struct data_input;
 
 template<typename T, size_t SubstCost = 1>
-inline size_t edit_distance(const T* lhs, size_t lhs_size, const T* rhs,
-                            size_t rhs_size) {
+inline size_t edit_distance(const T* lhs, size_t lhs_size,
+                            const T* rhs, size_t rhs_size) {
   assert(lhs || !lhs_size);
   assert(rhs || !rhs_size);
 
@@ -46,20 +46,19 @@ inline size_t edit_distance(const T* lhs, size_t lhs_size, const T* rhs,
     std::swap(lhs_size, rhs_size);
   }
 
-  std::vector<size_t> cost(2 * (lhs_size + 1));
+  std::vector<size_t> cost(2*(lhs_size + 1));
 
   auto current = cost.begin();
-  auto next = cost.begin() + cost.size() / 2;
+  auto next = cost.begin() + cost.size()/2;
   std::iota(current, next, 0);
 
   for (size_t j = 1; j <= rhs_size; ++j) {
     next[0] = j;
     for (size_t i = 1; i <= lhs_size; ++i) {
       next[i] = std::min({
-        next[i - 1] + 1,  // deletion
-        current[i] + 1,   // insertion
-        current[i - 1] +
-          (lhs[i - 1] == rhs[j - 1] ? 0 : SubstCost)  // substitution
+        next[i-1]    + 1,                                     // deletion
+        current[i]   + 1,                                     // insertion
+        current[i-1] + (lhs[i-1] == rhs[j-1] ? 0 : SubstCost) // substitution
       });
     }
     std::swap(next, current);
@@ -95,7 +94,7 @@ inline size_t edit_distance(const basic_string_ref<Char>& lhs,
 ///        accepting strings at edit distance less or equal than distance
 ///        specified in description.
 ////////////////////////////////////////////////////////////////////////////////
-class parametric_description {
+class IRESEARCH_API parametric_description {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief describes trasition among parametric states
@@ -118,42 +117,45 @@ class parametric_description {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates description
   //////////////////////////////////////////////////////////////////////////////
-  parametric_description(std::vector<transition_t>&& transitions,
-                         std::vector<byte_type>&& distance,
-                         byte_type max_distance) noexcept;
+  parametric_description(
+      std::vector<transition_t>&& transitions,
+      std::vector<byte_type>&& distance,
+      byte_type max_distance) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return transition from 'from' state matching a provided
   ///         characteristic vector
   //////////////////////////////////////////////////////////////////////////////
   const transition_t& transition(size_t from, uint64_t chi) const noexcept {
-    assert(from * chi_max_ + chi < transitions_.size());
-    return transitions_[from * chi_max_ + chi];
+    assert(from*chi_max_ + chi < transitions_.size());
+    return transitions_[from*chi_max_ + chi];
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return parametric transitions table
   //////////////////////////////////////////////////////////////////////////////
-  std::span<const transition_t> transitions() const noexcept {
-    return transitions_;
+  range<const transition_t> transitions() const noexcept {
+    return { transitions_.data(), transitions_.size() };
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return edit distance of parametric state at a specified offset
   //////////////////////////////////////////////////////////////////////////////
   byte_type distance(size_t state, size_t offset) const noexcept {
-    if (offset >= chi_size_) {
-      return max_distance_ + 1;
-    }
+     if (offset >= chi_size_) {
+       return max_distance_ + 1;
+     }
 
-    assert(state * chi_size_ + offset < distance_.size());
-    return distance_[state * chi_size_ + offset];
+     assert(state*chi_size_ + offset < distance_.size());
+     return distance_[state*chi_size_ + offset];
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return range of edit distances for all parametric states
   //////////////////////////////////////////////////////////////////////////////
-  std::span<const byte_type> distances() const noexcept { return distance_; }
+  range<const byte_type> distances() const noexcept {
+    return { distance_.data(), distance_.size() };
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return number of states in parametric description
@@ -187,8 +189,9 @@ class parametric_description {
   //////////////////////////////////////////////////////////////////////////////
   bool operator==(const parametric_description& rhs) const noexcept {
     // all other members are derived
-    return transitions_ == rhs.transitions_ && distance_ == rhs.distance_ &&
-           max_distance_ == rhs.max_distance_;
+    return transitions_ == rhs.transitions_
+        && distance_ == rhs.distance_
+        && max_distance_ == rhs.max_distance_;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -199,13 +202,13 @@ class parametric_description {
   }
 
  private:
-  std::vector<transition_t> transitions_;  // transition table
-  std::vector<byte_type> distance_;        // distances per state and offset
-  uint64_t chi_size_{};                    // 2*max_distance_+1
-  uint64_t chi_max_{};                     // 1 << chi_size
-  size_t num_states_{};                    // number of parametric states
-  byte_type max_distance_{};               // max allowed distance
-};                                         // parametric_description
+  std::vector<transition_t> transitions_; // transition table
+  std::vector<byte_type> distance_;       // distances per state and offset
+  uint64_t chi_size_{};                   // 2*max_distance_+1
+  uint64_t chi_max_{};                    // 1 << chi_size
+  size_t num_states_{};                   // number of parametric states
+  byte_type max_distance_{};              // max allowed distance
+}; // parametric_description
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds parametric description of Levenshtein automaton
@@ -213,22 +216,24 @@ class parametric_description {
 /// @param with_transposition count transpositions
 /// @returns parametric description of Levenshtein automaton for supplied args
 ////////////////////////////////////////////////////////////////////////////////
-parametric_description make_parametric_description(byte_type max_distance,
-                                                   bool with_transposition);
+IRESEARCH_API parametric_description make_parametric_description(
+  byte_type max_distance,
+  bool with_transposition);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes parametric description to a specified output stream
 /// @param description parametric description to write
 /// @param out output stream
 ////////////////////////////////////////////////////////////////////////////////
-void write(const parametric_description& description, data_output& out);
+IRESEARCH_API void write(const parametric_description& description,
+                         data_output& out);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read parametric description from a specified input stream
 /// @param in input stream
 /// @returns the read parametric description
 ////////////////////////////////////////////////////////////////////////////////
-parametric_description read(data_input& in);
+IRESEARCH_API parametric_description read(data_input& in);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief instantiates DFA based on provided parametric description and target
@@ -237,8 +242,10 @@ parametric_description read(data_input& in);
 /// @returns DFA
 /// @note if 'target' isn't a valid UTF-8 sequence, behaviour is undefined
 ////////////////////////////////////////////////////////////////////////////////
-automaton make_levenshtein_automaton(const parametric_description& description,
-                                     bytes_ref prefix, bytes_ref target);
+IRESEARCH_API automaton make_levenshtein_automaton(
+  const parametric_description& description,
+  const bytes_ref& prefix,
+  const bytes_ref& target);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief evaluates edit distance between the specified words up to
@@ -252,9 +259,10 @@ automaton make_levenshtein_automaton(const parametric_description& description,
 /// @note accepts only valid descriptions, calling function with
 ///       invalid description is undefined behaviour
 ////////////////////////////////////////////////////////////////////////////////
-size_t edit_distance(const parametric_description& description,
-                     const byte_type* lhs, size_t lhs_size,
-                     const byte_type* rhs, size_t rhs_size);
+IRESEARCH_API size_t edit_distance(
+  const parametric_description& description,
+  const byte_type* lhs, size_t lhs_size,
+  const byte_type* rhs, size_t rhs_size);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief evaluates edit distance between the specified words up to
@@ -266,10 +274,11 @@ size_t edit_distance(const parametric_description& description,
 /// @note accepts only valid descriptions, calling function with
 ///       invalid description is undefined behaviour
 ////////////////////////////////////////////////////////////////////////////////
-inline size_t edit_distance(const parametric_description& description,
-                            bytes_ref lhs, bytes_ref rhs) {
-  return edit_distance(description, lhs.begin(), lhs.size(), rhs.begin(),
-                       rhs.size());
+inline size_t edit_distance(
+    const parametric_description& description,
+    const bytes_ref& lhs,
+    const bytes_ref& rhs) {
+  return edit_distance(description, lhs.begin(), lhs.size(), rhs.begin(), rhs.size());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -286,9 +295,11 @@ inline size_t edit_distance(const parametric_description& description,
 /// @note accepts only valid descriptions, calling function with
 ///       invalid description is undefined behaviour
 ////////////////////////////////////////////////////////////////////////////////
-bool edit_distance(size_t& distance, const parametric_description& description,
-                   const byte_type* lhs, size_t lhs_size, const byte_type* rhs,
-                   size_t rhs_size);
+IRESEARCH_API bool edit_distance(
+  size_t& distance,
+  const parametric_description& description,
+  const byte_type* lhs, size_t lhs_size,
+  const byte_type* rhs, size_t rhs_size);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief evaluates edit distance between the specified words up to
@@ -301,13 +312,17 @@ bool edit_distance(size_t& distance, const parametric_description& description,
 /// @note accepts only valid descriptions, calling function with
 ///       invalid description is undefined behaviour
 ////////////////////////////////////////////////////////////////////////////////
-inline bool edit_distance(size_t& distance,
-                          const parametric_description& description,
-                          bytes_ref lhs, bytes_ref rhs) {
-  return edit_distance(distance, description, lhs.begin(), lhs.size(),
+inline bool edit_distance(
+    size_t& distance,
+    const parametric_description& description,
+    const bytes_ref& lhs,
+    const bytes_ref& rhs) {
+  return edit_distance(distance, description,
+                       lhs.begin(), lhs.size(),
                        rhs.begin(), rhs.size());
 }
 
-}  // namespace iresearch
+}
 
-#endif  // IRESEARCH_LEVENSHTEIN_UTILS_H
+#endif // IRESEARCH_LEVENSHTEIN_UTILS_H
+

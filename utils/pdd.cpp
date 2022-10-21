@@ -20,37 +20,48 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <absl/container/flat_hash_map.h>
-
+#include <unordered_map>
 #include <functional>
 #include <iomanip>
 
 #if defined(_MSC_VER)
-#pragma warning(disable : 4101)
-#pragma warning(disable : 4267)
+  #pragma warning(disable: 4101)
+  #pragma warning(disable: 4267)
 #endif
 
 #include <cmdline.h>
 
 #if defined(_MSC_VER)
-#pragma warning(default : 4267)
-#pragma warning(default : 4101)
+  #pragma warning(default: 4267)
+  #pragma warning(default: 4101)
 #endif
 
 #include "shared.hpp"
 #include "store/store_utils.hpp"
-#include "utils/compression.hpp"
 #include "utils/levenshtein_utils.hpp"
+#include "utils/compression.hpp"
 
-using handlers_t =
-  absl::flat_hash_map<std::string, std::function<int(int argc, char* argv[])>>;
+// -----------------------------------------------------------------------------
+// --SECTION--                                               handle registration
+// -----------------------------------------------------------------------------
+
+typedef std::unordered_map<
+  std::string,
+  std::function<int(int argc, char* argv[])>
+> handlers_t;
 
 int dump(int argc, char* argv[]);
 
+const std::string MODE_DUMP = "dump";
+
 bool init_handlers(handlers_t& handlers) {
-  handlers.emplace("dump", &dump);
+  handlers.emplace(MODE_DUMP, &dump);
   return true;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               dump implementation
+// -----------------------------------------------------------------------------
 
 const std::string HELP = "help";
 const std::string DISTANCE = "distance";
@@ -59,12 +70,15 @@ const std::string TRANSPOSITIONS = "transpositions";
 const std::string COMPRESSION = "compression";
 const std::string NAMEPSACE = "namespace";
 
-int dump(irs::byte_type distance, bool with_transpositions, size_t line_length,
-         irs::compression::compressor::ptr comp, const std::string& ns) {
+int dump(
+    irs::byte_type distance,
+    bool with_transpositions,
+    size_t line_length,
+    irs::compression::compressor::ptr comp,
+    const std::string& ns) {
   auto& out = std::cout;
 
-  const auto d =
-    irs::make_parametric_description(distance, with_transpositions);
+  const auto d = irs::make_parametric_description(distance, with_transpositions);
 
   if (!d) {
     return 1;
@@ -75,7 +89,7 @@ int dump(irs::byte_type distance, bool with_transpositions, size_t line_length,
   // write description to string
   {
     irs::bytes_output out(raw);
-    irs::write(d, static_cast<irs::data_output&>(out));
+    irs::write(d, static_cast<data_output&>(out));
   }
 
   irs::bstring buf;
@@ -94,7 +108,9 @@ int dump(irs::byte_type distance, bool with_transpositions, size_t line_length,
   out << "constexpr size_t PDD_COMPRESSED_LEN = " << compressed.size() << ";\n";
   out << "constexpr unsigned char PDD[] = {";
 
-  out << std::internal << std::setfill('0') << std::hex;
+  out << std::internal
+      << std::setfill('0')
+      << std::hex;
 
   for (auto begin = compressed.begin(), end = compressed.end(); begin != end;) {
     out << "\n ";
@@ -130,18 +146,16 @@ int dump(const cmdline::parser& args) {
     return 1;
   }
 
-  irs::compression::init();  // load built-in compressors
+  irs::compression::init(); // load built-in compressors
 
   if (!irs::compression::exists(compression)) {
     return 1;
   }
 
-  const irs::compression::options opts{
-    irs::compression::options::Hint::COMPRESSION};
+  const irs::compression::options opts{ irs::compression::options::Hint::COMPRESSION };
   auto compressor = irs::compression::get_compressor(compression, opts);
 
-  return dump(static_cast<irs::byte_type>(distance), with_transpositions,
-              items_per_line, std::move(compressor), ns);
+  return dump(static_cast<irs::byte_type>(distance), with_transpositions, items_per_line, compressor, ns);
 }
 
 int dump(int argc, char* argv[]) {
@@ -150,8 +164,7 @@ int dump(int argc, char* argv[]) {
   cmd.add<size_t>(DISTANCE, 'd', "Maximum edit distance", true, size_t(1));
   cmd.add<size_t>(LINE_LENGTH, 0, "Items per line", false, size_t(16));
   cmd.add<bool>(TRANSPOSITIONS, 't', "Count transpositions", false, false);
-  cmd.add<std::string>(COMPRESSION, 0, "compression", false,
-                       "iresearch::compression::lz4");
+  cmd.add<std::string>(COMPRESSION, 0, "compression", false, "iresearch::compression::lz4");
   cmd.add<std::string>(NAMEPSACE, 'n', "namespace", false, "");
 
   cmd.parse(argc, argv);

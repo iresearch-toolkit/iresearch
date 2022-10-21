@@ -36,7 +36,7 @@ class bitvector final {
   typedef bitset::word_t word_t;
 
   bitvector() = default;
-  explicit bitvector(size_t bits) : size_(bits) { resize(bits); }
+  explicit bitvector(size_t bits): size_(bits) { resize(bits); }
   bitvector(const bitvector& other) { *this = other; }
   bitvector(bitvector&& other) noexcept { *this = std::move(other); }
 
@@ -61,7 +61,7 @@ class bitvector final {
 
         set.memset(other.set_.begin(), other.set_.words() * sizeof(word_t));
         set_ = std::move(set);
-      } else {  // optimization, reuse existing container
+      } else { // optimization, reuse existing container
         set_.clear();
         set_.memset(other.set_.begin(), other.set_.words() * sizeof(word_t));
       }
@@ -84,14 +84,14 @@ class bitvector final {
 
   bitvector& operator&=(const bitvector& other) {
     if (this == &other || !other.size()) {
-      return *this;  // nothing to do
+      return *this; // nothing to do
     }
 
     reserve(other.size_);
     size_ = std::max(size_, other.size_);
 
     auto* data = const_cast<word_t*>(begin());
-    auto last_word = bitset::word(other.size() - 1);  // -1 for bit offset
+    auto last_word = bitset::word(other.size() - 1); // -1 for bit offset
 
     for (size_t i = 0; i < last_word; ++i) {
       assert(i < set_.words() && i < other.set_.words());
@@ -100,28 +100,25 @@ class bitvector final {
 
     // for the last word consider only those bits included in 'other.size()'
     auto last_word_bits = other.size() % bits_required<word_t>();
-    const auto mask = (word_t(1) << last_word_bits) -
-                      1;  // set all bits that are not part of 'other.size()'
+    const auto mask = (word_t(1) << last_word_bits) - 1; // set all bits that are not part of 'other.size()'
 
     assert(last_word < set_.words() && last_word < other.set_.words());
     *(data + last_word) &= (*(other.data() + last_word) & mask);
-    std::memset(
-      data + last_word + 1, 0,
-      (set_.words() - last_word - 1) * sizeof(word_t));  // unset tail words
+    std::memset(data + last_word + 1, 0, (set_.words() - last_word - 1) * sizeof(word_t)); // unset tail words
 
     return *this;
   }
 
   bitvector& operator|=(const bitvector& other) {
     if (this == &other || !other.size()) {
-      return *this;  // nothing to do
+      return *this; // nothing to do
     }
 
     reserve(other.size_);
     size_ = std::max(size_, other.size_);
 
     auto* data = const_cast<word_t*>(begin());
-    auto last_word = bitset::word(other.size() - 1);  // -1 for bit offset
+    auto last_word = bitset::word(other.size() - 1); // -1 for bit offset
 
     for (size_t i = 0; i <= last_word; ++i) {
       assert(i < set_.words() && i < other.set_.words());
@@ -133,14 +130,14 @@ class bitvector final {
 
   bitvector& operator^=(const bitvector& other) {
     if (!other.size()) {
-      return *this;  // nothing to do
+      return *this; // nothing to do
     }
 
     reserve(other.size_);
     size_ = std::max(size_, other.size_);
 
     auto* data = const_cast<word_t*>(begin());
-    auto last_word = bitset::word(other.size() - 1);  // -1 for bit offset
+    auto last_word = bitset::word(other.size() - 1); // -1 for bit offset
 
     for (size_t i = 0; i < last_word; ++i) {
       assert(i < set_.words() && i < other.set_.words());
@@ -153,8 +150,7 @@ class bitvector final {
 
     // clear trailing bits
     if (last_word_bits) {
-      mask = ~(mask << last_word_bits);  // unset all bits that are not part of
-                                         // 'other.size()'
+      mask = ~(mask << last_word_bits); // unset all bits that are not part of 'other.size()'
     }
 
     assert(last_word < set_.words() && last_word < other.set_.words());
@@ -165,13 +161,13 @@ class bitvector final {
 
   bitvector& operator-=(const bitvector& other) {
     if (!other.size()) {
-      return *this;  // nothing to do
+      return *this; // nothing to do
     }
 
     reserve(other.size_);
     size_ = std::max(size_, other.size_);
     auto* data = const_cast<word_t*>(begin());
-    auto last_word = bitset::word(other.size() - 1);  // -1 for bit offset
+    auto last_word = bitset::word(other.size() - 1); // -1 for bit offset
 
     for (size_t i = 0; i < last_word; ++i) {
       assert(i < set_.words() && i < other.set_.words());
@@ -184,8 +180,7 @@ class bitvector final {
 
     // clear trailing bits
     if (last_word_bits) {
-      mask = ~(mask << last_word_bits);  // unset all bits that are not part of
-                                         // 'other.size()'
+      mask = ~(mask << last_word_bits); // unset all bits that are not part of 'other.size()'
     }
 
     assert(last_word < set_.words() && last_word < other.set_.words());
@@ -207,16 +202,13 @@ class bitvector final {
   const word_t* end() const noexcept { return set_.end(); }
 
   template<typename T>
-  void memset(const T& value) noexcept {
-    memset(&value, sizeof(value));
-  }
+  void memset(const T& value) noexcept { memset(&value, sizeof(value)); }
 
   void memset(const void* src, size_t size) noexcept {
-    auto bits = bits_required<uint8_t>() * size;  // size is in bytes
+    auto bits = bits_required<uint8_t>() * size; // size is in bytes
 
     reserve(bits);
-    std::memcpy(const_cast<word_t*>(begin()), src,
-                std::min(size, set_.words() * sizeof(word_t)));
+    std::memcpy(const_cast<word_t*>(begin()), src, std::min(size, set_.words() * sizeof(word_t)));
     size_ = std::max(size_, bits);
   }
 
@@ -227,21 +219,20 @@ class bitvector final {
     const auto words = bitset::word(bits - 1) + 1;
 
     if (!bits || words <= set_.words()) {
-      return;  // nothing to do
+      return; // nothing to do
     }
 
     auto set = bitset(words * bits_required<word_t>());
 
     if (data()) {
-      set.memset(begin(), set_.words() * sizeof(word_t));  // copy original
+      set.memset(begin(), set_.words() * sizeof(word_t)); // copy original
     }
 
     set_ = std::move(set);
   }
 
   void resize(size_t bits, bool preserve_capacity = false) {
-    const auto words =
-      bitset::word(bits) + 1;  // +1 for count instead of offset
+    const auto words = bitset::word(bits) + 1; // +1 for count instead of offset
 
     size_ = bits;
 
@@ -252,13 +243,11 @@ class bitvector final {
     }
 
     if (preserve_capacity) {
-      std::memset(
-        const_cast<word_t*>(begin()) + words, 0,
-        (set_.words() - words) * sizeof(word_t));  // clear trailing words
+      std::memset(const_cast<word_t*>(begin()) + words, 0, (set_.words() - words) * sizeof(word_t)); // clear trailing words
     } else if (words < set_.words()) {
       auto set = bitset(words * bits_required<word_t>());
 
-      set.memset(begin(), set.words() * sizeof(word_t));  // copy original
+      set.memset(begin(), set.words() * sizeof(word_t)); // copy original
       set_ = std::move(set);
     }
 
@@ -267,11 +256,9 @@ class bitvector final {
     // clear trailing bits
     if (last_word_bits) {
       auto* last_word = begin() + words - 1;
-      const auto mask =
-        ~(~word_t(0)
-          << last_word_bits);  // set all bits up to and including max bit
+      const auto mask = ~(~word_t(0) << last_word_bits); // set all bits up to and including max bit
 
-      const_cast<word_t&>(*last_word) &= mask;  // keep only bits up to max bit
+      const_cast<word_t&>(*last_word) &= mask; // keep only bits up to max bit
     }
   }
 
@@ -279,10 +266,10 @@ class bitvector final {
     if (!set && bitset::word(i) >= set_.words()) {
       size_ = std::max(size(), i + 1);
 
-      return;  // nothing to do
+      return; // nothing to do
     }
 
-    resize(std::max(size(), i + 1), true);  // ensure capacity
+    resize(std::max(size(), i + 1), true); // ensure capacity
     set_.reset(i, set);
   }
 
@@ -290,7 +277,7 @@ class bitvector final {
     auto words = set_.words();
 
     if (!words) {
-      return;  // nothing to do, no buffer
+      return; // nothing to do, no buffer
     }
 
     while (words && 0 == *(begin() + words - 1)) {
@@ -298,7 +285,7 @@ class bitvector final {
     }
 
     if (!words) {
-      auto set = bitset();  // create empty set
+      auto set = bitset(); // create empty set
 
       set_ = std::move(set);
       size_ = 0;
@@ -309,12 +296,13 @@ class bitvector final {
     if (words != set_.words()) {
       auto set = bitset(words * bits_required<word_t>());
 
-      set.memset(begin(), set.words() * sizeof(word_t));  // copy original
+      set.memset(begin(), set.words() * sizeof(word_t)); // copy original
       set_ = std::move(set);
     }
 
-    size_ = (set_.words() * bits_required<word_t>()) -
-            std::countl_zero(*(begin() + set_.words() - 1));
+    size_ = (set_.words() * bits_required<word_t>())
+          - math::math_traits<word_t>::clz(*(begin() + set_.words() - 1))
+          ;
   }
 
   void set(size_t i) { reset(i, true); }
@@ -341,12 +329,12 @@ class bitvector final {
 
  private:
   bitset set_;
-  size_t size_{};  // number of bits requested in a bitset
+  size_t size_{}; // number of bits requested in a bitset
 };
 
 static_assert(std::is_nothrow_move_constructible<bitvector>::value,
               "default move constructor expected");
 
-}  // namespace iresearch
+}
 
 #endif

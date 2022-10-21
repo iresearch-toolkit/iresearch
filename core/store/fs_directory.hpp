@@ -33,52 +33,62 @@ namespace iresearch {
 //////////////////////////////////////////////////////////////////////////////
 /// @class fs_directory
 //////////////////////////////////////////////////////////////////////////////
-class fs_directory : public directory {
+class IRESEARCH_API fs_directory : public directory {
  public:
   static constexpr size_t DEFAULT_POOL_SIZE = 8;
 
-  explicit fs_directory(utf8_path dir,
-                        directory_attributes attrs = directory_attributes{},
-                        size_t fd_pool_size = DEFAULT_POOL_SIZE);
+  explicit fs_directory(
+    utf8_path dir,
+    directory_attributes attrs = directory_attributes{},
+    size_t fd_pool_size = DEFAULT_POOL_SIZE);
 
   using directory::attributes;
   virtual directory_attributes& attributes() noexcept override {
     return attrs_;
   }
 
-  virtual index_output::ptr create(std::string_view name) noexcept override;
+  virtual index_output::ptr create(const std::string& name) noexcept override;
 
   const utf8_path& directory() const noexcept;
 
-  virtual bool exists(bool& result,
-                      std::string_view name) const noexcept override;
+  virtual bool exists(
+    bool& result,
+    const std::string& name) const noexcept override;
 
-  virtual bool length(uint64_t& result,
-                      std::string_view name) const noexcept override;
+  virtual bool length(
+    uint64_t& result,
+    const std::string& name) const noexcept override;
 
-  virtual index_lock::ptr make_lock(std::string_view name) noexcept override;
+  virtual index_lock::ptr make_lock(
+    const std::string& name) noexcept override;
 
-  virtual bool mtime(std::time_t& result,
-                     std::string_view name) const noexcept override;
+  virtual bool mtime(
+    std::time_t& result,
+    const std::string& name) const noexcept override;
 
-  virtual index_input::ptr open(std::string_view name,
-                                IOAdvice advice) const noexcept override;
+  virtual index_input::ptr open(
+    const std::string& name,
+    IOAdvice advice) const noexcept override;
 
-  virtual bool remove(std::string_view name) noexcept override;
+  virtual bool remove(
+    const std::string& name) noexcept override;
 
-  virtual bool rename(std::string_view src,
-                      std::string_view dst) noexcept override;
+  virtual bool rename(
+    const std::string& src,
+    const std::string& dst) noexcept override;
 
-  virtual bool sync(std::string_view name) noexcept override;
+  virtual bool sync(const std::string& name) noexcept override;
 
   virtual bool visit(const visitor_f& visitor) const override;
 
  private:
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   directory_attributes attrs_;
   utf8_path dir_;
   size_t fd_pool_size_;
-};  // fs_directory
+  IRESEARCH_API_PRIVATE_VARIABLES_END
+}; // fs_directory
 
-}  // namespace iresearch
+}
 
 #endif

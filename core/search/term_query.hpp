@@ -24,28 +24,40 @@
 #define IRESEARCH_TERM_QUERY_H
 
 #include "search/filter.hpp"
-#include "search/states/term_state.hpp"
 #include "search/states_cache.hpp"
 
 namespace iresearch {
 
-// Compiled query suitable for filters with a single term like "by_term"
-class TermQuery final : public filter::prepared {
+////////////////////////////////////////////////////////////////////////////////
+/// @class range_query
+/// @brief compiled query suitable for filters with a single term like "by_term"
+////////////////////////////////////////////////////////////////////////////////
+class term_query final : public filter::prepared {
  public:
-  using States = states_cache<TermState>;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @class term_state
+  /// @brief cached per reader term state
+  //////////////////////////////////////////////////////////////////////////////
+  struct term_state {
+    const term_reader* reader{};
+    seek_term_iterator::cookie_ptr cookie;
+  }; // term_state
 
-  explicit TermQuery(States&& states, bstring&& stats, score_t boost);
+  typedef states_cache<term_state> states_t;
 
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
+  explicit term_query(states_t&& states, bstring&& stats, boost_t boost);
 
-  void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
-             score_t boost) const override;
+  virtual doc_iterator::ptr execute(
+    const sub_reader& rdr,
+    const order::prepared& ord,
+    const attribute_provider* /*ctx*/
+  ) const override;
 
  private:
-  States states_;
+  states_cache<term_state> states_;
   bstring stats_;
-};
+}; // term_query
 
-}  // namespace iresearch
+} // ROOT
 
 #endif

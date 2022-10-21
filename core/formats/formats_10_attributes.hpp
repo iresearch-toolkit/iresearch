@@ -35,16 +35,17 @@ namespace version10 {
 /// @brief document set
 //////////////////////////////////////////////////////////////////////////////
 struct documents final : attribute {
-  static constexpr string_ref type_name() noexcept { return "documents"; }
+  static constexpr string_ref type_name() noexcept {
+    return "documents";
+  }
 
   documents() = default;
 
   bitset value;
-};  // documents
+}; // documents
 
 struct term_meta : irs::term_meta {
-  term_meta() noexcept
-    : e_skip_start(0) {}  // GCC 4.9 does not initialize unions properly
+  term_meta() noexcept : e_skip_start(0) {} // GCC 4.9 does not initialize unions properly
 
   void clear() noexcept {
     irs::term_meta::clear();
@@ -52,25 +53,22 @@ struct term_meta : irs::term_meta {
     pos_end = type_limits<type_t::address_t>::invalid();
   }
 
-  uint64_t doc_start = 0;  // where this term's postings start in the .doc file
-  uint64_t pos_start = 0;  // where this term's postings start in the .pos file
-  uint64_t pos_end =
-    type_limits<type_t::address_t>::invalid();  // file pointer where the last
-                                                // (vInt encoded) pos delta is
-  uint64_t pay_start =
-    0;  // where this term's payloads/offsets start in the .pay file
+  uint64_t doc_start = 0; // where this term's postings start in the .doc file
+  uint64_t pos_start = 0; // where this term's postings start in the .pos file
+  uint64_t pos_end = type_limits<type_t::address_t>::invalid(); // file pointer where the last (vInt encoded) pos delta is
+  uint64_t pay_start = 0; // where this term's payloads/offsets start in the .pay file
   union {
-    doc_id_t e_single_doc;  // singleton document id delta
-    uint64_t e_skip_start;  // pointer where skip data starts (after doc_start)
+    doc_id_t e_single_doc; // singleton document id delta
+    uint64_t e_skip_start; // pointer where skip data starts (after doc_start)
   };
-};  // term_meta
+}; // term_meta
 
-}  // namespace version10
+} // version10
 
 // use base irs::term_meta type for ancestors
 template<>
-struct type<version10::term_meta> : type<irs::term_meta> {};
+struct type<version10::term_meta> : type<irs::term_meta> { };
 
-}  // namespace iresearch
+} // ROOT
 
-#endif  // IRESEARCH_FORMAT_10_ATTRIBUTES
+#endif // IRESEARCH_FORMAT_10_ATTRIBUTES

@@ -40,62 +40,62 @@
 #=============================================================================
 
 macro(check_mic_cxx_compiler_flag _FLAG _RESULT)
-  if ("${_RESULT}" MATCHES "^${_RESULT}$")
-    set(_tmpdir "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp")
-    if (${ARGC} GREATER 2)
-      file(WRITE "${_tmpdir}/src.cpp" "${ARGV2}")
-    else ()
-      file(WRITE "${_tmpdir}/src.cpp" "int main() { return 0; }")
-    endif ()
+   if("${_RESULT}" MATCHES "^${_RESULT}$")
+      set(_tmpdir "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp")
+      if(${ARGC} GREATER 2)
+         file(WRITE "${_tmpdir}/src.cpp" "${ARGV2}")
+      else()
+         file(WRITE "${_tmpdir}/src.cpp" "int main() { return 0; }")
+      endif()
 
-    execute_process(
-      COMMAND "${MIC_CXX}" -mmic -c -o "${_tmpdir}/src.o"
-      "${_FLAG}" "${_tmpdir}/src.cpp"
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-      RESULT_VARIABLE ${_RESULT}
-      OUTPUT_VARIABLE OUTPUT
-      ERROR_VARIABLE OUTPUT
-    )
+      execute_process(
+         COMMAND "${MIC_CXX}" -mmic -c -o "${_tmpdir}/src.o"
+         "${_FLAG}" "${_tmpdir}/src.cpp"
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+         RESULT_VARIABLE ${_RESULT}
+         OUTPUT_VARIABLE OUTPUT
+         ERROR_VARIABLE OUTPUT
+         )
 
-    if (${_RESULT} EQUAL 0)
-      foreach (_fail_regex
-        "error: bad value (.*) for .* switch"       # GNU
-        "argument unused during compilation"        # clang
-        "is valid for .* but not for C\\\\+\\\\+"   # GNU
-        "unrecognized .*option"                     # GNU
-        "ignored for target"                        # GNU
-        "ignoring unknown option"                   # MSVC
-        "[Uu]nknown option"                         # HP
-        "[Ww]arning: [Oo]ption"                     # SunPro
-        "command option .* is not recognized"       # XL
-        "WARNING: unknown flag:"                    # Open64
-        "command line error"                        # ICC
-        "command line warning"                      # ICC
-        "#10236:"                                   # ICC: File not found
-        )
-        if ("${OUTPUT}" MATCHES "${_fail_regex}")
-          set(${_RESULT} FALSE)
-        endif ()
-      endforeach ()
-    endif ()
+      if(${_RESULT} EQUAL 0)
+         foreach(_fail_regex
+               "error: bad value (.*) for .* switch"       # GNU
+               "argument unused during compilation"        # clang
+               "is valid for .* but not for C\\\\+\\\\+"   # GNU
+               "unrecognized .*option"                     # GNU
+               "ignored for target"                        # GNU
+               "ignoring unknown option"                   # MSVC
+               "[Uu]nknown option"                         # HP
+               "[Ww]arning: [Oo]ption"                     # SunPro
+               "command option .* is not recognized"       # XL
+               "WARNING: unknown flag:"                    # Open64
+               "command line error"                        # ICC
+               "command line warning"                      # ICC
+               "#10236:"                                   # ICC: File not found
+               )
+            if("${OUTPUT}" MATCHES "${_fail_regex}")
+               set(${_RESULT} FALSE)
+            endif()
+         endforeach()
+      endif()
 
-    if (${_RESULT} EQUAL 0)
-      set(${_RESULT} 1 CACHE INTERNAL "Test ${_FLAG}")
-      message(STATUS "Performing Test Check MIC C++ Compiler flag ${_FLAG} - Success")
-      file(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeOutput.log
-        "Performing MIC C++ Compiler Flag Test ${_FLAG} succeded with the following output:\n"
-        "${OUTPUT}\n"
-        "COMMAND: ${MIC_CXX} -mmic -c -o ${_tmpdir}/src.o ${_FLAG} ${_tmpdir}/src.cpp\n"
-        )
-    else ()
-      message(STATUS "Performing Test Check MIC C++ Compiler flag ${_FLAG} - Failed")
-      set(${_RESULT} "" CACHE INTERNAL "Test ${_FLAG}")
-      file(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeError.log
-        "Performing MIC C++ Compiler Flag Test ${_FLAG} failed with the following output:\n"
-        "${OUTPUT}\n"
-        "COMMAND: ${MIC_CXX} -mmic -c -o ${_tmpdir}/src.o ${_FLAG} ${_tmpdir}/src.cpp\n"
-        )
-    endif ()
-  endif ()
+      if(${_RESULT} EQUAL 0)
+         set(${_RESULT} 1 CACHE INTERNAL "Test ${_FLAG}")
+         message(STATUS "Performing Test Check MIC C++ Compiler flag ${_FLAG} - Success")
+         file(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeOutput.log
+            "Performing MIC C++ Compiler Flag Test ${_FLAG} succeded with the following output:\n"
+            "${OUTPUT}\n"
+            "COMMAND: ${MIC_CXX} -mmic -c -o ${_tmpdir}/src.o ${_FLAG} ${_tmpdir}/src.cpp\n"
+            )
+      else()
+         message(STATUS "Performing Test Check MIC C++ Compiler flag ${_FLAG} - Failed")
+         set(${_RESULT} "" CACHE INTERNAL "Test ${_FLAG}")
+         file(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeError.log
+            "Performing MIC C++ Compiler Flag Test ${_FLAG} failed with the following output:\n"
+            "${OUTPUT}\n"
+            "COMMAND: ${MIC_CXX} -mmic -c -o ${_tmpdir}/src.o ${_FLAG} ${_tmpdir}/src.cpp\n"
+            )
+      endif()
+   endif()
 endmacro()
 

@@ -33,7 +33,7 @@
 #include "analyzers.hpp"
 #include "token_stream.hpp"
 #include "token_attributes.hpp"
-#include "utils/attribute_helper.hpp"
+#include "utils/frozen_attributes.hpp"
 
 namespace iresearch {
 namespace analysis {
@@ -42,7 +42,9 @@ namespace analysis {
 /// @class text_token_stream
 /// @note expects UTF-8 encoded input
 ////////////////////////////////////////////////////////////////////////////////
-class text_token_stream final : public analyzer, private util::noncopyable {
+class text_token_stream final
+  : public analyzer,
+    private util::noncopyable {
  public:
   using stopwords_t = absl::flat_hash_set<std::string>;
 
@@ -53,28 +55,25 @@ class text_token_stream final : public analyzer, private util::noncopyable {
     case_convert_t case_convert{case_convert_t::LOWER};
     stopwords_t explicit_stopwords;
     icu::Locale locale;
-    std::string stopwordsPath{
-      0};  // string with zero char indicates 'no value set'
+    std::string stopwordsPath{0}; // string with zero char indicates 'no value set'
     size_t min_gram{};
     size_t max_gram{};
 
-    // needed for mark empty explicit_stopwords as valid and prevent loading
-    // from defaults
+    // needed for mark empty explicit_stopwords as valid and prevent loading from defaults
     bool explicit_stopwords_set{};
-    bool
-      accent{};  // remove accents from letters, match original implementation
-    bool stemming{
-      true};  // try to stem if possible, match original implementation
+    bool accent{}; // remove accents from letters, match original implementation
+    bool stemming{true}; // try to stem if possible, match original implementation
     // needed for mark empty min_gram as valid and prevent loading from defaults
     bool min_gram_set{};
     // needed for mark empty max_gram as valid and prevent loading from defaults
     bool max_gram_set{};
-    bool preserve_original{};  // emit input data as a token
-    // needed for mark empty preserve_original as valid and prevent loading from
-    // defaults
+    bool preserve_original{}; // emit input data as a token
+    // needed for mark empty preserve_original as valid and prevent loading from defaults
     bool preserve_original_set{};
 
-    options_t() : locale{"C"} { locale.setToBogus(); }
+    options_t() : locale{"C"} {
+      locale.setToBogus();
+    }
   };
 
   struct state_t;
@@ -82,20 +81,22 @@ class text_token_stream final : public analyzer, private util::noncopyable {
   static char const* STOPWORD_PATH_ENV_VARIABLE;
 
   static constexpr string_ref type_name() noexcept { return "text"; }
-  static void init();  // for triggering registration in a static build
-  static ptr make(string_ref locale);
+  static void init(); // for triggering registration in a static build
+  static ptr make(const string_ref& locale);
   static void clear_cache();
 
   text_token_stream(const options_t& options, const stopwords_t& stopwords);
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override final {
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() override;
-  virtual bool reset(string_ref data) override;
+  virtual bool reset(const string_ref& data) override;
 
  private:
-  using attributes = std::tuple<increment, offset, term_attribute>;
+  using attributes = std::tuple<
+    increment,
+    offset,
+    term_attribute>;
 
   struct state_deleter_t {
     void operator()(state_t*) const noexcept;
@@ -104,12 +105,12 @@ class text_token_stream final : public analyzer, private util::noncopyable {
   bool next_word();
   bool next_ngram();
 
-  bstring term_buf_;  // buffer for value if value cannot be referenced directly
+  bstring term_buf_; // buffer for value if value cannot be referenced directly
   attributes attrs_;
   std::unique_ptr<state_t, state_deleter_t> state_;
 };
 
-}  // namespace analysis
-}  // namespace iresearch
+} // analysis
+} // ROOT
 
 #endif

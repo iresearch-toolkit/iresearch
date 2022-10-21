@@ -27,38 +27,39 @@
 
 namespace {
 
-class granular_float_field : public tests::float_field {
+class granular_float_field: public tests::float_field {
  public:
   granular_float_field() {
     this->features_.emplace_back(irs::type<irs::granularity_prefix>::id());
   }
 };
 
-class granular_double_field : public tests::double_field {
+class granular_double_field: public tests::double_field {
  public:
   granular_double_field() {
     this->features_.emplace_back(irs::type<irs::granularity_prefix>::id());
   }
 };
 
-class granular_int_field : public tests::int_field {
+class granular_int_field: public tests::int_field {
  public:
   granular_int_field() {
     this->features_.emplace_back(irs::type<irs::granularity_prefix>::id());
   }
 };
 
-class granular_long_field : public tests::long_field {
+class granular_long_field: public tests::long_field {
  public:
   granular_long_field() {
     this->features_.emplace_back(irs::type<irs::granularity_prefix>::id());
   }
 };
 
-class granular_range_filter_test_case : public tests::FilterTestCaseBase {
+class granular_range_filter_test_case : public tests::filter_test_case_base {
  protected:
   static void by_range_json_field_factory(
-    tests::document& doc, const std::string& name,
+    tests::document& doc,
+    const std::string& name,
     const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::string_field>(name, data.str));
@@ -66,55 +67,46 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
       field.name(name);
-      field.value(
-        irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
+      field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
     } else if (data.is_bool() && data.b) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
       field.name(name);
-      field.value(
-        irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
+      field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
     } else if (data.is_bool() && !data.b) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
       field.name(name);
-      field.value(
-        irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
+      field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
     } else if (data.is_number()) {
       // 'value' can be interpreted as a double
+      const auto dValue = data.as_number<double_t>();
       {
         doc.insert(std::make_shared<granular_double_field>());
-        const auto dValue = data.as_number<double_t>();
         auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
         field.name(name);
         field.value(dValue);
       }
 
       // 'value' can be interpreted as a float
-      {
-        doc.insert(std::make_shared<granular_float_field>());
-        auto fValue = data.as_number<float_t>();
-        auto& field = (doc.indexed.end() - 1).as<tests::float_field>();
-        field.name(name);
-        field.value(fValue);
-      }
+      doc.insert(std::make_shared<granular_float_field>());
+      auto& field = (doc.indexed.end() - 1).as<tests::float_field>();
+      field.name(name);
+      field.value(data.as_number<float_t>());
 
-      // 'value' can be interpreted as int64
+      const uint64_t lValue = uint64_t(std::ceil(dValue));
       {
         doc.insert(std::make_shared<granular_long_field>());
-        const auto liValue = data.as_number<int64_t>();
         auto& field = (doc.indexed.end() - 1).as<tests::long_field>();
         field.name(name);
-        field.value(liValue);
+        field.value(lValue);
       }
 
-      // 'value' can be interpreted as int32
       {
         doc.insert(std::make_shared<granular_int_field>());
-        auto lValue = data.as_number<int32_t>();
         auto& field = (doc.indexed.end() - 1).as<tests::int_field>();
         field.name(name);
-        field.value(lValue);
+        field.value(int32_t(lValue));
       }
     }
   }
@@ -122,8 +114,9 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
   void by_range_granularity_boost() {
     // add segment
     {
-      tests::json_doc_generator gen(resource("granular_sequential.json"),
-                                    &by_range_json_field_factory);
+      tests::json_doc_generator gen(
+        resource("granular_sequential.json"),
+        &by_range_json_field_factory);
 
       add_segment(gen, irs::OM_CREATE);
     }
@@ -137,30 +130,22 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
     {
       irs::by_granular_range q;
       *q.mutable_field() = "name";
-      irs::set_granular_term(
-        q.mutable_options()->range.min,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
-      irs::set_granular_term(
-        q.mutable_options()->range.max,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("M")));
+      irs::set_granular_term(q.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
+      irs::set_granular_term(q.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("M")));
       q.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = q.prepare(irs::sub_reader::empty());
-      ASSERT_EQ(irs::kNoBoost, prepared->boost());
+      ASSERT_EQ(irs::no_boost(), prepared->boost());
     }
 
     // with boost
     {
-      irs::score_t boost = 1.5f;
+      irs::boost_t boost = 1.5f;
       irs::by_granular_range q;
       *q.mutable_field() = "name";
-      irs::set_granular_term(
-        q.mutable_options()->range.min,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
-      irs::set_granular_term(
-        q.mutable_options()->range.max,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("M")));
+      irs::set_granular_term(q.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
+      irs::set_granular_term(q.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("M")));
       q.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       q.boost(boost);
@@ -173,16 +158,16 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
   void by_range_granularity_level() {
     // add segment
     {
-      tests::json_doc_generator gen(resource("granular_sequential.json"),
-                                    &by_range_json_field_factory);
+      tests::json_doc_generator gen(
+        resource("granular_sequential.json"),
+        &by_range_json_field_factory);
 
       add_segment(gen, irs::OM_CREATE);
     }
 
     auto rdr = open_reader();
 
-    // range under same granularity value for topmost element, (i.e. last value
-    // from numeric_token_stream)
+    // range under same granularity value for topmost element, (i.e. last value from numeric_token_stream)
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset(INT32_C(0));
@@ -202,14 +187,14 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{1, 2, 3};
+      std::vector<irs::doc_id_t> expected { 1, 2, 3 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -217,8 +202,7 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(expected, actual);
     }
 
-    // range under different granularity value for topmost element, (i.e. last
-    // value from numeric_token_stream)
+    // range under different granularity value for topmost element, (i.e. last value from numeric_token_stream)
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset(INT32_C(-1000));
@@ -238,14 +222,14 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{1, 2, 3, 11, 12};
+      std::vector<irs::doc_id_t> expected { 1, 2, 3, 11, 12 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -270,14 +254,14 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{1, 2, 3, 4, 5, 6, 7, 10, 11, 12};
+      std::vector<irs::doc_id_t> expected { 1, 2, 3, 4, 5, 6, 7, 10, 11, 12 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -293,22 +277,20 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_granular_range query;
       *query.mutable_field() = "value";
       irs::set_granular_term(query.mutable_options()->range.min, min_stream);
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::numeric_utils::numeric_traits<double_t>::inf());
+      irs::set_granular_term(query.mutable_options()->range.max, irs::numeric_utils::numeric_traits<double_t>::inf());
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{3, 4, 5, 6, 7, 8};
+      std::vector<irs::doc_id_t> expected { 3, 4, 5, 6, 7, 8 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -328,14 +310,14 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{2, 3, 4, 5, 6, 7, 8};
+      std::vector<irs::doc_id_t> expected { 2, 3, 4, 5, 6, 7, 8 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -355,14 +337,14 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{8};
+      std::vector<irs::doc_id_t> expected { 8 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -377,23 +359,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "value";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::numeric_utils::numeric_traits<double_t>::ninf());
+      irs::set_granular_term(query.mutable_options()->range.min, irs::numeric_utils::numeric_traits<double_t>::ninf());
       irs::set_granular_term(query.mutable_options()->range.max, max_stream);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{1, 2, 3, 4, 9, 10, 11, 12};
+      std::vector<irs::doc_id_t> expected { 1, 2, 3, 4, 9, 10, 11, 12 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -413,14 +393,14 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{1, 2, 3, 4, 5, 9, 10, 11, 12};
+      std::vector<irs::doc_id_t> expected { 1, 2, 3, 4, 5, 9, 10, 11, 12 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -435,15 +415,14 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{1, 2, 3, 4,  5,  6,
-                                          7, 8, 9, 10, 11, 12};
+      std::vector<irs::doc_id_t> expected { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -455,8 +434,9 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
   void by_range_sequential_numeric() {
     // add segment
     {
-      tests::json_doc_generator gen(resource("simple_sequential.json"),
-                                    &by_range_json_field_factory);
+      tests::json_doc_generator gen(
+        resource("simple_sequential.json"),
+        &by_range_json_field_factory);
 
       add_segment(gen, irs::OM_CREATE);
     }
@@ -477,23 +457,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min,
-                             min_term->value);
-      irs::set_granular_term(query.mutable_options()->range.max,
-                             max_term->value);
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{8};
+      std::vector<irs::doc_id_t> expected { 8 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -515,23 +493,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min,
-                             min_term->value);
-      irs::set_granular_term(query.mutable_options()->range.max,
-                             max_term->value);
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{2, 3, 4, 5, 6, 7, 8};
+      std::vector<irs::doc_id_t> expected { 2, 3, 4, 5, 6, 7, 8 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -539,8 +515,7 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(expected, actual);
     }
 
-    // long - value = [31 .. 32] with same-level granularity (last value in
-    // segment)
+    // long - value = [31 .. 32] with same-level granularity (last value in segment)
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset(INT64_C(31));
@@ -557,14 +532,14 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{32};
+      std::vector<irs::doc_id_t> expected{ 32 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -581,24 +556,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min,
-                             min_term->value);
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        (irs::numeric_utils::numeric_traits<int64_t>::max)());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, (irs::numeric_utils::numeric_traits<int64_t>::max)());
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{30, 31, 32};
+      std::vector<irs::doc_id_t> expected { 30, 31, 32 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -615,24 +587,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min,
-                             min_term->value);
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        (irs::numeric_utils::numeric_traits<int64_t>::max)());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, (irs::numeric_utils::numeric_traits<int64_t>::max)());
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{32};
+      std::vector<irs::doc_id_t> expected { 32 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -649,24 +618,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        (irs::numeric_utils::numeric_traits<int64_t>::min)());
-      irs::set_granular_term(query.mutable_options()->range.max,
-                             max_term->value);
+      irs::set_granular_term(query.mutable_options()->range.min, (irs::numeric_utils::numeric_traits<int64_t>::min)());
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{1, 2, 3, 4, 5, 6};
+      std::vector<irs::doc_id_t> expected { 1, 2, 3, 4, 5, 6 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -688,23 +654,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min,
-                             min_term->value);
-      irs::set_granular_term(query.mutable_options()->range.max,
-                             max_term->value);
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{8};
+      std::vector<irs::doc_id_t> expected { 8 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -726,23 +690,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min,
-                             min_term->value);
-      irs::set_granular_term(query.mutable_options()->range.max,
-                             max_term->value);
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{2, 3, 4, 5, 6, 7, 8};
+      std::vector<irs::doc_id_t> expected { 2, 3, 4, 5, 6, 7, 8 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -750,8 +712,7 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(expected, actual);
     }
 
-    // int - value = [31 .. 32] with same-level granularity (last value in
-    // segment)
+    // int - value = [31 .. 32] with same-level granularity (last value in segment)
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset(INT32_C(31));
@@ -768,14 +729,14 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{32};
+      std::vector<irs::doc_id_t> expected{ 32 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -792,25 +753,22 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min,
-                             min_term->value);
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        (irs::numeric_utils::numeric_traits<int32_t>::max)());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, (irs::numeric_utils::numeric_traits<int32_t>::max)());
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{30, 31, 32};
+      std::vector<irs::doc_id_t> expected { 30, 31, 32 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -827,24 +785,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min,
-                             min_term->value);
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        (irs::numeric_utils::numeric_traits<int32_t>::max)());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, (irs::numeric_utils::numeric_traits<int32_t>::max)());
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{32};
+      std::vector<irs::doc_id_t> expected { 32 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -861,24 +816,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        (irs::numeric_utils::numeric_traits<int32_t>::min)());
-      irs::set_granular_term(query.mutable_options()->range.max,
-                             max_term->value);
+      irs::set_granular_term(query.mutable_options()->range.min, (irs::numeric_utils::numeric_traits<int32_t>::min)());
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{1, 2, 3, 4, 5, 6};
+      std::vector<irs::doc_id_t> expected { 1, 2, 3, 4, 5, 6 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -900,23 +852,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "value";
-      irs::set_granular_term(query.mutable_options()->range.min,
-                             min_term->value);
-      irs::set_granular_term(query.mutable_options()->range.max,
-                             max_term->value);
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{3, 8};
+      std::vector<irs::doc_id_t> expected { 3, 8 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -938,23 +888,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "value";
-      irs::set_granular_term(query.mutable_options()->range.min,
-                             min_term->value);
-      irs::set_granular_term(query.mutable_options()->range.max,
-                             max_term->value);
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{1, 2, 5, 7, 9, 10, 12};
+      std::vector<irs::doc_id_t> expected { 1, 2, 5, 7, 9, 10, 12 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -962,8 +910,7 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(expected, actual);
     }
 
-    // float - value = [31 .. 32] with same-level granularity (last value in
-    // segment)
+    // float - value = [31 .. 32] with same-level granularity (last value in segment)
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset(float_t(31));
@@ -980,14 +927,14 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{32};
+      std::vector<irs::doc_id_t> expected{ 32 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -1004,24 +951,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "value";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::numeric_utils::numeric_traits<float_t>::ninf());
-      irs::set_granular_term(query.mutable_options()->range.max,
-                             max_term->value);
+      irs::set_granular_term(query.mutable_options()->range.min, irs::numeric_utils::numeric_traits<float_t>::ninf());
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{4, 11, 13, 14, 15, 16, 17};
+      std::vector<irs::doc_id_t> expected{ 4, 11, 13, 14, 15, 16, 17 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -1038,24 +982,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "value";
-      irs::set_granular_term(query.mutable_options()->range.min,
-                             min_term->value);
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::numeric_utils::numeric_traits<float_t>::inf());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, irs::numeric_utils::numeric_traits<float_t>::inf());
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{1, 2, 3, 5, 6, 7, 8, 9, 10, 12};
+      std::vector<irs::doc_id_t> expected{ 1, 2, 3, 5, 6, 7, 8, 9, 10, 12 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -1072,24 +1013,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min,
-                             min_term->value);
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::numeric_utils::numeric_traits<float_t>::inf());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, irs::numeric_utils::numeric_traits<float_t>::inf());
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{32};
+      std::vector<irs::doc_id_t> expected{ 32 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -1110,23 +1048,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "value";
-      irs::set_granular_term(query.mutable_options()->range.min,
-                             min_term->value);
-      irs::set_granular_term(query.mutable_options()->range.max,
-                             max_term->value);
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{3, 8};
+      std::vector<irs::doc_id_t> expected{ 3, 8 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -1147,23 +1083,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "value";
-      irs::set_granular_term(query.mutable_options()->range.min,
-                             min_term->value);
-      irs::set_granular_term(query.mutable_options()->range.max,
-                             max_term->value);
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{4, 11, 13, 14, 15, 16, 17};
+      std::vector<irs::doc_id_t> expected{ 4, 11, 13, 14, 15, 16, 17 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -1171,8 +1105,7 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(expected, actual);
     }
 
-    // double - value = [31 .. 32] with same-level granularity (last value in
-    // segment)
+    // double - value = [31 .. 32] with same-level granularity (last value in segment)
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset(double_t(31));
@@ -1189,14 +1122,14 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{32};
+      std::vector<irs::doc_id_t> expected{ 32 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -1213,24 +1146,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "value";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::numeric_utils::numeric_traits<double_t>::ninf());
-      irs::set_granular_term(query.mutable_options()->range.max,
-                             max_term->value);
+      irs::set_granular_term(query.mutable_options()->range.min, irs::numeric_utils::numeric_traits<double_t>::ninf());
+      irs::set_granular_term(query.mutable_options()->range.max, max_term->value);
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{14, 15, 17};
+      std::vector<irs::doc_id_t> expected{ 14, 15, 17 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -1238,7 +1168,7 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(expected, actual);
     }
 
-    // double - value > 90.543;
+    // double - value > 90.543; 
     {
       irs::numeric_token_stream min_stream;
       min_stream.reset((double_t)90.543);
@@ -1247,24 +1177,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "value";
-      irs::set_granular_term(query.mutable_options()->range.min,
-                             min_term->value);
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::numeric_utils::numeric_traits<double_t>::inf());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, irs::numeric_utils::numeric_traits<double_t>::inf());
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{1, 2, 3, 5, 6, 7, 8, 9, 10, 12, 13};
+      std::vector<irs::doc_id_t> expected{ 1, 2, 3, 5, 6, 7, 8, 9, 10, 12, 13 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -1281,24 +1208,21 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_granular_range query;
       *query.mutable_field() = "seq";
-      irs::set_granular_term(query.mutable_options()->range.min,
-                             min_term->value);
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::numeric_utils::numeric_traits<double_t>::inf());
+      irs::set_granular_term(query.mutable_options()->range.min, min_term->value);
+      irs::set_granular_term(query.mutable_options()->range.max, irs::numeric_utils::numeric_traits<double_t>::inf());
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<irs::doc_id_t> expected{32};
+      std::vector<irs::doc_id_t> expected{ 32 };
       std::vector<irs::doc_id_t> actual;
 
-      for (const auto& sub : rdr) {
+      for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
-        for (; docs->next();) {
+        for (;docs->next();) {
           actual.push_back(docs->value());
           ASSERT_EQ(docs->value(), doc->value);
         }
@@ -1310,8 +1234,9 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
   void by_range_sequential_cost() {
     // add segment
     {
-      tests::json_doc_generator gen(resource("simple_sequential.json"),
-                                    &by_range_json_field_factory);
+      tests::json_doc_generator gen(
+        resource("simple_sequential.json"),
+        &by_range_json_field_factory);
 
       add_segment(gen, irs::OM_CREATE);
     }
@@ -1319,18 +1244,20 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
     auto rdr = open_reader();
 
     // empty query
-    CheckQuery(irs::by_granular_range(), Docs{}, rdr);
+    check_query(irs::by_granular_range(), docs_t{}, rdr);
 
     // name = (..;..)
     {
-      Docs docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
-                17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32};
-      Costs costs{docs.size()};
+      docs_t docs{
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+        17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+      };
+      costs_t costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
 
-      CheckQuery(query, docs, costs, rdr);
+      check_query(query, docs, costs, rdr);
     }
 
     // invalid_name = (..;..)
@@ -1338,153 +1265,134 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_granular_range query;
       *query.mutable_field() = "invalid_name";
 
-      CheckQuery(query, Docs{}, rdr);
+      check_query(query, docs_t{}, rdr);
     }
 
     // name = [A;..)
     // result: A .. Z, ~
     {
-      Docs docs{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14,
-                15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27};
-      Costs costs{docs.size()};
+      docs_t docs{
+        2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+        18, 19, 20, 21, 22, 23, 24, 25, 26, 27
+      }; 
+      costs_t costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
+      irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
 
-      CheckQuery(query, docs, costs, rdr);
+      check_query(query, docs, costs, rdr);
     }
 
     // name = (A;..)
     // result: A .. Z, ~
     {
-      Docs docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14,
-                15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27};
-      Costs costs{docs.size()};
+      docs_t docs{
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+        17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27
+      };
+      costs_t costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
+      irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
 
-      CheckQuery(query, docs, costs, rdr);
+      check_query(query, docs, costs, rdr);
     }
 
     // name = (..;C)
     // result: A, B, !, @, #, $, %
     {
-      Docs docs{1, 2, 28, 29, 30, 31, 32};
-      Costs costs{docs.size()};
+
+      docs_t docs{ 1, 2, 28, 29, 30, 31, 32 };
+      costs_t costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("C")));
+      irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("C")));
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      CheckQuery(query, docs, costs, rdr);
+      check_query(query, docs, costs, rdr);
     }
 
     // name = (..;C]
     // result: A, B, C, !, @, #, $, %
     {
-      Docs docs{1, 2, 3, 28, 29, 30, 31, 32};
-      Costs costs{docs.size()};
+      docs_t docs{ 1, 2, 3, 28, 29, 30, 31, 32 };
+      costs_t costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("C")));
+      irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("C")));
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      CheckQuery(query, docs, costs, rdr);
+      check_query(query, docs, costs, rdr);
     }
 
     // name = [A;C]
     // result: A, B, C
     {
-      Docs docs{1, 2, 3};
-      Costs costs{docs.size()};
+      docs_t docs{ 1, 2, 3 };
+      costs_t costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("C")));
+      irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
+      irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("C")));
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      CheckQuery(query, docs, costs, rdr);
+      check_query(query, docs, costs, rdr);
     }
 
     // name = [A;B]
     // result: A, B
     {
-      Docs docs{1, 2};
-      Costs costs{docs.size()};
+      docs_t docs{ 1, 2 };
+      costs_t costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("B")));
+      irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
+      irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("B")));
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      CheckQuery(query, docs, costs, rdr);
+      check_query(query, docs, costs, rdr);
     }
 
     // name = [A;B)
     // result: A
     {
-      Docs docs{1};
-      Costs costs{docs.size()};
+      docs_t docs{ 1 };
+      costs_t costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("B")));
+      irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
+      irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("B")));
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      CheckQuery(query, docs, costs, rdr);
+      check_query(query, docs, costs, rdr);
     }
 
     // name = (A;B]
     // result: A
     {
-      Docs docs{2};
-      Costs costs{docs.size()};
+      docs_t docs{ 2 };
+      costs_t costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("B")));
+      irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
+      irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("B")));
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      CheckQuery(query, docs, costs, rdr);
+      check_query(query, docs, costs, rdr);
     }
 
     // name = (A;B)
@@ -1492,76 +1400,60 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
     {
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("B")));
+      irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
+      irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("B")));
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      CheckQuery(query, Docs{}, Costs{0}, rdr);
+      check_query(query, docs_t{}, costs_t{0}, rdr);
     }
 
     // name = [A;C)
     // result: A, B
     {
-      Docs docs{1, 2};
-      Costs costs{docs.size()};
+      docs_t docs{ 1, 2 };
+      costs_t costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("C")));
+      irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
+      irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("C")));
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      CheckQuery(query, docs, costs, rdr);
+      check_query(query, docs, costs, rdr);
     }
 
     // name = (A;C]
     // result: B, C
     {
-      Docs docs{2, 3};
-      Costs costs{docs.size()};
+      docs_t docs{ 2, 3 };
+      costs_t costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("C")));
+      irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
+      irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("C")));
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      CheckQuery(query, docs, costs, rdr);
+      check_query(query, docs, costs, rdr);
     }
 
     // name = (A;C)
     // result: B
     {
-      Docs docs{2};
-      Costs costs{docs.size()};
+      docs_t docs{ 2 };
+      costs_t costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("C")));
+      irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
+      irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("C")));
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      CheckQuery(query, docs, costs, rdr);
+      check_query(query, docs, costs, rdr);
     }
 
     // name = [C;A]
@@ -1569,32 +1461,26 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
     {
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("C")));
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
+      irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("C")));
+      irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("A")));
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      CheckQuery(query, Docs{}, Costs{0}, rdr);
+      check_query(query, docs_t{}, costs_t{0}, rdr);
     }
 
     // name = [~;..]
     // result: ~
     {
-      Docs docs{27};
-      Costs costs{docs.size()};
+      docs_t docs{ 27 };
+      costs_t costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("~")));
+      irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("~")));
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
 
-      CheckQuery(query, docs, costs, rdr);
+      check_query(query, docs, costs, rdr);
     }
 
     // name = (~;..]
@@ -1602,62 +1488,58 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
     {
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("~")));
+      irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("~")));
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
 
-      CheckQuery(query, Docs{}, Costs{0}, rdr);
+      check_query(query, docs_t{}, costs_t{0}, rdr);
     }
 
     // name = (a;..]
     // result: ~
     {
-      Docs docs{27};
-      Costs costs{1};
+      docs_t docs{ 27 };
+      costs_t costs{ 1 };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("a")));
+      irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("a")));
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
 
-      CheckQuery(query, docs, costs, rdr);
+      check_query(query, docs, costs, rdr);
     }
 
     // name = [..;a]
     // result: !, @, #, $, %, A..Z
     {
-      Docs docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
-                17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 28, 29, 30, 31, 32};
-      Costs costs{docs.size()};
+      docs_t docs{
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+        17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 28, 29, 30, 31, 32
+      };
+      costs_t costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("a")));
+      irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("a")));
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      CheckQuery(query, docs, costs, rdr);
+      check_query(query, docs, costs, rdr);
     }
 
     // name = [..;a)
     // result: !, @, #, $, %, A..Z
     {
-      Docs docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
-                17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 28, 29, 30, 31, 32};
-      Costs costs{docs.size()};
+      docs_t docs{
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+        17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 28, 29, 30, 31, 32
+      };
+      costs_t costs{ docs.size() };
 
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.max,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("a")));
+      irs::set_granular_term(query.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("a")));
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      CheckQuery(query, docs, costs, rdr);
+      check_query(query, docs, costs, rdr);
     }
 
     // name = [DEL;..]
@@ -1665,15 +1547,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
     {
       irs::by_granular_range query;
       *query.mutable_field() = "name";
-      irs::set_granular_term(
-        query.mutable_options()->range.min,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("\x7f")));
+      irs::set_granular_term(query.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("\x7f")));
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
 
-      CheckQuery(query, Docs{}, Costs{0}, rdr);
+      check_query(query, docs_t{}, costs_t{0}, rdr);
     }
   }
-};  // granular_range_filter_test_case
+}; // granular_range_filter_test_case
 
 TEST(by_granular_range_test, options) {
   irs::by_granular_range_options opts;
@@ -1688,29 +1568,21 @@ TEST(by_granular_range_test, ctor) {
   irs::by_granular_range q;
   ASSERT_EQ(irs::type<irs::by_granular_range>::id(), q.type());
   ASSERT_EQ(irs::by_granular_range_options{}, q.options());
-  ASSERT_EQ(irs::kNoBoost, q.boost());
+  ASSERT_EQ(irs::no_boost(), q.boost());
 }
 
 TEST(by_granular_range_test, equal) {
   irs::by_granular_range q0;
   *q0.mutable_field() = "field";
-  irs::set_granular_term(
-    q0.mutable_options()->range.min,
-    irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
-  irs::set_granular_term(
-    q0.mutable_options()->range.max,
-    irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
+  irs::set_granular_term(q0.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
+  irs::set_granular_term(q0.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
   q0.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
   q0.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
   irs::by_granular_range q1;
   *q1.mutable_field() = "field";
-  irs::set_granular_term(
-    q1.mutable_options()->range.min,
-    irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
-  irs::set_granular_term(
-    q1.mutable_options()->range.max,
-    irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
+  irs::set_granular_term(q1.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
+  irs::set_granular_term(q1.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
   q1.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
   q1.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
@@ -1719,12 +1591,8 @@ TEST(by_granular_range_test, equal) {
 
   irs::by_granular_range q2;
   *q2.mutable_field() = "field1";
-  irs::set_granular_term(
-    q2.mutable_options()->range.min,
-    irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
-  irs::set_granular_term(
-    q2.mutable_options()->range.max,
-    irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
+  irs::set_granular_term(q2.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
+  irs::set_granular_term(q2.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
   q2.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
   q2.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
@@ -1732,12 +1600,8 @@ TEST(by_granular_range_test, equal) {
 
   irs::by_granular_range q3;
   *q3.mutable_field() = "field";
-  irs::set_granular_term(
-    q3.mutable_options()->range.min,
-    irs::ref_cast<irs::byte_type>(irs::string_ref("min_term1")));
-  irs::set_granular_term(
-    q3.mutable_options()->range.max,
-    irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
+  irs::set_granular_term(q3.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("min_term1")));
+  irs::set_granular_term(q3.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
   q3.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
   q3.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
@@ -1745,12 +1609,8 @@ TEST(by_granular_range_test, equal) {
 
   irs::by_granular_range q4;
   *q4.mutable_field() = "field";
-  irs::set_granular_term(
-    q4.mutable_options()->range.min,
-    irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
-  irs::set_granular_term(
-    q4.mutable_options()->range.max,
-    irs::ref_cast<irs::byte_type>(irs::string_ref("max_term1")));
+  irs::set_granular_term(q4.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
+  irs::set_granular_term(q4.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("max_term1")));
   q4.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
   q4.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
@@ -1758,12 +1618,8 @@ TEST(by_granular_range_test, equal) {
 
   irs::by_granular_range q5;
   *q5.mutable_field() = "field";
-  irs::set_granular_term(
-    q5.mutable_options()->range.min,
-    irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
-  irs::set_granular_term(
-    q5.mutable_options()->range.max,
-    irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
+  irs::set_granular_term(q5.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
+  irs::set_granular_term(q5.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
   q5.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
   q5.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
@@ -1771,12 +1627,8 @@ TEST(by_granular_range_test, equal) {
 
   irs::by_granular_range q6;
   *q6.mutable_field() = "field";
-  irs::set_granular_term(
-    q6.mutable_options()->range.min,
-    irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
-  irs::set_granular_term(
-    q6.mutable_options()->range.max,
-    irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
+  irs::set_granular_term(q6.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
+  irs::set_granular_term(q6.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
   q6.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
   q6.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
@@ -1784,12 +1636,8 @@ TEST(by_granular_range_test, equal) {
 
   irs::by_granular_range q7;
   *q7.mutable_field() = "field";
-  irs::set_granular_term(
-    q7.mutable_options()->range.min,
-    irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
-  irs::set_granular_term(
-    q7.mutable_options()->range.max,
-    irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
+  irs::set_granular_term(q7.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
+  irs::set_granular_term(q7.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
   q7.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
   q7.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
   q7.mutable_options()->scored_terms_limit = 100;
@@ -1797,6 +1645,7 @@ TEST(by_granular_range_test, equal) {
   ASSERT_NE(q0, q7);
 
   ASSERT_NE(q0, q6);
+
 }
 
 TEST(by_granular_range_test, boost) {
@@ -1804,36 +1653,28 @@ TEST(by_granular_range_test, boost) {
   {
     irs::by_granular_range q;
     *q.mutable_field() = "field";
-    irs::set_granular_term(
-      q.mutable_options()->range.min,
-      irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
-    irs::set_granular_term(
-      q.mutable_options()->range.max,
-      irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
+    irs::set_granular_term(q.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
+    irs::set_granular_term(q.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
     q.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
     q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::kNoBoost, prepared->boost());
+    ASSERT_EQ(irs::no_boost(), prepared->boost());
   }
 
   // with boost, empty query
   {
-    irs::score_t boost = 1.5f;
+    irs::boost_t boost = 1.5f;
     irs::by_granular_range q;
     *q.mutable_field() = "field";
-    irs::set_granular_term(
-      q.mutable_options()->range.min,
-      irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
-    irs::set_granular_term(
-      q.mutable_options()->range.max,
-      irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
+    irs::set_granular_term(q.mutable_options()->range.min, irs::ref_cast<irs::byte_type>(irs::string_ref("min_term")));
+    irs::set_granular_term(q.mutable_options()->range.max, irs::ref_cast<irs::byte_type>(irs::string_ref("max_term")));
     q.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
     q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
     q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::kNoBoost, prepared->boost());
+    ASSERT_EQ(irs::no_boost(), prepared->boost());
   }
 }
 
@@ -1856,8 +1697,9 @@ TEST_P(granular_range_filter_test_case, by_range_numeric) {
 TEST_P(granular_range_filter_test_case, by_range_order) {
   // add segment
   {
-    tests::json_doc_generator gen(resource("simple_sequential.json"),
-                                  &by_range_json_field_factory);
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      &by_range_json_field_factory);
 
     add_segment(gen, irs::OM_CREATE);
   }
@@ -1865,59 +1707,51 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
   auto rdr = open_reader();
 
   // empty query
-  CheckQuery(irs::by_granular_range(), Docs{}, rdr);
+  check_query(irs::by_granular_range(), docs_t{}, rdr);
 
   // name = (..;..) test collector call count for field/term/finish
   {
-    Docs docs{};
-    Costs costs{docs.size()};
+    docs_t docs{ };
+    costs_t costs{ docs.size() };
+    irs::order order;
 
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
     size_t finish_count = 0;
-
-    std::array<irs::sort::ptr, 1> scorers{
-      std::make_unique<tests::sort::custom_sort>()};
-    auto& scorer = static_cast<tests::sort::custom_sort&>(*scorers.front());
+    auto& scorer = order.add<tests::sort::custom_sort>(false);
 
     scorer.collector_collect_field = [&collect_field_count](
-                                       const irs::sub_reader&,
-                                       const irs::term_reader&) -> void {
+        const irs::sub_reader&, const irs::term_reader&)->void{
       ++collect_field_count;
     };
-    scorer.collector_collect_term =
-      [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
-                            const irs::attribute_provider&) -> void {
+    scorer.collector_collect_term = [&collect_term_count](
+        const irs::sub_reader&,
+        const irs::term_reader&,
+        const irs::attribute_provider&)->void{
       ++collect_term_count;
     };
     scorer.collectors_collect_ = [&finish_count](
-                                   irs::byte_type*, const irs::index_reader&,
-                                   const irs::sort::field_collector*,
-                                   const irs::sort::term_collector*) -> void {
+        irs::byte_type*,
+        const irs::index_reader&,
+        const irs::sort::field_collector*,
+        const irs::sort::term_collector*)->void {
       ++finish_count;
     };
-    scorer.prepare_field_collector_ =
-      [&scorer]() -> irs::sort::field_collector::ptr {
-      return irs::memory::make_unique<
-        tests::sort::custom_sort::prepared::field_collector>(scorer);
+    scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
     };
-    scorer.prepare_term_collector_ =
-      [&scorer]() -> irs::sort::term_collector::ptr {
-      return irs::memory::make_unique<
-        tests::sort::custom_sort::prepared::term_collector>(scorer);
+    scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
 
     irs::by_granular_range q;
     *q.mutable_field() = "invalid_field";
-    irs::set_granular_term(
-      q.mutable_options()->range.min,
-      irs::numeric_utils::numeric_traits<double_t>::ninf());
-    irs::set_granular_term(q.mutable_options()->range.max,
-                           irs::numeric_utils::numeric_traits<double_t>::inf());
+    irs::set_granular_term(q.mutable_options()->range.min, irs::numeric_utils::numeric_traits<double_t>::ninf());
+    irs::set_granular_term(q.mutable_options()->range.max, irs::numeric_utils::numeric_traits<double_t>::inf());
     q.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     q.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-    CheckQuery(q, scorers, docs, rdr, false);
+    check_query(q, order, docs, rdr, false);
     ASSERT_EQ(0, collect_field_count);
     ASSERT_EQ(0, collect_term_count);
     ASSERT_EQ(0, finish_count);
@@ -1925,125 +1759,107 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
 
   // value = (..;..) test collector call count for field/term/finish
   {
-    Docs docs{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17};
-    Costs costs{docs.size()};
+    docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
+    costs_t costs{ docs.size() };
+    irs::order order;
 
     size_t collect_field_count = 0;
     size_t collect_term_count = 0;
     size_t finish_count = 0;
-
-    std::array<irs::sort::ptr, 1> order{
-      std::make_unique<tests::sort::custom_sort>()};
-    auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
+    auto& scorer = order.add<tests::sort::custom_sort>(false);
 
     scorer.collector_collect_field = [&collect_field_count](
-                                       const irs::sub_reader&,
-                                       const irs::term_reader&) -> void {
+        const irs::sub_reader&, const irs::term_reader&)->void{
       ++collect_field_count;
     };
-    scorer.collector_collect_term =
-      [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
-                            const irs::attribute_provider&) -> void {
+    scorer.collector_collect_term = [&collect_term_count](
+        const irs::sub_reader&,
+        const irs::term_reader&,
+        const irs::attribute_provider&)->void{
       ++collect_term_count;
     };
     scorer.collectors_collect_ = [&finish_count](
-                                   irs::byte_type*, const irs::index_reader&,
-                                   const irs::sort::field_collector*,
-                                   const irs::sort::term_collector*) -> void {
+        irs::byte_type*,
+        const irs::index_reader&,
+        const irs::sort::field_collector*,
+        const irs::sort::term_collector*)->void {
       ++finish_count;
     };
-    scorer.prepare_field_collector_ =
-      [&scorer]() -> irs::sort::field_collector::ptr {
-      return irs::memory::make_unique<
-        tests::sort::custom_sort::prepared::field_collector>(scorer);
+    scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
     };
-    scorer.prepare_term_collector_ =
-      [&scorer]() -> irs::sort::term_collector::ptr {
-      return irs::memory::make_unique<
-        tests::sort::custom_sort::prepared::term_collector>(scorer);
+    scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
 
     irs::by_granular_range q;
     *q.mutable_field() = "value";
-    irs::set_granular_term(
-      q.mutable_options()->range.min,
-      irs::numeric_utils::numeric_traits<double_t>::ninf());
-    irs::set_granular_term(q.mutable_options()->range.max,
-                           irs::numeric_utils::numeric_traits<double_t>::inf());
+    irs::set_granular_term(q.mutable_options()->range.min, irs::numeric_utils::numeric_traits<double_t>::ninf());
+    irs::set_granular_term(q.mutable_options()->range.max, irs::numeric_utils::numeric_traits<double_t>::inf());
     q.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     q.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-    CheckQuery(q, order, docs, rdr);
-    ASSERT_EQ(11, collect_field_count);  // 11 fields (1 per term since treated
-                                         // as a disjunction) in 1 segment
-    ASSERT_EQ(11, collect_term_count);   // 11 different terms
-    ASSERT_EQ(11, finish_count);         // 11 different terms
+    check_query(q, order, docs, rdr);
+    ASSERT_EQ(11, collect_field_count); // 11 fields (1 per term since treated as a disjunction) in 1 segment
+    ASSERT_EQ(11, collect_term_count); // 11 different terms
+    ASSERT_EQ(11, finish_count); // 11 different terms
   }
 
   // value = (..;..)
   {
-    Docs docs{1, 5, 7, 9, 10, 3, 4, 8, 11, 2, 6, 12, 13, 14, 15, 16, 17};
-    Costs costs{docs.size()};
-    std::array<irs::sort::ptr, 1> order{
-      std::make_unique<tests::sort::frequency_sort>()};
+    docs_t docs{ 1, 5, 7, 9, 10, 3, 4, 8, 11, 2, 6, 12, 13, 14, 15, 16, 17 };
+    costs_t costs{ docs.size() };
+    irs::order order;
+    order.add<tests::sort::frequency_sort>(false);
 
     irs::by_granular_range q;
     *q.mutable_field() = "value";
-    irs::set_granular_term(
-      q.mutable_options()->range.min,
-      irs::numeric_utils::numeric_traits<double_t>::ninf());
-    irs::set_granular_term(q.mutable_options()->range.max,
-                           irs::numeric_utils::numeric_traits<double_t>::inf());
+    irs::set_granular_term(q.mutable_options()->range.min, irs::numeric_utils::numeric_traits<double_t>::ninf());
+    irs::set_granular_term(q.mutable_options()->range.max, irs::numeric_utils::numeric_traits<double_t>::inf());
     q.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     q.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-    CheckQuery(q, order, docs, rdr);
+    check_query(q, order, docs, rdr);
   }
 
   // value = (..;..) + scored_terms_limit
   {
-    Docs docs{2, 4, 6, 11, 12, 13, 14, 15, 16, 17, 1, 5, 7, 9, 10, 3, 8};
-    Costs costs{docs.size()};
-    std::array<irs::sort::ptr, 1> order{
-      std::make_unique<tests::sort::frequency_sort>()};
+    docs_t docs{ 1, 5, 7, 9, 10, 3, 8, 2, 4, 6, 11, 12, 13, 14, 15, 16, 17 };
+    costs_t costs{ docs.size() };
+    irs::order order;
+    order.add<tests::sort::frequency_sort>(false);
 
     irs::by_granular_range q;
     *q.mutable_field() = "value";
-    irs::set_granular_term(
-      q.mutable_options()->range.min,
-      irs::numeric_utils::numeric_traits<double_t>::ninf());
-    irs::set_granular_term(q.mutable_options()->range.max,
-                           irs::numeric_utils::numeric_traits<double_t>::inf());
+    irs::set_granular_term(q.mutable_options()->range.min, irs::numeric_utils::numeric_traits<double_t>::ninf());
+    irs::set_granular_term(q.mutable_options()->range.max, irs::numeric_utils::numeric_traits<double_t>::inf());
     q.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     q.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
     q.mutable_options()->scored_terms_limit = 2;
 
-    CheckQuery(q, order, docs, rdr);
+    check_query(q, order, docs, rdr);
   }
 
   // value = (..;100)
   {
-    Docs docs{4, 11, 12, 13, 14, 15, 16, 17};
-    Costs costs{docs.size()};
+    docs_t docs{ 4, 11, 12, 13, 14, 15, 16, 17 };
+    costs_t costs{ docs.size() };
+    irs::order order;
     irs::numeric_token_stream max_stream;
     max_stream.reset((double_t)100.);
     auto* max_term = irs::get<irs::term_attribute>(max_stream);
 
     ASSERT_TRUE(max_stream.next());
-
-    std::array<irs::sort::ptr, 1> order{
-      std::make_unique<tests::sort::frequency_sort>()};
+    order.add<tests::sort::frequency_sort>(false);
 
     irs::by_granular_range q;
     *q.mutable_field() = "value";
-    irs::set_granular_term(
-      q.mutable_options()->range.min,
-      irs::numeric_utils::numeric_traits<double_t>::ninf());
+    irs::set_granular_term(q.mutable_options()->range.min, irs::numeric_utils::numeric_traits<double_t>::ninf());
     irs::set_granular_term(q.mutable_options()->range.max, max_term->value);
     q.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     q.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-    CheckQuery(q, order, docs, rdr);
+    check_query(q , order, docs, rdr);
   }
 }
 
@@ -2073,8 +1889,9 @@ TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
 
     // add segment
     {
-      tests::json_doc_generator gen(resource("simple_sequential.json"),
-                                    &by_range_json_field_factory);
+      tests::json_doc_generator gen(
+        resource("simple_sequential.json"),
+        &by_range_json_field_factory);
 
       write_segment(*writer, segment, gen);
     }
@@ -2085,25 +1902,24 @@ TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
 
   // value = [...;...)
   const int seed = -6;
-  for (int begin = seed, end = begin + int(rdr->docs_count()); begin != end;
-       ++begin) {
-    Docs docs;
+  for (int begin = seed, end = begin + int(rdr->docs_count()); begin != end; ++begin) {
+    docs_t docs;
     docs.resize(size_t(end - begin));
-    std::iota(docs.begin(), docs.end(),
-              size_t(begin - seed + irs::doc_limits::min()));
-    Costs costs{docs.size()};
+    std::iota(docs.begin(), docs.end(), size_t(begin - seed + irs::doc_limits::min()));
+    costs_t costs{ docs.size() };
+    irs::order order;
     irs::numeric_token_stream min_stream;
     min_stream.reset((double_t)begin);
 
-    std::array<irs::sort::ptr, 1> order{
-      std::make_unique<tests::sort::frequency_sort>()};
+    order.add<tests::sort::frequency_sort>(false);
+    order.add<tests::sort::frequency_sort>(true);
 
     irs::by_granular_range q;
     *q.mutable_field() = "seq";
     irs::set_granular_term(q.mutable_options()->range.min, min_stream);
     q.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
 
-    CheckQuery(q, order, docs, rdr);
+    check_query(q, order, docs, rdr);
   }
 }
 
@@ -2112,28 +1928,31 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
   // add segment
   tests::json_doc_generator gen(
     resource("numeric_sequence.json"),
-    [](tests::document& doc, const std::string& name,
-       const tests::json_doc_generator::json_value& data) {
+    [] (
+      tests::document& doc,
+      const std::string& name,
+      const tests::json_doc_generator::json_value& data
+    ) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::string_field>(name, data.str));
+        doc.insert(std::make_shared<tests::string_field>(
+          name,
+          data.str
+        ));
       } else if (data.is_null()) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(name);
-        field.value(
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
+        field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
       } else if (data.is_bool() && data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(name);
-        field.value(irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_true()));
+        field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       } else if (data.is_bool() && !data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(name);
-        field.value(irs::ref_cast<irs::byte_type>(
-          irs::boolean_token_stream::value_true()));
+        field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       } else if (data.is_number()) {
         // 'value' can be interpreted as a double
         const auto dValue = data.as_number<double_t>();
@@ -2144,7 +1963,8 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
           field.value(dValue);
         }
       }
-    });
+    }
+  );
 
   add_segment(gen, irs::OM_CREATE);
 
@@ -2160,13 +1980,11 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     {
       gen.reset();
       while (auto* doc = gen.next()) {
-        auto* numeric_field =
-          dynamic_cast<granular_double_field*>(doc->indexed.get("a"));
+        auto* numeric_field = dynamic_cast<granular_double_field*>(doc->indexed.get("a"));
         ASSERT_NE(nullptr, numeric_field);
 
         if (numeric_field->value() < 30.) {
-          auto* key_field =
-            dynamic_cast<tests::string_field*>(doc->indexed.get("_key"));
+          auto* key_field = dynamic_cast<tests::string_field*>(doc->indexed.get("_key"));
           ASSERT_NE(nullptr, key_field);
 
           expected.emplace(std::string(key_field->value()));
@@ -2179,9 +1997,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
 
     irs::by_granular_range query;
     *query.mutable_field() = "a";
-    irs::set_granular_term(
-      query.mutable_options()->range.min,
-      irs::numeric_utils::numeric_traits<double_t>::ninf());
+    irs::set_granular_term(query.mutable_options()->range.min, irs::numeric_utils::numeric_traits<double_t>::ninf());
     irs::set_granular_term(query.mutable_options()->range.max, max_stream);
     query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
@@ -2190,7 +2006,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(irs::ColumnHint::kNormal);
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2200,7 +2016,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     auto docs = prepared->execute(segment);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
-    while (docs->next()) {
+    while(docs->next()) {
       const auto doc = docs->value();
       ASSERT_EQ(doc, values->seek(doc));
       actual.emplace(irs::to_string<std::string>(actual_value->value.c_str()));
@@ -2216,13 +2032,11 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     {
       gen.reset();
       while (auto* doc = gen.next()) {
-        auto* numeric_field =
-          dynamic_cast<granular_double_field*>(doc->indexed.get("a"));
+        auto* numeric_field = dynamic_cast<granular_double_field*>(doc->indexed.get("a"));
         ASSERT_NE(nullptr, numeric_field);
 
         if (numeric_field->value() < 30.) {
-          auto* key_field =
-            dynamic_cast<tests::string_field*>(doc->indexed.get("_key"));
+          auto* key_field = dynamic_cast<tests::string_field*>(doc->indexed.get("_key"));
           ASSERT_NE(nullptr, key_field);
 
           expected.emplace(std::string(key_field->value()));
@@ -2242,7 +2056,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(irs::ColumnHint::kNormal);
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2252,7 +2066,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     auto docs = prepared->execute(segment);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
-    while (docs->next()) {
+    while(docs->next()) {
       const auto doc = docs->value();
       ASSERT_EQ(doc, values->seek(doc));
       actual.emplace(irs::to_string<std::string>(actual_value->value.c_str()));
@@ -2268,13 +2082,11 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     {
       gen.reset();
       while (auto* doc = gen.next()) {
-        auto* numeric_field =
-          dynamic_cast<granular_double_field*>(doc->indexed.get("a"));
+        auto* numeric_field = dynamic_cast<granular_double_field*>(doc->indexed.get("a"));
         ASSERT_NE(nullptr, numeric_field);
 
         if (numeric_field->value() > 30.) {
-          auto* key_field =
-            dynamic_cast<tests::string_field*>(doc->indexed.get("_key"));
+          auto* key_field = dynamic_cast<tests::string_field*>(doc->indexed.get("_key"));
           ASSERT_NE(nullptr, key_field);
 
           expected.emplace(std::string(key_field->value()));
@@ -2288,8 +2100,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     irs::by_granular_range query;
     *query.mutable_field() = "a";
     irs::set_granular_term(query.mutable_options()->range.min, min_stream);
-    irs::set_granular_term(query.mutable_options()->range.max,
-                           irs::numeric_utils::numeric_traits<double_t>::inf());
+    irs::set_granular_term(query.mutable_options()->range.max, irs::numeric_utils::numeric_traits<double_t>::inf());
     query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
@@ -2297,7 +2108,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(irs::ColumnHint::kNormal);
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2307,7 +2118,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     auto docs = prepared->execute(segment);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
-    while (docs->next()) {
+    while(docs->next()) {
       const auto doc = docs->value();
       ASSERT_EQ(doc, values->seek(doc));
       actual.emplace(irs::to_string<std::string>(actual_value->value.c_str()));
@@ -2323,13 +2134,11 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     {
       gen.reset();
       while (auto* doc = gen.next()) {
-        auto* numeric_field =
-          dynamic_cast<granular_double_field*>(doc->indexed.get("a"));
+        auto* numeric_field = dynamic_cast<granular_double_field*>(doc->indexed.get("a"));
         ASSERT_NE(nullptr, numeric_field);
 
         if (numeric_field->value() > 30.) {
-          auto* key_field =
-            dynamic_cast<tests::string_field*>(doc->indexed.get("_key"));
+          auto* key_field = dynamic_cast<tests::string_field*>(doc->indexed.get("_key"));
           ASSERT_NE(nullptr, key_field);
 
           expected.emplace(std::string(key_field->value()));
@@ -2349,7 +2158,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->iterator(irs::ColumnHint::kNormal);
+    auto values = column->iterator(false);
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
@@ -2359,7 +2168,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     auto docs = prepared->execute(segment);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
-    while (docs->next()) {
+    while(docs->next()) {
       const auto doc = docs->value();
       ASSERT_EQ(doc, values->seek(doc));
       actual.emplace(irs::to_string<std::string>(actual_value->value.c_str()));
@@ -2371,8 +2180,9 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
 TEST_P(granular_range_filter_test_case, visit) {
   // add segment
   {
-    tests::json_doc_generator gen(resource("simple_sequential.json"),
-                                  &tests::generic_json_field_factory);
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      &tests::generic_json_field_factory);
 
     add_segment(gen, irs::OM_CREATE);
   }
@@ -2381,10 +2191,8 @@ TEST_P(granular_range_filter_test_case, visit) {
   std::string fld = "prefix";
   irs::string_ref field = irs::string_ref(fld);
   irs::by_granular_range::options_type::range_type rng;
-  rng.min = {static_cast<irs::bstring>(
-    irs::ref_cast<irs::byte_type>(irs::string_ref("abc")))};
-  rng.max = {static_cast<irs::bstring>(
-    irs::ref_cast<irs::byte_type>(irs::string_ref("abcd")))};
+  rng.min = {static_cast<irs::bstring>(irs::ref_cast<irs::byte_type>(irs::string_ref("abc")))};
+  rng.max = {static_cast<irs::bstring>(irs::ref_cast<irs::byte_type>(irs::string_ref("abcd")))};
   rng.min_type = irs::BoundType::INCLUSIVE;
   rng.max_type = irs::BoundType::INCLUSIVE;
   // read segment
@@ -2398,20 +2206,26 @@ TEST_P(granular_range_filter_test_case, visit) {
   irs::by_granular_range::visit(segment, *reader, rng, visitor);
   ASSERT_EQ(2, visitor.prepare_calls_counter());
   ASSERT_EQ(2, visitor.visit_calls_counter());
-  ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{
-              {"abc", irs::kNoBoost}, {"abcd", irs::kNoBoost}}),
-            visitor.term_refs<char>());
+  ASSERT_EQ(
+    (std::vector<std::pair<irs::string_ref, irs::boost_t>>{
+      {"abc", irs::no_boost()},
+      {"abcd", irs::no_boost()}
+    }),
+    visitor.term_refs<char>());
 
   visitor.reset();
 }
 
 INSTANTIATE_TEST_SUITE_P(
-  granular_range_filter_test, granular_range_filter_test_case,
+  granular_range_filter_test,
+  granular_range_filter_test_case,
   ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
+    ::testing::Values(
+      &tests::directory<&tests::memory_directory>,
+      &tests::directory<&tests::fs_directory>,
+      &tests::directory<&tests::mmap_directory>),
     ::testing::Values("1_0")),
-  granular_range_filter_test_case::to_string);
+  granular_range_filter_test_case::to_string
+);
 
-}  // namespace
+}

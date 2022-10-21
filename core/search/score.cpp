@@ -21,94 +21,114 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "score.hpp"
-
 #include "shared.hpp"
+
+namespace {
+
+using namespace irs;
+
+const score EMPTY_SCORE;
+
+const byte_type* default_score(score_ctx* ctx) noexcept {
+  return reinterpret_cast<byte_type*>(ctx);
+}
+
+}
 
 namespace iresearch {
 
-/*static*/ const score score::kNoScore;
+// ----------------------------------------------------------------------------
+// --SECTION--                                                            score
+// ----------------------------------------------------------------------------
 
-Scorers PrepareScorers(std::span<const OrderBucket> buckets,
-                       const sub_reader& segment, const term_reader& field,
-                       const byte_type* stats_buf,
-                       const attribute_provider& doc, score_t boost) {
-  Scorers scorers;
-  scorers.reserve(buckets.size());
-
-  for (auto& entry : buckets) {
-    const auto& bucket = *entry.bucket;
-
-    if (IRS_UNLIKELY(!entry.bucket)) {
-      continue;
-    }
-
-    auto scorer = bucket.prepare_scorer(
-      segment, field, stats_buf + entry.stats_offset, doc, boost);
-
-    if (IRS_LIKELY(scorer)) {
-      scorers.emplace_back(std::move(scorer));
-    } else {
-      scorers.emplace_back(ScoreFunction::Default(1));
-    }
-  }
-
-  return scorers;
+/*static*/ const irs::score& score::no_score() noexcept {
+  return EMPTY_SCORE;
 }
 
-ScoreFunction CompileScorers(Scorers&& scorers) {
+score::score() noexcept
+  : func_(reinterpret_cast<score_ctx*>(data()), &::default_score) {
+}
+
+score::score(const order::prepared& ord)
+  : buf_(ord.score_size(), 0),
+    func_(reinterpret_cast<score_ctx*>(data()), &::default_score) {
+}
+
+bool score::is_default() const noexcept {
+  return reinterpret_cast<score_ctx*>(data()) == func_.ctx()
+    && func_.func() == &::default_score;
+}
+
+void score::reset() noexcept {
+  func_.reset(reinterpret_cast<score_ctx*>(data()),
+              &::default_score);
+}
+
+void reset(irs::score& score, order::prepared::scorers&& scorers) {
   switch (scorers.size()) {
     case 0: {
-      return ScoreFunction{};
+      score.reset();
     } break;
     case 1: {
-      // The most important and frequent case when only
-      // one scorer is provided.
-      return std::move(scorers.front());
+      auto& scorer = scorers.front();
+      if (!scorer.bucket->score_offset) {
+        score.reset(std::move(scorer.func));
+      } else {
+        struct ctx : score_ctx {
+          explicit ctx(order::prepared::scorers::scorer&& scorer,
+                       const byte_type* score_buf) noexcept
+            : scorer(std::move(scorer)),
+              score_buf(score_buf) {
+          }
+
+          order::prepared::scorers::scorer scorer;
+          const byte_type* score_buf;
+        };
+
+        score.reset(
+          memory::make_unique<ctx>(std::move(scorer), scorers.score_buf()),
+          [](score_ctx* ctx) {
+            auto& state = *static_cast<struct ctx*>(ctx);
+            state.scorer.func();
+            return state.score_buf;
+        });
+      }
     } break;
     case 2: {
       struct ctx : score_ctx {
-        ctx(ScoreFunction&& func0, ScoreFunction&& func1) noexcept
-          : func0{std::move(func0)}, func1{std::move(func1)} {}
+        explicit ctx(order::prepared::scorers&& scorers) noexcept
+          : scorers(std::move(scorers)) {
+        }
 
-        ScoreFunction func0;
-        ScoreFunction func1;
+        order::prepared::scorers scorers;
       };
 
-      return {memory::make_unique<ctx>(std::move(scorers.front()),
-                                       std::move(scorers.back())),
-              [](score_ctx* ctx, score_t* res) noexcept {
-                auto* scorers = static_cast<struct ctx*>(ctx);
-                scorers->func0(res);
-                scorers->func1(res + 1);
-              }};
+      score.reset(
+        memory::make_unique<ctx>(std::move(scorers)),
+        [](score_ctx* ctx) {
+          auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
+          scorers.front().func();
+          scorers.back().func();
+          return scorers.score_buf();
+      });
     } break;
     default: {
       struct ctx : score_ctx {
-        explicit ctx(Scorers&& scorers) noexcept
-          : scorers{std::move(scorers)} {}
+        explicit ctx(order::prepared::scorers&& scorers) noexcept
+          : scorers(std::move(scorers)) {
+        }
 
-        Scorers scorers;
+        order::prepared::scorers scorers;
       };
 
-      return {memory::make_unique<ctx>(std::move(scorers)),
-              [](score_ctx* ctx, score_t* res) noexcept {
-                auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
-                for (auto& scorer : scorers) {
-                  scorer(res++);
-                }
-              }};
+      score.reset(
+        memory::make_unique<ctx>(std::move(scorers)),
+        [](score_ctx* ctx) {
+          auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
+          return scorers.evaluate();
+      });
     } break;
   }
 }
 
-void PrepareCollectors(std::span<const OrderBucket> order, byte_type* stats_buf,
-                       const index_reader& index) {
-  for (auto& entry : order) {
-    if (IRS_LIKELY(entry.bucket)) {
-      entry.bucket->collect(stats_buf + entry.stats_offset, index, nullptr,
-                            nullptr);
-    }
-  }
-}
-
-}  // namespace iresearch
+} // ROOT

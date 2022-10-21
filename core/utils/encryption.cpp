@@ -35,8 +35,12 @@ namespace iresearch {
 // --SECTION--                                                           helpers
 // -----------------------------------------------------------------------------
 
-bool encrypt(std::string_view filename, index_output& out, encryption* enc,
-             bstring& header, encryption::stream::ptr& cipher) {
+bool encrypt(
+    const std::string& filename,
+    index_output& out,
+    encryption* enc,
+    bstring& header,
+    encryption::stream::ptr& cipher) {
   header.resize(enc ? enc->header_length() : 0);
 
   if (header.empty()) {
@@ -50,7 +54,8 @@ bool encrypt(std::string_view filename, index_output& out, encryption* enc,
   if (!enc->create_header(filename, &header[0])) {
     throw index_error(string_utils::to_string(
       "failed to initialize encryption header, path '%s'",
-      std::string{filename}.c_str()));
+      filename.c_str()
+    ));
   }
 
   // header is encrypted here
@@ -61,13 +66,15 @@ bool encrypt(std::string_view filename, index_output& out, encryption* enc,
   if (!cipher) {
     throw index_error(string_utils::to_string(
       "failed to instantiate encryption stream, path '%s'",
-      std::string{filename}.c_str()));
+      filename.c_str()
+    ));
   }
 
   if (!cipher->block_size()) {
     throw index_error(string_utils::to_string(
       "failed to instantiate encryption stream with block of size 0, path '%s'",
-      std::string{filename}.c_str()));
+      filename.c_str()
+    ));
   }
 
   // header is decrypted here, write checksum
@@ -78,8 +85,11 @@ bool encrypt(std::string_view filename, index_output& out, encryption* enc,
   return true;
 }
 
-bool decrypt(std::string_view filename, index_input& in, encryption* enc,
-             encryption::stream::ptr& cipher) {
+bool decrypt(
+    const std::string& filename,
+    index_input& in,
+    encryption* enc,
+    encryption::stream::ptr& cipher) {
   auto header = irs::read_string<bstring>(in);
 
   if (header.empty()) {
@@ -90,22 +100,24 @@ bool decrypt(std::string_view filename, index_input& in, encryption* enc,
   if (!enc) {
     throw index_error(string_utils::to_string(
       "failed to open encrypted file without cipher, path '%s'",
-      std::string{filename}.c_str()));
+      filename.c_str()
+    ));
   }
 
   if (header.size() != enc->header_length()) {
     throw index_error(string_utils::to_string(
-      "failed to open encrypted file, expect encryption header of "
-      "size " IR_SIZE_T_SPECIFIER ", got " IR_SIZE_T_SPECIFIER ", path '%s'",
-      enc->header_length(), header.size(), std::string{filename}.c_str()));
+      "failed to open encrypted file, expect encryption header of size " IR_SIZE_T_SPECIFIER ", got " IR_SIZE_T_SPECIFIER ", path '%s'",
+      enc->header_length(), header.size(), filename.c_str()
+    ));
   }
 
   cipher = enc->create_stream(filename, &header[0]);
 
   if (!cipher) {
     throw index_error(string_utils::to_string(
-      "failed to open encrypted file, path '%s'", std::string{filename}.c_str(),
-      enc->header_length(), header.size()));
+      "failed to open encrypted file, path '%s'",
+      filename.c_str(), enc->header_length(), header.size()
+    ));
   }
 
   const auto block_size = cipher->block_size();
@@ -113,7 +125,8 @@ bool decrypt(std::string_view filename, index_input& in, encryption* enc,
   if (!block_size) {
     throw index_error(string_utils::to_string(
       "invalid block size 0 specified for encrypted file, path '%s'",
-      std::string{filename}.c_str(), enc->header_length(), header.size()));
+      filename.c_str(), enc->header_length(), header.size()
+    ));
   }
 
   // header is decrypted here, check checksum
@@ -122,7 +135,9 @@ bool decrypt(std::string_view filename, index_input& in, encryption* enc,
 
   if (crc.checksum() != in.read_vlong()) {
     throw index_error(string_utils::to_string(
-      "invalid ecryption header, path '%s'", std::string{filename}.c_str()));
+      "invalid ecryption header, path '%s'",
+      filename.c_str()
+    ));
   }
 
   return true;
@@ -132,9 +147,10 @@ bool decrypt(std::string_view filename, index_input& in, encryption* enc,
 // --SECTION--                                   encrypted_output implementation
 // -----------------------------------------------------------------------------
 
-encrypted_output::encrypted_output(index_output& out,
-                                   encryption::stream& cipher,
-                                   size_t num_buffers)
+encrypted_output::encrypted_output(
+    index_output& out,
+    encryption::stream& cipher,
+    size_t num_buffers)
   : out_(&out),
     cipher_(&cipher),
     buf_size_(cipher.block_size() * std::max(size_t(1), num_buffers)),
@@ -145,16 +161,18 @@ encrypted_output::encrypted_output(index_output& out,
   assert(buf_size_);
 }
 
-encrypted_output::encrypted_output(index_output::ptr&& out,
-                                   encryption::stream& cipher,
-                                   size_t num_buffers)
+encrypted_output::encrypted_output(
+    index_output::ptr&& out,
+    encryption::stream& cipher,
+    size_t num_buffers)
   : encrypted_output(*out, cipher, num_buffers) {
   managed_out_ = std::move(out);
 }
 
+
 void encrypted_output::write_int(int32_t value) {
   if (remain() < sizeof(uint32_t)) {
-    irs::write<uint32_t>(*this, value);
+    index_output::write_int(value);
   } else {
     irs::write<uint32_t>(pos_, value);
   }
@@ -162,7 +180,7 @@ void encrypted_output::write_int(int32_t value) {
 
 void encrypted_output::write_long(int64_t value) {
   if (remain() < sizeof(uint64_t)) {
-    irs::write<uint64_t>(*this, value);
+    index_output::write_long(value);
   } else {
     irs::write<uint64_t>(pos_, value);
   }
@@ -170,7 +188,7 @@ void encrypted_output::write_long(int64_t value) {
 
 void encrypted_output::write_vint(uint32_t v) {
   if (remain() < bytes_io<uint32_t>::const_max_vsize) {
-    irs::vwrite<uint32_t>(*this, v);
+    index_output::write_vint(v);
   } else {
     irs::vwrite<uint32_t>(pos_, v);
   }
@@ -178,7 +196,7 @@ void encrypted_output::write_vint(uint32_t v) {
 
 void encrypted_output::write_vlong(uint64_t v) {
   if (remain() < bytes_io<uint64_t>::const_max_vsize) {
-    irs::vwrite<uint64_t>(*this, v);
+    index_output::write_vlong(v);
   } else {
     irs::vwrite<uint64_t>(pos_, v);
   }
@@ -208,7 +226,7 @@ void encrypted_output::write_bytes(const byte_type* b, size_t length) {
     }
   } else {
     // we fill/flush the buffer (until the input is written)
-    size_t slice_pos = 0;  // position in the input data
+    size_t slice_pos = 0; // position in the input data
 
     while (slice_pos < length) {
       auto slice_len = std::min(length - slice_pos, left);
@@ -242,9 +260,9 @@ void encrypted_output::flush() {
 
   if (!cipher_->encrypt(out_->file_pointer(), buf_.get(), size)) {
     throw io_error(string_utils::to_string(
-      "buffer size " IR_SIZE_T_SPECIFIER
-      " is not multiple of cipher block size " IR_SIZE_T_SPECIFIER,
-      size, cipher_->block_size()));
+      "buffer size " IR_SIZE_T_SPECIFIER " is not multiple of cipher block size " IR_SIZE_T_SPECIFIER,
+      size, cipher_->block_size()
+    ));
   }
 
   out_->write_bytes(buf_.get(), size);
@@ -262,8 +280,11 @@ void encrypted_output::close() {
 // --SECTION--                                    encrypted_input implementation
 // -----------------------------------------------------------------------------
 
-encrypted_input::encrypted_input(index_input& in, encryption::stream& cipher,
-                                 size_t num_buffers, size_t padding /* = 0*/)
+encrypted_input::encrypted_input(
+    index_input& in,
+    encryption::stream& cipher,
+    size_t num_buffers,
+    size_t padding /* = 0*/)
   : buf_size_(cipher.block_size() * std::max(size_t(1), num_buffers)),
     buf_(std::make_unique<byte_type[]>(buf_size_)),
     in_(&in),
@@ -275,15 +296,16 @@ encrypted_input::encrypted_input(index_input& in, encryption::stream& cipher,
   buffered_index_input::reset(buf_.get(), buf_size_, 0);
 }
 
-encrypted_input::encrypted_input(index_input::ptr&& in,
-                                 encryption::stream& cipher, size_t num_buffers,
-                                 size_t padding /* = 0*/)
+encrypted_input::encrypted_input(
+    index_input::ptr&& in,
+    encryption::stream& cipher,
+    size_t num_buffers,
+    size_t padding /* = 0*/)
   : encrypted_input(*in, cipher, num_buffers, padding) {
   managed_in_ = std::move(in);
 }
 
-encrypted_input::encrypted_input(const encrypted_input& rhs,
-                                 index_input::ptr&& in) noexcept
+encrypted_input::encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) noexcept
   : buf_size_(rhs.buf_size_),
     buf_(std::make_unique<byte_type[]>(buf_size_)),
     managed_in_(std::move(in)),
@@ -299,7 +321,7 @@ int64_t encrypted_input::checksum(size_t offset) const {
   const auto begin = file_pointer();
   const auto end = (std::min)(begin + offset, this->length());
 
-  auto restore_position = make_finally([begin, this]() noexcept {
+  auto restore_position = make_finally([begin, this](){
     // FIXME make me noexcept as I'm begin called from within ~finally()
     const_cast<encrypted_input*>(this)->seek_internal(begin);
   });
@@ -309,7 +331,7 @@ int64_t encrypted_input::checksum(size_t offset) const {
   crc32c crc;
   byte_type buf[DEFAULT_ENCRYPTION_BUFFER_SIZE];
 
-  for (auto pos = begin; pos < end;) {
+  for (auto pos = begin; pos < end; ) {
     const auto to_read = (std::min)(end - pos, sizeof buf);
     pos += const_cast<encrypted_input*>(this)->read_internal(buf, to_read);
     crc.process_bytes(buf, to_read);
@@ -323,7 +345,8 @@ index_input::ptr encrypted_input::dup() const {
 
   if (!dup) {
     throw io_error(string_utils::to_string(
-      "Failed to duplicate input file, error: %d", errno));
+      "Failed to duplicate input file, error: %d", errno
+    ));
   }
 
   return index_input::ptr(new encrypted_input(*this, std::move(dup)));
@@ -333,8 +356,9 @@ index_input::ptr encrypted_input::reopen() const {
   auto reopened = in_->reopen();
 
   if (!reopened) {
-    throw io_error(
-      string_utils::to_string("Failed to reopen input file, error: %d", errno));
+    throw io_error(string_utils::to_string(
+      "Failed to reopen input file, error: %d", errno
+    ));
   }
 
   return index_input::ptr(new encrypted_input(*this, std::move(reopened)));
@@ -355,12 +379,12 @@ size_t encrypted_input::read_internal(byte_type* b, size_t count) {
 
   if (!cipher_->decrypt(offset, b, read)) {
     throw io_error(string_utils::to_string(
-      "buffer size " IR_SIZE_T_SPECIFIER
-      " is not multiple of cipher block size " IR_SIZE_T_SPECIFIER,
-      read, cipher_->block_size()));
+      "buffer size " IR_SIZE_T_SPECIFIER " is not multiple of cipher block size " IR_SIZE_T_SPECIFIER,
+      read, cipher_->block_size()
+    ));
   }
 
   return read;
 }
 
-}  // namespace iresearch
+}

@@ -150,7 +150,7 @@ namespace boost { namespace text {
           line_prop_interval{0x100000, 0x10fffe, line_property::AL},
         };
 
-        BOOST_TEXT_DECL absl::flat_hash_map<uint32_t, line_property>
+        BOOST_TEXT_DECL iresearch_absl::flat_hash_map<uint32_t, line_property>
         make_line_prop_map();
     }
 

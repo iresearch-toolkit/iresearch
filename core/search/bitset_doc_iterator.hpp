@@ -26,12 +26,14 @@
 #include "analysis/token_attributes.hpp"
 #include "search/cost.hpp"
 #include "search/score.hpp"
-#include "utils/attribute_helper.hpp"
+#include "utils/frozen_attributes.hpp"
 #include "utils/type_limits.hpp"
 
 namespace iresearch {
 
-class bitset_doc_iterator : public doc_iterator, private util::noncopyable {
+class bitset_doc_iterator
+  : public doc_iterator,
+    private util::noncopyable {
  public:
   using word_t = size_t;
 
@@ -44,11 +46,15 @@ class bitset_doc_iterator : public doc_iterator, private util::noncopyable {
 
  protected:
   explicit bitset_doc_iterator(cost::cost_t cost) noexcept
-    : cost_(cost), doc_(doc_limits::invalid()), begin_(nullptr), end_(nullptr) {
+    : cost_(cost),
+      doc_(doc_limits::invalid()),
+      begin_(nullptr),
+      end_(nullptr) {
     reset();
   }
 
-  virtual bool refill(const word_t** /*begin*/, const word_t** /*end*/) {
+  virtual bool refill(const word_t** /*begin*/,
+                      const word_t** /*end*/) {
     return false;
   }
 
@@ -57,8 +63,7 @@ class bitset_doc_iterator : public doc_iterator, private util::noncopyable {
   void reset() noexcept {
     next_ = begin_;
     word_ = 0;
-    base_ =
-      doc_limits::invalid() - bits_required<word_t>();  // before the first word
+    base_ = doc_limits::invalid() - bits_required<word_t>(); // before the first word
     assert(begin_ <= end_);
   }
 
@@ -69,8 +74,8 @@ class bitset_doc_iterator : public doc_iterator, private util::noncopyable {
   const word_t* next_;
   word_t word_;
   doc_id_t base_;
-};  // bitset_doc_iterator
+}; // bitset_doc_iterator
 
-}  // namespace iresearch
+} // ROOT
 
-#endif  // IRESEARCH_BITSET_DOC_ITERATOR_H
+#endif // IRESEARCH_BITSET_DOC_ITERATOR_H

@@ -22,11 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _MSC_VER
-#include <execinfo.h>  // for backtrace(...)
+  #include <execinfo.h> // for backtrace(...)
 
-#if !defined(__APPLE__) && defined(__GLIBC__)
-#include <malloc.h>
-#endif
+  #if !defined(__APPLE__) && defined(__GLIBC__)
+    #include <malloc.h>
+  #endif
 #endif
 
 #include "memory.hpp"
@@ -35,17 +35,16 @@ namespace iresearch {
 namespace memory {
 
 void dump_mem_stats_trace() noexcept {
-#ifndef _MSC_VER
+  #ifndef _MSC_VER
 
-// MacOS does not have malloc.h and hence no mallinfo() or malloc_stats()
-// libmusl does no define mallinfo() or malloc_stats() in malloc.h
-// enable mallinfo() and malloc_stats() for GLIBC only
-#if !defined(__APPLE__) && defined(__GLIBC__)
-  // ...........................................................................
-  // output mallinfo()
-  // ...........................................................................
-  static const char* fomrat =
-    "\
+  // MacOS does not have malloc.h and hence no mallinfo() or malloc_stats()
+  // libmusl does no define mallinfo() or malloc_stats() in malloc.h
+  // enable mallinfo() and malloc_stats() for GLIBC only
+  #if !defined(__APPLE__) && defined(__GLIBC__)
+    // ...........................................................................
+    // output mallinfo()
+    // ...........................................................................
+    static const char* fomrat = "\
 Total non-mmapped bytes (arena):       %lu\n\
 # of free chunks (ordblks):            %lu\n\
 # of free fastbin blocks (smblks):     %lu\n\
@@ -57,34 +56,38 @@ Total allocated space (uordblks):      %lu\n\
 Total free space (fordblks):           %lu\n\
 Topmost releasable block (keepcost):   %lu\n\
 ";
-  auto mi = mallinfo();
+    auto mi = mallinfo();
 
-  fprintf(
-    stderr, fomrat, static_cast<unsigned int>(mi.arena),
-    static_cast<unsigned int>(mi.ordblks), static_cast<unsigned int>(mi.smblks),
-    static_cast<unsigned int>(mi.hblks), static_cast<unsigned int>(mi.hblkhd),
-    static_cast<unsigned int>(mi.usmblks),
-    static_cast<unsigned int>(mi.fsmblks),
-    static_cast<unsigned int>(mi.uordblks),
-    static_cast<unsigned int>(mi.fordblks),
-    static_cast<unsigned int>(mi.keepcost));
+    fprintf(
+      stderr,
+      fomrat,
+      static_cast<unsigned int>(mi.arena),
+      static_cast<unsigned int>(mi.ordblks),
+      static_cast<unsigned int>(mi.smblks),
+      static_cast<unsigned int>(mi.hblks),
+      static_cast<unsigned int>(mi.hblkhd),
+      static_cast<unsigned int>(mi.usmblks),
+      static_cast<unsigned int>(mi.fsmblks),
+      static_cast<unsigned int>(mi.uordblks),
+      static_cast<unsigned int>(mi.fordblks),
+      static_cast<unsigned int>(mi.keepcost)
+    );
 
-  // ...........................................................................
-  // output malloc_stats()
-  // ...........................................................................
-  malloc_stats();  // outputs to stderr
-#endif
+    // ...........................................................................
+    // output malloc_stats()
+    // ...........................................................................
+    malloc_stats(); // outputs to stderr
+  #endif
 
-  // ...........................................................................
-  // output stacktrace
-  // ...........................................................................
-  static const size_t frames_max = 128;  // arbitrary size
-  void* frames_buf[frames_max];
+    // ...........................................................................
+    // output stacktrace
+    // ...........................................................................
+    static const size_t frames_max = 128; // arbitrary size
+    void* frames_buf[frames_max];
 
-  backtrace_symbols_fd(frames_buf, backtrace(frames_buf, frames_max),
-                       fileno(stderr));
-#endif
+    backtrace_symbols_fd(frames_buf, backtrace(frames_buf, frames_max), fileno(stderr));
+  #endif
 }
 
-}  // namespace memory
-}  // namespace iresearch
+} // memory
+}

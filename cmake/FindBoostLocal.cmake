@@ -6,24 +6,24 @@
 #  target: boost-static, static boost libraries as per Boost_REQUIRED_COMPONENTS
 #  target: boost-shared-scrt, static boost libraries (static CRT) as per Boost_REQUIRED_COMPONENTS
 
-if ("${BOOST_ROOT}" STREQUAL "")
-  if (NOT "$ENV{BOOST_ROOT}" STREQUAL "")
+if("${BOOST_ROOT}" STREQUAL "")
+  if(NOT "$ENV{BOOST_ROOT}" STREQUAL "")
     set(BOOST_ROOT "$ENV{BOOST_ROOT}")
-  else ()
-    if (NOT MSVC AND EXISTS "/usr/include/boost/version.hpp")
+  else()
+    if(NOT MSVC AND EXISTS "/usr/include/boost/version.hpp")
       set(BOOST_ROOT "/usr")
-    endif ()
-  endif ()
-endif ()
+    endif()
+  endif()
+endif()
 
 if (MSVC)
   # disable automatic selection of boost library build variant
   add_definitions(-DBOOST_ALL_NO_LIB)
-endif ()
+endif()
 
 if (MSVC)
   set(Boost_LIB_PREFIX "lib")
-endif ()
+endif()
 set(Boost_USE_MULTITHREAD ON)
 
 ## define boost required components
@@ -41,7 +41,7 @@ find_package(Boost
   1.57.0
   REQUIRED
   COMPONENTS ${Boost_REQUIRED_COMPONENTS}
-  )
+)
 
 if (Boost_FOUND)
   if (NOT TARGET boost-shared)
@@ -49,19 +49,19 @@ if (Boost_FOUND)
     set_target_properties(boost-shared PROPERTIES
       INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}"
       IMPORTED_LOCATION "${Boost_LIBRARIES}"
-      )
-  endif ()
+    )
+  endif()
 
   set(Boost_SHARED_sharedRT_LIBRARIES ${Boost_LIBRARIES})
 
   # build a list of shared libraries (sharedRT)
-  foreach (ELEMENT ${Boost_SHARED_sharedRT_LIBRARIES})
+  foreach(ELEMENT ${Boost_SHARED_sharedRT_LIBRARIES})
     get_filename_component(ELEMENT_FILENAME ${ELEMENT} NAME)
     string(REGEX MATCH "^(.*)\\.(lib|so)$" ELEMENT_MATCHES ${ELEMENT_FILENAME})
 
-    if (NOT ELEMENT_MATCHES)
+    if(NOT ELEMENT_MATCHES)
       continue()
-    endif ()
+    endif()
 
     get_filename_component(ELEMENT_DIRECTORY ${ELEMENT} DIRECTORY)
     file(GLOB ELEMENT_LIB
@@ -73,12 +73,12 @@ if (Boost_FOUND)
       "${ELEMENT_DIRECTORY}/lib${CMAKE_MATCH_1}.dll"
       "${ELEMENT_DIRECTORY}/${CMAKE_MATCH_1}.pdb"
       "${ELEMENT_DIRECTORY}/lib${CMAKE_MATCH_1}.pdb"
-      )
+    )
 
-    if (ELEMENT_LIB)
+    if(ELEMENT_LIB)
       list(APPEND Boost_SHARED_sharedRT_LIB_RESOURCES ${ELEMENT_LIB})
-    endif ()
-  endforeach ()
+    endif()
+  endforeach()
 
   message("Boost_SHARED_sharedRT_VERSION: " ${Boost_VERSION})
   message("Boost_SHARED_sharedRT_LIBRARIES: " ${Boost_SHARED_sharedRT_LIBRARIES})
@@ -91,7 +91,7 @@ if (Boost_FOUND)
   message("Boost_SHARED_sharedRT_THREAD_LIBRARY_DEBUG: " ${Boost_SHARED_sharedRT_THREAD_LIBRARY_DEBUG})
   message("Boost_SHARED_sharedRT_THREAD_LIBRARY_RELEASE: " ${Boost_SHARED_sharedRT_THREAD_LIBRARY_RELEASE})
   message("Boost_SHARED_sharedRT_LIB_RESOURCES: " ${Boost_SHARED_sharedRT_LIB_RESOURCES})
-endif ()
+endif()
 
 
 # clear Boost cache before invocation
@@ -106,7 +106,7 @@ find_package(Boost
   1.57.0
   REQUIRED
   COMPONENTS ${Boost_REQUIRED_COMPONENTS}
-  )
+)
 
 if (Boost_FOUND)
   if (NOT TARGET boost-shared-scrt)
@@ -114,19 +114,19 @@ if (Boost_FOUND)
     set_target_properties(boost-shared-scrt PROPERTIES
       INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}"
       IMPORTED_LOCATION "${Boost_LIBRARIES}"
-      )
-  endif ()
+    )
+  endif()
 
   set(Boost_SHARED_staticRT_LIBRARIES ${Boost_LIBRARIES})
 
   # build a list of shared libraries (staticRT)
-  foreach (ELEMENT ${Boost_SHARED_staticRT_LIBRARIES})
+  foreach(ELEMENT ${Boost_SHARED_staticRT_LIBRARIES})
     get_filename_component(ELEMENT_FILENAME ${ELEMENT} NAME)
     string(REGEX MATCH "^(.*)\\.(lib|so)$" ELEMENT_MATCHES ${ELEMENT_FILENAME})
 
-    if (NOT ELEMENT_MATCHES)
+    if(NOT ELEMENT_MATCHES)
       continue()
-    endif ()
+    endif()
 
     get_filename_component(ELEMENT_DIRECTORY ${ELEMENT} DIRECTORY)
     file(GLOB ELEMENT_LIB
@@ -138,16 +138,16 @@ if (Boost_FOUND)
       "${SEARCH_LIB_PATH}/lib${CMAKE_MATCH_1}.dll"
       "${SEARCH_LIB_PATH}/${CMAKE_MATCH_1}.pdb"
       "${SEARCH_LIB_PATH}/lib${CMAKE_MATCH_1}.pdb"
-      )
+    )
 
-    if (ELEMENT_LIB)
+    if(ELEMENT_LIB)
       list(APPEND Boost_SHARED_staticRT_LIB_RESOURCES ${ELEMENT_LIB})
-    endif ()
-  endforeach ()
+    endif()
+  endforeach()
 
   message("Boost_SHARED_staticRT_VERSION: " ${Boost_VERSION})
   message("Boost_SHARED_staticRT_LIBRARIES: " ${Boost_SHARED_staticRT_LIBRARIES})
-endif ()
+endif()
 
 
 # clear Boost cache before invocation
@@ -162,7 +162,7 @@ find_package(Boost
   1.57.0
   REQUIRED
   COMPONENTS ${Boost_REQUIRED_COMPONENTS}
-  )
+)
 
 if (Boost_FOUND)
   if (NOT TARGET boost-static)
@@ -170,8 +170,8 @@ if (Boost_FOUND)
     set_target_properties(boost-static PROPERTIES
       INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}"
       IMPORTED_LOCATION "${Boost_LIBRARIES}"
-      )
-  endif ()
+    )
+  endif()
 
   set(Boost_STATIC_sharedRT_LIBRARIES ${Boost_LIBRARIES})
 
@@ -185,7 +185,7 @@ if (Boost_FOUND)
   message("Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE: " ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE})
   message("Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG: " ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG})
   message("Boost_STATIC_sharedRT_THREAD_LIBRARY_RELEASE: " ${Boost_STATIC_sharedRT_THREAD_LIBRARY_RELEASE})
-endif ()
+endif()
 
 # clear Boost cache before invocation
 unset(Boost_INCLUDE_DIR CACHE)
@@ -199,7 +199,7 @@ find_package(Boost
   1.57.0
   REQUIRED
   COMPONENTS ${Boost_REQUIRED_COMPONENTS}
-  )
+)
 
 if (Boost_FOUND)
   if (NOT TARGET boost-static-scrt)
@@ -207,11 +207,11 @@ if (Boost_FOUND)
     set_target_properties(boost-static-scrt PROPERTIES
       INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}"
       IMPORTED_LOCATION "${Boost_LIBRARIES}"
-      )
-  endif ()
+    )
+  endif()
 
   set(Boost_STATIC_staticRT_LIBRARIES ${Boost_LIBRARIES})
 
   message("Boost_STATIC_staticRT_VERSION: " ${Boost_VERSION})
   message("Boost_STATIC_staticRT_LIBRARIES: " ${Boost_STATIC_staticRT_LIBRARIES})
-endif ()
+endif()

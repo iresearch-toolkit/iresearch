@@ -23,24 +23,24 @@
 # SOFTWARE.
 
 option(SANITIZE_UNDEFINED
-  "Enable UndefinedBehaviorSanitizer for sanitized targets." Off)
+    "Enable UndefinedBehaviorSanitizer for sanitized targets." Off)
 
 set(FLAG_CANDIDATES
-  "-g -fsanitize=undefined"
-  )
+    "-g -fsanitize=undefined"
+)
 
 
 include(sanitize-helpers)
 
 if (SANITIZE_UNDEFINED)
-  sanitizer_check_compiler_flags("${FLAG_CANDIDATES}"
-    "UndefinedBehaviorSanitizer" "UBSan")
+    sanitizer_check_compiler_flags("${FLAG_CANDIDATES}"
+        "UndefinedBehaviorSanitizer" "UBSan")
 endif ()
 
-function(add_sanitize_undefined TARGET)
-  if (NOT SANITIZE_UNDEFINED)
-    return()
-  endif ()
+function (add_sanitize_undefined TARGET)
+    if (NOT SANITIZE_UNDEFINED)
+        return()
+    endif ()
 
-  sanitizer_add_flags(${TARGET} "UndefinedBehaviorSanitizer" "UBSan")
-endfunction()
+    sanitizer_add_flags(${TARGET} "UndefinedBehaviorSanitizer" "UBSan")
+endfunction ()

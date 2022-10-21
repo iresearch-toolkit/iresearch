@@ -31,7 +31,7 @@ namespace iresearch {
 class by_wildcard;
 struct filter_visitor;
 
-struct by_wildcard_filter_options {
+struct IRESEARCH_API by_wildcard_filter_options {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief search wildcard
   //////////////////////////////////////////////////////////////////////////////
@@ -41,14 +41,16 @@ struct by_wildcard_filter_options {
     return term == rhs.term;
   }
 
-  size_t hash() const noexcept { return std::hash<bstring>()(term); }
-};  // by_wildcard_filter_options
+  size_t hash() const noexcept {
+    return std::hash<bstring>()(term);
+  }
+}; // by_wildcard_filter_options
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct by_prefix_options
 /// @brief options for wildcard filter
 ////////////////////////////////////////////////////////////////////////////////
-struct by_wildcard_options : by_wildcard_filter_options {
+struct IRESEARCH_API by_wildcard_options : by_wildcard_filter_options {
   using filter_type = by_wildcard;
   using filter_options = by_wildcard_filter_options;
 
@@ -59,39 +61,47 @@ struct by_wildcard_options : by_wildcard_filter_options {
 
   bool operator==(const by_wildcard_options& rhs) const noexcept {
     return filter_options::operator==(rhs) &&
-           scored_terms_limit == rhs.scored_terms_limit;
+      scored_terms_limit == rhs.scored_terms_limit;
   }
 
   size_t hash() const noexcept {
     return hash_combine(filter_options::hash(), scored_terms_limit);
   }
-};  // by_wildcard_options
+}; // by_wildcard_options
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_wildcard
 /// @brief user-side wildcard filter
 //////////////////////////////////////////////////////////////////////////////
-class by_wildcard final : public filter_base<by_wildcard_options> {
+class IRESEARCH_API by_wildcard final
+    : public filter_base<by_wildcard_options> {
  public:
   static ptr make();
 
-  static prepared::ptr prepare(const index_reader& index, const Order& order,
-                               score_t boost, string_ref field, bytes_ref term,
-                               size_t scored_terms_limit);
+  static prepared::ptr prepare(
+    const index_reader& index,
+    const order::prepared& order,
+    boost_t boost,
+    const string_ref& field,
+    const bytes_ref& term,
+    size_t scored_terms_limit);
 
-  static field_visitor visitor(bytes_ref term);
+  static field_visitor visitor(const bytes_ref& term);
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& index, const Order& order, score_t boost,
-    const attribute_provider* /*ctx*/) const override {
-    return prepare(index, order, this->boost() * boost, field(), options().term,
+      const index_reader& index,
+      const order::prepared& order,
+      boost_t boost,
+      const attribute_provider* /*ctx*/) const override {
+    return prepare(index, order, this->boost()*boost,
+                   field(), options().term,
                    options().scored_terms_limit);
   }
-};  // by_wildcard
+}; // by_wildcard
 
-}  // namespace iresearch
+}
 
 namespace std {
 
@@ -102,6 +112,6 @@ struct hash<::iresearch::by_wildcard_options> {
   }
 };
 
-}  // namespace std
+}
 
-#endif  // IRESEARCH_WILDCARD_FILTER_H
+#endif // IRESEARCH_WILDCARD_FILTER_H

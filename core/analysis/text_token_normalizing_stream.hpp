@@ -28,7 +28,7 @@
 
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
-#include "utils/attribute_helper.hpp"
+#include "utils/frozen_attributes.hpp"
 
 namespace iresearch {
 namespace analysis {
@@ -39,35 +39,37 @@ namespace analysis {
 ///        token, i.e. case conversion and accent removal
 /// @note expects UTF-8 encoded input
 ////////////////////////////////////////////////////////////////////////////////
-class normalizing_token_stream final : public analyzer,
-                                       private util::noncopyable {
+class normalizing_token_stream final
+  : public analyzer,
+    private util::noncopyable {
  public:
   enum case_convert_t { LOWER, NONE, UPPER };
 
   struct options_t {
     icu::Locale locale;
-    case_convert_t case_convert{
-      case_convert_t::NONE};  // no extra normalization
-    bool accent{true};        // no extra normalization
+    case_convert_t case_convert{case_convert_t::NONE}; // no extra normalization
+    bool accent{true}; // no extra normalization
 
-    options_t() : locale{"C"} { locale.setToBogus(); }
+    options_t() : locale{"C"} {
+      locale.setToBogus();
+    }
   };
 
   static constexpr string_ref type_name() noexcept { return "norm"; }
-  static void init();  // for trigering registration in a static build
+  static void init(); // for trigering registration in a static build
 
   explicit normalizing_token_stream(const options_t& options);
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override final {
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() override;
-  virtual bool reset(string_ref data) override;
+  virtual bool reset(const irs::string_ref& data) override;
 
  private:
-  using attributes =
-    std::tuple<increment, offset,
-               term_attribute>;  // token value with evaluated quotes
+  using attributes = std::tuple<
+    increment,
+    offset,
+    term_attribute>; // token value with evaluated quotes
 
   struct state_t;
   struct state_deleter_t {
@@ -79,7 +81,7 @@ class normalizing_token_stream final : public analyzer,
   bool term_eof_;
 };
 
-}  // namespace analysis
-}  // namespace iresearch
+} // analysis
+} // iresearch
 
 #endif

@@ -24,15 +24,15 @@
 #ifndef IRESEARCH_INDEX_TESTS_H
 #define IRESEARCH_INDEX_TESTS_H
 
-#include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-#include "analysis/token_streams.hpp"
+#include "tests_shared.hpp"
+#include "tests_param.hpp"
 #include "assert_format.hpp"
-#include "doc_generator.hpp"
+#include "analysis/analyzers.hpp"
+#include "analysis/token_streams.hpp"
+#include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
-#include "tests_param.hpp"
-#include "tests_shared.hpp"
+#include "doc_generator.hpp"
 #include "utils/timer_utils.hpp"
 
 using namespace std::chrono_literals;
@@ -45,9 +45,9 @@ struct term_attribute;
 
 namespace tests {
 
-class directory_mock : public irs::directory {
+class directory_mock: public irs::directory {
  public:
-  directory_mock(irs::directory& impl) : impl_(impl) {}
+  directory_mock(irs::directory& impl): impl_(impl) {}
 
   using directory::attributes;
 
@@ -56,45 +56,46 @@ class directory_mock : public irs::directory {
   }
 
   virtual irs::index_output::ptr create(
-    std::string_view name) noexcept override {
+      const std::string& name) noexcept override {
     return impl_.create(name);
   }
 
-  virtual bool exists(bool& result,
-                      std::string_view name) const noexcept override {
+  virtual bool exists(
+      bool& result, const std::string& name) const noexcept override {
     return impl_.exists(result, name);
   }
 
-  virtual bool length(uint64_t& result,
-                      std::string_view name) const noexcept override {
+  virtual bool length(
+      uint64_t& result, const std::string& name) const noexcept override {
     return impl_.length(result, name);
   }
 
   virtual irs::index_lock::ptr make_lock(
-    std::string_view name) noexcept override {
+      const std::string& name) noexcept override {
     return impl_.make_lock(name);
   }
 
-  virtual bool mtime(std::time_t& result,
-                     std::string_view name) const noexcept override {
+  virtual bool mtime(
+      std::time_t& result, const std::string& name) const noexcept override {
     return impl_.mtime(result, name);
   }
 
   virtual irs::index_input::ptr open(
-    std::string_view name, irs::IOAdvice advice) const noexcept override {
+      const std::string& name,
+      irs::IOAdvice advice) const noexcept override {
     return impl_.open(name, advice);
   }
 
-  virtual bool remove(std::string_view name) noexcept override {
+  virtual bool remove(const std::string& name) noexcept override {
     return impl_.remove(name);
   }
 
-  virtual bool rename(std::string_view src,
-                      std::string_view dst) noexcept override {
+  virtual bool rename(
+      const std::string& src, const std::string& dst) noexcept override {
     return impl_.rename(src, dst);
   }
 
-  virtual bool sync(std::string_view name) noexcept override {
+  virtual bool sync(const std::string& name) noexcept override {
     return impl_.sync(name);
   }
 
@@ -104,23 +105,24 @@ class directory_mock : public irs::directory {
 
  private:
   irs::directory& impl_;
-};  // directory_mock
+}; // directory_mock
 
 struct blocking_directory : directory_mock {
   explicit blocking_directory(irs::directory& impl, const std::string& blocker)
-    : tests::directory_mock(impl), blocker(blocker) {}
+    : tests::directory_mock(impl), blocker(blocker) {
+  }
 
-  irs::index_output::ptr create(std::string_view name) noexcept {
+  irs::index_output::ptr create(const std::string& name) noexcept {
     auto stream = tests::directory_mock::create(name);
 
     if (name == blocker) {
       {
-        auto guard = std::unique_lock(policy_lock);
+        auto guard = irs::make_unique_lock(policy_lock);
         policy_applied.notify_all();
       }
 
       // wait for intermediate commits to be applied
-      auto guard = std::unique_lock(intermediate_commits_lock);
+      auto guard = irs::make_unique_lock(intermediate_commits_lock);
     }
 
     return stream;
@@ -133,7 +135,7 @@ struct blocking_directory : directory_mock {
     while (!has) {
       exists(has, blocker);
 
-      auto policy_guard = std::unique_lock(policy_lock);
+      auto policy_guard = irs::make_unique_lock(policy_lock);
       policy_applied.wait_for(policy_guard, 1000ms);
     }
   }
@@ -142,27 +144,31 @@ struct blocking_directory : directory_mock {
   std::mutex policy_lock;
   std::condition_variable policy_applied;
   std::mutex intermediate_commits_lock;
-};  // blocking_directory
+}; // blocking_directory
 
 struct callback_directory : directory_mock {
   typedef std::function<void()> AfterCallback;
 
   explicit callback_directory(irs::directory& impl, AfterCallback&& p)
-    : tests::directory_mock(impl), after(p) {}
+    : tests::directory_mock(impl), after(p) {
+  }
 
-  irs::index_output::ptr create(std::string_view name) noexcept override {
+  irs::index_output::ptr create(const std::string& name) noexcept override {
     auto stream = tests::directory_mock::create(name);
     after();
     return stream;
   }
 
   AfterCallback after;
-};  // callback_directory
+}; // callback_directory
 
 struct format_info {
-  constexpr format_info(const char* codec = nullptr,
-                        const char* module = nullptr) noexcept
-    : codec(codec), module(module) {}
+  constexpr format_info(
+      const char* codec = nullptr,
+      const char* module = nullptr) noexcept
+    : codec(codec),
+      module(module) {
+  }
 
   const char* codec;
   const char* module;
@@ -172,8 +178,7 @@ typedef std::tuple<tests::dir_param_f, format_info> index_test_context;
 
 class index_test_base : public virtual test_param_base<index_test_context> {
  public:
-  static std::string to_string(
-    const testing::TestParamInfo<index_test_context>& info);
+  static std::string to_string(const testing::TestParamInfo<index_test_context>& info);
 
  protected:
   std::shared_ptr<irs::directory> get_directory(const test_base& ctx) const;
@@ -192,14 +197,15 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   }
 
   irs::index_writer::ptr open_writer(
-    irs::directory& dir, irs::OpenMode mode = irs::OM_CREATE,
-    const irs::index_writer::init_options& options = {}) const {
+      irs::directory& dir,
+      irs::OpenMode mode = irs::OM_CREATE,
+      const irs::index_writer::init_options& options = {}) const {
     return irs::index_writer::make(dir, codec_, mode, options);
   }
 
   irs::index_writer::ptr open_writer(
-    irs::OpenMode mode = irs::OM_CREATE,
-    const irs::index_writer::init_options& options = {}) const {
+      irs::OpenMode mode = irs::OM_CREATE,
+      const irs::index_writer::init_options& options = {}) const {
     return irs::index_writer::make(*dir_, codec_, mode, options);
   }
 
@@ -207,15 +213,16 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     return irs::directory_reader::open(*dir_, codec_);
   }
 
-  void assert_index(irs::IndexFeatures features, size_t skip = 0,
+  void assert_index(irs::IndexFeatures features,
+                    size_t skip = 0,
                     irs::automaton_table_matcher* matcher = nullptr) const {
     tests::assert_index(static_cast<irs::index_reader::ptr>(open_reader()),
                         index(), features, skip, matcher);
   }
 
   void assert_columnstore(size_t skip = 0) const {
-    tests::assert_columnstore(
-      static_cast<irs::index_reader::ptr>(open_reader()), index(), skip);
+    tests::assert_columnstore(static_cast<irs::index_reader::ptr>(open_reader()),
+                              index(), skip);
   }
 
   virtual void SetUp() override {
@@ -234,27 +241,33 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     dir_ = nullptr;
     codec_ = nullptr;
     test_base::TearDown();
-    irs::timer_utils::init_stats();  // disable profile state tracking
+    irs::timer_utils::init_stats(); // disable profile state tracking
   }
 
-  void write_segment(irs::index_writer& writer, tests::index_segment& segment,
-                     tests::doc_generator_base& gen);
+  void write_segment(
+    irs::index_writer& writer,
+    tests::index_segment& segment,
+    tests::doc_generator_base& gen);
 
-  void add_segment(irs::index_writer& writer, tests::doc_generator_base& gen);
+  void add_segment(
+    irs::index_writer& writer,
+    tests::doc_generator_base& gen);
 
-  void add_segments(irs::index_writer& writer,
-                    std::vector<doc_generator_base::ptr>& gens);
+  void add_segments(
+    irs::index_writer& writer,
+    std::vector<doc_generator_base::ptr>& gens);
 
-  void add_segment(tests::doc_generator_base& gen,
-                   irs::OpenMode mode = irs::OM_CREATE,
-                   const irs::index_writer::init_options& opts = {});
+  void add_segment(
+    tests::doc_generator_base& gen,
+    irs::OpenMode mode = irs::OM_CREATE,
+    const irs::index_writer::init_options& opts = {});
 
  private:
   index_t index_;
   std::shared_ptr<irs::directory> dir_;
   irs::format::ptr codec_;
-};  // index_test_base
+}; // index_test_base
 
-}  // namespace tests
+} // tests
 
-#endif  // IRESEARCH_INDEX_TESTS_H
+#endif // IRESEARCH_INDEX_TESTS_H

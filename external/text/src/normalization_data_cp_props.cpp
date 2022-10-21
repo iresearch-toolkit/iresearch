@@ -12409,7 +12409,9 @@ return {{
     }
 
     namespace {
-        static constexpr std::array<uint16_t, 57105> data =  {{
+        constexpr std::array<uint16_t, 57105> data()
+        {
+        return {{
 0x0, 0x0, 0xa0, 0x100, 0x103, 0x100, 0x1, 0x0, 0x1, 0x106, 0x0, 0xa8,
 0x104, 0x107, 0x0, 0x3, 0x107, 0x109, 0xaa, 0x10c, 0x10f, 0x4, 0x110, 0x100,
 0xaf, 0x10c, 0x115, 0x6, 0x116, 0x0, 0xb2, 0x10c, 0x11b, 0x7, 0x11c, 0xb3,
@@ -17171,13 +17173,14 @@ return {{
 0xd98f, 0x23, 0xd295, 0xc56a, 0x3472, 0x4c, 0xe009, 0x23, 0x9b62
 
         }};
+        }
     }
 
     std::unordered_map<uint32_t, cp_props> make_cp_props_map()
     {
         std::unordered_map<uint32_t, cp_props> retval;
         container::small_vector<unsigned char, 256> buf;
-        constexpr auto& compressed = data;
+        constexpr auto compressed = data();
         lzw_decompress(
             compressed.begin(),
             compressed.end(),

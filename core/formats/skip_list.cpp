@@ -35,121 +35,288 @@ namespace {
 // returns maximum number of skip levels needed to store specified
 // count of objects for skip list with
 // step skip_0 for 0 level, step skip_n for other levels
-constexpr size_t max_levels(size_t skip_0, size_t skip_n,
-                            size_t count) noexcept {
-  return skip_0 < count ? 1 + irs::math::log(count / skip_0, skip_n) : 0;
+inline size_t max_levels(size_t skip_0, size_t skip_n, size_t count) {
+  size_t levels = 0;
+  if (skip_0 < count) {
+    levels = 1 + irs::math::log(count/skip_0, skip_n);
+  }
+  return levels;
 }
 
-}  // namespace
+const size_t UNDEFINED = std::numeric_limits<size_t>::max();
+
+} // LOCAL
 
 namespace iresearch {
 
-void SkipWriter::Prepare(
-  size_t max_levels, size_t count,
-  const memory_allocator& alloc /* = memory_allocator::global() */) {
-  max_levels_ =
-    std::clamp(max_levels, size_t{1}, ::max_levels(skip_0_, skip_n_, count));
-  levels_.reserve(max_levels_);
+// ----------------------------------------------------------------------------
+// --SECTION--                                       skip_writer implementation
+// ----------------------------------------------------------------------------
+
+skip_writer::skip_writer(size_t skip_0, size_t skip_n) noexcept
+  : skip_0_(skip_0), skip_n_(skip_n) {
+}
+
+void skip_writer::prepare(
+    size_t max_levels, 
+    size_t count,
+    const skip_writer::write_f& write, /* = nop */
+    const memory_allocator& alloc /* = memory_allocator::global() */
+) {
+  max_levels = std::max(size_t(1), max_levels);
+  max_levels = std::min(max_levels, ::max_levels(skip_0_, skip_n_, count));
+  levels_.reserve(max_levels);
+  max_levels = std::max(max_levels, levels_.capacity());
 
   // reset existing skip levels
   for (auto& level : levels_) {
     level.reset(alloc);
   }
 
-  // add new skip levels if needed
-  for (auto size = std::size(levels_); size < max_levels_; ++size) {
+  // add new skip levels
+  for (auto size = levels_.size(); size < max_levels; ++size) {
     levels_.emplace_back(alloc);
+  }
+
+  write_ = write;
+}
+
+void skip_writer::skip(size_t count) {
+  assert(!levels_.empty());
+
+  if (0 != count % skip_0_) {
+    return;
+  }
+
+  uint64_t child = 0;
+
+  // write 0 level
+  {
+    auto& stream = levels_.front().stream;
+    write_(0, stream);
+    count /= skip_0_;
+    child = stream.file_pointer();
+  }
+
+  // write levels from 1 to n
+  size_t num = 0;
+  for (auto level = levels_.begin()+1, end = levels_.end();
+       0 == count % skip_n_ && level != end;
+       ++level, count /= skip_n_) {
+    auto& stream = level->stream;
+    write_(++num, stream);
+
+    uint64_t next_child = stream.file_pointer();
+    stream.write_vlong(child);
+    child = next_child;
   }
 }
 
-void SkipWriter::Flush(index_output& out) {
-  const auto rbegin =
-    std::make_reverse_iterator(std::begin(levels_) + max_levels_);
-  const auto rend = std::rend(levels_);
+void skip_writer::flush(index_output& out) {
+  const auto rend = levels_.rend();
 
   // find first filled level
-  auto level = std::find_if(rbegin, rend, [](const memory_output& level) {
-    return level.stream.file_pointer();
+  auto level = std::find_if(
+    levels_.rbegin(), rend,
+    [](const memory_output& level) {
+      return level.stream.file_pointer();
   });
 
   // write number of levels
-  const auto num_levels = static_cast<uint32_t>(std::distance(level, rend));
-  out.write_vint(num_levels);
+  out.write_vint(uint32_t(std::distance(level, rend)));
 
   // write levels from n downto 0
-  for (; level != rend; ++level) {
-    auto& stream = level->stream;
-    stream.flush();  // update length of each buffer
+  std::for_each(
+    level, rend,
+    [&out](memory_output& level) {
+      auto& stream = level.stream;
+      stream.flush(); // update length of each buffer
 
-    const uint64_t length = stream.file_pointer();
-    assert(length);
-    out.write_vlong(length);
-    stream >> out;
+      const uint64_t length = stream.file_pointer();
+      assert(length);
+      out.write_vlong(length);
+      stream >> out;
+  });
+}
+
+void skip_writer::reset() noexcept {
+  for(auto& level : levels_) {
+    level.stream.reset();
   }
 }
 
-SkipReaderBase::Level::Level(index_input::ptr&& stream, doc_id_t step,
-                             doc_id_t left, uint64_t begin) noexcept
-  : stream{std::move(stream)},  // thread-safe input
-    begin{begin},
-    left{left},
-    step{step} {}
+// ----------------------------------------------------------------------------
+// --SECTION--                                       skip_reader implementation
+// ----------------------------------------------------------------------------
 
-void SkipReaderBase::Reset() {
-  for (auto& level : levels_) {
+skip_reader::level::level(
+    index_input::ptr&& stream,
+    size_t step,
+    uint64_t begin, 
+    uint64_t end,
+    uint64_t child /*= 0*/,
+    size_t skipped /*= 0*/,
+    doc_id_t doc /*= doc_limits::invalid()*/) noexcept
+  : stream(std::move(stream)), // thread-safe input
+    begin(begin), 
+    end(end),
+    child(child),
+    step(step),
+    skipped(skipped),
+    doc(doc) {
+}
+
+skip_reader::skip_reader(
+    size_t skip_0, 
+    size_t skip_n) noexcept
+  : skip_0_(skip_0), skip_n_(skip_n) {
+}
+
+void skip_reader::read_skip(skip_reader::level& level) {
+  // read_ should return NO_MORE_DOCS when stream is exhausted
+  const auto doc = read_(size_t(std::distance(&level, &levels_.back())), level);
+
+  // read pointer to child level if needed
+  if (!doc_limits::eof(doc) && level.child != UNDEFINED) {
+    level.child = level.stream->read_vlong();
+  }
+
+  level.doc = doc;
+  level.skipped += level.step;
+}
+
+/* static */ void skip_reader::seek_skip(
+    skip_reader::level& level, 
+    uint64_t ptr,
+    size_t skipped) {
+  auto &stream = *level.stream;
+  const auto absolute_ptr = level.begin + ptr;
+  if (absolute_ptr > stream.file_pointer()) {
+    stream.seek(absolute_ptr);
+    level.skipped = skipped;
+    if (level.child != UNDEFINED) {
+      level.child = stream.read_vlong();
+    }
+  }
+}
+
+// returns highest level with the value not less than target 
+skip_reader::levels_t::iterator skip_reader::find_level(doc_id_t target) {
+  assert(std::is_sorted(
+    levels_.rbegin(), levels_.rend(),
+    [](const level& lhs, const level& rhs) { return lhs.doc < rhs.doc; }
+  ));
+
+  auto level = std::upper_bound(
+    levels_.rbegin(),
+    levels_.rend(),
+    target,
+    [](doc_id_t target, const skip_reader::level& level) {
+      return target < level.doc;
+  });
+
+  if (level == levels_.rend()) {
+    return levels_.begin(); // the highest
+  }
+
+  // check if we have already found the lowest possible level
+  if (level != levels_.rbegin()) {
+    --level;
+  }
+
+  // convert reverse iterator to forward
+  return irstd::to_forward(level);
+}
+
+size_t skip_reader::seek(doc_id_t target) {
+  assert(!levels_.empty());
+
+  auto level = find_level(target); // the highest level for the specified target
+  uint64_t child = 0; // pointer to child skip
+  size_t skipped = 0; // number of skipped documents
+
+  std::for_each(
+    level, levels_.end(),
+    [this, &child, &skipped, &target](skip_reader::level& level) {
+      if (level.doc < target) {
+        // seek to child
+        seek_skip(level, child, skipped);
+
+        // seek to skip
+        child = level.child;
+        read_skip(level);
+
+        for (; level.doc < target; read_skip(level)) {
+          child = level.child;
+        }
+
+        skipped = level.skipped - level.step;
+      }
+  });
+
+  skipped = levels_.back().skipped;
+  return skipped ? skipped - skip_0_ : 0;
+}
+
+void skip_reader::reset() {
+  static auto reset = [](skip_reader::level& level) {
     level.stream->seek(level.begin);
-    if (level.child != kUndefined) {
+    if (level.child != UNDEFINED) {
       level.child = 0;
     }
-    level.left = docs_count_;
-  }
+    level.skipped = 0;
+    level.doc = doc_limits::invalid();
+  };
+
+  std::for_each(levels_.begin(), levels_.end(), reset);
 }
 
-void SkipReaderBase::Prepare(index_input::ptr&& in, doc_id_t left) {
-  assert(in);
+void skip_reader::load_level(levels_t& levels, index_input::ptr&& stream, size_t step) {
+  assert(stream);
 
-  if (uint32_t max_levels = in->read_vint(); max_levels) {
-    decltype(levels_) levels;
+  // read level length
+  const auto length = stream->read_vlong();
+
+  if (!length) {
+    throw index_error("while loading level, error: zero length");
+  }
+
+  const auto begin = stream->file_pointer();
+  const auto end = begin + length;
+
+  levels.emplace_back(std::move(stream), step, begin, end); // load level
+}
+
+void skip_reader::prepare(index_input::ptr&& in, const read_f& read /* = nop */) {
+  assert(in && read);
+
+  // read number of levels in a skip-list
+  size_t max_levels = in->read_vint();
+
+  if (max_levels) {
+    std::vector<level> levels;
     levels.reserve(max_levels);
 
-    auto load_level = [&levels, left](index_input::ptr stream, doc_id_t step) {
-      assert(stream);
-
-      // read level length
-      const auto length = stream->read_vlong();
-
-      if (!length) {
-        throw index_error("while loading level, error: zero length");
-      }
-
-      const auto begin = stream->file_pointer();
-
-      levels.emplace_back(std::move(stream), step, left, begin);
-
-      return begin + length;
-    };
-
-    // skip step of the level
-    size_t step =
-      skip_0_ * static_cast<size_t>(std::pow(skip_n_, --max_levels));
+    size_t step = skip_0_ * size_t(pow(skip_n_, --max_levels)); // skip step of the level
 
     // load levels from n down to 1
     for (; max_levels; --max_levels) {
-      const auto offset = load_level(in->dup(), step);
+      load_level(levels, in->dup(), step);
 
       // seek to the next level
-      in->seek(offset);
+      in->seek(levels.back().end);
 
       step /= skip_n_;
     }
 
     // load 0 level
-    load_level(std::move(in), skip_0_);
-    levels.back().child = kUndefined;
+    load_level(levels, std::move(in), skip_0_);
+    levels.back().child = UNDEFINED;
 
     levels_ = std::move(levels);
-    docs_count_ = left;
   }
+
+  read_ = read;
 }
 
-}  // namespace iresearch
+}

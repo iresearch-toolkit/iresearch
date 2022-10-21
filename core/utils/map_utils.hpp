@@ -36,34 +36,36 @@ namespace map_utils {
 /// @brief helper to update key after insertion of value
 ///  Note: use with caution since new hash and key must == old hash and key
 ////////////////////////////////////////////////////////////////////////////
-template<
-  typename Container, typename KeyGenerator, typename Key, typename... Args,
-  typename =
-    std::enable_if<std::is_same<typename Container::key_type, Key>::value>>
+template<typename Container,
+         typename KeyGenerator,
+         typename Key,
+         typename... Args,
+         typename = std::enable_if<
+           std::is_same<typename Container::key_type, Key>::value
+         >>
 inline std::pair<typename Container::iterator, bool> try_emplace_update_key(
-  Container& container, const KeyGenerator& generator, Key&& key,
-  Args&&... args) {
+    Container& container, const KeyGenerator& generator,
+    Key&& key, Args&&... args) {
   // cppcheck-suppress redundantAssignment
-  const auto res =
-    container.try_emplace(std::forward<Key>(key), std::forward<Args>(args)...);
+  const auto res = container.try_emplace(std::forward<Key>(key),
+                                         std::forward<Args>(args)...);
 
   if (res.second) {
-    auto& existing =
-      const_cast<typename Container::key_type&>(res.first->first);
+    auto& existing = const_cast<typename Container::key_type&>(res.first->first);
 
-#ifdef IRESEARCH_DEBUG
-    auto generated = generator(res.first->first, res.first->second);
-    assert(existing == generated);
-    existing = generated;
-#else
-    existing = generator(res.first->first, res.first->second);
-#endif  // IRESEARCH_DEBUG
+    #ifdef IRESEARCH_DEBUG
+      auto generated = generator(res.first->first, res.first->second);
+      assert(existing == generated);
+      existing = generated;
+    #else
+      existing = generator(res.first->first, res.first->second);
+    #endif // IRESEARCH_DEBUG
   }
 
   return res;
 }
 
-}  // namespace map_utils
-}  // namespace iresearch
+} // map_utils
+} // namespace iresearch {
 
 #endif

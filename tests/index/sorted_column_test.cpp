@@ -36,20 +36,21 @@
 // FIXME check gaps && deleted docs
 
 struct sorted_column_test_case
-  : public virtual test_param_base<std::string_view> {
+    : public virtual test_param_base<std::string_view> {
   bool supports_columnstore_headers() const noexcept {
     // old formats don't support columnstore headers
-    constexpr std::string_view kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
-                                             "1_3simd"};
+    constexpr std::string_view kOldFormats[] {
+      "1_0", "1_1", "1_2", "1_3", "1_3simd" };
 
-    const auto it =
-      std::find(std::begin(kOldFormats), std::end(kOldFormats), GetParam());
+    const auto it = std::find(std::begin(kOldFormats),
+                              std::end(kOldFormats),
+                              GetParam());
     return std::end(kOldFormats) == it;
   }
 };
 
 TEST_P(sorted_column_test_case, ctor) {
-  irs::sorted_column col({irs::type<irs::compression::lz4>::get(), {}, false});
+  irs::sorted_column col({ irs::type<irs::compression::lz4>::get(), {}, false });
   ASSERT_TRUE(col.empty());
   ASSERT_EQ(0, col.size());
   ASSERT_EQ(0, col.memory_active());
@@ -57,7 +58,7 @@ TEST_P(sorted_column_test_case, ctor) {
 }
 
 TEST_P(sorted_column_test_case, flush_empty) {
-  irs::sorted_column col({irs::type<irs::compression::lz4>::get(), {}, false});
+  irs::sorted_column col({ irs::type<irs::compression::lz4>::get(), {}, false });
   ASSERT_TRUE(col.empty());
   ASSERT_EQ(0, col.size());
   ASSERT_EQ(0, col.memory_active());
@@ -72,8 +73,7 @@ TEST_P(sorted_column_test_case, flush_empty) {
   ASSERT_NE(nullptr, codec);
 
   struct comparator final : irs::comparer {
-    virtual bool less(irs::bytes_ref lhs,
-                      irs::bytes_ref rhs) const noexcept override {
+    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
       const auto* plhs = lhs.c_str();
       const auto* prhs = rhs.c_str();
 
@@ -104,13 +104,13 @@ TEST_P(sorted_column_test_case, flush_empty) {
     writer->prepare(dir, segment);
 
     std::tie(order, column_id) = col.flush(
-      *writer,
-      [](auto&) {
-        // Must not be called
-        EXPECT_TRUE(false);
-        return irs::string_ref::NIL;
-      },
-      0, less);
+        *writer,
+        [](auto&){
+          // Must not be called
+          EXPECT_TRUE(false);
+          return irs::string_ref::NIL;
+        },
+        0, less);
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
     ASSERT_TRUE(col.empty());
@@ -124,7 +124,7 @@ TEST_P(sorted_column_test_case, flush_empty) {
     state.doc_count = 0;
     state.name = segment.name;
 
-    ASSERT_FALSE(writer->commit(state));  // nothing to commit
+    ASSERT_FALSE(writer->commit(state)); // nothing to commit
   }
 
   // read sorted column
@@ -137,16 +137,16 @@ TEST_P(sorted_column_test_case, flush_empty) {
 
 TEST_P(sorted_column_test_case, insert_duplicates) {
   const uint32_t values[] = {
-    19, 45, 27, 1,  73, 98, 46, 48, 38,  20, 60, 91, 61, 80, 44,  53, 88,
-    75, 63, 39, 68, 20, 11, 78, 21, 100, 87, 8,  9,  63, 41, 35,  82, 69,
-    56, 49, 6,  46, 59, 19, 16, 58, 15,  21, 46, 23, 99, 78, 18,  89, 77,
-    7,  2,  15, 97, 10, 5,  75, 13, 7,   77, 12, 15, 70, 95, 42,  29, 26,
-    81, 82, 74, 53, 84, 13, 95, 84, 51,  9,  19, 18, 21, 82, 22,  91, 70,
-    68, 14, 73, 30, 70, 38, 85, 98, 79,  75, 38, 79, 85, 85, 100, 91};
+    19,45,27,1,73,98,46,48,38,20,60,91,61,80,44,53,88,
+    75,63,39,68,20,11,78,21,100,87,8,9,63,41,35,82,69,
+    56,49,6,46,59,19,16,58,15,21,46,23,99,78,18,89,77,
+    7,2,15,97,10,5,75,13,7,77,12,15,70,95,42,29,26,81,
+    82,74,53,84,13,95,84,51,9,19,18,21,82,22,91,70,68,
+    14,73,30,70,38,85,98,79,75,38,79,85,85,100,91
+  };
 
   struct comparator final : irs::comparer {
-    virtual bool less(irs::bytes_ref lhs,
-                      irs::bytes_ref rhs) const noexcept override {
+    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
       const auto* plhs = lhs.c_str();
       const auto* prhs = rhs.c_str();
 
@@ -186,8 +186,7 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
 
     writer->prepare(dir, segment);
 
-    irs::sorted_column col(
-      {irs::type<irs::compression::none>::get(), {}, true});
+    irs::sorted_column col({ irs::type<irs::compression::none>::get(), {}, true });
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
     ASSERT_EQ(0, col.memory_active());
@@ -213,24 +212,24 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
     ASSERT_GE(col.memory_reserved(), 0);
 
     std::tie(order, column_id) = col.flush(
-      *writer,
-      [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 42;
-        return irs::string_ref::NIL;
-      },
-      std::size(values), less);
+        *writer,
+        [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 42;
+          return irs::string_ref::NIL;
+        },
+        IRESEARCH_COUNTOF(values), less);
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.memory_active());
     ASSERT_GE(col.memory_reserved(), 0);
-    ASSERT_EQ(0, order.size());  // already sorted
+    ASSERT_EQ(0, order.size()); // already sorted
     ASSERT_TRUE(irs::type_limits<irs::type_t::field_id_t>::valid(column_id));
 
     irs::flush_state state;
     state.dir = &dir;
-    state.doc_count = std::size(values);
+    state.doc_count = IRESEARCH_COUNTOF(values);
     state.name = segment.name;
 
     ASSERT_TRUE(writer->commit(state));
@@ -254,7 +253,7 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
       ASSERT_TRUE(header_payload.null());
     }
 
-    auto it = column->iterator(irs::ColumnHint::kNormal);
+    auto it = column->iterator(false);
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_TRUE(!payload || payload->value.null());
 
@@ -269,16 +268,16 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
 
 TEST_P(sorted_column_test_case, sort) {
   const uint32_t values[] = {
-    19, 45, 27, 1,  73, 98, 46, 48, 38,  20, 60, 91, 61, 80, 44,  53, 88,
-    75, 63, 39, 68, 20, 11, 78, 21, 100, 87, 8,  9,  63, 41, 35,  82, 69,
-    56, 49, 6,  46, 59, 19, 16, 58, 15,  21, 46, 23, 99, 78, 18,  89, 77,
-    7,  2,  15, 97, 10, 5,  75, 13, 7,   77, 12, 15, 70, 95, 42,  29, 26,
-    81, 82, 74, 53, 84, 13, 95, 84, 51,  9,  19, 18, 21, 82, 22,  91, 70,
-    68, 14, 73, 30, 70, 38, 85, 98, 79,  75, 38, 79, 85, 85, 100, 91};
+    19,45,27,1,73,98,46,48,38,20,60,91,61,80,44,53,88,
+    75,63,39,68,20,11,78,21,100,87,8,9,63,41,35,82,69,
+    56,49,6,46,59,19,16,58,15,21,46,23,99,78,18,89,77,
+    7,2,15,97,10,5,75,13,7,77,12,15,70,95,42,29,26,81,
+    82,74,53,84,13,95,84,51,9,19,18,21,82,22,91,70,68,
+    14,73,30,70,38,85,98,79,75,38,79,85,85,100,91
+  };
 
   struct comparator final : irs::comparer {
-    virtual bool less(irs::bytes_ref lhs,
-                      irs::bytes_ref rhs) const noexcept override {
+    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
       const auto* plhs = lhs.c_str();
       const auto* prhs = rhs.c_str();
 
@@ -318,7 +317,7 @@ TEST_P(sorted_column_test_case, sort) {
 
     writer->prepare(dir, segment);
 
-    irs::sorted_column col({irs::type<irs::compression::lz4>::get(), {}, true});
+    irs::sorted_column col({ irs::type<irs::compression::lz4>::get(), {}, true });
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
     ASSERT_EQ(0, col.memory_active());
@@ -335,49 +334,47 @@ TEST_P(sorted_column_test_case, sort) {
       col.write_vint(value);
       col.reset();
     }
-    ASSERT_EQ(std::size(values), col.size());
+    ASSERT_EQ(IRESEARCH_COUNTOF(values), col.size());
     ASSERT_FALSE(col.empty());
 
     ASSERT_GE(col.memory_active(), 0);
     ASSERT_GE(col.memory_reserved(), 0);
 
     std::tie(order, column_id) = col.flush(
-      *writer,
-      [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 42;
-        return irs::string_ref::NIL;
-      },
-      std::size(values), less);
+        *writer,
+        [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 42;
+          return irs::string_ref::NIL;
+        },
+        IRESEARCH_COUNTOF(values), less);
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.memory_active());
     ASSERT_GE(col.memory_reserved(), 0);
-    ASSERT_EQ(1 + std::size(values), order.size());
+    ASSERT_EQ(1+IRESEARCH_COUNTOF(values), order.size());
     ASSERT_TRUE(irs::type_limits<irs::type_t::field_id_t>::valid(column_id));
 
     irs::flush_state state;
     state.dir = &dir;
-    state.doc_count = std::size(values);
+    state.doc_count = IRESEARCH_COUNTOF(values);
     state.name = segment.name;
 
     ASSERT_TRUE(writer->commit(state));
   }
 
-  std::vector<uint32_t> sorted_values(values, values + std::size(values));
+  std::vector<uint32_t> sorted_values(values, values + IRESEARCH_COUNTOF(values));
   std::sort(sorted_values.begin(), sorted_values.end());
 
   // check order
   {
-    uint32_t values_by_order[std::size(values)];
-    for (size_t i = 0; i < std::size(values); ++i) {
-      values_by_order[order[irs::doc_limits::min() + i] -
-                      irs::doc_limits::min()] = values[i];
+    uint32_t values_by_order[IRESEARCH_COUNTOF(values)];
+    for (size_t i = 0; i < IRESEARCH_COUNTOF(values); ++i) {
+      values_by_order[order[irs::doc_limits::min() + i] - irs::doc_limits::min()] = values[i];
     }
 
-    ASSERT_TRUE(
-      std::is_sorted(std::begin(values_by_order), std::end(values_by_order)));
+    ASSERT_TRUE(std::is_sorted(std::begin(values_by_order), std::end(values_by_order)));
   }
 
   // read sorted column
@@ -398,7 +395,7 @@ TEST_P(sorted_column_test_case, sort) {
       ASSERT_TRUE(header_payload.null());
     }
 
-    auto it = column->iterator(irs::ColumnHint::kNormal);
+    auto it = column->iterator(false);
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_TRUE(payload);
 
@@ -417,7 +414,9 @@ TEST_P(sorted_column_test_case, sort) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(sorted_column_test, sorted_column_test_case,
-                         ::testing::Values("1_0", "1_4"));
+INSTANTIATE_TEST_SUITE_P(
+    sorted_column_test,
+    sorted_column_test_case,
+    ::testing::Values("1_0", "1_4"));
 
-#endif  // IRESEARCH_DLL
+#endif // IRESEARCH_DLL

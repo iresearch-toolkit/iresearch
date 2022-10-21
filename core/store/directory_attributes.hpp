@@ -25,27 +25,29 @@
 #define IRESEARCH_DIRECTORY_ATTRIBUTES_H
 
 #include "shared.hpp"
-#include "utils/container_utils.hpp"
 #include "utils/ref_counter.hpp"
+#include "utils/container_utils.hpp"
 
 namespace iresearch {
 
-// A reusable thread-safe allocator for memory files
-class memory_allocator final {
+//////////////////////////////////////////////////////////////////////////////
+/// @class memory_allocator
+/// @brief a reusable thread-safe allocator for memory files
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API memory_allocator final {
  private:
-  struct buffer {
+  struct IRESEARCH_API buffer {
     using ptr = std::unique_ptr<byte_type[]>;
     static ptr make(size_t size);
-  };  // buffer
+  }; // buffer
 
  public:
   using ptr = memory::managed_ptr<memory_allocator>;
 
   static ptr make(size_t pool_size);
 
-  using allocator_type =
-    container_utils::memory::bucket_allocator<buffer,
-                                              16>;  // as in memory_file
+  using allocator_type = container_utils::memory::bucket_allocator<
+    buffer, 16>; // as in memory_file
 
   static memory_allocator& global() noexcept;
 
@@ -57,68 +59,91 @@ class memory_allocator final {
 
  private:
   allocator_type allocator_;
-};  // memory_allocator
+}; // memory_allocator
 
-// Directory encryption provider
-struct encryption {
+//////////////////////////////////////////////////////////////////////////////
+/// @struct encryption
+/// @brief directory encryption provider
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API encryption {
   DECLARE_UNIQUE_PTR(encryption);
 
   // FIXME check if it's possible to rename to iresearch::encryption?
-  static constexpr string_ref type_name() noexcept { return "encryption"; }
+  static constexpr string_ref type_name() noexcept {
+    return "encryption";
+  }
 
   virtual ~encryption() = default;
 
+  ////////////////////////////////////////////////////////////////////////////
+  /// @struct stream
+  ////////////////////////////////////////////////////////////////////////////
   struct stream {
     using ptr = std::unique_ptr<stream>;
 
     virtual ~stream() = default;
 
-    // Returns size of the block supported by stream
+    /// @returns size of the block supported by stream
     virtual size_t block_size() const = 0;
 
-    // Decrypt specified data at a provided offset
+    /// @brief decrypt specified data at a provided offset
     virtual bool decrypt(uint64_t offset, byte_type* data, size_t size) = 0;
 
-    // Encrypt specified data at a provided offset
+    /// @brief encrypt specified data at a provided offset
     virtual bool encrypt(uint64_t offset, byte_type* data, size_t size) = 0;
   };
 
-  // Returns the length of the header that is added to every file
-  // and used for storing encryption options
+  /// @returns the length of the header that is added to every file
+  ///          and used for storing encryption options
   virtual size_t header_length() = 0;
 
-  // Creates cipher header in an allocated block for a new file
-  virtual bool create_header(std::string_view filename, byte_type* header) = 0;
+  /// @brief an allocated block of header memory for a new file
+  virtual bool create_header(
+    const std::string& filename,
+    byte_type* header) = 0;
 
-  // Returns a cipher stream for a file given file name
-  virtual stream::ptr create_stream(std::string_view filename,
-                                    byte_type* header) = 0;
+  /// @returns a cipher stream for a file given file name
+  virtual stream::ptr create_stream(
+    const std::string& filename,
+    byte_type* header) = 0;
 };
 
-// Represents a reference counter for index related files
-class index_file_refs final {
+//////////////////////////////////////////////////////////////////////////////
+/// @class index_file_refs
+/// @brief represents a ref_counter for index related files
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API index_file_refs final {
  public:
-  using counter_t = ref_counter<std::string, absl::Hash<std::string_view>,
-                                std::equal_to<std::string_view>>;
-  using ref_t = counter_t::ref_t;
+  typedef std::unique_ptr<index_file_refs> ptr;
+  typedef ref_counter<std::string> counter_t;
+  typedef counter_t::ref_t ref_t;
+
+  static ptr make();
 
   index_file_refs() = default;
-  ref_t add(std::string_view key) { return refs_.add(key); }
+  ref_t add(const std::string& key);
+  ref_t add(std::string&& key);
   void clear();
-  bool remove(std::string_view key) { return refs_.remove(key); }
+  bool remove(const std::string& key) {
+    return refs_.remove(key);
+  }
 
   counter_t& refs() noexcept { return refs_; }
 
  private:
   counter_t refs_;
-};
+}; // index_file_refs
 
-// Represents common directory attributes
-class directory_attributes {
+//////////////////////////////////////////////////////////////////////////////
+/// @class directory_attributes
+/// @brief represents common directory attributes
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API directory_attributes {
  public:
   // 0 == pool_size -> use global allocator, noexcept
-  explicit directory_attributes(size_t memory_pool_size = 0,
-                                std::unique_ptr<irs::encryption> enc = nullptr);
+  explicit directory_attributes(
+    size_t memory_pool_size = 0,
+    std::unique_ptr<irs::encryption> enc = nullptr);
   virtual ~directory_attributes() = default;
 
   directory_attributes(directory_attributes&&) = default;
@@ -131,9 +156,9 @@ class directory_attributes {
  private:
   memory_allocator::ptr alloc_;
   irs::encryption::ptr enc_;
-  std::unique_ptr<index_file_refs> refs_;
-};
+  index_file_refs::ptr refs_;
+}; // directory_attributes
 
-}  // namespace iresearch
+}
 
 #endif

@@ -1,48 +1,6 @@
 master
 -------------------------
 
-v1.2 (2022-10-06)
--------------------------
-
-* Allow specifying progress report callback for
-  `index_writer::commit`/`index_writer::start`.
-
-* Allow getting offsets from phrase and ngram similarity queries.
-
-* Allow specifying minimum number of matches for `by_terms` filter.
-
-* Add `MinHashAnalyzer` capable of producing tokens composing a MinHash
-  signature.
-
-* Add `ByNestedFilter` capable of matching documents by nested query.
-
-* Add ability to access previous document for columnstore2 iterators.
-
-* Remove outdated `DECLARE_FACTORY_INLINE` macros.
-
-* Add `MergeType::kMin` allowing to evaluate minimum sub-iterator score.
-
-* Fix issue with loosing already flushed segment in case of failure during
-  document insertion into the same segment.
-
-* Force scorers to return scores as floating point numbers.
-
-* Deprecate and remove `iql`.
-
-* Use abseil as a submodule.
-
-* Added proxy_filter for caching search results.
-
-* Add ARM support.
-
-* Speedup BM25 scorer.
-
-* Move to C++20.
-
-* Add `classification_stream` capable of classifying input data based on FastText NN model.
-
-* Add `nearest_neighbors_stream` capable of generating synonyms based on FastText NN model.
-
 v1.1 (2022-01-05)
 -------------------------
 

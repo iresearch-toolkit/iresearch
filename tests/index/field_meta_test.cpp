@@ -94,9 +94,9 @@ TEST(field_meta_test, move) {
 
 TEST(field_meta_test, compare) {
   irs::feature_map_t features;
-  features[irs::type<irs::offset>::id()] = irs::field_limits::invalid();
+  features[irs::type<irs::offset>::id()]    = irs::field_limits::invalid();
   features[irs::type<irs::increment>::id()] = irs::field_limits::invalid();
-  features[irs::type<irs::document>::id()] = irs::field_limits::invalid();
+  features[irs::type<irs::document>::id()]  = irs::field_limits::invalid();
 
   const std::string name("name");
 

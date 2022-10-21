@@ -23,57 +23,55 @@
 #include "term_query.hpp"
 
 #include "index/index_reader.hpp"
-#include "search/prepared_state_visitor.hpp"
 #include "search/score.hpp"
 
 namespace iresearch {
 
-TermQuery::TermQuery(States&& states, bstring&& stats, score_t boost)
-  : filter::prepared(boost),
-    states_{std::move(states)},
-    stats_{std::move(stats)} {}
+// -----------------------------------------------------------------------------
+// --SECTION--                                         term_query implementation
+// -----------------------------------------------------------------------------
 
-doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
+term_query::term_query(
+    term_query::states_t&& states,
+    bstring&& stats,
+    boost_t boost)
+  : filter::prepared(boost),
+    states_(std::move(states)),
+    stats_(std::move(stats)) {
+}
+
+doc_iterator::ptr term_query::execute(
+    const sub_reader& rdr,
+    const order::prepared& ord,
+    const attribute_provider* /*ctx*/) const {
   // get term state for the specified reader
-  auto& rdr = ctx.segment;
-  auto& ord = ctx.scorers;
   auto state = states_.find(rdr);
 
   if (!state) {
-    // Invalid state
+    // invalid state
     return doc_iterator::empty();
   }
 
   auto* reader = state->reader;
   assert(reader);
 
-  auto docs = (ctx.mode == ExecutionMode::kTop)
-                ? reader->wanderator(*state->cookie, ord.features())
-                : reader->postings(*state->cookie, ord.features());
-
-  if (IRS_UNLIKELY(!docs)) {
-    assert(false);
-    return doc_iterator::empty();
-  }
+  auto docs = reader->postings(*state->cookie, ord.features());
+  assert(docs);
 
   if (!ord.empty()) {
     auto* score = irs::get_mutable<irs::score>(docs.get());
 
     if (score) {
-      *score = CompileScore(ord.buckets(), rdr, *state->reader, stats_.c_str(),
-                            *docs, boost());
+      order::prepared::scorers scorers(
+        ord, rdr, *state->reader,
+        stats_.c_str(), score->realloc(ord),
+        *docs, boost());
+
+      irs::reset(*score, std::move(scorers));
     }
   }
 
   return docs;
 }
 
-void TermQuery::visit(const sub_reader& segment, PreparedStateVisitor& visitor,
-                      score_t boost) const {
-  if (auto state = states_.find(segment); state) {
-    visitor.Visit(*this, *state, boost * this->boost());
-    return;
-  }
-}
-
-}  // namespace iresearch
+} // ROOT

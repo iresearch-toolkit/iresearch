@@ -28,7 +28,11 @@
 
 namespace iresearch {
 
-/*static*/ const field_meta field_meta::kEmpty;
+// -----------------------------------------------------------------------------
+// --SECTION--                                         field_meta implementation
+// -----------------------------------------------------------------------------
+
+/*static*/ const field_meta field_meta::EMPTY;
 
 field_meta::field_meta(field_meta&& rhs) noexcept
   : features(std::move(rhs.features)),
@@ -37,8 +41,12 @@ field_meta::field_meta(field_meta&& rhs) noexcept
   rhs.index_features = IndexFeatures::NONE;
 }
 
-field_meta::field_meta(string_ref name, IndexFeatures index_features)
-  : name(name.c_str(), name.size()), index_features(index_features) {}
+field_meta::field_meta(
+    const string_ref& name,
+    IndexFeatures index_features)
+  : name(name.c_str(), name.size()),
+    index_features(index_features) {
+}
 
 field_meta& field_meta::operator=(field_meta&& rhs) noexcept {
   if (this != &rhs) {
@@ -52,8 +60,9 @@ field_meta& field_meta::operator=(field_meta&& rhs) noexcept {
 }
 
 bool field_meta::operator==(const field_meta& rhs) const {
-  return index_features == rhs.index_features && name == rhs.name &&
+  return index_features == rhs.index_features &&
+         name == rhs.name &&
          features == rhs.features;
 }
 
-}  // namespace iresearch
+}

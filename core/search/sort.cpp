@@ -23,29 +23,123 @@
 
 #include "sort.hpp"
 
-#include <absl/base/casts.h>
-
+#include "shared.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
-#include "shared.hpp"
 #include "utils/memory_pool.hpp"
 
 namespace {
 
 using namespace irs;
 
-template<typename Vector, typename Iterator>
-std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
-                                                  Iterator end) {
-  Vector buckets;
-  buckets.reserve(std::distance(begin, end));
+const order UNORDERED;
+const order::prepared PREPARED_UNORDERED;
 
-  IndexFeatures features{};
-  size_t stats_size{};
-  size_t stats_align{};
+const byte_type* no_score(score_ctx* ctx) noexcept {
+  return reinterpret_cast<byte_type*>(ctx);
+}
 
-  for (; begin != end; ++begin) {
-    auto prepared = begin->prepare();
+}
+
+namespace iresearch {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      filter_boost
+// -----------------------------------------------------------------------------
+
+REGISTER_ATTRIBUTE(filter_boost);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    score_function
+// -----------------------------------------------------------------------------
+
+score_function::score_function() noexcept
+  : func_(&::no_score) {
+}
+
+score_function::score_function(score_function&& rhs) noexcept
+  : ctx_(std::move(rhs.ctx_)),
+    func_(rhs.func_) {
+  rhs.func_ = &::no_score;
+}
+
+score_function& score_function::operator=(score_function&& rhs) noexcept {
+  if (this != &rhs) {
+    ctx_ = std::move(rhs.ctx_);
+    func_ = rhs.func_;
+    rhs.func_ = &::no_score;
+  }
+  return *this;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                              sort
+// -----------------------------------------------------------------------------
+
+sort::sort(const type_info& type) noexcept
+  : type_(type.id()) {
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                            order 
+// ----------------------------------------------------------------------------
+
+const order& order::unordered() noexcept {
+  return UNORDERED;
+}
+
+void order::remove(type_info::type_id type) {
+  order_.erase(
+    std::remove_if(
+      order_.begin(), order_.end(),
+      [type] (const entry& e) { return type == e.sort().type(); }
+  ));
+}
+
+const order::prepared& order::prepared::unordered() noexcept {
+  return PREPARED_UNORDERED;
+}
+
+bool order::operator==(const order& other) const {
+  if (order_.size() != other.order_.size()) {
+    return false;
+  }
+
+  for (size_t i = 0, count = order_.size(); i < count; ++i) {
+    auto& entry = order_[i];
+    auto& other_entry = other.order_[i];
+
+    auto& sort = entry.sort_;
+    auto& other_sort = other_entry.sort_;
+
+    // FIXME TODO operator==(...) should be specialized for every sort child class based on init config
+    if (!sort != !other_sort
+        || (sort
+            && (sort->type() != other_sort->type()
+                || entry.reverse_ != other_entry.reverse_))) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+order& order::add(bool reverse, sort::ptr&& sort) {
+  assert(sort);
+  order_.emplace_back(std::move(sort), reverse);
+
+  return *this;
+}
+
+order::prepared order::prepare() const {
+  order::prepared pord;
+  pord.order_.reserve(order_.size());
+
+  size_t stats_align = 0;
+  size_t score_align = 0;
+
+  for (auto& entry : order_) {
+    auto prepared = entry.sort().prepare();
 
     if (!prepared) {
       // skip empty sorts
@@ -53,106 +147,113 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
     }
 
     // cppcheck-suppress shadowFunction
-    const auto [bucket_stats_size, bucket_stats_align] = prepared->stats_size();
-    assert(bucket_stats_align <= alignof(std::max_align_t));
-    assert(
-      math::is_power2(bucket_stats_align));  // math::is_power2(0) returns true
+    const auto score_size = prepared->score_size();
+    assert(score_size.second <= alignof(std::max_align_t));
+    assert(math::is_power2(score_size.second)); // math::is_power2(0) returns true
 
-    stats_align = std::max(stats_align, bucket_stats_align);
+    // cppcheck-suppress shadowFunction
+    const auto stats_size = prepared->stats_size();
+    assert(stats_size.second <= alignof(std::max_align_t));
+    assert(math::is_power2(stats_size.second)); // math::is_power2(0) returns true
 
-    stats_size = memory::align_up(stats_size, bucket_stats_align);
-    features |= prepared->features();
+    stats_align = std::max(stats_align, stats_size.second);
+    score_align = std::max(score_align, score_size.second);
 
-    buckets.emplace_back(std::move(prepared), stats_size);
+    pord.score_size_ = memory::align_up(pord.score_size_, score_size.second);
+    pord.stats_size_ = memory::align_up(pord.stats_size_, stats_size.second);
+    pord.index_features_ |= prepared->features();
 
-    stats_size += memory::align_up(bucket_stats_size, bucket_stats_align);
+    pord.order_.emplace_back(
+      std::move(prepared),
+      pord.score_size_,
+      pord.stats_size_,
+      entry.reverse());
+
+    pord.score_size_ += memory::align_up(score_size.first, score_size.second);
+    pord.stats_size_ += memory::align_up(stats_size.first, stats_size.second);
   }
 
-  stats_size = memory::align_up(stats_size, stats_align);
+  pord.stats_size_ = memory::align_up(pord.stats_size_, stats_align);
+  pord.score_size_ = memory::align_up(pord.score_size_, score_align);
 
-  return {std::move(buckets), stats_size, features};
+  return pord;
 }
 
-void DefaultScore(score_ctx* ctx, score_t* res) noexcept {
-  assert(res);
-  std::memset(res, 0, reinterpret_cast<size_t>(ctx));
-}
 
-}  // namespace
+// ----------------------------------------------------------------------------
+// --SECTION--                                                          scorers
+// ----------------------------------------------------------------------------
 
-namespace iresearch {
+order::prepared::scorers::scorers(
+    const order::prepared& buckets,
+    const sub_reader& segment,
+    const term_reader& field,
+    const byte_type* stats_buf,
+    byte_type* score_buf,
+    const attribute_provider& doc,
+    boost_t boost)
+  : score_buf_(score_buf){
+  scorers_.reserve(buckets.size());
 
-REGISTER_ATTRIBUTE(filter_boost);
+  for (auto& entry: buckets) {
+    assert(stats_buf);
+    assert(entry.bucket); // ensured by order::prepared
+    const auto& bucket = *entry.bucket;
 
-/*static*/ const score_f ScoreFunction::kDefault{&::DefaultScore};
+    auto scorer = bucket.prepare_scorer(
+      segment, field,
+      stats_buf + entry.stats_offset,
+      score_buf + entry.score_offset,
+      doc, boost);
 
-/*static*/ ScoreFunction ScoreFunction::Constant(score_t value) noexcept {
-  uintptr_t ctx;
-  std::memcpy(&ctx, &value, sizeof value);
-
-  return {reinterpret_cast<score_ctx*>(ctx),
-          [](score_ctx* ctx, score_t* res) noexcept {
-            assert(res);
-            assert(ctx);
-
-            const auto boost = reinterpret_cast<uintptr_t>(ctx);
-            std::memcpy(res, &boost, sizeof(score_t));
-          }};
-}
-
-/*static*/ ScoreFunction ScoreFunction::Constant(score_t value,
-                                                 uint32_t size) noexcept {
-  if (0 == size) {
-    return {};
-  } else if (1 == size) {
-    return Constant(value);
-  } else {
-    struct ScoreCtx {
-      score_t value;
-      uint32_t size;
-    };
-    static_assert(sizeof(ScoreCtx) == sizeof(uintptr_t));
-
-    return {absl::bit_cast<score_ctx*>(ScoreCtx{value, size}),
-            [](score_ctx* ctx, score_t* res) noexcept {
-              assert(res);
-              assert(ctx);
-
-              const auto score_ctx = absl::bit_cast<ScoreCtx>(ctx);
-              std::fill_n(res, score_ctx.size, score_ctx.value);
-            }};
+    if (scorer) {
+      // skip empty scorers
+      scorers_.emplace_back(std::move(scorer), &entry);
+    }
   }
 }
 
-ScoreFunction::ScoreFunction() noexcept : func_{kDefault} {}
-
-ScoreFunction::ScoreFunction(ScoreFunction&& rhs) noexcept
-  : ctx_(std::move(rhs.ctx_)), func_(std::exchange(rhs.func_, kDefault)) {}
-
-ScoreFunction& ScoreFunction::operator=(ScoreFunction&& rhs) noexcept {
-  if (this != &rhs) {
-    ctx_ = std::move(rhs.ctx_);
-    func_ = std::exchange(rhs.func_, kDefault);
+const byte_type* order::prepared::scorers::evaluate() const {
+  for (auto& scorer : scorers_) {
+    scorer.func();
   }
-  return *this;
+  return score_buf_;
 }
 
-sort::sort(const type_info& type) noexcept : type_(type.id()) {}
-
-Order Order::Prepare(std::span<const sort::ptr> order) {
-  return std::apply(
-    [](auto&&... args) { return Order{std::forward<decltype(args)>(args)...}; },
-    ::Prepare<OrderBuckets>(ptr_iterator{std::begin(order)},
-                            ptr_iterator{std::end(order)}));
+void order::prepared::prepare_collectors(
+    byte_type* stats_buf,
+    const index_reader& index) const {
+  for (auto& entry: order_) {
+    assert(entry.bucket); // ensured by order::prepared
+    entry.bucket->collect(stats_buf + entry.stats_offset, index, nullptr, nullptr);
+  }
 }
 
-Order Order::Prepare(std::span<const sort*> order) {
-  return std::apply(
-    [](auto&&... args) { return Order{std::forward<decltype(args)>(args)...}; },
-    ::Prepare<OrderBuckets>(ptr_iterator{std::begin(order)},
-                            ptr_iterator{std::end(order)}));
+bool order::prepared::less(const byte_type* lhs, const byte_type* rhs) const {
+  if (!lhs) {
+    return rhs != nullptr; // lhs(nullptr) == rhs(nullptr)
+  }
+
+  if (!rhs) {
+    return true; // nullptr last
+  }
+
+  for (const auto& sort: order_) {
+    assert(sort.bucket); // ensured by order::prepared
+    const auto& bucket = *sort.bucket;
+    const auto* lhs_begin = lhs + sort.score_offset;
+    const auto* rhs_begin = rhs + sort.score_offset;
+
+    if (bucket.less(lhs_begin, rhs_begin)) {
+      return !sort.reverse;
+    }
+
+    if (bucket.less(rhs_begin, lhs_begin)) {
+      return sort.reverse;
+    }
+  }
+
+  return false;
 }
 
-const Order Order::kUnordered;
-
-}  // namespace iresearch
+}

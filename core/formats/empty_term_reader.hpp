@@ -34,57 +34,55 @@ namespace iresearch {
 class empty_term_reader final : public irs::term_reader {
  public:
   explicit empty_term_reader(uint64_t docs_count) noexcept
-    : docs_count_(docs_count) {}
+    : docs_count_(docs_count) {
+  }
 
-  virtual irs::seek_term_iterator::ptr iterator(
-    SeekMode) const noexcept override {
+  virtual irs::seek_term_iterator::ptr iterator(SeekMode) const noexcept override {
     return irs::seek_term_iterator::empty();
   }
 
   virtual irs::seek_term_iterator::ptr iterator(
-    automaton_table_matcher&) const noexcept override {
+      automaton_table_matcher&) const noexcept override {
     return irs::seek_term_iterator::empty();
   }
 
-  virtual size_t bit_union(const cookie_provider&,
-                           size_t*) const noexcept override {
+  virtual size_t bit_union(
+      const cookie_provider&,
+      size_t*) const noexcept override {
     return 0;
   }
 
-  virtual doc_iterator::ptr postings(const seek_cookie&,
-                                     IndexFeatures) const noexcept override {
-    return doc_iterator::empty();
-  }
-
-  virtual doc_iterator::ptr wanderator(const seek_cookie&,
-                                       IndexFeatures) const noexcept override {
+  virtual doc_iterator::ptr postings(
+      const seek_cookie&,
+      IndexFeatures) const noexcept override {
     return doc_iterator::empty();
   }
 
   virtual const irs::field_meta& meta() const noexcept override {
-    return irs::field_meta::kEmpty;
+    return irs::field_meta::EMPTY;
   }
 
-  virtual irs::attribute* get_mutable(
-    irs::type_info::type_id) noexcept override {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
   }
 
   // total number of terms
   virtual size_t size() const noexcept override {
-    return 0;  // no terms in reader
+    return 0; // no terms in reader
   }
 
   // total number of documents
-  virtual uint64_t docs_count() const noexcept override { return docs_count_; }
+  virtual uint64_t docs_count() const noexcept override {
+    return docs_count_;
+  }
 
   // least significant term
-  virtual const irs::bytes_ref&(min)() const noexcept override {
+  virtual const irs::bytes_ref& (min)() const noexcept override {
     return irs::bytes_ref::NIL;
   }
 
   // most significant term
-  virtual const irs::bytes_ref&(max)() const noexcept override {
+  virtual const irs::bytes_ref& (max)() const noexcept override {
     return irs::bytes_ref::NIL;
   }
 
@@ -92,6 +90,6 @@ class empty_term_reader final : public irs::term_reader {
   uint64_t docs_count_;
 };
 
-}  // namespace iresearch
+} // ROOT
 
 #endif

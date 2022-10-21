@@ -86,7 +86,7 @@ target_include_directories(text
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 target_include_directories(text PRIVATE
   ${Boost_INCLUDE_DIRS}
-  PRIVATE $<TARGET_PROPERTY:absl::base,INTERFACE_INCLUDE_DIRECTORIES>
+  PRIVATE $<TARGET_PROPERTY:absl-static,INTERFACE_INCLUDE_DIRECTORIES>
   ${FROZEN_INCLUDE_DIR})
 set_property(TARGET text PROPERTY CXX_STANDARD ${CXX_STD})
 target_compile_options(text PRIVATE -DBOOST_TEXT_SOURCE)

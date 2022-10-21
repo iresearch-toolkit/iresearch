@@ -24,8 +24,8 @@
 #ifndef IRESEARCH_DIRECTORY_READER_H
 #define IRESEARCH_DIRECTORY_READER_H
 
-#include "index_reader.hpp"
 #include "shared.hpp"
+#include "index_reader.hpp"
 #include "utils/object_pool.hpp"
 
 namespace iresearch {
@@ -42,20 +42,25 @@ struct directory_meta {
 /// @class directory_reader
 /// @brief interface for an index reader over a directory of segments
 ////////////////////////////////////////////////////////////////////////////////
-class directory_reader final : public index_reader {
+class IRESEARCH_API directory_reader final : public index_reader {
  public:
-  typedef directory_reader element_type;  // type same as self
-  typedef directory_reader ptr;           // pointer to self
+  typedef atomic_shared_ptr_helper<const index_reader> atomic_utils;
+  typedef directory_reader element_type; // type same as self
+  typedef directory_reader ptr; // pointer to self
 
-  directory_reader() = default;  // allow creation of an uninitialized ptr
+  directory_reader() = default; // allow creation of an uninitialized ptr
   directory_reader(const directory_reader& other) noexcept;
   directory_reader& operator=(const directory_reader& other) noexcept;
 
   explicit operator bool() const noexcept { return bool(impl_); }
 
-  bool operator==(std::nullptr_t) const noexcept { return !impl_; }
+  bool operator==(std::nullptr_t) const noexcept {
+    return !impl_;
+  }
 
-  bool operator!=(std::nullptr_t) const noexcept { return !(*this == nullptr); }
+  bool operator!=(std::nullptr_t) const noexcept {
+    return !(*this == nullptr);
+  }
 
   bool operator==(const directory_reader& rhs) const noexcept {
     return impl_ == rhs.impl_;
@@ -74,7 +79,9 @@ class directory_reader final : public index_reader {
     return (*impl_)[i];
   }
 
-  virtual uint64_t docs_count() const override { return impl_->docs_count(); }
+  virtual uint64_t docs_count() const override {
+    return impl_->docs_count();
+  }
 
   virtual uint64_t live_docs_count() const override {
     return impl_->live_docs_count();
@@ -86,37 +93,49 @@ class directory_reader final : public index_reader {
   //////////////////////////////////////////////////////////////////////////////
   const directory_meta& meta() const;
 
-  virtual size_t size() const override { return impl_->size(); }
+  virtual size_t size() const override {
+    return impl_->size();
+  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create an index reader over the specified directory
   ///        if codec == nullptr then use the latest file for all known codecs
   ////////////////////////////////////////////////////////////////////////////////
-  static directory_reader open(const directory& dir,
-                               format::ptr codec = nullptr);
+  static directory_reader open(
+    const directory& dir,
+    format::ptr codec = nullptr,
+    const index_reader_options& opts = index_reader_options()
+  );
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief open a new instance based on the latest file for the specified
-  /// codec
+  /// @brief open a new instance based on the latest file for the specified codec
   ///        this call will atempt to reuse segments from the existing reader
   ///        if codec == nullptr then use the latest file for all known codecs
   ////////////////////////////////////////////////////////////////////////////////
-  virtual directory_reader reopen(format::ptr codec = nullptr) const;
+  virtual directory_reader reopen(
+    format::ptr codec = nullptr
+  ) const;
 
-  void reset() noexcept { impl_.reset(); }
+  void reset() noexcept {
+    impl_.reset();
+  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief converts current directory_reader to 'index_reader::ptr'
   ////////////////////////////////////////////////////////////////////////////////
-  explicit operator index_reader::ptr() const noexcept { return impl_; }
+  explicit operator index_reader::ptr() const noexcept {
+    return impl_;
+  }
 
  private:
   typedef std::shared_ptr<const index_reader> impl_ptr;
 
+  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   impl_ptr impl_;
+  IRESEARCH_API_PRIVATE_VARIABLES_END
 
   directory_reader(impl_ptr&& impl) noexcept;
-};  // directory_reader
+}; // directory_reader
 
 inline bool operator==(std::nullptr_t, const directory_reader& rhs) noexcept {
   return rhs == nullptr;
@@ -126,6 +145,6 @@ inline bool operator!=(std::nullptr_t, const directory_reader& rhs) noexcept {
   return rhs != nullptr;
 }
 
-}  // namespace iresearch
+}
 
 #endif
