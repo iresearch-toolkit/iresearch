@@ -1038,17 +1038,19 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
   // update generation of segment operation
 
   // update generations of modification_queries_
-  std::for_each(std::begin(ctx.modification_queries_) +
-                  ctx.uncomitted_modification_queries_,
-                std::end(ctx.modification_queries_),
-                [&](modification_context& v) noexcept {
-                  // must be < modification_count since inserts come after
-                  // modification
-                  assert(v.generation < modification_count);
+  std::for_each(
+    std::begin(ctx.modification_queries_) +
+      ctx.uncomitted_modification_queries_,
+    std::end(ctx.modification_queries_),
+    [generation_base, modification_count](modification_context& v) noexcept {
+      // must be < modification_count since inserts come after
+      // modification
+      assert(v.generation < modification_count);
+      UNUSED(modification_count);
 
-                  // update to flush_context generation
-                  const_cast<size_t&>(v.generation) += generation_base;
-                });
+      // update to flush_context generation
+      const_cast<size_t&>(v.generation) += generation_base;
+    });
 
   auto update_generation = [uncomitted_doc_id_begin =
                               ctx.uncomitted_doc_id_begin_ - doc_limits::min(),
@@ -1059,6 +1061,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
       // can == modification_count if inserts come  after
       // modification
       assert(ctxs[i].generation <= modification_count);
+      UNUSED(modification_count);
       // update to flush_context generation
       ctxs[i].generation += generation_base;
     }
