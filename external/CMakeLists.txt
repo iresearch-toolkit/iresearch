@@ -135,19 +135,8 @@ add_subdirectory(absl)
 ### velocypack library
 ################################################################################
 if (NOT TARGET velocypack)
-  if ("${VPACK_ROOT}" STREQUAL "")
-    set(VPACK_ROOT "$ENV{VPACK_ROOT}")
-  endif()
+add_subdirectory(velocypack)
 
-  if (NOT ("${VPACK_ROOT}" STREQUAL ""))
-    expand_path(${VPACK_ROOT} VPACK_ROOT_EXP)
-
-    add_subdirectory(${VPACK_ROOT_EXP}
-                     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-velocypack.dir
-                     EXCLUDE_FROM_ALL)
-  else()
-   message(FATAL_ERROR "VPACK_ROOT not set")
-  endif()
 endif()
 
 ################################################################################
@@ -163,4 +152,3 @@ add_subdirectory(highway)
 
 add_subdirectory(text)
 
-add_subdirectory(velocypack)
