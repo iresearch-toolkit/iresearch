@@ -208,7 +208,7 @@ endif()
 
 find_package(Lz4 REQUIRED)
 find_package(ICU REQUIRED)
-find_package(Snowball REQUIRED)
+#find_package(Snowball REQUIRED)
 find_package(Unwind) # optional
 
 if (Unwind_FOUND)

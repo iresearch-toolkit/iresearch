@@ -136,7 +136,6 @@ add_subdirectory(absl)
 ################################################################################
 if (NOT TARGET velocypack)
 add_subdirectory(velocypack)
-
 endif()
 
 ################################################################################
@@ -151,4 +150,7 @@ add_subdirectory(highway)
 ################################################################################
 
 add_subdirectory(text)
+
+add_subdirectory(snowball)
+
 
