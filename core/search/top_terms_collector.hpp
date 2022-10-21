@@ -153,15 +153,15 @@ class top_terms_collector : private compact<0, Comparer>,
     if (auto* term = irs::get<term_attribute>(terms); IRS_LIKELY(term)) {
       state_.term = &term->value;
     } else {
-      static const bytes_view kNoTerm;
       assert(false);
+      static const bytes_view kNoTerm;
       state_.term = &kNoTerm;
     }
 
     if (auto* meta = irs::get<term_meta>(terms); IRS_LIKELY(meta)) {
       state_.docs_count = &meta->docs_count;
     } else {
-      const decltype(term_meta::docs_count) kNoDocs{0};
+      static const doc_id_t kNoDocs{0};
       state_.docs_count = &kNoDocs;
     }
   }
