@@ -1260,9 +1260,8 @@ bool write_fields(columnstore& cs, Iterator& feature_itr,
 
         res = cs.insert(
           feature_itr, info,
-          [feature_writer =
-             make_move_on_copy(std::move(feature_writer))](bstring& out) {
-            feature_writer.value()->finish(out);
+          [feature_writer = std::move(feature_writer)](bstring& out) {
+            feature_writer->finish(out);
             return std::string_view{};
           },
           std::move(value_writer));
