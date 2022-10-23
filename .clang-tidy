@@ -20,7 +20,8 @@ Checks: '*,
          -modernize-avoid-c-arrays,
          -cppcoreguidelines-avoid-c-arrays,
          -hicpp-avoid-c-arrays,
-         -cppcoreguidelines-pro-bounds-constant-array-index'
+         -cppcoreguidelines-pro-bounds-constant-array-index,
+         -llvm-header-guard'
 
 WarningsAsErrors: '*'
 
