@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_MISC_H
-#define IRESEARCH_MISC_H
+#pragma once
 
 #include <array>
 #include <cassert>
@@ -33,57 +32,37 @@ namespace iresearch {
 
 // Convenient helper for simulating 'try/catch/finally' semantic
 template<typename Func>
-class finally {
+class [[nodiscard]] Finally {
  public:
   static_assert(std::is_nothrow_invocable_v<Func>);
 
-  explicit finally(Func&& func) : func_{std::forward<Func>(func)} {}
-  ~finally() { func_(); }
+  // If you need some of it, please use absl::MakeCleanup
+  Finally(Finally&&) = delete;
+  Finally(Finally const&) = delete;
+  Finally& operator=(Finally&&) = delete;
+  Finally& operator=(Finally const&) = delete;
+
+  explicit Finally(Func&& func) : func_{std::forward<Func>(func)} {}
+  ~Finally() noexcept { func_(); }
 
  private:
   Func func_;
 };
 
 template<typename Func>
-finally<Func> make_finally(Func&& func) {
-  return finally<Func>{std::forward<Func>(func)};
-}
-
-// Convenient helper for simulating copy semantic for move-only types
-// e.g. lambda capture statement before c++14
-template<typename T>
-class move_on_copy {
- public:
-  explicit move_on_copy(T&& value) noexcept : value_(std::forward<T>(value)) {}
-  move_on_copy(const move_on_copy& rhs) noexcept
-    : value_(std::move(rhs.value_)) {}
-
-  T& value() noexcept { return value_; }
-  const T& value() const noexcept { return value_; }
-
- private:
-  move_on_copy& operator=(move_on_copy&&) = delete;
-  move_on_copy& operator=(const move_on_copy&) = delete;
-
-  mutable T value_;
-};
-
-template<typename T>
-move_on_copy<T> make_move_on_copy(T&& value) noexcept {
-  static_assert(std::is_rvalue_reference_v<decltype(value)>,
-                "parameter must be an rvalue");
-  return move_on_copy<T>(std::forward<T>(value));
+Finally<Func> make_finally(Func&& func) {
+  return Finally<Func>{std::forward<Func>(func)};
 }
 
 // Convenient helper for caching function results
 template<typename Input, Input Size, typename Func,
          typename = typename std::enable_if_t<std::is_integral_v<Input>>>
-class cached_func {
+class CachedFunc {
  public:
   using input_type = Input;
   using output_type = std::invoke_result_t<Func, Input>;
 
-  constexpr explicit cached_func(input_type offset, Func&& func)
+  constexpr explicit CachedFunc(input_type offset, Func&& func)
     : func_{std::forward<Func>(func)} {
     for (; offset < Size; ++offset) {
       cache_[offset] = func_(offset);
@@ -109,8 +88,8 @@ class cached_func {
 };
 
 template<typename Input, size_t Size, typename Func>
-constexpr cached_func<Input, Size, Func> cache_func(Input offset, Func&& func) {
-  return cached_func<Input, Size, Func>{offset, std::forward<Func>(func)};
+constexpr CachedFunc<Input, Size, Func> cache_func(Input offset, Func&& func) {
+  return CachedFunc<Input, Size, Func>{offset, std::forward<Func>(func)};
 }
 
 template<typename To, typename From>
@@ -128,7 +107,7 @@ constexpr auto& down_cast(From& from) noexcept {
   return *down_cast<To>(std::addressof(from));
 }
 
-// A conventient helper to use with std::visit(...)
+// A convenient helper to use with std::visit(...)
 template<typename... Visitors>
 struct Visitor : Visitors... {
   template<typename... T>
@@ -141,5 +120,3 @@ template<typename... T>
 Visitor(T...) -> Visitor<std::decay_t<T>...>;
 
 }  // namespace iresearch
-
-#endif
