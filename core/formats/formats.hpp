@@ -377,10 +377,11 @@ struct IRESEARCH_API columnstore_reader {
   using column_visitor_f = std::function<bool(const column_reader&)>;
 
   struct options {
+    options() : pinned_memory{noop_memory_accounter} {}
     // allows to select "hot" columns
     column_visitor_f warmup_column;
     // allows to restrict "hot" columns memory usage
-    memory_accounting_f pinned_memory{noop_memory_accounter};
+    memory_accounting_f pinned_memory;
   };
 
   virtual ~columnstore_reader() = default;
