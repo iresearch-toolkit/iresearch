@@ -25,6 +25,8 @@
 
 #include <absl/container/flat_hash_set.h>
 
+#include <function2/function2.hpp>
+
 #include "formats/seek_cookie.hpp"
 #include "index/column_info.hpp"
 #include "index/index_features.hpp"
@@ -195,10 +197,10 @@ struct basic_term_reader : public attribute_provider {
   virtual const field_meta& meta() const = 0;
 
   // least significant term
-  virtual bytes_view (min)() const = 0;
+  virtual bytes_view(min)() const = 0;
 
   // most significant term
-  virtual bytes_view (max)() const = 0;
+  virtual bytes_view(max)() const = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -273,12 +275,12 @@ struct term_reader : public attribute_provider {
   //////////////////////////////////////////////////////////////////////////////
   /// @returns the least significant term
   //////////////////////////////////////////////////////////////////////////////
-  virtual bytes_view (min)() const = 0;
+  virtual bytes_view(min)() const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns the most significant term
   //////////////////////////////////////////////////////////////////////////////
-  virtual bytes_view (max)() const = 0;
+  virtual bytes_view(max)() const = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,7 +319,8 @@ struct columnstore_writer {
 
   // Finalizer can be used to assign name and payload to a column.
   // Returned `std::string_view` must be valid during `commit(...)`.
-  using column_finalizer_f = std::function<std::string_view(bstring& out)>;
+  using column_finalizer_f =
+    fu2::unique_function<std::string_view(bstring& out)>;
 
   typedef std::pair<field_id, values_writer_f> column_t;
 
@@ -448,7 +451,7 @@ struct segment_meta_reader {
 
   virtual void read(const directory& dir, segment_meta& meta,
                     std::string_view filename = {}) = 0;  // null == use meta
-};                                                  // segment_meta_reader
+};                                                        // segment_meta_reader
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct index_meta_writer
@@ -527,7 +530,7 @@ struct flush_state {
   directory* dir{};
   const doc_map* docmap{};
   const std::set<type_info::type_id>* features{};  // segment features
-  std::string_view name;                                 // segment name
+  std::string_view name;                           // segment name
   size_t doc_count;
   IndexFeatures index_features{IndexFeatures::NONE};  // segment index features
 };
