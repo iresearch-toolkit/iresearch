@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FST_STRING_WEIGHT_H
-#define IRESEARCH_FST_STRING_WEIGHT_H
+#pragma once
 
 #include <string>
 
@@ -430,7 +429,7 @@ inline std::istream& operator>>(std::istream& strm,
 // Zero() or NoWeight() as they may interfere
 // with real values
 inline irs::bytes_view Plus(const StringLeftWeight<irs::byte_type>& lhs,
-                           const StringLeftWeight<irs::byte_type>& rhs) {
+                            const StringLeftWeight<irs::byte_type>& rhs) {
   typedef irs::bytes_view Weight;
 
   const auto* plhs = &lhs;
@@ -501,7 +500,7 @@ inline StringLeftWeight<irs::byte_type> Times(
 // Zero() or NoWeight() as they may interfere
 // with real values
 inline irs::bytes_view DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
-                                 const StringLeftWeight<irs::byte_type>& rhs) {
+                                  const StringLeftWeight<irs::byte_type>& rhs) {
   typedef irs::bytes_view Weight;
 
   if (rhs.Size() > lhs.Size()) {
@@ -518,7 +517,7 @@ inline irs::bytes_view DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
 // Zero() or NoWeight() as they may interfere
 // with real values
 inline irs::bytes_view DivideLeft(irs::bytes_view lhs,
-                                 const StringLeftWeight<irs::byte_type>& rhs) {
+                                  const StringLeftWeight<irs::byte_type>& rhs) {
   typedef irs::bytes_view Weight;
 
   if (rhs.Size() > lhs.size()) {
@@ -535,7 +534,7 @@ inline irs::bytes_view DivideLeft(irs::bytes_view lhs,
 // Zero() or NoWeight() as they may interfere
 // with real values
 inline irs::bytes_view DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
-                                 irs::bytes_view rhs) {
+                                  irs::bytes_view rhs) {
   typedef irs::bytes_view Weight;
 
   if (rhs.size() > lhs.Size()) {
@@ -555,5 +554,3 @@ inline StringLeftWeight<irs::byte_type> Divide(
 }
 
 }  // namespace fst
-
-#endif  // IRESEARCH_FST_STRING_WEIGHT_H

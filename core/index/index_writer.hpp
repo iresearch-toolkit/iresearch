@@ -926,7 +926,7 @@ class index_writer : private util::noncopyable {
           modification_offset_begin_(segment->uncomitted_modification_queries_),
           modification_offset_end_(std::numeric_limits<size_t>::max()),
           segment_(std::move(segment)) {
-        assert(segment);
+        assert(segment_);
       }
     };
 

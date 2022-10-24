@@ -21,10 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TYPE_UTILS_H
-#define IRESEARCH_TYPE_UTILS_H
+#pragma once
 
 #include <memory>
+#include <vector>
 
 #include "shared.hpp"
 #include "std.hpp"
@@ -220,5 +220,3 @@ template<typename T>
 inline constexpr bool is_vector_v = is_vector<T>::value;
 
 }  // namespace iresearch
-
-#endif

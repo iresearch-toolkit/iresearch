@@ -20,12 +20,13 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_IMMUTABLE_FST_H
-#define IRESEARCH_IMMUTABLE_FST_H
+#pragma once
 
+// clang-format off
 #include <fst/fst.h>
 #include <fst/vector-fst.h>
 #include <fst/expanded-fst.h>
+// clang-format on
 
 #include "shared.hpp"
 #include "store/store_utils.hpp"
@@ -396,5 +397,3 @@ class ArcIterator<fstext::ImmutableFst<Arc>> {
 };
 
 }  // namespace fst
-
-#endif  // IRESEARCH_IMMUTABLE_FST_H

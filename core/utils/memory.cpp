@@ -31,8 +31,7 @@
 
 #include "memory.hpp"
 
-namespace iresearch {
-namespace memory {
+namespace iresearch::memory {
 
 void dump_mem_stats_trace() noexcept {
 #ifndef _MSC_VER
@@ -44,30 +43,28 @@ void dump_mem_stats_trace() noexcept {
   // ...........................................................................
   // output mallinfo()
   // ...........................................................................
-  static const char* fomrat =
+  constexpr const char* format =
     "\
-Total non-mmapped bytes (arena):       %lu\n\
-# of free chunks (ordblks):            %lu\n\
-# of free fastbin blocks (smblks):     %lu\n\
-# of mapped regions (hblks):           %lu\n\
-Bytes in mapped regions (hblkhd):      %lu\n\
-Max. total allocated space (usmblks):  %lu\n\
-Free bytes held in fastbins (fsmblks): %lu\n\
-Total allocated space (uordblks):      %lu\n\
-Total free space (fordblks):           %lu\n\
-Topmost releasable block (keepcost):   %lu\n\
+Total non-mmapped bytes (arena):       %u\n\
+# of free chunks (ordblks):            %u\n\
+# of free fastbin blocks (smblks):     %u\n\
+# of mapped regions (hblks):           %u\n\
+Bytes in mapped regions (hblkhd):      %u\n\
+Max. total allocated space (usmblks):  %u\n\
+Free bytes held in fastbins (fsmblks): %u\n\
+Total allocated space (uordblks):      %u\n\
+Total free space (fordblks):           %u\n\
+Topmost releasable block (keepcost):   %u\n\
 ";
   auto mi = mallinfo();
 
-  fprintf(
-    stderr, fomrat, static_cast<unsigned int>(mi.arena),
-    static_cast<unsigned int>(mi.ordblks), static_cast<unsigned int>(mi.smblks),
-    static_cast<unsigned int>(mi.hblks), static_cast<unsigned int>(mi.hblkhd),
-    static_cast<unsigned int>(mi.usmblks),
-    static_cast<unsigned int>(mi.fsmblks),
-    static_cast<unsigned int>(mi.uordblks),
-    static_cast<unsigned int>(mi.fordblks),
-    static_cast<unsigned int>(mi.keepcost));
+  fprintf(stderr, format, static_cast<unsigned>(mi.arena),
+          static_cast<unsigned>(mi.ordblks), static_cast<unsigned>(mi.smblks),
+          static_cast<unsigned>(mi.hblks), static_cast<unsigned>(mi.hblkhd),
+          static_cast<unsigned>(mi.usmblks), static_cast<unsigned>(mi.fsmblks),
+          static_cast<unsigned>(mi.uordblks),
+          static_cast<unsigned>(mi.fordblks),
+          static_cast<unsigned>(mi.keepcost));
 
   // ...........................................................................
   // output malloc_stats()
@@ -86,5 +83,4 @@ Topmost releasable block (keepcost):   %lu\n\
 #endif
 }
 
-}  // namespace memory
-}  // namespace iresearch
+}  // namespace iresearch::memory

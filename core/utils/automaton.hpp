@@ -258,40 +258,28 @@ struct Transition : RangeLabel {
 
 template<typename W>
 std::uint64_t ComputeProperties(const Fst<fsa::Transition<W>>& fst,
-                                std::uint64_t mask, std::uint64_t* known,
-                                bool use_stored) {
+                                std::uint64_t mask, std::uint64_t* known) {
   using Arc = fsa::Transition<W>;
   using Label = typename Arc::Label;
   using StateId = typename Arc::StateId;
   using Weight = typename Arc::Weight;
   const auto fst_props = fst.Properties(kFstProperties, false);  // FST-stored.
-  // Check stored FST properties first if allowed.
-  if (use_stored) {
-    const auto known_props = KnownProperties(fst_props);
-    // If FST contains required info, return it.
-    if ((known_props & mask) == mask) {
-      if (known) {
-        *known = known_props;
-      }
-      return fst_props;
-    }
-  }
   // Computes (trinary) properties explicitly.
   // Initialize with binary properties (already known).
   std::uint64_t comp_props = fst_props & kBinaryProperties;
   // Computes these trinary properties with a DFS. We compute only those that
   // need a DFS here, since we otherwise would like to avoid a DFS since its
   // stack could grow large.
-  std::uint64_t dfs_props = kCyclic | kAcyclic | kInitialCyclic |
-                            kInitialAcyclic | kAccessible | kNotAccessible |
-                            kCoAccessible | kNotCoAccessible;
+  constexpr std::uint64_t kDfsProps =
+    kCyclic | kAcyclic | kInitialCyclic | kInitialAcyclic | kAccessible |
+    kNotAccessible | kCoAccessible | kNotCoAccessible;
   std::vector<StateId> scc;
-  if (mask & (dfs_props | kWeightedCycles | kUnweightedCycles)) {
+  if (mask & (kDfsProps | kWeightedCycles | kUnweightedCycles)) {
     SccVisitor<Arc> scc_visitor(&scc, nullptr, nullptr, &comp_props);
     DfsVisit(fst, &scc_visitor);
   }
   // Computes any remaining trinary properties via a state and arcs iterations
-  if (mask & ~(kBinaryProperties | dfs_props)) {
+  if (mask & ~(kBinaryProperties | kDfsProps)) {
     comp_props |= kAcceptor | kNoEpsilons | kNoIEpsilons | kNoOEpsilons |
                   kILabelSorted | kOLabelSorted | kUnweighted | kTopSorted |
                   kString;
@@ -301,7 +289,7 @@ std::uint64_t ComputeProperties(const Fst<fsa::Transition<W>>& fst,
     if (mask & (kODeterministic | kNonODeterministic)) {
       comp_props |= kODeterministic;
     }
-    if (mask & (dfs_props | kWeightedCycles | kUnweightedCycles)) {
+    if (mask & (kDfsProps | kWeightedCycles | kUnweightedCycles)) {
       comp_props |= kUnweightedCycles;
     }
 
@@ -324,10 +312,10 @@ std::uint64_t ComputeProperties(const Fst<fsa::Transition<W>>& fst,
       Arc prev_arc;
       // Creates these only if we need to.
       if (mask & (kIDeterministic | kNonIDeterministic)) {
-        ilabels.reset(new Labels());
+        ilabels = std::make_unique<Labels>();
       }
       if (mask & (kODeterministic | kNonODeterministic)) {
-        olabels.reset(new Labels());
+        olabels = std::make_unique<Labels>();
       }
       bool first_arc = true;
       for (ArcIterator<Fst<Arc>> aiter(fst, s); !aiter.Done(); aiter.Next()) {

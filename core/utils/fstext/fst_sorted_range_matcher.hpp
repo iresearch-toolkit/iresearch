@@ -20,10 +20,11 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SORTED_RANGE_MATCHER_H
-#define IRESEARCH_SORTED_RANGE_MATCHER_H
+#pragma once
 
+//clang-format off
 #include "utils/automaton.hpp"
+// clang-format on
 #include "fst/matcher.h"
 
 namespace fst {
@@ -236,5 +237,3 @@ inline bool SortedRangeExplicitMatcher<FST, MatchType>::Search() {
 }
 
 }  // namespace fst
-
-#endif  // IRESEARCH_SORTED_RANGE_MATCHER_H
