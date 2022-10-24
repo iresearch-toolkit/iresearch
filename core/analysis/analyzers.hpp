@@ -33,8 +33,8 @@
 
 namespace iresearch::analysis {
 
-using factory_f = analysis::analyzer::ptr (*)(string_ref args);
-using normalizer_f = bool (*)(string_ref args, std::string& config);
+using factory_f = analysis::analyzer::ptr (*)(std::string_view args);
+using normalizer_f = bool (*)(std::string_view args, std::string& config);
 
 class analyzer_registrar {
  public:
@@ -50,33 +50,33 @@ class analyzer_registrar {
 
 namespace analyzers {
 // Checks whether an analyzer with the specified name is registered.
-bool exists(string_ref name, const type_info& args_format,
+bool exists(std::string_view name, const type_info& args_format,
             bool load_library = true);
 
 // Normalize arguments for an analyzer specified by name and store them
 // in 'out' argument.
 // Returns true on success, false - otherwise
-bool normalize(std::string& out, string_ref name, const type_info& args_format,
-               string_ref args, bool load_library = true) noexcept;
+bool normalize(std::string& out, std::string_view name, const type_info& args_format,
+               std::string_view args, bool load_library = true) noexcept;
 
 // Find an analyzer by name, or nullptr if not found
 // indirect call to <class>::make(...).
 // NOTE: make(...) MUST be defined in CPP to ensire proper code scope
-result get(analyzer::ptr& analyzer, string_ref name,
-           const type_info& args_format, string_ref args,
+result get(analyzer::ptr& analyzer, std::string_view name,
+           const type_info& args_format, std::string_view args,
            bool load_library = true) noexcept;
 
 // Find an analyzer by name, or nullptr if not found
 // indirect call to <class>::make(...).
 // NOTE: make(...) MUST be defined in CPP to ensire proper code scope
-analyzer::ptr get(string_ref name, const type_info& args_format,
-                  string_ref args, bool load_library = true) noexcept;
+analyzer::ptr get(std::string_view name, const type_info& args_format,
+                  std::string_view args, bool load_library = true) noexcept;
 
 // Load all analyzers from plugins directory.
 void load_all(std::string_view path);
 
 // Visit all loaded analyzers, terminate early if visitor returns false.
-bool visit(const std::function<bool(string_ref, const type_info&)>& visitor);
+bool visit(const std::function<bool(std::string_view, const type_info&)>& visitor);
 
 }  // namespace analyzers
 }  // namespace iresearch::analysis

@@ -42,7 +42,7 @@ struct column_info {
   bool track_prev_doc{false};
 };
 
-using column_info_provider_t = std::function<column_info(const string_ref)>;
+using column_info_provider_t = std::function<column_info(const std::string_view)>;
 
 }  // namespace iresearch
 

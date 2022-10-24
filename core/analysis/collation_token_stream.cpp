@@ -131,8 +131,8 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-analysis::analyzer::ptr make_vpack(string_ref args) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+analysis::analyzer::ptr make_vpack(std::string_view args) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
 ///////////////////////////////////////////////////////////////////////////////
@@ -159,8 +159,8 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   }
 }
 
-bool normalize_vpack_config(string_ref args, std::string& config) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+bool normalize_vpack_config(std::string_view args, std::string& config) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
@@ -169,13 +169,13 @@ bool normalize_vpack_config(string_ref args, std::string& config) {
   return false;
 }
 
-analysis::analyzer::ptr make_json(string_ref args) {
+analysis::analyzer::ptr make_json(std::string_view args) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while constructing collation_token_stream");
       return nullptr;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
@@ -188,13 +188,13 @@ analysis::analyzer::ptr make_json(string_ref args) {
   return nullptr;
 }
 
-bool normalize_json_config(string_ref args, std::string& definition) {
+bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while normalizing collation_token_stream");
       return false;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     VPackBuilder builder;
     if (normalize_vpack_config(vpack->slice(), &builder)) {
       definition = builder.toString();
@@ -248,7 +248,7 @@ collation_token_stream::collation_token_stream(const options_t& options)
     state_{new state_t(options)},
     term_eof_{true} {}
 
-bool collation_token_stream::reset(string_ref data) {
+bool collation_token_stream::reset(std::string_view data) {
   if (!state_->collator) {
     auto err = UErrorCode::U_ZERO_ERROR;
     state_->collator.reset(
@@ -267,7 +267,7 @@ bool collation_token_stream::reset(string_ref data) {
   }
 
   const icu::UnicodeString icu_token = icu::UnicodeString::fromUTF8(
-    icu::StringPiece(data.c_str(), static_cast<int32_t>(data.size())));
+    icu::StringPiece(data.data(), static_cast<int32_t>(data.size())));
 
   byte_type raw_term_buf[MAX_TOKEN_SIZE];
   static_assert(sizeof raw_term_buf == sizeof state_->term_buf);

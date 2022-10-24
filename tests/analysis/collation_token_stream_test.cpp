@@ -46,7 +46,7 @@ std::vector<uint8_t> encode(uint8_t b) {
 
 class CollationEncoder {
  public:
-  void encode(irs::bytes_ref src) {
+  void encode(irs::bytes_view src) {
     buffer_.clear();
     buffer_.reserve(src.size() * 2);
     for (auto b : src) {
@@ -55,7 +55,7 @@ class CollationEncoder {
     }
   }
 
-  irs::bytes_ref getByteArray() noexcept {
+  irs::bytes_view getByteArray() noexcept {
     return {buffer_.data(), buffer_.size()};
   }
 
@@ -158,7 +158,7 @@ TEST(collation_token_stream_test, construct_from_str) {
   {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
                          "collation", irs::type<irs::text_format::json>::get(),
-                         irs::string_ref::NIL));
+                         std::string_view{}));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
                 "collation", irs::type<irs::text_format::json>::get(), "1"));
@@ -177,9 +177,9 @@ TEST(collation_token_stream_test, construct_from_str) {
 TEST(collation_token_stream_test, check_collation) {
   auto err = UErrorCode::U_ZERO_ERROR;
 
-  constexpr irs::string_ref locale_name = R"(en)";
+  constexpr std::string_view locale_name = R"(en)";
   const icu::Locale icu_locale =
-    icu::Locale::createFromName(locale_name.c_str());
+    icu::Locale::createFromName(locale_name.data());
 
   CollationEncoder encodedKey;
   std::unique_ptr<icu::Collator> coll{
@@ -187,11 +187,11 @@ TEST(collation_token_stream_test, check_collation) {
   ASSERT_NE(nullptr, coll);
   ASSERT_TRUE(U_SUCCESS(err));
 
-  auto get_collation_key = [&](irs::string_ref data) -> irs::bytes_ref {
+  auto get_collation_key = [&](std::string_view data) -> irs::bytes_view {
     err = UErrorCode::U_ZERO_ERROR;
     icu::CollationKey key;
     coll->getCollationKey(icu::UnicodeString::fromUTF8(icu::StringPiece{
-                            data.c_str(), static_cast<int32_t>(data.size())}),
+                            data.data(), static_cast<int32_t>(data.size())}),
                           key, err);
     EXPECT_TRUE(U_SUCCESS(err));
 
@@ -217,7 +217,7 @@ TEST(collation_token_stream_test, check_collation) {
     ASSERT_NE(nullptr, inc);
 
     {
-      constexpr irs::string_ref data{"å b z a"};
+      constexpr std::string_view data{"å b z a"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -243,7 +243,7 @@ TEST(collation_token_stream_test, check_collation) {
     ASSERT_NE(nullptr, inc);
 
     {
-      constexpr irs::string_ref data{"a å b z"};
+      constexpr std::string_view data{"a å b z"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -260,9 +260,9 @@ TEST(collation_token_stream_test, check_collation) {
 TEST(collation_token_stream_test, check_collation_with_variant1) {
   auto err = UErrorCode::U_ZERO_ERROR;
 
-  constexpr irs::string_ref locale_name = R"(de@collation=phonebook)";
+  constexpr std::string_view locale_name = R"(de@collation=phonebook)";
   const icu::Locale icu_locale =
-    icu::Locale::createFromName(locale_name.c_str());
+    icu::Locale::createFromName(locale_name.data());
 
   CollationEncoder encodedKey;
   std::unique_ptr<icu::Collator> coll{
@@ -270,11 +270,11 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
   ASSERT_NE(nullptr, coll);
   ASSERT_TRUE(U_SUCCESS(err));
 
-  auto get_collation_key = [&](irs::string_ref data) -> irs::bytes_ref {
+  auto get_collation_key = [&](std::string_view data) -> irs::bytes_view {
     err = UErrorCode::U_ZERO_ERROR;
     icu::CollationKey key;
     coll->getCollationKey(icu::UnicodeString::fromUTF8(icu::StringPiece{
-                            data.c_str(), static_cast<int32_t>(data.size())}),
+                            data.data(), static_cast<int32_t>(data.size())}),
                           key, err);
     EXPECT_TRUE(U_SUCCESS(err));
 
@@ -303,7 +303,7 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
     ASSERT_NE(nullptr, inc);
 
     {
-      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
+      constexpr std::string_view data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -331,7 +331,7 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
     ASSERT_NE(nullptr, inc);
 
     {
-      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
+      constexpr std::string_view data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -359,7 +359,7 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
     ASSERT_NE(nullptr, inc);
 
     {
-      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
+      constexpr std::string_view data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -387,7 +387,7 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
     ASSERT_NE(nullptr, inc);
 
     {
-      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
+      constexpr std::string_view data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -415,7 +415,7 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
     ASSERT_NE(nullptr, inc);
 
     {
-      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
+      constexpr std::string_view data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -443,7 +443,7 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
     ASSERT_NE(nullptr, inc);
 
     {
-      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
+      constexpr std::string_view data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -471,7 +471,7 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
     ASSERT_NE(nullptr, inc);
 
     {
-      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
+      constexpr std::string_view data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -497,7 +497,7 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
     ASSERT_NE(nullptr, inc);
 
     {
-      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
+      constexpr std::string_view data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -526,7 +526,7 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
     ASSERT_NE(nullptr, inc);
 
     {
-      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
+      constexpr std::string_view data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -541,9 +541,9 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
 TEST(collation_token_stream_test, check_collation_with_variant2) {
   auto err = UErrorCode::U_ZERO_ERROR;
 
-  constexpr irs::string_ref locale_name = "de_phonebook";
+  constexpr std::string_view locale_name = "de_phonebook";
   const icu::Locale icu_locale =
-    icu::Locale::createFromName(locale_name.c_str());
+    icu::Locale::createFromName(locale_name.data());
 
   CollationEncoder encodedKey;
   std::unique_ptr<icu::Collator> coll{
@@ -551,11 +551,11 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
   ASSERT_NE(nullptr, coll);
   ASSERT_TRUE(U_SUCCESS(err));
 
-  auto get_collation_key = [&](irs::string_ref data) -> irs::bytes_ref {
+  auto get_collation_key = [&](std::string_view data) -> irs::bytes_view {
     err = UErrorCode::U_ZERO_ERROR;
     icu::CollationKey key;
     coll->getCollationKey(icu::UnicodeString::fromUTF8(icu::StringPiece{
-                            data.c_str(), static_cast<int32_t>(data.size())}),
+                            data.data(), static_cast<int32_t>(data.size())}),
                           key, err);
     EXPECT_TRUE(U_SUCCESS(err));
 
@@ -584,7 +584,7 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
     ASSERT_NE(nullptr, inc);
 
     {
-      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
+      constexpr std::string_view data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -612,7 +612,7 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
     ASSERT_NE(nullptr, inc);
 
     {
-      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
+      constexpr std::string_view data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -640,7 +640,7 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
     ASSERT_NE(nullptr, inc);
 
     {
-      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
+      constexpr std::string_view data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -668,7 +668,7 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
     ASSERT_NE(nullptr, inc);
 
     {
-      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
+      constexpr std::string_view data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -694,7 +694,7 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
     ASSERT_NE(nullptr, inc);
 
     {
-      constexpr irs::string_ref data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
+      constexpr std::string_view data{"Ärger Ast Aerosol Abbruch Aqua Afrika"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -709,9 +709,9 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
 TEST(collation_token_stream_test, check_tokens_utf8) {
   auto err = UErrorCode::U_ZERO_ERROR;
 
-  constexpr irs::string_ref locale_name = "en-EN.UTF-8";
+  constexpr std::string_view locale_name = "en-EN.UTF-8";
 
-  const auto icu_locale = icu::Locale::createFromName(locale_name.c_str());
+  const auto icu_locale = icu::Locale::createFromName(locale_name.data());
 
   CollationEncoder encodedKey;
   std::unique_ptr<icu::Collator> coll{
@@ -719,11 +719,11 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
   ASSERT_NE(nullptr, coll);
   ASSERT_TRUE(U_SUCCESS(err));
 
-  auto get_collation_key = [&](irs::string_ref data) -> irs::bytes_ref {
+  auto get_collation_key = [&](std::string_view data) -> irs::bytes_view {
     err = UErrorCode::U_ZERO_ERROR;
     icu::CollationKey key;
     coll->getCollationKey(icu::UnicodeString::fromUTF8(icu::StringPiece{
-                            data.c_str(), static_cast<int32_t>(data.size())}),
+                            data.data(), static_cast<int32_t>(data.size())}),
                           key, err);
     EXPECT_TRUE(U_SUCCESS(err));
 
@@ -750,7 +750,7 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
     ASSERT_NE(nullptr, inc);
 
     {
-      const irs::string_ref data{irs::string_ref::NIL};
+      const std::string_view data{};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -761,7 +761,7 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
     }
 
     {
-      const irs::string_ref data{irs::string_ref::EMPTY};
+      const std::string_view data{""};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -772,7 +772,7 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
     }
 
     {
-      constexpr irs::string_ref data{"quick"};
+      constexpr std::string_view data{"quick"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -783,7 +783,7 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
     }
 
     {
-      constexpr irs::string_ref data{"foo"};
+      constexpr std::string_view data{"foo"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
@@ -794,7 +794,7 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
     }
 
     {
-      constexpr irs::string_ref data{
+      constexpr std::string_view data{
         "the quick Brown fox jumps over the lazy dog"};
       ASSERT_TRUE(stream->reset(data));
       ASSERT_TRUE(stream->next());
@@ -810,9 +810,9 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
 TEST(collation_token_stream_test, check_tokens) {
   auto err = UErrorCode::U_ZERO_ERROR;
 
-  constexpr irs::string_ref locale_name = "de-DE";
+  constexpr std::string_view locale_name = "de-DE";
 
-  const auto icu_locale = icu::Locale::createFromName(locale_name.c_str());
+  const auto icu_locale = icu::Locale::createFromName(locale_name.data());
 
   CollationEncoder encodedKey;
   std::unique_ptr<icu::Collator> coll{
@@ -821,11 +821,11 @@ TEST(collation_token_stream_test, check_tokens) {
   ASSERT_NE(nullptr, coll);
   ASSERT_TRUE(U_SUCCESS(err));
 
-  auto get_collation_key = [&](irs::string_ref data) -> irs::bytes_ref {
+  auto get_collation_key = [&](std::string_view data) -> irs::bytes_view {
     icu::CollationKey key;
     err = UErrorCode::U_ZERO_ERROR;
     coll->getCollationKey(icu::UnicodeString::fromUTF8(icu::StringPiece{
-                            data.c_str(), static_cast<int32_t>(data.size())}),
+                            data.data(), static_cast<int32_t>(data.size())}),
                           key, err);
     EXPECT_TRUE(U_SUCCESS(err));
 

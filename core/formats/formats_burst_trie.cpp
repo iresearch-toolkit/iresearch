@@ -23,8 +23,10 @@
 #include "formats_burst_trie.hpp"
 
 #include <cassert>
-#include <variant>
 #include <list>
+#include <variant>
+
+// clang-format off
 
 #if (defined(__clang__) || defined(_MSC_VER) || \
      defined(__GNUC__) &&                       \
@@ -102,90 +104,16 @@
 #include "utils/string.hpp"
 #include "utils/log.hpp"
 
+// clang-format on
+
 namespace {
 
 using namespace irs;
 
-template<typename Elem, typename Traits = std::char_traits<Elem>,
-         typename Alloc = std::allocator<Elem>>
-class basic_str_builder : public basic_string_ref<Elem, Traits>,
-                          private Alloc,
-                          private util::noncopyable {
- public:
-  typedef basic_string_ref<Elem, Traits> ref_type;
-  typedef Alloc allocator_type;
-  typedef typename ref_type::traits_type traits_type;
-  typedef typename traits_type::char_type char_type;
-
-  static constexpr size_t DEF_ALIGN = 8;
-
-  explicit basic_str_builder(const allocator_type& alloc = allocator_type())
-    : Alloc{alloc}, capacity_{0} {}
-
-  virtual ~basic_str_builder() { destroy(); }
-
-  char_type* data() noexcept { return const_cast<char_type*>(this->data_); }
-
-  void reset(size_t size) noexcept {
-    assert(size <= capacity_);
-    this->size_ = size;
-  }
-
-  void reset() noexcept { this->size_ = 0; }
-
-  void append(char_type b, size_t chunk = DEF_ALIGN) {
-    if (this->size_ == capacity_) {
-      reserve<true>(string_utils::oversize(chunk, capacity_, this->size_ + 1));
-    }
-    assert(this->size_ < capacity_);
-    data()[this->size_++] = b;
-  }
-
-  void assign(const char_type* b, size_t size, size_t chunk = DEF_ALIGN) {
-    oversize<false>(this->size() + size, chunk);
-    traits_type::copy(data(), b, size);
-    this->size_ = size;
-  }
-
-  template<bool PreserveContent = true>
-  void oversize(size_t minsize, size_t chunk = DEF_ALIGN) {
-    if (minsize > capacity_) {
-      reserve<PreserveContent>(
-        string_utils::oversize(chunk, capacity_, minsize));
-    }
-  }
-
-  template<bool PreserveContent = true>
-  void reserve(size_t size) {
-    assert(this->capacity_ >= this->size());
-
-    if (size > capacity_) {
-      char_type* newdata = allocator().allocate(size);
-      if constexpr (PreserveContent) {
-        traits_type::copy(newdata, this->data_, this->size());
-      }
-      destroy();
-      this->data_ = newdata;
-      this->capacity_ = size;
-    }
-  }
-
- private:
-  allocator_type& allocator() noexcept {
-    return static_cast<allocator_type&>(*this);
-  }
-
-  void destroy() noexcept { allocator().deallocate(data(), capacity_); }
-
-  size_t capacity_;
-};  // basic_str_builder
-
-using bytes_builder = basic_str_builder<byte_type>;
-
 template<typename Char>
 class volatile_ref : util::noncopyable {
  public:
-  typedef irs::basic_string_ref<Char> ref_t;
+  typedef std::basic_string_view<Char> ref_t;
   typedef std::basic_string<Char> str_t;
 
   volatile_ref() = default;
@@ -206,13 +134,13 @@ class volatile_ref : util::noncopyable {
 
   void clear() {
     str_.clear();
-    ref_ = ref_t::NIL;
+    ref_ = {};
   }
 
   template<bool Volatile>
-  void assign(const ref_t& str) {
+  void assign(ref_t str) {
     if constexpr (Volatile) {
-      str_.assign(str.c_str(), str.size());
+      str_.assign(str.data(), str.size());
       ref_ = str_;
     } else {
       ref_ = str;
@@ -225,18 +153,20 @@ class volatile_ref : util::noncopyable {
               : volatile_ref<Char>::assign<false>(str));
   }
 
-  void assign(const ref_t& str, Char label) {
+  void assign(ref_t str, Char label) {
     str_.resize(str.size() + 1);
-    std::memcpy(&str_[0], str.c_str(), str.size() * sizeof(Char));
+    std::memcpy(&str_[0], str.data(), str.size() * sizeof(Char));
     str_[str.size()] = label;
     ref_ = str_;
   }
 
-  operator const ref_t&() const noexcept { return ref_; }
+  ref_t view() const noexcept { return ref_; }
+
+  operator ref_t() const noexcept { return ref_; }
 
  private:
   str_t str_;
-  ref_t ref_{ref_t::NIL};
+  ref_t ref_{};
 };  // volatile_ref
 
 using volatile_byte_ref = volatile_ref<byte_type>;
@@ -315,10 +245,10 @@ enum EntryType : byte_type { ET_TERM = 0, ET_BLOCK, ET_INVALID };  // EntryType
 ///////////////////////////////////////////////////////////////////////////////
 class entry : private util::noncopyable {
  public:
-  entry(const irs::bytes_ref& term, irs::postings_writer::state&& attrs,
+  entry(irs::bytes_view term, irs::postings_writer::state&& attrs,
         bool volatile_term);
 
-  entry(const irs::bytes_ref& prefix,
+  entry(irs::bytes_view prefix,
 #ifdef __cpp_lib_memory_resource
         std::pmr::memory_resource& mrc,
 #endif
@@ -353,7 +283,7 @@ class entry : private util::noncopyable {
   EntryType type_;  // entry type
 };                  // entry
 
-entry::entry(const irs::bytes_ref& term, irs::postings_writer::state&& attrs,
+entry::entry(irs::bytes_view term, irs::postings_writer::state&& attrs,
              bool volatile_term)
   : type_(ET_TERM) {
   data_.assign(term, volatile_term);
@@ -361,7 +291,7 @@ entry::entry(const irs::bytes_ref& term, irs::postings_writer::state&& attrs,
   mem_.construct<irs::postings_writer::state>(std::move(attrs));
 }
 
-entry::entry(const irs::bytes_ref& prefix,
+entry::entry(irs::bytes_view prefix,
 #ifdef __cpp_lib_memory_resource
              std::pmr::memory_resource& mrc,
 #endif
@@ -549,7 +479,7 @@ void write_field_features_legacy(FeatureMap& feature_map, data_output& out,
       // should not happen in reality
       throw irs::index_error(string_utils::to_string(
         "feature '%s' is not listed in segment features",
-        feature().name().c_str()));
+        feature().name().data()));
     }
 
     out.write_vlong(it->second);
@@ -655,9 +585,8 @@ void write_field_features(FeatureMap& feature_map, data_output& out,
 
     if (feature_map.end() == it) {
       // should not happen in reality
-      throw irs::index_error(string_utils::to_string(
-        "feature '%s' is not listed in segment features",
-        feature().name().c_str()));
+      throw irs::index_error(absl::StrCat(
+        "feature '", feature().name(), "' is not listed in segment features"));
     }
 
     out.write_vlong(it->second);
@@ -720,19 +649,18 @@ void read_field_features(data_input& in, const feature_map_t& feature_map,
       UNUSED(it);
 
       if (!is_new) {
-        throw irs::index_error(irs::string_utils::to_string(
-          "duplicate feature '%s'", feature().name().c_str()));
+        throw irs::index_error(
+          absl::StrCat("duplicate feature '", feature().name(), "'"));
       }
     } else {
-      throw irs::index_error(irs::string_utils::to_string(
-        "unknown feature id '" IR_SIZE_T_SPECIFIER "'", id));
+      throw irs::index_error(absl::StrCat("unknown feature id '", id, "'"));
     }
   }
 }
 
 inline void prepare_output(std::string& str, index_output::ptr& out,
-                           const flush_state& state, string_ref ext,
-                           string_ref format, const int32_t version) {
+                           const flush_state& state, std::string_view ext,
+                           std::string_view format, const int32_t version) {
   assert(!out);
 
   file_name(str, state.name, ext);
@@ -748,7 +676,7 @@ inline void prepare_output(std::string& str, index_output::ptr& out,
 
 inline int32_t prepare_input(std::string& str, index_input::ptr& in,
                              irs::IOAdvice advice, const reader_state& state,
-                             string_ref ext, string_ref format,
+                             std::string_view ext, std::string_view format,
                              const int32_t min_ver, const int32_t max_ver,
                              int64_t* checksum = nullptr) {
   assert(!in);
@@ -926,10 +854,11 @@ class field_writer final : public irs::field_writer {
   static constexpr uint32_t DEFAULT_MIN_BLOCK_SIZE = 25;
   static constexpr uint32_t DEFAULT_MAX_BLOCK_SIZE = 48;
 
-  static constexpr string_ref FORMAT_TERMS = "block_tree_terms_dict";
-  static constexpr string_ref TERMS_EXT = "tm";
-  static constexpr string_ref FORMAT_TERMS_INDEX = "block_tree_terms_index";
-  static constexpr string_ref TERMS_INDEX_EXT = "ti";
+  static constexpr std::string_view FORMAT_TERMS = "block_tree_terms_dict";
+  static constexpr std::string_view TERMS_EXT = "tm";
+  static constexpr std::string_view FORMAT_TERMS_INDEX =
+    "block_tree_terms_index";
+  static constexpr std::string_view TERMS_INDEX_EXT = "ti";
 
   field_writer(irs::postings_writer::ptr&& pw, bool consolidation,
                burst_trie::Version version = burst_trie::Version::MAX,
@@ -967,7 +896,7 @@ class field_writer final : public irs::field_writer {
   // count - number of entries to write into block
   void write_blocks(size_t prefix, size_t count);
 
-  void push(bytes_ref term);
+  void push(bytes_view term);
 
   absl::flat_hash_map<irs::type_info::type_id, size_t> feature_map_;
 #ifdef __cpp_lib_memory_resource
@@ -1019,9 +948,9 @@ void field_writer::write_block(size_t prefix, size_t begin, size_t end,
 
   for (; begin < end; ++begin) {
     auto& e = stack_[begin];
-    const irs::bytes_ref& data = e.data();
+    const irs::bytes_view data = e.data();
     const EntryType type = e.type();
-    assert(starts_with(data, bytes_ref(last_term_, prefix)));
+    assert(data.starts_with({last_term_.view().data(), prefix}));
 
     // only terms under 32k are allowed
     assert(data.size() - prefix <= UINT32_C(0x7FFFFFFF));
@@ -1029,7 +958,7 @@ void field_writer::write_block(size_t prefix, size_t begin, size_t end,
 
     suffix_.stream.write_vint(
       leaf ? suf_size : ((suf_size << 1) | static_cast<uint32_t>(type)));
-    suffix_.stream.write_bytes(data.c_str() + prefix, suf_size);
+    suffix_.stream.write_bytes(data.data() + prefix, suf_size);
 
     if (ET_TERM == type) {
       pw_->encode(stats_.stream, *e.term());
@@ -1085,7 +1014,7 @@ void field_writer::write_block(size_t prefix, size_t begin, size_t end,
   stats_.stream.reset();
 
   // add new block to the list of created blocks
-  blocks_.emplace_back(bytes_ref(last_term_, prefix),
+  blocks_.emplace_back(bytes_view{last_term_.view().data(), prefix},
 #ifdef __cpp_lib_memory_resource
                        block_index_buf_,
 #endif
@@ -1116,7 +1045,7 @@ void field_writer::write_blocks(size_t prefix, size_t count) {
     block_t::INVALID_LABEL};  // next lead suffix label in current block
   for (size_t i = begin; i < end; ++i) {
     const entry& e = stack_[i];
-    const irs::bytes_ref& data = e.data();
+    const irs::bytes_view data = e.data();
 
     const size_t suffix = data.size() - prefix;
     min_suffix = std::min(suffix, min_suffix);
@@ -1166,8 +1095,8 @@ void field_writer::write_blocks(size_t prefix, size_t count) {
   }
 }
 
-void field_writer::push(bytes_ref term) {
-  const irs::bytes_ref& last = last_term_;
+void field_writer::push(bytes_view term) {
+  const irs::bytes_view last = last_term_;
   const size_t limit = std::min(last.size(), term.size());
 
   // find common prefix
@@ -1311,7 +1240,7 @@ void field_writer::write(std::string_view name, IndexFeatures index_features,
     if (meta->docs_count) {
       sum_dfreq += meta->docs_count;
 
-      const bytes_ref& term = terms.value();
+      const bytes_view term = terms.value();
       push(term);
 
       // push term to the top of the stack
@@ -1363,7 +1292,7 @@ void field_writer::end_field(std::string_view name,
   }
 
   // cause creation of all final blocks
-  push(bytes_ref::EMPTY);
+  push(kEmptyStringView<irs::byte_type>);
 
   // write root block with empty prefix
   write_blocks(0, stack_.size());
@@ -1380,8 +1309,8 @@ void field_writer::end_field(std::string_view name,
   index_out_->write_vlong(term_count_);
   index_out_->write_vlong(doc_count);
   index_out_->write_vlong(total_doc_freq);
-  write_string<irs::bytes_ref>(*index_out_, min_term_.second);
-  write_string<irs::bytes_ref>(*index_out_, max_term_);
+  write_string<irs::bytes_view>(*index_out_, min_term_.second);
+  write_string<irs::bytes_view>(*index_out_, max_term_);
   if (IndexFeatures::NONE != (index_features & IndexFeatures::FREQ)) {
     index_out_->write_vlong(total_term_freq);
   }
@@ -1462,12 +1391,8 @@ class term_reader_base : public irs::term_reader, private util::noncopyable {
   virtual const field_meta& meta() const noexcept override { return field_; }
   virtual size_t size() const noexcept override { return terms_count_; }
   virtual uint64_t docs_count() const noexcept override { return doc_count_; }
-  virtual const bytes_ref& min() const noexcept override {
-    return min_term_ref_;
-  }
-  virtual const bytes_ref& max() const noexcept override {
-    return max_term_ref_;
-  }
+  virtual bytes_view min() const noexcept override { return min_term_ref_; }
+  virtual bytes_view max() const noexcept override { return max_term_ref_; }
   virtual attribute* get_mutable(
     irs::type_info::type_id type) noexcept override;
 
@@ -1477,8 +1402,8 @@ class term_reader_base : public irs::term_reader, private util::noncopyable {
  private:
   bstring min_term_;
   bstring max_term_;
-  bytes_ref min_term_ref_;
-  bytes_ref max_term_ref_;
+  bytes_view min_term_ref_;
+  bytes_view max_term_ref_;
   uint64_t terms_count_;
   uint64_t doc_count_;
   uint64_t doc_freq_;
@@ -1529,7 +1454,7 @@ class block_iterator : util::noncopyable {
 
   block_iterator(byte_weight&& header, size_t prefix) noexcept;
 
-  block_iterator(const bytes_ref& header, size_t prefix)
+  block_iterator(bytes_view header, size_t prefix)
     : block_iterator{byte_weight{header}, prefix} {}
 
   block_iterator(uint64_t start, size_t prefix) noexcept
@@ -1591,7 +1516,7 @@ class block_iterator : util::noncopyable {
   uint64_t size() const noexcept { return ent_count_; }
 
   template<typename Reader>
-  SeekResult scan_to_term(const bytes_ref& term, Reader&& reader) {
+  SeekResult scan_to_term(bytes_view term, Reader&& reader) {
     assert(term.size() >= prefix_);
     assert(!dirty_);
 
@@ -1683,9 +1608,9 @@ class block_iterator : util::noncopyable {
   }
 
   template<typename Reader>
-  SeekResult scan_to_term_nonleaf(const bytes_ref& term, Reader&& reader);
+  SeekResult scan_to_term_nonleaf(bytes_view term, Reader&& reader);
   template<typename Reader>
-  SeekResult scan_to_term_leaf(const bytes_ref& term, Reader&& reader);
+  SeekResult scan_to_term_leaf(bytes_view term, Reader&& reader);
 
   template<typename Reader>
   SeekResult scan_nonleaf(Reader&& reader);
@@ -1899,14 +1824,13 @@ SeekResult block_iterator::scan_nonleaf(Reader&& reader) {
 }
 
 template<typename Reader>
-SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term,
-                                             Reader&& reader) {
+SeekResult block_iterator::scan_to_term_leaf(bytes_view term, Reader&& reader) {
   assert(leaf_);
   assert(!dirty_);
   assert(term.size() >= prefix_);
 
   const size_t term_suffix_length = term.size() - prefix_;
-  const byte_type* term_suffix = term.c_str() + prefix_;
+  const byte_type* term_suffix = term.data() + prefix_;
   size_t suffix_length = suffix_length_;
   cur_type_ = ET_TERM;  // leaf block contains terms only
   SeekResult res = SeekResult::END;
@@ -1945,14 +1869,14 @@ SeekResult block_iterator::scan_to_term_leaf(const bytes_ref& term,
 }
 
 template<typename Reader>
-SeekResult block_iterator::scan_to_term_nonleaf(const bytes_ref& term,
+SeekResult block_iterator::scan_to_term_nonleaf(bytes_view term,
                                                 Reader&& reader) {
   assert(!leaf_);
   assert(!dirty_);
   assert(term.size() >= prefix_);
 
   const size_t term_suffix_length = term.size() - prefix_;
-  const byte_type* term_suffix = term.c_str() + prefix_;
+  const byte_type* term_suffix = term.data() + prefix_;
   const byte_type* suffix_begin = suffix_begin_;
   size_t suffix_length = suffix_length_;
   SeekResult res = SeekResult::END;
@@ -2122,25 +2046,25 @@ void block_iterator::reset() {
 ///////////////////////////////////////////////////////////////////////////////
 class term_iterator_base : public seek_term_iterator {
  public:
-  explicit term_iterator_base(const field_meta& field,
-                              postings_reader& postings,
-                              irs::encryption::stream* terms_cipher,
-                              payload* pay = nullptr)
+  term_iterator_base(const field_meta& field, postings_reader& postings,
+                     irs::encryption::stream* terms_cipher,
+                     payload* pay = nullptr)
     : field_(&field), postings_(&postings), terms_cipher_(terms_cipher) {
     std::get<attribute_ptr<payload>>(attrs_) = pay;
   }
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override final {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual seek_cookie::ptr cookie() const override final {
+  seek_cookie::ptr cookie() const override final {
     return memory::make_unique<::cookie>(
       std::get<version10::term_meta>(attrs_));
   }
 
-  virtual const bytes_ref& value() const noexcept final { return term_; }
+  bytes_view value() const noexcept final {
+    return std::get<term_attribute>(attrs_).value;
+  }
 
   index_input& terms_input() const;
 
@@ -2149,7 +2073,8 @@ class term_iterator_base : public seek_term_iterator {
   }
 
  protected:
-  using attributes = std::tuple<version10::term_meta, attribute_ptr<payload>>;
+  using attributes =
+    std::tuple<version10::term_meta, term_attribute, attribute_ptr<payload>>;
 
   void read_impl(block_iterator& it) {
     it.load_data(*field_, std::get<version10::term_meta>(attrs_), *postings_);
@@ -2166,11 +2091,15 @@ class term_iterator_base : public seek_term_iterator {
   }
 
   void copy(const byte_type* suffix, size_t prefix_size, size_t suffix_size) {
-    const auto size = prefix_size + suffix_size;
-    term_.oversize(size);
-    term_.reset(size);
-    std::memcpy(term_.data() + prefix_size, suffix, suffix_size);
+    absl::strings_internal::STLStringResizeUninitializedAmortized(
+      &term_buf_, prefix_size + suffix_size);
+    std::memcpy(term_buf_.data() + prefix_size, suffix, suffix_size);
   }
+
+  void refresh_value() noexcept {
+    std::get<term_attribute>(attrs_).value = term_buf_;
+  }
+  void reset_value() noexcept { std::get<term_attribute>(attrs_).value = {}; }
 
   const field_meta& field() const noexcept { return *field_; }
 
@@ -2178,9 +2107,9 @@ class term_iterator_base : public seek_term_iterator {
   const field_meta* field_;
   postings_reader* postings_;
   irs::encryption::stream* terms_cipher_;
-  bytes_builder term_;
+  bstring term_buf_;
   byte_weight weight_;  // aggregated fst output
-};                      // term_iterator_base
+};
 
 // use explicit matcher to avoid implicit loops
 template<typename FST>
@@ -2195,27 +2124,27 @@ class term_iterator final : public term_iterator_base {
   using weight_t = typename FST::Weight;
   using stateid_t = typename FST::StateId;
 
-  explicit term_iterator(const field_meta& field, postings_reader& postings,
-                         const index_input& terms_in,
-                         irs::encryption::stream* terms_cipher, const FST& fst)
+  term_iterator(const field_meta& field, postings_reader& postings,
+                const index_input& terms_in,
+                irs::encryption::stream* terms_cipher, const FST& fst)
     : term_iterator_base(field, postings, terms_cipher, nullptr),
       terms_in_source_(&terms_in),
       fst_(&fst),
       matcher_(&fst, fst::MATCH_INPUT) {  // pass pointer to avoid copying FST
   }
 
-  virtual bool next() override;
-  virtual SeekResult seek_ge(const bytes_ref& term) override;
-  virtual bool seek(const bytes_ref& term) override {
+  bool next() override;
+  SeekResult seek_ge(bytes_view term) override;
+  bool seek(bytes_view term) override {
     return SeekResult::FOUND == seek_equal(term);
   }
 
-  virtual void read() override {
+  void read() override {
     assert(cur_block_);
     read_impl(*cur_block_);
   }
 
-  virtual doc_iterator::ptr postings(IndexFeatures features) const override {
+  doc_iterator::ptr postings(IndexFeatures features) const override {
     return postings_impl(cur_block_, features);
   }
 
@@ -2224,11 +2153,11 @@ class term_iterator final : public term_iterator_base {
 
   struct arc {
     arc() = default;
-    arc(stateid_t state, const bytes_ref& weight, size_t block) noexcept
+    arc(stateid_t state, bytes_view weight, size_t block) noexcept
       : state(state), weight(weight), block(block) {}
 
     stateid_t state;
-    bytes_ref weight;
+    bytes_view weight;
     size_t block;
   };  // arc
 
@@ -2237,12 +2166,12 @@ class term_iterator final : public term_iterator_base {
   typedef std::vector<arc> seek_state_t;
 
   ptrdiff_t seek_cached(size_t& prefix, stateid_t& state, size_t& block,
-                        byte_weight& weight, const bytes_ref& term);
+                        byte_weight& weight, bytes_view term);
 
   /// @brief Seek to the closest block which contain a specified term
   /// @param prefix size of the common term/block prefix
   /// @returns true if we're already at a requested term
-  bool seek_to_block(const bytes_ref& term, size_t& prefix);
+  bool seek_to_block(bytes_view term, size_t& prefix);
 
   /// @brief Seeks to the specified term using FST
   /// There may be several sutuations:
@@ -2254,7 +2183,7 @@ class term_iterator final : public term_iterator_base {
   /// Note, that search may end up on a BLOCK entry. In all cases
   /// "owner_->term_" will be refreshed with the valid number of
   /// common bytes
-  SeekResult seek_equal(const bytes_ref& term);
+  SeekResult seek_equal(bytes_view term);
 
   block_iterator* pop_block() noexcept {
     block_stack_.pop_back();
@@ -2262,7 +2191,7 @@ class term_iterator final : public term_iterator_base {
     return &block_stack_.back();
   }
 
-  block_iterator* push_block(const bytes_ref& out, size_t prefix) {
+  block_iterator* push_block(bytes_view out, size_t prefix) {
     // ensure final weight correctess
     assert(out.size() >= MIN_WEIGHT_SIZE);
 
@@ -2318,7 +2247,7 @@ template<typename FST>
 bool term_iterator<FST>::next() {
   // iterator at the beginning or seek to cached state was called
   if (!cur_block_) {
-    if (term_.empty()) {
+    if (value().empty()) {
       // iterator at the beginning
       cur_block_ = push_block(fst_->Final(fst_->Start()), 0);
       cur_block_->load(terms_input(), terms_cipher());
@@ -2328,17 +2257,17 @@ bool term_iterator<FST>::next() {
       // anymore
 
       // seek to the term with the specified state was called from
-      // term_iterator::seek(const bytes_ref&, const attribute&),
-      // need create temporary "bytes_ref" here, since "seek" calls
+      // term_iterator::seek(bytes_view, const attribute&),
+      // need create temporary "bytes_view" here, since "seek" calls
       // term_.reset() internally,
       // note, that since we do not create extra copy of term_
       // make sure that it does not reallocate memory !!!
 #ifdef IRESEARCH_DEBUG
-      const SeekResult res = seek_equal(bytes_ref(term_));
+      const SeekResult res = seek_equal(value());
       assert(SeekResult::FOUND == res);
       UNUSED(res);
 #else
-      seek_equal(bytes_ref(term_));
+      seek_equal(value());
 #endif
     }
   }
@@ -2348,7 +2277,7 @@ bool term_iterator<FST>::next() {
     if (cur_block_->next_sub_block<false>()) {
       cur_block_->load(terms_input(), terms_cipher());
     } else if (&block_stack_.front() == cur_block_) {  // root
-      term_.reset();
+      reset_value();
       cur_block_->reset();
       sstate_.clear();
       return false;
@@ -2358,9 +2287,9 @@ bool term_iterator<FST>::next() {
       std::get<version10::term_meta>(attrs_) = cur_block_->state();
       if (cur_block_->dirty() || cur_block_->block_start() != start) {
         // here we're currently at non block that was not loaded yet
-        assert(cur_block_->prefix() < term_.size());
-        cur_block_->scan_to_sub_block(
-          term_[cur_block_->prefix()]);  // to sub-block
+        assert(cur_block_->prefix() < term_buf_.size());
+        // to sub-block
+        cur_block_->scan_to_sub_block(term_buf_[cur_block_->prefix()]);
         cur_block_->load(terms_input(), terms_cipher());
         cur_block_->scan_to_block(start);
       }
@@ -2376,10 +2305,11 @@ bool term_iterator<FST>::next() {
   // push new block or next term
   for (cur_block_->next(copy_suffix); EntryType::ET_BLOCK == cur_block_->type();
        cur_block_->next(copy_suffix)) {
-    cur_block_ = push_block(cur_block_->block_start(), term_.size());
+    cur_block_ = push_block(cur_block_->block_start(), term_buf_.size());
     cur_block_->load(terms_input(), terms_cipher());
   }
 
+  refresh_value();
   return true;
 }
 
@@ -2393,10 +2323,11 @@ bool term_iterator<FST>::next() {
 template<typename FST>
 ptrdiff_t term_iterator<FST>::seek_cached(size_t& prefix, stateid_t& state,
                                           size_t& block, byte_weight& weight,
-                                          const bytes_ref& target) {
+                                          bytes_view target) {
   assert(!block_stack_.empty());
-  const byte_type* pterm = term_.c_str();
-  const byte_type* ptarget = target.c_str();
+  const auto term = value();
+  const byte_type* pterm = term.data();
+  const byte_type* ptarget = target.data();
 
   // determine common prefix between target term and current
   {
@@ -2410,16 +2341,16 @@ ptrdiff_t term_iterator<FST>::seek_cached(size_t& prefix, stateid_t& state,
       block = begin->block;
     }
 
-    prefix = size_t(pterm - term_.c_str());
+    prefix = size_t(pterm - term.data());
   }
 
   // inspect suffix and determine our current position
   // with respect to target term (before, after, equal)
   ptrdiff_t cmp = std::char_traits<byte_type>::compare(
-    pterm, ptarget, std::min(target.size(), term_.size()) - prefix);
+    pterm, ptarget, std::min(target.size(), term.size()) - prefix);
 
   if (!cmp) {
-    cmp = term_.size() - target.size();
+    cmp = term.size() - target.size();
   }
 
   if (cmp) {
@@ -2436,7 +2367,7 @@ ptrdiff_t term_iterator<FST>::seek_cached(size_t& prefix, stateid_t& state,
 }
 
 template<typename FST>
-bool term_iterator<FST>::seek_to_block(const bytes_ref& term, size_t& prefix) {
+bool term_iterator<FST>::seek_to_block(bytes_view term, size_t& prefix) {
   assert(fst_->GetImpl());
   auto& fst = *fst_->GetImpl();
 
@@ -2459,8 +2390,9 @@ bool term_iterator<FST>::seek_to_block(const bytes_ref& term, size_t& prefix) {
     push_block(fst.Final(state), prefix);
   }
 
-  term_.oversize(term.size());
-  term_.reset(prefix);     // reset to common seek prefix
+  // reset to common seek prefix
+  absl::strings_internal::STLStringReserveAmortized(&term_buf_, term.size());
+  absl::strings_internal::STLStringResizeUninitialized(&term_buf_, prefix);
   sstate_.resize(prefix);  // remove invalid cached arcs
 
   while (fst_buffer::fst_byte_builder::final != state && prefix < term.size()) {
@@ -2472,7 +2404,7 @@ bool term_iterator<FST>::seek_to_block(const bytes_ref& term, size_t& prefix) {
 
     const auto& arc = matcher_.Value();
 
-    term_.append(byte_type(arc.ilabel));  // aggregate arc label
+    term_buf_ += byte_type(arc.ilabel);  // aggregate arc label
     weight_.PushBack(arc.weight.begin(),
                      arc.weight.end());  // aggregate arc weight
     ++prefix;
@@ -2513,7 +2445,7 @@ bool term_iterator<FST>::seek_to_block(const bytes_ref& term, size_t& prefix) {
 }
 
 template<typename FST>
-SeekResult term_iterator<FST>::seek_equal(const bytes_ref& term) {
+SeekResult term_iterator<FST>::seek_equal(bytes_view term) {
   size_t prefix;
   if (seek_to_block(term, prefix)) {
     return SeekResult::FOUND;
@@ -2523,26 +2455,28 @@ SeekResult term_iterator<FST>::seek_equal(const bytes_ref& term) {
 
   if (!block_meta::terms(cur_block_->meta())) {
     // current block has no terms
-    term_.reset(prefix);
+    std::get<term_attribute>(attrs_).value = {term_buf_.c_str(), prefix};
     return SeekResult::NOT_FOUND;
   }
 
   auto append_suffix = [this](const byte_type* suffix, size_t suffix_size) {
     const auto prefix = cur_block_->prefix();
-    const auto size = prefix + suffix_size;
-    term_.oversize(size);
-    term_.reset(size);
-    std::memcpy(term_.data() + prefix, suffix, suffix_size);
+    absl::strings_internal::STLStringResizeUninitializedAmortized(
+      &term_buf_, prefix + suffix_size);
+    std::memcpy(term_buf_.data() + prefix, suffix, suffix_size);
   };
 
   cur_block_->load(terms_input(), terms_cipher());
 
-  assert(starts_with(term, term_));
+  auto refresh_value =
+    make_finally([this]() noexcept { this->refresh_value(); });
+
+  assert(term.starts_with(term_buf_));
   return cur_block_->scan_to_term(term, append_suffix);
 }
 
 template<typename FST>
-SeekResult term_iterator<FST>::seek_ge(const bytes_ref& term) {
+SeekResult term_iterator<FST>::seek_ge(bytes_view term) {
   size_t prefix;
   if (seek_to_block(term, prefix)) {
     return SeekResult::FOUND;
@@ -2553,15 +2487,17 @@ SeekResult term_iterator<FST>::seek_ge(const bytes_ref& term) {
 
   auto append_suffix = [this](const byte_type* suffix, size_t suffix_size) {
     const auto prefix = cur_block_->prefix();
-    const auto size = prefix + suffix_size;
-    term_.oversize(size);
-    term_.reset(size);
-    std::memcpy(term_.data() + prefix, suffix, suffix_size);
+    absl::strings_internal::STLStringResizeUninitializedAmortized(
+      &term_buf_, prefix + suffix_size);
+    std::memcpy(term_buf_.data() + prefix, suffix, suffix_size);
   };
 
   cur_block_->load(terms_input(), terms_cipher());
 
-  assert(starts_with(term, term_));
+  auto refresh_value =
+    make_finally([this]() noexcept { this->refresh_value(); });
+
+  assert(term.starts_with(term_buf_));
   switch (cur_block_->scan_to_term(term, append_suffix)) {
     case SeekResult::FOUND:
       assert(ET_TERM == cur_block_->type());
@@ -2573,7 +2509,7 @@ SeekResult term_iterator<FST>::seek_ge(const bytes_ref& term) {
           return SeekResult::NOT_FOUND;
         case ET_BLOCK:
           // we're at the greater block, load it and call next
-          cur_block_ = push_block(cur_block_->block_start(), term_.size());
+          cur_block_ = push_block(cur_block_->block_start(), term_buf_.size());
           cur_block_->load(terms_input(), terms_cipher());
           break;
         default:
@@ -2613,28 +2549,30 @@ class single_term_iterator final : public seek_term_iterator {
     assert(terms_in_);
   }
 
-  virtual attribute* get_mutable(irs::type_info::type_id type) override {
-    return type == irs::type<term_meta>::id() ? &meta_ : nullptr;
+  attribute* get_mutable(irs::type_info::type_id type) override {
+    if (type == irs::type<term_meta>::id()) {
+      return &meta_;
+    }
+
+    return type == irs::type<term_attribute>::id() ? &value_ : nullptr;
   }
 
-  virtual const bytes_ref& value() const override { return value_; }
+  bytes_view value() const override { return value_.value; }
 
-  virtual bool next() override { throw not_supported(); }
+  bool next() override { throw not_supported(); }
 
-  virtual SeekResult seek_ge(const bytes_ref&) override {
-    throw not_supported();
-  }
+  SeekResult seek_ge(bytes_view) override { throw not_supported(); }
 
-  virtual bool seek(const bytes_ref& term) override;
+  bool seek(bytes_view term) override;
 
-  virtual seek_cookie::ptr cookie() const override {
+  seek_cookie::ptr cookie() const override {
     return memory::make_unique<::cookie>(meta_);
   }
 
-  virtual void read() override { /*NOOP*/
+  void read() override { /*NOOP*/
   }
 
-  virtual doc_iterator::ptr postings(IndexFeatures features) const override {
+  doc_iterator::ptr postings(IndexFeatures features) const override {
     return postings_->iterator(field_->index_features, features, meta_);
   }
 
@@ -2642,7 +2580,7 @@ class single_term_iterator final : public seek_term_iterator {
   friend class block_iterator;
 
   version10::term_meta meta_;
-  bytes_ref value_;
+  term_attribute value_;
   index_input::ptr terms_in_;
   irs::encryption::stream* cipher_;
   postings_reader* postings_;
@@ -2655,7 +2593,7 @@ class single_term_iterator final : public seek_term_iterator {
 // -----------------------------------------------------------------------------
 
 template<typename FST>
-bool single_term_iterator<FST>::seek(const bytes_ref& term) {
+bool single_term_iterator<FST>::seek(bytes_view term) {
   assert(fst_->GetImpl());
   auto& fst = *fst_->GetImpl();
 
@@ -2705,11 +2643,11 @@ bool single_term_iterator<FST>::seek(const bytes_ref& term) {
 
   if (SeekResult::FOUND == cur_block.scan_to_term(term, [](auto, auto) {})) {
     cur_block.load_data(*field_, meta_, *postings_);
-    value_ = term;
+    value_.value = term;
     return true;
   }
 
-  value_ = bytes_ref::NIL;
+  value_ = {};
   return false;
 }
 
@@ -2740,7 +2678,7 @@ class automaton_arc_matcher {
  private:
   const automaton::Arc* begin_;  // current arc
   const automaton::Arc* end_;    // end of arcs range
-};                               // automaton_arc_matcher
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class fst_arc_matcher
@@ -2771,7 +2709,7 @@ class fst_arc_matcher {
  private:
   const typename FST::Arc* begin_;  // current arc
   const typename FST::Arc* end_;    // end of arcs range
-};                                  // fst_arc_matcher
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class automaton_term_iterator
@@ -2779,12 +2717,10 @@ class fst_arc_matcher {
 template<typename FST>
 class automaton_term_iterator final : public term_iterator_base {
  public:
-  explicit automaton_term_iterator(const field_meta& field,
-                                   postings_reader& postings,
-                                   index_input::ptr&& terms_in,
-                                   irs::encryption::stream* terms_cipher,
-                                   const FST& fst,
-                                   automaton_table_matcher& matcher)
+  automaton_term_iterator(const field_meta& field, postings_reader& postings,
+                          index_input::ptr&& terms_in,
+                          irs::encryption::stream* terms_cipher, const FST& fst,
+                          automaton_table_matcher& matcher)
     : term_iterator_base(field, postings, terms_cipher, &payload_),
       terms_in_(std::move(terms_in)),
       fst_(&fst),
@@ -2800,33 +2736,33 @@ class automaton_term_iterator final : public term_iterator_base {
     payload_.value = {&payload_value_, sizeof(payload_value_)};
   }
 
-  virtual bool next() override;
+  bool next() override;
 
-  virtual SeekResult seek_ge(const bytes_ref& term) override {
+  SeekResult seek_ge(bytes_view term) override {
     if (!irs::seek(*this, term)) {
       return SeekResult::END;
     }
 
-    return term_ == term ? SeekResult::FOUND : SeekResult::NOT_FOUND;
+    return value() == term ? SeekResult::FOUND : SeekResult::NOT_FOUND;
   }
 
-  virtual bool seek(const bytes_ref& term) override {
+  bool seek(bytes_view term) override {
     return SeekResult::FOUND == seek_ge(term);
   }
 
-  virtual void read() override {
+  void read() override {
     assert(cur_block_);
     read_impl(*cur_block_);
   }
 
-  virtual doc_iterator::ptr postings(IndexFeatures features) const override {
+  doc_iterator::ptr postings(IndexFeatures features) const override {
     return postings_impl(cur_block_, features);
   }
 
  private:
   class block_iterator : public ::block_iterator {
    public:
-    block_iterator(const bytes_ref& out, const FST& fst, size_t prefix,
+    block_iterator(bytes_view out, const FST& fst, size_t prefix,
                    size_t weight_prefix, automaton::StateId state,
                    typename FST::StateId fst_state, const automaton::Arc* arcs,
                    size_t narcs) noexcept
@@ -2858,9 +2794,8 @@ class automaton_term_iterator final : public term_iterator_base {
     return &block_stack_.back();
   }
 
-  block_iterator* push_block(const bytes_ref& out, const FST& fst,
-                             size_t prefix, size_t weight_prefix,
-                             automaton::StateId state,
+  block_iterator* push_block(bytes_view out, const FST& fst, size_t prefix,
+                             size_t weight_prefix, automaton::StateId state,
                              typename FST::StateId fst_state) {
     // ensure final weight correctness
     assert(out.size() >= MIN_WEIGHT_SIZE);
@@ -2904,7 +2839,7 @@ bool automaton_term_iterator<FST>::next() {
 
   // iterator at the beginning or seek to cached state was called
   if (!cur_block_) {
-    if (term_.empty()) {
+    if (value().empty()) {
       const auto fst_start = fst.Start();
       cur_block_ = push_block(fst.Final(fst_start), *fst_, 0, 0,
                               acceptor_->Start(), fst_start);
@@ -2915,12 +2850,8 @@ bool automaton_term_iterator<FST>::next() {
       // anymore
 
       // seek to the term with the specified state was called from
-      // term_iterator::seek(const bytes_ref&, const attribute&),
-      // need create temporary "bytes_ref" here, since "seek" calls
-      // term_.reset() internally,
-      // note, that since we do not create extra copy of term_
-      // make sure that it does not reallocate memory !!!
-      const SeekResult res = seek_ge(bytes_ref(term_));
+      // term_iterator::seek(bytes_view, const attribute&),
+      const SeekResult res = seek_ge(value());
       assert(SeekResult::FOUND == res);
       UNUSED(res);
     }
@@ -3023,9 +2954,9 @@ bool automaton_term_iterator<FST>::next() {
                fst_buffer::fst_byte_builder::final == fst_state);
         const auto weight_prefix = weight_.Size();
         weight_.PushBack(weight.begin(), weight.end());
-        block_stack_.emplace_back(static_cast<bytes_ref>(weight_), *fst_,
-                                  term_.size(), weight_prefix, state, fst_state,
-                                  data.arcs, data.narcs);
+        block_stack_.emplace_back(static_cast<bytes_view>(weight_), *fst_,
+                                  term_buf_.size(), weight_prefix, state,
+                                  fst_state, data.arcs, data.narcs);
         cur_block_ = &block_stack_.back();
 
         assert(block_stack_.size() < 2 ||
@@ -3066,7 +2997,7 @@ bool automaton_term_iterator<FST>::next() {
           if (arcs.done()) {
             if (&block_stack_.front() == cur_block_) {
               // need to pop root block, we're done
-              term_.reset();
+              reset_value();
               cur_block_->reset();
               return false;
             }
@@ -3091,7 +3022,7 @@ bool automaton_term_iterator<FST>::next() {
 
         cur_block_->load(terms_input(), terms_cipher());
       } else if (&block_stack_.front() == cur_block_) {  // root
-        term_.reset();
+        reset_value();
         cur_block_->reset();
         return false;
       } else {
@@ -3100,9 +3031,9 @@ bool automaton_term_iterator<FST>::next() {
         std::get<version10::term_meta>(attrs_) = cur_block_->state();
         if (cur_block_->dirty() || cur_block_->block_start() != start) {
           // here we're currently at non block that was not loaded yet
-          assert(cur_block_->prefix() < term_.size());
-          cur_block_->scan_to_sub_block(
-            term_[cur_block_->prefix()]);  // to sub-block
+          assert(cur_block_->prefix() < term_buf_.size());
+          // to sub-block
+          cur_block_->scan_to_sub_block(term_buf_[cur_block_->prefix()]);
           cur_block_->load(terms_input(), terms_cipher());
           cur_block_->scan_to_block(start);
         }
@@ -3112,11 +3043,12 @@ bool automaton_term_iterator<FST>::next() {
     const auto res = cur_block_->scan(read_suffix);
 
     if (SeekResult::FOUND == res) {
+      refresh_value();
       return true;
     } else if (SeekResult::END == res) {
       if (&block_stack_.front() == cur_block_) {
         // need to pop root block, we're done
-        term_.reset();
+        reset_value();
         cur_block_->reset();
         return false;
       }
@@ -3143,7 +3075,7 @@ class field_reader final : public irs::field_reader {
   virtual void prepare(const directory& dir, const segment_meta& meta,
                        const document_mask& mask) override;
 
-  virtual const irs::term_reader* field(string_ref field) const override;
+  virtual const irs::term_reader* field(std::string_view field) const override;
   virtual irs::field_iterator::ptr iterator() const override;
   virtual size_t size() const noexcept override {
     return name_to_field_.size();
@@ -3264,7 +3196,7 @@ class field_reader final : public irs::field_reader {
   using immutable_fst_readers = std::vector<term_reader<immutable_byte_fst>>;
 
   std::variant<immutable_fst_readers, vector_fst_readers> fields_;
-  absl::flat_hash_map<hashed_string_ref, irs::term_reader*> name_to_field_;
+  absl::flat_hash_map<hashed_string_view, irs::term_reader*> name_to_field_;
   irs::postings_reader::ptr pr_;
   encryption::stream::ptr terms_in_cipher_;
   index_input::ptr terms_in_;
@@ -3354,7 +3286,7 @@ void field_reader::prepare(const directory& dir, const segment_meta& meta,
       fields.reserve(fields_count);
       name_to_field_.reserve(fields_count);
 
-      for (string_ref previous_field_name = string_ref::EMPTY; fields_count;
+      for (std::string_view previous_field_name{""}; fields_count;
            --fields_count) {
         auto& field = fields.emplace_back(*this);
         field.prepare(term_index_version, *index_in, feature_map);
@@ -3367,8 +3299,8 @@ void field_reader::prepare(const directory& dir, const segment_meta& meta,
             "invalid field order in segment '%s'", meta.name.c_str()));
         }
 
-        const auto res =
-          name_to_field_.emplace(make_hashed_ref(string_ref(name)), &field);
+        const auto res = name_to_field_.emplace(
+          make_hashed_ref(std::string_view(name)), &field);
 
         if (!res.second) {
           throw irs::index_error(string_utils::to_string(
@@ -3415,7 +3347,7 @@ void field_reader::prepare(const directory& dir, const segment_meta& meta,
   format_utils::read_checksum(*terms_in_);
 }
 
-const irs::term_reader* field_reader::field(string_ref field) const {
+const irs::term_reader* field_reader::field(std::string_view field) const {
   auto it = name_to_field_.find(make_hashed_ref(field));
   return it == name_to_field_.end() ? nullptr : it->second;
 }
@@ -3423,7 +3355,7 @@ const irs::term_reader* field_reader::field(string_ref field) const {
 irs::field_iterator::ptr field_reader::iterator() const {
   struct less {
     bool operator()(const irs::term_reader& lhs,
-                    string_ref rhs) const noexcept {
+                    std::string_view rhs) const noexcept {
       return lhs.meta().name < rhs;
     }
   };  // less
@@ -3434,7 +3366,7 @@ irs::field_iterator::ptr field_reader::iterator() const {
         typename std::remove_reference_t<decltype(fields)>::value_type;
 
       using iterator_t =
-        iterator_adaptor<string_ref, reader_type, decltype(fields.data()),
+        iterator_adaptor<std::string_view, reader_type, decltype(fields.data()),
                          irs::field_iterator, less>;
 
       return memory::make_managed<iterator_t>(fields.data(),
@@ -3497,9 +3429,8 @@ class term_reader_visitor {
 
  private:
   void copy(const byte_type* suffix, size_t prefix_size, size_t suffix_size) {
-    const auto size = prefix_size + suffix_size;
-    term_.oversize(size);
-    term_.reset(size);
+    absl::strings_internal::STLStringResizeUninitializedAmortized(
+      &term_, prefix_size + suffix_size);
     std::memcpy(term_.data() + prefix_size, suffix, suffix_size);
   }
 
@@ -3524,10 +3455,10 @@ class term_reader_visitor {
 
   const FST* fst_;
   std::deque<block_iterator> block_stack_;
-  bytes_builder term_;
+  bstring term_;
   index_input::ptr terms_in_;
   encryption::stream* terms_in_cipher_;
-};  // term_reader_visitor
+};
 
 //////////////////////////////////////////////////////////////////////////////////
 ///// @brief "Dumper" visitor for term_reader_visitor. Suitable for debugging
@@ -3537,12 +3468,12 @@ class dumper : util::noncopyable {
  public:
   explicit dumper(std::ostream& out) : out_(out) {}
 
-  void push_term(const bytes_ref& term) {
+  void push_term(bytes_view term) {
     indent();
     out_ << "TERM|" << suffix(term) << "\n";
   }
 
-  void push_block(const bytes_ref& term, const block_iterator& block) {
+  void push_block(bytes_view term, const block_iterator& block) {
     indent();
     out_ << "BLOCK|" << block.size() << "|" << suffix(term) << "\n";
     indent_ += 2;
@@ -3568,9 +3499,9 @@ class dumper : util::noncopyable {
     }
   }
 
-  string_ref suffix(const bytes_ref& term) {
-    return ref_cast<char>(
-      bytes_ref(term.c_str() + prefix_, term.size() - prefix_));
+  std::string_view suffix(bytes_view term) {
+    return ViewCast<char>(
+      bytes_view{term.data() + prefix_, term.size() - prefix_});
   }
 
   std::ostream& out_;

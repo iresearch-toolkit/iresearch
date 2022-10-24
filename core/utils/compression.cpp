@@ -20,14 +20,14 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "utils/register.hpp"
-
 #include "compression.hpp"
+
+#include "utils/register.hpp"
 
 // list of statically loaded scorers via init()
 #ifndef IRESEARCH_DLL
-#include "lz4compression.hpp"
 #include "delta_compression.hpp"
+#include "lz4compression.hpp"
 #endif
 
 namespace {
@@ -59,8 +59,8 @@ struct value {
 constexpr std::string_view kFileNamePrefix("libcompression-");
 
 class compression_register
-  : public irs::tagged_generic_register<irs::string_ref, value, irs::string_ref,
-                                        compression_register> {
+  : public irs::tagged_generic_register<
+      std::string_view, value, std::string_view, compression_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
     std::string filename(kFileNamePrefix.size() + key.size(), 0);
@@ -68,7 +68,7 @@ class compression_register
     std::memcpy(filename.data(), kFileNamePrefix.data(),
                 kFileNamePrefix.size());
 
-    std::memcpy(filename.data() + kFileNamePrefix.size(), key.c_str(),
+    std::memcpy(filename.data() + kFileNamePrefix.size(), key.data(),
                 key.size());
 
     return filename;
@@ -76,8 +76,8 @@ class compression_register
 };
 
 struct identity_compressor final : irs::compression::compressor {
-  virtual irs::bytes_ref compress(irs::byte_type* in, size_t size,
-                                  irs::bstring& /*buf*/) override {
+  virtual irs::bytes_view compress(irs::byte_type* in, size_t size,
+                                   irs::bstring& /*buf*/) override {
     return {in, size};
   }
 
@@ -95,11 +95,12 @@ compression_registrar::compression_registrar(
   const type_info& type, compressor_factory_f compressor_factory,
   decompressor_factory_f decompressor_factory,
   const char* source /*= nullptr*/) {
-  string_ref const source_ref(source);
+  auto const source_ref =
+    source ? std::string_view{source} : std::string_view{};
   const auto new_entry = ::value(compressor_factory, decompressor_factory);
 
   auto entry = compression_register::instance().set(
-    type.name(), new_entry, source_ref.null() ? nullptr : &source_ref);
+    type.name(), new_entry, IsNull(source_ref) ? nullptr : &source_ref);
 
   registered_ = entry.second;
 
@@ -110,31 +111,31 @@ compression_registrar::compression_registrar(
       IR_FRMT_WARN(
         "type name collision detected while registering compression, ignoring: "
         "type '%s' from %s, previously from %s",
-        type.name().c_str(), source, registered_source->c_str());
+        type.name().data(), source, registered_source->data());
     } else if (source) {
       IR_FRMT_WARN(
         "type name collision detected while registering compression, ignoring: "
         "type '%s' from %s",
-        type.name().c_str(), source);
+        type.name().data(), source);
     } else if (registered_source) {
       IR_FRMT_WARN(
         "type name collision detected while registering compression, ignoring: "
         "type '%s', previously from %s",
-        type.name().c_str(), registered_source->c_str());
+        type.name().data(), registered_source->data());
     } else {
       IR_FRMT_WARN(
         "type name collision detected while registering compression, ignoring: "
         "type '%s'",
-        type.name().c_str());
+        type.name().data());
     }
   }
 }
 
-bool exists(string_ref name, bool load_library /*= true*/) {
+bool exists(std::string_view name, bool load_library /*= true*/) {
   return !compression_register::instance().get(name, load_library).empty();
 }
 
-compressor::ptr get_compressor(string_ref name, const options& opts,
+compressor::ptr get_compressor(std::string_view name, const options& opts,
                                bool load_library /*= true*/) noexcept {
   try {
     auto* factory = compression_register::instance()
@@ -151,7 +152,7 @@ compressor::ptr get_compressor(string_ref name, const options& opts,
   return nullptr;
 }
 
-decompressor::ptr get_decompressor(string_ref name,
+decompressor::ptr get_decompressor(std::string_view name,
                                    bool load_library /*= true*/) noexcept {
   try {
     auto* factory = compression_register::instance()
@@ -178,10 +179,9 @@ void load_all(std::string_view path) {
   load_libraries(path, kFileNamePrefix, "");
 }
 
-bool visit(const std::function<bool(string_ref)>& visitor) {
-  compression_register::visitor_t wrapper = [&visitor](string_ref key) -> bool {
-    return visitor(key);
-  };
+bool visit(const std::function<bool(std::string_view)>& visitor) {
+  compression_register::visitor_t wrapper =
+    [&visitor](std::string_view key) -> bool { return visitor(key); };
 
   return compression_register::instance().visit(wrapper);
 }

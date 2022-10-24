@@ -53,8 +53,9 @@ void busywait_mutex::unlock() noexcept {
   locked_.store(false, std::memory_order_release);
 }
 
-thread_pool::thread_pool(size_t max_threads /*= 0*/, size_t max_idle /*= 0*/,
-                         basic_string_ref<native_char_t> worker_name /*= ""*/)
+thread_pool::thread_pool(
+  size_t max_threads /*= 0*/, size_t max_idle /*= 0*/,
+  std::basic_string_view<native_char_t> worker_name /*= ""*/)
   : shared_state_(std::make_shared<shared_state>()),
     max_idle_(max_idle),
     max_threads_(max_threads),

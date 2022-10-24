@@ -28,7 +28,7 @@
 namespace iresearch {
 
 template<typename GenericObject>
-inline bool get_uint64(GenericObject const& json, string_ref name,
+inline bool get_uint64(GenericObject const& json, std::string_view name,
                        uint64_t& value) {
   if (!json.HasMember(name.c_str())) {
     return false;
@@ -45,7 +45,7 @@ inline bool get_uint64(GenericObject const& json, string_ref name,
 }
 
 template<typename GenericObject>
-inline bool get_bool(GenericObject const& json, string_ref name, bool& value) {
+inline bool get_bool(GenericObject const& json, std::string_view name, bool& value) {
   if (!json.HasMember(name.c_str())) {
     return false;
   }

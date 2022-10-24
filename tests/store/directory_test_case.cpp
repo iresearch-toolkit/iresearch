@@ -173,7 +173,7 @@ class directory_test_case : public tests::directory_test_case_base<> {
         buf.resize(it->size());
         const auto read = file->read_bytes(buf.data(), it->size());
         ASSERT_EQ(read, it->size());
-        ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+        ASSERT_EQ(ViewCast<byte_type>(std::string_view(*it)), buf);
 
         // random access
         {
@@ -182,7 +182,7 @@ class directory_test_case : public tests::directory_test_case_base<> {
           const auto read =
             file->read_bytes(fp - it->size(), buf1.data(), it->size());
           ASSERT_EQ(read, it->size());
-          ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf1);
+          ASSERT_EQ(ViewCast<byte_type>(std::string_view(*it)), buf1);
           ASSERT_EQ(fp, file->file_pointer());
         }
 
@@ -265,7 +265,7 @@ class directory_test_case : public tests::directory_test_case_base<> {
               fp - it->size(), it->size(), BufferHint::PERSISTENT);
             ASSERT_NE(nullptr, internal_buf);
             ASSERT_EQ(file->file_pointer(), fp);
-            ASSERT_EQ(bytes_ref(internal_buf, it->size()), buf);
+            ASSERT_EQ(bytes_view(internal_buf, it->size()), buf);
           }
 
           {
@@ -274,7 +274,7 @@ class directory_test_case : public tests::directory_test_case_base<> {
               fp - it->size(), it->size(), BufferHint::NORMAL);
             ASSERT_NE(nullptr, internal_buf);
             ASSERT_EQ(file->file_pointer(), fp);
-            ASSERT_EQ(bytes_ref(internal_buf, it->size()), buf);
+            ASSERT_EQ(bytes_view(internal_buf, it->size()), buf);
           }
 
           // random direct access
@@ -283,7 +283,7 @@ class directory_test_case : public tests::directory_test_case_base<> {
               fp - it->size(), it->size(), BufferHint::PERSISTENT);
             ASSERT_NE(nullptr, internal_buf);
             ASSERT_EQ(file->file_pointer(), fp);
-            ASSERT_EQ(bytes_ref(internal_buf, it->size()), buf);
+            ASSERT_EQ(bytes_view(internal_buf, it->size()), buf);
           }
 
           // random direct access
@@ -292,7 +292,7 @@ class directory_test_case : public tests::directory_test_case_base<> {
               fp - it->size(), it->size(), BufferHint::NORMAL);
             ASSERT_NE(nullptr, internal_buf);
             ASSERT_EQ(file->file_pointer(), fp);
-            ASSERT_EQ(bytes_ref(internal_buf, it->size()), buf);
+            ASSERT_EQ(bytes_view(internal_buf, it->size()), buf);
           }
         }
 
@@ -301,7 +301,7 @@ class directory_test_case : public tests::directory_test_case_base<> {
           buf.resize(it->size());
           auto read = dup_file->read_bytes(&(buf[0]), it->size());
           ASSERT_EQ(read, it->size());
-          ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+          ASSERT_EQ(ViewCast<byte_type>(std::string_view(*it)), buf);
 
           read = dup_file->read_bytes(readbuf, sizeof readbuf);
           ASSERT_EQ(read, sizeof readbuf);
@@ -315,7 +315,7 @@ class directory_test_case : public tests::directory_test_case_base<> {
           buf.resize(it->size());
           auto read = reopened_file->read_bytes(&(buf[0]), it->size());
           ASSERT_EQ(read, it->size());
-          ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+          ASSERT_EQ(ViewCast<byte_type>(std::string_view(*it)), buf);
 
           read = reopened_file->read_bytes(readbuf, sizeof readbuf);
           ASSERT_EQ(read, sizeof readbuf);
@@ -4254,7 +4254,7 @@ TEST_P(directory_test_case, smoke_index_io) {
 
   const std::string name = "test";
   const std::string str = "quick brown fowx jumps over the lazy dog";
-  const bstring payload(iresearch::ref_cast<byte_type>(string_ref(name)));
+  const bstring payload(iresearch::ViewCast<byte_type>(std::string_view(name)));
 
   // write to file
   {
@@ -4673,18 +4673,18 @@ TEST(memory_directory_test, file_reset_allocator) {
 TEST(memory_directory_test, rewrite) {
   using namespace irs;
 
-  const string_ref str0{"quick brown fowx jumps over the lazy dog"};
-  const string_ref str1{"hund"};
-  const string_ref expected{"quick brown fowx jumps over the lazy hund"};
-  const bytes_ref payload0{ref_cast<byte_type>(str0)};
-  const bytes_ref payload1{ref_cast<byte_type>(str1)};
+  const std::string_view str0{"quick brown fowx jumps over the lazy dog"};
+  const std::string_view str1{"hund"};
+  const std::string_view expected{"quick brown fowx jumps over the lazy hund"};
+  const bytes_view payload0{ViewCast<byte_type>(str0)};
+  const bytes_view payload1{ViewCast<byte_type>(str1)};
 
   memory_output out{irs::memory_allocator::global()};
-  out.stream.write_bytes(payload0.c_str(), payload0.size());
+  out.stream.write_bytes(payload0.data(), payload0.size());
   ASSERT_EQ(payload0.size(), out.stream.file_pointer());
   out.stream.seek(out.stream.file_pointer() - 3);
   ASSERT_EQ(payload0.size() - 3, out.stream.file_pointer());
-  out.stream.write_bytes(payload1.c_str(), payload1.size());
+  out.stream.write_bytes(payload1.data(), payload1.size());
   ASSERT_EQ(payload0.size() - 3 + payload1.size(), out.stream.file_pointer());
   out.stream.flush();
 

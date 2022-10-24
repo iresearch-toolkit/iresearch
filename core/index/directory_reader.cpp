@@ -74,17 +74,17 @@ irs::index_file_refs::ref_t load_newest_index_meta(
       IR_FRMT_ERROR(
         "Caught exception while reading index meta with codec '%s', error "
         "'%s'",
-        codec->type().name().c_str(), e.what());
+        codec->type().name().data(), e.what());
     } catch (...) {
       IR_FRMT_ERROR("Caught exception while reading index meta with codec '%s'",
-                    codec->type().name().c_str());
+                    codec->type().name().data());
 
       return nullptr;
     }
   }
 
-  absl::flat_hash_set<irs::string_ref> codecs;
-  auto visitor = [&codecs](irs::string_ref name) -> bool {
+  absl::flat_hash_set<std::string_view> codecs;
+  auto visitor = [&codecs](std::string_view name) -> bool {
     codecs.insert(name);
     return true;
   };
@@ -264,7 +264,7 @@ directory_reader_impl::directory_reader_impl(
 
   constexpr size_t INVALID_CANDIDATE{std::numeric_limits<size_t>::max()};
   const size_t count = cached_impl ? cached_impl->meta_.meta.size() : 0;
-  absl::flat_hash_map<string_ref, size_t>
+  absl::flat_hash_map<std::string_view, size_t>
     reuse_candidates;  // map by segment name to old segment id
   reuse_candidates.reserve(count);
 

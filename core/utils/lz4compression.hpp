@@ -47,7 +47,7 @@ lz4stream lz4_make_stream();
 lz4stream_decode lz4_make_stream_decode();
 
 struct lz4 {
-  static constexpr string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "iresearch::compression::lz4";
   }
 
@@ -58,7 +58,7 @@ struct lz4 {
 
     int acceleration() const noexcept { return acceleration_; }
 
-    virtual bytes_ref compress(byte_type* src, size_t size,
+    virtual bytes_view compress(byte_type* src, size_t size,
                                bstring& out) override
       IRESEARCH_ATTRIBUTE_NONNULL();
 
@@ -68,7 +68,7 @@ struct lz4 {
 
   class lz4decompressor final : public compression::decompressor {
    public:
-    virtual bytes_ref decompress(const byte_type* src, size_t src_size,
+    virtual bytes_view decompress(const byte_type* src, size_t src_size,
                                  byte_type* dst, size_t dst_size) override
       IRESEARCH_ATTRIBUTE_NONNULL();
   };

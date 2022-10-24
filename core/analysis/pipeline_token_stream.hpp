@@ -41,7 +41,7 @@ class pipeline_token_stream final : public analyzer, private util::noncopyable {
  public:
   using options_t = std::vector<irs::analysis::analyzer::ptr>;
 
-  static constexpr string_ref type_name() noexcept { return "pipeline"; }
+  static constexpr std::string_view type_name() noexcept { return "pipeline"; }
   static void init();  // for triggering registration in a static build
 
   explicit pipeline_token_stream(options_t&& options);
@@ -62,7 +62,7 @@ class pipeline_token_stream final : public analyzer, private util::noncopyable {
     return attr;
   }
   virtual bool next() override;
-  virtual bool reset(string_ref data) override;
+  virtual bool reset(std::string_view data) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief calls visitor on pipeline members in respective order. Visiting is
@@ -99,7 +99,7 @@ class pipeline_token_stream final : public analyzer, private util::noncopyable {
     explicit sub_analyzer_t(irs::analysis::analyzer::ptr a, bool track_offset);
     sub_analyzer_t();
 
-    bool reset(uint32_t start, uint32_t end, string_ref data) {
+    bool reset(uint32_t start, uint32_t end, std::string_view data) {
       data_size = data.size();
       data_start = start;
       data_end = end;

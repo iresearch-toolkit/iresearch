@@ -112,10 +112,10 @@ class by_edit_distance final : public filter_base<by_edit_distance_options> {
   static ptr make();
 
   static prepared::ptr prepare(const index_reader& index, const Order& order,
-                               score_t boost, string_ref field, bytes_ref term,
+                               score_t boost, std::string_view field, bytes_view term,
                                size_t terms_limit, byte_type max_distance,
                                options_type::pdp_f provider,
-                               bool with_transpositions, bytes_ref prefix);
+                               bool with_transpositions, bytes_view prefix);
 
   static field_visitor visitor(const options_type::filter_options& options);
 

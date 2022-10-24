@@ -24,8 +24,8 @@
 #include "utils/ngram_match_utils.hpp"
 
 TEST(ngram_match_utils_test, test_similarity_empty_left) {
-  const irs::string_ref lhs = "";
-  const irs::string_ref rhs = "abcd";
+  const std::string_view lhs = "";
+  const std::string_view rhs = "abcd";
 
   ASSERT_DOUBLE_EQ(0, (irs::ngram_similarity<char, false>(
                         lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 0)));
@@ -55,8 +55,8 @@ TEST(ngram_match_utils_test, test_similarity_empty_left) {
 }
 
 TEST(ngram_match_utils_test, test_similarity_empty_right) {
-  const irs::string_ref lhs = "abcd";
-  const irs::string_ref rhs = "";
+  const std::string_view lhs = "abcd";
+  const std::string_view rhs = "";
 
   ASSERT_DOUBLE_EQ(0, (irs::ngram_similarity<char, false>(
                         lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 0)));
@@ -86,8 +86,8 @@ TEST(ngram_match_utils_test, test_similarity_empty_right) {
 }
 
 TEST(ngram_match_utils_test, test_similarity_no_match) {
-  const irs::string_ref lhs = "abcd";
-  const irs::string_ref rhs = "efgh";
+  const std::string_view lhs = "abcd";
+  const std::string_view rhs = "efgh";
   ASSERT_DOUBLE_EQ(0, (irs::ngram_similarity<char, true>(
                         lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 0)));
   ASSERT_DOUBLE_EQ(0, (irs::ngram_similarity<char, true>(
@@ -116,8 +116,8 @@ TEST(ngram_match_utils_test, test_similarity_no_match) {
 }
 
 TEST(ngram_match_utils_test, test_similarity_simple) {
-  const irs::string_ref lhs = "aecd";
-  const irs::string_ref rhs = "abcd";
+  const std::string_view lhs = "aecd";
+  const std::string_view rhs = "abcd";
 
   ASSERT_DOUBLE_EQ(
     0.75f, (irs::ngram_similarity<char, false>(lhs.begin(), lhs.size(),
@@ -169,8 +169,8 @@ TEST(ngram_match_utils_test, test_similarity_simple) {
 }
 
 TEST(ngram_match_utils_test, test_similarity_different_length) {
-  const irs::string_ref lhs = "applejuice";
-  const irs::string_ref rhs = "aplejuice";
+  const std::string_view lhs = "applejuice";
+  const std::string_view rhs = "aplejuice";
   ASSERT_DOUBLE_EQ(
     0.9f, (irs::ngram_similarity<char, false>(lhs.begin(), lhs.size(),
                                               rhs.begin(), rhs.size(), 1)));
@@ -247,8 +247,8 @@ TEST(ngram_match_utils_test, test_similarity_different_length) {
 }
 
 TEST(ngram_match_utils_test, test_similarity_with_gaps) {
-  const irs::string_ref lhs = "apple1234juice";
-  const irs::string_ref rhs = "aple567juice";
+  const std::string_view lhs = "apple1234juice";
+  const std::string_view rhs = "aple567juice";
 
   ASSERT_DOUBLE_EQ(9.f / 14.f,
                    (irs::ngram_similarity<char, false>(
@@ -340,8 +340,8 @@ TEST(ngram_match_utils_test, test_similarity_with_gaps) {
 TEST(ngram_match_utils_test, test_similarity) {
   {  // bin and pos similarity shows different results as first ngram has 0.5
      // pos match but 0 bin match
-    const irs::string_ref lhs = "abba";
-    const irs::string_ref rhs = "apba";
+    const std::string_view lhs = "abba";
+    const std::string_view rhs = "apba";
 
     ASSERT_DOUBLE_EQ(2.f / 3.f,
                      (irs::ngram_similarity<char, false>(
@@ -360,8 +360,8 @@ TEST(ngram_match_utils_test, test_similarity) {
      // bin and pos similarity works the same
     // result is different for bin similarity only due to abscence of length
     // normalization
-    const irs::string_ref lhs = "11234561";
-    const irs::string_ref rhs = "1234561";
+    const std::string_view lhs = "11234561";
+    const std::string_view rhs = "1234561";
 
     ASSERT_DOUBLE_EQ(6.f / 7.f,
                      (irs::ngram_similarity<char, false>(
@@ -381,8 +381,8 @@ TEST(ngram_match_utils_test, test_similarity) {
 TEST(ngram_match_utils_test, test_similarity_shorter) {
   {
     // strings are shorter than ngram length.
-    const irs::string_ref lhs = "abb";
-    const irs::string_ref rhs = "abpa";
+    const std::string_view lhs = "abb";
+    const std::string_view rhs = "abpa";
 
     // for "positional" semantics this will force to find best matched ngram
     ASSERT_DOUBLE_EQ(
@@ -402,8 +402,8 @@ TEST(ngram_match_utils_test, test_similarity_shorter) {
   }
   {
     // strings are shorter than ngram length.
-    const irs::string_ref lhs = "abb";
-    const irs::string_ref rhs = "abb";
+    const std::string_view lhs = "abb";
+    const std::string_view rhs = "abb";
 
     // for "positional" semantics this will force to find best matched ngram
     ASSERT_DOUBLE_EQ(
@@ -423,8 +423,8 @@ TEST(ngram_match_utils_test, test_similarity_shorter) {
   }
   {
     // strings are shorter than ngram length.
-    const irs::string_ref lhs = "abb";
-    const irs::string_ref rhs = "abc";
+    const std::string_view lhs = "abb";
+    const std::string_view rhs = "abc";
 
     // for "positional" semantics this will force to find best matched ngram
     ASSERT_DOUBLE_EQ(2.f / 3.f,
@@ -446,8 +446,8 @@ TEST(ngram_match_utils_test, test_similarity_shorter) {
 
 TEST(ngram_match_utils_test, test_similarity_all_empty) {
   // strings are shorter than ngram length.
-  const irs::string_ref lhs = "";
-  const irs::string_ref rhs = "";
+  const std::string_view lhs = "";
+  const std::string_view rhs = "";
 
   // for "positional" semantics this will mean full similarity
   ASSERT_DOUBLE_EQ(1, (irs::ngram_similarity<char, false>(

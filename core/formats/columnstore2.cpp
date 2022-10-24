@@ -54,11 +54,11 @@ constexpr SparseBitmapVersion ToSparseBitmapVersion(
                              (prop & ColumnProperty::kPrevDoc)};
 }
 
-std::string data_file_name(string_ref prefix) {
+std::string data_file_name(std::string_view prefix) {
   return file_name(prefix, writer::kDataFormatExt);
 }
 
-std::string index_file_name(string_ref prefix) {
+std::string index_file_name(std::string_view prefix) {
   return file_name(prefix, writer::kIndexFormatExt);
 }
 
@@ -237,7 +237,7 @@ class range_column_iterator final : public resettable_doc_iterator,
       max_doc_ = doc_limits::invalid();
       min_doc_ = doc_limits::eof();
       std::get<document>(attrs_).value = doc_limits::eof();
-      std::get<irs::payload>(attrs_).value = bytes_ref::NIL;
+      std::get<irs::payload>(attrs_).value = {};
       return doc_limits::eof();
     }
 
@@ -252,7 +252,7 @@ class range_column_iterator final : public resettable_doc_iterator,
     }
 
     std::get<document>(attrs_).value = doc_limits::eof();
-    std::get<irs::payload>(attrs_).value = bytes_ref::NIL;
+    std::get<irs::payload>(attrs_).value = {};
     return false;
   }
 
@@ -313,7 +313,7 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
       return doc;
     }
 
-    std::get<irs::payload>(attrs_).value = bytes_ref::NIL;
+    std::get<irs::payload>(attrs_).value = {};
     return doc_limits::eof();
   }
 
@@ -323,7 +323,7 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
       return true;
     }
 
-    std::get<irs::payload>(attrs_).value = bytes_ref::NIL;
+    std::get<irs::payload>(attrs_).value = {};
     return false;
   }
 
@@ -348,13 +348,13 @@ class column_base : public column_reader, private util::noncopyable {
     assert(!is_encrypted(hdr_) || cipher_);
   }
 
-  virtual string_ref name() const final {
-    return name_.has_value() ? name_.value() : string_ref::NIL;
+  virtual std::string_view name() const final {
+    return name_.has_value() ? name_.value() : std::string_view{};
   }
 
   virtual field_id id() const noexcept final { return hdr_.id; }
 
-  virtual bytes_ref payload() const final { return payload_; }
+  virtual bytes_view payload() const final { return payload_; }
 
   virtual doc_id_t size() const noexcept final { return hdr_.docs_count; }
 
@@ -459,7 +459,7 @@ doc_iterator::ptr column_base::make_iterator(Factory&& f,
 }
 
 struct noop_value_reader {
-  constexpr bytes_ref payload(doc_id_t) const noexcept { return {}; }
+  constexpr bytes_view payload(doc_id_t) const noexcept { return {}; }
 };
 
 class value_direct_reader {
@@ -468,7 +468,7 @@ class value_direct_reader {
     assert(data);
   }
 
-  bytes_ref value(uint64_t offset, size_t length) noexcept {
+  bytes_view value(uint64_t offset, size_t length) noexcept {
     return {data_ + offset, length};
   }
 
@@ -481,7 +481,7 @@ class value_reader {
   value_reader(index_input::ptr data_in, size_t size)
     : buf_(size, 0), data_in_{std::move(data_in)} {}
 
-  bytes_ref value(uint64_t offset, size_t length) {
+  bytes_view value(uint64_t offset, size_t length) {
     if constexpr (Resize) {
       buf_.resize(length);
     }
@@ -506,7 +506,7 @@ class encrypted_value_reader {
                          size_t size)
     : buf_(size, 0), data_in_{std::move(data_in)}, cipher_{cipher} {}
 
-  bytes_ref value(uint64_t offset, size_t length) {
+  bytes_view value(uint64_t offset, size_t length) {
     if constexpr (Resize) {
       buf_.resize(length);
     }
@@ -618,7 +618,7 @@ class dense_fixed_length_column final : public column_base {
     payload_reader(uint64_t len, uint64_t data, Args&&... args)
       : ValueReader{std::forward<Args>(args)...}, data_{data}, len_{len} {}
 
-    bytes_ref payload(doc_id_t i) {
+    bytes_view payload(doc_id_t i) {
       const auto offset = data_ + len_ * i;
 
       return ValueReader::value(offset, len_);
@@ -716,7 +716,7 @@ class fixed_length_column final : public column_base {
     payload_reader(const column_block* blocks, uint64_t len, Args&&... args)
       : ValueReader{std::forward<Args>(args)...}, blocks_{blocks}, len_{len} {}
 
-    bytes_ref payload(doc_id_t i) {
+    bytes_view payload(doc_id_t i) {
       const auto block_idx = i / column::kBlockSize;
       const auto value_idx = i % column::kBlockSize;
 
@@ -805,7 +805,7 @@ class sparse_column final : public column_base {
     payload_reader(const column_block* blocks, Args&&... args)
       : ValueReader{std::forward<Args>(args)...}, blocks_{blocks} {}
 
-    bytes_ref payload(doc_id_t i);
+    bytes_view payload(doc_id_t i);
 
    private:
     const column_block* blocks_;
@@ -819,7 +819,7 @@ class sparse_column final : public column_base {
 };
 
 template<typename ValueReader>
-bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
+bytes_view sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
   const auto& block = blocks_[i / column::kBlockSize];
   const size_t index = i % column::kBlockSize;
 
@@ -932,12 +932,12 @@ constexpr column_factory_f kFactories[]{
   &sparse_column::read, &mask_column::read, &fixed_length_column::read,
   &dense_fixed_length_column::read};
 
-bool less(string_ref lhs, string_ref rhs) noexcept {
-  if (lhs.null()) {
-    return !rhs.null();
+bool less(std::string_view lhs, std::string_view rhs) noexcept {
+  if (IsNull(lhs)) {
+    return !IsNull(rhs);
   }
 
-  if (rhs.null()) {
+  if (IsNull(rhs)) {
     return false;
   }
 
@@ -1096,7 +1096,7 @@ void column::finish(index_output& index_out) {
     docs_.file >> data_out;
   }
 
-  if (name_.null()) {
+  if (IsNull(name_)) {
     hdr.props |= ColumnProperty::kNoName;
   }
 
@@ -1133,7 +1133,7 @@ void column::finish(index_output& index_out) {
   irs::write_string(index_out, compression_.name());
   write_header(index_out, hdr);
   write_string(index_out, payload_);
-  if (!name_.null()) {
+  if (!IsNull(name_)) {
     if (ctx_.cipher) {
       auto name = static_cast<std::string>(name_);
       ctx_.cipher->encrypt(index_out.file_pointer(),
@@ -1292,8 +1292,8 @@ bool writer::commit(const flush_state& /*state*/) {
   assert(columns_.size() == sorted_columns_.size());
   const field_id count = static_cast<field_id>(columns_.size());
 
-  const irs::string_ref segment_name{
-    data_filename_, data_filename_.size() - kDataFormatExt.size() - 1};
+  const std::string_view segment_name{
+    data_filename_.data(), data_filename_.size() - kDataFormatExt.size() - 1};
   auto index_filename = index_file_name(segment_name);
   auto index_out = dir_->create(index_filename);
 

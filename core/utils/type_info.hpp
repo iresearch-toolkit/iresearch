@@ -67,7 +67,7 @@ class type_info {
   //////////////////////////////////////////////////////////////////////////////
   /// @return type name
   //////////////////////////////////////////////////////////////////////////////
-  constexpr string_ref name() const noexcept { return name_; }
+  constexpr std::string_view name() const noexcept { return name_; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return type identifier
@@ -78,11 +78,11 @@ class type_info {
   template<typename T>
   friend struct type;
 
-  constexpr type_info(type_id id, string_ref name) noexcept
+  constexpr type_info(type_id id, std::string_view name) noexcept
     : id_(id), name_(name) {}
 
   type_id id_;
-  string_ref name_;
+  std::string_view name_;
 };  // type_info
 
 }  // namespace iresearch

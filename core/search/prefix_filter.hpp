@@ -41,7 +41,7 @@ struct by_prefix_filter_options {
     return term == rhs.term;
   }
 
-  size_t hash() const noexcept { return std::hash<bstring>()(term); }
+  size_t hash() const noexcept { return hash_utils::Hash(term); }
 };  // by_prefix_options
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,11 +74,11 @@ struct by_prefix_options : by_prefix_filter_options {
 class by_prefix : public filter_base<by_prefix_options> {
  public:
   static prepared::ptr prepare(const index_reader& index, const Order& ord,
-                               score_t boost, string_ref field,
-                               bytes_ref prefix, size_t scored_terms_limit);
+                               score_t boost, std::string_view field,
+                               bytes_view prefix, size_t scored_terms_limit);
 
   static void visit(const sub_reader& segment, const term_reader& reader,
-                    bytes_ref prefix, filter_visitor& visitor);
+                    bytes_view prefix, filter_visitor& visitor);
 
   using filter::prepare;
 

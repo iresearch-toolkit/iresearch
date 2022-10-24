@@ -21,10 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
-#include "formats/formats.hpp"
-#include "utils/type_limits.hpp"
 #include "index_meta.hpp"
+
+#include "formats/formats.hpp"
+#include "shared.hpp"
+#include "utils/type_limits.hpp"
 
 namespace iresearch {
 
@@ -32,8 +33,10 @@ namespace iresearch {
  * segment_meta
  * ------------------------------------------------------------------*/
 
-segment_meta::segment_meta(string_ref name, format::ptr codec)
-  : name(name.c_str(), name.size()), codec(codec), column_store(false) {}
+segment_meta::segment_meta(std::string_view name, format::ptr codec)
+  : name(name.data(), name.size()),
+    codec(std::move(codec)),
+    column_store(false) {}
 
 segment_meta::segment_meta(std::string&& name, format::ptr codec,
                            uint64_t docs_count, uint64_t live_docs_count,
@@ -45,7 +48,7 @@ segment_meta::segment_meta(std::string&& name, format::ptr codec,
     name(std::move(name)),
     docs_count(docs_count),
     live_docs_count(live_docs_count),
-    codec(codec),
+    codec(std::move(codec)),
     size(size),
     sort(sort),
     column_store(column_store) {}
@@ -118,7 +121,7 @@ index_meta::index_meta(const index_meta& rhs)
     seg_counter_(rhs.seg_counter_.load()),
     segments_(rhs.segments_),
     payload_buf_(rhs.payload_buf_),
-    payload_(rhs.payload_.null() ? bytes_ref::NIL : bytes_ref(payload_buf_)) {}
+    payload_(IsNull(rhs.payload_) ? bytes_view{} : bytes_view(payload_buf_)) {}
 
 index_meta::index_meta(index_meta&& rhs) noexcept
   : gen_(std::move(rhs.gen_)),
@@ -126,7 +129,7 @@ index_meta::index_meta(index_meta&& rhs) noexcept
     seg_counter_(rhs.seg_counter_.load()),
     segments_(std::move(rhs.segments_)),
     payload_buf_(std::move(rhs.payload_buf_)),
-    payload_(rhs.payload_.null() ? bytes_ref::NIL : bytes_ref(payload_buf_)) {}
+    payload_(IsNull(rhs.payload_) ? bytes_view{} : bytes_view(payload_buf_)) {}
 
 index_meta& index_meta::operator=(index_meta&& rhs) noexcept {
   if (this != &rhs) {
@@ -135,7 +138,7 @@ index_meta& index_meta::operator=(index_meta&& rhs) noexcept {
     seg_counter_ = rhs.seg_counter_.load();
     segments_ = std::move(rhs.segments_);
     payload_buf_ = std::move(rhs.payload_buf_);
-    payload_ = rhs.payload_.null() ? bytes_ref::NIL : bytes_ref(payload_buf_);
+    payload_ = IsNull(rhs.payload_) ? bytes_view{} : bytes_view(payload_buf_);
   }
 
   return *this;

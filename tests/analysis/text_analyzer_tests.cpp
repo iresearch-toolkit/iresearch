@@ -72,7 +72,7 @@ class TextAnalyzerParserTestSuite : public ::testing::Test {
       if (old_stopwords_path_set_) {
         irs::setenv(
           irs::analysis::text_token_stream::STOPWORD_PATH_ENV_VARIABLE,
-          old_stopwords_path_.c_str(), true);
+          old_stopwords_path_.data(), true);
       } else {
         irs::unsetenv(
           irs::analysis::text_token_stream::STOPWORD_PATH_ENV_VARIABLE);
@@ -127,13 +127,13 @@ TEST_F(TextAnalyzerParserTestSuite, test_nbsp_whitespace) {
 
   ASSERT_TRUE(pStream->next());
   ASSERT_EQ("1,24",
-            std::string((char*)(pValue->value.c_str()), pValue->value.size()));
+            std::string((char*)(pValue->value.data()), pValue->value.size()));
   ASSERT_EQ(1, pInc->value);
   ASSERT_EQ(0, pOffset->start);
   ASSERT_EQ(4, pOffset->end);
   ASSERT_TRUE(pStream->next());
   ASSERT_EQ("prosenttia",
-            std::string((char*)(pValue->value.c_str()), pValue->value.size()));
+            std::string((char*)(pValue->value.data()), pValue->value.size()));
   ASSERT_EQ(1, pInc->value);
   ASSERT_EQ(5, pOffset->start);
   ASSERT_EQ(15, pOffset->end);
@@ -156,7 +156,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     irs::analysis::text_token_stream stream(options,
                                             options.explicit_stopwords);
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pOffset = irs::get<irs::offset>(*pStream);
@@ -170,78 +170,78 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(
-        "a", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
+        "a", std::string((char*)(pValue->value.data()), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(1, pOffset->start);
       ASSERT_EQ(2, pOffset->end);
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("herd", std::string((char*)(pValue->value.c_str()),
+      ASSERT_EQ("herd", std::string((char*)(pValue->value.data()),
                                     pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(4, pOffset->start);
       ASSERT_EQ(8, pOffset->end);
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("of", std::string((char*)(pValue->value.c_str()),
-                                  pValue->value.size()));
+      ASSERT_EQ(
+        "of", std::string((char*)(pValue->value.data()), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(9, pOffset->start);
       ASSERT_EQ(11, pOffset->end);
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("quick", std::string((char*)(pValue->value.c_str()),
+      ASSERT_EQ("quick", std::string((char*)(pValue->value.data()),
                                      pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(14, pOffset->start);
       ASSERT_EQ(19, pOffset->end);
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("brown", std::string((char*)(pValue->value.c_str()),
+      ASSERT_EQ("brown", std::string((char*)(pValue->value.data()),
                                      pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(20, pOffset->start);
       ASSERT_EQ(25, pOffset->end);
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("fox", std::string((char*)(pValue->value.c_str()),
+      ASSERT_EQ("fox", std::string((char*)(pValue->value.data()),
                                    pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(27, pOffset->start);
       ASSERT_EQ(32, pOffset->end);
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("ran", std::string((char*)(pValue->value.c_str()),
+      ASSERT_EQ("ran", std::string((char*)(pValue->value.data()),
                                    pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(33, pOffset->start);
       ASSERT_EQ(36, pOffset->end);
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("and", std::string((char*)(pValue->value.c_str()),
+      ASSERT_EQ("and", std::string((char*)(pValue->value.data()),
                                    pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(40, pOffset->start);
       ASSERT_EQ(43, pOffset->end);
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("jump", std::string((char*)(pValue->value.c_str()),
+      ASSERT_EQ("jump", std::string((char*)(pValue->value.data()),
                                     pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(44, pOffset->start);
       ASSERT_EQ(50, pOffset->end);
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("over", std::string((char*)(pValue->value.c_str()),
+      ASSERT_EQ("over", std::string((char*)(pValue->value.data()),
                                     pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(51, pOffset->start);
       ASSERT_EQ(55, pOffset->end);
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(
-        "a", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
+        "a", std::string((char*)(pValue->value.data()), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(57, pOffset->start);
       ASSERT_EQ(58, pOffset->end);
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("run", std::string((char*)(pValue->value.c_str()),
+      ASSERT_EQ("run", std::string((char*)(pValue->value.data()),
                                    pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(63, pOffset->start);
       ASSERT_EQ(70, pOffset->end);
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("dog", std::string((char*)(pValue->value.c_str()),
+      ASSERT_EQ("dog", std::string((char*)(pValue->value.data()),
                                    pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(71, pOffset->start);
@@ -272,19 +272,19 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   {
     std::string data = "A qUiCk brOwn FoX";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* value = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("a", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("a", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("quick", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("quick", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("brown", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("brown", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("fox", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("fox", irs::ViewCast<char>(value->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -311,19 +311,19 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   {
     std::string data = "A qUiCk brOwn FoX";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* value = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("A", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("A", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("QUICK", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("QUICK", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("BROWN", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("BROWN", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("FOX", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("FOX", irs::ViewCast<char>(value->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -350,19 +350,19 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   {
     std::string data = "A qUiCk brOwn FoX";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* value = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("A", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("A", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("qUiCk", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("qUiCk", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("brOwn", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("brOwn", irs::ViewCast<char>(value->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("FoX", irs::ref_cast<char>(value->value));
+      ASSERT_EQ("FoX", irs::ViewCast<char>(value->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -389,7 +389,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   {
     std::string data = " A thing of some KIND and ANoTher ";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pOffset = irs::get<irs::offset>(*pStream);
@@ -402,19 +402,19 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       ASSERT_NE(nullptr, pValue);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("thing", std::string((char*)(pValue->value.c_str()),
+      ASSERT_EQ("thing", std::string((char*)(pValue->value.data()),
                                      pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("some", std::string((char*)(pValue->value.c_str()),
+      ASSERT_EQ("some", std::string((char*)(pValue->value.data()),
                                     pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("kind", std::string((char*)(pValue->value.c_str()),
+      ASSERT_EQ("kind", std::string((char*)(pValue->value.data()),
                                     pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("anoth", std::string((char*)(pValue->value.c_str()),
+      ASSERT_EQ("anoth", std::string((char*)(pValue->value.data()),
                                      pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_FALSE(pStream->next());
@@ -446,7 +446,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       u8"\u0443\u0020\u0441\u0447\u0438\u0442\u0430\u0442\u044c\u0020\u0437"
       u8"\u0432\u0435\u0437\u0434\u044b");
 
-    auto testFunc = [](irs::string_ref data, analyzer* pStream) {
+    auto testFunc = [](std::string_view data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pOffset = irs::get<irs::offset>(*pStream);
@@ -459,41 +459,36 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       ASSERT_NE(nullptr, pInc);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ(
-        std::string("\xD0\xBF\xD0\xBE"),
-        std::string((char*)pValue->value.c_str(), pValue->value.size()));
+      ASSERT_EQ(std::string("\xD0\xBF\xD0\xBE"),
+                std::string((char*)pValue->value.data(), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(0, pOffset->start);
       ASSERT_EQ(4, pOffset->end);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ(
-        std::string("\xD0\xB2\xD0\xB5\xD1\x87\xD0\xB5\xD1\x80"),
-        std::string((char*)pValue->value.c_str(), pValue->value.size()));
+      ASSERT_EQ(std::string("\xD0\xB2\xD0\xB5\xD1\x87\xD0\xB5\xD1\x80"),
+                std::string((char*)pValue->value.data(), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(5, pOffset->start);
       ASSERT_EQ(19, pOffset->end);
       ASSERT_TRUE(pStream->next());
 
-      ASSERT_EQ(
-        std::string("\xD0\xB5\xD0\xB6\xD0\xB8\xD0\xBA"),
-        std::string((char*)pValue->value.c_str(), pValue->value.size()));
+      ASSERT_EQ(std::string("\xD0\xB5\xD0\xB6\xD0\xB8\xD0\xBA"),
+                std::string((char*)pValue->value.data(), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(20, pOffset->start);
       ASSERT_EQ(28, pOffset->end);
       ASSERT_TRUE(pStream->next());
 
-      ASSERT_EQ(
-        std::string("\xD1\x85\xD0\xBE\xD0\xB4"),
-        std::string((char*)pValue->value.c_str(), pValue->value.size()));
+      ASSERT_EQ(std::string("\xD1\x85\xD0\xBE\xD0\xB4"),
+                std::string((char*)pValue->value.data(), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(29, pOffset->start);
       ASSERT_EQ(39, pOffset->end);
       ASSERT_TRUE(pStream->next());
 
-      ASSERT_EQ(
-        std::string("\xD0\xBA"),
-        std::string((char*)pValue->value.c_str(), pValue->value.size()));
+      ASSERT_EQ(std::string("\xD0\xBA"),
+                std::string((char*)pValue->value.data(), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(40, pOffset->start);
       ASSERT_EQ(42, pOffset->end);
@@ -502,22 +497,20 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       ASSERT_EQ(
         std::string("\xD0\xBC\xD0\xB5\xD0\xB4\xD0\xB2\xD0\xB5\xD0\xB6\xD0\xBE"
                     "\xD0\xBD\xD0\xBA"),
-        std::string((char*)pValue->value.c_str(), pValue->value.size()));
+        std::string((char*)pValue->value.data(), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(43, pOffset->start);
       ASSERT_EQ(63, pOffset->end);
       ASSERT_TRUE(pStream->next());
 
-      ASSERT_EQ(
-        std::string("\xD1\x81\xD1\x87\xD0\xB8\xD1\x82\xD0\xB0"),
-        std::string((char*)pValue->value.c_str(), pValue->value.size()));
+      ASSERT_EQ(std::string("\xD1\x81\xD1\x87\xD0\xB8\xD1\x82\xD0\xB0"),
+                std::string((char*)pValue->value.data(), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(64, pOffset->start);
       ASSERT_EQ(78, pOffset->end);
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ(
-        std::string("\xD0\xB7\xD0\xB2\xD0\xB5\xD0\xB7\xD0\xB4"),
-        std::string((char*)pValue->value.c_str(), pValue->value.size()));
+      ASSERT_EQ(std::string("\xD0\xB7\xD0\xB2\xD0\xB5\xD0\xB7\xD0\xB4"),
+                std::string((char*)pValue->value.data(), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(79, pOffset->start);
       ASSERT_EQ(91, pOffset->end);
@@ -530,7 +523,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       options.locale = icu::Locale::createFromName("ru_RU.UTF-16");
       irs::analysis::text_token_stream stream(options,
                                               options.explicit_stopwords);
-      testFunc(irs::ref_cast<char>(data), &stream);
+      testFunc(irs::ViewCast<char>(data), &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere
@@ -539,7 +532,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
         "text", irs::type<irs::text_format::json>::get(),
         R"({"locale":"ru_RU.UTF-16", "stopwords":[]})");
       ASSERT_NE(nullptr, stream);
-      testFunc(irs::ref_cast<char>(data), stream.get());
+      testFunc(irs::ViewCast<char>(data), stream.get());
     }
   }
 
@@ -549,7 +542,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       u8"\U00000435\U00000440\U00000430\U0000043c\U00000020\U00000435"
       u8"\U00000436\U00000438\U0000043a");
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pOffset = irs::get<irs::offset>(*pStream);
@@ -563,9 +556,8 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
       ASSERT_TRUE(pStream->next());
 
-      ASSERT_EQ(
-        std::string("\xD0\xBF\xD0\xBE"),
-        std::string((char*)pValue->value.c_str(), pValue->value.size()));
+      ASSERT_EQ(std::string("\xD0\xBF\xD0\xBE"),
+                std::string((char*)pValue->value.data(), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(0, pOffset->start);
       ASSERT_EQ(4, pOffset->end);
@@ -573,15 +565,14 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
       ASSERT_EQ(
         std::string("\xD0\xB2\xD0\xB5\xD1\x87\xD0\xB5\xD1\x80\xD0\xB0\xD0\xBC"),
-        std::string((char*)pValue->value.c_str(), pValue->value.size()));
+        std::string((char*)pValue->value.data(), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(5, pOffset->start);
       ASSERT_EQ(19, pOffset->end);
       ASSERT_TRUE(pStream->next());
 
-      ASSERT_EQ(
-        std::string("\xD0\xB5\xD0\xB6\xD0\xB8\xD0\xBA"),
-        std::string((char*)pValue->value.c_str(), pValue->value.size()));
+      ASSERT_EQ(std::string("\xD0\xB5\xD0\xB6\xD0\xB8\xD0\xBA"),
+                std::string((char*)pValue->value.data(), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(20, pOffset->start);
       ASSERT_EQ(28, pOffset->end);
@@ -595,7 +586,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       irs::analysis::text_token_stream stream(options,
                                               options.explicit_stopwords);
 
-      testFunc(irs::ref_cast<char>(data), &stream);
+      testFunc(irs::ViewCast<char>(data), &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere
@@ -604,7 +595,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
         "text", irs::type<irs::text_format::json>::get(),  // ignore encoding
         "{\"locale\":\"en_US.utf32\", \"stopwords\":[]}");
       ASSERT_NE(nullptr, stream);
-      testFunc(irs::ref_cast<char>(data), stream.get());
+      testFunc(irs::ViewCast<char>(data), stream.get());
     }
   }
 }
@@ -628,7 +619,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
     auto locale = "en_US.UTF-8";
     std::string sDataASCII = "A E I O U";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
       auto* pOffset = irs::get<irs::offset>(*pStream);
       ASSERT_NE(nullptr, pOffset);
@@ -642,7 +633,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(
-        "e", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
+        "e", std::string((char*)(pValue->value.data()), pValue->value.size()));
       ASSERT_EQ(2, pOffset->start);
       ASSERT_EQ(3, pOffset->end);
       ASSERT_TRUE(pStream->next());
@@ -650,7 +641,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
       ASSERT_EQ(8, pOffset->start);
       ASSERT_EQ(9, pOffset->end);
       ASSERT_EQ(
-        "u", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
+        "u", std::string((char*)(pValue->value.data()), pValue->value.size()));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -716,7 +707,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_no_default_stopwords) {
   {
     const std::string sDataASCII = "A E I O U";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
       auto* pOffset = irs::get<irs::offset>(*pStream);
       ASSERT_NE(nullptr, pOffset);
@@ -730,30 +721,30 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_no_default_stopwords) {
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(
-        "a", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
+        "a", std::string((char*)(pValue->value.data()), pValue->value.size()));
       ASSERT_EQ(0, pOffset->start);
       ASSERT_EQ(1, pOffset->end);
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(
-        "e", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
+        "e", std::string((char*)(pValue->value.data()), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(2, pOffset->start);
       ASSERT_EQ(3, pOffset->end);
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(
-        "i", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
+        "i", std::string((char*)(pValue->value.data()), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(4, pOffset->start);
       ASSERT_EQ(5, pOffset->end);
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(
-        "o", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
+        "o", std::string((char*)(pValue->value.data()), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(6, pOffset->start);
       ASSERT_EQ(7, pOffset->end);
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(
-        "u", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
+        "u", std::string((char*)(pValue->value.data()), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(8, pOffset->start);
       ASSERT_EQ(9, pOffset->end);
@@ -784,7 +775,7 @@ TEST_F(TextAnalyzerParserTestSuite,
   {
     const std::string sDataASCII = "A E I O U";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
       auto* pOffset = irs::get<irs::offset>(*pStream);
       ASSERT_NE(nullptr, pOffset);
@@ -797,13 +788,13 @@ TEST_F(TextAnalyzerParserTestSuite,
 
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(
-        "e", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
+        "e", std::string((char*)(pValue->value.data()), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(2, pOffset->start);
       ASSERT_EQ(3, pOffset->end);
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(
-        "u", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
+        "u", std::string((char*)(pValue->value.data()), pValue->value.size()));
       ASSERT_EQ(1, pInc->value);
       ASSERT_EQ(8, pOffset->start);
       ASSERT_EQ(9, pOffset->end);
@@ -825,7 +816,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override) {
 
   std::string sDataASCII = "A E I O U";
 
-  auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+  auto testFunc = [](const std::string_view& data, analyzer* pStream) {
     ASSERT_TRUE(pStream->reset(data));
     auto* pOffset = irs::get<irs::offset>(*pStream);
     ASSERT_NE(nullptr, pOffset);
@@ -838,16 +829,16 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override) {
 
     ASSERT_TRUE(pStream->next());
     ASSERT_EQ(1, pInc->value);
-    ASSERT_EQ(
-      "e", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
+    ASSERT_EQ("e",
+              std::string((char*)(pValue->value.data()), pValue->value.size()));
     ASSERT_EQ(2, pOffset->start);
     ASSERT_EQ(3, pOffset->end);
     ASSERT_TRUE(pStream->next());
     ASSERT_EQ(1, pInc->value);
     ASSERT_EQ(8, pOffset->start);
     ASSERT_EQ(9, pOffset->end);
-    ASSERT_EQ(
-      "u", std::string((char*)(pValue->value.c_str()), pValue->value.size()));
+    ASSERT_EQ("u",
+              std::string((char*)(pValue->value.data()), pValue->value.size()));
     ASSERT_FALSE(pStream->next());
   };
 
@@ -892,7 +883,7 @@ TEST_F(TextAnalyzerParserTestSuite,
   ASSERT_TRUE(stream->next());
   ASSERT_EQ(1, pInc->value);
   ASSERT_EQ("e",
-            std::string((char*)(pValue->value.c_str()), pValue->value.size()));
+            std::string((char*)(pValue->value.data()), pValue->value.size()));
   ASSERT_EQ(2, pOffset->start);
   ASSERT_EQ(3, pOffset->end);
   ASSERT_TRUE(stream->next());
@@ -900,7 +891,7 @@ TEST_F(TextAnalyzerParserTestSuite,
   ASSERT_EQ(8, pOffset->start);
   ASSERT_EQ(9, pOffset->end);
   ASSERT_EQ("u",
-            std::string((char*)(pValue->value.c_str()), pValue->value.size()));
+            std::string((char*)(pValue->value.data()), pValue->value.size()));
   ASSERT_FALSE(stream->next());
 }
 
@@ -1159,21 +1150,21 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of   quIck ";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("he", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("her", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("of", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("qu", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("qu", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("qui", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("qui", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -1191,33 +1182,33 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of   quIck ";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("h", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("he", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("her", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("o", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("of", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("q", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("q", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("qu", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("qu", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("qui", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("qui", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
 
       ASSERT_TRUE(pStream->reset(data));
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(
-        "h", std::string(reinterpret_cast<const char*>((pValue->value.c_str())),
+        "h", std::string(reinterpret_cast<const char*>((pValue->value.data())),
                          pValue->value.size()));
     };
 
@@ -1235,25 +1226,25 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of   quIck ";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("he", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("her", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("herd", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("of", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("qu", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("qu", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("qui", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("qui", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("quick", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("quick", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -1271,15 +1262,15 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of   quIck ";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("her", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("qui", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("qui", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -1297,7 +1288,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of   quIck ";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
@@ -1326,17 +1317,17 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of   quIck ";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("herd", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("of", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("quick", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("quick", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -1360,7 +1351,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of   quIck ";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
@@ -1383,15 +1374,15 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("h", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("o", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -1409,19 +1400,19 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("h", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("herd", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("o", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("of", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -1439,23 +1430,23 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("h", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("he", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("her", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("herd", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("o", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("of", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -1473,23 +1464,23 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("h", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("he", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("her", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("herd", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("o", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("of", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -1507,23 +1498,23 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
   {
     std::string data = " A  hErd of";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pValue = irs::get<irs::term_attribute>(*pStream);
 
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("h", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("he", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("her", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("herd", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("o", irs::ViewCast<char>(pValue->value));
       ASSERT_TRUE(pStream->next());
-      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value));
+      ASSERT_EQ("of", irs::ViewCast<char>(pValue->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -1544,7 +1535,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       "\xD0\xBC\x20\xD0\xBA\x20\xD0\x9C\xD0\xB5\xD0\xB4\xD0\xB2\xD0\xB5\xD0"
       "\xB6\xD0\xBE\xD0\xBD\xD0\xBA\xD1\x83";
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](const std::string_view& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* offset = irs::get<irs::offset>(*pStream);
@@ -1555,37 +1546,37 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       ASSERT_TRUE(pStream->next());
 
       ASSERT_EQ(std::string("\xD0\xBF"),
-                std::string((char*)value->value.c_str(), value->value.size()));
+                std::string((char*)value->value.data(), value->value.size()));
       ASSERT_EQ(0, offset->start);
       ASSERT_EQ(2, offset->end);
       ASSERT_TRUE(pStream->next());
 
       ASSERT_EQ(std::string("\xD0\xBF\xD0\xBE"),
-                std::string((char*)value->value.c_str(), value->value.size()));
+                std::string((char*)value->value.data(), value->value.size()));
       ASSERT_EQ(0, offset->start);
       ASSERT_EQ(4, offset->end);
       ASSERT_TRUE(pStream->next());
 
       ASSERT_EQ(std::string("\xD0\xB2"),
-                std::string((char*)value->value.c_str(), value->value.size()));
+                std::string((char*)value->value.data(), value->value.size()));
       ASSERT_EQ(5, offset->start);
       ASSERT_EQ(7, offset->end);
       ASSERT_TRUE(pStream->next());
 
       ASSERT_EQ(std::string("\xD0\xB2\xD0\xB5"),
-                std::string((char*)value->value.c_str(), value->value.size()));
+                std::string((char*)value->value.data(), value->value.size()));
       ASSERT_EQ(5, offset->start);
       ASSERT_EQ(9, offset->end);
       ASSERT_TRUE(pStream->next());
 
       ASSERT_EQ(std::string("\xD0\xBC"),
-                std::string((char*)value->value.c_str(), value->value.size()));
+                std::string((char*)value->value.data(), value->value.size()));
       ASSERT_EQ(23, offset->start);
       ASSERT_EQ(25, offset->end);
       ASSERT_TRUE(pStream->next());
 
       ASSERT_EQ(std::string("\xD0\xBC\xD0\xB5"),
-                std::string((char*)value->value.c_str(), value->value.size()));
+                std::string((char*)value->value.data(), value->value.size()));
       ASSERT_EQ(23, offset->start);
       ASSERT_EQ(27, offset->end);
       ASSERT_FALSE(pStream->next());
@@ -1598,7 +1589,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
         "\"edgeNgram\" : {\"min\":1, \"max\":2, "
         "\"preserveOriginal\":false}}");
       ASSERT_NE(nullptr, stream);
-      testFunc(irs::string_ref(sDataUTF8.c_str(), sDataUTF8.size()),
+      testFunc(std::string_view(sDataUTF8.data(), sDataUTF8.size()),
                stream.get());
     }
   }

@@ -26,13 +26,13 @@
 namespace iresearch {
 namespace version_utils {
 
-const string_ref build_date() {
+const std::string_view build_date() {
   static const std::string value = __DATE__;
 
   return value;
 }
 
-const string_ref build_id() {
+const std::string_view build_id() {
   static const std::string value = {
 #include "utils/build_identifier.csx"
   };
@@ -40,13 +40,13 @@ const string_ref build_id() {
   return value;
 }
 
-const string_ref build_time() {
+const std::string_view build_time() {
   static const std::string value = __TIME__;
 
   return value;
 }
 
-const string_ref build_version() {
+const std::string_view build_version() {
   static const std::string value = {
 #include "utils/build_version.csx"
   };

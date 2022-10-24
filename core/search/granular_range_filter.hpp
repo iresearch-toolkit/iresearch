@@ -63,7 +63,7 @@ struct by_granular_range_options {
   }
 
   size_t hash() const noexcept {
-    return hash_combine(scored_terms_limit, range);
+    return hash_combine(scored_terms_limit, range.hash());
   }
 };  // by_granular_range_options
 
@@ -100,7 +100,7 @@ class by_granular_range : public filter_base<by_granular_range_options> {
  public:
   static filter::prepared::ptr prepare(const index_reader& index,
                                        const Order& ord, score_t boost,
-                                       string_ref field,
+                                       std::string_view field,
                                        const options_type::range_type& rng,
                                        size_t scored_terms_limit);
 

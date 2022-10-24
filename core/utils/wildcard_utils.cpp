@@ -44,7 +44,7 @@
 
 namespace iresearch {
 
-WildcardType wildcard_type(bytes_ref expr) noexcept {
+WildcardType wildcard_type(bytes_view expr) noexcept {
   if (expr.empty()) {
     return WildcardType::TERM;
   }
@@ -109,7 +109,7 @@ WildcardType wildcard_type(bytes_ref expr) noexcept {
   return WildcardType::WILDCARD;
 }
 
-automaton from_wildcard(bytes_ref expr) {
+automaton from_wildcard(bytes_view expr) {
   // need this variable to preserve valid address
   // for cases with match all and  terminal escape
   // character (%\\)
@@ -119,7 +119,7 @@ automaton from_wildcard(bytes_ref expr) {
   std::vector<automaton> parts;
   parts.reserve(expr.size() / 2);  // reserve some space
 
-  auto append_char = [&](bytes_ref label) {
+  auto append_char = [&](bytes_view label) {
     parts.emplace_back(make_char(label));
     escaped = false;
   };

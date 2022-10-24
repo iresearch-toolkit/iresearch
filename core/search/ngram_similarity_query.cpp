@@ -80,11 +80,10 @@ struct SearchState {
 
   // appending constructor
   template<typename T>
-  SearchState(const std::shared_ptr<SearchState>& other, uint32_t p,
-              const T& attrs)
-    : parent{other},
+  SearchState(std::shared_ptr<SearchState> other, uint32_t p, const T& attrs)
+    : parent{std::move(other)},
       scr{attrs.scr},
-      len{other->len + 1},
+      len{parent->len + 1},
       pos{p},
       offs{GetOffset<false>(attrs)} {}
 

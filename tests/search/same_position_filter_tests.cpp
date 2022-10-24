@@ -105,7 +105,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
     {
       irs::by_same_position filter;
       filter.mutable_options()->terms.emplace_back(
-        "phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+        "phrase", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
 
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
@@ -151,9 +151,9 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
     {
       irs::by_same_position filter;
       filter.mutable_options()->terms.emplace_back(
-        "phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+        "phrase", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
       filter.mutable_options()->terms.emplace_back(
-        "phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+        "phrase", irs::ViewCast<irs::byte_type>(std::string_view("brown")));
 
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
@@ -225,7 +225,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
     ASSERT_EQ(1, index.size());
     auto& segment = *(index.begin());
 
-    irs::bytes_ref_input in;
+    irs::bytes_view_input in;
     auto column = segment.column("_id");
     ASSERT_NE(nullptr, column);
 
@@ -245,12 +245,12 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
     {
       irs::by_same_position query;
       query.mutable_options()->terms.emplace_back(
-        "a", irs::ref_cast<irs::byte_type>(irs::string_ref("100")));
+        "a", irs::ViewCast<irs::byte_type>(std::string_view("100")));
 
       irs::by_term expected_query;
       *expected_query.mutable_field() = "a";
       expected_query.mutable_options()->term =
-        irs::ref_cast<irs::byte_type>(irs::string_ref("100"));
+        irs::ViewCast<irs::byte_type>(std::string_view("100"));
 
       auto prepared = query.prepare(index);
       auto expected_prepared = expected_query.prepare(index);
@@ -277,11 +277,11 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
     {
       irs::by_same_position q;
       q.mutable_options()->terms.emplace_back(
-        "a", irs::ref_cast<irs::byte_type>(irs::string_ref("300")));
+        "a", irs::ViewCast<irs::byte_type>(std::string_view("300")));
       q.mutable_options()->terms.emplace_back(
-        "b", irs::ref_cast<irs::byte_type>(irs::string_ref("90")));
+        "b", irs::ViewCast<irs::byte_type>(std::string_view("90")));
       q.mutable_options()->terms.emplace_back(
-        "c", irs::ref_cast<irs::byte_type>(irs::string_ref("9")));
+        "c", irs::ViewCast<irs::byte_type>(std::string_view("9")));
       auto prepared = q.prepare(index);
       auto docs = prepared->execute(segment);
       auto* doc = irs::get<irs::document>(*docs);
@@ -296,11 +296,11 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
     {
       irs::by_same_position q;
       q.mutable_options()->terms.emplace_back(
-        "a", irs::ref_cast<irs::byte_type>(irs::string_ref("100")));
+        "a", irs::ViewCast<irs::byte_type>(std::string_view("100")));
       q.mutable_options()->terms.emplace_back(
-        "b", irs::ref_cast<irs::byte_type>(irs::string_ref("30")));
+        "b", irs::ViewCast<irs::byte_type>(std::string_view("30")));
       q.mutable_options()->terms.emplace_back(
-        "c", irs::ref_cast<irs::byte_type>(irs::string_ref("6")));
+        "c", irs::ViewCast<irs::byte_type>(std::string_view("6")));
 
       auto prepared = q.prepare(index);
 
@@ -365,11 +365,11 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
     {
       irs::by_same_position q;
       q.mutable_options()->terms.emplace_back(
-        "c", irs::ref_cast<irs::byte_type>(irs::string_ref("8")));
+        "c", irs::ViewCast<irs::byte_type>(std::string_view("8")));
       q.mutable_options()->terms.emplace_back(
-        "b", irs::ref_cast<irs::byte_type>(irs::string_ref("80")));
+        "b", irs::ViewCast<irs::byte_type>(std::string_view("80")));
       q.mutable_options()->terms.emplace_back(
-        "a", irs::ref_cast<irs::byte_type>(irs::string_ref("700")));
+        "a", irs::ViewCast<irs::byte_type>(std::string_view("700")));
 
       auto prepared = q.prepare(index);
 
@@ -429,9 +429,9 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
     {
       irs::by_same_position q;
       q.mutable_options()->terms.emplace_back(
-        "a", irs::ref_cast<irs::byte_type>(irs::string_ref("700")));
+        "a", irs::ViewCast<irs::byte_type>(std::string_view("700")));
       q.mutable_options()->terms.emplace_back(
-        "c", irs::ref_cast<irs::byte_type>(irs::string_ref("7")));
+        "c", irs::ViewCast<irs::byte_type>(std::string_view("7")));
 
       auto prepared = q.prepare(index);
 
@@ -601,7 +601,7 @@ TEST(by_same_position_test, boost) {
 {
   irs::by_same_position q;
   q.mutable_options()->terms.emplace_back(
-    "field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    "field", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
 
   auto prepared = q.prepare(irs::sub_reader::empty());
   ASSERT_EQ(irs::kNoBoost, prepared->boost());
@@ -611,9 +611,9 @@ TEST(by_same_position_test, boost) {
 {
   irs::by_same_position q;
   q.mutable_options()->terms.emplace_back(
-    "field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+    "field", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
   q.mutable_options()->terms.emplace_back(
-    "field", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+    "field", irs::ViewCast<irs::byte_type>(std::string_view("brown")));
 
   auto prepared = q.prepare(irs::sub_reader::empty());
   ASSERT_EQ(irs::kNoBoost, prepared->boost());
@@ -637,7 +637,7 @@ TEST(by_same_position_test, boost) {
   {
     irs::by_same_position q;
     q.mutable_options()->terms.emplace_back(
-      "field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      "field", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
     q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());
@@ -648,9 +648,9 @@ TEST(by_same_position_test, boost) {
   {
     irs::by_same_position q;
     q.mutable_options()->terms.emplace_back(
-      "field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      "field", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
     q.mutable_options()->terms.emplace_back(
-      "field", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+      "field", irs::ViewCast<irs::byte_type>(std::string_view("brown")));
     q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());
@@ -665,70 +665,70 @@ TEST(by_same_position_test, equal) {
   {
     irs::by_same_position q0;
     q0.mutable_options()->terms.emplace_back(
-      "speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      "speed", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
     q0.mutable_options()->terms.emplace_back(
-      "color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+      "color", irs::ViewCast<irs::byte_type>(std::string_view("brown")));
 
     irs::by_same_position q1;
     q1.mutable_options()->terms.emplace_back(
-      "speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      "speed", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
     q1.mutable_options()->terms.emplace_back(
-      "color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+      "color", irs::ViewCast<irs::byte_type>(std::string_view("brown")));
     ASSERT_EQ(q0, q1);
   }
 
   {
     irs::by_same_position q0;
     q0.mutable_options()->terms.emplace_back(
-      "speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      "speed", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
     q0.mutable_options()->terms.emplace_back(
-      "color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+      "color", irs::ViewCast<irs::byte_type>(std::string_view("brown")));
     q0.mutable_options()->terms.emplace_back(
-      "name", irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
+      "name", irs::ViewCast<irs::byte_type>(std::string_view("fox")));
 
     irs::by_same_position q1;
     q1.mutable_options()->terms.emplace_back(
-      "speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      "speed", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
     q1.mutable_options()->terms.emplace_back(
-      "color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+      "color", irs::ViewCast<irs::byte_type>(std::string_view("brown")));
     q1.mutable_options()->terms.emplace_back(
-      "name", irs::ref_cast<irs::byte_type>(irs::string_ref("squirrel")));
+      "name", irs::ViewCast<irs::byte_type>(std::string_view("squirrel")));
     ASSERT_NE(q0, q1);
   }
 
   {
     irs::by_same_position q0;
     q0.mutable_options()->terms.emplace_back(
-      "Speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      "Speed", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
     q0.mutable_options()->terms.emplace_back(
-      "color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+      "color", irs::ViewCast<irs::byte_type>(std::string_view("brown")));
     q0.mutable_options()->terms.emplace_back(
-      "name", irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
+      "name", irs::ViewCast<irs::byte_type>(std::string_view("fox")));
 
     irs::by_same_position q1;
     q1.mutable_options()->terms.emplace_back(
-      "speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      "speed", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
     q1.mutable_options()->terms.emplace_back(
-      "color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+      "color", irs::ViewCast<irs::byte_type>(std::string_view("brown")));
     q1.mutable_options()->terms.emplace_back(
-      "name", irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
+      "name", irs::ViewCast<irs::byte_type>(std::string_view("fox")));
     ASSERT_NE(q0, q1);
   }
 
   {
     irs::by_same_position q0;
     q0.mutable_options()->terms.emplace_back(
-      "speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      "speed", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
     q0.mutable_options()->terms.emplace_back(
-      "color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+      "color", irs::ViewCast<irs::byte_type>(std::string_view("brown")));
 
     irs::by_same_position q1;
     q1.mutable_options()->terms.emplace_back(
-      "speed", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      "speed", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
     q1.mutable_options()->terms.emplace_back(
-      "color", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+      "color", irs::ViewCast<irs::byte_type>(std::string_view("brown")));
     q1.mutable_options()->terms.emplace_back(
-      "name", irs::ref_cast<irs::byte_type>(irs::string_ref("fox")));
+      "name", irs::ViewCast<irs::byte_type>(std::string_view("fox")));
     ASSERT_NE(q0, q1);
   }
 }

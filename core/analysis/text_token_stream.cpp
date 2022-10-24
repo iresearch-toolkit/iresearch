@@ -113,7 +113,7 @@ struct text_token_stream::state_t : icu_objects {
   bstring term_buf;
   std::string tmp_buf;  // used by processTerm(...)
   ngram_state_t ngram;
-  bytes_ref term;
+  bytes_view term;
   uint32_t start{};
   uint32_t end{};
 
@@ -151,7 +151,7 @@ struct cached_options_t : public analysis::text_token_stream::options_t {
       stopwords_(std::move(stopwords)) {}
 };
 
-absl::node_hash_map<hashed_string_ref, cached_options_t> cached_state_by_key;
+absl::node_hash_map<hashed_string_view, cached_options_t> cached_state_by_key;
 std::mutex mutex;
 
 // -----------------------------------------------------------------------------
@@ -162,12 +162,12 @@ std::mutex mutex;
 /// @brief retrieves a set of ignored words from FS at the specified custom path
 ////////////////////////////////////////////////////////////////////////////////
 bool get_stopwords(analysis::text_token_stream::stopwords_t& buf,
-                   string_ref language, string_ref path = string_ref::NIL) {
+                   std::string_view language, std::string_view path = {}) {
   utf8_path stopword_path;
 
   auto* custom_stopword_path =
-    !path.null()
-      ? path.c_str()
+    !IsNull(path)
+      ? path.data()
       : irs::getenv(analysis::text_token_stream::STOPWORD_PATH_ENV_VARIABLE);
 
   if (custom_stopword_path) {
@@ -295,18 +295,18 @@ bool build_stopwords(const analysis::text_token_stream::options_t& options,
 /// @brief create an analyzer based on the supplied cache_key and options
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr construct(
-  string_ref cache_key, analysis::text_token_stream::options_t&& options,
+  std::string_view cache_key, analysis::text_token_stream::options_t&& options,
   analysis::text_token_stream::stopwords_t&& stopwords) {
-  auto generator = [](const hashed_string_ref& key,
+  auto generator = [](const hashed_string_view& key,
                       cached_options_t& value) noexcept {
-    if (key.null()) {
+    if (IsNull(key)) {
       return key;
     }
 
     value.key_ = key;
 
     // reuse hash but point ref at value
-    return hashed_string_ref(key.hash(), value.key_);
+    return hashed_string_view(key.hash(), value.key_);
   };
 
   cached_options_t* options_ptr;
@@ -336,8 +336,8 @@ analysis::analyzer::ptr construct(icu::Locale&& locale) {
   {
     std::lock_guard lock{mutex};
 
-    auto itr =
-      cached_state_by_key.find(make_hashed_ref(string_ref(locale.getName())));
+    auto itr = cached_state_by_key.find(
+      make_hashed_ref(std::string_view(locale.getName())));
 
     if (itr != cached_state_by_key.end()) {
       return memory::make_unique<analysis::text_token_stream>(
@@ -420,8 +420,8 @@ bool process_term(analysis::text_token_stream::state_t& state,
 
     if (value) {
       static_assert(sizeof(byte_type) == sizeof(sb_symbol));
-      state.term = bytes_ref(reinterpret_cast<const byte_type*>(value),
-                             sb_stemmer_length(state.stemmer.get()));
+      state.term = bytes_view(reinterpret_cast<const byte_type*>(value),
+                              sb_stemmer_length(state.stemmer.get()));
 
       return true;
     }
@@ -447,7 +447,7 @@ constexpr std::string_view MIN_PARAM_NAME{"min"};
 constexpr std::string_view MAX_PARAM_NAME{"max"};
 constexpr std::string_view PRESERVE_ORIGINAL_PARAM_NAME{"preserveOriginal"};
 
-const frozen::unordered_map<string_ref,
+const frozen::unordered_map<std::string_view,
                             analysis::text_token_stream::case_convert_t, 3>
   CASE_CONVERT_MAP = {
     {"lower", analysis::text_token_stream::case_convert_t::LOWER},
@@ -598,7 +598,7 @@ bool parse_vpack_options(const VPackSlice slice,
       }
 
       auto itr =
-        CASE_CONVERT_MAP.find(get_string<string_ref>(case_convert_slice));
+        CASE_CONVERT_MAP.find(get_string<std::string_view>(case_convert_slice));
 
       if (itr == CASE_CONVERT_MAP.end()) {
         IR_FRMT_WARN(
@@ -770,7 +770,7 @@ bool make_vpack_config(const analysis::text_token_stream::options_t& options,
     // stopwords
     if (!options.explicit_stopwords.empty() || options.explicit_stopwords_set) {
       // explicit_stopwords_set  marks that even empty stopwords list is valid
-      std::vector<string_ref> sortedWords;
+      std::vector<std::string_view> sortedWords;
       if (!options.explicit_stopwords.empty()) {
         // for simplifying comparison between properties we need deterministic
         // order of stopwords
@@ -852,7 +852,7 @@ bool make_vpack_config(const analysis::text_token_stream::options_t& options,
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   try {
-    const string_ref slice_ref(slice.startAs<char>(), slice.byteSize());
+    const std::string_view slice_ref(slice.startAs<char>(), slice.byteSize());
     {
       std::lock_guard lock{mutex};
       auto itr = cached_state_by_key.find(make_hashed_ref(slice_ref));
@@ -883,8 +883,8 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   return nullptr;
 }
 
-analysis::analyzer::ptr make_vpack(string_ref args) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+analysis::analyzer::ptr make_vpack(std::string_view args) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
 
@@ -898,8 +898,8 @@ bool normalize_vpack_config(const VPackSlice slice,
   }
 }
 
-bool normalize_vpack_config(string_ref args, std::string& definition) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+bool normalize_vpack_config(std::string_view args, std::string& definition) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   bool res = normalize_vpack_config(slice, &builder);
   if (res) {
@@ -912,7 +912,7 @@ bool normalize_vpack_config(string_ref args, std::string& definition) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a locale name
 ////////////////////////////////////////////////////////////////////////////////
-analysis::analyzer::ptr make_text(string_ref args) {
+analysis::analyzer::ptr make_text(std::string_view args) {
   icu::Locale locale;
 
   if (locale_from_string(static_cast<std::string>(args), locale)) {
@@ -922,7 +922,7 @@ analysis::analyzer::ptr make_text(string_ref args) {
   }
 }
 
-bool normalize_text_config(string_ref args, std::string& definition) {
+bool normalize_text_config(std::string_view args, std::string& definition) {
   icu::Locale locale;
 
   if (locale_from_string(static_cast<std::string>(args), locale)) {
@@ -933,14 +933,14 @@ bool normalize_text_config(string_ref args, std::string& definition) {
   return false;
 }
 
-analysis::analyzer::ptr make_json(string_ref args) {
+analysis::analyzer::ptr make_json(std::string_view args) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR(
         "Null arguments while constructing text_token_normalizing_stream");
       return nullptr;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
@@ -955,14 +955,14 @@ analysis::analyzer::ptr make_json(string_ref args) {
   return nullptr;
 }
 
-bool normalize_json_config(string_ref args, std::string& definition) {
+bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR(
         "Null arguments while normalizing text_token_normalizing_stream");
       return false;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     VPackBuilder builder;
     if (normalize_vpack_config(vpack->slice(), &builder)) {
       definition = builder.toString();
@@ -1031,11 +1031,11 @@ text_token_stream::text_token_stream(const options_t& options,
   cached_state_by_key.clear();
 }
 
-/*static*/ analyzer::ptr text_token_stream::make(string_ref locale) {
+/*static*/ analyzer::ptr text_token_stream::make(std::string_view locale) {
   return make_text(locale);
 }
 
-bool text_token_stream::reset(string_ref data) {
+bool text_token_stream::reset(std::string_view data) {
   if (data.size() > std::numeric_limits<uint32_t>::max()) {
     // can't handle data which is longer than
     // std::numeric_limits<uint32_t>::max()
@@ -1055,13 +1055,13 @@ bool text_token_stream::reset(string_ref data) {
   }
 
   state_->data = icu::UnicodeString::fromUTF8(
-    icu::StringPiece{data.c_str(), static_cast<int32_t>(data.size())});
+    icu::StringPiece{data.data(), static_cast<int32_t>(data.size())});
 
   // tokenise the unicode data
   state_->break_iterator->setText(state_->data);
 
   // reset term state for ngrams
-  state_->term = bytes_ref::NIL;
+  state_->term = {};
   state_->start = 0;
   state_->end = 0;
   state_->set_ngram_finished();
@@ -1191,7 +1191,7 @@ bool text_token_stream::next_ngram() {
     static_assert(sizeof(byte_type) == sizeof(char));
 
     auto size = static_cast<uint32_t>(std::distance(begin, state_->ngram.it));
-    term_buf_.assign(state_->term.c_str(), size);
+    term_buf_.assign(state_->term.data(), size);
     std::get<term_attribute>(attrs_).value = term_buf_;
 
     auto& offset = std::get<irs::offset>(attrs_);

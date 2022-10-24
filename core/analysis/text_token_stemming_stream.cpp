@@ -25,13 +25,13 @@
 
 #include <libstemmer.h>
 
-#include "velocypack/Slice.h"
+#include <string_view>
+
+#include "utils/vpack_utils.hpp"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
+#include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
-#include "utils/vpack_utils.hpp"
-
-#include <string_view>
 
 namespace {
 
@@ -127,8 +127,8 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-analysis::analyzer::ptr make_vpack(string_ref args) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+analysis::analyzer::ptr make_vpack(std::string_view args) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
 ///////////////////////////////////////////////////////////////////////////////
@@ -157,8 +157,8 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   }
 }
 
-bool normalize_vpack_config(string_ref args, std::string& config) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+bool normalize_vpack_config(std::string_view args, std::string& config) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
@@ -167,14 +167,14 @@ bool normalize_vpack_config(string_ref args, std::string& config) {
   return false;
 }
 
-analysis::analyzer::ptr make_json(string_ref args) {
+analysis::analyzer::ptr make_json(std::string_view args) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR(
         "Null arguments while constructing text_token_normalizing_stream");
       return nullptr;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
@@ -189,14 +189,14 @@ analysis::analyzer::ptr make_json(string_ref args) {
   return nullptr;
 }
 
-bool normalize_json_config(string_ref args, std::string& definition) {
+bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR(
         "Null arguments while normalizing text_token_normalizing_stream");
       return false;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     VPackBuilder builder;
     if (normalize_vpack_config(vpack->slice(), &builder)) {
       definition = builder.toString();
@@ -246,7 +246,7 @@ bool stemming_token_stream::next() {
   return true;
 }
 
-bool stemming_token_stream::reset(string_ref data) {
+bool stemming_token_stream::reset(std::string_view data) {
   if (!stemmer_) {
     // defaults to utf-8
     stemmer_ = make_stemmer_ptr(options_.locale.getLanguage(), nullptr);
@@ -254,7 +254,7 @@ bool stemming_token_stream::reset(string_ref data) {
 
   auto& term = std::get<term_attribute>(attrs_);
 
-  term.value = bytes_ref::NIL;  // reset
+  term.value = {};  // reset
 
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
@@ -263,7 +263,7 @@ bool stemming_token_stream::reset(string_ref data) {
   term_eof_ = false;
 
   // find the token stem
-  string_ref utf8_data{data};
+  std::string_view utf8_data{data};
 
   if (stemmer_) {
     if (utf8_data.size() >
@@ -272,14 +272,14 @@ bool stemming_token_stream::reset(string_ref data) {
     }
 
     static_assert(sizeof(sb_symbol) == sizeof(char));
-    const auto* value = reinterpret_cast<const sb_symbol*>(utf8_data.c_str());
+    const auto* value = reinterpret_cast<const sb_symbol*>(utf8_data.data());
 
     value = sb_stemmer_stem(stemmer_.get(), value,
                             static_cast<int>(utf8_data.size()));
 
     if (value) {
       static_assert(sizeof(byte_type) == sizeof(sb_symbol));
-      term.value = bytes_ref(reinterpret_cast<const byte_type*>(value),
+      term.value = bytes_view(reinterpret_cast<const byte_type*>(value),
                              sb_stemmer_length(stemmer_.get()));
 
       return true;
@@ -288,7 +288,7 @@ bool stemming_token_stream::reset(string_ref data) {
 
   // use the value of the unstemmed token
   static_assert(sizeof(byte_type) == sizeof(char));
-  term.value = ref_cast<byte_type>(utf8_data);
+  term.value = ViewCast<byte_type>(utf8_data);
 
   return true;
 }

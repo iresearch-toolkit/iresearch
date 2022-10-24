@@ -72,7 +72,7 @@ class format_test_case : public index_test_base {
       EXPECT_TRUE(irs::pos_limits::valid(value_));
 
       const auto written = sprintf(pay_data_, "%d", value_);
-      pay_.value = irs::bytes_ref(
+      pay_.value = irs::bytes_view(
         reinterpret_cast<const irs::byte_type*>(pay_data_), written);
 
       offs_.start = value_;
@@ -81,7 +81,7 @@ class format_test_case : public index_test_base {
     }
 
     void clear() {
-      pay_.value = irs::bytes_ref::NIL;
+      pay_.value = {};
       offs_.clear();
     }
 
@@ -169,7 +169,7 @@ class format_test_case : public index_test_base {
 
   bool supports_encryption() const noexcept {
     // old formats don't support columnstore headers
-    constexpr irs::string_ref kOldFormats[]{"1_0"};
+    constexpr std::string_view kOldFormats[]{"1_0"};
 
     const auto it = std::find(std::begin(kOldFormats), std::end(kOldFormats),
                               codec()->type().name());
@@ -178,8 +178,8 @@ class format_test_case : public index_test_base {
 
   bool supports_columnstore_headers() const noexcept {
     // old formats don't support columnstore headers
-    constexpr irs::string_ref kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
-                                            "1_3simd"};
+    constexpr std::string_view kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
+                                             "1_3simd"};
 
     const auto it = std::find(std::begin(kOldFormats), std::end(kOldFormats),
                               codec()->type().name());
@@ -206,12 +206,12 @@ class format_test_case : public index_test_base {
         return false;
       }
 
-      val_ = irs::ref_cast<irs::byte_type>(*next_);
+      val_ = *next_;
       ++next_;
       return true;
     }
 
-    const irs::bytes_ref& value() const { return val_; }
+    irs::bytes_view value() const override { return val_; }
 
     irs::doc_iterator::ptr postings(irs::IndexFeatures /*features*/) const {
       return irs::memory::make_managed<format_test_case::postings>(docs_);
@@ -224,7 +224,7 @@ class format_test_case : public index_test_base {
     }
 
    private:
-    irs::bytes_ref val_;
+    irs::bytes_view val_;
     docs_type docs_;
     Iterator next_;
     Iterator end_;

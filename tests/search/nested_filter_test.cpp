@@ -155,7 +155,7 @@ auto MakeParentProvider(std::string_view name) {
 auto MakeByTerm(std::string_view name, std::string_view value) {
   auto filter = std::make_unique<irs::by_term>();
   *filter->mutable_field() = name;
-  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  filter->mutable_options()->term = irs::ViewCast<irs::byte_type>(value);
   return filter;
 }
 
@@ -169,7 +169,7 @@ auto MakeByNumericTerm(std::string_view name, int32_t value) {
   stream.reset(value);
   stream.next();
 
-  irs::assign(filter->mutable_options()->term, token->value);
+  filter->mutable_options()->term = token->value;
 
   return filter;
 }
@@ -188,7 +188,7 @@ auto MakeByTermAndRange(std::string_view name, std::string_view value,
   {
     auto& filter = root->add<irs::by_term>();
     *filter.mutable_field() = name;
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+    filter.mutable_options()->term = irs::ViewCast<irs::byte_type>(value);
   }
   // range_field <= upper_bound
   {
@@ -215,7 +215,7 @@ auto MakeOptions(std::string_view parent, std::string_view child,
   auto& child_filter = static_cast<irs::by_term&>(*opts.child);
   *child_filter.mutable_field() = child;
   child_filter.mutable_options()->term =
-    irs::ref_cast<irs::byte_type>(child_value);
+    irs::ViewCast<irs::byte_type>(child_value);
 
   return opts;
 }
@@ -317,7 +317,7 @@ class NestedFilterTestCase : public tests::FilterTestCaseBase {
 
 void NestedFilterTestCase::InitDataSet() {
   irs::index_writer::init_options opts;
-  opts.column_info = [](irs::string_ref name) {
+  opts.column_info = [](std::string_view name) {
     return irs::column_info{
       .compression = irs::type<irs::compression::none>::get(),
       .options = {},
@@ -1278,8 +1278,8 @@ class NestedFilterFormatsTestCase : public NestedFilterTestCase {
  protected:
   bool HasPrevDocSupport() noexcept {
     // old formats don't support columnstore headers
-    constexpr irs::string_ref kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
-                                            "1_3simd"};
+    constexpr std::string_view kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
+                                             "1_3simd"};
 
     return std::end(kOldFormats) == std::find(std::begin(kOldFormats),
                                               std::end(kOldFormats),

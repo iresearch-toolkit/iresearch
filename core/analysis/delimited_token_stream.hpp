@@ -38,25 +38,25 @@ namespace analysis {
 class delimited_token_stream final : public analyzer,
                                      private util::noncopyable {
  public:
-  static constexpr string_ref type_name() noexcept { return "delimiter"; }
+  static constexpr std::string_view type_name() noexcept { return "delimiter"; }
   static void init();  // for trigering registration in a static build
-  static ptr make(string_ref delimiter);
+  static ptr make(std::string_view delimiter);
 
-  explicit delimited_token_stream(string_ref delimiter);
+  explicit delimited_token_stream(std::string_view delimiter);
   virtual attribute* get_mutable(
     irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() override;
-  virtual bool reset(string_ref data) override;
+  virtual bool reset(std::string_view data) override;
 
  private:
   using attributes = std::tuple<increment,
                                 offset,  // token value with evaluated quotes
                                 term_attribute>;
 
-  bytes_ref data_;
-  bytes_ref delim_;
+  bytes_view data_;
+  bytes_view delim_;
   bstring delim_buf_;
   bstring term_buf_;  // buffer for the last evaluated term
   attributes attrs_;

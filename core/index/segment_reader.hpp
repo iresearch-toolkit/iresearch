@@ -80,7 +80,7 @@ class segment_reader final : public sub_reader {
     return impl_->mask(std::move(it));
   }
 
-  virtual const term_reader* field(string_ref name) const override {
+  virtual const term_reader* field(std::string_view name) const override {
     return impl_->field(name);
   }
 
@@ -102,7 +102,7 @@ class segment_reader final : public sub_reader {
     return impl_->sort();
   }
 
-  virtual const irs::column_reader* column(string_ref name) const override {
+  virtual const irs::column_reader* column(std::string_view name) const override {
     return impl_->column(name);
   }
 

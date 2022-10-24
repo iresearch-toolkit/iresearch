@@ -74,7 +74,7 @@ struct cached_column {
 
 class field_data : util::noncopyable {
  public:
-  field_data(string_ref name, const features_t& features,
+  field_data(std::string_view name, const features_t& features,
              const feature_info_provider_t& feature_columns,
              std::deque<cached_column>& cached_columns,
              columnstore_writer& columns,
@@ -167,11 +167,11 @@ class fields_data : util::noncopyable {
     using self_t::operator();
 
     bool operator()(const ref_t& lhs,
-                    const hashed_string_ref& rhs) const noexcept {
+                    const hashed_string_view& rhs) const noexcept {
       return lhs.second->meta().name == rhs;
     }
 
-    bool operator()(const hashed_string_ref& lhs,
+    bool operator()(const hashed_string_view& lhs,
                     const ref_t& rhs) const noexcept {
       return this->operator()(rhs, lhs);
     }
@@ -188,7 +188,7 @@ class fields_data : util::noncopyable {
 
   const comparer* comparator() const noexcept { return comparator_; }
 
-  field_data* emplace(const hashed_string_ref& name,
+  field_data* emplace(const hashed_string_view& name,
                       IndexFeatures index_features, const features_t& features,
                       columnstore_writer& columns);
 

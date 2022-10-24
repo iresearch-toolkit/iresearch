@@ -122,7 +122,7 @@ class format_10_test_case : public tests::format_test_case {
 
       auto out = dir->create("attributes");
       ASSERT_FALSE(!out);
-      irs::write_string(*out, irs::string_ref("file_header"));
+      irs::write_string(*out, std::string_view("file_header"));
 
       // prepare writer
       writer->prepare(*out, state);
@@ -622,7 +622,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.index_features =
       field.index_features;  // all possible features in segment
 
-    auto out = dir().create(std::string("postings") + state.name.c_str());
+    auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
     postings docs(docs0);
@@ -650,7 +650,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.index_features =
       field.index_features;  // all possible features in segment
 
-    auto out = dir().create(std::string("postings") + state.name.c_str());
+    auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
     postings docs(docs0);
@@ -678,7 +678,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.index_features =
       field.index_features;  // all possible features in segment
 
-    auto out = dir().create(std::string("postings") + state.name.c_str());
+    auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
     postings docs(docs0);
@@ -705,7 +705,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.index_features =
       field.index_features;  // all possible features in segment
 
-    auto out = dir().create(std::string("postings") + state.name.c_str());
+    auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
     postings docs(docs0);
@@ -731,7 +731,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.index_features =
       field.index_features;  // all possible features in segment
 
-    auto out = dir().create(std::string("postings") + state.name.c_str());
+    auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
     postings docs(docs0);
@@ -755,7 +755,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     state.doc_count = 10000;
     state.name = "5";
 
-    auto out = dir().create(std::string("postings") + state.name.c_str());
+    auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
     postings docs(docs0);
@@ -770,10 +770,10 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
 TEST_P(format_10_test_case, ires336) {
   // bug: ires336
   auto dir = get_directory(*this);
-  const irs::string_ref segment_name = "bug";
-  const irs::string_ref field = "sbiotype";
-  const irs::bytes_ref term =
-    irs::ref_cast<irs::byte_type>(irs::string_ref("protein_coding"));
+  const std::string_view segment_name = "bug";
+  const std::string_view field = "sbiotype";
+  const irs::bytes_view term =
+    irs::ViewCast<irs::byte_type>(std::string_view("protein_coding"));
 
   std::vector<std::pair<irs::doc_id_t, uint32_t>> docs;
   {
@@ -784,7 +784,7 @@ TEST_P(format_10_test_case, ires336) {
       docs.emplace_back(strtol(buf.c_str(), &pend, 10), 10);
     }
   }
-  std::vector<irs::bytes_ref> terms{term};
+  std::vector<irs::bytes_view> terms{term};
   tests::format_test_case::terms<decltype(terms.begin())> trms(
     terms.begin(), terms.end(), docs.begin(), docs.end());
 

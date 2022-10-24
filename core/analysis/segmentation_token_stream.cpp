@@ -45,7 +45,8 @@ constexpr std::string_view CASE_CONVERT_PARAM_NAME{"case"};
 constexpr std::string_view BREAK_PARAM_NAME{"break"};
 
 const frozen::unordered_map<
-  string_ref, analysis::segmentation_token_stream::options_t::case_convert_t, 3>
+  std::string_view,
+  analysis::segmentation_token_stream::options_t::case_convert_t, 3>
   CASE_CONVERT_MAP = {
     {"lower",
      analysis::segmentation_token_stream::options_t::case_convert_t::LOWER},
@@ -56,7 +57,8 @@ const frozen::unordered_map<
 };
 
 const frozen::unordered_map<
-  string_ref, analysis::segmentation_token_stream::options_t::word_break_t, 3>
+  std::string_view,
+  analysis::segmentation_token_stream::options_t::word_break_t, 3>
   BREAK_CONVERT_MAP = {
     {"all", analysis::segmentation_token_stream::options_t::word_break_t::ALL},
     {"alpha",
@@ -84,7 +86,7 @@ bool parse_vpack_options(
     }
     auto case_convert = case_convert_slice.stringView();
     auto itr = CASE_CONVERT_MAP.find(
-      string_ref(case_convert.data(), case_convert.size()));
+      std::string_view(case_convert.data(), case_convert.size()));
 
     if (itr == CASE_CONVERT_MAP.end()) {
       IR_FRMT_WARN(
@@ -106,8 +108,8 @@ bool parse_vpack_options(
       return false;
     }
     auto break_type = break_type_slice.stringView();
-    auto itr =
-      BREAK_CONVERT_MAP.find(string_ref(break_type.data(), break_type.size()));
+    auto itr = BREAK_CONVERT_MAP.find(
+      std::string_view(break_type.data(), break_type.size()));
 
     if (itr == BREAK_CONVERT_MAP.end()) {
       IR_FRMT_WARN(
@@ -188,8 +190,8 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   return nullptr;
 }
 
-analysis::analyzer::ptr make_vpack(string_ref args) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+analysis::analyzer::ptr make_vpack(std::string_view args) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
 
@@ -215,8 +217,8 @@ bool normalize_vpack_config(const VPackSlice slice,
   return false;
 }
 
-bool normalize_vpack_config(string_ref args, std::string& config) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+bool normalize_vpack_config(std::string_view args, std::string& config) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
@@ -225,14 +227,14 @@ bool normalize_vpack_config(string_ref args, std::string& config) {
   return false;
 }
 
-analysis::analyzer::ptr make_json(string_ref args) {
+analysis::analyzer::ptr make_json(std::string_view args) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR(
         "Null arguments while constructing segmentation_token_stream");
       return nullptr;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
@@ -246,14 +248,14 @@ analysis::analyzer::ptr make_json(string_ref args) {
   return nullptr;
 }
 
-bool normalize_json_config(string_ref args, std::string& definition) {
+bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR(
         "Null arguments while normalizing segmentation_token_stream");
       return false;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     VPackBuilder builder;
     if (normalize_vpack_config(vpack->slice(), &builder)) {
       definition = builder.toString();
@@ -297,7 +299,8 @@ namespace analysis {
 
 using namespace boost::text;
 
-using data_t = decltype(as_graphemes(string_ref{}.begin(), string_ref{}.end()));
+using data_t =
+  decltype(as_graphemes(std::string_view{}.begin(), std::string_view{}.end()));
 using iterator_t = decltype(next_word_break(data_t{}, data_t{}.begin()));
 
 struct segmentation_token_stream::state_t {
@@ -364,12 +367,12 @@ bool segmentation_token_stream::next() {
       case options_t::case_convert_t::LOWER:
         term_buf_.clear();
         to_lower(as_graphemes(begin, end), from_utf32_back_inserter(term_buf_));
-        term.value = irs::ref_cast<byte_type>(term_buf_);
+        term.value = irs::ViewCast<byte_type>(std::string_view{term_buf_});
         break;
       case options_t::case_convert_t::UPPER:
         term_buf_.clear();
         to_upper(as_graphemes(begin, end), from_utf32_back_inserter(term_buf_));
-        term.value = irs::ref_cast<byte_type>(term_buf_);
+        term.value = irs::ViewCast<byte_type>(std::string_view{term_buf_});
         break;
     }
 
@@ -377,7 +380,7 @@ bool segmentation_token_stream::next() {
   }
 }
 
-bool segmentation_token_stream::reset(string_ref data) {
+bool segmentation_token_stream::reset(std::string_view data) {
   state_->data = as_graphemes(data.begin(), data.end());
   state_->begin = state_->data.begin();
   state_->end = state_->data.end();

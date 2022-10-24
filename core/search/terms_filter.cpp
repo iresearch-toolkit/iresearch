@@ -81,7 +81,7 @@ class terms_visitor {
 };  // terms_visitor
 
 template<typename Collector>
-void collect_terms(const index_reader& index, string_ref field,
+void collect_terms(const index_reader& index, std::string_view field,
                    const by_terms_options::search_terms& terms,
                    Collector& collector) {
   terms_visitor<Collector> visitor(collector);

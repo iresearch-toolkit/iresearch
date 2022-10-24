@@ -219,7 +219,7 @@ constexpr std::string_view kNumHashes{"numHashes"};
 
 const offset kEmptyOffset;
 
-std::pair<string_ref, velocypack::Slice> ParseAnalyzer(
+std::pair<std::string_view, velocypack::Slice> ParseAnalyzer(
   velocypack::Slice slice) {
   if (!slice.isObject()) {
     return {};
@@ -267,7 +267,7 @@ bool ParseVPack(velocypack::Slice slice, MinHashTokenStream::Options* opts) {
   } else {
     auto [type, props] = ParseAnalyzer(analyzerSlice);
 
-    if (type.null()) {
+    if (IsNull(type)) {
       return false;
     }
 
@@ -293,7 +293,7 @@ bool ParseVPack(velocypack::Slice slice, MinHashTokenStream::Options* opts) {
         "Failed to create analyzer of type '%s' with properties '%s' while "
         "constructing "
         "MinHashTokenStream pipeline_token_stream from VPack arguments",
-        type.c_str(), irs::slice_to_string(props).c_str());
+        type.data(), irs::slice_to_string(props).c_str());
     }
   }
 
@@ -308,21 +308,21 @@ analyzer::ptr MakeVPack(velocypack::Slice slice) {
   return nullptr;
 }
 
-irs::analysis::analyzer::ptr MakeVPack(irs::string_ref args) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+irs::analysis::analyzer::ptr MakeVPack(std::string_view args) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return MakeVPack(slice);
 }
 
 // `args` is a JSON encoded object with the following attributes:
 // "analyzer"(object) the analyzer definition containing "type"(string) and
 // optional "properties"(object)
-analyzer::ptr MakeJson(irs::string_ref args) {
+analyzer::ptr MakeJson(std::string_view args) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while constructing MinHashAnalyzer");
       return nullptr;
     }
-    auto vpack = velocypack::Parser::fromJson(args.c_str(), args.size());
+    auto vpack = velocypack::Parser::fromJson(args.data(), args.size());
     return MakeVPack(vpack->slice());
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
@@ -394,8 +394,8 @@ bool NormalizeVPack(velocypack::Slice slice, velocypack::Builder* out) {
   return false;
 }
 
-bool NormalizeVPack(irs::string_ref args, std::string& definition) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+bool NormalizeVPack(std::string_view args, std::string& definition) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   bool res = NormalizeVPack(slice, &builder);
   if (res) {
@@ -405,13 +405,13 @@ bool NormalizeVPack(irs::string_ref args, std::string& definition) {
   return res;
 }
 
-bool NormalizeJson(irs::string_ref args, std::string& definition) {
+bool NormalizeJson(std::string_view args, std::string& definition) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while normalizing MinHashAnalyzer");
       return false;
     }
-    auto vpack = velocypack::Parser::fromJson(args.c_str(), args.size());
+    auto vpack = velocypack::Parser::fromJson(args.data(), args.size());
     VPackBuilder builder;
     if (NormalizeVPack(vpack->slice(), &builder)) {
       definition = builder.toString();
@@ -490,7 +490,7 @@ bool MinHashTokenStream::next() {
   return true;
 }
 
-bool MinHashTokenStream::reset(string_ref data) {
+bool MinHashTokenStream::reset(std::string_view data) {
   begin_ = end_ = {};
   if (opts_.analyzer->reset(data)) {
     ComputeSignature();
@@ -512,8 +512,8 @@ void MinHashTokenStream::ComputeSignature() {
     end = offs->end;
 
     do {
-      const string_ref value = ref_cast<char>(term_->value);
-      const size_t hash_value = ::CityHash64(value.c_str(), value.size());
+      const std::string_view value = ViewCast<char>(term_->value);
+      const size_t hash_value = ::CityHash64(value.data(), value.size());
 
       minhash_.Insert(hash_value);
       end = offs->end;

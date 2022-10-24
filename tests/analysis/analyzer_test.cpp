@@ -21,9 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "analysis/analyzers.hpp"
 #include "tests_config.hpp"
 #include "tests_shared.hpp"
-#include "analysis/analyzers.hpp"
 #include "utils/runtime_utils.hpp"
 
 namespace tests {
@@ -72,15 +72,15 @@ using namespace tests;
 
 TEST_F(analyzer_test, duplicate_register) {
   struct dummy_analyzer : public irs::analysis::analyzer {
-    static ptr make(irs::string_ref) { return ptr(new dummy_analyzer()); }
-    static bool normalize(irs::string_ref, std::string&) { return true; }
+    static ptr make(std::string_view) { return ptr(new dummy_analyzer()); }
+    static bool normalize(std::string_view, std::string&) { return true; }
     dummy_analyzer()
       : irs::analysis::analyzer(irs::type<dummy_analyzer>::get()) {}
     virtual irs::attribute* get_mutable(irs::type_info::type_id) override {
       return nullptr;
     }
     virtual bool next() override { return false; }
-    virtual bool reset(irs::string_ref) override { return false; }
+    virtual bool reset(std::string_view) override { return false; }
   };
 
   static bool initial_expected = true;
@@ -97,18 +97,18 @@ TEST_F(analyzer_test, duplicate_register) {
     ASSERT_FALSE(irs::analysis::analyzers::exists(
       irs::type<dummy_analyzer>::name(),
       irs::type<irs::text_format::text>::get()));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
-                         irs::type<dummy_analyzer>::name(),
-                         irs::type<irs::text_format::json>::get(),
-                         irs::string_ref::NIL));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
-                         irs::type<dummy_analyzer>::name(),
-                         irs::type<irs::text_format::text>::get(),
-                         irs::string_ref::NIL));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
-                         irs::type<dummy_analyzer>::name(),
-                         irs::type<irs::text_format::vpack>::get(),
-                         irs::string_ref::NIL));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                irs::type<dummy_analyzer>::name(),
+                irs::type<irs::text_format::json>::get(), std::string_view{}));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                irs::type<dummy_analyzer>::name(),
+                irs::type<irs::text_format::text>::get(), std::string_view{}));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                irs::type<dummy_analyzer>::name(),
+                irs::type<irs::text_format::vpack>::get(), std::string_view{}));
 
     irs::analysis::analyzer_registrar initial0(
       irs::type<dummy_analyzer>::get(),
@@ -154,15 +154,15 @@ TEST_F(analyzer_test, duplicate_register) {
   ASSERT_NE(nullptr,
             irs::analysis::analyzers::get(
               irs::type<dummy_analyzer>::name(),
-              irs::type<irs::text_format::vpack>::get(), irs::string_ref::NIL));
+              irs::type<irs::text_format::vpack>::get(), std::string_view{}));
   ASSERT_NE(nullptr,
             irs::analysis::analyzers::get(
               irs::type<dummy_analyzer>::name(),
-              irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
+              irs::type<irs::text_format::json>::get(), std::string_view{}));
   ASSERT_NE(nullptr,
             irs::analysis::analyzers::get(
               irs::type<dummy_analyzer>::name(),
-              irs::type<irs::text_format::text>::get(), irs::string_ref::NIL));
+              irs::type<irs::text_format::text>::get(), std::string_view{}));
 }
 
 TEST_F(analyzer_test, test_load) {

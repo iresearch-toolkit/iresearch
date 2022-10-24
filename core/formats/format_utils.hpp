@@ -39,13 +39,13 @@ const int32_t FOOTER_MAGIC = -FORMAT_MAGIC;
 
 const uint32_t FOOTER_LEN = 2 * sizeof(int32_t) + sizeof(int64_t);
 
-void write_header(index_output& out, string_ref format, int32_t ver);
+void write_header(index_output& out, std::string_view format, int32_t ver);
 
 void write_footer(index_output& out);
 
-size_t header_length(string_ref format) noexcept;
+size_t header_length(std::string_view format) noexcept;
 
-int32_t check_header(index_input& in, string_ref format, int32_t min_ver,
+int32_t check_header(index_input& in, std::string_view format, int32_t min_ver,
                      int32_t max_ver);
 
 inline int64_t read_checksum(index_input& in) {

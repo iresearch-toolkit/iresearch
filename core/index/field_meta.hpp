@@ -55,7 +55,7 @@ struct field_meta {
   field_meta() = default;
   field_meta(const field_meta&) = default;
   field_meta(field_meta&& rhs) noexcept;
-  field_meta(string_ref field, IndexFeatures index_features);
+  field_meta(std::string_view field, IndexFeatures index_features);
 
   field_meta& operator=(field_meta&& rhs) noexcept;
   field_meta& operator=(const field_meta&) = default;

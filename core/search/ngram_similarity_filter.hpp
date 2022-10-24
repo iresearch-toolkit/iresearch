@@ -44,7 +44,7 @@ struct by_ngram_similarity_options {
   size_t hash() const noexcept {
     size_t hash = std::hash<decltype(threshold)>()(threshold);
     for (const auto& ngram : ngrams) {
-      hash = hash_combine(hash, hash_utils::hash(ngram));
+      hash = hash_combine(hash, hash_utils::Hash(ngram));
     }
     return hash;
   }

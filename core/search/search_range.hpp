@@ -24,6 +24,7 @@
 #define IRESEARCH_SEARCH_RANGE_H
 
 #include "utils/hash_utils.hpp"
+#include "utils/type_utils.hpp"
 
 namespace iresearch {
 
@@ -37,10 +38,18 @@ struct search_range {
   BoundType max_type = BoundType::UNBOUNDED;
 
   size_t hash() const noexcept {
-    using bound_type = typename std::underlying_type<BoundType>::type;
-
-    const auto hash0 = hash_combine(std::hash<decltype(min)>()(min),
-                                    std::hash<decltype(max)>()(max));
+    using bound_type = typename std::underlying_type_t<BoundType>;
+    const auto hash0 = [this]() {
+      size_t min_hash, max_hash;
+      if constexpr (irs::is_vector_v<T>) {
+        min_hash = irs::hash(min.data(), min.size());
+        max_hash = irs::hash(max.data(), max.size());
+      } else {
+        min_hash = std::hash<decltype(min)>()(max);
+        max_hash = std::hash<decltype(min)>()(max);
+      }
+      return hash_combine(min_hash, max_hash);
+    }();
     const auto hash1 =
       hash_combine(std::hash<bound_type>()(static_cast<bound_type>(min_type)),
                    std::hash<bound_type>()(static_cast<bound_type>(max_type)));
@@ -55,19 +64,8 @@ struct search_range {
   bool operator!=(const search_range& rhs) const noexcept {
     return !(*this == rhs);
   }
-};  // search_range
-
-}  // namespace iresearch
-
-namespace std {
-
-template<typename T>
-struct hash<::iresearch::search_range<T>> {
-  size_t operator()(const ::iresearch::search_range<T>& value) {
-    return value.hash();
-  }
 };
 
-}  // namespace std
+}  // namespace iresearch
 
 #endif  // IRESEARCH_SEARCH_RANGE_H

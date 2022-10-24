@@ -178,7 +178,7 @@ class filter_base : public filter_with_options<Options> {
   std::string* mutable_field() noexcept { return &field_; }
 
   virtual size_t hash() const noexcept override {
-    return hash_combine(hash_utils::hash(field_),
+    return hash_combine(hash_utils::Hash(field_),
                         filter_with_options<options_type>::hash());
   }
 

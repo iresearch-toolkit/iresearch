@@ -34,13 +34,13 @@ namespace {
 auto MakeByTerm(std::string_view name, std::string_view value) {
   auto filter = std::make_unique<irs::by_term>();
   *filter->mutable_field() = name;
-  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
+  filter->mutable_options()->term = irs::ViewCast<irs::byte_type>(value);
   return filter;
 }
 
 class Analyzer : public irs::analysis::analyzer {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "NormTestAnalyzer";
   }
 
@@ -52,7 +52,7 @@ class Analyzer : public irs::analysis::analyzer {
     return irs::get_mutable(attrs_, id);
   }
 
-  virtual bool reset(irs::string_ref value) noexcept override {
+  virtual bool reset(std::string_view value) noexcept override {
     value_ = value;
     i_ = 0;
     return true;
@@ -61,7 +61,7 @@ class Analyzer : public irs::analysis::analyzer {
   virtual bool next() override {
     if (i_ < count_) {
       std::get<irs::term_attribute>(attrs_).value =
-        irs::ref_cast<irs::byte_type>(value_);
+        irs::ViewCast<irs::byte_type>(value_);
       auto& offset = std::get<irs::offset>(attrs_);
       offset.start = 0;
       offset.end = static_cast<uint32_t>(value_.size());
@@ -74,7 +74,7 @@ class Analyzer : public irs::analysis::analyzer {
 
  private:
   std::tuple<irs::offset, irs::increment, irs::term_attribute> attrs_;
-  irs::string_ref value_;
+  std::string_view value_;
   size_t count_;
   size_t i_{};
 };
@@ -84,7 +84,7 @@ class NormField final : public tests::ifield {
   NormField(std::string name, std::string value, size_t count)
     : name_{std::move(name)}, value_{std::move(value)}, analyzer_{count} {}
 
-  irs::string_ref name() const override { return name_; }
+  std::string_view name() const override { return name_; }
 
   irs::token_stream& get_tokens() const override {
     analyzer_.reset(value_);
@@ -109,14 +109,14 @@ class NormField final : public tests::ifield {
   irs::type_info::type_id norm_{irs::type<irs::Norm2>::id()};
 };
 
-void AssertNorm2Header(irs::bytes_ref header, uint32_t num_bytes, uint32_t min,
+void AssertNorm2Header(irs::bytes_view header, uint32_t num_bytes, uint32_t min,
                        uint32_t max) {
   constexpr irs::Norm2Version kVersion{irs::Norm2Version::kMin};
 
-  ASSERT_FALSE(header.null());
+  ASSERT_FALSE(irs::IsNull(header));
   ASSERT_EQ(10, header.size());
 
-  auto* p = header.c_str();
+  auto* p = header.data();
   const auto actual_verson = *p++;
   const auto actual_num_bytes = *p++;
   const auto actual_min = irs::read<uint32_t>(p);
@@ -177,8 +177,9 @@ TEST(Norm2HeaderTest, ResetByValue) {
 }
 
 TEST(Norm2HeaderTest, ReadInvalid) {
-  ASSERT_FALSE(irs::Norm2Header::Read(irs::bytes_ref::NIL).has_value());
-  ASSERT_FALSE(irs::Norm2Header::Read(irs::bytes_ref::EMPTY).has_value());
+  ASSERT_FALSE(irs::Norm2Header::Read(irs::bytes_view{}).has_value());
+  ASSERT_FALSE(
+    irs::Norm2Header::Read(irs::kEmptyStringView<irs::byte_type>).has_value());
 
   // Invalid size
   {
@@ -319,13 +320,13 @@ class Norm2TestCase : public tests::index_test_base {
 
   template<typename T>
   void AssertNormColumn(
-    const irs::sub_reader& segment, irs::string_ref name,
+    const irs::sub_reader& segment, std::string_view name,
     const std::vector<std::pair<irs::doc_id_t, uint32_t>>& expected_values);
 };
 
 template<typename T>
 void Norm2TestCase::AssertNormColumn(
-  const irs::sub_reader& segment, irs::string_ref name,
+  const irs::sub_reader& segment, std::string_view name,
   const std::vector<std::pair<irs::doc_id_t, uint32_t>>& expected_docs) {
   static_assert(std::is_same_v<T, irs::byte_type> ||
                 std::is_same_v<T, uint16_t> || std::is_same_v<T, uint32_t>);
@@ -343,7 +344,7 @@ void Norm2TestCase::AssertNormColumn(
   auto* column = segment.column(it->second);
   ASSERT_NE(nullptr, column);
   ASSERT_EQ(it->second, column->id());
-  ASSERT_TRUE(column->name().null());
+  ASSERT_TRUE(irs::IsNull(column->name()));
 
   const auto min = std::min_element(
     std::begin(expected_docs), std::end(expected_docs),
@@ -386,7 +387,7 @@ void Norm2TestCase::AssertNormColumn(
     ASSERT_EQ(expected_doc->first, doc->value);
     ASSERT_EQ(sizeof(T), payload->value.size());
 
-    auto* p = payload->value.c_str();
+    auto* p = payload->value.data();
     const auto value = irs::read<T>(p);
     ASSERT_EQ(expected_doc->second, value);
     ASSERT_EQ(value, reader());
@@ -665,7 +666,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
     }
 
     {
-      constexpr irs::string_ref kName = "prefix";
+      constexpr std::string_view kName = "prefix";
       ASSERT_EQ(nullptr, segment.field(kName));
     }
   }
@@ -925,7 +926,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
     }
 
     {
-      constexpr irs::string_ref kName = "prefix";
+      constexpr std::string_view kName = "prefix";
       ASSERT_EQ(nullptr, segment.field(kName));
     }
   }

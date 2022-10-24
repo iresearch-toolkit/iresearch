@@ -29,8 +29,8 @@
 
 #include "analysis/token_attributes.hpp"
 #include "utils/hash_utils.hpp"
-#include "utils/type_limits.hpp"
 #include "utils/register.hpp"
+#include "utils/type_limits.hpp"
 
 namespace {
 
@@ -38,7 +38,7 @@ constexpr std::string_view kFileNamePrefix{"libformat-"};
 
 // first - format name
 // second - module name, nullptr => matches format name
-typedef std::pair<irs::string_ref, irs::string_ref> key_t;
+typedef std::pair<std::string_view, std::string_view> key_t;
 
 struct equal_to {
   bool operator()(const key_t& lhs, const key_t& rhs) const noexcept {
@@ -48,24 +48,24 @@ struct equal_to {
 
 struct hash {
   size_t operator()(const key_t& lhs) const noexcept {
-    return irs::hash_utils::hash(lhs.first);
+    return irs::hash_utils::Hash(lhs.first);
   }
 };
 
 class format_register
   : public irs::tagged_generic_register<key_t, irs::format::ptr (*)(),
-                                        irs::string_ref, format_register, hash,
+                                        std::string_view, format_register, hash,
                                         equal_to> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
-    auto const& module = key.second.null() ? key.first : key.second;
+    auto const& module = irs::IsNull(key.second) ? key.first : key.second;
 
     std::string filename(kFileNamePrefix.size() + module.size(), 0);
 
     std::memcpy(filename.data(), kFileNamePrefix.data(),
                 kFileNamePrefix.size());
 
-    std::memcpy(filename.data() + kFileNamePrefix.size(), module.c_str(),
+    std::memcpy(filename.data() + kFileNamePrefix.size(), module.data(),
                 module.size());
 
     return filename;
@@ -93,17 +93,18 @@ namespace iresearch {
   if (payload) {
     meta.payload(std::move(*payload));
   } else {
-    meta.payload(bytes_ref::NIL);
+    meta.payload(bytes_view{});
   }
 }
 
-/*static*/ bool formats::exists(string_ref name, bool load_library /*= true*/) {
-  auto const key = std::make_pair(name, string_ref::NIL);
+/*static*/ bool formats::exists(std::string_view name,
+                                bool load_library /*= true*/) {
+  auto const key = std::make_pair(name, std::string_view{});
   return nullptr != format_register::instance().get(key, load_library);
 }
 
-/*static*/ format::ptr formats::get(string_ref name,
-                                    string_ref module /*= string_ref::NIL*/,
+/*static*/ format::ptr formats::get(std::string_view name,
+                                    std::string_view module /*= {} */,
                                     bool load_library /*= true*/) noexcept {
   try {
     auto const key = std::make_pair(name, module);
@@ -127,7 +128,8 @@ namespace iresearch {
   load_libraries(path, kFileNamePrefix, "");
 }
 
-/*static*/ bool formats::visit(const std::function<bool(string_ref)>& visitor) {
+/*static*/ bool formats::visit(
+  const std::function<bool(std::string_view)>& visitor) {
   auto visit_all = [&visitor](const format_register::key_type& key) {
     if (!visitor(key.first)) {
       return false;
@@ -142,41 +144,43 @@ namespace iresearch {
 // --SECTION--                                               format registration
 // -----------------------------------------------------------------------------
 
-format_registrar::format_registrar(const type_info& type, string_ref module,
+format_registrar::format_registrar(const type_info& type,
+                                   std::string_view module,
                                    format::ptr (*factory)(),
                                    const char* source /*= nullptr*/) {
-  string_ref source_ref(source);
+  const auto source_view =
+    source ? std::string_view{source} : std::string_view{};
 
   auto entry = format_register::instance().set(
     std::make_pair(type.name(), module), factory,
-    source_ref.null() ? nullptr : &source_ref);
+    IsNull(source_view) ? nullptr : &source_view);
 
   registered_ = entry.second;
 
   if (!registered_ && factory != entry.first) {
-    const auto key = std::make_pair(type.name(), string_ref::NIL);
+    const auto key = std::make_pair(type.name(), std::string_view{});
     auto* registered_source = format_register::instance().tag(key);
 
     if (source && registered_source) {
       IR_FRMT_WARN(
         "type name collision detected while registering format, ignoring: type "
         "'%s' from %s, previously from %s",
-        type.name().c_str(), source, registered_source->c_str());
+        type.name().data(), source, registered_source->data());
     } else if (source) {
       IR_FRMT_WARN(
         "type name collision detected while registering format, ignoring: type "
         "'%s' from %s",
-        type.name().c_str(), source);
+        type.name().data(), source);
     } else if (registered_source) {
       IR_FRMT_WARN(
         "type name collision detected while registering format, ignoring: type "
         "'%s', previously from %s",
-        type.name().c_str(), registered_source->c_str());
+        type.name().data(), registered_source->data());
     } else {
       IR_FRMT_WARN(
         "type name collision detected while registering format, ignoring: type "
         "'%s'",
-        type.name().c_str());
+        type.name().data());
     }
   }
 }

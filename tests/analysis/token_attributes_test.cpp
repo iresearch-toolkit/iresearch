@@ -20,9 +20,10 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "analysis/token_attributes.hpp"
+
 #include "index/norm.hpp"
+#include "tests_shared.hpp"
 
 TEST(token_attributes_test, offset) {
   static_assert("offset" == irs::type<irs::offset>::name());
@@ -43,14 +44,14 @@ TEST(token_attributes_test, term_attribute) {
   static_assert("term_attribute" == irs::type<irs::term_attribute>::name());
 
   irs::term_attribute term;
-  ASSERT_TRUE(term.value.null());
+  ASSERT_TRUE(irs::IsNull(term.value));
 }
 
 TEST(token_attributes_test, payload) {
   static_assert("payload" == irs::type<irs::payload>::name());
 
   irs::payload pay;
-  ASSERT_TRUE(pay.value.null());
+  ASSERT_TRUE(irs::IsNull(pay.value));
 }
 
 TEST(token_attributes_test, document) {

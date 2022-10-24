@@ -22,19 +22,18 @@
 
 #include "ngram_token_stream.hpp"
 
-#include <frozen/unordered_map.h>
 #include <frozen/string.h>
-
-#include "velocypack/Slice.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Parser.h"
-#include "velocypack/velocypack-aliases.h"
-
-#include "utils/hash_utils.hpp"
-#include "utils/vpack_utils.hpp"
-#include "utils/utf8_utils.hpp"
+#include <frozen/unordered_map.h>
 
 #include <string_view>
+
+#include "utils/hash_utils.hpp"
+#include "utils/utf8_utils.hpp"
+#include "utils/vpack_utils.hpp"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#include "velocypack/Slice.h"
+#include "velocypack/velocypack-aliases.h"
 
 namespace {
 
@@ -46,7 +45,7 @@ constexpr std::string_view START_MARKER_PARAM_NAME{"startMarker"};
 constexpr std::string_view END_MARKER_PARAM_NAME{"endMarker"};
 
 constexpr frozen::unordered_map<
-  irs::string_ref, irs::analysis::ngram_token_stream_base::InputType, 2>
+  std::string_view, irs::analysis::ngram_token_stream_base::InputType, 2>
   STREAM_TYPE_CONVERT_MAP = {
     {"binary", irs::analysis::ngram_token_stream_base::InputType::Binary},
     {"utf8", irs::analysis::ngram_token_stream_base::InputType::UTF8}};
@@ -63,7 +62,7 @@ bool parse_vpack_options(
   bool preserve_original;
   auto stream_bytes_type =
     irs::analysis::ngram_token_stream_base::InputType::Binary;
-  irs::string_ref start_marker, end_marker;
+  std::string_view start_marker, end_marker;
 
   // min
   auto min_type_slice = slice.get(MIN_PARAM_NAME);
@@ -137,9 +136,9 @@ bool parse_vpack_options(
         START_MARKER_PARAM_NAME.data());
       return false;
     }
-    start_marker = irs::get_string<irs::string_ref>(start_marker_type_slice);
+    start_marker = irs::get_string<std::string_view>(start_marker_type_slice);
   }
-  options.start_marker = irs::ref_cast<irs::byte_type>(start_marker);
+  options.start_marker = irs::ViewCast<irs::byte_type>(start_marker);
 
   // end marker
   if (slice.hasKey(END_MARKER_PARAM_NAME)) {
@@ -151,9 +150,9 @@ bool parse_vpack_options(
         END_MARKER_PARAM_NAME.data());
       return false;
     }
-    end_marker = irs::get_string<irs::string_ref>(end_marker_type_slice);
+    end_marker = irs::get_string<std::string_view>(end_marker_type_slice);
   }
-  options.end_marker = irs::ref_cast<irs::byte_type>(end_marker);
+  options.end_marker = irs::ViewCast<irs::byte_type>(end_marker);
 
   // stream bytes
   if (slice.hasKey(STREAM_TYPE_PARAM_NAME)) {
@@ -167,7 +166,7 @@ bool parse_vpack_options(
     }
     auto stream_type = stream_type_slice.stringView();
     auto itr = STREAM_TYPE_CONVERT_MAP.find(
-      irs::string_ref(stream_type.data(), stream_type.size()));
+      std::string_view(stream_type.data(), stream_type.size()));
     if (itr == STREAM_TYPE_CONVERT_MAP.end()) {
       IR_FRMT_WARN(
         "Invalid value in '%s' while constructing ngram_token_stream from "
@@ -220,11 +219,13 @@ bool make_vpack_config(
     }
 
     // start_marker
-    builder->add(START_MARKER_PARAM_NAME,
-                 VPackValue(irs::ref_cast<char>(options.start_marker)));
+    builder->add(
+      START_MARKER_PARAM_NAME,
+      VPackValue(irs::ViewCast<char>(irs::bytes_view{options.start_marker})));
     // end_marker
-    builder->add(END_MARKER_PARAM_NAME,
-                 VPackValue(irs::ref_cast<char>(options.end_marker)));
+    builder->add(
+      END_MARKER_PARAM_NAME,
+      VPackValue(irs::ViewCast<char>(irs::bytes_view{options.end_marker})));
   }
 
   return true;
@@ -254,8 +255,8 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   return nullptr;
 }
 
-irs::analysis::analyzer::ptr make_vpack(irs::string_ref args) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+irs::analysis::analyzer::ptr make_vpack(std::string_view args) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
 ///////////////////////////////////////////////////////////////////////////////
@@ -271,8 +272,8 @@ bool normalize_vpack_config(const VPackSlice slice,
   }
 }
 
-bool normalize_vpack_config(irs::string_ref args, std::string& config) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+bool normalize_vpack_config(std::string_view args, std::string& config) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
@@ -281,13 +282,13 @@ bool normalize_vpack_config(irs::string_ref args, std::string& config) {
   return false;
 }
 
-irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
+irs::analysis::analyzer::ptr make_json(std::string_view args) {
   try {
-    if (args.null()) {
+    if (irs::IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while constructing ngram_token_stream");
       return nullptr;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
@@ -300,13 +301,13 @@ irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
   return nullptr;
 }
 
-bool normalize_json_config(irs::string_ref args, std::string& definition) {
+bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
-    if (args.null()) {
+    if (irs::IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
       return false;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     VPackBuilder builder;
     if (normalize_vpack_config(vpack->slice(), &builder)) {
       definition = builder.toString();
@@ -416,7 +417,7 @@ void ngram_token_stream_base::emit_original() noexcept {
   next_inc_val_ = 0;
 }
 
-bool ngram_token_stream_base::reset(string_ref value) noexcept {
+bool ngram_token_stream_base::reset(std::string_view value) noexcept {
   if (value.size() > std::numeric_limits<uint32_t>::max()) {
     // can't handle data which is longer than
     // std::numeric_limits<uint32_t>::max()
@@ -427,14 +428,14 @@ bool ngram_token_stream_base::reset(string_ref value) noexcept {
   auto& offset = std::get<irs::offset>(attrs_);
 
   // reset term attribute
-  term.value = bytes_ref::NIL;
+  term.value = {};
 
   // reset offset attribute
   offset.start = std::numeric_limits<uint32_t>::max();
   offset.end = std::numeric_limits<uint32_t>::max();
 
   // reset stream
-  data_ = ref_cast<byte_type>(value);
+  data_ = ViewCast<byte_type>(value);
   begin_ = data_.begin();
   ngram_end_ = begin_;
   data_end_ = data_.end();
@@ -512,7 +513,7 @@ bool ngram_token_stream<StreamType>::next() noexcept {
           next_inc_val_ = 0;
           if ((0 != offset.start || start_marker_empty_) &&
               (end_marker_empty_ || ngram_end_ != data_end_)) {
-            term.value = irs::bytes_ref(begin_, ngram_byte_len);
+            term.value = irs::bytes_view(begin_, ngram_byte_len);
           } else if (0 == offset.start && !start_marker_empty_) {
             marked_term_buffer_.clear();
             IRS_ASSERT(marked_term_buffer_.capacity() >=

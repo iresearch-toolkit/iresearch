@@ -34,7 +34,7 @@ irs::compression::delta_decompressor DECOMPRESSOR;
 namespace iresearch {
 namespace compression {
 
-bytes_ref delta_compressor::compress(byte_type* src, size_t size,
+bytes_view delta_compressor::compress(byte_type* src, size_t size,
                                      bstring& buf) {
   auto* begin = reinterpret_cast<uint64_t*>(src);
   auto* end = reinterpret_cast<uint64_t*>(src + size);
@@ -54,7 +54,7 @@ bytes_ref delta_compressor::compress(byte_type* src, size_t size,
   return {buf.c_str(), size_t(out - buf.data())};
 }
 
-bytes_ref delta_decompressor::decompress(const byte_type* src, size_t src_size,
+bytes_view delta_decompressor::decompress(const byte_type* src, size_t src_size,
                                          byte_type* dst, size_t dst_size) {
   auto* dst_end = reinterpret_cast<uint64_t*>(dst);
 
@@ -64,7 +64,7 @@ bytes_ref delta_decompressor::decompress(const byte_type* src, size_t src_size,
 
   encode::delta::decode(reinterpret_cast<uint64_t*>(dst), dst_end);
 
-  return bytes_ref(dst, dst_size);
+  return bytes_view(dst, dst_size);
 }
 
 compressor::ptr delta::compressor(const options& /*opts*/) {

@@ -373,7 +373,7 @@ struct character {
 //////////////////////////////////////////////////////////////////////////////
 /// @return characteristic vectors for a specified word
 //////////////////////////////////////////////////////////////////////////////
-std::vector<character> make_alphabet(bytes_ref word, size_t& utf8_size) {
+std::vector<character> make_alphabet(bytes_view word, size_t& utf8_size) {
   memory::arena<uint32_t, 16> arena;
   memory::arena_vector<uint32_t, decltype(arena)> chars(arena);
   utf8_utils::utf8_to_utf32<false>(word, std::back_inserter(chars));
@@ -564,7 +564,7 @@ parametric_description read(data_input& in) {
 }
 
 automaton make_levenshtein_automaton(const parametric_description& description,
-                                     bytes_ref prefix, bytes_ref target) {
+                                     bytes_view prefix, bytes_view target) {
   assert(description);
 
   struct state {
@@ -604,7 +604,7 @@ automaton make_levenshtein_automaton(const parametric_description& description,
     const byte_type* next = utf8_utils::next(begin, end);
     to = a.AddState();
     auto dist = std::distance(begin, next);
-    irs::utf8_emplace_arc(a, start_state, bytes_ref(begin, dist), to);
+    irs::utf8_emplace_arc(a, start_state, bytes_view(begin, dist), to);
     start_state = to;
     begin = next;
   }
@@ -621,7 +621,7 @@ automaton make_levenshtein_automaton(const parametric_description& description,
     0, 1,
     start_state);  // 0 offset, 1st parametric state, initial automaton state
 
-  std::vector<std::pair<bytes_ref, automaton::StateId>> arcs;
+  std::vector<std::pair<bytes_view, automaton::StateId>> arcs;
   arcs.resize(utf8_size);  // allocate space for max possible number of arcs
 
   for (utf8_transitions_builder builder; !stack.empty();) {
@@ -657,7 +657,7 @@ automaton make_levenshtein_automaton(const parametric_description& description,
       }
 
       if (chi && to != default_state) {
-        arcs.emplace_back(bytes_ref(entry.utf8, entry.size), to);
+        arcs.emplace_back(bytes_view(entry.utf8, entry.size), to);
         ascii &= (entry.size == 1);
       } else {
         assert(fst::kNoStateId == default_state || to == default_state);

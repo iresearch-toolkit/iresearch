@@ -39,7 +39,7 @@ struct get_visitor {
   using result_type = field_visitor;
 
   result_type operator()(const by_term_options& part) const {
-    return [term = bytes_ref(part.term)](const sub_reader& segment,
+    return [term = bytes_view(part.term)](const sub_reader& segment,
                                          const term_reader& field,
                                          filter_visitor& visitor) {
       return by_term::visit(segment, field, term, visitor);
@@ -47,7 +47,7 @@ struct get_visitor {
   }
 
   result_type operator()(const by_prefix_options& part) const {
-    return [term = bytes_ref(part.term)](const sub_reader& segment,
+    return [term = bytes_view(part.term)](const sub_reader& segment,
                                          const term_reader& field,
                                          filter_visitor& visitor) {
       return by_prefix::visit(segment, field, term, visitor);
@@ -130,7 +130,7 @@ struct prepare : util::noncopyable {
 
   const index_reader& index;
   const irs::Order& order;
-  const string_ref field;
+  const std::string_view field;
   const score_t boost;
 };
 
@@ -245,7 +245,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   phrase_terms.reserve(phrase_size);
 
   // iterate over the segments
-  const string_ref field = this->field();
+  const std::string_view field = this->field();
 
   phrase_term_visitor<decltype(phrase_terms)> ptv(phrase_terms);
 
@@ -343,7 +343,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   phrase_terms.reserve(phrase_size);
 
   // iterate over the segments
-  const string_ref field = this->field();
+  const std::string_view field = this->field();
   const auto is_ord_empty = ord.empty();
 
   phrase_term_visitor<decltype(phrase_terms)> ptv(phrase_terms);

@@ -55,10 +55,10 @@ TEST_F(delimited_token_stream_tests, consts) {
 }
 
 TEST_F(delimited_token_stream_tests, test_delimiter) {
-  // test delimiter string_ref::NIL
+  // test delimiter std::string_view{}
   {
-    irs::string_ref data("abc,def\"\",\"\"ghi");
-    irs::analysis::delimited_token_stream stream(irs::string_ref::NIL);
+    std::string_view data("abc,def\"\",\"\"ghi");
+    irs::analysis::delimited_token_stream stream(std::string_view{});
     ASSERT_EQ(irs::type<irs::analysis::delimited_token_stream>::id(),
               stream.type());
 
@@ -70,13 +70,13 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
     auto* term = irs::get<irs::term_attribute>(stream);
 
     ASSERT_TRUE(stream.next());
-    ASSERT_EQ("abc,def\"\",\"\"ghi", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("abc,def\"\",\"\"ghi", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
   // test delimteter ''
   {
-    irs::string_ref data("abc,\"def\"");  // quoted terms should be honoured
+    std::string_view data("abc,\"def\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream("");
 
     ASSERT_TRUE(stream.reset(data));
@@ -89,29 +89,29 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(1, offset->end);
-    ASSERT_EQ("a", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("a", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(1, offset->start);
     ASSERT_EQ(2, offset->end);
-    ASSERT_EQ("b", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("b", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(2, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("c", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("c", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(3, offset->start);
     ASSERT_EQ(4, offset->end);
-    ASSERT_EQ(",", irs::ref_cast<char>(term->value));
+    ASSERT_EQ(",", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(9, offset->end);
-    ASSERT_EQ("def", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("def", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
   // test delimiter ','
   {
-    irs::string_ref data("abc,\"def,\"");  // quoted terms should be honoured
+    std::string_view data("abc,\"def,\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream(",");
 
     ASSERT_TRUE(stream.reset(data));
@@ -124,17 +124,17 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("abc", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(10, offset->end);
-    ASSERT_EQ("def,", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("def,", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
   // test delimiter '\t'
   {
-    irs::string_ref data("abc,\t\"def\t\"");  // quoted terms should be honoured
+    std::string_view data("abc,\t\"def\t\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream("\t");
 
     ASSERT_TRUE(stream.reset(data));
@@ -147,17 +147,17 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(4, offset->end);
-    ASSERT_EQ("abc,", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("abc,", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(5, offset->start);
     ASSERT_EQ(11, offset->end);
-    ASSERT_EQ("def\t", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("def\t", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
   // test delimiter '"'
   {
-    irs::string_ref data("abc,\"\"def\t\"");  // quoted terms should be honoured
+    std::string_view data("abc,\"\"def\t\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream("\"");
 
     ASSERT_TRUE(stream.reset(data));
@@ -170,25 +170,25 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(4, offset->end);
-    ASSERT_EQ("abc,", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("abc,", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(5, offset->start);
     ASSERT_EQ(5, offset->end);
-    ASSERT_EQ("", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(6, offset->start);
     ASSERT_EQ(10, offset->end);
-    ASSERT_EQ("def\t", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("def\t", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(11, offset->start);
     ASSERT_EQ(11, offset->end);
-    ASSERT_EQ("", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
   // test delimiter 'abc'
   {
-    irs::string_ref data(
+    std::string_view data(
       "abc,123\"def123\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream("123");
 
@@ -202,11 +202,11 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(4, offset->end);
-    ASSERT_EQ("abc,", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("abc,", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(7, offset->start);
     ASSERT_EQ(15, offset->end);
-    ASSERT_EQ("def123", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("def123", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 }
@@ -214,10 +214,10 @@ TEST_F(delimited_token_stream_tests, test_delimiter) {
 TEST_F(delimited_token_stream_tests, test_quote) {
   // test quoted field
   {
-    irs::string_ref data(
+    std::string_view data(
       "abc,\"def\",\"\"ghi");  // quoted terms should be honoured
 
-    auto testFunc = [](irs::string_ref data, irs::analysis::analyzer* pStream) {
+    auto testFunc = [](std::string_view data, irs::analysis::analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* offset = irs::get<irs::offset>(*pStream);
@@ -228,15 +228,15 @@ TEST_F(delimited_token_stream_tests, test_quote) {
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(0, offset->start);
       ASSERT_EQ(3, offset->end);
-      ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
+      ASSERT_EQ("abc", irs::ViewCast<char>(term->value));
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(4, offset->start);
       ASSERT_EQ(9, offset->end);
-      ASSERT_EQ("def", irs::ref_cast<char>(term->value));
+      ASSERT_EQ("def", irs::ViewCast<char>(term->value));
       ASSERT_TRUE(pStream->next());
       ASSERT_EQ(10, offset->start);
       ASSERT_EQ(15, offset->end);
-      ASSERT_EQ("\"\"ghi", irs::ref_cast<char>(term->value));
+      ASSERT_EQ("\"\"ghi", irs::ViewCast<char>(term->value));
       ASSERT_FALSE(pStream->next());
     };
 
@@ -254,7 +254,7 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 
   // test unterminated "
   {
-    irs::string_ref data(
+    std::string_view data(
       "abc,\"def\",\"ghi");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream(",");
 
@@ -268,21 +268,21 @@ TEST_F(delimited_token_stream_tests, test_quote) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("abc", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(9, offset->end);
-    ASSERT_EQ("def", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("def", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(10, offset->start);
     ASSERT_EQ(14, offset->end);
-    ASSERT_EQ("\"ghi", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("\"ghi", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
   // test unterminated single "
   {
-    irs::string_ref data("abc,\"def\",\"");  // quoted terms should be honoured
+    std::string_view data("abc,\"def\",\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream(",");
 
     ASSERT_TRUE(stream.reset(data));
@@ -295,21 +295,21 @@ TEST_F(delimited_token_stream_tests, test_quote) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("abc", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(9, offset->end);
-    ASSERT_EQ("def", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("def", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(10, offset->start);
     ASSERT_EQ(11, offset->end);
-    ASSERT_EQ("\"", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("\"", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
   // test " escape
   {
-    irs::string_ref data(
+    std::string_view data(
       "abc,\"\"\"def\",\"\"ghi");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream(",");
 
@@ -323,21 +323,21 @@ TEST_F(delimited_token_stream_tests, test_quote) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("abc", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(11, offset->end);
-    ASSERT_EQ("\"def", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("\"def", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(12, offset->start);
     ASSERT_EQ(17, offset->end);
-    ASSERT_EQ("\"\"ghi", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("\"\"ghi", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
   // test non-quoted field with "
   {
-    irs::string_ref data(
+    std::string_view data(
       "abc,\"def\",ghi\"");  // quoted terms should be honoured
     irs::analysis::delimited_token_stream stream(",");
 
@@ -351,15 +351,15 @@ TEST_F(delimited_token_stream_tests, test_quote) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("abc", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(9, offset->end);
-    ASSERT_EQ("def", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("def", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(10, offset->start);
     ASSERT_EQ(14, offset->end);
-    ASSERT_EQ("ghi\"", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("ghi\"", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 }
@@ -369,7 +369,7 @@ TEST_F(delimited_token_stream_tests, test_quote) {
 TEST_F(delimited_token_stream_tests, test_load) {
   // load jSON string
   {
-    irs::string_ref data("abc,def,ghi");  // quoted terms should be honoured
+    std::string_view data("abc,def,ghi");  // quoted terms should be honoured
     auto stream = irs::analysis::analyzers::get(
       "delimiter", irs::type<irs::text_format::json>::get(), "\",\"");
 
@@ -384,21 +384,21 @@ TEST_F(delimited_token_stream_tests, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("abc", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("def", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("def", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(8, offset->start);
     ASSERT_EQ(11, offset->end);
-    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("ghi", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
   // load jSON object
   {
-    irs::string_ref data("abc,def,ghi");  // quoted terms should be honoured
+    std::string_view data("abc,def,ghi");  // quoted terms should be honoured
     auto stream = irs::analysis::analyzers::get(
       "delimiter", irs::type<irs::text_format::json>::get(),
       "{\"delimiter\":\",\"}");
@@ -414,15 +414,15 @@ TEST_F(delimited_token_stream_tests, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("abc", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("def", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("def", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(8, offset->start);
     ASSERT_EQ(11, offset->end);
-    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("ghi", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
@@ -430,7 +430,7 @@ TEST_F(delimited_token_stream_tests, test_load) {
   {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
                          "delimiter", irs::type<irs::text_format::json>::get(),
-                         irs::string_ref::NIL));
+                         std::string_view{}));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
                 "delimiter", irs::type<irs::text_format::json>::get(), "1"));
@@ -447,7 +447,7 @@ TEST_F(delimited_token_stream_tests, test_load) {
 
   // load text
   {
-    irs::string_ref data("abc,def,ghi");  // quoted terms should be honoured
+    std::string_view data("abc,def,ghi");  // quoted terms should be honoured
     auto stream = irs::analysis::analyzers::get(
       "delimiter", irs::type<irs::text_format::text>::get(), ",");
 
@@ -462,21 +462,21 @@ TEST_F(delimited_token_stream_tests, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("abc", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("def", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("def", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(8, offset->start);
     ASSERT_EQ(11, offset->end);
-    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("ghi", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
   // load text, wide symbols
   {
-    irs::string_ref data(
+    std::string_view data(
       "\x61\x62\x63\x2C\xD0\x9F");  // quoted terms should be honoured
     auto stream = irs::analysis::analyzers::get(
       "delimiter", irs::type<irs::text_format::text>::get(), ",");
@@ -492,11 +492,11 @@ TEST_F(delimited_token_stream_tests, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("abc", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(4, offset->start);
     ASSERT_EQ(6, offset->end);
-    ASSERT_EQ("\xD0\x9F", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("\xD0\x9F", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 }

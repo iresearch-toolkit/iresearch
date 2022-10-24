@@ -58,8 +58,8 @@ class proxy_filter final : public filter {
     return {static_cast<T&>(ptr), cache_};
   }
 
-  proxy_filter& set_cache(const cache_ptr& cache) {
-    cache_ = cache;
+  proxy_filter& set_cache(cache_ptr cache) noexcept {
+    cache_ = std::move(cache);
     return *this;
   }
 

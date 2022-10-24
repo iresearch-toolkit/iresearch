@@ -24,16 +24,14 @@
 #ifndef IRESEARCH_INDEX_META_H
 #define IRESEARCH_INDEX_META_H
 
-#include <algorithm>
-#include <vector>
-#include <atomic>
-
 #include <absl/container/flat_hash_set.h>
 
-#include "store/directory.hpp"
+#include <algorithm>
+#include <atomic>
+#include <vector>
 
 #include "error/error.hpp"
-
+#include "store/directory.hpp"
 #include "utils/string.hpp"
 #include "utils/type_limits.hpp"
 
@@ -60,7 +58,7 @@ struct segment_meta {
   segment_meta(const segment_meta&) = default;
   segment_meta(segment_meta&& rhs) noexcept(
     noexcept(std::is_nothrow_move_constructible_v<file_set>));
-  segment_meta(string_ref name, format_ptr codec);
+  segment_meta(std::string_view name, format_ptr codec);
   segment_meta(std::string&& name, format_ptr codec, uint64_t docs_count,
                uint64_t live_docs_count, bool column_store, file_set&& files,
                size_t size = 0,
@@ -213,7 +211,7 @@ class index_meta {
 
   const index_segments_t& segments() const noexcept { return segments_; }
 
-  const bytes_ref& payload() const noexcept { return payload_; }
+  const bytes_view& payload() const noexcept { return payload_; }
 
  private:
   friend class index_writer;
@@ -225,7 +223,7 @@ class index_meta {
   std::atomic<uint64_t> seg_counter_;
   index_segments_t segments_;
   bstring payload_buf_;
-  bytes_ref payload_;
+  bytes_view payload_;
 
   uint64_t next_generation() const noexcept;
 
@@ -234,10 +232,10 @@ class index_meta {
     payload_ = payload_buf_;
   }
 
-  void payload(bytes_ref payload) {
-    if (payload.null()) {
+  void payload(bytes_view payload) {
+    if (IsNull(payload)) {
       payload_buf_.clear();
-      payload_ = bytes_ref::NIL;
+      payload_ = {};
     } else {
       payload_buf_ = payload;
       payload_ = payload_buf_;

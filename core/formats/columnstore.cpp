@@ -25,30 +25,25 @@
 #include <tuple>
 
 #include "analysis/token_attributes.hpp"
-
-#include "formats/formats.hpp"
 #include "formats/format_utils.hpp"
-
+#include "formats/formats.hpp"
 #include "index/file_names.hpp"
-
 #include "search/cost.hpp"
 #include "search/score.hpp"
-
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
-
-#include "utils/bitpack.hpp"
+#include "utils/attribute_helper.hpp"
 #include "utils/bit_utils.hpp"
+#include "utils/bitpack.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/encryption.hpp"
-#include "utils/attribute_helper.hpp"
+#include "utils/hash_set_utils.hpp"
 #include "utils/iterator.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/hash_set_utils.hpp"
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                               columnstore format
@@ -74,7 +69,7 @@ namespace {
 using namespace iresearch;
 using columnstore::ColumnMetaVersion;
 
-irs::bytes_ref kDummy;  // placeholder for visiting logic in columnstore
+irs::bytes_view kDummy;  // placeholder for visiting logic in columnstore
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct column_meta
@@ -163,7 +158,7 @@ ColumnProperty write_compact(index_output& out, bstring& encode_buf,
 
   // compressor can only handle size of int32_t, so can use the negative flag as
   // a compression flag
-  const bytes_ref compressed =
+  const bytes_view compressed =
     compressor.compress(&data[0], data.size(), encode_buf);
 
   if (is_good_compression_ratio(data.size(), compressed.size())) {
@@ -172,10 +167,10 @@ ColumnProperty write_compact(index_output& out, bstring& encode_buf,
     irs::write_zvint(out, int32_t(compressed.size()));  // compressed size
     if (cipher) {
       cipher->encrypt(out.file_pointer(),
-                      const_cast<irs::byte_type*>(compressed.c_str()),
+                      const_cast<irs::byte_type*>(compressed.data()),
                       compressed.size());
     }
-    out.write_bytes(compressed.c_str(), compressed.size());
+    out.write_bytes(compressed.data(), compressed.size());
     irs::write_zvlong(out, data.size() - MAX_DATA_BLOCK_SIZE);  // original size
   } else {
     assert(data.size() <=
@@ -269,7 +264,7 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
   const auto decoded =
     decompressor->decompress(buf, buf_size, &decode_buf[0], decode_buf.size());
 
-  if (decoded.null()) {
+  if (IsNull(decoded)) {
     throw irs::index_error("error while reading compact");
   }
 }
@@ -278,11 +273,11 @@ struct column_ref_eq : value_ref_eq<column_meta*> {
   using self_t::operator();
 
   bool operator()(const ref_t& lhs,
-                  const hashed_string_ref& rhs) const noexcept {
+                  const hashed_string_view& rhs) const noexcept {
     return lhs.second->name == rhs;
   }
 
-  bool operator()(const hashed_string_ref& lhs,
+  bool operator()(const hashed_string_view& lhs,
                   const ref_t& rhs) const noexcept {
     return this->operator()(rhs, lhs);
   }
@@ -292,16 +287,16 @@ using name_to_column_map = flat_hash_set<column_ref_eq>;
 
 class meta_writer final {
  public:
-  static constexpr string_ref FORMAT_NAME = "iresearch_10_columnmeta";
-  static constexpr string_ref FORMAT_EXT = "cm";
+  static constexpr std::string_view FORMAT_NAME = "iresearch_10_columnmeta";
+  static constexpr std::string_view FORMAT_EXT = "cm";
 
   explicit meta_writer(ColumnMetaVersion version) noexcept : version_(version) {
     assert(version >= ColumnMetaVersion::MIN &&
            version <= ColumnMetaVersion::MAX);
   }
 
-  void prepare(directory& dir, string_ref meta);
-  void write(string_ref name, field_id id);
+  void prepare(directory& dir, std::string_view meta);
+  void write(std::string_view name, field_id id);
   void flush();
 
  private:
@@ -313,7 +308,7 @@ class meta_writer final {
   ColumnMetaVersion version_;
 };  // meta_writer
 
-void meta_writer::prepare(directory& dir, string_ref segment) {
+void meta_writer::prepare(directory& dir, std::string_view segment) {
   auto filename = irs::file_name(segment, meta_writer::FORMAT_EXT);
   assert(0 == count_);  // Make sure there were no writes or flush was called
 
@@ -343,7 +338,7 @@ void meta_writer::prepare(directory& dir, string_ref segment) {
   }
 }
 
-void meta_writer::write(string_ref name, field_id id) {
+void meta_writer::write(std::string_view name, field_id id) {
   assert(out_);
   out_->write_vlong(id);
   write_string(*out_, name);
@@ -603,8 +598,8 @@ class writer final : public irs::columnstore_writer {
   static constexpr int32_t FORMAT_MIN = 0;
   static constexpr int32_t FORMAT_MAX = 1;
 
-  static constexpr string_ref FORMAT_NAME = "iresearch_10_columnstore";
-  static constexpr string_ref FORMAT_EXT = "cs";
+  static constexpr std::string_view FORMAT_NAME = "iresearch_10_columnstore";
+  static constexpr std::string_view FORMAT_EXT = "cs";
 
   explicit writer(Version version, ColumnMetaVersion meta_version) noexcept
     : meta_writer_{meta_version},
@@ -663,7 +658,7 @@ class writer final : public irs::columnstore_writer {
 
     bool empty() const noexcept { return !block_index_.total(); }
 
-    string_ref name() const noexcept { return name_; }
+    std::string_view name() const noexcept { return name_; }
 
     field_id id() const noexcept { return id_; }
 
@@ -818,7 +813,7 @@ class writer final : public irs::columnstore_writer {
       avg_block_size_{};  // average size of the block (tail block is not taken
                           // into account since it may skew distribution)
     doc_id_t max_{doc_limits::invalid()};  // max key (among flushed blocks)
-    string_ref name_;
+    std::string_view name_;
   };  // column
 
   void flush_meta(const flush_state& meta);
@@ -969,17 +964,17 @@ void writer::flush_meta(const flush_state& meta) {
   sorted_columns_.reserve(columns_.size());
   std::copy_if(std::begin(columns_), std::end(columns_),
                std::back_inserter(sorted_columns_),
-               [](auto& column) noexcept { return !column.name().null(); });
+               [](auto& column) noexcept { return !IsNull(column.name()); });
   std::sort(std::begin(sorted_columns_), std::end(sorted_columns_),
             [](const writer::column& lhs, const writer::column& rhs) noexcept {
-              assert(!rhs.name().null());
+              assert(!IsNull(rhs.name()));
               return lhs.name() < rhs.name();
             });
 
   // flush columns meta
   meta_writer_.prepare(*dir_, meta.name);
   for (const writer::column& column : sorted_columns_) {
-    assert(!column.name().null());
+    assert(!IsNull(column.name()));
     meta_writer_.write(column.name(), column.id());
   }
   meta_writer_.flush();
@@ -1049,8 +1044,8 @@ class sparse_block : util::noncopyable {
 
       assert(vend >= vbegin);
       assert(payload_ != &kDummy);
-      *payload_ = bytes_ref(data_->c_str() + vbegin,  // start
-                            vend - vbegin);           // length
+      *payload_ = bytes_view(data_->c_str() + vbegin,  // start
+                             vend - vbegin);           // length
       return true;
     }
 
@@ -1062,7 +1057,7 @@ class sparse_block : util::noncopyable {
 
     void reset(const sparse_block& block, irs::payload& payload) noexcept {
       value_ = doc_limits::invalid();
-      payload.value = bytes_ref::NIL;
+      payload.value = {};
       payload_ = &payload.value;
       next_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
@@ -1084,7 +1079,7 @@ class sparse_block : util::noncopyable {
     }
 
    private:
-    irs::bytes_ref* payload_{&kDummy};
+    irs::bytes_view* payload_{&kDummy};
     irs::doc_id_t value_{doc_limits::invalid()};
     const sparse_block::ref* next_{};  // next position
     const sparse_block::ref* begin_{};
@@ -1174,7 +1169,7 @@ class dense_block : util::noncopyable {
 
     void reset(const dense_block& block, irs::payload& payload) noexcept {
       value_ = block.base_;
-      payload.value = bytes_ref::NIL;
+      payload.value = {};
       payload_ = &payload.value;
       it_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
@@ -1198,11 +1193,11 @@ class dense_block : util::noncopyable {
 
       assert(vend >= vbegin);
       assert(payload_ != &kDummy);
-      *payload_ = bytes_ref(data_->c_str() + vbegin,  // start
-                            vend - vbegin);           // length
+      *payload_ = bytes_view(data_->c_str() + vbegin,  // start
+                             vend - vbegin);           // length
     }
 
-    irs::bytes_ref* payload_{&kDummy};
+    irs::bytes_view* payload_{&kDummy};
     irs::doc_id_t value_{doc_limits::invalid()};
     const uint32_t* begin_{};
     const uint32_t* it_{};
@@ -1286,8 +1281,8 @@ class dense_fixed_offset_block : util::noncopyable {
 
       assert(payload_ != &kDummy);
       *payload_ =
-        bytes_ref(data_.c_str() + offset,
-                  value_ == value_back_ ? data_.size() - offset : avg_length_);
+        bytes_view(data_.data() + offset,
+                   value_ == value_back_ ? data_.size() - offset : avg_length_);
 
       return true;
     }
@@ -1304,7 +1299,7 @@ class dense_fixed_offset_block : util::noncopyable {
                irs::payload& payload) noexcept {
       avg_length_ = block.avg_length_;
       data_ = block.data_;
-      payload.value = bytes_ref::NIL;
+      payload.value = {};
       payload_ = &payload.value;
       value_ = doc_limits::invalid();
       value_next_ = block.base_key_;
@@ -1314,7 +1309,7 @@ class dense_fixed_offset_block : util::noncopyable {
     }
 
     bool operator==(const dense_fixed_offset_block& rhs) const noexcept {
-      return data_.c_str() == rhs.data_.c_str();
+      return data_.data() == rhs.data_.c_str();
     }
 
     bool operator!=(const dense_fixed_offset_block& rhs) const noexcept {
@@ -1323,8 +1318,8 @@ class dense_fixed_offset_block : util::noncopyable {
 
    private:
     uint64_t avg_length_{};  // average value length
-    bytes_ref data_;
-    irs::bytes_ref* payload_{&kDummy};
+    bytes_view data_;
+    irs::bytes_view* payload_{&kDummy};
     doc_id_t value_{doc_limits::invalid()};       // current value
     doc_id_t value_next_{doc_limits::invalid()};  // next value
     doc_id_t value_min_{};                        // min doc_id
@@ -1399,7 +1394,7 @@ class sparse_mask_block : util::noncopyable {
 
     void reset(const sparse_mask_block& block, irs::payload& payload) noexcept {
       value_ = doc_limits::invalid();
-      payload.value = bytes_ref::NIL;  // mask block doesn't have payload
+      payload.value = {};  // mask block doesn't have payload
       it_ = begin_ = std::begin(block.keys_);
       end_ = begin_ + block.size_;
 
@@ -1493,7 +1488,7 @@ class dense_mask_block {
 
     void reset(const dense_mask_block& block, irs::payload& payload) noexcept {
       block_ = &block;
-      payload.value = bytes_ref::NIL;  // mask block doesn't have payload
+      payload.value = {};  // mask block doesn't have payload
       doc_ = block.min_;
       max_ = block.max_;
     }
@@ -1722,13 +1717,13 @@ class column : public irs::column_reader, private util::noncopyable {
 
   virtual field_id id() const final { return id_; }
 
-  virtual string_ref name() const final {
-    return name_.has_value() ? name_.value() : string_ref::NIL;
+  virtual std::string_view name() const final {
+    return name_.has_value() ? name_.value() : std::string_view{};
   }
 
-  virtual bytes_ref payload() const final {
+  virtual bytes_view payload() const final {
     // Implementation doesn't support column headers.
-    return bytes_ref::NIL;
+    return {};
   }
 
   virtual void read(data_input& in, uint64_t* /*buf*/,
@@ -1842,7 +1837,7 @@ class column_iterator final : public irs::doc_iterator {
       // reached the end of the column
       block_.seal();
       seek_origin_ = end_;
-      payload.value = bytes_ref::NIL;
+      payload.value = {};
       doc.value = irs::doc_limits::eof();
 
       return false;
@@ -1862,7 +1857,7 @@ class column_iterator final : public irs::doc_iterator {
       // unable to load block, seal the iterator
       block_.seal();
       begin_ = end_;
-      payload.value = bytes_ref::NIL;
+      payload.value = {};
       doc.value = irs::doc_limits::eof();
 
       throw;
@@ -2396,7 +2391,7 @@ bool reader::read_meta(const directory& dir, const segment_meta& meta,
   for (auto& column : columns) {
     const auto name = column->name();
 
-    if (name.null()) {
+    if (IsNull(name)) {
       sorted_columns.emplace_back(column.get());
     }
   }

@@ -23,14 +23,14 @@
 
 #include "pipeline_token_stream.hpp"
 
-#include "velocypack/Slice.h"
+#include <string_view>
+
+#include "utils/vpack_utils.hpp"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
+#include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
 #include "velocypack/vpack.h"
-#include "utils/vpack_utils.hpp"
-
-#include <string_view>
 
 namespace {
 
@@ -58,11 +58,11 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
     if (pipeline_slice.isArray()) {
       for (const auto pipe : VPackArrayIterator(pipeline_slice)) {
         if (pipe.isObject()) {
-          irs::string_ref type;
+          std::string_view type;
           if (pipe.hasKey(TYPE_PARAM_NAME)) {
             auto type_attr_slice = pipe.get(TYPE_PARAM_NAME);
             if (type_attr_slice.isString()) {
-              type = irs::get_string<irs::string_ref>(type_attr_slice);
+              type = irs::get_string<std::string_view>(type_attr_slice);
             } else {
               IR_FRMT_ERROR(
                 "Failed to read '%s' attribute of  '%s' member as string while "
@@ -103,7 +103,7 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
                   "Failed to create pipeline member of type '%s' with "
                   "properties '%s' while constructing "
                   "pipeline_token_stream from VPack arguments",
-                  type.c_str(),
+                  type.data(),
                   irs::slice_to_string(properties_attr_slice).c_str());
                 return false;
               }
@@ -137,7 +137,7 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
                   "Failed to normalize pipeline member of type '%s' with "
                   "properties '%s' while constructing "
                   "pipeline_token_stream from VPack arguments",
-                  type.c_str(),
+                  type.data(),
                   irs::slice_to_string(properties_attr_slice).c_str());
                 return false;
               }
@@ -200,8 +200,8 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   }
   return false;
 }
-bool normalize_vpack_config(irs::string_ref args, std::string& config) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+bool normalize_vpack_config(std::string_view args, std::string& config) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
@@ -227,18 +227,18 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-irs::analysis::analyzer::ptr make_vpack(irs::string_ref args) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+irs::analysis::analyzer::ptr make_vpack(std::string_view args) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
 
-irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
+irs::analysis::analyzer::ptr make_json(std::string_view args) {
   try {
-    if (args.null()) {
+    if (irs::IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while constructing pipeline_token_stream");
       return nullptr;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
@@ -251,13 +251,13 @@ irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
   return nullptr;
 }
 
-bool normalize_json_config(irs::string_ref args, std::string& definition) {
+bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
-    if (args.null()) {
+    if (irs::IsNull(args)) {
       IR_FRMT_ERROR("Null arguments while normalizing pipeline_token_stream");
       return false;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     VPackBuilder builder;
     if (normalize_vpack_config(vpack->slice(), &builder)) {
       definition = builder.toString();
@@ -372,7 +372,7 @@ bool pipeline_token_stream::next() {
         top_holds_position && current_->pos != 0 &&
         current_->pos != std::numeric_limits<uint32_t>::max();
       if (!current_->reset(prev_start, prev_end,
-                           irs::ref_cast<char>(prev_term))) {
+                           irs::ViewCast<char>(prev_term))) {
         return false;
       }
       if (!current_->next()) {  // empty one found. Another round from the very
@@ -401,7 +401,7 @@ bool pipeline_token_stream::next() {
   return true;
 }
 
-bool pipeline_token_stream::reset(string_ref data) {
+bool pipeline_token_stream::reset(std::string_view data) {
   current_ = top_;
   return pipeline_.front().reset(0, static_cast<uint32_t>(data.size()), data);
 }

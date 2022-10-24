@@ -29,11 +29,11 @@
 
 namespace {
 
-irs::by_term make_filter(const irs::string_ref& field,
-                         const irs::string_ref term) {
+irs::by_term make_filter(const std::string_view& field,
+                         const std::string_view term) {
   irs::by_term q;
   *q.mutable_field() = field;
-  q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
+  q.mutable_options()->term = irs::ViewCast<irs::byte_type>(term);
   return q;
 }
 
@@ -167,19 +167,19 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(name);
-            field.value(irs::ref_cast<irs::byte_type>(
+            field.value(irs::ViewCast<irs::byte_type>(
               irs::null_token_stream::value_null()));
           } else if (data.is_bool() && data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(name);
-            field.value(irs::ref_cast<irs::byte_type>(
+            field.value(irs::ViewCast<irs::byte_type>(
               irs::boolean_token_stream::value_true()));
           } else if (data.is_bool() && !data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(name);
-            field.value(irs::ref_cast<irs::byte_type>(
+            field.value(irs::ViewCast<irs::byte_type>(
               irs::boolean_token_stream::value_true()));
           } else if (data.is_number()) {
             const double dValue = data.as_number<double_t>();
@@ -228,7 +228,7 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       auto* term = irs::get<irs::term_attribute>(stream);
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("seq", irs::ref_cast<char>(term->value));
+      irs::by_term query = make_filter("seq", irs::ViewCast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -251,7 +251,7 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       auto* term = irs::get<irs::term_attribute>(stream);
       ASSERT_TRUE(stream.next());
 
-      irs::by_term query = make_filter("seq", irs::ref_cast<char>(term->value));
+      irs::by_term query = make_filter("seq", irs::ViewCast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -279,7 +279,7 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_TRUE(stream.next());
 
       irs::by_term query =
-        make_filter("value", irs::ref_cast<char>(term->value));
+        make_filter("value", irs::ViewCast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -307,7 +307,7 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_TRUE(stream.next());
 
       irs::by_term query =
-        make_filter("value", irs::ref_cast<char>(term->value));
+        make_filter("value", irs::ViewCast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -335,7 +335,7 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_TRUE(stream.next());
 
       irs::by_term query =
-        make_filter("value", irs::ref_cast<char>(term->value));
+        make_filter("value", irs::ViewCast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -363,7 +363,7 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_TRUE(stream.next());
 
       irs::by_term query =
-        make_filter("value", irs::ref_cast<char>(term->value));
+        make_filter("value", irs::ViewCast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -391,7 +391,7 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_TRUE(stream.next());
 
       irs::by_term query =
-        make_filter("value", irs::ref_cast<char>(term->value));
+        make_filter("value", irs::ViewCast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -419,7 +419,7 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_TRUE(stream.next());
 
       irs::by_term query =
-        make_filter("value", irs::ref_cast<char>(term->value));
+        make_filter("value", irs::ViewCast<char>(term->value));
 
       auto prepared = query.prepare(rdr);
 
@@ -599,8 +599,8 @@ TEST_P(term_filter_test_case, visit) {
     add_segment(gen);
   }
 
-  const irs::string_ref field = "prefix";
-  const auto term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+  const std::string_view field = "prefix";
+  const auto term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
 
   tests::empty_filter_visitor visitor;
 
@@ -615,7 +615,7 @@ TEST_P(term_filter_test_case, visit) {
   irs::by_term::visit(segment, *reader, term, visitor);
   ASSERT_EQ(1, visitor.prepare_calls_counter());
   ASSERT_EQ(1, visitor.visit_calls_counter());
-  ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{
+  ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{
               {"abc", irs::kNoBoost}}),
             visitor.term_refs<char>());
   visitor.reset();

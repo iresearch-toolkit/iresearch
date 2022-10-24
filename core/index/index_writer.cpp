@@ -53,7 +53,7 @@ const index_writer::progress_report_callback kNoProgress =
     // intentionally do nothing
   };
 
-const column_info_provider_t kDefaultColumnInfo = [](string_ref) {
+const column_info_provider_t kDefaultColumnInfo = [](std::string_view) {
   // no compression, no encryption
   return column_info{irs::type<compression::none>::get(), {}, false};
 };
@@ -338,7 +338,7 @@ std::string_view write_document_mask(directory& dir, segment_meta& meta,
 
 // mapping: name -> { new segment, old segment }
 using candidates_mapping_t = absl::flat_hash_map<
-  string_ref,
+  std::string_view,
   std::pair<const segment_meta*,                       // new segment
             std::pair<const segment_meta*, size_t>>>;  // old segment + index
                                                        // within merge_writer
@@ -656,10 +656,9 @@ index_writer::active_segment_context::operator=(
     }
 
     ctx_ = std::move(other.ctx_);
-    flush_ctx_ = std::move(other.flush_ctx_);
-    pending_segment_context_offset_ =
-      std::move(other.pending_segment_context_offset_);
-    segments_active_ = std::move(other.segments_active_);
+    flush_ctx_ = other.flush_ctx_;
+    pending_segment_context_offset_ = other.pending_segment_context_offset_;
+    segments_active_ = other.segments_active_;
   }
 
   return *this;
@@ -868,8 +867,9 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
   auto& writer = *segment.writer_;
 
   if (writer.initialized() && !disable_flush) {
-    auto segment_docs_max = writer_.segment_limits_.segment_docs_max.load();
-    auto segment_memory_max = writer_.segment_limits_.segment_memory_max.load();
+    const auto& segment_limits = writer_.segment_limits_;
+    const auto segment_docs_max = segment_limits.segment_docs_max.load();
+    const auto segment_memory_max = segment_limits.segment_memory_max.load();
 
     // if not reached the limit of the current segment then use it
     if ((!segment_docs_max ||
@@ -951,9 +951,8 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
     // this segment_context has not yet been seen by this flush_context
     // or was marked dirty imples flush_context switching making a full-circle
     if (this != flush_ctx || ctx.dirty_) {
-      pending_segment_contexts_.emplace_back(segment.ctx_,
-                                             pending_segment_contexts_.size());
-      freelist_node = &(pending_segment_contexts_.back());
+      freelist_node = &pending_segment_contexts_.emplace_back(
+        segment.ctx_, pending_segment_contexts_.size());
 
       // mark segment as non-reusable if it was peviously registered with a
       // different flush_context NOTE: 'ctx.dirty_' implies flush_context
@@ -1039,17 +1038,19 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
   // update generation of segment operation
 
   // update generations of modification_queries_
-  std::for_each(std::begin(ctx.modification_queries_) +
-                  ctx.uncomitted_modification_queries_,
-                std::end(ctx.modification_queries_),
-                [&](modification_context& v) noexcept {
-                  // must be < modification_count since inserts come after
-                  // modification
-                  assert(v.generation < modification_count);
+  std::for_each(
+    std::begin(ctx.modification_queries_) +
+      ctx.uncomitted_modification_queries_,
+    std::end(ctx.modification_queries_),
+    [generation_base, modification_count](modification_context& v) noexcept {
+      // must be < modification_count since inserts come after
+      // modification
+      assert(v.generation < modification_count);
+      UNUSED(modification_count);
 
-                  // update to flush_context generation
-                  const_cast<size_t&>(v.generation) += generation_base;
-                });
+      // update to flush_context generation
+      const_cast<size_t&>(v.generation) += generation_base;
+    });
 
   auto update_generation = [uncomitted_doc_id_begin =
                               ctx.uncomitted_doc_id_begin_ - doc_limits::min(),
@@ -1060,6 +1061,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
       // can == modification_count if inserts come  after
       // modification
       assert(ctxs[i].generation <= modification_count);
+      UNUSED(modification_count);
       // update to flush_context generation
       ctxs[i].generation += generation_base;
     }
@@ -1116,9 +1118,9 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
 void index_writer::flush_context::reset() noexcept {
   // reset before returning to pool
   for (auto& entry : pending_segment_contexts_) {
-    if (entry.segment_.use_count() == 1) {
+    if (auto& segment = entry.segment_; segment.use_count() == 1) {
       // reset only if segment not tracked anywhere else
-      entry.segment_->reset();
+      segment->reset();
     }
   }
 
@@ -1201,14 +1203,14 @@ index_writer::segment_context::make_update_context(const filter& filter) {
 
 segment_writer::update_context
 index_writer::segment_context::make_update_context(
-  const std::shared_ptr<filter>& filter) {
+  std::shared_ptr<const filter> filter) {
   assert(filter);
   // increment generation due to removal
   auto generation = ++uncomitted_generation_offset_;
   auto update_id = modification_queries_.size();
 
   // -1 for previous generation
-  modification_queries_.emplace_back(filter, generation - 1, true);
+  modification_queries_.emplace_back(std::move(filter), generation - 1, true);
 
   return {generation, update_id};
 }
@@ -1241,13 +1243,13 @@ void index_writer::segment_context::remove(const filter& filter) {
 }
 
 void index_writer::segment_context::remove(
-  const std::shared_ptr<filter>& filter) {
+  std::shared_ptr<const filter> filter) {
   if (!filter) {
     return;  // skip empty filters
   }
 
-  modification_queries_.emplace_back(filter, uncomitted_generation_offset_++,
-                                     false);
+  modification_queries_.emplace_back(std::move(filter),
+                                     uncomitted_generation_offset_++, false);
 }
 
 void index_writer::segment_context::remove(filter::ptr&& filter) {
@@ -2008,11 +2010,13 @@ index_writer::active_segment_context index_writer::get_segment_context(
     ctx.pending_segment_contexts_freelist_.pop());
 
   if (freelist_node) {
+    const auto& segment = freelist_node->segment_;
+
     // +1 for the reference in 'pending_segment_contexts_'
-    assert(freelist_node->segment_.use_count() == 1);
-    assert(!freelist_node->segment_->dirty_);
-    return active_segment_context(freelist_node->segment_, segments_active_,
-                                  &ctx, freelist_node->value);
+    assert(segment.use_count() == 1);
+    assert(!segment->dirty_);
+    return active_segment_context(segment, segments_active_, &ctx,
+                                  freelist_node->value);
   }
 
   // should allocate a new segment_context from the pool

@@ -21,10 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "postings.hpp"
+
 #include "utils/map_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
-#include "postings.hpp"
 
 namespace iresearch {
 
@@ -48,7 +49,7 @@ void postings::get_sorted_postings(
             });
 }
 
-std::pair<posting*, bool> postings::emplace(bytes_ref term) {
+std::pair<posting*, bool> postings::emplace(bytes_view term) {
   REGISTER_TIMER_DETAILED();
   auto& parent = writer_.parent();
 
@@ -89,7 +90,7 @@ std::pair<posting*, bool> postings::emplace(bytes_ref term) {
   if (is_new) {
     // for new terms also write out their value
     try {
-      writer_.write(term.c_str(), term.size());
+      writer_.write(term.data(), term.size());
       postings_.emplace_back();
     } catch (...) {
       // we leave some garbage in block pool

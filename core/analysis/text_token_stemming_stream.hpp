@@ -48,7 +48,7 @@ class stemming_token_stream final : public analyzer, private util::noncopyable {
     options_t() : locale{"C"} { locale.setToBogus(); }
   };
 
-  static constexpr string_ref type_name() noexcept { return "stem"; }
+  static constexpr std::string_view type_name() noexcept { return "stem"; }
   static void init();  // for trigering registration in a static build
 
   explicit stemming_token_stream(const options_t& options);
@@ -57,7 +57,7 @@ class stemming_token_stream final : public analyzer, private util::noncopyable {
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() override;
-  virtual bool reset(string_ref data) override;
+  virtual bool reset(std::string_view data) override;
 
  private:
   using attributes =

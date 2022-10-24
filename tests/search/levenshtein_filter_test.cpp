@@ -20,37 +20,39 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
+#include "search/levenshtein_filter.hpp"
+
 #include "filter_test_case_base.hpp"
 #include "index/norm.hpp"
-#include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/term_filter.hpp"
+#include "tests_shared.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
 #include "utils/misc.hpp"
 
 namespace {
 
-irs::by_term make_term_filter(const irs::string_ref& field,
-                              const irs::string_ref term) {
+irs::by_term make_term_filter(const std::string_view& field,
+                              const std::string_view term) {
   irs::by_term q;
   *q.mutable_field() = field;
-  q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
+  q.mutable_options()->term = irs::ViewCast<irs::byte_type>(term);
   return q;
 }
 
-irs::by_edit_distance make_filter(
-  const irs::string_ref& field, const irs::string_ref term,
-  irs::byte_type max_distance = 0, size_t max_terms = 0,
-  bool with_transpositions = false,
-  const irs::string_ref prefix = irs::string_ref::EMPTY) {
+irs::by_edit_distance make_filter(const std::string_view& field,
+                                  const std::string_view term,
+                                  irs::byte_type max_distance = 0,
+                                  size_t max_terms = 0,
+                                  bool with_transpositions = false,
+                                  const std::string_view prefix = "") {
   irs::by_edit_distance q;
   *q.mutable_field() = field;
-  q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
+  q.mutable_options()->term = irs::ViewCast<irs::byte_type>(term);
   q.mutable_options()->max_distance = max_distance;
   q.mutable_options()->max_terms = max_terms;
   q.mutable_options()->with_transpositions = with_transpositions;
-  q.mutable_options()->prefix = irs::ref_cast<irs::byte_type>(prefix);
+  q.mutable_options()->prefix = irs::ViewCast<irs::byte_type>(prefix);
   return q;
 }
 
@@ -87,7 +89,7 @@ TEST(by_edit_distance_test, equal) {
     irs::by_prefix rhs;
     *rhs.mutable_field() = "field";
     rhs.mutable_options()->term =
-      irs::ref_cast<irs::byte_type>(irs::string_ref("bar"));
+      irs::ViewCast<irs::byte_type>(std::string_view("bar"));
     ASSERT_NE(q, rhs);
   }
 }
@@ -98,7 +100,7 @@ TEST(by_edit_distance_test, boost) {
     irs::by_edit_distance q;
     *q.mutable_field() = "field";
     q.mutable_options()->term =
-      irs::ref_cast<irs::byte_type>(irs::string_ref("bar*"));
+      irs::ViewCast<irs::byte_type>(std::string_view("bar*"));
 
     auto prepared = q.prepare(irs::sub_reader::empty());
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
@@ -111,7 +113,7 @@ TEST(by_edit_distance_test, boost) {
     irs::by_edit_distance q;
     *q.mutable_field() = "field";
     q.mutable_options()->term =
-      irs::ref_cast<irs::byte_type>(irs::string_ref("bar*"));
+      irs::ViewCast<irs::byte_type>(std::string_view("bar*"));
     q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());
@@ -563,7 +565,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
   }
 
   std::array<irs::sort::ptr, 1> order{irs::scorers::get(
-    "bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL)};
+    "bm25", irs::type<irs::text_format::json>::get(), std::string_view{})};
   ASSERT_NE(nullptr, order.front());
 
   auto prepared_order = irs::Order::Prepare(order);
@@ -576,7 +578,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
     irs::by_edit_distance filter;
     *filter.mutable_field() = "id";
     auto& opts = *filter.mutable_options();
-    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("end202"));
+    opts.term = irs::ViewCast<irs::byte_type>(std::string_view("end202"));
     opts.max_distance = 2;
     opts.provider = irs::default_pdp;
     opts.with_transpositions = true;
@@ -614,7 +616,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
     irs::by_edit_distance filter;
     *filter.mutable_field() = "id";
     auto& opts = *filter.mutable_options();
-    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("end202"));
+    opts.term = irs::ViewCast<irs::byte_type>(std::string_view("end202"));
     opts.max_distance = 1;
     opts.provider = irs::default_pdp;
     opts.with_transpositions = true;
@@ -649,8 +651,8 @@ TEST_P(by_edit_distance_test_case, bm25) {
     irs::by_edit_distance filter;
     *filter.mutable_field() = "id";
     auto& opts = *filter.mutable_options();
-    opts.prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("end"));
-    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("202"));
+    opts.prefix = irs::ViewCast<irs::byte_type>(std::string_view("end"));
+    opts.term = irs::ViewCast<irs::byte_type>(std::string_view("202"));
     opts.max_distance = 1;
     opts.provider = irs::default_pdp;
     opts.with_transpositions = true;
@@ -687,7 +689,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
     irs::by_edit_distance filter;
     *filter.mutable_field() = "id";
     auto& opts = *filter.mutable_options();
-    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("asm212"));
+    opts.term = irs::ViewCast<irs::byte_type>(std::string_view("asm212"));
     opts.max_distance = 2;
     opts.provider = irs::default_pdp;
     opts.with_transpositions = true;
@@ -744,7 +746,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
     irs::by_edit_distance filter;
     *filter.mutable_field() = "id";
     auto& opts = *filter.mutable_options();
-    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("et038-pm"));
+    opts.term = irs::ViewCast<irs::byte_type>(std::string_view("et038-pm"));
     opts.max_distance = 3;
     opts.provider = irs::default_pdp;
     opts.with_transpositions = true;
@@ -801,8 +803,8 @@ TEST_P(by_edit_distance_test_case, bm25) {
     irs::by_edit_distance filter;
     *filter.mutable_field() = "id";
     auto& opts = *filter.mutable_options();
-    opts.prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("et038"));
-    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("-pm"));
+    opts.prefix = irs::ViewCast<irs::byte_type>(std::string_view("et038"));
+    opts.term = irs::ViewCast<irs::byte_type>(std::string_view("-pm"));
     opts.max_distance = 3;
     opts.provider = irs::default_pdp;
     opts.with_transpositions = true;
@@ -862,8 +864,8 @@ TEST_P(by_edit_distance_test_case, visit) {
                                   &tests::generic_json_field_factory);
     add_segment(gen);
   }
-  const irs::string_ref field = "prefix";
-  const auto term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+  const std::string_view field = "prefix";
+  const auto term = irs::ViewCast<irs::byte_type>(std::string_view("abc"));
   // read segment
   auto index = open_reader();
   ASSERT_EQ(1, index.size());
@@ -885,7 +887,7 @@ TEST_P(by_edit_distance_test_case, visit) {
     field_visitor(segment, *reader, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
-    ASSERT_EQ((std::vector<std::pair<irs::string_ref, irs::score_t>>{
+    ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{
                 {"abc", irs::kNoBoost}}),
               visitor.term_refs<char>());
     visitor.reset();
@@ -906,7 +908,7 @@ TEST_P(by_edit_distance_test_case, visit) {
     ASSERT_EQ(3, visitor.visit_calls_counter());
 
     const auto actual_terms = visitor.term_refs<char>();
-    std::vector<std::pair<irs::string_ref, irs::score_t>> expected_terms{
+    std::vector<std::pair<std::string_view, irs::score_t>> expected_terms{
       {"abc", irs::kNoBoost},
       {"abcd", 2.f / 3},
       {"abcy", 2.f / 3},
@@ -926,11 +928,11 @@ TEST_P(by_edit_distance_test_case, visit) {
   // with prefix
   {
     irs::by_edit_distance_filter_options opts;
-    opts.term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts.term = irs::ViewCast<irs::byte_type>(std::string_view("c"));
     opts.max_distance = 2;
     opts.provider = irs::default_pdp;
     opts.with_transpositions = false;
-    opts.prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("ab"));
+    opts.prefix = irs::ViewCast<irs::byte_type>(std::string_view("ab"));
 
     tests::empty_filter_visitor visitor;
     auto field_visitor = irs::by_edit_distance::visitor(opts);
@@ -940,7 +942,7 @@ TEST_P(by_edit_distance_test_case, visit) {
     ASSERT_EQ(5, visitor.visit_calls_counter());
 
     const auto actual_terms = visitor.term_refs<char>();
-    std::vector<std::pair<irs::string_ref, irs::score_t>> expected_terms{
+    std::vector<std::pair<std::string_view, irs::score_t>> expected_terms{
       {"abc", irs::kNoBoost}, {"abcd", 2.f / 3}, {"abcde", 1.f / 3},
       {"abcy", 2.f / 3},      {"abde", 1.f / 3},
     };

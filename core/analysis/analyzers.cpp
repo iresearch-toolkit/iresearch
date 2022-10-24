@@ -31,7 +31,7 @@ namespace {
 using namespace irs;
 
 struct key {
-  key(string_ref type, const irs::type_info& args_format)
+  key(std::string_view type, const irs::type_info& args_format)
     : type{type}, args_format{args_format} {}
 
   bool operator==(const key& other) const noexcept {
@@ -40,7 +40,7 @@ struct key {
 
   bool operator!=(const key& other) const noexcept { return !(*this == other); }
 
-  string_ref type;
+  std::string_view type;
   irs::type_info args_format;
 };
 
@@ -82,7 +82,7 @@ namespace {
 constexpr std::string_view kFileNamePrefix{"libanalyzer-"};
 
 class analyzer_register final
-  : public irs::tagged_generic_register<::key, ::value, irs::string_ref,
+  : public irs::tagged_generic_register<::key, ::value, std::string_view,
                                         analyzer_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
@@ -92,7 +92,7 @@ class analyzer_register final
     std::memcpy(filename.data(), kFileNamePrefix.data(),
                 kFileNamePrefix.size());
 
-    std::memcpy(filename.data() + kFileNamePrefix.size(), name.c_str(),
+    std::memcpy(filename.data() + kFileNamePrefix.size(), name.data(),
                 name.size());
 
     return filename;
@@ -105,14 +105,15 @@ namespace iresearch::analysis {
 
 analyzer_registrar::analyzer_registrar(
   const type_info& type, const type_info& args_format,
-  analyzer::ptr (*factory)(string_ref args),
-  bool (*normalizer)(string_ref args, std::string& config),
+  analyzer::ptr (*factory)(std::string_view args),
+  bool (*normalizer)(std::string_view args, std::string& config),
   const char* source /*= nullptr*/) {
-  const string_ref source_ref(source);
+  const auto source_ref =
+    source ? std::string_view{source} : std::string_view{};
   const auto new_entry = ::value(factory, normalizer);
   auto entry = analyzer_register::instance().set(
     ::key(type.name(), args_format), new_entry,
-    source_ref.null() ? nullptr : &source_ref);
+    IsNull(source_ref) ? nullptr : &source_ref);
 
   registered_ = entry.second;
 
@@ -124,37 +125,38 @@ analyzer_registrar::analyzer_registrar(
       IR_FRMT_WARN(
         "type name collision detected while registering analyzer, ignoring: "
         "type '%s' from %s, previously from %s",
-        type.name().c_str(), source, registered_source->c_str());
+        type.name().data(), source, registered_source->data());
     } else if (source) {
       IR_FRMT_WARN(
         "type name collision detected while registering analyzer, ignoring: "
         "type '%s' from %s",
-        type.name().c_str(), source);
+        type.name().data(), source);
     } else if (registered_source) {
       IR_FRMT_WARN(
         "type name collision detected while registering analyzer, ignoring: "
         "type '%s', previously from %s",
-        type.name().c_str(), registered_source->c_str());
+        type.name().data(), registered_source->data());
     } else {
       IR_FRMT_WARN(
         "type name collision detected while registering analyzer, ignoring: "
         "type '%s'",
-        type.name().c_str());
+        type.name().data());
     }
   }
 }
 
 namespace analyzers {
 
-bool exists(string_ref name, const type_info& args_format,
+bool exists(std::string_view name, const type_info& args_format,
             bool load_library /*= true*/) {
   return !analyzer_register::instance()
             .get(::key(name, args_format), load_library)
             .empty();
 }
 
-bool normalize(std::string& out, string_ref name, const type_info& args_format,
-               string_ref args, bool load_library /*= true*/) noexcept {
+bool normalize(std::string& out, std::string_view name,
+               const type_info& args_format, std::string_view args,
+               bool load_library /*= true*/) noexcept {
   try {
     auto* normalizer = analyzer_register::instance()
                          .get(::key(name, args_format), load_library)
@@ -169,8 +171,8 @@ bool normalize(std::string& out, string_ref name, const type_info& args_format,
   return false;
 }
 
-result get(analyzer::ptr& analyzer, string_ref name,
-           const type_info& args_format, string_ref args,
+result get(analyzer::ptr& analyzer, std::string_view name,
+           const type_info& args_format, std::string_view args,
            bool load_library /*= true*/) noexcept {
   try {
     auto* factory = analyzer_register::instance()
@@ -193,8 +195,9 @@ result get(analyzer::ptr& analyzer, string_ref name,
   return {};
 }
 
-analyzer::ptr get(string_ref name, const type_info& args_format,
-                  string_ref args, bool load_library /*= true*/) noexcept {
+analyzer::ptr get(std::string_view name, const type_info& args_format,
+                  std::string_view args,
+                  bool load_library /*= true*/) noexcept {
   try {
     auto* factory = analyzer_register::instance()
                       .get(::key(name, args_format), load_library)
@@ -212,7 +215,8 @@ void load_all(std::string_view path) {
   load_libraries(path, kFileNamePrefix, "");
 }
 
-bool visit(const std::function<bool(string_ref, const type_info&)>& visitor) {
+bool visit(
+  const std::function<bool(std::string_view, const type_info&)>& visitor) {
   analyzer_register::visitor_t wrapper = [&visitor](const ::key& key) -> bool {
     return visitor(key.type, key.args_format);
   };

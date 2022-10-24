@@ -48,7 +48,7 @@ class collation_token_stream final : public analyzer,
     options_t() : locale{"C"}, forceUtf8{true} { locale.setToBogus(); }
   };
 
-  static constexpr string_ref type_name() noexcept { return "collation"; }
+  static constexpr std::string_view type_name() noexcept { return "collation"; }
   static void init();  // for trigering registration in a static build
 
   explicit collation_token_stream(const options_t& options);
@@ -62,7 +62,7 @@ class collation_token_stream final : public analyzer,
     term_eof_ = true;
     return eof;
   }
-  virtual bool reset(string_ref data) override;
+  virtual bool reset(std::string_view data) override;
 
  private:
   struct state_t;

@@ -28,7 +28,7 @@
 namespace iresearch {
 
 struct boost_sort final : public sort {
-  static constexpr string_ref type_name() noexcept { return "boostscore"; }
+  static constexpr std::string_view type_name() noexcept { return "boostscore"; }
 
   static void init();
 

@@ -21,9 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
-#include "analysis/token_streams.hpp"
 #include "analysis/token_attributes.hpp"
+#include "analysis/token_streams.hpp"
+#include "tests_shared.hpp"
 
 using namespace iresearch;
 
@@ -40,7 +40,7 @@ TEST(token_streams_tests, boolean_stream) {
   // 'false' stream
   {
     const auto expected =
-      irs::ref_cast<irs::byte_type>(boolean_token_stream::value_false());
+      irs::ViewCast<irs::byte_type>(boolean_token_stream::value_false());
     boolean_token_stream stream(false);
 
     auto* inc = irs::get<increment>(stream);
@@ -62,7 +62,7 @@ TEST(token_streams_tests, boolean_stream) {
   // 'true' stream
   {
     auto expected =
-      irs::ref_cast<irs::byte_type>(boolean_token_stream::value_true());
+      irs::ViewCast<irs::byte_type>(boolean_token_stream::value_true());
     boolean_token_stream stream(true);
     auto* inc = irs::get<increment>(stream);
     ASSERT_FALSE(!inc);
@@ -83,9 +83,9 @@ TEST(token_streams_tests, boolean_stream) {
 
 TEST(token_streams_tests, null_stream) {
   ASSERT_EQ(0, null_token_stream::value_null().size());
-  ASSERT_NE(nullptr, null_token_stream::value_null().c_str());
+  ASSERT_NE(nullptr, null_token_stream::value_null().data());
 
-  auto& expected = bytes_ref::NIL;
+  const auto expected = bytes_view{};
   null_token_stream stream;
   auto* inc = irs::get<increment>(stream);
   ASSERT_FALSE(!inc);
@@ -105,15 +105,15 @@ TEST(token_streams_tests, null_stream) {
 
 TEST(string_token_stream_tests, next_end) {
   const std::string str("QBVnCx4NCizekHA");
-  const bytes_ref ref =
-    bytes_ref(reinterpret_cast<const byte_type*>(str.c_str()), str.size());
+  const bytes_view ref =
+    bytes_view(reinterpret_cast<const byte_type*>(str.c_str()), str.size());
   string_token_stream ts;
   ts.reset(str);
 
   // check attributes
   auto* term = irs::get<term_attribute>(ts);
   ASSERT_FALSE(!term);
-  ASSERT_TRUE(term->value.null());
+  ASSERT_TRUE(IsNull(term->value));
   auto* offs = irs::get<offset>(ts);
   ASSERT_FALSE(!offs);
   ASSERT_EQ(0, offs->start);

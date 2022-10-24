@@ -141,7 +141,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
     }
 
     // stats for a specific term
-    absl::flat_hash_map<hashed_bytes_ref, stats_state> term_stats;
+    absl::flat_hash_map<hashed_bytes_view, stats_state> term_stats;
 
     // iterate over all the states from which statistcis should be collected
     uint32_t stats_offset = 0;
@@ -151,7 +151,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
 
       // find the stats for the current term
       const auto res =
-        term_stats.try_emplace(make_hashed_ref(bytes_ref(scored_state.term)),
+        term_stats.try_emplace(make_hashed_ref(bytes_view(scored_state.term)),
                                index, field, order, stats_offset);
 
       auto& stats_entry = res.first->second;

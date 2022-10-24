@@ -155,7 +155,7 @@ class column final : public irs::column_output {
 
   void finish(index_output& index_out);
 
-  string_ref name() const noexcept { return name_; }
+  std::string_view name() const noexcept { return name_; }
 
   void flush_block();
 
@@ -169,7 +169,7 @@ class column final : public irs::column_output {
   sparse_bitmap_writer docs_writer_{docs_.stream, ctx_.version};
   address_table addr_table_;
   bstring payload_;
-  string_ref name_;
+  std::string_view name_;
   uint64_t prev_avg_{};
   doc_id_t docs_count_{};
   doc_id_t prev_{};  // last committed doc_id_t
@@ -183,11 +183,11 @@ class column final : public irs::column_output {
 
 class writer final : public columnstore_writer {
  public:
-  static constexpr string_ref kDataFormatName = "iresearch_11_columnstore_data";
-  static constexpr string_ref kIndexFormatName =
+  static constexpr std::string_view kDataFormatName = "iresearch_11_columnstore_data";
+  static constexpr std::string_view kIndexFormatName =
     "iresearch_11_columnstore_index";
-  static constexpr string_ref kDataFormatExt = "csd";
-  static constexpr string_ref kIndexFormatExt = "csi";
+  static constexpr std::string_view kDataFormatExt = "csd";
+  static constexpr std::string_view kIndexFormatExt = "csi";
 
   writer(Version version, bool consolidation);
 

@@ -127,23 +127,23 @@ irs::sort::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-irs::sort::ptr make_vpack(irs::string_ref args) {
-  if (args.null()) {
+irs::sort::ptr make_vpack(std::string_view args) {
+  if (irs::IsNull(args)) {
     // default args
     return irs::memory::make_unique<irs::tfidf_sort>();
   } else {
-    VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+    VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
     return make_vpack(slice);
   }
 }
 
-irs::sort::ptr make_json(irs::string_ref args) {
-  if (args.null()) {
+irs::sort::ptr make_json(std::string_view args) {
+  if (irs::IsNull(args)) {
     // default args
     return irs::memory::make_unique<irs::tfidf_sort>();
   } else {
     try {
-      auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+      auto vpack = VPackParser::fromJson(args.data(), args.size());
       return make_vpack(vpack->slice());
     } catch (const VPackException& ex) {
       IR_FRMT_ERROR(
@@ -171,8 +171,8 @@ struct byte_ref_iterator {
   const irs::byte_type* end_;
   const irs::byte_type* pos_;
 
-  explicit byte_ref_iterator(irs::bytes_ref in)
-    : end_(in.c_str() + in.size()), pos_(in.c_str()) {}
+  explicit byte_ref_iterator(irs::bytes_view in)
+    : end_(in.data() + in.size()), pos_(in.data()) {}
 
   irs::byte_type operator*() {
     if (pos_ >= end_) {
@@ -197,7 +197,7 @@ struct field_collector final : public irs::sort::field_collector {
 
   virtual void reset() noexcept override { docs_with_field = 0; }
 
-  virtual void collect(irs::bytes_ref in) override {
+  virtual void collect(irs::bytes_view in) override {
     byte_ref_iterator itr(in);
     auto docs_with_field_value = irs::vread<uint64_t>(itr);
 
@@ -229,7 +229,7 @@ struct term_collector final : public irs::sort::term_collector {
 
   virtual void reset() noexcept override { docs_with_term = 0; }
 
-  virtual void collect(irs::bytes_ref in) override {
+  virtual void collect(irs::bytes_view in) override {
     byte_ref_iterator itr(in);
     auto docs_with_term_value = irs::vread<uint64_t>(itr);
 

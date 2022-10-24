@@ -23,15 +23,16 @@
 #ifndef IRESEARCH_AUTOMATON_UTILS_H
 #define IRESEARCH_AUTOMATON_UTILS_H
 
+#include "analysis/token_attributes.hpp"
 #include "formats/formats.hpp"
+#include "fst/closure.h"
 #include "search/filter.hpp"
 #include "utils/automaton.hpp"
+#include "utils/fstext/fst_sorted_range_matcher.hpp"
 #include "utils/fstext/fst_states_map.hpp"
 #include "utils/fstext/fst_table_matcher.hpp"
-#include "utils/fstext/fst_sorted_range_matcher.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/utf8_utils.hpp"
-#include "fst/closure.h"
 
 namespace iresearch {
 
@@ -50,7 +51,7 @@ inline automaton_table_matcher make_automaton_matcher(
 
 template<typename Char, typename Matcher>
 inline automaton::Weight match(Matcher& matcher,
-                               const basic_string_ref<Char>& target) {
+                               std::basic_string_view<Char> target) {
   auto state = matcher.GetFst().Start();
   matcher.SetState(state);
 
@@ -67,7 +68,7 @@ inline automaton::Weight match(Matcher& matcher,
 
 template<typename Char>
 inline automaton::Weight accept(const automaton& a,
-                                const basic_string_ref<Char>& target) {
+                                std::basic_string_view<Char> target) {
   using matcher_t =
     fst::SortedRangeExplicitMatcher<automaton, fst::MatchType::MATCH_INPUT>;
 
@@ -80,10 +81,12 @@ class automaton_term_iterator final : public seek_term_iterator {
   automaton_term_iterator(const automaton& a, seek_term_iterator::ptr&& it)
     : a_(&a), matcher_(a_), it_(std::move(it)) {
     assert(it_);
-    value_ = &it_->value();
+    auto* term = irs::get<term_attribute>(*it_);
+    assert(term);
+    value_ = &term->value;
   }
 
-  virtual const bytes_ref& value() const noexcept override { return *value_; }
+  virtual bytes_view value() const noexcept override { return *value_; }
 
   virtual doc_iterator::ptr postings(IndexFeatures features) const override {
     return it_->postings(features);
@@ -105,7 +108,7 @@ class automaton_term_iterator final : public seek_term_iterator {
     return it_->get_mutable(type);
   }
 
-  virtual SeekResult seek_ge(const bytes_ref& target) override {
+  virtual SeekResult seek_ge(bytes_view target) override {
     it_->seek_ge(target);
 
     if (accept()) {
@@ -115,7 +118,7 @@ class automaton_term_iterator final : public seek_term_iterator {
     return next() ? SeekResult::NOT_FOUND : SeekResult::END;
   }
 
-  virtual bool seek(const bytes_ref& target) override {
+  virtual bool seek(bytes_view target) override {
     return SeekResult::FOUND == seek_ge(target);
   }
 
@@ -127,7 +130,7 @@ class automaton_term_iterator final : public seek_term_iterator {
   const automaton* a_;
   fst::SortedRangeExplicitMatcher<automaton> matcher_;
   seek_term_iterator::ptr it_;
-  const bytes_ref* value_;
+  const bytes_view* value_;
 };  // automaton_term_iterator
 
 //////////////////////////////////////////////////////////////////////////////
@@ -166,7 +169,7 @@ class utf8_transitions_builder {
   template<typename Iterator>
   void insert(automaton& a, automaton::StateId from,
               automaton::StateId rho_state, Iterator begin, Iterator end) {
-    last_ = bytes_ref::EMPTY;
+    last_ = kEmptyStringView<irs::byte_type>;
     states_map_.reset();
 
     // we inherit weight from 'from' node to all intermediate states
@@ -187,11 +190,11 @@ class utf8_transitions_builder {
 
     for (; begin != end; ++begin) {
       // we expect sorted input
-      assert(last_ <= static_cast<bytes_ref>(std::get<0>(*begin)));
+      assert(last_ <= static_cast<bytes_view>(std::get<0>(*begin)));
 
       const auto& label = std::get<0>(*begin);
-      insert(a, label.c_str(), label.size(), std::get<1>(*begin));
-      last_ = static_cast<bytes_ref>(label);
+      insert(a, label.data(), label.size(), std::get<1>(*begin));
+      last_ = static_cast<bytes_view>(label);
     }
 
     finish(a, from);
@@ -351,7 +354,7 @@ class utf8_transitions_builder {
   automaton::StateId rho_states_[4];
   state states_[utf8_utils::MAX_CODE_POINT_SIZE + 1];  // +1 for root state
   automaton_states_map states_map_;
-  bytes_ref last_;
+  bytes_view last_;
 };  // utf8_automaton_builder
 
 //////////////////////////////////////////////////////////////////////////////
@@ -404,7 +407,7 @@ void visit(const sub_reader& segment, const term_reader& reader,
 /// @brief establish UTF-8 labeled connection between specified source and
 ///        target states
 //////////////////////////////////////////////////////////////////////////////
-void utf8_emplace_arc(automaton& a, automaton::StateId from, bytes_ref label,
+void utf8_emplace_arc(automaton& a, automaton::StateId from, bytes_view label,
                       automaton::StateId to);
 
 //////////////////////////////////////////////////////////////////////////////
@@ -413,7 +416,7 @@ void utf8_emplace_arc(automaton& a, automaton::StateId from, bytes_ref label,
 ///        state
 //////////////////////////////////////////////////////////////////////////////
 void utf8_emplace_arc(automaton& a, automaton::StateId from,
-                      automaton::StateId rho_state, bytes_ref label,
+                      automaton::StateId rho_state, bytes_view label,
                       automaton::StateId to);
 
 //////////////////////////////////////////////////////////////////////////////
@@ -441,7 +444,7 @@ inline automaton make_char(const uint32_t c) {
   return a;
 }
 
-inline automaton make_char(bytes_ref c) {
+inline automaton make_char(bytes_view c) {
   automaton a;
   a.AddStates(2);
   a.SetStart(0);
@@ -477,7 +480,7 @@ inline automaton make_all() {
 /// @returns compiled filter
 //////////////////////////////////////////////////////////////////////////////
 filter::prepared::ptr prepare_automaton_filter(
-  string_ref field, const automaton& acceptor, size_t scored_terms_limit,
+  std::string_view field, const automaton& acceptor, size_t scored_terms_limit,
   const index_reader& index, const Order& order, score_t boost);
 
 }  // namespace iresearch
