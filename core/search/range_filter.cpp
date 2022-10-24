@@ -36,9 +36,13 @@ using namespace irs;
 template<typename Visitor, typename Comparer>
 void collect_terms(const sub_reader& segment, const term_reader& field,
                    seek_term_iterator& terms, Visitor& visitor, Comparer cmp) {
-  auto& value = terms.value();
+  auto* term = irs::get<term_attribute>(terms);
 
-  if (cmp(value)) {
+  if (IRS_UNLIKELY(!term)) {
+    return;
+  }
+
+  if (cmp(term->value)) {
     // read attributes
     terms.read();
 
@@ -52,7 +56,7 @@ void collect_terms(const sub_reader& segment, const term_reader& field,
       }
 
       terms.read();
-    } while (cmp(value));
+    } while (cmp(term->value));
   }
 }
 
@@ -86,20 +90,20 @@ void visit(const sub_reader& segment, const term_reader& reader,
   }
 
   // now we are on the target or the next term
-  const bytes_ref max = rng.max;
+  const bytes_view max = rng.max;
 
   switch (rng.max_type) {
     case BoundType::UNBOUNDED:
       ::collect_terms(segment, reader, *terms, visitor,
-                      [](bytes_ref) { return true; });
+                      [](bytes_view) { return true; });
       break;
     case BoundType::INCLUSIVE:
       ::collect_terms(segment, reader, *terms, visitor,
-                      [max](bytes_ref term) { return term <= max; });
+                      [max](bytes_view term) { return term <= max; });
       break;
     case BoundType::EXCLUSIVE:
       ::collect_terms(segment, reader, *terms, visitor,
-                      [max](bytes_ref term) { return term < max; });
+                      [max](bytes_view term) { return term < max; });
       break;
   }
 }
@@ -110,7 +114,7 @@ namespace iresearch {
 
 filter::prepared::ptr by_range::prepare(const index_reader& index,
                                         const Order& ord, score_t boost,
-                                        string_ref field,
+                                        std::string_view field,
                                         const options_type::range_type& rng,
                                         size_t scored_terms_limit) {
   // TODO: optimize unordered case

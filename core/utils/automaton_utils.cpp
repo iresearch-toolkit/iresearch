@@ -29,7 +29,7 @@
 namespace iresearch {
 
 void utf8_emplace_arc(automaton& a, automaton::StateId from,
-                      automaton::StateId rho_state, bytes_ref label,
+                      automaton::StateId rho_state, bytes_view label,
                       automaton::StateId to) {
   if (fst::kNoStateId == rho_state) {
     return utf8_emplace_arc(a, from, label, to);
@@ -101,7 +101,7 @@ void utf8_emplace_arc(automaton& a, automaton::StateId from,
   a.EmplaceArc(rho_states[3], RHO_LABEL, rho_states[2]);
 }
 
-void utf8_emplace_arc(automaton& a, automaton::StateId from, bytes_ref label,
+void utf8_emplace_arc(automaton& a, automaton::StateId from, bytes_view label,
                       automaton::StateId to) {
   switch (label.size()) {
     case 1: {
@@ -179,7 +179,7 @@ automaton::StateId utf8_expand_labels(automaton& a) {
     const byte_type* c_str() const noexcept {
       return const_cast<utf8_char*>(this)->data();
     }
-    operator bytes_ref() const noexcept {
+    operator bytes_view() const noexcept {
       return { c_str(), size() };
     }
 
@@ -232,7 +232,7 @@ static_cast<Label>(utf8_utils::MAX_CODE_POINT))) {
         } break;
         case 1: {
           auto& utf8_arc = utf8_arcs.front();
-          utf8_emplace_arc(a, s, rho_state, bytes_ref(utf8_arc.first),
+          utf8_emplace_arc(a, s, rho_state, bytes_view(utf8_arc.first),
 utf8_arc.second); } break; default: {
           //FIXME
           //builder.insert(a, s, rho_state, utf8_arcs.begin(), utf8_arcs.end());
@@ -288,7 +288,7 @@ void utf8_transitions_builder::insert(automaton& a, const byte_type* label,
   assert(label && size < 5);
 
   const size_t prefix =
-    1 + common_prefix_length(last_.c_str(), last_.size(), label, size);
+    1 + CommonPrefixLength(last_.data(), last_.size(), label, size);
   minimize(a, prefix);  // minimize suffix
 
   // add current word suffix
@@ -389,7 +389,7 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
 }
 
 filter::prepared::ptr prepare_automaton_filter(
-  string_ref field, const automaton& acceptor, size_t scored_terms_limit,
+  std::string_view field, const automaton& acceptor, size_t scored_terms_limit,
   const index_reader& index, const Order& order, score_t boost) {
   auto matcher = make_automaton_matcher(acceptor);
 

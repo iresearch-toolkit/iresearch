@@ -23,11 +23,12 @@
 
 #ifndef IRESEARCH_DLL
 
-#include "tests_shared.hpp"
 #include "index/sorted_column.hpp"
-#include "index/comparer.hpp"
+
 #include "analysis/token_attributes.hpp"
+#include "index/comparer.hpp"
 #include "store/memory_directory.hpp"
+#include "tests_shared.hpp"
 #include "utils/bitvector.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/lz4compression.hpp"
@@ -72,10 +73,10 @@ TEST_P(sorted_column_test_case, flush_empty) {
   ASSERT_NE(nullptr, codec);
 
   struct comparator final : irs::comparer {
-    virtual bool less(irs::bytes_ref lhs,
-                      irs::bytes_ref rhs) const noexcept override {
-      const auto* plhs = lhs.c_str();
-      const auto* prhs = rhs.c_str();
+    virtual bool less(irs::bytes_view lhs,
+                      irs::bytes_view rhs) const noexcept override {
+      const auto* plhs = lhs.data();
+      const auto* prhs = rhs.data();
 
       if (!plhs && !prhs) {
         return false;
@@ -108,7 +109,7 @@ TEST_P(sorted_column_test_case, flush_empty) {
       [](auto&) {
         // Must not be called
         EXPECT_TRUE(false);
-        return irs::string_ref::NIL;
+        return std::string_view{};
       },
       0, less);
     ASSERT_TRUE(col.empty());
@@ -145,10 +146,10 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
     68, 14, 73, 30, 70, 38, 85, 98, 79,  75, 38, 79, 85, 85, 100, 91};
 
   struct comparator final : irs::comparer {
-    virtual bool less(irs::bytes_ref lhs,
-                      irs::bytes_ref rhs) const noexcept override {
-      const auto* plhs = lhs.c_str();
-      const auto* prhs = rhs.c_str();
+    virtual bool less(irs::bytes_view lhs,
+                      irs::bytes_view rhs) const noexcept override {
+      const auto* plhs = lhs.data();
+      const auto* prhs = rhs.data();
 
       if (!plhs && !prhs) {
         return false;
@@ -217,7 +218,7 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
       [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
         out += 42;
-        return irs::string_ref::NIL;
+        return std::string_view{};
       },
       std::size(values), less);
     ASSERT_TRUE(col.empty());
@@ -251,12 +252,12 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
       ASSERT_EQ(1, header_payload.size());
       ASSERT_EQ(42, header_payload[0]);
     } else {
-      ASSERT_TRUE(header_payload.null());
+      ASSERT_TRUE(irs::IsNull(header_payload));
     }
 
     auto it = column->iterator(irs::ColumnHint::kNormal);
     auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_TRUE(!payload || payload->value.null());
+    ASSERT_TRUE(!payload || irs::IsNull(payload->value));
 
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
     while (it->next()) {
@@ -277,10 +278,10 @@ TEST_P(sorted_column_test_case, sort) {
     68, 14, 73, 30, 70, 38, 85, 98, 79,  75, 38, 79, 85, 85, 100, 91};
 
   struct comparator final : irs::comparer {
-    virtual bool less(irs::bytes_ref lhs,
-                      irs::bytes_ref rhs) const noexcept override {
-      const auto* plhs = lhs.c_str();
-      const auto* prhs = rhs.c_str();
+    virtual bool less(irs::bytes_view lhs,
+                      irs::bytes_view rhs) const noexcept override {
+      const auto* plhs = lhs.data();
+      const auto* prhs = rhs.data();
 
       if (!plhs && !prhs) {
         return false;
@@ -346,7 +347,7 @@ TEST_P(sorted_column_test_case, sort) {
       [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
         out += 42;
-        return irs::string_ref::NIL;
+        return std::string_view{};
       },
       std::size(values), less);
     ASSERT_TRUE(col.empty());
@@ -395,7 +396,7 @@ TEST_P(sorted_column_test_case, sort) {
       ASSERT_EQ(1, header_payload.size());
       ASSERT_EQ(42, header_payload[0]);
     } else {
-      ASSERT_TRUE(header_payload.null());
+      ASSERT_TRUE(irs::IsNull(header_payload));
     }
 
     auto it = column->iterator(irs::ColumnHint::kNormal);
@@ -406,7 +407,7 @@ TEST_P(sorted_column_test_case, sort) {
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
     while (it->next()) {
       ASSERT_EQ(doc, it->value());
-      const auto* pvalue = payload->value.c_str();
+      const auto* pvalue = payload->value.data();
       ASSERT_NE(nullptr, pvalue);
       ASSERT_EQ(*begin, irs::vread<uint32_t>(pvalue));
       ++doc;

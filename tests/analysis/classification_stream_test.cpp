@@ -59,7 +59,7 @@ TEST(classification_stream_test, test_load) {
 #else
     auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
-    irs::string_ref data{"baking"};
+    std::string_view data{"baking"};
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
     auto stream = irs::analysis::analyzers::get(
       "classification", irs::type<irs::text_format::json>::get(), input_json);
@@ -79,7 +79,7 @@ TEST(classification_stream_test, test_load) {
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(6, offset->end);
-    ASSERT_EQ("__label__baking", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("__label__baking", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
   }
@@ -111,7 +111,7 @@ TEST(classification_stream_test, test_load) {
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(37, offset->end);
-    ASSERT_EQ("__label__knives", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("__label__knives", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
 
@@ -120,14 +120,14 @@ TEST(classification_stream_test, test_load) {
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(15, offset->end);
-    ASSERT_EQ("__label__pasta", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("__label__pasta", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
   }
 
   // Multi line input
   {
-    constexpr irs::string_ref data{
+    constexpr std::string_view data{
       "Which baking dish is best to bake\na banana bread ?"};
 
 #ifdef WIN32
@@ -154,13 +154,13 @@ TEST(classification_stream_test, test_load) {
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(50, offset->end);
-    ASSERT_EQ("__label__baking", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("__label__baking", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
   }
   // top 2 labels
   {
-    constexpr irs::string_ref data{
+    constexpr std::string_view data{
       "Which baking dish is best to bake a banana bread ?"};
 
 #ifdef WIN32
@@ -188,12 +188,12 @@ TEST(classification_stream_test, test_load) {
     ASSERT_EQ(1, inc->value);
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(50, offset->end);
-    ASSERT_EQ("__label__baking", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("__label__baking", irs::ViewCast<char>(term->value));
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(50, offset->end);
     ASSERT_EQ(0, inc->value);
-    ASSERT_EQ("__label__bananas", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("__label__bananas", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
     ASSERT_FALSE(stream->next());
   }

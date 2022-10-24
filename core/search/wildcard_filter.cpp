@@ -22,21 +22,21 @@
 
 #include "wildcard_filter.hpp"
 
-#include "shared.hpp"
+#include "index/index_reader.hpp"
 #include "search/filter_visitor.hpp"
 #include "search/multiterm_query.hpp"
-#include "search/term_filter.hpp"
 #include "search/prefix_filter.hpp"
-#include "index/index_reader.hpp"
-#include "utils/wildcard_utils.hpp"
+#include "search/term_filter.hpp"
+#include "shared.hpp"
 #include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"
+#include "utils/wildcard_utils.hpp"
 
 namespace {
 
 using namespace irs;
 
-bytes_ref unescape(bytes_ref in, bstring& out) {
+bytes_view unescape(bytes_view in, bstring& out) {
   out.reserve(in.size());
 
   bool copy = true;
@@ -54,7 +54,7 @@ bytes_ref unescape(bytes_ref in, bstring& out) {
 }
 
 template<typename Invalid, typename Term, typename Prefix, typename WildCard>
-auto executeWildcard(bstring& buf, bytes_ref term, Invalid&& inv, Term&& t,
+auto executeWildcard(bstring& buf, bytes_view term, Invalid&& inv, Term&& t,
                      Prefix&& p, WildCard&& w) {
   switch (wildcard_type(term)) {
     case WildcardType::INVALID:
@@ -65,14 +65,14 @@ auto executeWildcard(bstring& buf, bytes_ref term, Invalid&& inv, Term&& t,
     case WildcardType::TERM:
       return t(term);
     case WildcardType::MATCH_ALL:
-      term = bytes_ref::EMPTY;
+      term = kEmptyStringView<irs::byte_type>;
       return p(term);
     case WildcardType::PREFIX_ESCAPED:
       term = unescape(term, buf);
       [[fallthrough]];
     case WildcardType::PREFIX: {
       assert(!term.empty());
-      const auto* begin = term.c_str();
+      const auto* begin = term.data();
       const auto* end = begin + term.size();
 
       // term is already checked to be a valid UTF-8 sequence
@@ -80,7 +80,7 @@ auto executeWildcard(bstring& buf, bytes_ref term, Invalid&& inv, Term&& t,
         utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
       assert(pos != end);
 
-      term = bytes_ref(begin, size_t(pos - begin));  // remove trailing '%'
+      term = bytes_view(begin, size_t(pos - begin));  // remove trailing '%'
       return p(term);
     }
     case WildcardType::WILDCARD:
@@ -95,14 +95,14 @@ auto executeWildcard(bstring& buf, bytes_ref term, Invalid&& inv, Term&& t,
 
 namespace iresearch {
 
-field_visitor by_wildcard::visitor(bytes_ref term) {
+field_visitor by_wildcard::visitor(bytes_view term) {
   bstring buf;
   return executeWildcard(
     buf, term,
     []() -> field_visitor {
       return [](const sub_reader&, const term_reader&, filter_visitor&) {};
     },
-    [](bytes_ref term) -> field_visitor {
+    [](bytes_view term) -> field_visitor {
       // must copy term as it may point to temporary string
       return [term = bstring(term)](const sub_reader& segment,
                                     const term_reader& field,
@@ -110,7 +110,7 @@ field_visitor by_wildcard::visitor(bytes_ref term) {
         by_term::visit(segment, field, term, visitor);
       };
     },
-    [](bytes_ref term) -> field_visitor {
+    [](bytes_view term) -> field_visitor {
       // must copy term as it may point to temporary string
       return [term = bstring(term)](const sub_reader& segment,
                                     const term_reader& field,
@@ -118,9 +118,9 @@ field_visitor by_wildcard::visitor(bytes_ref term) {
         by_prefix::visit(segment, field, term, visitor);
       };
     },
-    [](bytes_ref term) -> field_visitor {
+    [](bytes_view term) -> field_visitor {
       struct automaton_context : util::noncopyable {
-        automaton_context(bytes_ref term)
+        automaton_context(bytes_view term)
           : acceptor(from_wildcard(term)),
             matcher(make_automaton_matcher(acceptor)) {}
 
@@ -144,20 +144,20 @@ field_visitor by_wildcard::visitor(bytes_ref term) {
 
 /*static*/ filter::prepared::ptr by_wildcard::prepare(
   const index_reader& index, const Order& order, score_t boost,
-  string_ref field, bytes_ref term, size_t scored_terms_limit) {
+  std::string_view field, bytes_view term, size_t scored_terms_limit) {
   bstring buf;
   return executeWildcard(
     buf, term, []() -> filter::prepared::ptr { return prepared::empty(); },
-    [&index, &order, boost, &field](bytes_ref term) -> filter::prepared::ptr {
+    [&index, &order, boost, &field](bytes_view term) -> filter::prepared::ptr {
       return by_term::prepare(index, order, boost, field, term);
     },
     [&index, &order, boost, &field,
-     scored_terms_limit](bytes_ref term) -> filter::prepared::ptr {
+     scored_terms_limit](bytes_view term) -> filter::prepared::ptr {
       return by_prefix::prepare(index, order, boost, field, term,
                                 scored_terms_limit);
     },
     [&index, &order, boost, &field,
-     scored_terms_limit](bytes_ref term) -> filter::prepared::ptr {
+     scored_terms_limit](bytes_view term) -> filter::prepared::ptr {
       return prepare_automaton_filter(field, from_wildcard(term),
                                       scored_terms_limit, index, order, boost);
     });

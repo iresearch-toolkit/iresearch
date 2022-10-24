@@ -25,8 +25,8 @@
 #define IRESEARCH_ASSERT_FORMAT_H
 
 #include "doc_generator.hpp"
-#include "index/field_meta.hpp"
 #include "formats/formats.hpp"
+#include "index/field_meta.hpp"
 
 namespace tests {
 
@@ -34,7 +34,7 @@ class posting {
  public:
   struct position {
     position(uint32_t pos, uint32_t start, uint32_t end,
-             const irs::bytes_ref& pay)
+             const irs::bytes_view& pay)
       : pos{pos}, start{start}, end{end}, payload{pay} {}
 
     bool operator<(const position& rhs) const { return pos < rhs.pos; }
@@ -68,7 +68,7 @@ class posting {
 };
 
 struct term {
-  explicit term(irs::bytes_ref data);
+  explicit term(irs::bytes_view data);
 
   posting& insert(irs::doc_id_t id);
 
@@ -94,18 +94,18 @@ struct field : public irs::field_meta {
     uint32_t offs{};
   };
 
-  field(const irs::string_ref& name, irs::IndexFeatures index_features,
+  field(const std::string_view& name, irs::IndexFeatures index_features,
         const irs::features_t& features);
   field(field&& rhs) = default;
   field& operator=(field&& rhs) = default;
 
-  term& insert(irs::bytes_ref term);
-  term* find(irs::bytes_ref term);
-  size_t remove(irs::bytes_ref term);
+  term& insert(irs::bytes_view term);
+  term* find(irs::bytes_view term);
+  size_t remove(irs::bytes_view term);
   void sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs);
 
-  irs::bytes_ref min() const;
-  irs::bytes_ref max() const;
+  irs::bytes_view min() const;
+  irs::bytes_view max() const;
   uint64_t total_freq() const;
 
   irs::seek_term_iterator::ptr iterator() const;
@@ -126,11 +126,11 @@ class column_values {
   column_values(std::string name, irs::field_id id)
     : id_{id}, name_{std::move(name)} {}
 
-  void insert(irs::doc_id_t key, irs::bytes_ref value);
+  void insert(irs::doc_id_t key, irs::bytes_view value);
 
   irs::field_id id() const noexcept { return id_; }
-  irs::string_ref name() const noexcept {
-    return name_.has_value() ? name_.value() : irs::string_ref::NIL;
+  std::string_view name() const noexcept {
+    return name_.has_value() ? name_.value() : std::string_view{};
   }
 
   irs::bstring payload() const;
@@ -154,7 +154,7 @@ class column_values {
 
 class index_segment : irs::util::noncopyable {
  public:
-  using field_map_t = std::map<irs::string_ref, field>;
+  using field_map_t = std::map<std::string_view, field>;
   using columns_t = std::deque<column_values>;  // pointers remain valid
   using named_columns_t = std::map<std::string, column_values*>;
 

@@ -29,7 +29,7 @@ using namespace irs;
 struct noop_field_collector final : sort::field_collector {
   virtual void collect(const sub_reader&, const term_reader&) override {}
   virtual void reset() override {}
-  virtual void collect(bytes_ref) override {}
+  virtual void collect(bytes_view) override {}
   virtual void write(data_output&) const override {}
 };
 
@@ -37,7 +37,7 @@ struct noop_term_collector final : sort::term_collector {
   virtual void collect(const sub_reader&, const term_reader&,
                        const attribute_provider&) override {}
   virtual void reset() override {}
-  virtual void collect(bytes_ref) override {}
+  virtual void collect(bytes_view) override {}
   virtual void write(data_output&) const override {}
 };
 

@@ -21,8 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "formats/formats.hpp"
+#include "tests_shared.hpp"
 
 TEST(formats_tests, duplicate_register) {
   struct dummy_format : public irs::format {
@@ -75,7 +75,7 @@ TEST(formats_tests, duplicate_register) {
     ASSERT_EQ(nullptr, irs::formats::get(irs::type<dummy_format>::name()));
 
     irs::format_registrar initial(irs::type<dummy_format>::get(),
-                                  irs::string_ref::NIL, &dummy_format::make);
+                                  std::string_view{}, &dummy_format::make);
     ASSERT_EQ(!initial_expected, !initial);
   }
 

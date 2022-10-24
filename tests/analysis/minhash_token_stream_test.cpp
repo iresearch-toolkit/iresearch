@@ -33,7 +33,7 @@ namespace {
 
 class ArrayStream final : public irs::analysis::analyzer {
  public:
-  explicit ArrayStream(irs::string_ref data, const std::string_view* begin,
+  explicit ArrayStream(std::string_view data, const std::string_view* begin,
                        const std::string_view* end) noexcept
     : irs::analysis::analyzer{irs::type<ArrayStream>::get()},
       data_{data},
@@ -51,7 +51,7 @@ class ArrayStream final : public irs::analysis::analyzer {
     offs.end += it_->size();
 
     std::get<irs::term_attribute>(attrs_).value =
-      irs::ref_cast<irs::byte_type>(*it_);
+      irs::ViewCast<irs::byte_type>(*it_);
 
     ++it_;
     return true;
@@ -61,7 +61,7 @@ class ArrayStream final : public irs::analysis::analyzer {
     return irs::get_mutable(attrs_, id);
   }
 
-  bool reset(irs::string_ref data) override {
+  bool reset(std::string_view data) override {
     std::get<irs::offset>(attrs_) = {};
 
     if (data == data_) {
@@ -78,7 +78,7 @@ class ArrayStream final : public irs::analysis::analyzer {
     std::tuple<irs::term_attribute, irs::increment, irs::offset>;
 
   attributes attrs_;
-  irs::string_ref data_;
+  std::string_view data_;
   const std::string_view* begin_;
   const std::string_view* it_;
   const std::string_view* end_;
@@ -333,25 +333,25 @@ TEST(MinHashTokenStreamTest, NextReset) {
     ASSERT_TRUE(stream.reset(kData));
 
     ASSERT_TRUE(stream.next());
-    EXPECT_EQ("aq+fPy7QMmE", irs::ref_cast<char>(term->value));
+    EXPECT_EQ("aq+fPy7QMmE", irs::ViewCast<char>(term->value));
     ASSERT_EQ(1, inc->value);
     EXPECT_EQ(0, offset->start);
     EXPECT_EQ(32, offset->end);
 
     ASSERT_TRUE(stream.next());
-    EXPECT_EQ("zN55OxHobU0", irs::ref_cast<char>(term->value));
+    EXPECT_EQ("zN55OxHobU0", irs::ViewCast<char>(term->value));
     ASSERT_EQ(0, inc->value);
     EXPECT_EQ(0, offset->start);
     EXPECT_EQ(32, offset->end);
 
     ASSERT_TRUE(stream.next());
-    EXPECT_EQ("fE1vyfdbgBg", irs::ref_cast<char>(term->value));
+    EXPECT_EQ("fE1vyfdbgBg", irs::ViewCast<char>(term->value));
     ASSERT_EQ(0, inc->value);
     EXPECT_EQ(0, offset->start);
     EXPECT_EQ(32, offset->end);
 
     ASSERT_TRUE(stream.next());
-    EXPECT_EQ("g44ma/eW5Rc", irs::ref_cast<char>(term->value));
+    EXPECT_EQ("g44ma/eW5Rc", irs::ViewCast<char>(term->value));
     ASSERT_EQ(0, inc->value);
     EXPECT_EQ(0, offset->start);
     EXPECT_EQ(32, offset->end);

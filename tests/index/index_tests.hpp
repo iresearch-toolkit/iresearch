@@ -160,8 +160,8 @@ struct callback_directory : directory_mock {
 };  // callback_directory
 
 struct format_info {
-  constexpr format_info(const char* codec = nullptr,
-                        const char* module = nullptr) noexcept
+  constexpr format_info(const char* codec = "",
+                        const char* module = "") noexcept
     : codec(codec), module(module) {}
 
   const char* codec;

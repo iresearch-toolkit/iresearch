@@ -34,7 +34,7 @@ namespace analysis {
 class segmentation_token_stream final : public analyzer,
                                         private util::noncopyable {
  public:
-  static constexpr string_ref type_name() noexcept { return "segmentation"; }
+  static constexpr std::string_view type_name() noexcept { return "segmentation"; }
   static void init();  // for triggering registration in a static build
 
   struct options_t {
@@ -56,7 +56,7 @@ class segmentation_token_stream final : public analyzer,
   }
   explicit segmentation_token_stream(options_t&& opts);
   virtual bool next() override;
-  virtual bool reset(string_ref data) override;
+  virtual bool reset(std::string_view data) override;
 
  private:
   using attributes = std::tuple<increment, offset, term_attribute>;

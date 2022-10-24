@@ -95,6 +95,10 @@ number of components produced by third parties
     - Copyright: Facebook Inc.
     - License: [MIT license](https://opensource.org/licenses/MIT)
     - How it's used: A library for efficient learning of word representations and sentence classification
+17. Title: function2
+    - Copyright: Denis Blank <denis.blank at outlook dot com>
+    - License: [Boost Software License](external/function2/LICENSE.txt)
+    - How it's used: A library for move-only function and function ref, also drop-in replacement for std::function
 
 ## Third Party Open Source Software licenses
 

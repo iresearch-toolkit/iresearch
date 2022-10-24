@@ -62,7 +62,7 @@ inline int get_posix_madvice(IOAdvice advice) {
 /// @struct mmap_index_input
 /// @brief input stream for memory mapped directory
 //////////////////////////////////////////////////////////////////////////////
-class mmap_index_input : public bytes_ref_input {
+class mmap_index_input : public bytes_view_input {
  public:
   static index_input::ptr open(const file_path_t file,
                                IOAdvice advice) noexcept {
@@ -84,7 +84,7 @@ class mmap_index_input : public bytes_ref_input {
     }
 
     if (0 == handle->size()) {
-      return memory::make_unique<bytes_ref_input>();
+      return memory::make_unique<bytes_view_input>();
     }
 
     const int padvice = get_posix_madvice(advice);
@@ -116,12 +116,12 @@ class mmap_index_input : public bytes_ref_input {
       assert(handle_->size());
 
       const auto* begin = reinterpret_cast<byte_type*>(handle_->addr());
-      bytes_ref_input::reset(begin, handle_->size());
+      bytes_view_input::reset(begin, handle_->size());
     }
   }
 
   mmap_index_input(const mmap_index_input& rhs) noexcept
-    : bytes_ref_input(rhs), handle_(rhs.handle_) {}
+    : bytes_view_input(rhs), handle_(rhs.handle_) {}
 
   mmap_index_input& operator=(const mmap_index_input&) = delete;
 

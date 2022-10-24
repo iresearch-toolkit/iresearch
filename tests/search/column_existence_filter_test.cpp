@@ -31,12 +31,12 @@
 
 namespace {
 
-irs::by_column_existence make_filter(const irs::string_ref& field,
+irs::by_column_existence make_filter(const std::string_view& field,
                                      bool prefix_match) {
   irs::by_column_existence filter;
   *filter.mutable_field() = field;
   if (prefix_match) {
-    filter.mutable_options()->acceptor = [](irs::string_ref, irs::string_ref) {
+    filter.mutable_options()->acceptor = [](std::string_view, std::string_view) {
       return true;
     };
   }
@@ -53,7 +53,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
         explicit mask_field(const std::string& name) : name_(name) {}
 
         bool write(irs::data_output&) const { return true; }
-        irs::string_ref name() const { return name_; }
+        std::string_view name() const { return name_; }
         irs::IndexFeatures index_features() const noexcept {
           return irs::IndexFeatures::NONE;
         }
@@ -520,43 +520,43 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("A", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("A", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("C", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("C", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("D", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("D", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("J", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("J", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("K", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("K", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("L", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("L", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("R", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("R", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("S", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("S", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("T", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("T", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("U", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("U", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("V", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("V", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("!", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("!", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("%", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("%", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_FALSE(it->next());
     }
 
@@ -587,19 +587,19 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("B", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("B", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("U", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("U", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("V", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("V", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("X", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("X", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("Z", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("Z", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_FALSE(it->next());
     }
 
@@ -630,19 +630,19 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("Z", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("Z", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("~", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("~", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("@", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("@", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("#", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("#", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("$", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("$", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_FALSE(it->next());
     }
 
@@ -673,16 +673,16 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("A", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("A", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("J", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("J", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("L", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("L", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_TRUE(it->next());
       ASSERT_EQ(it->value(), values->seek(it->value()));
-      ASSERT_EQ("N", irs::to_string<irs::string_ref>(value->value.c_str()));
+      ASSERT_EQ("N", irs::to_string<std::string_view>(value->value.data()));
       ASSERT_FALSE(it->next());
     }
 
@@ -1435,7 +1435,7 @@ TEST_P(column_existence_long_filter_test_case, mixed_seeks) {
   {
     pattern_doc_generator gen("all_docs", target, max_doc_id, with_fields);
     irs::index_writer::init_options opts;
-    opts.column_info = [target](irs::string_ref name) -> irs::column_info {
+    opts.column_info = [target](std::string_view name) -> irs::column_info {
       // std::string to avoid ambigous comparison operator
       if (std::string(target) == name) {
         return {.compression = irs::type<irs::compression::lz4>::id()(),

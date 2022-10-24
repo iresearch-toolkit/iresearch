@@ -71,14 +71,14 @@ void reorder(std::span<segment_writer::update_context> ctxs,
 }  // namespace
 
 segment_writer::stored_column::stored_column(
-  const hashed_string_ref& name, columnstore_writer& columnstore,
+  const hashed_string_view& name, columnstore_writer& columnstore,
   const column_info_provider_t& column_info,
   std::deque<cached_column>& cached_columns, bool cache)
-  : name(name.c_str(), name.size()), name_hash(name.hash()) {
-  const auto info = column_info(name);
+  : name(name.data(), name.size()), name_hash(name.hash()) {
+  const auto info = column_info(static_cast<const std::string_view&>(name));
 
   columnstore_writer::column_finalizer_f finalizer = [this](bstring&) noexcept {
-    return string_ref{this->name};
+    return std::string_view{this->name};
   };
 
   if (!cache) {
@@ -192,7 +192,7 @@ segment_writer::segment_writer(directory& dir,
     dir_(dir),
     initialized_(false) {}
 
-bool segment_writer::index(const hashed_string_ref& name, const doc_id_t doc,
+bool segment_writer::index(const hashed_string_view& name, const doc_id_t doc,
                            IndexFeatures index_features,
                            const features_t& features, token_stream& tokens) {
   REGISTER_TIMER_DETAILED();
@@ -216,7 +216,7 @@ bool segment_writer::index(const hashed_string_ref& name, const doc_id_t doc,
   return false;
 }
 
-column_output& segment_writer::stream(const hashed_string_ref& name,
+column_output& segment_writer::stream(const hashed_string_view& name,
                                       const doc_id_t doc_id) {
   REGISTER_TIMER_DETAILED();
   assert(column_info_);

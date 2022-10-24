@@ -44,7 +44,7 @@ struct by_range_filter_options {
     return range == rhs.range;
   }
 
-  size_t hash() const noexcept { return std::hash<range_type>()(range); }
+  size_t hash() const noexcept { return range.hash(); }
 };  // by_range_filter_options
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,7 +79,7 @@ struct by_range_options : by_range_filter_options {
 class by_range : public filter_base<by_range_options> {
  public:
   static prepared::ptr prepare(const index_reader& index, const Order& ord,
-                               score_t boost, string_ref field,
+                               score_t boost, std::string_view field,
                                const options_type::range_type& rng,
                                size_t scored_terms_limit);
 

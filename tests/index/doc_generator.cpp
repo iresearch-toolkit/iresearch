@@ -23,18 +23,18 @@
 
 #include "doc_generator.hpp"
 
-#include <sstream>
-#include <iomanip>
-#include <numeric>
-
+#include <rapidjson/istreamwrapper.h>
 #include <rapidjson/rapidjson.h>
 #include <rapidjson/reader.h>
-#include <rapidjson/istreamwrapper.h>
 #include <utf8.h>
 
-#include "index/norm.hpp"
-#include "index/field_data.hpp"
+#include <iomanip>
+#include <numeric>
+#include <sstream>
+
 #include "analysis/token_streams.hpp"
+#include "index/field_data.hpp"
+#include "index/norm.hpp"
 #include "store/store_utils.hpp"
 #include "utils/file_utils.hpp"
 
@@ -222,14 +222,14 @@ particle& particle::operator=(particle&& rhs) noexcept {
   return *this;
 }
 
-bool particle::contains(const irs::string_ref& name) const {
+bool particle::contains(const std::string_view& name) const {
   return fields_.end() != std::find_if(fields_.begin(), fields_.end(),
                                        [&name](const ifield::ptr& fld) {
                                          return name == fld->name();
                                        });
 }
 
-std::vector<ifield::ptr> particle::find(const irs::string_ref& name) const {
+std::vector<ifield::ptr> particle::find(const std::string_view& name) const {
   std::vector<ifield::ptr> fields;
   std::for_each(fields_.begin(), fields_.end(),
                 [&fields, &name](ifield::ptr fld) {
@@ -241,7 +241,7 @@ std::vector<ifield::ptr> particle::find(const irs::string_ref& name) const {
   return fields;
 }
 
-ifield* particle::get(const irs::string_ref& name) const {
+ifield* particle::get(const std::string_view& name) const {
   auto it = std::find_if(
     fields_.begin(), fields_.end(),
     [&name](const ifield::ptr& fld) { return name == fld->name(); });
@@ -249,7 +249,7 @@ ifield* particle::get(const irs::string_ref& name) const {
   return fields_.end() == it ? nullptr : it->get();
 }
 
-void particle::remove(const irs::string_ref& name) {
+void particle::remove(const std::string_view& name) {
   fields_.erase(std::remove_if(
     fields_.begin(), fields_.end(),
     [&name](const ifield::ptr& fld) { return name == fld->name(); }));
@@ -327,7 +327,7 @@ const document* csv_doc_generator::next() {
   }
 
   for (size_t i = 0; stream_->next(); ++i) {
-    doc_.value(i, irs::ref_cast<char>(term->value));
+    doc_.value(i, irs::ViewCast<char>(term->value));
   }
 
   return &doc_;
@@ -404,14 +404,14 @@ class parse_json_handler : irs::util::noncopyable {
 
   bool RawNumber(const char* str, rapidjson::SizeType length, bool /*copy*/) {
     val_.vt = json_doc_generator::ValueType::RAWNUM;
-    val_.str = irs::string_ref(str, length);
+    val_.str = std::string_view(str, length);
     AddField();
     return true;
   }
 
   bool String(const char* str, rapidjson::SizeType length, bool /*copy*/) {
     val_.vt = json_doc_generator::ValueType::STRING;
-    val_.str = irs::string_ref(str, length);
+    val_.str = std::string_view(str, length);
     AddField();
     return true;
   }
@@ -529,7 +529,7 @@ bool token_stream_payload::next() {
     pay_.value = term_->value;
     return true;
   }
-  pay_.value = irs::bytes_ref::NIL;
+  pay_.value = {};
   return false;
 }
 
@@ -543,7 +543,7 @@ string_field::string_field(
 }
 
 string_field::string_field(
-  std::string_view name, irs::string_ref value,
+  std::string_view name, std::string_view value,
   irs::IndexFeatures index_features,
   const std::vector<irs::type_info::type_id>& extra_features)
   : value_(value) {
@@ -554,7 +554,7 @@ string_field::string_field(
 }
 
 // reject too long terms
-void string_field::value(const irs::string_ref& str) {
+void string_field::value(std::string_view str) {
   const auto size_len =
     irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
   const auto max_len = (std::min)(
@@ -576,7 +576,7 @@ irs::token_stream& string_field::get_tokens() const {
   return stream_;
 }
 
-string_ref_field::string_ref_field(
+string_view_field::string_view_field(
   const std::string& name, irs::IndexFeatures extra_index_features,
   const std::vector<irs::type_info::type_id>& extra_features) {
   index_features_ =
@@ -585,8 +585,8 @@ string_ref_field::string_ref_field(
   name_ = name;
 }
 
-string_ref_field::string_ref_field(
-  const std::string& name, const irs::string_ref& value,
+string_view_field::string_view_field(
+  const std::string& name, const std::string_view& value,
   irs::IndexFeatures extra_index_features,
   const std::vector<irs::type_info::type_id>& extra_features)
   : value_(value) {
@@ -597,21 +597,21 @@ string_ref_field::string_ref_field(
 }
 
 // truncate very long terms
-void string_ref_field::value(const irs::string_ref& str) {
+void string_view_field::value(std::string_view str) {
   const auto size_len =
     irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
   const auto max_len = (std::min)(
     str.size(), size_t(irs::byte_block_pool::block_type::SIZE - size_len));
 
-  value_ = irs::string_ref(str.c_str(), max_len);
+  value_ = std::string_view(str.data(), max_len);
 }
 
-bool string_ref_field::write(irs::data_output& out) const {
+bool string_view_field::write(irs::data_output& out) const {
   irs::write_string(out, value_);
   return true;
 }
 
-irs::token_stream& string_ref_field::get_tokens() const {
+irs::token_stream& string_view_field::get_tokens() const {
   REGISTER_TIMER_DETAILED();
 
   stream_.reset(value_);
@@ -686,19 +686,19 @@ void generic_json_field_factory(document& doc, const std::string& name,
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
     field.value(
-      irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
+      irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<binary_field>());
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
     field.value(
-      irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
+      irs::ViewCast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<binary_field>());
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
     field.value(
-      irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
+      irs::ViewCast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<double_field>());
@@ -728,19 +728,19 @@ void payloaded_json_field_factory(document& doc, const std::string& name,
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
     field.value(
-      irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
+      irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<binary_field>());
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
     field.value(
-      irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
+      irs::ViewCast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<binary_field>());
     auto& field = (doc.indexed.end() - 1).as<binary_field>();
     field.name(name);
     field.value(
-      irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false()));
+      irs::ViewCast<irs::byte_type>(irs::boolean_token_stream::value_false()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<double_field>());

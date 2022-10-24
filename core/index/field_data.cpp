@@ -21,27 +21,24 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
+#include "index/field_data.hpp"
 
-#include <set>
 #include <algorithm>
 #include <cassert>
-
-#include "index/comparer.hpp"
-#include "index/field_data.hpp"
-#include "index/field_meta.hpp"
-#include "index/norm.hpp"
-
-#include "formats/formats.hpp"
-
-#include "store/directory.hpp"
-#include "store/store_utils.hpp"
+#include <set>
 
 #include "analysis/analyzer.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
-
+#include "formats/formats.hpp"
+#include "index/comparer.hpp"
+#include "index/field_meta.hpp"
+#include "index/norm.hpp"
+#include "shared.hpp"
+#include "store/directory.hpp"
+#include "store/store_utils.hpp"
 #include "utils/bit_utils.hpp"
+#include "utils/bytes_utils.hpp"
 #include "utils/io_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
@@ -50,7 +47,6 @@
 #include "utils/object_pool.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/bytes_utils.hpp"
 
 namespace {
 
@@ -91,7 +87,7 @@ void write_prox(Stream& out, uint32_t prox, const irs::payload* pay,
   } else {
     irs::vwrite<uint32_t>(out, shift_pack_32(prox, true));
     irs::vwrite<size_t>(out, pay->value.size());
-    out.write(pay->value.c_str(), pay->value.size());
+    out.write(pay->value.data(), pay->value.size());
 
     // saw payloads
     features |= IndexFeatures::PAY;
@@ -152,7 +148,7 @@ class pos_iterator final : public irs::position {
     pos_ = 0;
     value_ = pos_limits::invalid();
     offs_.clear();
-    pay_.value = bytes_ref::NIL;
+    pay_.value = {};
   }
 
   // reset field
@@ -538,8 +534,7 @@ class term_iterator : public irs::term_iterator {
                          const doc_map* docmap) noexcept
     : postings_(&postings), doc_map_(docmap) {}
 
-  void reset(const field_data& field, const bytes_ref*& min,
-             const bytes_ref*& max) {
+  void reset(const field_data& field, bytes_view min, bytes_view max) {
     field_ = &field;
 
     doc_itr_.reset(field);
@@ -552,14 +547,14 @@ class term_iterator : public irs::term_iterator {
     next_ = it_ = postings_->begin();
     end_ = postings_->end();
 
-    max = min = &irs::bytes_ref::NIL;
+    max = min = {};
     if (it_ != end_) {
-      min = &(*it_)->term;
-      max = &(*(end_ - 1))->term;
+      min = (*it_)->term;
+      max = (*(end_ - 1))->term;
     }
   }
 
-  virtual const bytes_ref& value() const noexcept override {
+  virtual bytes_view value() const noexcept override {
     assert(it_ != end_);
     return (*it_)->term;
   }
@@ -663,9 +658,9 @@ class term_reader final : public irs::basic_term_reader,
 
   void reset(const field_data& field) { it_.reset(field, min_, max_); }
 
-  virtual const irs::bytes_ref&(min)() const noexcept override { return *min_; }
+  virtual irs::bytes_view(min)() const noexcept override { return min_; }
 
-  virtual const irs::bytes_ref&(max)() const noexcept override { return *max_; }
+  virtual irs::bytes_view(max)() const noexcept override { return max_; }
 
   virtual const irs::field_meta& meta() const noexcept override {
     return it_.meta();
@@ -681,8 +676,8 @@ class term_reader final : public irs::basic_term_reader,
 
  private:
   mutable detail::term_iterator it_;
-  const irs::bytes_ref* min_{&irs::bytes_ref::NIL};
-  const irs::bytes_ref* max_{&irs::bytes_ref::NIL};
+  const irs::bytes_view min_{};
+  const irs::bytes_view max_{};
 };  // term_reader
 
 }  // namespace detail
@@ -699,7 +694,7 @@ class term_reader final : public irs::basic_term_reader,
     // random access: [0] - new term, [1] - add term
     {&field_data::add_term_random_access, &field_data::new_term_random_access}};
 
-field_data::field_data(string_ref name, const features_t& features,
+field_data::field_data(std::string_view name, const features_t& features,
                        const feature_info_provider_t& feature_columns,
                        std::deque<cached_column>& cached_features,
                        columnstore_writer& columns,
@@ -726,7 +721,7 @@ field_data::field_data(string_ref name, const features_t& features,
       columnstore_writer::column_finalizer_f finalizer =
         [writer = feature_writer.get()](bstring& out) {
           writer->finish(out);
-          return string_ref::NIL;
+          return std::string_view{};
         };
 
       if (random_access) {
@@ -1021,13 +1016,13 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
 
   if (!inc) {
     IR_FRMT_ERROR("field '%s' missing required token_stream attribute '%s'",
-                  meta_.name.c_str(), type<increment>::name().c_str());
+                  meta_.name.c_str(), type<increment>::name().data());
     return false;
   }
 
   if (!term) {
     IR_FRMT_ERROR("field '%s' missing required token_stream attribute '%s'",
-                  meta_.name.c_str(), type<term_attribute>::name().c_str());
+                  meta_.name.c_str(), type<term_attribute>::name().data());
     return false;
   }
 
@@ -1080,7 +1075,7 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
                    "' in field '%s'",
                    term->value.size(), meta_.name.c_str());
       IR_FRMT_TRACE("field '%s' contains too long term '%s'",
-                    meta_.name.c_str(), ref_cast<char>(term->value).c_str());
+                    meta_.name.c_str(), ViewCast<char>(term->value).data());
       continue;
     }
 
@@ -1116,7 +1111,7 @@ fields_data::fields_data(const feature_info_provider_t& feature_info,
     byte_writer_(byte_pool_.begin()),
     int_writer_(int_pool_.begin()) {}
 
-field_data* fields_data::emplace(const hashed_string_ref& name,
+field_data* fields_data::emplace(const hashed_string_view& name,
                                  IndexFeatures index_features,
                                  const features_t& features,
                                  columnstore_writer& columns) {
@@ -1129,8 +1124,9 @@ field_data* fields_data::emplace(const hashed_string_ref& name,
 
   if (!it->second) {
     try {
-      fields_.emplace_back(name, features, *feature_info_, *cached_features_,
-                           columns, byte_writer_, int_writer_, index_features,
+      fields_.emplace_back(static_cast<const std::string_view&>(name), features,
+                           *feature_info_, *cached_features_, columns,
+                           byte_writer_, int_writer_, index_features,
                            (nullptr != comparator_));
     } catch (...) {
       fields_map_.erase(it);

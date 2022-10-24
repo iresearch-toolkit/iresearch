@@ -21,12 +21,13 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
-
-#include "utils/bit_utils.hpp"
 #include "utils/numeric_utils.hpp"
-#include <vector>
+
 #include <algorithm>
+#include <vector>
+
+#include "tests_shared.hpp"
+#include "utils/bit_utils.hpp"
 
 namespace {
 
@@ -1832,26 +1833,26 @@ TEST(numeric_utils_test, int_traits) {
   typedef irs::numeric_utils::numeric_traits<int32_t> traits_t;
   typedef traits_t::integral_t type;
   ASSERT_EQ(std::numeric_limits<type>::min(),
-            traits_t::decode(traits_t::min().c_str()));
+            traits_t::decode(traits_t::min().data()));
   ASSERT_EQ(std::numeric_limits<type>::max(),
-            traits_t::decode(traits_t::max().c_str()));
+            traits_t::decode(traits_t::max().data()));
   ASSERT_EQ(5, traits_t::size());
 
   {
     auto encoded = encode(std::numeric_limits<type>::min());
     ASSERT_EQ(std::numeric_limits<type>::min(),
-              traits_t::decode(encoded.c_str()));
+              traits_t::decode(encoded.data()));
   }
 
   {
     auto encoded = encode(std::numeric_limits<type>::max());
     ASSERT_EQ(std::numeric_limits<type>::max(),
-              traits_t::decode(encoded.c_str()));
+              traits_t::decode(encoded.data()));
   }
 
   {
     auto encoded = encode(INT32_C(0));
-    ASSERT_EQ(INT32_C(0), traits_t::decode(encoded.c_str()));
+    ASSERT_EQ(INT32_C(0), traits_t::decode(encoded.data()));
   }
 }
 
@@ -1859,26 +1860,26 @@ TEST(numeric_utils_test, uint_traits) {
   typedef irs::numeric_utils::numeric_traits<uint32_t> traits_t;
   typedef traits_t::integral_t type;
   ASSERT_EQ(std::numeric_limits<type>::min(),
-            traits_t::decode(traits_t::min().c_str()));
+            traits_t::decode(traits_t::min().data()));
   ASSERT_EQ(std::numeric_limits<type>::max(),
-            traits_t::decode(traits_t::max().c_str()));
+            traits_t::decode(traits_t::max().data()));
   ASSERT_EQ(5, traits_t::size());
 
   {
     auto encoded = encode(std::numeric_limits<type>::min());
     ASSERT_EQ(std::numeric_limits<type>::min(),
-              traits_t::decode(encoded.c_str()));
+              traits_t::decode(encoded.data()));
   }
 
   {
     auto encoded = encode(std::numeric_limits<type>::max());
     ASSERT_EQ(std::numeric_limits<type>::max(),
-              traits_t::decode(encoded.c_str()));
+              traits_t::decode(encoded.data()));
   }
 
   {
     auto encoded = encode(INT32_C(0));
-    ASSERT_EQ(INT32_C(0), traits_t::decode(encoded.c_str()));
+    ASSERT_EQ(INT32_C(0), traits_t::decode(encoded.data()));
   }
 
   {
@@ -1900,26 +1901,26 @@ TEST(numeric_utils_test, long_traits) {
   typedef irs::numeric_utils::numeric_traits<int64_t> traits_t;
   typedef traits_t::integral_t type;
   ASSERT_EQ(std::numeric_limits<type>::min(),
-            traits_t::decode(traits_t::min().c_str()));
+            traits_t::decode(traits_t::min().data()));
   ASSERT_EQ(std::numeric_limits<type>::max(),
-            traits_t::decode(traits_t::max().c_str()));
+            traits_t::decode(traits_t::max().data()));
   ASSERT_EQ(9, traits_t::size());
 
   {
     auto encoded = encode(std::numeric_limits<type>::min());
     ASSERT_EQ(std::numeric_limits<type>::min(),
-              traits_t::decode(encoded.c_str()));
+              traits_t::decode(encoded.data()));
   }
 
   {
     auto encoded = encode(std::numeric_limits<type>::max());
     ASSERT_EQ(std::numeric_limits<type>::max(),
-              traits_t::decode(encoded.c_str()));
+              traits_t::decode(encoded.data()));
   }
 
   {
     auto encoded = encode(INT64_C(0));
-    ASSERT_EQ(INT64_C(0), traits_t::decode(encoded.c_str()));
+    ASSERT_EQ(INT64_C(0), traits_t::decode(encoded.data()));
   }
 }
 
@@ -1927,26 +1928,26 @@ TEST(numeric_utils_test, ulong_traits) {
   typedef irs::numeric_utils::numeric_traits<uint64_t> traits_t;
   typedef traits_t::integral_t type;
   ASSERT_EQ(std::numeric_limits<type>::min(),
-            traits_t::decode(traits_t::min().c_str()));
+            traits_t::decode(traits_t::min().data()));
   ASSERT_EQ(std::numeric_limits<type>::max(),
-            traits_t::decode(traits_t::max().c_str()));
+            traits_t::decode(traits_t::max().data()));
   ASSERT_EQ(9, traits_t::size());
 
   {
     auto encoded = encode(std::numeric_limits<type>::min());
     ASSERT_EQ(std::numeric_limits<type>::min(),
-              traits_t::decode(encoded.c_str()));
+              traits_t::decode(encoded.data()));
   }
 
   {
     auto encoded = encode(std::numeric_limits<type>::max());
     ASSERT_EQ(std::numeric_limits<type>::max(),
-              traits_t::decode(encoded.c_str()));
+              traits_t::decode(encoded.data()));
   }
 
   {
     auto encoded = encode(INT64_C(0));
-    ASSERT_EQ(INT64_C(0), traits_t::decode(encoded.c_str()));
+    ASSERT_EQ(INT64_C(0), traits_t::decode(encoded.data()));
   }
 
   {
@@ -1968,38 +1969,38 @@ TEST(numeric_utils_test, float_t_traits) {
   typedef float_t type;
   typedef irs::numeric_utils::numeric_traits<type> traits_t;
   ASSERT_EQ(std::numeric_limits<type>::min(),
-            traits_t::decode(traits_t::min().c_str()));
+            traits_t::decode(traits_t::min().data()));
   ASSERT_EQ(std::numeric_limits<type>::max(),
-            traits_t::decode(traits_t::max().c_str()));
+            traits_t::decode(traits_t::max().data()));
   ASSERT_EQ(std::numeric_limits<type>::infinity(),
-            traits_t::decode(traits_t::inf().c_str()));
+            traits_t::decode(traits_t::inf().data()));
   ASSERT_EQ(-1 * std::numeric_limits<type>::infinity(),
-            traits_t::decode(traits_t::ninf().c_str()));
+            traits_t::decode(traits_t::ninf().data()));
   ASSERT_EQ(5, traits_t::size());
 
   {
     auto encoded = encode(std::numeric_limits<type>::min());
     ASSERT_EQ(std::numeric_limits<type>::min(),
-              traits_t::decode(encoded.c_str()));
+              traits_t::decode(encoded.data()));
   }
   {
     auto encoded = encode(std::numeric_limits<type>::max());
     ASSERT_EQ(std::numeric_limits<type>::max(),
-              traits_t::decode(encoded.c_str()));
+              traits_t::decode(encoded.data()));
   }
   {
     auto encoded = encode(std::numeric_limits<type>::infinity());
     ASSERT_EQ(std::numeric_limits<type>::infinity(),
-              traits_t::decode(encoded.c_str()));
+              traits_t::decode(encoded.data()));
   }
   {
     auto encoded = encode(-1 * std::numeric_limits<type>::infinity());
     ASSERT_EQ(-1 * std::numeric_limits<type>::infinity(),
-              traits_t::decode(encoded.c_str()));
+              traits_t::decode(encoded.data()));
   }
   {
     auto encoded = encode((float_t)0.f);
-    ASSERT_EQ(0.f, traits_t::decode(encoded.c_str()));
+    ASSERT_EQ(0.f, traits_t::decode(encoded.data()));
   }
 }
 
@@ -2007,38 +2008,38 @@ TEST(numeric_utils_test, double_t_traits) {
   typedef double_t type;
   typedef irs::numeric_utils::numeric_traits<type> traits_t;
   ASSERT_EQ(std::numeric_limits<type>::min(),
-            traits_t::decode(traits_t::min().c_str()));
+            traits_t::decode(traits_t::min().data()));
   ASSERT_EQ(std::numeric_limits<type>::max(),
-            traits_t::decode(traits_t::max().c_str()));
+            traits_t::decode(traits_t::max().data()));
   ASSERT_EQ(std::numeric_limits<type>::infinity(),
-            traits_t::decode(traits_t::inf().c_str()));
+            traits_t::decode(traits_t::inf().data()));
   ASSERT_EQ(-1 * std::numeric_limits<type>::infinity(),
-            traits_t::decode(traits_t::ninf().c_str()));
+            traits_t::decode(traits_t::ninf().data()));
   ASSERT_EQ(9, traits_t::size());
 
   {
     auto encoded = encode(std::numeric_limits<type>::min());
     ASSERT_EQ(std::numeric_limits<type>::min(),
-              traits_t::decode(encoded.c_str()));
+              traits_t::decode(encoded.data()));
   }
   {
     auto encoded = encode(std::numeric_limits<type>::max());
     ASSERT_EQ(std::numeric_limits<type>::max(),
-              traits_t::decode(encoded.c_str()));
+              traits_t::decode(encoded.data()));
   }
   {
     auto encoded = encode(std::numeric_limits<type>::infinity());
     ASSERT_EQ(std::numeric_limits<type>::infinity(),
-              traits_t::decode(encoded.c_str()));
+              traits_t::decode(encoded.data()));
   }
   {
     auto encoded = encode(-1 * std::numeric_limits<type>::infinity());
     ASSERT_EQ(-1 * std::numeric_limits<type>::infinity(),
-              traits_t::decode(encoded.c_str()));
+              traits_t::decode(encoded.data()));
   }
   {
     auto encoded = encode((double_t)0.);
-    ASSERT_EQ(0., traits_t::decode(encoded.c_str()));
+    ASSERT_EQ(0., traits_t::decode(encoded.data()));
   }
 }
 

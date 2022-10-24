@@ -23,8 +23,8 @@
 #ifndef IRESEARCH_NORM_H
 #define IRESEARCH_NORM_H
 
-#include "shared.hpp"
 #include "analysis/token_attributes.hpp"
+#include "shared.hpp"
 #include "store/store_utils.hpp"
 #include "utils/lz4compression.hpp"
 
@@ -34,7 +34,7 @@ struct NormReaderContext {
   bool Reset(const sub_reader& segment, field_id column, const document& doc);
   bool Valid() const noexcept { return doc != nullptr; }
 
-  bytes_ref header;
+  bytes_view header;
   doc_iterator::ptr it;
   const irs::payload* payload{};
   const document* doc{};
@@ -48,11 +48,11 @@ class Norm : public attribute {
   using Context = NormReaderContext;
 
   // DO NOT CHANGE NAME
-  static constexpr string_ref type_name() noexcept { return "norm"; }
+  static constexpr std::string_view type_name() noexcept { return "norm"; }
 
   FORCE_INLINE static constexpr float_t DEFAULT() noexcept { return 1.f; }
 
-  static feature_writer::ptr MakeWriter(std::span<const bytes_ref> payload);
+  static feature_writer::ptr MakeWriter(std::span<const bytes_view> payload);
 
   static auto MakeReader(Context&& ctx) {
     assert(ctx.it);
@@ -63,7 +63,7 @@ class Norm : public attribute {
       if (const auto doc = ctx.doc->value; doc != ctx.it->seek(doc)) {
         return Norm::DEFAULT();
       }
-      bytes_ref_input in{ctx.payload->value};
+      bytes_view_input in{ctx.payload->value};
       return read_zvfloat(in);
     };
   }
@@ -116,7 +116,7 @@ class Norm2Header final {
   size_t NumBytes() const noexcept { return static_cast<size_t>(encoding_); }
 
   static void Write(const Norm2Header& hdr, bstring& out);
-  static std::optional<Norm2Header> Read(irs::bytes_ref payload) noexcept;
+  static std::optional<Norm2Header> Read(irs::bytes_view payload) noexcept;
 
  private:
   uint32_t min_{std::numeric_limits<uint32_t>::max()};
@@ -141,7 +141,7 @@ class Norm2Writer final : public feature_writer {
     WriteValue(stream, stats.len);
   }
 
-  virtual void write(data_output& out, bytes_ref payload) {
+  virtual void write(data_output& out, bytes_view payload) {
     uint32_t value;
 
     switch (payload.size()) {
@@ -149,11 +149,11 @@ class Norm2Writer final : public feature_writer {
         value = payload.front();
       } break;
       case sizeof(uint16_t): {
-        auto* p = payload.c_str();
+        auto* p = payload.data();
         value = irs::read<uint16_t>(p);
       } break;
       case sizeof(uint32_t): {
-        auto* p = payload.c_str();
+        auto* p = payload.data();
         value = irs::read<uint32_t>(p);
       } break;
       default:
@@ -200,11 +200,11 @@ class Norm2 : public attribute {
   using Context = Norm2ReaderContext;
 
   // DO NOT CHANGE NAME
-  static constexpr string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "iresearch::norm2";
   }
 
-  static feature_writer::ptr MakeWriter(std::span<const bytes_ref> payload);
+  static feature_writer::ptr MakeWriter(std::span<const bytes_view> payload);
 
   template<typename T>
   static auto MakeReader(Context&& ctx) {
@@ -219,7 +219,7 @@ class Norm2 : public attribute {
       if (const doc_id_t doc = ctx.doc->value;
           IRS_LIKELY(doc == ctx.it->seek(doc))) {
         assert(sizeof(T) == ctx.payload->value.size());
-        const auto* value = ctx.payload->value.c_str();
+        const auto* value = ctx.payload->value.data();
 
         if constexpr (std::is_same_v<T, irs::byte_type>) {
           return *value;

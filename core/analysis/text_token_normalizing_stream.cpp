@@ -33,18 +33,17 @@
 #pragma warning(default : 4512)
 #endif
 
+#include <frozen/unordered_map.h>
 #include <unicode/translit.h>  // for icu::Transliterator
 
-#include <frozen/unordered_map.h>
+#include <string_view>
 
-#include "velocypack/Slice.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Parser.h"
-#include "velocypack/velocypack-aliases.h"
 #include "utils/hash_utils.hpp"
 #include "utils/vpack_utils.hpp"
-
-#include <string_view>
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#include "velocypack/Slice.h"
+#include "velocypack/velocypack-aliases.h"
 
 namespace iresearch {
 namespace analysis {
@@ -76,7 +75,7 @@ constexpr std::string_view CASE_CONVERT_PARAM_NAME{"case"};
 constexpr std::string_view ACCENT_PARAM_NAME{"accent"};
 
 constexpr frozen::unordered_map<
-  string_ref, analysis::normalizing_token_stream::case_convert_t, 3>
+  std::string_view, analysis::normalizing_token_stream::case_convert_t, 3>
   CASE_CONVERT_MAP = {
     {"lower", analysis::normalizing_token_stream::LOWER},
     {"none", analysis::normalizing_token_stream::NONE},
@@ -143,8 +142,8 @@ bool parse_vpack_options(
           return false;
         }
 
-        auto itr =
-          CASE_CONVERT_MAP.find(get_string<string_ref>(case_convert_slice));
+        auto itr = CASE_CONVERT_MAP.find(
+          get_string<std::string_view>(case_convert_slice));
 
         if (itr == CASE_CONVERT_MAP.end()) {
           IR_FRMT_WARN(
@@ -208,8 +207,8 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-analysis::analyzer::ptr make_vpack(string_ref args) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+analysis::analyzer::ptr make_vpack(std::string_view args) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   return make_vpack(slice);
 }
 ///////////////////////////////////////////////////////////////////////////////
@@ -256,8 +255,8 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   }
 }
 
-bool normalize_vpack_config(string_ref args, std::string& config) {
-  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
+bool normalize_vpack_config(std::string_view args, std::string& config) {
+  VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
     config.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
@@ -266,14 +265,14 @@ bool normalize_vpack_config(string_ref args, std::string& config) {
   return false;
 }
 
-analysis::analyzer::ptr make_json(string_ref args) {
+analysis::analyzer::ptr make_json(std::string_view args) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR(
         "Null arguments while constructing text_token_normalizing_stream");
       return nullptr;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
@@ -288,14 +287,14 @@ analysis::analyzer::ptr make_json(string_ref args) {
   return nullptr;
 }
 
-bool normalize_json_config(string_ref args, std::string& definition) {
+bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
-    if (args.null()) {
+    if (IsNull(args)) {
       IR_FRMT_ERROR(
         "Null arguments while normalizing text_token_normalizing_stream");
       return false;
     }
-    auto vpack = VPackParser::fromJson(args.c_str(), args.size());
+    auto vpack = VPackParser::fromJson(args.data(), args.size());
     VPackBuilder builder;
     if (normalize_vpack_config(vpack->slice(), &builder)) {
       definition = builder.toString();
@@ -350,7 +349,7 @@ bool normalizing_token_stream::next() {
   return true;
 }
 
-bool normalizing_token_stream::reset(string_ref data) {
+bool normalizing_token_stream::reset(std::string_view data) {
   auto err =
     UErrorCode::U_ZERO_ERROR;  // a value that passes the U_SUCCESS() test
 
@@ -390,7 +389,7 @@ bool normalizing_token_stream::reset(string_ref data) {
   }
 
   state_->data = icu::UnicodeString::fromUTF8(
-    icu::StringPiece{data.c_str(), static_cast<int32_t>(data.size())});
+    icu::StringPiece{data.data(), static_cast<int32_t>(data.size())});
 
   // normalize unicode
   state_->normalizer->normalize(state_->data, state_->token, err);
@@ -424,7 +423,7 @@ bool normalizing_token_stream::reset(string_ref data) {
   // use the normalized value
   static_assert(sizeof(byte_type) == sizeof(char));
   std::get<term_attribute>(attrs_).value =
-    irs::ref_cast<byte_type>(state_->term_buf);
+    irs::ViewCast<byte_type>(std::string_view{state_->term_buf});
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
   offset.end = static_cast<uint32_t>(data.size());

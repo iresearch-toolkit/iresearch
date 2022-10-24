@@ -34,7 +34,7 @@ class analyzer : public token_stream {
 
   explicit analyzer(const type_info& type) noexcept;
 
-  virtual bool reset(string_ref data) = 0;
+  virtual bool reset(std::string_view data) = 0;
 
   constexpr type_info::type_id type() const noexcept { return type_; }
 
@@ -44,7 +44,7 @@ class analyzer : public token_stream {
 
 class empty_analyzer final : public analyzer {
  public:
-  static constexpr string_ref type_name() noexcept { return "empty_analyzer"; }
+  static constexpr std::string_view type_name() noexcept { return "empty_analyzer"; }
 
   empty_analyzer() noexcept;
 
@@ -54,7 +54,7 @@ class empty_analyzer final : public analyzer {
 
   virtual bool next() override { return false; }
 
-  virtual bool reset(string_ref) override { return false; }
+  virtual bool reset(std::string_view) override { return false; }
 };
 
 }  // namespace iresearch::analysis

@@ -79,8 +79,8 @@ int dump(const std::string& path, const std::string& dir_type,
       auto& meta = field.meta();
       stream << "Field name=" << meta.name
              << " indexFeatures=" << static_cast<uint32_t>(meta.index_features)
-             << " minTerm=" << irs::ref_cast<char>(field.min())
-             << " maxTerm=" << irs::ref_cast<char>(field.max())
+             << " minTerm=" << irs::ViewCast<char>(field.min())
+             << " maxTerm=" << irs::ViewCast<char>(field.max())
              << " termsCount=" << field.size()
              << " docsCount=" << field.docs_count() << std::endl;
 
@@ -89,7 +89,7 @@ int dump(const std::string& path, const std::string& dir_type,
       stream << "Values" << std::endl;
       for (; term->next();) {
         term->read();
-        stream << "Term value=" << irs::ref_cast<char>(term->value()) << ""
+        stream << "Term value=" << irs::ViewCast<char>(term->value()) << ""
                << " docsCount=" << term_meta->docs_count << std::endl;
       }
     }
@@ -110,7 +110,7 @@ int dump(const std::string& path, const std::string& dir_type,
 
       while (it->next()) {
         stream << "doc=" << doc
-               << " value=" << irs::ref_cast<char>(payload->value) << '\n';
+               << " value=" << irs::ViewCast<char>(payload->value) << '\n';
       }
     }
     ++i;

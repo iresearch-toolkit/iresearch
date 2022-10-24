@@ -202,7 +202,7 @@ void Format15TestCase::PostingsWandSeek(
 
     auto out = dir->create("attributes");
     ASSERT_FALSE(!out);
-    irs::write_string(*out, irs::string_ref("file_header"));
+    irs::write_string(*out, std::string_view("file_header"));
 
     writer->prepare(*out, state);
     writer->begin_field(features);

@@ -33,14 +33,15 @@
 #ifdef _WIN32
 #include <Shlwapi.h>
 #include <io.h>  // for _get_osfhandle
+
 #include "windows.h"
 #pragma comment(lib, "Shlwapi.lib")
 
 #else
 
-#include <sys/file.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <sys/file.h>
 #include <unistd.h>
 
 #endif  // _WIN32
@@ -48,8 +49,8 @@
 #include "error/error.hpp"
 #include "utils/log.hpp"
 #include "utils/memory.hpp"
-#include "utils/process_utils.hpp"
 #include "utils/network_utils.hpp"
+#include "utils/process_utils.hpp"
 #include "utils/string.hpp"
 
 namespace {
@@ -968,7 +969,7 @@ path_parts_t path_parts(const file_path_t path) noexcept {
   }
 
   bool have_extension = false;
-  path_parts_t::ref_t dirname = path_parts_t::ref_t::NIL;
+  path_parts_t::ref_t dirname = path_parts_t::ref_t{};
   size_t stem_end = 0;
 
   for (size_t i = 0;; ++i) {
@@ -1004,7 +1005,7 @@ path_parts_t path_parts(const file_path_t path) noexcept {
           stem_end = i;
         }
 
-        if (dirname.null()) {
+        if (IsNull(dirname)) {
           result.basename = path_parts_t::ref_t(path, i);
           result.stem = path_parts_t::ref_t(path, stem_end);
         } else {

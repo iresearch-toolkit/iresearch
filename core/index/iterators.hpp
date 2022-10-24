@@ -76,7 +76,7 @@ struct field_iterator : iterator<const term_reader&> {
 
   // Position iterator at a specified target.
   // Return if the target is found, false otherwise.
-  virtual bool seek(string_ref target) = 0;
+  virtual bool seek(std::string_view target) = 0;
 };
 
 struct column_reader;
@@ -90,11 +90,11 @@ struct column_iterator : iterator<const column_reader&> {
 
   // Position iterator at a specified target.
   // Return if the target is found, false otherwise.
-  virtual bool seek(string_ref name) = 0;
+  virtual bool seek(std::string_view name) = 0;
 };
 
 // An iterator providing sequential access to term dictionary
-struct term_iterator : iterator<const bytes_ref&>, public attribute_provider {
+struct term_iterator : iterator<bytes_view>, public attribute_provider {
   using ptr = memory::managed_ptr<term_iterator>;
 
   // Return an empty iterator
@@ -132,11 +132,11 @@ struct seek_term_iterator : term_iterator {
 
   // Position iterator at a value that is not less than the specified
   // one. Returns seek result.
-  virtual SeekResult seek_ge(const bytes_ref& value) = 0;
+  virtual SeekResult seek_ge(bytes_view value) = 0;
 
   // Position iterator at a value that is not less than the specified
   // one. Returns `true` on success, `false` otherwise.
-  virtual bool seek(const bytes_ref& value) = 0;
+  virtual bool seek(bytes_view value) = 0;
 
   // Returns seek cookie of the current term value.
   [[nodiscard]] virtual seek_cookie::ptr cookie() const = 0;
@@ -157,7 +157,7 @@ bool seek(Iterator& it, const T& target, Less less = Less()) {
 // Returns true in case if iterator has been succesfully positioned,
 // false otherwise.
 template<bool Include>
-bool seek_min(seek_term_iterator& it, const bytes_ref& min) {
+bool seek_min(seek_term_iterator& it, bytes_view min) {
   const auto res = it.seek_ge(min);
 
   return SeekResult::END != res &&

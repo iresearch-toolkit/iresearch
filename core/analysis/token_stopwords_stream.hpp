@@ -43,7 +43,7 @@ class token_stopwords_stream final : public analyzer,
  public:
   using stopwords_set = absl::flat_hash_set<std::string>;
 
-  static constexpr string_ref type_name() noexcept { return "stopwords"; }
+  static constexpr std::string_view type_name() noexcept { return "stopwords"; }
 
   static void init();  // for trigering registration in a static build
 
@@ -53,7 +53,7 @@ class token_stopwords_stream final : public analyzer,
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() override;
-  virtual bool reset(string_ref data) override;
+  virtual bool reset(std::string_view data) override;
 
  private:
   using attributes =

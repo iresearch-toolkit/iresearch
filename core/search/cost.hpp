@@ -36,7 +36,7 @@ class cost final : public attribute {
   using cost_t = uint64_t;
   using cost_f = std::function<cost_t()>;
 
-  static constexpr string_ref type_name() noexcept { return "iresearch::cost"; }
+  static constexpr std::string_view type_name() noexcept { return "iresearch::cost"; }
 
   static constexpr cost_t kMax = std::numeric_limits<cost_t>::max();
 

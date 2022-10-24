@@ -91,7 +91,7 @@ struct compressor {
   virtual ~compressor() = default;
 
   /// @note caller is allowed to modify data pointed by 'in' up to 'size'
-  virtual bytes_ref compress(byte_type* in, size_t size, bstring& buf) = 0;
+  virtual bytes_view compress(byte_type* in, size_t size, bstring& buf) = 0;
 
   /// @brief flush arbitrary payload relevant to compression
   virtual void flush(data_output& /*out*/) { /*NOOP*/
@@ -107,7 +107,7 @@ struct decompressor {
   virtual ~decompressor() = default;
 
   /// @note caller is allowed to modify data pointed by 'dst' up to 'dst_size'
-  virtual bytes_ref decompress(const byte_type* src, size_t src_size,
+  virtual bytes_view decompress(const byte_type* src, size_t src_size,
                                byte_type* dst, size_t dst_size) = 0;
 
   virtual bool prepare(data_input& /*in*/) {
@@ -140,12 +140,12 @@ class compression_registrar {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether an comopression with the specified name is registered
 ////////////////////////////////////////////////////////////////////////////////
-bool exists(string_ref name, bool load_library = true);
+bool exists(std::string_view name, bool load_library = true);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a compressor by name, or nullptr if not found
 ////////////////////////////////////////////////////////////////////////////////
-compressor::ptr get_compressor(string_ref name, const options& opts,
+compressor::ptr get_compressor(std::string_view name, const options& opts,
                                bool load_library = true) noexcept;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +160,7 @@ inline compressor::ptr get_compressor(const type_info& type,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a decompressor by name, or nullptr if not found
 ////////////////////////////////////////////////////////////////////////////////
-decompressor::ptr get_decompressor(string_ref name,
+decompressor::ptr get_decompressor(std::string_view name,
                                    bool load_library = true) noexcept;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -187,14 +187,14 @@ void load_all(std::string_view path);
 /// @brief visit all loaded compressions, terminate early if visitor returns
 /// false
 ////////////////////////////////////////////////////////////////////////////////
-bool visit(const std::function<bool(string_ref)>& visitor);
+bool visit(const std::function<bool(std::string_view)>& visitor);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class raw
 /// @brief no compression
 ////////////////////////////////////////////////////////////////////////////////
 struct none {
-  static constexpr string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "iresearch::compression::none";
   }
 

@@ -22,16 +22,16 @@
 
 #ifndef IRESEARCH_DLL
 
-#include "tests_shared.hpp"
+// clang-format off
 
-#include <fstream>
+#include "tests_shared.hpp"
 
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "store/mmap_directory.hpp"
 #include "store/memory_directory.hpp"
-#include "utils/fstext/fst_string_weight.h"
 #include "utils/fstext/fst_string_ref_weight.h"
+#include "utils/fstext/fst_string_weight.h"
 #include "utils/fstext/fst_builder.hpp"
 #include "utils/fstext/fst_matcher.hpp"
 #include "utils/fstext/immutable_fst.h"
@@ -39,8 +39,12 @@
 #include "utils/fstext/fst_decl.hpp"
 #include "utils/numeric_utils.hpp"
 
-#include <fst/vector-fst.h>
 #include <fst/matcher.h>
+#include <fst/vector-fst.h>
+
+#include <fstream>
+
+// clang-format on
 
 namespace {
 
@@ -149,8 +153,8 @@ void assert_fst_read_write(const std::string& resource) {
     ASSERT_EQ(fst.NumArcs(s), read_fst->NumArcs(s));
     ASSERT_EQ(0, read_fst->NumInputEpsilons(s));
     ASSERT_EQ(0, read_fst->NumOutputEpsilons(s));
-    ASSERT_EQ(static_cast<irs::bytes_ref>(fst.Final(s)),
-              static_cast<irs::bytes_ref>(read_fst->Final(s)));
+    ASSERT_EQ(static_cast<irs::bytes_view>(fst.Final(s)),
+              static_cast<irs::bytes_view>(read_fst->Final(s)));
 
     fst::ArcIterator<decltype(fst)> expected_arcs(fst, s);
     fst::ArcIterator<irs::immutable_byte_fst> actual_arcs(*read_fst, s);
@@ -159,8 +163,8 @@ void assert_fst_read_write(const std::string& resource) {
       auto& actual_arc = actual_arcs.Value();
       ASSERT_EQ(expected_arc.ilabel, actual_arc.ilabel);
       ASSERT_EQ(expected_arc.nextstate, actual_arc.nextstate);
-      ASSERT_EQ(static_cast<irs::bytes_ref>(expected_arc.weight),
-                static_cast<irs::bytes_ref>(actual_arc.weight));
+      ASSERT_EQ(static_cast<irs::bytes_view>(expected_arc.weight),
+                static_cast<irs::bytes_view>(actual_arc.weight));
     }
   }
 
@@ -191,7 +195,7 @@ void assert_fst_read_write(const std::string& resource) {
 
       actual_weight = fst::Times(actual_weight, fst.Final(state));
 
-      ASSERT_EQ(irs::bytes_ref(actual_weight), irs::bytes_ref(data.second));
+      ASSERT_EQ(irs::bytes_view(actual_weight), irs::bytes_view(data.second));
     }
   }
 }
@@ -268,7 +272,7 @@ TEST(fst_builder_test, build_fst) {
 
       actual_weight = fst::Times(actual_weight, fst.Final(state));
 
-      ASSERT_EQ(irs::bytes_ref(actual_weight), irs::bytes_ref(data.second));
+      ASSERT_EQ(irs::bytes_view(actual_weight), irs::bytes_view(data.second));
     }
   }
 }

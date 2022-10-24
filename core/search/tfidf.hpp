@@ -31,7 +31,7 @@ class tfidf_sort : public sort {
  public:
   using score_t = float_t;
 
-  static constexpr string_ref type_name() noexcept { return "tfidf"; }
+  static constexpr std::string_view type_name() noexcept { return "tfidf"; }
 
   static constexpr bool WITH_NORMS() noexcept { return false; }
 

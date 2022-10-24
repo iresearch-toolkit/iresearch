@@ -136,7 +136,7 @@ struct sub_reader : index_reader {
   virtual field_iterator::ptr fields() const = 0;
 
   // Returns corresponding term_reader by the specified field name.
-  virtual const term_reader* field(string_ref field) const = 0;
+  virtual const term_reader* field(std::string_view field) const = 0;
 
   // Columnstore
 
@@ -144,13 +144,13 @@ struct sub_reader : index_reader {
 
   virtual const irs::column_reader* column(field_id field) const = 0;
 
-  virtual const irs::column_reader* column(string_ref field) const = 0;
+  virtual const irs::column_reader* column(std::string_view field) const = 0;
 
   virtual const irs::column_reader* sort() const = 0;
 };  // sub_reader
 
 template<typename Visitor, typename FilterVisitor>
-void visit(const index_reader& index, string_ref field,
+void visit(const index_reader& index, std::string_view field,
            const FilterVisitor& field_visitor, Visitor& visitor) {
   for (auto& segment : index) {
     const auto* reader = segment.field(field);

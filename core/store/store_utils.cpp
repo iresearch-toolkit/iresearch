@@ -113,17 +113,17 @@ double_t read_zvdouble(data_input& in) {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                   bytes_ref_input implementation
+// --SECTION--                                   bytes_view_input implementation
 // ----------------------------------------------------------------------------
 
-size_t bytes_ref_input::read_bytes(byte_type* b, size_t size) noexcept {
+size_t bytes_view_input::read_bytes(byte_type* b, size_t size) noexcept {
   size = std::min(size, size_t(std::distance(pos_, data_.end())));
   std::memcpy(b, pos_, sizeof(byte_type) * size);
   pos_ += size;
   return size;
 }
 
-size_t bytes_ref_input::read_bytes(size_t offset, byte_type* b,
+size_t bytes_view_input::read_bytes(size_t offset, byte_type* b,
                                    size_t size) noexcept {
   if (offset < data_.size()) {
     size = std::min(size, size_t(data_.size() - offset));
@@ -137,7 +137,7 @@ size_t bytes_ref_input::read_bytes(size_t offset, byte_type* b,
 }
 
 // append to buf
-void bytes_ref_input::read_bytes(bstring& buf, size_t size) {
+void bytes_view_input::read_bytes(bstring& buf, size_t size) {
   auto used = buf.size();
 
   buf.resize(used + size);
@@ -151,7 +151,7 @@ void bytes_ref_input::read_bytes(bstring& buf, size_t size) {
 #endif  // IRESEARCH_DEBUG
 }
 
-int64_t bytes_ref_input::checksum(size_t offset) const {
+int64_t bytes_view_input::checksum(size_t offset) const {
   crc32c crc;
 
   crc.process_block(pos_, std::min(pos_ + offset, data_.end()));

@@ -23,6 +23,7 @@
 #ifndef IRESEARCH_BIT_UTILS_H
 #define IRESEARCH_BIT_UTILS_H
 
+#include <cstring>
 #include <numeric>
 
 #ifdef __has_include

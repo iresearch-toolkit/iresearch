@@ -41,9 +41,9 @@ namespace {
 class pipeline_test_analyzer : public irs::analysis::analyzer,
                                private irs::util::noncopyable {
  public:
-  pipeline_test_analyzer(bool has_offset, irs::bytes_ref payload)
+  pipeline_test_analyzer(bool has_offset, irs::bytes_view payload)
     : irs::analysis::analyzer{irs::type<pipeline_test_analyzer>::get()} {
-    if (!payload.null()) {
+    if (!irs::IsNull(payload)) {
       std::get<irs::attribute_ptr<irs::payload>>(attrs_) = &payload_;
     }
     if (has_offset) {
@@ -62,10 +62,10 @@ class pipeline_test_analyzer : public irs::analysis::analyzer,
       static_cast<uint32_t>(std::get<irs::term_attribute>(attrs_).value.size());
     return true;
   }
-  virtual bool reset(irs::string_ref data) override {
+  virtual bool reset(std::string_view data) override {
     term_emitted = false;
     std::get<irs::term_attribute>(attrs_).value =
-      irs::ref_cast<irs::byte_type>(data);
+      irs::ViewCast<irs::byte_type>(data);
     return true;
   }
   virtual irs::attribute* get_mutable(
@@ -90,7 +90,7 @@ class pipeline_test_analyzer2 : public irs::analysis::analyzer,
   pipeline_test_analyzer2(std::vector<std::pair<uint32_t, uint32_t>>&& offsets,
                           std::vector<uint32_t>&& increments,
                           std::vector<bool>&& nexts, std::vector<bool>&& resets,
-                          std::vector<irs::bytes_ref>&& terms)
+                          std::vector<irs::bytes_view>&& terms)
     : irs::analysis::analyzer{irs::type<pipeline_test_analyzer>::get()},
       offsets_(offsets),
       increments_(increments),
@@ -128,14 +128,14 @@ class pipeline_test_analyzer2 : public irs::analysis::analyzer,
             current_term_ != terms_.end()) {
           term.value = *(current_term_++);
         } else {
-          term.value = irs::bytes_ref::NIL;
+          term.value = irs::bytes_view{};
         }
       }
       return next_val;
     }
     return false;
   }
-  virtual bool reset(irs::string_ref /*data*/) override {
+  virtual bool reset(std::string_view /*data*/) override {
     if (current_reset_ != resets_.end()) {
       return *(current_reset_++);
     }
@@ -158,13 +158,13 @@ class pipeline_test_analyzer2 : public irs::analysis::analyzer,
   std::vector<bool>::const_iterator current_next_;
   std::vector<bool> resets_;
   std::vector<bool>::const_iterator current_reset_;
-  std::vector<irs::bytes_ref> terms_;
-  std::vector<irs::bytes_ref>::const_iterator current_term_;
+  std::vector<irs::bytes_view> terms_;
+  std::vector<irs::bytes_view>::const_iterator current_term_;
   attributes attrs_;
 };
 
 struct analyzer_token {
-  irs::string_ref value;
+  std::string_view value;
   size_t start;
   size_t end;
   uint32_t pos;
@@ -186,12 +186,12 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data,
   auto expected_token = expected_tokens.begin();
   while (pipe->next()) {
     auto term_value =
-      std::string(irs::ref_cast<char>(term->value).c_str(), term->value.size());
+      std::string(irs::ViewCast<char>(term->value).data(), term->value.size());
     SCOPED_TRACE(testing::Message("Term:") << term_value);
     auto old_pos = pos;
     pos += inc->value;
     ASSERT_NE(expected_token, expected_tokens.end());
-    ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value),
+    ASSERT_EQ(irs::ViewCast<irs::byte_type>(expected_token->value),
               term->value);
     ASSERT_EQ(expected_token->start, offset->start);
     ASSERT_EQ(expected_token->end, offset->end);
@@ -462,14 +462,14 @@ TEST(pipeline_token_stream_test, hold_position_tokenizer) {
 
 TEST(pipeline_token_stream_test, hold_position_tokenizer2) {
   std::string data = "A";
-  irs::bytes_ref term = irs::ref_cast<irs::byte_type>(irs::string_ref(data));
+  irs::bytes_view term = irs::ViewCast<irs::byte_type>(std::string_view(data));
   irs::analysis::analyzer::ptr tokenizer1;
   {
     std::vector<std::pair<uint32_t, uint32_t>> offsets{{0, 5}, {0, 5}};
     std::vector<uint32_t> increments{1, 0};
     std::vector<bool> nexts{true, true};
     std::vector<bool> resets{true};
-    std::vector<irs::bytes_ref> terms{term};
+    std::vector<irs::bytes_view> terms{term};
     tokenizer1.reset(new pipeline_test_analyzer2(
       std::move(offsets), std::move(increments), std::move(nexts),
       std::move(resets), std::move(terms)));
@@ -481,7 +481,7 @@ TEST(pipeline_token_stream_test, hold_position_tokenizer2) {
     std::vector<uint32_t> increments{1, 1, 1, 0};
     std::vector<bool> nexts{true, true, false, true, true};
     std::vector<bool> resets{true, true};
-    std::vector<irs::bytes_ref> terms{term};
+    std::vector<irs::bytes_view> terms{term};
     tokenizer2.reset(new pipeline_test_analyzer2(
       std::move(offsets), std::move(increments), std::move(nexts),
       std::move(resets), std::move(terms)));
@@ -492,7 +492,7 @@ TEST(pipeline_token_stream_test, hold_position_tokenizer2) {
     std::vector<uint32_t> increments{1, 1};
     std::vector<bool> nexts{true, false, false, false, true};
     std::vector<bool> resets{true, true, true, true};
-    std::vector<irs::bytes_ref> terms{term, term};
+    std::vector<irs::bytes_view> terms{term, term};
     tokenizer3.reset(new pipeline_test_analyzer2(
       std::move(offsets), std::move(increments), std::move(nexts),
       std::move(resets), std::move(terms)));
@@ -714,9 +714,9 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
 
   {
     auto payload_offset = std::make_unique<pipeline_test_analyzer>(
-      true, irs::bytes_ref{p1, std::size(p1)});
+      true, irs::bytes_view{p1, std::size(p1)});
     auto only_offset =
-      std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref::NIL);
+      std::make_unique<pipeline_test_analyzer>(true, irs::bytes_view{});
 
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.emplace_back(std::move(payload_offset));
@@ -732,13 +732,13 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(p1, pay->value.c_str());
+    ASSERT_EQ(p1, pay->value.data());
   }
   {
     auto payload_offset = std::make_unique<pipeline_test_analyzer>(
-      true, irs::bytes_ref{p1, std::size(p1)});
+      true, irs::bytes_view{p1, std::size(p1)});
     auto only_offset =
-      std::make_unique<pipeline_test_analyzer>(true, irs::bytes_ref::NIL);
+      std::make_unique<pipeline_test_analyzer>(true, irs::bytes_view{});
 
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.emplace_back(std::move(only_offset));
@@ -754,13 +754,13 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(p1, pay->value.c_str());
+    ASSERT_EQ(p1, pay->value.data());
   }
   {
     auto payload_offset = std::make_unique<pipeline_test_analyzer>(
-      true, irs::bytes_ref{p1, std::size(p1)});
+      true, irs::bytes_view{p1, std::size(p1)});
     auto only_payload = std::make_unique<pipeline_test_analyzer>(
-      false, irs::bytes_ref{p2, std::size(p2)});
+      false, irs::bytes_view{p2, std::size(p2)});
 
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.emplace_back(std::move(payload_offset));
@@ -776,13 +776,13 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(p2, pay->value.c_str());
+    ASSERT_EQ(p2, pay->value.data());
   }
   {
     auto payload_offset = std::make_unique<pipeline_test_analyzer>(
-      true, irs::bytes_ref{p1, std::size(p1)});
+      true, irs::bytes_view{p1, std::size(p1)});
     auto only_payload = std::make_unique<pipeline_test_analyzer>(
-      false, irs::bytes_ref{p2, std::size(p2)});
+      false, irs::bytes_view{p2, std::size(p2)});
 
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.emplace_back(std::move(only_payload));
@@ -798,13 +798,13 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(p1, pay->value.c_str());
+    ASSERT_EQ(p1, pay->value.data());
   }
   {
     auto only_payload = std::make_unique<pipeline_test_analyzer>(
-      false, irs::bytes_ref{p2, std::size(p2)});
+      false, irs::bytes_view{p2, std::size(p2)});
     auto no_payload_no_offset =
-      std::make_unique<pipeline_test_analyzer>(false, irs::bytes_ref::NIL);
+      std::make_unique<pipeline_test_analyzer>(false, irs::bytes_view{});
 
     irs::analysis::pipeline_token_stream::options_t pipeline_options;
     pipeline_options.emplace_back(std::move(only_payload));
@@ -820,7 +820,7 @@ TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
     ASSERT_TRUE(pay);
     ASSERT_TRUE(pipe.reset("A"));
     ASSERT_TRUE(pipe.next());
-    ASSERT_EQ(p2, pay->value.c_str());
+    ASSERT_EQ(p2, pay->value.data());
   }
 }
 

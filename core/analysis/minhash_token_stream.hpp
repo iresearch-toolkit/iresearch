@@ -41,7 +41,7 @@ class MinHashTokenStream final : public analyzer, private util::noncopyable {
   };
 
   // Return analyzer type name.
-  static constexpr string_ref type_name() noexcept { return "minhash"; }
+  static constexpr std::string_view type_name() noexcept { return "minhash"; }
 
   // For triggering registration in a static build.
   static void init();
@@ -52,7 +52,7 @@ class MinHashTokenStream final : public analyzer, private util::noncopyable {
   bool next() override;
 
   // Reset stream to a specified value.
-  bool reset(string_ref value) override;
+  bool reset(std::string_view value) override;
 
   // Return a stream attribute denoted by `id`.
   attribute* get_mutable(irs::type_info::type_id id) noexcept override {

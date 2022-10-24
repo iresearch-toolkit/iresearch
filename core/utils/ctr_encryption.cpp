@@ -20,21 +20,22 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "ctr_encryption.hpp"
 
 #include <chrono>
 
+#include "shared.hpp"
+
 namespace {
 
-void decode_ctr_header(const irs::bytes_ref& header, size_t block_size,
-                       uint64_t& base_counter, irs::bytes_ref& iv) {
+void decode_ctr_header(irs::bytes_view header, size_t block_size,
+                       uint64_t& base_counter, irs::bytes_view& iv) {
   assert(header.size() >= irs::ctr_encryption::MIN_HEADER_LENGTH &&
          header.size() >= 2 * block_size);
 
-  const auto* begin = header.c_str();
+  const auto* begin = header.data();
   base_counter = irs::read<uint64_t>(begin);
-  iv = irs::bytes_ref(header.c_str() + block_size, block_size);
+  iv = irs::bytes_view(header.data() + block_size, block_size);
 }
 
 }  // namespace
@@ -46,7 +47,7 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 class ctr_cipher_stream : public encryption::stream {
  public:
-  explicit ctr_cipher_stream(const cipher& cipher, bytes_ref iv,
+  explicit ctr_cipher_stream(const cipher& cipher, bytes_view iv,
                              uint64_t counter_base) noexcept
     : cipher_(&cipher), iv_(iv), counter_base_(counter_base) {}
 
@@ -223,8 +224,8 @@ bool ctr_encryption::create_header(std::string_view filename,
   });
 
   uint64_t base_counter;
-  bytes_ref iv;
-  decode_ctr_header(bytes_ref(header, header_length), block_size, base_counter,
+  bytes_view iv;
+  decode_ctr_header(bytes_view(header, header_length), block_size, base_counter,
                     iv);
 
   // encrypt header starting from 2nd block
@@ -277,8 +278,8 @@ encryption::stream::ptr ctr_encryption::create_stream(std::string_view filename,
   }
 
   uint64_t base_counter;
-  bytes_ref iv;
-  decode_ctr_header(bytes_ref(header, header_length), block_size, base_counter,
+  bytes_view iv;
+  decode_ctr_header(bytes_view(header, header_length), block_size, base_counter,
                     iv);
 
   // decrypt the encrypted part of the header
@@ -294,7 +295,7 @@ encryption::stream::ptr ctr_encryption::create_stream(std::string_view filename,
   }
 
   return memory::make_unique<ctr_cipher_stream>(
-    *cipher_, bytes_ref(iv.c_str(), block_size), base_counter);
+    *cipher_, bytes_view(iv.data(), block_size), base_counter);
 }
 
 }  // namespace iresearch

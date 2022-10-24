@@ -22,6 +22,8 @@
 
 #include "search/score_function.hpp"
 
+#include "utils/bit_utils.hpp"
+
 namespace {
 
 void DefaultScore(irs::score_ctx* ctx, irs::score_t* res) noexcept {

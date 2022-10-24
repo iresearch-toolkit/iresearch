@@ -47,7 +47,7 @@ constexpr score_t kNoBoost{1.f};
 // Represents an addition to score from filter specific to a particular
 // document. May vary from document to document.
 struct filter_boost final : attribute {
-  static constexpr string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "iresearch::filter_boost";
   }
 
@@ -84,7 +84,7 @@ class sort {
 
     // Collect field related statistics from a serialized
     // representation as produced by write(...) below.
-    virtual void collect(bytes_ref in) = 0;
+    virtual void collect(bytes_view in) = 0;
 
     // Serialize the internal data representation into 'out'.
     virtual void write(data_output& out) const = 0;
@@ -114,7 +114,7 @@ class sort {
 
     // Collect term related statistics from a serialized
     // representation as produced by write(...) below.
-    virtual void collect(bytes_ref in) = 0;
+    virtual void collect(bytes_view in) = 0;
 
     // Serialize the internal data representation into 'out'.
     virtual void write(data_output& out) const = 0;

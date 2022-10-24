@@ -30,8 +30,8 @@
 #include <queue>
 #include <thread>
 
-#include "shared.hpp"
 #include "noncopyable.hpp"
+#include "shared.hpp"
 #include "string.hpp"
 #include "thread_utils.hpp"
 
@@ -59,8 +59,8 @@ class thread_pool {
   using func_t = std::function<void()>;
 
   explicit thread_pool(size_t max_threads = 0, size_t max_idle = 0,
-                       basic_string_ref<native_char_t> worker_name =
-                         basic_string_ref<native_char_t>::EMPTY);
+                       std::basic_string_view<native_char_t> worker_name =
+                         kEmptyStringView<native_char_t>);
   ~thread_pool();
   size_t max_idle() const;
   void max_idle(size_t value);

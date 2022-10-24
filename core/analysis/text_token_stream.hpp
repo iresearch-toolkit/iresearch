@@ -81,9 +81,9 @@ class text_token_stream final : public analyzer, private util::noncopyable {
 
   static char const* STOPWORD_PATH_ENV_VARIABLE;
 
-  static constexpr string_ref type_name() noexcept { return "text"; }
+  static constexpr std::string_view type_name() noexcept { return "text"; }
   static void init();  // for triggering registration in a static build
-  static ptr make(string_ref locale);
+  static ptr make(std::string_view locale);
   static void clear_cache();
 
   text_token_stream(const options_t& options, const stopwords_t& stopwords);
@@ -92,7 +92,7 @@ class text_token_stream final : public analyzer, private util::noncopyable {
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() override;
-  virtual bool reset(string_ref data) override;
+  virtual bool reset(std::string_view data) override;
 
  private:
   using attributes = std::tuple<increment, offset, term_attribute>;

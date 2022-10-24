@@ -41,17 +41,17 @@ struct by_term_options {
     return term == rhs.term;
   }
 
-  size_t hash() const noexcept { return std::hash<bstring>()(term); }
+  size_t hash() const noexcept { return hash_utils::Hash(term); }
 };
 
 // User-side term filter
 class by_term : public filter_base<by_term_options> {
  public:
   static prepared::ptr prepare(const index_reader& rdr, const Order& ord,
-                               score_t boost, string_ref field, bytes_ref term);
+                               score_t boost, std::string_view field, bytes_view term);
 
   static void visit(const sub_reader& segment, const term_reader& field,
-                    bytes_ref term, filter_visitor& visitor);
+                    bytes_view term, filter_visitor& visitor);
 
   using filter::prepare;
 

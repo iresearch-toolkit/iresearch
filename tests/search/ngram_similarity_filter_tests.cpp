@@ -33,14 +33,14 @@
 
 namespace {
 
-irs::by_ngram_similarity make_filter(const irs::string_ref& field,
-                                     const std::vector<irs::string_ref>& ngrams,
+irs::by_ngram_similarity make_filter(const std::string_view& field,
+                                     const std::vector<std::string_view>& ngrams,
                                      float_t threshold = 1.f) {
   irs::by_ngram_similarity filter;
   *filter.mutable_field() = field;
   auto* opts = filter.mutable_options();
   for (auto& ngram : ngrams) {
-    opts->ngrams.emplace_back(irs::ref_cast<irs::byte_type>(ngram));
+    opts->ngrams.emplace_back(irs::ViewCast<irs::byte_type>(ngram));
   }
   opts->threshold = threshold;
   return filter;
@@ -221,8 +221,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(0.75, boost->value);
-    const irs::string_ref rhs = "134";
-    const irs::string_ref lhs = "1234";
+    const std::string_view rhs = "134";
+    const std::string_view lhs = "1234";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
                        lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
@@ -262,8 +262,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_2) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(1, boost->value);
-    const irs::string_ref rhs = "11223344";
-    const irs::string_ref lhs = "1234";
+    const std::string_view rhs = "11223344";
+    const std::string_view lhs = "1234";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
                        lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
@@ -302,8 +302,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_3) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(1, boost->value);
-    const irs::string_ref rhs = "121134";
-    const irs::string_ref lhs = "1234";
+    const std::string_view rhs = "121134";
+    const std::string_view lhs = "1234";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
                        lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
@@ -341,8 +341,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_4) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(1, boost->value);
-    const irs::string_ref rhs = "121111";
-    const irs::string_ref lhs = "11";
+    const std::string_view rhs = "121111";
+    const std::string_view lhs = "11";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
                        lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
@@ -382,8 +382,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_5) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(1, boost->value);
-    const irs::string_ref rhs = "121212121212121";
-    const irs::string_ref lhs = "121";
+    const std::string_view rhs = "121212121212121";
+    const std::string_view lhs = "121";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
                        lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
@@ -421,8 +421,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_6) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(1, boost->value);
-    const irs::string_ref rhs = "11";
-    const irs::string_ref lhs = "11";
+    const std::string_view rhs = "11";
+    const std::string_view lhs = "11";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
                        lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
@@ -462,8 +462,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_7) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(0.5, boost->value);
-    const irs::string_ref rhs = "24241313";
-    const irs::string_ref lhs = "1234";
+    const std::string_view rhs = "24241313";
+    const std::string_view lhs = "1234";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
                        lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
@@ -502,8 +502,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_8) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(0.5, boost->value);
-    const irs::string_ref lhs = "1234";
-    const irs::string_ref rhs = "1562";
+    const std::string_view lhs = "1234";
+    const std::string_view rhs = "1562";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
                        lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
@@ -544,8 +544,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_9) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(1., boost->value);
-    const irs::string_ref rhs = "1123451";
-    const irs::string_ref lhs = "123451";
+    const std::string_view rhs = "1123451";
+    const std::string_view lhs = "123451";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
                        lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
@@ -582,8 +582,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_10) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::eof(doc->value));
     ASSERT_DOUBLE_EQ(1., boost->value);
-    const irs::string_ref rhs = "";
-    const irs::string_ref lhs = "";
+    const std::string_view rhs = "";
+    const std::string_view lhs = "";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
                        lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));

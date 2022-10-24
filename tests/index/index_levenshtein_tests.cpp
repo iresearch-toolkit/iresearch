@@ -20,28 +20,28 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
-
 #include <utf8/core.h>
+
 #include "index/index_tests.hpp"
+#include "tests_shared.hpp"
 #include "utils/arena_allocator.hpp"
-#include "utils/levenshtein_utils.hpp"
 #include "utils/automaton_utils.hpp"
 #include "utils/fstext/fst_table_matcher.hpp"
+#include "utils/levenshtein_utils.hpp"
 
 class levenshtein_automaton_index_test_case : public tests::index_test_base {
  protected:
   void assert_index(irs::index_reader::ptr reader,
                     const irs::parametric_description& description,
-                    const irs::bytes_ref& prefix,
-                    const irs::bytes_ref& target) {
+                    const irs::bytes_view& prefix,
+                    const irs::bytes_view& target) {
     auto acceptor =
       irs::make_levenshtein_automaton(description, prefix, target);
     irs::automaton_table_matcher matcher(acceptor, true);
 
     irs::memory::arena<uint32_t, 16> arena;
     irs::memory::arena_vector<uint32_t, decltype(arena)> target_chars(arena);
-    irs::utf8_utils::utf8_to_utf32<false>(target.c_str(), target.size(),
+    irs::utf8_utils::utf8_to_utf32<false>(target.data(), target.size(),
                                           std::back_inserter(target_chars));
 
     for (auto& segment : *reader) {
@@ -59,12 +59,12 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
         ASSERT_EQ(1, payload->value.size());
 
         while (expected_terms->next()) {
-          auto& expected_term = expected_terms->value();
+          auto expected_term = expected_terms->value();
 
           irs::memory::arena_vector<uint32_t, decltype(arena)> expected_chars(
             arena);
           irs::utf8_utils::utf8_to_utf32<false>(
-            expected_term.c_str(), expected_term.size(),
+            expected_term.data(), expected_term.size(),
             std::back_inserter(expected_chars));
 
           auto edit_distance =
@@ -82,12 +82,12 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
           }
 
           SCOPED_TRACE(testing::Message("Expected term: '")
-                       << irs::ref_cast<char>(expected_term));
+                       << irs::ViewCast<char>(expected_term));
 
           ASSERT_TRUE(actual_terms->next());
-          auto& actual_term = actual_terms->value();
+          auto actual_term = actual_terms->value();
           SCOPED_TRACE(testing::Message("Actual term: '")
-                       << irs::ref_cast<char>(actual_term));
+                       << irs::ViewCast<char>(actual_term));
 
           ASSERT_EQ(expected_term, actual_term);
           ASSERT_EQ(1, payload->value.size());
@@ -105,7 +105,7 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
     irs::make_parametric_description(3, false),
   };
 
-  const irs::string_ref TARGETS[]{"atlas",     "bloom",    "burden", "del",
+  const std::string_view TARGETS[]{"atlas",     "bloom",    "burden", "del",
                                   "survenius", "surbenus", ""};
 
   // add data
@@ -124,8 +124,8 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
                    << target << testing::Message("', Edit distance: ")
                    << size_t(description.max_distance()));
       assert_index(static_cast<irs::index_reader::ptr>(reader), description,
-                   irs::bytes_ref::EMPTY,
-                   irs::ref_cast<irs::byte_type>(target));
+                   irs::kEmptyStringView<irs::byte_type>,
+                   irs::ViewCast<irs::byte_type>(target));
     }
   }
 }

@@ -25,6 +25,8 @@
 
 #include <absl/container/flat_hash_set.h>
 
+#include <function2/function2.hpp>
+
 #include "formats/seek_cookie.hpp"
 #include "index/column_info.hpp"
 #include "index/index_features.hpp"
@@ -59,7 +61,7 @@ using ScoreFunctionFactory =
 
 // Represents metadata associated with the term
 struct term_meta : attribute {
-  static constexpr string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "iresearch::term_meta";
   }
 
@@ -172,10 +174,10 @@ struct basic_term_reader : public attribute_provider {
   virtual const field_meta& meta() const = 0;
 
   // Returns the least significant term
-  virtual const bytes_ref&(min)() const = 0;
+  virtual bytes_view(min)() const = 0;
 
   // Returns the most significant term
-  virtual const bytes_ref&(max)() const = 0;
+  virtual bytes_view(max)() const = 0;
 };
 
 // Expected usage pattern of seek_term_iterator
@@ -227,10 +229,10 @@ struct term_reader : public attribute_provider {
   virtual uint64_t docs_count() const = 0;
 
   // Returns the least significant term.
-  virtual const bytes_ref&(min)() const = 0;
+  virtual bytes_view(min)() const = 0;
 
   // Returns the most significant term.
-  virtual const bytes_ref&(max)() const = 0;
+  virtual bytes_view(max)() const = 0;
 };
 
 struct field_reader {
@@ -241,7 +243,7 @@ struct field_reader {
   virtual void prepare(const directory& dir, const segment_meta& meta,
                        const document_mask& mask) = 0;
 
-  virtual const term_reader* field(string_ref field) const = 0;
+  virtual const term_reader* field(std::string_view field) const = 0;
   virtual field_iterator::ptr iterator() const = 0;
   virtual size_t size() const = 0;
 };
@@ -259,8 +261,9 @@ struct columnstore_writer {
   using values_writer_f = std::function<column_output&(doc_id_t doc)>;
 
   // Finalizer can be used to assign name and payload to a column.
-  // Returned `string_ref` must be valid during `commit(...)`.
-  using column_finalizer_f = std::function<string_ref(bstring& out)>;
+  // Returned `std::string_view` must be valid during `commit(...)`.
+  using column_finalizer_f =
+    fu2::unique_function<std::string_view(bstring& out)>;
 
   typedef std::pair<field_id, values_writer_f> column_t;
 
@@ -295,10 +298,10 @@ struct column_reader {
   virtual field_id id() const = 0;
 
   // Returns optional column name.
-  virtual string_ref name() const = 0;
+  virtual std::string_view name() const = 0;
 
   // Returns column header.
-  virtual bytes_ref payload() const = 0;
+  virtual bytes_view payload() const = 0;
 
   // FIXME(gnusi): implement mode
   //  Returns the corresponding column iterator.
@@ -366,10 +369,9 @@ struct segment_meta_reader {
 
   virtual ~segment_meta_reader() = default;
 
-  // null == use meta
   virtual void read(const directory& dir, segment_meta& meta,
-                    string_ref filename = string_ref::NIL) = 0;
-};
+                    std::string_view filename = {}) = 0;  // null == use meta
+};                                                        // segment_meta_reader
 
 struct index_meta_writer {
   using ptr = std::unique_ptr<index_meta_writer>;
@@ -393,9 +395,8 @@ struct index_meta_reader {
   virtual bool last_segments_file(const directory& dir,
                                   std::string& name) const = 0;
 
-  // null == use meta
   virtual void read(const directory& dir, index_meta& meta,
-                    string_ref filename = string_ref::NIL) = 0;
+                    std::string_view filename = {}) = 0;  // null == use meta
 
  protected:
   static void complete(index_meta& meta, uint64_t generation, uint64_t counter,
@@ -436,7 +437,7 @@ struct flush_state {
   directory* dir{};
   const doc_map* docmap{};
   const std::set<type_info::type_id>* features{};  // segment features
-  string_ref name;                                 // segment name
+  std::string_view name;                           // segment name
   size_t doc_count;
   IndexFeatures index_features{IndexFeatures::NONE};  // segment index features
 };
@@ -447,13 +448,14 @@ struct reader_state {
 };
 
 namespace formats {
+
 // Checks whether a format with the specified name is registered.
-bool exists(string_ref name, bool load_library = true);
+bool exists(std::string_view name, bool load_library = true);
 
 // Find a format by name, or nullptr if not found
 // indirect call to <class>::make(...)
 // NOTE: make(...) MUST be defined in CPP to ensire proper code scope
-format::ptr get(string_ref name, string_ref module = string_ref::NIL,
+format::ptr get(std::string_view name, std::string_view module = {},
                 bool load_library = true) noexcept;
 
 // For static lib reference all known formats in lib
@@ -464,12 +466,13 @@ void init();
 void load_all(std::string_view path);
 
 // Visit all loaded formats, terminate early if visitor returns false.
-bool visit(const std::function<bool(string_ref)>& visitor);
+bool visit(const std::function<bool(std::string_view)>& visitor);
 
 }  // namespace formats
+
 class format_registrar {
  public:
-  format_registrar(const type_info& type, string_ref module,
+  format_registrar(const type_info& type, std::string_view module,
                    format::ptr (*factory)(), const char* source = nullptr);
 
   operator bool() const noexcept { return registered_; }
@@ -487,7 +490,7 @@ class format_registrar {
 #define REGISTER_FORMAT_MODULE(format_name, module_name) \
   REGISTER_FORMAT_EXPANDER__(format_name, module_name, __FILE__, __LINE__)
 #define REGISTER_FORMAT(format_name) \
-  REGISTER_FORMAT_MODULE(format_name, irs::string_ref::NIL)
+  REGISTER_FORMAT_MODULE(format_name, std::string_view{})
 
 }  // namespace iresearch
 

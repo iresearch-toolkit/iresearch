@@ -21,13 +21,14 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "index/index_reader.hpp"
+
 #include "formats/formats_10.hpp"
-#include "index/index_writer.hpp"
-#include "store/memory_directory.hpp"
 #include "index/doc_generator.hpp"
 #include "index/index_tests.hpp"
+#include "index/index_writer.hpp"
+#include "store/memory_directory.hpp"
+#include "tests_shared.hpp"
 #include "utils/version_utils.hpp"
 
 using namespace std::chrono_literals;
@@ -83,10 +84,9 @@ TEST(directory_reader_test, open_newest_index) {
       out = segments_file;
       return true;
     }
-    virtual void read(
-      const irs::directory& /*dir*/, irs::index_meta& /*meta*/,
-      irs::string_ref filename = irs::string_ref::NIL) override {
-      read_file.assign(filename.c_str(), filename.size());
+    virtual void read(const irs::directory& /*dir*/, irs::index_meta& /*meta*/,
+                      std::string_view filename = std::string_view{}) override {
+      read_file.assign(filename.data(), filename.size());
     };
     std::string segments_file;
     std::string read_file;
@@ -139,10 +139,10 @@ TEST(directory_reader_test, open_newest_index) {
 
   test_format test_codec0(irs::type<test_format0>::get());
   test_format test_codec1(irs::type<test_format1>::get());
-  irs::format_registrar test_format0_registrar(
-    irs::type<test_format0>::get(), irs::string_ref::NIL, &get_codec0);
-  irs::format_registrar test_format1_registrar(
-    irs::type<test_format1>::get(), irs::string_ref::NIL, &get_codec1);
+  irs::format_registrar test_format0_registrar(irs::type<test_format0>::get(),
+                                               "", &get_codec0);
+  irs::format_registrar test_format1_registrar(irs::type<test_format1>::get(),
+                                               "", &get_codec1);
   test_index_meta_reader& test_reader0 = test_codec0.index_meta_reader;
   test_index_meta_reader& test_reader1 = test_codec1.index_meta_reader;
   codec0 = &test_codec0;
@@ -268,14 +268,14 @@ TEST(directory_reader_test, open) {
 
     // read documents
     ASSERT_EQ(1, values->seek(1));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc1
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
+                     actual_value->value.data()));  // 'name' value in doc1
     ASSERT_EQ(2, values->seek(2));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc2
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
+                     actual_value->value.data()));  // 'name' value in doc2
     ASSERT_EQ(3, values->seek(3));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc3
+    ASSERT_EQ("C", irs::to_string<std::string_view>(
+                     actual_value->value.data()));  // 'name' value in doc3
 
     // read invalid document
     ASSERT_TRUE(irs::doc_limits::eof(values->seek(4)));
@@ -298,17 +298,17 @@ TEST(directory_reader_test, open) {
 
     // read documents
     ASSERT_EQ(1, values->seek(1));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc4
+    ASSERT_EQ("D", irs::to_string<std::string_view>(
+                     actual_value->value.data()));  // 'name' value in doc4
     ASSERT_EQ(2, values->seek(2));
-    ASSERT_EQ("E", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc5
+    ASSERT_EQ("E", irs::to_string<std::string_view>(
+                     actual_value->value.data()));  // 'name' value in doc5
     ASSERT_EQ(3, values->seek(3));
-    ASSERT_EQ("F", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc6
+    ASSERT_EQ("F", irs::to_string<std::string_view>(
+                     actual_value->value.data()));  // 'name' value in doc6
     ASSERT_EQ(4, values->seek(4));
-    ASSERT_EQ("G", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc7
+    ASSERT_EQ("G", irs::to_string<std::string_view>(
+                     actual_value->value.data()));  // 'name' value in doc7
 
     // read invalid document
     ASSERT_TRUE(irs::doc_limits::eof(values->seek(5)));
@@ -331,11 +331,11 @@ TEST(directory_reader_test, open) {
 
     // read documents
     ASSERT_EQ(1, values->seek(1));
-    ASSERT_EQ("H", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc8
+    ASSERT_EQ("H", irs::to_string<std::string_view>(
+                     actual_value->value.data()));  // 'name' value in doc8
     ASSERT_EQ(2, values->seek(2));
-    ASSERT_EQ("I", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc9
+    ASSERT_EQ("I", irs::to_string<std::string_view>(
+                     actual_value->value.data()));  // 'name' value in doc9
 
     // read invalid document
     ASSERT_TRUE(irs::doc_limits::eof(values->seek(3)));
@@ -510,20 +510,20 @@ TEST(segment_reader_test, open) {
 
     // read documents
     ASSERT_EQ(1, values->seek(1));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc1
+    ASSERT_EQ("A", irs::to_string<std::string_view>(
+                     actual_value->value.data()));  // 'name' value in doc1
     ASSERT_EQ(2, values->seek(2));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc2
+    ASSERT_EQ("B", irs::to_string<std::string_view>(
+                     actual_value->value.data()));  // 'name' value in doc2
     ASSERT_EQ(3, values->seek(3));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc3
+    ASSERT_EQ("C", irs::to_string<std::string_view>(
+                     actual_value->value.data()));  // 'name' value in doc3
     ASSERT_EQ(4, values->seek(4));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc4
+    ASSERT_EQ("D", irs::to_string<std::string_view>(
+                     actual_value->value.data()));  // 'name' value in doc4
     ASSERT_EQ(5, values->seek(5));
-    ASSERT_EQ("E", irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str()));  // 'name' value in doc5
+    ASSERT_EQ("E", irs::to_string<std::string_view>(
+                     actual_value->value.data()));  // 'name' value in doc5
 
     ASSERT_TRUE(
       irs::doc_limits::eof(values->seek(6)));  // read invalid document
@@ -585,7 +585,7 @@ TEST(segment_reader_test, open) {
 
       // check field
       {
-        const irs::string_ref name = "name";
+        const std::string_view name = "name";
         auto field = rdr.field(name);
         ASSERT_EQ(name, field->meta().name);
 
@@ -595,9 +595,9 @@ TEST(segment_reader_test, open) {
 
         ASSERT_EQ(5, terms->size());
         ASSERT_EQ(5, terms->docs_count());
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("A")),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("A")),
                   (terms->min)());
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("E")),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("E")),
                   (terms->max)());
 
         auto term = terms->iterator(irs::SeekMode::NORMAL);
@@ -605,7 +605,7 @@ TEST(segment_reader_test, open) {
         // check term: A
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("A")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("A")),
                     term->value());
 
           // check docs
@@ -620,7 +620,7 @@ TEST(segment_reader_test, open) {
         // check term: B
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("B")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("B")),
                     term->value());
 
           // check docs
@@ -636,7 +636,7 @@ TEST(segment_reader_test, open) {
         // check term: C
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("C")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("C")),
                     term->value());
 
           // check docs
@@ -652,7 +652,7 @@ TEST(segment_reader_test, open) {
         // check term: D
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("D")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("D")),
                     term->value());
 
           // check docs
@@ -668,7 +668,7 @@ TEST(segment_reader_test, open) {
         // check term: E
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("E")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("E")),
                     term->value());
 
           // check docs
@@ -686,7 +686,7 @@ TEST(segment_reader_test, open) {
 
       // check field
       {
-        const irs::string_ref name = "seq";
+        const std::string_view name = "seq";
         auto field = rdr.field(name);
         ASSERT_EQ(name, field->meta().name);
 
@@ -697,7 +697,7 @@ TEST(segment_reader_test, open) {
 
       // check field
       {
-        const irs::string_ref name = "same";
+        const std::string_view name = "same";
         auto field = rdr.field(name);
         ASSERT_EQ(name, field->meta().name);
 
@@ -706,9 +706,9 @@ TEST(segment_reader_test, open) {
         ASSERT_NE(nullptr, terms);
         ASSERT_EQ(1, terms->size());
         ASSERT_EQ(5, terms->docs_count());
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("xyz")),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("xyz")),
                   (terms->min)());
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("xyz")),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("xyz")),
                   (terms->max)());
 
         auto term = terms->iterator(irs::SeekMode::NORMAL);
@@ -716,7 +716,7 @@ TEST(segment_reader_test, open) {
         // check term: xyz
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("xyz")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("xyz")),
                     term->value());
 
           /* check docs */
@@ -742,7 +742,7 @@ TEST(segment_reader_test, open) {
 
       // check field
       {
-        const irs::string_ref name = "duplicated";
+        const std::string_view name = "duplicated";
         auto field = rdr.field(name);
         ASSERT_EQ(name, field->meta().name);
 
@@ -751,9 +751,9 @@ TEST(segment_reader_test, open) {
         ASSERT_NE(nullptr, terms);
         ASSERT_EQ(2, terms->size());
         ASSERT_EQ(4, terms->docs_count());
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("abcd")),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abcd")),
                   (terms->min)());
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("vczc")),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("vczc")),
                   (terms->max)());
 
         auto term = terms->iterator(irs::SeekMode::NORMAL);
@@ -761,7 +761,7 @@ TEST(segment_reader_test, open) {
         // check term: abcd
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("abcd")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abcd")),
                     term->value());
 
           // check docs
@@ -779,7 +779,7 @@ TEST(segment_reader_test, open) {
         // check term: vczc
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("vczc")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("vczc")),
                     term->value());
 
           // check docs
@@ -799,7 +799,7 @@ TEST(segment_reader_test, open) {
 
       // check field
       {
-        const irs::string_ref name = "prefix";
+        const std::string_view name = "prefix";
         auto field = rdr.field(name);
         ASSERT_EQ(name, field->meta().name);
 
@@ -808,9 +808,9 @@ TEST(segment_reader_test, open) {
         ASSERT_NE(nullptr, terms);
         ASSERT_EQ(2, terms->size());
         ASSERT_EQ(2, terms->docs_count());
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("abcd")),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abcd")),
                   (terms->min)());
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("abcde")),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abcde")),
                   (terms->max)());
 
         auto term = terms->iterator(irs::SeekMode::NORMAL);
@@ -818,7 +818,7 @@ TEST(segment_reader_test, open) {
         // check term: abcd
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("abcd")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abcd")),
                     term->value());
 
           // check docs
@@ -834,7 +834,7 @@ TEST(segment_reader_test, open) {
         // check term: abcde
         {
           ASSERT_TRUE(term->next());
-          ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("abcde")),
+          ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abcde")),
                     term->value());
 
           // check docs
@@ -852,7 +852,7 @@ TEST(segment_reader_test, open) {
 
       // invalid field
       {
-        const irs::string_ref name = "invalid_field";
+        const std::string_view name = "invalid_field";
         ASSERT_EQ(nullptr, rdr.field(name));
       }
     }

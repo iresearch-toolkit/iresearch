@@ -20,8 +20,9 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "error.hpp"
+
+#include "shared.hpp"
 
 namespace iresearch {
 
@@ -33,27 +34,27 @@ const char* not_supported::what() const noexcept {
   return "Operation not supported.";
 }
 
-lock_obtain_failed::lock_obtain_failed(irs::string_ref filename /*= "" */
+lock_obtain_failed::lock_obtain_failed(std::string_view filename /*= "" */
                                        )
   : error_("Lock obtain timed out") {
-  if (filename.null()) {
+  if (IsNull(filename)) {
     error_ += ".";
   } else {
     error_ += ": ";
-    error_ += filename.c_str();
+    error_ += filename;
   }
 }
 
 const char* lock_obtain_failed::what() const noexcept { return error_.c_str(); }
 
-file_not_found::file_not_found(irs::string_ref filename /*= "" */
+file_not_found::file_not_found(std::string_view filename /*= "" */
                                )
   : error_("File not found") {
-  if (filename.null()) {
+  if (IsNull(filename)) {
     error_ += ".";
   } else {
     error_ += ": ";
-    error_.append(filename.c_str(), filename.size());
+    error_.append(filename);
   }
 }
 

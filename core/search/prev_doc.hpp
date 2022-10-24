@@ -32,7 +32,7 @@ class prev_doc : public attribute {
  public:
   using prev_doc_f = doc_id_t (*)(const void*);
 
-  static constexpr string_ref type_name() noexcept { return "prev_doc"; }
+  static constexpr std::string_view type_name() noexcept { return "prev_doc"; }
 
   constexpr explicit operator bool() const noexcept { return nullptr != func_; }
 

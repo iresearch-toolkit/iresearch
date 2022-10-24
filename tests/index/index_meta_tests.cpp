@@ -21,14 +21,13 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
-#include "formats/formats_10.hpp"
-#include "store/memory_directory.hpp"
-
-#include "index/index_meta.hpp"
-#include "utils/type_limits.hpp"
-
 #include <boost/algorithm/string/predicate.hpp>
+
+#include "formats/formats_10.hpp"
+#include "index/index_meta.hpp"
+#include "store/memory_directory.hpp"
+#include "tests_shared.hpp"
+#include "utils/type_limits.hpp"
 
 using namespace iresearch;
 
@@ -49,11 +48,11 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
 
   // create index metadata and write it into the specified directory
   irs::index_meta meta_orig;
-  ASSERT_TRUE(meta_orig.payload().null());
+  ASSERT_TRUE(irs::IsNull(meta_orig.payload()));
 
   // set payload
-  const irs::bytes_ref payload = ref_cast<byte_type>(string_ref("payload"));
-  const_cast<bytes_ref&>(meta_orig.payload()) = payload;
+  const irs::bytes_view payload = ViewCast<byte_type>(std::string_view("payload"));
+  const_cast<bytes_view&>(meta_orig.payload()) = payload;
 
   ASSERT_TRUE(writer->prepare(dir, meta_orig));
 
@@ -65,7 +64,7 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
   files.clear();
   ASSERT_TRUE(dir.visit(list_files));
   EXPECT_EQ(1, files.size());
-  EXPECT_EQ(files[0], irs::string_ref("pending_segments_1"));
+  EXPECT_EQ(files[0], std::string_view("pending_segments_1"));
 
   writer->commit();
 
@@ -84,10 +83,10 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
   EXPECT_EQ(meta_orig.counter(), meta_read.counter());
   EXPECT_EQ(meta_orig.generation(), meta_read.generation());
   EXPECT_EQ(meta_orig.size(), meta_read.size());
-  EXPECT_TRUE(meta_read.payload().null());
+  EXPECT_TRUE(irs::IsNull(meta_read.payload()));
 
   EXPECT_NE(meta_orig, meta_read);
-  const_cast<bytes_ref&>(meta_orig.payload()) = bytes_ref::NIL;
+  const_cast<bytes_view&>(meta_orig.payload()) = bytes_view{};
   EXPECT_EQ(meta_orig, meta_read);
 }
 
@@ -108,11 +107,11 @@ TEST(index_meta_tests, memory_directory_read_write_11) {
 
   // create index metadata and write it into the specified directory
   irs::index_meta meta_orig;
-  ASSERT_TRUE(meta_orig.payload().null());
+  ASSERT_TRUE(irs::IsNull(meta_orig.payload()));
 
   // set payload
-  const irs::bytes_ref payload = ref_cast<byte_type>(string_ref("payload"));
-  const_cast<bytes_ref&>(meta_orig.payload()) = payload;
+  const irs::bytes_view payload = ViewCast<byte_type>(std::string_view("payload"));
+  const_cast<bytes_view&>(meta_orig.payload()) = payload;
 
   ASSERT_TRUE(writer->prepare(dir, meta_orig));
 
@@ -124,7 +123,7 @@ TEST(index_meta_tests, memory_directory_read_write_11) {
   files.clear();
   ASSERT_TRUE(dir.visit(list_files));
   EXPECT_EQ(1, files.size());
-  EXPECT_EQ(files[0], irs::string_ref("pending_segments_1"));
+  EXPECT_EQ(files[0], std::string_view("pending_segments_1"));
 
   writer->commit();
 
@@ -151,7 +150,7 @@ TEST(index_meta_tests, ctor) {
   irs::index_meta meta;
   EXPECT_EQ(0, meta.counter());
   EXPECT_EQ(0, meta.size());
-  EXPECT_TRUE(meta.payload().null());
+  EXPECT_TRUE(irs::IsNull(meta.payload()));
   EXPECT_EQ(irs::type_limits<type_t::index_gen_t>::invalid(),
             meta.generation());
 }

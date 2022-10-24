@@ -23,36 +23,31 @@
 
 #include "assert_format.hpp"
 
-#include <unordered_set>
 #include <algorithm>
-#include <iostream>
 #include <cassert>
+#include <iostream>
+#include <unordered_set>
 
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_stream.hpp"
-
 #include "index/comparer.hpp"
-#include "index/field_meta.hpp"
 #include "index/directory_reader.hpp"
-
-#include "search/term_filter.hpp"
+#include "index/field_meta.hpp"
 #include "search/boolean_filter.hpp"
-#include "search/tfidf.hpp"
 #include "search/cost.hpp"
 #include "search/score.hpp"
-
-#include "utils/bit_utils.hpp"
-#include "utils/automaton_utils.hpp"
-#include "utils/fstext/fst_table_matcher.hpp"
-
+#include "search/term_filter.hpp"
+#include "search/tfidf.hpp"
 #include "store/data_output.hpp"
-
 #include "tests_shared.hpp"
+#include "utils/automaton_utils.hpp"
+#include "utils/bit_utils.hpp"
+#include "utils/fstext/fst_table_matcher.hpp"
 
 namespace {
 
 bool visit(const irs::column_reader& reader,
-           const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
+           const std::function<bool(irs::doc_id_t, irs::bytes_view)>& visitor) {
   auto it = reader.iterator(irs::ColumnHint::kConsolidation);
 
   irs::payload dummy;
@@ -94,14 +89,14 @@ void posting::insert(uint32_t pos, uint32_t offs_start,
     end = offs_start + offs->end;
   }
 
-  positions_.emplace(pos, start, end, pay ? pay->value : irs::bytes_ref::NIL);
+  positions_.emplace(pos, start, end, pay ? pay->value : irs::bytes_view{});
 }
 
 posting& term::insert(irs::doc_id_t id) {
   return const_cast<posting&>(*postings.emplace(id).first);
 }
 
-term::term(irs::bytes_ref data) : value(data) {}
+term::term(irs::bytes_view data) : value(data) {}
 
 bool term::operator<(const term& rhs) const {
   return irs::memcmp_less(value.c_str(), value.size(), rhs.value.c_str(),
@@ -120,7 +115,7 @@ void term::sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
   postings = std::move(resorted_postings);
 }
 
-field::field(const irs::string_ref& name, irs::IndexFeatures index_features,
+field::field(const std::string_view& name, irs::IndexFeatures index_features,
              const irs::features_t& features)
   : field_meta(name, index_features), stats{} {
   for (const auto feature : features) {
@@ -128,24 +123,24 @@ field::field(const irs::string_ref& name, irs::IndexFeatures index_features,
   }
 }
 
-term& field::insert(irs::bytes_ref t) {
+term& field::insert(irs::bytes_view t) {
   auto res = terms.emplace(t);
   return const_cast<term&>(*res.first);
 }
 
-term* field::find(irs::bytes_ref t) {
+term* field::find(irs::bytes_view t) {
   auto it = terms.find(term(t));
   return terms.end() == it ? nullptr : const_cast<term*>(&*it);
 }
 
-size_t field::remove(irs::bytes_ref t) { return terms.erase(term(t)); }
+size_t field::remove(irs::bytes_view t) { return terms.erase(term(t)); }
 
-irs::bytes_ref field::min() const {
+irs::bytes_view field::min() const {
   EXPECT_FALSE(terms.empty());
   return std::begin(terms)->value;
 }
 
-irs::bytes_ref field::max() const {
+irs::bytes_view field::max() const {
   EXPECT_FALSE(terms.empty());
   return std::rbegin(terms)->value;
 }
@@ -173,14 +168,14 @@ void field::sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
   }
 }
 
-void column_values::insert(irs::doc_id_t key, irs::bytes_ref value) {
+void column_values::insert(irs::doc_id_t key, irs::bytes_view value) {
   ASSERT_TRUE(irs::doc_limits::valid(key));
   ASSERT_TRUE(!irs::doc_limits::eof(key));
 
   const auto res = values_.emplace(key, value);
 
   if (!res.second) {
-    res.first->second.append(value.c_str(), value.size());
+    res.first->second.append(value.data(), value.size());
   }
 }
 
@@ -206,7 +201,7 @@ void column_values::sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
 void column_values::rewrite() {
   if (writer_ && factory_) {
     irs::bstring hdr = payload();
-    const irs::bytes_ref ref = hdr;
+    const irs::bytes_view ref = hdr;
     auto writer = factory_({&ref, 1});
     ASSERT_NE(nullptr, writer);
 
@@ -299,7 +294,7 @@ void index_segment::insert_stored(const ifield& f) {
 }
 
 void index_segment::insert_indexed(const ifield& f) {
-  const irs::string_ref field_name = f.name();
+  const std::string_view field_name = f.name();
 
   const auto requested_features = f.index_features();
   const auto features = requested_features &
@@ -330,7 +325,7 @@ void index_segment::insert_indexed(const ifield& f) {
       }
     }
 
-    const_cast<irs::string_ref&>(res.first->first) = field.name;
+    const_cast<std::string_view&>(res.first->first) = field.name;
   }
 
   doc_fields_.insert(&field);
@@ -483,7 +478,7 @@ class doc_iterator : public irs::doc_iterator {
       next_ = owner_.prev_->positions().begin();
       value_ = irs::type_limits<irs::type_t::pos_t>::invalid();
       offs_.clear();
-      pay_.value = irs::bytes_ref::NIL;
+      pay_.value = irs::bytes_view{};
     }
 
     bool next() override {
@@ -547,7 +542,7 @@ doc_iterator::doc_iterator(irs::IndexFeatures features, const tests::term& data)
 class term_iterator final : public irs::seek_term_iterator {
  public:
   struct term_cookie final : irs::seek_cookie {
-    explicit term_cookie(irs::bytes_ref term) noexcept : term(term) {}
+    explicit term_cookie(irs::bytes_view term) noexcept : term(term) {}
 
     irs::attribute* get_mutable(irs::type_info::type_id) override {
       return nullptr;
@@ -558,68 +553,69 @@ class term_iterator final : public irs::seek_term_iterator {
     }
 
     size_t Hash() const noexcept override {
-      return std::hash<irs::bytes_ref>{}(term);
+      return std::hash<irs::bytes_view>{}(term);
     }
 
-    irs::bytes_ref term;
+    irs::bytes_view term;
   };
 
   explicit term_iterator(const tests::field& data) noexcept : data_(data) {
     next_ = data_.terms.begin();
   }
 
-  irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
-    return nullptr;
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return type == irs::type<irs::term_attribute>::id() ? &value_ : nullptr;
+    ;
   }
 
-  const irs::bytes_ref& value() const override { return value_; }
+  irs::bytes_view value() const override { return value_.value; }
 
   bool next() override {
     if (next_ == data_.terms.end()) {
-      value_ = irs::bytes_ref::NIL;
+      value_.value = {};
       return false;
     }
 
     prev_ = next_, ++next_;
-    value_ = prev_->value;
+    value_.value = prev_->value;
     return true;
   }
 
   virtual void read() override {}
 
-  virtual bool seek(const irs::bytes_ref& value) override {
+  virtual bool seek(irs::bytes_view value) override {
     auto it = data_.terms.find(term{value});
 
     if (it == data_.terms.end()) {
       prev_ = next_ = it;
-      value_ = irs::bytes_ref::NIL;
+      value_.value = {};
       return false;
     }
 
     prev_ = it;
     next_ = ++it;
-    value_ = prev_->value;
+    value_.value = prev_->value;
     return true;
   }
 
-  virtual irs::SeekResult seek_ge(const irs::bytes_ref& value) override {
+  virtual irs::SeekResult seek_ge(irs::bytes_view value) override {
     auto it = data_.terms.lower_bound(term{value});
     if (it == data_.terms.end()) {
       prev_ = next_ = it;
-      value_ = irs::bytes_ref::NIL;
+      value_.value = irs::bytes_view{};
       return irs::SeekResult::END;
     }
 
     if (it->value == value) {
       prev_ = it;
       next_ = ++it;
-      value_ = prev_->value;
+      value_.value = prev_->value;
       return irs::SeekResult::FOUND;
     }
 
     prev_ = ++it;
     next_ = ++it;
-    value_ = prev_->value;
+    value_.value = prev_->value;
     return irs::SeekResult::NOT_FOUND;
   }
 
@@ -630,14 +626,14 @@ class term_iterator final : public irs::seek_term_iterator {
   }
 
   virtual irs::seek_cookie::ptr cookie() const override {
-    return irs::memory::make_unique<term_cookie>(value_);
+    return irs::memory::make_unique<term_cookie>(value_.value);
   }
 
  private:
   const tests::field& data_;
   std::set<tests::term>::const_iterator prev_;
   std::set<tests::term>::const_iterator next_;
-  irs::bytes_ref value_;
+  irs::term_attribute value_;
 };
 
 irs::seek_term_iterator::ptr field::iterator() const {
@@ -753,8 +749,8 @@ void assert_terms_next(const field& expected_field,
                        const irs::term_reader& actual_field,
                        irs::IndexFeatures features,
                        irs::automaton_table_matcher* matcher) {
-  irs::bytes_ref actual_min{irs::bytes_ref::NIL};
-  irs::bytes_ref actual_max{irs::bytes_ref::NIL};
+  irs::bytes_view actual_min{};
+  irs::bytes_view actual_max{};
   irs::bstring actual_min_buf;
   irs::bstring actual_max_buf;
   size_t actual_size = 0;
@@ -774,7 +770,7 @@ void assert_terms_next(const field& expected_field,
     assert_term(*expected_term, *actual_term, features);
     assert_docs(*expected_term, actual_field, actual_term->cookie(), features);
 
-    if (actual_min.null()) {
+    if (irs::IsNull(actual_min)) {
       actual_min_buf = actual_term->value();
       actual_min = actual_min_buf;
     }
@@ -983,14 +979,14 @@ void assert_column(const irs::column_reader* actual_reader,
     return;
   }
 
-  if (expected_values.name().null()) {
+  if (irs::IsNull(expected_values.name())) {
     // field features are stored as annonymous columns
-    ASSERT_TRUE(actual_reader->name().null());
+    ASSERT_TRUE(irs::IsNull(actual_reader->name()));
   } else {
     ASSERT_EQ(expected_values.name(), actual_reader->name());
   }
 
-  if (!actual_reader->payload().null()) {
+  if (!irs::IsNull(actual_reader->payload())) {
     // old formats may not support column header payload
     ASSERT_EQ(expected_values.payload(), actual_reader->payload());
   }

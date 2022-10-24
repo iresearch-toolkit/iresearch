@@ -268,7 +268,7 @@ TEST_P(proxy_filter_real_filter, with_terms_filter) {
   auto [q, cache] = proxy.set_filter<by_term>();
   *q.mutable_field() = "name";
   q.mutable_options()->term =
-    irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+    irs::ViewCast<irs::byte_type>(std::string_view("A"));
   CheckQuery(proxy, Docs{1, 33}, rdr);
 }
 
@@ -280,11 +280,11 @@ TEST_P(proxy_filter_real_filter, with_disjunction_filter) {
   auto& q = root.add<by_term>();
   *q.mutable_field() = "name";
   q.mutable_options()->term =
-    irs::ref_cast<irs::byte_type>(irs::string_ref("A"));
+    irs::ViewCast<irs::byte_type>(std::string_view("A"));
   auto& q1 = root.add<by_term>();
   *q1.mutable_field() = "name";
   q1.mutable_options()->term =
-    irs::ref_cast<irs::byte_type>(irs::string_ref("B"));
+    irs::ViewCast<irs::byte_type>(std::string_view("B"));
   CheckQuery(proxy, Docs{1, 2, 33, 34}, rdr);
 }
 

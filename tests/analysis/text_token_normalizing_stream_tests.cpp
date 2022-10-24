@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "analysis/text_token_normalizing_stream.hpp"
-
 #include "gtest/gtest.h"
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
@@ -52,7 +51,7 @@ TEST_F(normalizing_token_stream_tests, test_normalizing) {
     options_t options;
     options.locale = icu::Locale::createFromName("en");
 
-    irs::string_ref data("rUnNiNg\xd0\x81");
+    std::string_view data("rUnNiNg\xd0\x81");
     irs::analysis::normalizing_token_stream stream(options);
     ASSERT_EQ(irs::type<irs::analysis::normalizing_token_stream>::id(),
               stream.type());
@@ -67,7 +66,7 @@ TEST_F(normalizing_token_stream_tests, test_normalizing) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(9, offset->end);
-    ASSERT_EQ(data, irs::ref_cast<char>(term->value));
+    ASSERT_EQ(data, irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -78,8 +77,8 @@ TEST_F(normalizing_token_stream_tests, test_normalizing) {
     options.locale = icu::Locale::createFromName("en.utf8");
     options.accent = false;
 
-    irs::string_ref data("rUnNiNg\xd0\x81");
-    irs::string_ref expected("rUnNiNg\xd0\x95");
+    std::string_view data("rUnNiNg\xd0\x81");
+    std::string_view expected("rUnNiNg\xd0\x95");
     irs::analysis::normalizing_token_stream stream(options);
 
     auto* offset = irs::get<irs::offset>(stream);
@@ -92,7 +91,7 @@ TEST_F(normalizing_token_stream_tests, test_normalizing) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(9, offset->end);
-    ASSERT_EQ(expected, irs::ref_cast<char>(term->value));
+    ASSERT_EQ(expected, irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -103,8 +102,8 @@ TEST_F(normalizing_token_stream_tests, test_normalizing) {
     options.locale = icu::Locale::createFromName("en.utf8");
     options.case_convert = irs::analysis::normalizing_token_stream::LOWER;
 
-    irs::string_ref data("rUnNiNg\xd0\x81");
-    irs::string_ref expected("running\xd1\x91");
+    std::string_view data("rUnNiNg\xd0\x81");
+    std::string_view expected("running\xd1\x91");
     irs::analysis::normalizing_token_stream stream(options);
 
     auto* offset = irs::get<irs::offset>(stream);
@@ -117,7 +116,7 @@ TEST_F(normalizing_token_stream_tests, test_normalizing) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(9, offset->end);
-    ASSERT_EQ(expected, irs::ref_cast<char>(term->value));
+    ASSERT_EQ(expected, irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
@@ -128,8 +127,8 @@ TEST_F(normalizing_token_stream_tests, test_normalizing) {
     options.locale = icu::Locale::createFromName("en.utf8");
     options.case_convert = irs::analysis::normalizing_token_stream::UPPER;
 
-    irs::string_ref data("rUnNiNg\xd1\x91");
-    irs::string_ref expected("RUNNING\xd0\x81");
+    std::string_view data("rUnNiNg\xd1\x91");
+    std::string_view expected("RUNNING\xd0\x81");
     irs::analysis::normalizing_token_stream stream(options);
 
     auto* offset = irs::get<irs::offset>(stream);
@@ -142,7 +141,7 @@ TEST_F(normalizing_token_stream_tests, test_normalizing) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(9, offset->end);
-    ASSERT_EQ(expected, irs::ref_cast<char>(term->value));
+    ASSERT_EQ(expected, irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 }
@@ -152,7 +151,7 @@ TEST_F(normalizing_token_stream_tests, test_normalizing) {
 TEST_F(normalizing_token_stream_tests, test_load) {
   // load jSON object
   {
-    irs::string_ref data("running");
+    std::string_view data("running");
     auto stream = irs::analysis::analyzers::get(
       "norm", irs::type<irs::text_format::json>::get(), "{\"locale\":\"en\"}");
 
@@ -167,13 +166,13 @@ TEST_F(normalizing_token_stream_tests, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("running", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("running", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
   // with UPPER case
   {
-    irs::string_ref data("ruNNing");
+    std::string_view data("ruNNing");
     auto stream = irs::analysis::analyzers::get(
       "norm", irs::type<irs::text_format::json>::get(),
       "{\"locale\":\"en\", \"case\":\"upper\"}");
@@ -189,13 +188,13 @@ TEST_F(normalizing_token_stream_tests, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("RUNNING", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("RUNNING", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
   // with LOWER case
   {
-    irs::string_ref data("ruNNing");
+    std::string_view data("ruNNing");
     auto stream = irs::analysis::analyzers::get(
       "norm", irs::type<irs::text_format::json>::get(),
       "{\"locale\":\"en\", \"case\":\"lower\"}");
@@ -211,13 +210,13 @@ TEST_F(normalizing_token_stream_tests, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("running", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("running", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
   // with NONE case
   {
-    irs::string_ref data("ruNNing");
+    std::string_view data("ruNNing");
     auto stream = irs::analysis::analyzers::get(
       "norm", irs::type<irs::text_format::json>::get(),
       "{\"locale\":\"en\", \"case\":\"none\"}");
@@ -233,14 +232,14 @@ TEST_F(normalizing_token_stream_tests, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("ruNNing", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("ruNNing", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 
   // remove accent
   {
     constexpr std::u8string_view data{u8"\u00F6\u00F5"};
-    const auto ref = irs::ref_cast<char>(data);
+    const auto ref = irs::ViewCast<char>(data);
 
     auto stream = irs::analysis::analyzers::get(
       "norm", irs::type<irs::text_format::json>::get(),
@@ -257,7 +256,7 @@ TEST_F(normalizing_token_stream_tests, test_load) {
 
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(data.size(), offset->end);
-    ASSERT_TRUE(u8"\u006F\u006F" == irs::ref_cast<char8_t>(term->value));
+    ASSERT_TRUE(u8"\u006F\u006F" == irs::ViewCast<char8_t>(term->value));
 
     ASSERT_FALSE(stream->next());
   }
@@ -266,7 +265,7 @@ TEST_F(normalizing_token_stream_tests, test_load) {
   {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
                          "norm", irs::type<irs::text_format::json>::get(),
-                         irs::string_ref::NIL));
+                         std::string_view{}));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
                 "norm", irs::type<irs::text_format::json>::get(), "1"));
@@ -289,7 +288,7 @@ TEST_F(normalizing_token_stream_tests, test_load) {
 
   // load text
   {
-    irs::string_ref data("running");
+    std::string_view data("running");
     auto stream = irs::analysis::analyzers::get(
       "norm", irs::type<irs::text_format::json>::get(), R"({"locale":"en"})");
 
@@ -304,7 +303,7 @@ TEST_F(normalizing_token_stream_tests, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(7, offset->end);
-    ASSERT_EQ("running", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("running", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream->next());
   }
 }

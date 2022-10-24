@@ -71,7 +71,8 @@ using doc_id_map_t = std::vector<doc_id_t>;
 // document mapping function
 using doc_map_f = std::function<doc_id_t(doc_id_t)>;
 
-using field_meta_map_t = absl::flat_hash_map<string_ref, const field_meta*>;
+using field_meta_map_t =
+  absl::flat_hash_map<std::string_view, const field_meta*>;
 
 class noop_directory : public directory {
  public:
@@ -475,7 +476,7 @@ class compound_column_iterator final {
         bool exhausted;
         do {
           exhausted = !it->next();
-        } while (!exhausted && it->value().name().null());
+        } while (!exhausted && IsNull(it->value().name()));
 
         if (exhausted) {
           it = nullptr;
@@ -492,8 +493,8 @@ class compound_column_iterator final {
       }
 
       const auto& value = it->value();
-      const string_ref key = value.name();
-      assert(!key.null());
+      const std::string_view key = value.name();
+      assert(!IsNull(key));
 
       if (!iterator_mask_.empty() && current_key_ < key) {
         continue;  // empty field or value too large
@@ -514,7 +515,7 @@ class compound_column_iterator final {
       return true;
     }
 
-    current_key_ = string_ref::NIL;
+    current_key_ = {};
 
     return false;
   }
@@ -536,7 +537,7 @@ class compound_column_iterator final {
   static_assert(std::is_nothrow_move_constructible_v<iterator_t>);
 
   const column_reader* current_value_{};
-  string_ref current_key_;
+  std::string_view current_key_;
   std::vector<size_t> iterator_mask_;  // valid iterators for current step
   std::vector<iterator_t> iterators_;  // all segment iterators
 };
@@ -560,7 +561,7 @@ class compound_term_iterator final : public term_iterator {
     meta_ = &meta;
     term_iterator_mask_.clear();
     term_iterators_.clear();
-    current_term_ = bytes_ref::NIL;
+    current_term_ = {};
   }
 
   const field_meta& meta() const noexcept { return *meta_; }
@@ -580,7 +581,7 @@ class compound_term_iterator final : public term_iterator {
       }
     }
   }
-  virtual const bytes_ref& value() const override { return current_term_; }
+  virtual bytes_view value() const override { return current_term_; }
 
  private:
   struct term_iterator_t {
@@ -605,7 +606,7 @@ class compound_term_iterator final : public term_iterator {
   compound_term_iterator& operator=(const compound_term_iterator&) =
     delete;  // due to references
 
-  bytes_ref current_term_;
+  bytes_view current_term_;
   const field_meta* meta_{};
   std::vector<size_t> term_iterator_mask_;  // valid iterators for current term
   std::vector<term_iterator_t> term_iterators_;  // all term iterators
@@ -668,7 +669,7 @@ bool compound_term_iterator::next() {
     return true;
   }
 
-  current_term_ = bytes_ref::NIL;
+  current_term_ = {};
 
   return false;
 }
@@ -742,9 +743,9 @@ class compound_field_iterator final : public basic_term_reader {
     return *current_meta_;
   }
 
-  virtual const bytes_ref&(min)() const noexcept override { return *min_; }
+  virtual bytes_view(min)() const noexcept override { return min_; }
 
-  virtual const bytes_ref&(max)() const noexcept override { return *max_; }
+  virtual bytes_view(max)() const noexcept override { return max_; }
 
   virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
@@ -778,10 +779,10 @@ class compound_field_iterator final : public basic_term_reader {
     const term_reader* reader;
   };
 
-  string_ref current_field_;
+  std::string_view current_field_;
   const field_meta* current_meta_{&field_meta::kEmpty};
-  const bytes_ref* min_{&bytes_ref::NIL};
-  const bytes_ref* max_{&bytes_ref::NIL};
+  bytes_view min_{};
+  bytes_view max_{};
   std::vector<term_iterator_t>
     field_iterator_mask_;  // valid iterators for current field
   std::vector<field_iterator_t> field_iterators_;  // all segment iterators
@@ -808,8 +809,8 @@ bool compound_field_iterator::next() {
   if (aborted()) {
     field_iterators_.clear();
     field_iterator_mask_.clear();
-    current_field_ = string_ref::NIL;
-    max_ = min_ = &bytes_ref::NIL;
+    current_field_ = {};
+    max_ = min_ = {};
     return false;
   }
 
@@ -823,7 +824,7 @@ bool compound_field_iterator::next() {
 
   // reset for next pass
   field_iterator_mask_.clear();
-  max_ = min_ = &bytes_ref::NIL;
+  max_ = min_ = {};
 
   for (size_t i = 0, count = field_iterators_.size(); i < count; ++i) {
     auto& field_itr = field_iterators_[i];
@@ -834,7 +835,7 @@ bool compound_field_iterator::next() {
 
     const auto& field_meta = field_itr.itr->value().meta();
     const auto* field_terms = field_itr.reader->field(field_meta.name);
-    const string_ref field_id = field_meta.name;
+    const std::string_view field_id = field_meta.name;
 
     if (!field_terms ||
         (!field_iterator_mask_.empty() && field_id > current_field_)) {
@@ -856,15 +857,15 @@ bool compound_field_iterator::next() {
       term_iterator_t{i, &field_meta, field_terms});
 
     // update min and max terms
-    min_ = &std::min(*min_, field_terms->min());
-    max_ = &std::max(*max_, field_terms->max());
+    min_ = std::min(min_, field_terms->min());
+    max_ = std::max(max_, field_terms->max());
   }
 
   if (!field_iterator_mask_.empty()) {
     return true;
   }
 
-  current_field_ = string_ref::NIL;
+  current_field_ = {};
 
   return false;
 }
@@ -1091,7 +1092,7 @@ class SortingCompoundDocIterator : util::noncopyable {
       const auto& [rhs_it, rhs_doc, rhs_pay] = itrs_[rhs];
 
       // FIXME(gnusi): Consider changing comparator to 3-way comparison
-      if (const bytes_ref lhs_value = lhs_pay->value,
+      if (const bytes_view lhs_value = lhs_pay->value,
           rhs_value = rhs_pay->value;
           (*less_)(rhs_value, lhs_value)) {
         return true;
@@ -1150,14 +1151,14 @@ bool write_columns(columnstore& cs, Iterator& columns,
       return false;  // failed to visit all values
     }
 
-    const string_ref column_name = column_itr.value().name();
+    const std::string_view column_name = column_itr.value().name();
 
     const auto res = cs.insert(
       columns, column_info(column_name),
       [column_name](bstring&) { return column_name; },
-      [](data_output& out, bytes_ref payload) {
+      [](data_output& out, bytes_view payload) {
         if (!payload.empty()) {
-          out.write_bytes(payload.c_str(), payload.size());
+          out.write_bytes(payload.data(), payload.size());
         }
       });
 
@@ -1181,7 +1182,7 @@ bool write_fields(columnstore& cs, Iterator& feature_itr,
 
   feature_map_t features;
   irs::type_info::type_id feature{};
-  std::vector<bytes_ref> hdrs;
+  std::vector<bytes_view> hdrs;
   hdrs.reserve(field_itr.size());
 
   auto add_iterators = [&field_itr, &hdrs, &feature](auto& itrs) {
@@ -1253,26 +1254,25 @@ bool write_fields(columnstore& cs, Iterator& feature_itr,
         factory ? (*factory)({hdrs.data(), hdrs.size()}) : nullptr;
 
       if (feature_writer) {
-        auto value_writer = [writer = feature_writer.get()](data_output& out,
-                                                            bytes_ref payload) {
+        auto value_writer = [writer = feature_writer.get()](
+                              data_output& out, bytes_view payload) {
           writer->write(out, payload);
         };
 
         res = cs.insert(
           feature_itr, info,
-          [feature_writer =
-             make_move_on_copy(std::move(feature_writer))](bstring& out) {
-            feature_writer.value()->finish(out);
-            return string_ref::NIL;
+          [feature_writer = std::move(feature_writer)](bstring& out) {
+            feature_writer->finish(out);
+            return std::string_view{};
           },
           std::move(value_writer));
       } else if (!factory) {  // Otherwise factory has failed to instantiate
                               // writer
         res = cs.insert(
-          feature_itr, info, [](bstring&) { return string_ref::NIL; },
-          [](data_output& out, bytes_ref payload) {
+          feature_itr, info, [](bstring&) { return std::string_view{}; },
+          [](data_output& out, bytes_view payload) {
             if (!payload.empty()) {
-              out.write_bytes(payload.c_str(), payload.size());
+              out.write_bytes(payload.data(), payload.size());
             }
           });
       }
@@ -1564,7 +1564,7 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
   writer->prepare(dir, segment.meta);
 
   // get column info for sorted column
-  const auto info = (*column_info_)(string_ref::NIL);
+  const auto info = (*column_info_)({});
   auto column = writer->push_column(info, {});
 
   for (doc_id_t next_id = doc_limits::min(); columns_it.next();) {
@@ -1586,7 +1586,7 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
 
     // write value into new column
     auto& stream = column.second(next_id);
-    stream.write_bytes(payload.c_str(), payload.size());
+    stream.write_bytes(payload.data(), payload.size());
 
     ++next_id;
 

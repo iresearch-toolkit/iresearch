@@ -89,7 +89,7 @@ constexpr irs::IndexFeatures TEXT_INDEX_FEATURES =
   irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
 
 // legacy formats supportd only variable length norms, i.e. "norm" feature
-constexpr frozen::unordered_set<irs::string_ref, 6> LEGACY_FORMATS{
+constexpr frozen::unordered_set<std::string_view, 6> LEGACY_FORMATS{
   "1_0", "1_1", "1_2", "1_2simd", "1_3simd", "1_3"};
 
 // norm features supported by old format
@@ -143,15 +143,15 @@ struct Doc {
   }
 
   struct Field {
-    irs::string_ref _name;
+    std::string_view _name;
     const irs::features_t _features;
     const irs::IndexFeatures _index_features;
 
-    Field(const irs::string_ref& n, irs::IndexFeatures index_features,
+    Field(const std::string_view& n, irs::IndexFeatures index_features,
           const irs::features_t& flags)
       : _name(n), _features(flags), _index_features(index_features) {}
 
-    irs::string_ref name() const noexcept { return _name; }
+    std::string_view name() const noexcept { return _name; }
 
     const irs::features_t& features() const noexcept { return _features; }
 
@@ -170,11 +170,11 @@ struct Doc {
     std::string f;
     mutable irs::string_token_stream _stream;
 
-    StringField(const irs::string_ref& n, irs::IndexFeatures index_features,
+    StringField(const std::string_view& n, irs::IndexFeatures index_features,
                 const irs::features_t& flags)
       : Field(n, index_features, flags) {}
 
-    StringField(const irs::string_ref& n, irs::IndexFeatures index_features,
+    StringField(const std::string_view& n, irs::IndexFeatures index_features,
                 const irs::features_t& flags, const std::string& a)
       : Field(n, index_features, flags), f(a) {}
 
@@ -193,7 +193,7 @@ struct Doc {
     std::string f;
     mutable irs::analysis::analyzer::ptr stream;
 
-    TextField(const irs::string_ref& n, irs::IndexFeatures index_features,
+    TextField(const std::string_view& n, irs::IndexFeatures index_features,
               const irs::features_t& flags, irs::analysis::analyzer::ptr stream)
       : Field(n, index_features, flags), stream(std::move(stream)) {}
 
@@ -212,11 +212,11 @@ struct Doc {
     mutable irs::numeric_token_stream stream;
     int64_t value;
 
-    NumericField(const irs::string_ref& n, irs::IndexFeatures index_features,
+    NumericField(const std::string_view& n, irs::IndexFeatures index_features,
                  const irs::features_t& flags)
       : Field(n, index_features, flags) {}
 
-    NumericField(const irs::string_ref& n, irs::IndexFeatures index_features,
+    NumericField(const std::string_view& n, irs::IndexFeatures index_features,
                  const irs::features_t& flags, uint64_t v)
       : Field(n, index_features, flags), value(v) {}
 

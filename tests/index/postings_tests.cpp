@@ -35,8 +35,8 @@ using namespace iresearch;
 namespace tests {
 namespace detail {
 
-bytes_ref to_bytes_ref(const std::string& s) {
-  return bytes_ref(reinterpret_cast<const byte_type*>(s.c_str()), s.size());
+bytes_view to_bytes_view(const std::string& s) {
+  return bytes_view(reinterpret_cast<const byte_type*>(s.c_str()), s.size());
 }
 
 }  // namespace detail
@@ -49,7 +49,7 @@ void insert_find_core(const std::vector<std::string>& src) {
 
   for (size_t i = 0; i < src.size(); ++i) {
     const std::string& s = src[i];
-    const bytes_ref b = detail::to_bytes_ref(s);
+    const bytes_view b = detail::to_bytes_view(s);
     auto res = bh.emplace(b);
     ASSERT_NE(nullptr, res.first);
     ASSERT_TRUE(res.second);
@@ -66,21 +66,21 @@ void insert_find_core(const std::vector<std::string>& src) {
   {
     const std::string long_str(block_size - irs::bytes_io<size_t>::vsize(32767),
                                'c');
-    auto res = bh.emplace(detail::to_bytes_ref(long_str));
+    auto res = bh.emplace(detail::to_bytes_view(long_str));
     ASSERT_TRUE(res.second);
   }
 
   // insert long key
   {
     const std::string too_long_str(block_size, 'c');
-    auto res = bh.emplace(detail::to_bytes_ref(too_long_str));
+    auto res = bh.emplace(detail::to_bytes_view(too_long_str));
     ASSERT_TRUE(res.second);
   }
 
   // insert too long key
   {
     const std::string too_long_str(1 + block_size, 'c');
-    auto res = bh.emplace(detail::to_bytes_ref(too_long_str));
+    auto res = bh.emplace(detail::to_bytes_view(too_long_str));
     ASSERT_FALSE(res.second);
   }
 }
@@ -359,7 +359,7 @@ TEST(postings_tests, clear) {
   ASSERT_TRUE(bh.empty());
   ASSERT_EQ(0, bh.size());
 
-  [[maybe_unused]] auto res = bh.emplace(tests::detail::to_bytes_ref("string"));
+  [[maybe_unused]] auto res = bh.emplace(tests::detail::to_bytes_view("string"));
   ASSERT_FALSE(bh.empty());
   ASSERT_EQ(1, bh.size());
 
@@ -387,12 +387,12 @@ TEST(postings_tests, slice_alignment) {
     ASSERT_EQ(0, bh.size());
 
     [[maybe_unused]] auto res =
-      bh.emplace(tests::detail::to_bytes_ref("string0"));
+      bh.emplace(tests::detail::to_bytes_view("string0"));
     ASSERT_FALSE(bh.empty());
     ASSERT_EQ(1, bh.size());
     bh.get_sorted_postings(sorted_postings);
     ASSERT_EQ(1, sorted_postings.size());
-    ASSERT_EQ(tests::detail::to_bytes_ref("string0"),
+    ASSERT_EQ(tests::detail::to_bytes_view("string0"),
               (*sorted_postings.begin())->term);
   }
 
@@ -407,12 +407,12 @@ TEST(postings_tests, slice_alignment) {
     ASSERT_EQ(0, bh.size());
 
     [[maybe_unused]] auto res =
-      bh.emplace(tests::detail::to_bytes_ref("string1"));
+      bh.emplace(tests::detail::to_bytes_view("string1"));
     ASSERT_FALSE(bh.empty());
     ASSERT_EQ(1, bh.size());
     bh.get_sorted_postings(sorted_postings);
     ASSERT_EQ(1, sorted_postings.size());
-    ASSERT_EQ(tests::detail::to_bytes_ref("string1"),
+    ASSERT_EQ(tests::detail::to_bytes_view("string1"),
               (*sorted_postings.begin())->term);
   }
 }

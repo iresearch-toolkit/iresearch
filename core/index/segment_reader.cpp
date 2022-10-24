@@ -21,16 +21,14 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <absl/container/flat_hash_map.h>
-
-#include "shared.hpp"
 #include "segment_reader.hpp"
 
+#include <absl/container/flat_hash_map.h>
+
 #include "analysis/token_attributes.hpp"
-
-#include "index/index_meta.hpp"
-
 #include "formats/format_utils.hpp"
+#include "index/index_meta.hpp"
+#include "shared.hpp"
 #include "utils/hash_set_utils.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/singleton.hpp"
@@ -187,7 +185,7 @@ class segment_reader_impl : public sub_reader {
     return memory::make_managed<mask_doc_iterator>(std::move(it), docs_mask_);
   }
 
-  virtual const term_reader* field(string_ref name) const override {
+  virtual const term_reader* field(std::string_view name) const override {
     return field_reader_->field(name);
   }
 
@@ -217,11 +215,12 @@ class segment_reader_impl : public sub_reader {
 
   virtual const irs::column_reader* column(field_id field) const override;
 
-  virtual const irs::column_reader* column(string_ref name) const override;
+  virtual const irs::column_reader* column(
+    std::string_view name) const override;
 
  private:
   using named_columns =
-    absl::flat_hash_map<hashed_string_ref, const irs::column_reader*>;
+    absl::flat_hash_map<hashed_string_view, const irs::column_reader*>;
   using sorted_named_columns =
     std::vector<std::reference_wrapper<const irs::column_reader>>;
 
@@ -281,7 +280,8 @@ segment_reader_impl::segment_reader_impl(const directory& dir,
                                          uint64_t docs_count)
   : dir_(dir), docs_count_(docs_count), meta_version_(meta_version) {}
 
-const irs::column_reader* segment_reader_impl::column(string_ref name) const {
+const irs::column_reader* segment_reader_impl::column(
+  std::string_view name) const {
   auto it = named_columns_.find(make_hashed_ref(name));
   return it == named_columns_.end() ? nullptr : it->second;
 }
@@ -289,12 +289,12 @@ const irs::column_reader* segment_reader_impl::column(string_ref name) const {
 column_iterator::ptr segment_reader_impl::columns() const {
   struct less {
     bool operator()(const irs::column_reader& lhs,
-                    string_ref rhs) const noexcept {
+                    std::string_view rhs) const noexcept {
       return lhs.name() < rhs;
     }
   };  // less
 
-  typedef iterator_adaptor<string_ref, irs::column_reader,
+  typedef iterator_adaptor<std::string_view, irs::column_reader,
                            decltype(sorted_named_columns_.begin()),
                            column_iterator, less>
     iterator_t;
@@ -362,7 +362,7 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
                                &meta](const irs::column_reader& column) {
       const auto name = column.name();
 
-      if (!name.null()) {
+      if (!IsNull(name)) {
         const auto [it, is_new] =
           named_columns.emplace(make_hashed_ref(name), &column);
         UNUSED(it);

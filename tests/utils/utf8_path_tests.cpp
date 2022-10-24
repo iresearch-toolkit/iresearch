@@ -246,7 +246,7 @@ TEST_F(utf8_path_tests, path) {
     out.close();
   }
 
-  // from native string_ref
+  // from native std::string_view
   {
     irs::utf8_path path1(file1_abs_native.c_str());
     irs::utf8_path path1f(file1f_abs_native.c_str());
@@ -340,7 +340,7 @@ TEST_F(utf8_path_tests, path) {
                 !tmpBool);
   }
 
-  // from utf8 string_ref
+  // from utf8 std::string_view
   {
     irs::utf8_path path1(file1_abs_utf8.c_str());
     irs::utf8_path path1f(file1f_abs_utf8.c_str());

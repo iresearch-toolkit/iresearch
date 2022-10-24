@@ -26,7 +26,7 @@ namespace {
 
 using namespace irs;
 
-sort::ptr make_json(string_ref /*args*/) {
+sort::ptr make_json(std::string_view /*args*/) {
   return memory::make_unique<boost_sort>();
 }
 

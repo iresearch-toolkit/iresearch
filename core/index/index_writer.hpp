@@ -69,7 +69,7 @@ class readers_cache final : util::noncopyable {
 
   struct key_hash_t {
     size_t operator()(const key_t& key) const noexcept {
-      return hash_utils::hash(key.name);
+      return hash_utils::Hash(key.name);
     }
   };
 
@@ -133,8 +133,9 @@ class index_writer : private util::noncopyable {
       size_t pending_segment_context_offset =
         std::numeric_limits<size_t>::max()) noexcept;
     active_segment_context(active_segment_context&&) = default;
-    ~active_segment_context();
     active_segment_context& operator=(active_segment_context&& other) noexcept;
+
+    ~active_segment_context();
 
     const segment_context_ptr& ctx() const noexcept { return ctx_; }
 
@@ -144,9 +145,9 @@ class index_writer : private util::noncopyable {
     // nullptr will not match any flush_context
     flush_context* flush_ctx_{nullptr};
     // segment offset in flush_ctx_->pending_segment_contexts_
-    size_t pending_segment_context_offset_;
+    size_t pending_segment_context_offset_{};
     // reference to index_writer::segments_active_
-    std::atomic<size_t>* segments_active_;
+    std::atomic<size_t>* segments_active_{};
   };
 
   static_assert(std::is_nothrow_move_constructible_v<active_segment_context>);
@@ -338,15 +339,15 @@ class index_writer : private util::noncopyable {
 
       for (auto i = rollback.size(); i && rollback.any();) {
         if (rollback.test(--i)) {
-          rollback.unset(
-            i);  // if new doc_ids at end this allows to terminate 'for' earlier
+          // if new doc_ids at end this allows to terminate 'for' earlier
+          rollback.unset(i);
           assert(std::numeric_limits<doc_id_t>::max() >= i + doc_limits::min());
           writer.remove(doc_id_t(i + doc_limits::min()));  // convert to doc_id
         }
       }
 
-      segment->modification_queries_[update.update_id].filter =
-        nullptr;  // mark invalid
+      // mark invalid
+      segment->modification_queries_[update.update_id].filter = nullptr;
 
       if (exception) {
         std::rethrow_exception(exception);
@@ -383,29 +384,30 @@ class index_writer : private util::noncopyable {
 
   // Additional information required for removal/update requests
   struct modification_context {
-    using filter_ptr = std::shared_ptr<const irs::filter>;
-
     modification_context(const irs::filter& match_filter, size_t gen,
-                         bool isUpdate)
-      : filter(filter_ptr(), &match_filter),
+                         bool is_update)
+      : filter(std::shared_ptr<const irs::filter>{}, &match_filter),
         generation(gen),
-        update(isUpdate),
+        update(is_update),
         seen(false) {}
-    modification_context(const filter_ptr& match_filter, size_t gen,
-                         bool isUpdate)
-      : filter(match_filter), generation(gen), update(isUpdate), seen(false) {}
-    modification_context(irs::filter::ptr&& match_filter, size_t gen,
-                         bool isUpdate)
+    modification_context(std::shared_ptr<const irs::filter> match_filter,
+                         size_t gen, bool is_update)
       : filter(std::move(match_filter)),
         generation(gen),
-        update(isUpdate),
+        update(is_update),
+        seen(false) {}
+    modification_context(irs::filter::ptr&& match_filter, size_t gen,
+                         bool is_update)
+      : filter(std::move(match_filter)),
+        generation(gen),
+        update(is_update),
         seen(false) {}
     modification_context(modification_context&&) = default;
     modification_context& operator=(const modification_context&) = delete;
     modification_context& operator=(modification_context&&) = delete;
 
     // keep a handle to the filter for the case when this object has ownership
-    filter_ptr filter;
+    std::shared_ptr<const irs::filter> filter;
     const size_t generation;
     // this is an update modification (as opposed to remove)
     const bool update;
@@ -468,7 +470,7 @@ class index_writer : private util::noncopyable {
 
   struct segment_hash {
     size_t operator()(const segment_meta* segment) const noexcept {
-      return hash_utils::hash(segment->name);
+      return hash_utils::Hash(segment->name);
     }
   };
 
@@ -836,7 +838,7 @@ class index_writer : private util::noncopyable {
     // Returns context for "update" operation.
     segment_writer::update_context make_update_context(const filter& filter);
     segment_writer::update_context make_update_context(
-      const std::shared_ptr<filter>& filter);
+      std::shared_ptr<const filter> filter);
     segment_writer::update_context make_update_context(filter::ptr&& filter);
 
     // Ensure writer is ready to recieve documents
@@ -844,7 +846,7 @@ class index_writer : private util::noncopyable {
 
     // Modifies context for "remove" operation
     void remove(const filter& filter);
-    void remove(const std::shared_ptr<filter>& filter);
+    void remove(std::shared_ptr<const filter> filter);
     void remove(filter::ptr&& filter);
 
     // Reset segment state to the initial state
@@ -916,15 +918,15 @@ class index_writer : private util::noncopyable {
       size_t modification_offset_end_;
       const std::shared_ptr<segment_context> segment_;
 
-      pending_segment_context(const std::shared_ptr<segment_context>& segment,
+      pending_segment_context(std::shared_ptr<segment_context> segment,
                               size_t pending_segment_context_offset)
-        : doc_id_begin_(segment->uncomitted_doc_id_begin_),
+        : freelist_t::node_type{.value = pending_segment_context_offset},
+          doc_id_begin_(segment->uncomitted_doc_id_begin_),
           doc_id_end_(std::numeric_limits<size_t>::max()),
           modification_offset_begin_(segment->uncomitted_modification_queries_),
           modification_offset_end_(std::numeric_limits<size_t>::max()),
-          segment_(segment) {
+          segment_(std::move(segment)) {
         assert(segment);
-        value = pending_segment_context_offset;
       }
     };
 

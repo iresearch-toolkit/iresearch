@@ -36,7 +36,7 @@ namespace iresearch {
 
 // Represents token offset in a stream
 struct offset final : attribute {
-  static constexpr string_ref type_name() noexcept { return "offset"; }
+  static constexpr std::string_view type_name() noexcept { return "offset"; }
 
   void clear() noexcept {
     start = 0;
@@ -49,31 +49,31 @@ struct offset final : attribute {
 
 // Represents token increment in a stream
 struct increment final : attribute {
-  static constexpr string_ref type_name() noexcept { return "increment"; }
+  static constexpr std::string_view type_name() noexcept { return "increment"; }
 
   uint32_t value{1};
 };
 
 // Represents term value in a stream
 struct term_attribute final : attribute {
-  static constexpr string_ref type_name() noexcept { return "term_attribute"; }
+  static constexpr std::string_view type_name() noexcept { return "term_attribute"; }
 
-  bytes_ref value;
+  bytes_view value;
 };
 
 // Represents an arbitrary byte sequence associated with
 // the particular term position in a field
 struct payload final : attribute {
   // DO NOT CHANGE NAME
-  static constexpr string_ref type_name() noexcept { return "payload"; }
+  static constexpr std::string_view type_name() noexcept { return "payload"; }
 
-  bytes_ref value;
+  bytes_view value;
 };
 
 // Contains a document identifier
 struct document : attribute {
   // DO NOT CHANGE NAME
-  static constexpr string_ref type_name() noexcept { return "document"; }
+  static constexpr std::string_view type_name() noexcept { return "document"; }
 
   explicit document(irs::doc_id_t doc = irs::doc_limits::invalid()) noexcept
     : value(doc) {}
@@ -84,7 +84,7 @@ struct document : attribute {
 // Number of occurences of a term in a document
 struct frequency final : attribute {
   // DO NOT CHANGE NAME
-  static constexpr string_ref type_name() noexcept { return "frequency"; }
+  static constexpr std::string_view type_name() noexcept { return "frequency"; }
 
   uint32_t value{0};
 };
@@ -95,7 +95,7 @@ struct frequency final : attribute {
 // the less precise the token the greater its granularity prefix value
 struct granularity_prefix final {
   // DO NOT CHANGE NAME
-  static constexpr string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "iresearch::granularity_prefix";
   }
 };
@@ -107,7 +107,7 @@ class position : public attribute, public attribute_provider {
   using ref = std::reference_wrapper<position>;
 
   // DO NOT CHANGE NAME
-  static constexpr string_ref type_name() noexcept { return "position"; }
+  static constexpr std::string_view type_name() noexcept { return "position"; }
 
   static position* empty() noexcept;
 
@@ -138,7 +138,7 @@ class attribute_provider_change final : public attribute {
  public:
   using callback_f = std::function<void(attribute_provider&)>;
 
-  static constexpr string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "attribute_provider_change";
   }
 
@@ -164,7 +164,7 @@ class attribute_provider_change final : public attribute {
 // Score threshold can be set by document consumers
 struct score_threshold final : public attribute {
   // DO NOT CHANGE NAME
-  static constexpr string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "iresearch::score_threshold";
   }
 

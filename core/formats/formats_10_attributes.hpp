@@ -35,7 +35,7 @@ namespace version10 {
 /// @brief document set
 //////////////////////////////////////////////////////////////////////////////
 struct documents final : attribute {
-  static constexpr string_ref type_name() noexcept { return "documents"; }
+  static constexpr std::string_view type_name() noexcept { return "documents"; }
 
   documents() = default;
 

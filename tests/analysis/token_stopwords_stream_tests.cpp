@@ -22,9 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "analysis/token_stopwords_stream.hpp"
-
 #include "gtest/gtest.h"
-
 #include "velocypack/Parser.h"
 #include "velocypack/velocypack-aliases.h"
 
@@ -42,8 +40,8 @@ TEST(token_stopwords_stream_tests, consts) {
 TEST(token_stopwords_stream_tests, test_masking) {
   // test mask nothing
   {
-    irs::string_ref data0("abc");
-    irs::string_ref data1("ghi");
+    std::string_view data0("abc");
+    std::string_view data1("ghi");
     irs::analysis::token_stopwords_stream::stopwords_set mask;
     irs::analysis::token_stopwords_stream stream(std::move(mask));
     ASSERT_EQ(irs::type<irs::analysis::token_stopwords_stream>::id(),
@@ -56,21 +54,21 @@ TEST(token_stopwords_stream_tests, test_masking) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("abc", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("abc", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
 
     ASSERT_TRUE(stream.reset(data1));
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("ghi", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 
   // test mask something
   {
-    irs::string_ref data0("abc");
-    irs::string_ref data1("ghi");
+    std::string_view data0("abc");
+    std::string_view data1("ghi");
     irs::analysis::token_stopwords_stream::stopwords_set mask = {"abc"};
     irs::analysis::token_stopwords_stream stream(std::move(mask));
 
@@ -84,7 +82,7 @@ TEST(token_stopwords_stream_tests, test_masking) {
     ASSERT_TRUE(stream.next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("ghi", irs::ViewCast<char>(term->value));
     ASSERT_FALSE(stream.next());
   }
 }
@@ -94,11 +92,11 @@ TEST(token_stopwords_stream_tests, test_masking) {
 TEST(token_stopwords_stream_tests, test_load) {
   // load jSON array (mask string)
   {
-    irs::string_ref data0("abc");
-    irs::string_ref data1("ghi");
+    std::string_view data0("abc");
+    std::string_view data1("ghi");
 
-    auto testFunc = [](const irs::string_ref& data0,
-                       const irs::string_ref& data1,
+    auto testFunc = [](const std::string_view& data0,
+                       const std::string_view& data1,
                        irs::analysis::analyzer* stream) {
       ASSERT_NE(nullptr, stream);
       ASSERT_TRUE(stream->reset(data0));
@@ -111,7 +109,7 @@ TEST(token_stopwords_stream_tests, test_load) {
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
       ASSERT_EQ(3, offset->end);
-      ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
+      ASSERT_EQ("ghi", irs::ViewCast<char>(term->value));
       ASSERT_FALSE(stream->next());
     };
     auto stream = irs::analysis::analyzers::get(
@@ -133,11 +131,11 @@ TEST(token_stopwords_stream_tests, test_load) {
 
   // load jSON object (mask string hex)
   {
-    irs::string_ref data0("abc");
-    irs::string_ref data1("646566");
+    std::string_view data0("abc");
+    std::string_view data1("646566");
 
-    auto testFunc = [](const irs::string_ref& data0,
-                       const irs::string_ref& data1,
+    auto testFunc = [](const std::string_view& data0,
+                       const std::string_view& data1,
                        irs::analysis::analyzer* stream) {
       ASSERT_NE(nullptr, stream);
       ASSERT_TRUE(stream->reset(data0));
@@ -150,7 +148,7 @@ TEST(token_stopwords_stream_tests, test_load) {
       ASSERT_TRUE(stream->next());
       ASSERT_EQ(0, offset->start);
       ASSERT_EQ(6, offset->end);
-      ASSERT_EQ("646566", irs::ref_cast<char>(term->value));
+      ASSERT_EQ("646566", irs::ViewCast<char>(term->value));
       ASSERT_FALSE(stream->next());
     };
     auto streamFromJsonObjest = irs::analysis::analyzers::get(
@@ -164,7 +162,7 @@ TEST(token_stopwords_stream_tests, test_load) {
   {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
                          "stopwords", irs::type<irs::text_format::json>::get(),
-                         irs::string_ref::NIL));
+                         std::string_view{}));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
                 "stopwords", irs::type<irs::text_format::json>::get(), "1"));
@@ -196,7 +194,7 @@ TEST(token_stopwords_stream_tests, normalize_invalid) {
   std::string actual;
   ASSERT_FALSE(irs::analysis::analyzers::normalize(
     actual, "stopwords", irs::type<irs::text_format::json>::get(),
-    irs::string_ref::NIL));
+    std::string_view{}));
   ASSERT_FALSE(irs::analysis::analyzers::normalize(
     actual, "stopwords", irs::type<irs::text_format::json>::get(), "1"));
   ASSERT_FALSE(irs::analysis::analyzers::normalize(

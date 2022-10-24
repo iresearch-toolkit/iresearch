@@ -54,7 +54,7 @@ class ngram_token_stream_base : public analyzer, private util::noncopyable {
         stream_bytes_type(InputType::Binary),
         preserve_original(original) {}
     Options(size_t min, size_t max, bool original, InputType stream_type,
-            irs::bytes_ref start, irs::bytes_ref end)
+            irs::bytes_view start, irs::bytes_view end)
       : start_marker(start),
         end_marker(end),
         min_gram(min),
@@ -70,12 +70,12 @@ class ngram_token_stream_base : public analyzer, private util::noncopyable {
     bool preserve_original;  // emit input data as a token
   };
 
-  static constexpr string_ref type_name() noexcept { return "ngram"; }
+  static constexpr std::string_view type_name() noexcept { return "ngram"; }
   static void init();  // for trigering registration in a static build
 
   explicit ngram_token_stream_base(const Options& options);
 
-  virtual bool reset(string_ref data) noexcept override;
+  virtual bool reset(std::string_view data) noexcept override;
   virtual attribute* get_mutable(
     irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(attrs_, type);
@@ -91,7 +91,7 @@ class ngram_token_stream_base : public analyzer, private util::noncopyable {
   void emit_original() noexcept;
 
   Options options_;
-  bytes_ref data_;  // data to process
+  bytes_view data_;  // data to process
   attributes attrs_;
   const byte_type* begin_{};
   const byte_type* data_end_{};

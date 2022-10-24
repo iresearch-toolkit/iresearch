@@ -59,8 +59,8 @@
 
 #include "shared.hpp"
 #include "utils/fstext/fst_states_map.hpp"
-#include "utils/string.hpp"
 #include "utils/noncopyable.hpp"
+#include "utils/string.hpp"
 
 namespace iresearch {
 
@@ -83,7 +83,7 @@ class fst_builder : util::noncopyable {
  public:
   typedef Fst fst_t;
   typedef Char char_t;
-  typedef basic_string_ref<char_t> key_t;
+  typedef std::basic_string_view<char_t> key_t;
   typedef Stats stats_t;
   typedef typename fst_t::Weight weight_t;
   typedef typename fst_t::Arc arc_t;
@@ -109,7 +109,7 @@ class fst_builder : util::noncopyable {
     const auto size = in.size();
 
     // determine common prefix
-    const size_t pref = 1 + common_prefix_length(last_, in);
+    const size_t pref = 1 + CommonPrefixLength(last_, in);
 
     // add states for current input
     add_states(size);

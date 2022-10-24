@@ -20,12 +20,11 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "format_utils.hpp"
 
-#include "index/index_meta.hpp"
-
 #include "formats/formats.hpp"
+#include "index/index_meta.hpp"
+#include "shared.hpp"
 
 namespace iresearch {
 
@@ -54,7 +53,7 @@ void validate_footer(index_input& in) {
 
 namespace format_utils {
 
-void write_header(index_output& out, string_ref format, int32_t ver) {
+void write_header(index_output& out, std::string_view format, int32_t ver) {
   out.write_int(FORMAT_MAGIC);
   write_string(out, format);
   out.write_int(ver);
@@ -66,12 +65,12 @@ void write_footer(index_output& out) {
   out.write_long(out.checksum());
 }
 
-size_t header_length(string_ref format) noexcept {
+size_t header_length(std::string_view format) noexcept {
   return sizeof(int32_t) * 2 + bytes_io<uint64_t>::vsize(format.size()) +
          format.size();
 }
 
-int32_t check_header(index_input& in, string_ref req_format, int32_t min_ver,
+int32_t check_header(index_input& in, std::string_view req_format, int32_t min_ver,
                      int32_t max_ver) {
   const ptrdiff_t left = in.length() - in.file_pointer();
 
@@ -97,10 +96,10 @@ int32_t check_header(index_input& in, string_ref req_format, int32_t min_ver,
 
   const auto format = read_string<std::string>(in);
 
-  if (compare(req_format, format) != 0) {
+  if (req_format != format) {
     throw index_error(string_utils::to_string(
       "while checking header, error: format mismatch '%s' != '%s'",
-      format.c_str(), req_format.c_str()));
+      format.c_str(), req_format.data()));
   }
 
   const int32_t ver = in.read_int();

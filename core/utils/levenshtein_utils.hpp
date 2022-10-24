@@ -23,12 +23,12 @@
 #ifndef IRESEARCH_LEVENSHTEIN_UTILS_H
 #define IRESEARCH_LEVENSHTEIN_UTILS_H
 
-#include <vector>
 #include <numeric>
 #include <span>
+#include <vector>
 
-#include "string.hpp"
 #include "automaton_decl.hpp"
+#include "string.hpp"
 
 namespace iresearch {
 
@@ -75,8 +75,8 @@ inline size_t edit_distance(const T* lhs, size_t lhs_size, const T* rhs,
 /// @returns edit distance
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Char>
-inline size_t edit_distance(const basic_string_ref<Char>& lhs,
-                            const basic_string_ref<Char>& rhs) {
+inline size_t edit_distance(std::basic_string_view<Char> lhs,
+                            std::basic_string_view<Char> rhs) {
   return edit_distance(lhs.begin(), lhs.size(), rhs.begin(), rhs.size());
 }
 
@@ -238,7 +238,7 @@ parametric_description read(data_input& in);
 /// @note if 'target' isn't a valid UTF-8 sequence, behaviour is undefined
 ////////////////////////////////////////////////////////////////////////////////
 automaton make_levenshtein_automaton(const parametric_description& description,
-                                     bytes_ref prefix, bytes_ref target);
+                                     bytes_view prefix, bytes_view target);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief evaluates edit distance between the specified words up to
@@ -267,7 +267,7 @@ size_t edit_distance(const parametric_description& description,
 ///       invalid description is undefined behaviour
 ////////////////////////////////////////////////////////////////////////////////
 inline size_t edit_distance(const parametric_description& description,
-                            bytes_ref lhs, bytes_ref rhs) {
+                            bytes_view lhs, bytes_view rhs) {
   return edit_distance(description, lhs.begin(), lhs.size(), rhs.begin(),
                        rhs.size());
 }
@@ -303,7 +303,7 @@ bool edit_distance(size_t& distance, const parametric_description& description,
 ////////////////////////////////////////////////////////////////////////////////
 inline bool edit_distance(size_t& distance,
                           const parametric_description& description,
-                          bytes_ref lhs, bytes_ref rhs) {
+                          bytes_view lhs, bytes_view rhs) {
   return edit_distance(distance, description, lhs.begin(), lhs.size(),
                        rhs.begin(), rhs.size());
 }

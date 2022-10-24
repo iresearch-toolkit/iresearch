@@ -68,7 +68,7 @@ TEST_P(format_12_test_case, open_10_with_12) {
     ASSERT_EQ(1, segment.docs_count());
     ASSERT_EQ(1, segment.live_docs_count());
 
-    std::unordered_set<irs::string_ref> expectedName = {"A"};
+    std::unordered_set<std::string_view> expectedName = {"A"};
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator(irs::ColumnHint::kNormal);
@@ -85,8 +85,8 @@ TEST_P(format_12_test_case, open_10_with_12) {
     for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
          docsItr->next();) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str())));
+      ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
+                     actual_value->value.data())));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -140,7 +140,7 @@ TEST_P(format_12_test_case, formats_10_12) {
     ASSERT_EQ(1, segment.docs_count());
     ASSERT_EQ(1, segment.live_docs_count());
 
-    std::unordered_set<irs::string_ref> expectedName = {"A"};
+    std::unordered_set<std::string_view> expectedName = {"A"};
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator(irs::ColumnHint::kNormal);
@@ -157,8 +157,8 @@ TEST_P(format_12_test_case, formats_10_12) {
     for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
          docsItr->next();) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str())));
+      ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
+                     actual_value->value.data())));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -171,7 +171,7 @@ TEST_P(format_12_test_case, formats_10_12) {
     ASSERT_EQ(1, segment.docs_count());
     ASSERT_EQ(1, segment.live_docs_count());
 
-    std::unordered_set<irs::string_ref> expectedName = {"B"};
+    std::unordered_set<std::string_view> expectedName = {"B"};
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator(irs::ColumnHint::kNormal);
@@ -188,8 +188,8 @@ TEST_P(format_12_test_case, formats_10_12) {
     for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
          docsItr->next();) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(
-                     actual_value->value.c_str())));
+      ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
+                     actual_value->value.data())));
     }
 
     ASSERT_TRUE(expectedName.empty());

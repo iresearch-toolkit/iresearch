@@ -97,7 +97,7 @@ TEST(ngram_token_stream_test, construct) {
   {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
                          "ngram", irs::type<irs::text_format::json>::get(),
-                         irs::string_ref::NIL));
+                         std::string_view{}));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
                 "ngram", irs::type<irs::text_format::json>::get(), "1"));
@@ -150,7 +150,7 @@ TEST(ngram_token_stream_test, construct) {
 
     auto* term = irs::get<irs::term_attribute>(*stream);
     ASSERT_TRUE(term);
-    ASSERT_TRUE(term->value.null());
+    ASSERT_TRUE(irs::IsNull(term->value));
 
     auto* increment = irs::get<irs::increment>(*stream);
     ASSERT_TRUE(increment);
@@ -183,7 +183,7 @@ TEST(ngram_token_stream_test, construct) {
 
     auto* term = irs::get<irs::term_attribute>(*stream);
     ASSERT_TRUE(term);
-    ASSERT_TRUE(term->value.null());
+    ASSERT_TRUE(irs::IsNull(term->value));
 
     auto* increment = irs::get<irs::increment>(*stream);
     ASSERT_TRUE(increment);
@@ -217,7 +217,7 @@ TEST(ngram_token_stream_test, construct) {
 
     auto* term = irs::get<irs::term_attribute>(*stream);
     ASSERT_TRUE(term);
-    ASSERT_TRUE(term->value.null());
+    ASSERT_TRUE(irs::IsNull(term->value));
 
     auto* increment = irs::get<irs::increment>(*stream);
     ASSERT_TRUE(increment);
@@ -232,29 +232,29 @@ TEST(ngram_token_stream_test, construct) {
 
 TEST(ngram_token_stream_test, next_utf8) {
   struct utf8token {
-    utf8token(const irs::string_ref& value, size_t start, size_t end) noexcept
-      : value(value.c_str(), value.size()),
+    utf8token(const std::string_view& value, size_t start, size_t end) noexcept
+      : start_marker(""),
+        end_marker(""),
+        value(value.data(), value.size()),
         start(start),
-        end(end),
-        start_marker(irs::string_ref::EMPTY),
-        end_marker(irs::string_ref::EMPTY) {}
-    utf8token(const irs::string_ref& value, size_t start, size_t end,
-              irs::string_ref sm, irs::string_ref em) noexcept
-      : value(value.c_str(), value.size()),
+        end(end) {}
+    utf8token(const std::string_view& value, size_t start, size_t end,
+              std::string_view sm, std::string_view em) noexcept
+      : start_marker(sm),
+        end_marker(em),
+        value(value.data(), value.size()),
         start(start),
-        end(end),
-        start_marker(sm),
-        end_marker(em) {}
+        end(end) {}
 
-    irs::string_ref start_marker;
-    irs::string_ref end_marker;
-    irs::string_ref value;
+    std::string_view start_marker;
+    std::string_view end_marker;
+    std::string_view value;
     size_t start;
     size_t end;
   };
 
   auto assert_utf8tokens =
-    [](const std::vector<utf8token>& expected, irs::string_ref data,
+    [](const std::vector<utf8token>& expected, std::string_view data,
        irs::analysis::ngram_token_stream<
          irs::analysis::ngram_token_stream_base::InputType::UTF8>& stream) {
       ASSERT_TRUE(stream.reset(data));
@@ -268,7 +268,7 @@ TEST(ngram_token_stream_test, next_utf8) {
       auto expected_token = expected.begin();
       uint32_t pos = std::numeric_limits<uint32_t>::max();
       while (stream.next()) {
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(expected_token->value),
                   value->value);
         ASSERT_EQ(expected_token->start, offset->start);
         ASSERT_EQ(expected_token->end, offset->end);
@@ -282,13 +282,13 @@ TEST(ngram_token_stream_test, next_utf8) {
         irs::bstring bs;
         if (!expected_token->start_marker.empty()) {
           bs.append(reinterpret_cast<const irs::byte_type*>(
-                      expected_token->start_marker.c_str()),
+                      expected_token->start_marker.data()),
                     expected_token->start_marker.size());
         }
         bs.append(start, size);
         if (!expected_token->end_marker.empty()) {
           bs.append(reinterpret_cast<const irs::byte_type*>(
-                      expected_token->end_marker.c_str()),
+                      expected_token->end_marker.data()),
                     expected_token->end_marker.size());
         }
 
@@ -307,21 +307,24 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         1, 1, false, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
+        irs::kEmptyStringView<irs::byte_type>,
+        irs::kEmptyStringView<irs::byte_type>));
 
     std::u8string utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
 
     const std::vector<utf8token> expected{
       {"a", 0, 1}, {"\xc2\xa2", 1, 3}, {"b", 3, 4},  {"\xc2\xa3", 4, 6},
       {"c", 6, 7}, {"\xc2\xa4", 7, 9}, {"d", 9, 10}, {"\xc2\xa5", 10, 12}};
-    assert_utf8tokens(expected, irs::ref_cast<char>(utf8data), stream);
+    assert_utf8tokens(expected, std::string(utf8data.begin(), utf8data.end()),
+                      stream);
 
     // let`s break utf-8. Cut the last byte of last 2-byte symbol
     utf8data.resize(utf8data.size() - 1);
     const std::vector<utf8token> expected2{
       {"a", 0, 1}, {"\xc2\xa2", 1, 3}, {"b", 3, 4},  {"\xc2\xa3", 4, 6},
       {"c", 6, 7}, {"\xc2\xa4", 7, 9}, {"d", 9, 10}, {"\xc2", 10, 11}};
-    assert_utf8tokens(expected2, irs::ref_cast<char>(utf8data), stream);
+    assert_utf8tokens(expected2, std::string(utf8data.begin(), utf8data.end()),
+                      stream);
   }
 
   {
@@ -330,10 +333,11 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         2, 2, false, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
+        irs::kEmptyStringView<irs::byte_type>,
+        irs::kEmptyStringView<irs::byte_type>));
 
     constexpr std::u8string_view utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
-    const auto data = irs::ref_cast<char>(utf8data);
+    const auto data = irs::ViewCast<char>(utf8data);
 
     const std::vector<utf8token> expected{{"a\xc2\xa2", 0, 3},
                                           {"\xc2\xa2"
@@ -363,10 +367,11 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         1, 2, false, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
+        irs::kEmptyStringView<irs::byte_type>,
+        irs::kEmptyStringView<irs::byte_type>));
 
     constexpr std::u8string_view utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
-    const auto data = irs::ref_cast<char>(utf8data);
+    const auto data = irs::ViewCast<char>(utf8data);
 
     const std::vector<utf8token> expected{{"a", 0, 1},
                                           {"a\xc2\xa2", 0, 3},
@@ -404,10 +409,11 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         5, 5, false, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
+        irs::kEmptyStringView<irs::byte_type>,
+        irs::kEmptyStringView<irs::byte_type>));
 
     constexpr std::u8string_view utf8data = u8"\u00C0\u00C1\u00C2\u00C3\u00C4";
-    const auto data = irs::ref_cast<char>(utf8data);
+    const auto data = irs::ViewCast<char>(utf8data);
 
     const std::vector<utf8token> expected{
       {"\xc3\x80\xc3\x81\xc3\x82\xc3\x83\xc3\x84", 0, 10}};
@@ -420,18 +426,18 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         5, 5, false, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2),
-        irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
-                       2)));
+        irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2),
+        irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
+                        2)));
 
     constexpr std::u8string_view utf8data = u8"\u00C0\u00C1\u00C2\u00C3\u00C4";
-    const auto data = irs::ref_cast<char>(utf8data);
+    const auto data = irs::ViewCast<char>(utf8data);
 
     const std::vector<utf8token> expected{
       {"\xc2\xa2\xc3\x80\xc3\x81\xc3\x82\xc3\x83\xc3\x84", 0, 10, "\xc2\xa2",
-       irs::string_ref::EMPTY},
-      {"\xc3\x80\xc3\x81\xc3\x82\xc3\x83\xc3\x84\xc2\xa1", 0, 10,
-       irs::string_ref::EMPTY, "\xc2\xa1"}};
+       ""},
+      {"\xc3\x80\xc3\x81\xc3\x82\xc3\x83\xc3\x84\xc2\xa1", 0, 10, "",
+       "\xc2\xa1"}};
     assert_utf8tokens(expected, data, stream);
   }
 
@@ -441,9 +447,10 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         5, 5, true, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
+        irs::kEmptyStringView<irs::byte_type>,
+        irs::kEmptyStringView<irs::byte_type>));
     const std::u8string_view utf8data = u8"\u00C0\u00C1\u00C2\u00C3\u00C4";
-    const auto data = irs::ref_cast<char>(utf8data);
+    const auto data = irs::ViewCast<char>(utf8data);
 
     const std::vector<utf8token> expected{
       {"\xc3\x80\xc3\x81\xc3\x82\xc3\x83\xc3\x84", 0, 10}};
@@ -456,9 +463,10 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         6, 6, true, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
+        irs::kEmptyStringView<irs::byte_type>,
+        irs::kEmptyStringView<irs::byte_type>));
     constexpr std::u8string_view utf8data = u8"\u00C0\u00C1\u00C2\u00C3\u00C4";
-    const auto data = irs::ref_cast<char>(utf8data);
+    const auto data = irs::ViewCast<char>(utf8data);
 
     const std::vector<utf8token> expected{
       {"\xc3\x80\xc3\x81\xc3\x82\xc3\x83\xc3\x84", 0, 10}};
@@ -471,9 +479,10 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         6, 6, false, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
+        irs::kEmptyStringView<irs::byte_type>,
+        irs::kEmptyStringView<irs::byte_type>));
     const std::u8string_view utf8data = u8"\u00C0\u00C1\u00C2\u00C3\u00C4";
-    const auto data = irs::ref_cast<char>(utf8data);
+    const auto data = irs::ViewCast<char>(utf8data);
 
     ASSERT_TRUE(stream.reset(data));
     ASSERT_FALSE(stream.next());
@@ -485,45 +494,44 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         1, 2, false, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2),
-        irs::bytes_ref::EMPTY));
+        irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2),
+        irs::kEmptyStringView<irs::byte_type>));
 
     constexpr std::u8string_view utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
-    const auto data = irs::ref_cast<char>(utf8data);
+    const auto data = irs::ViewCast<char>(utf8data);
 
-    const std::vector<utf8token> expected{
-      {"\xc2\xa1"
-       "a",
-       0, 1, "\xc2\xa1", irs::string_ref::EMPTY},
-      {"\xc2\xa1"
-       "a"
-       "\xc2\xa2",
-       0, 3, "\xc2\xa1", irs::string_ref::EMPTY},
-      {"\xc2\xa2", 1, 3},
-      {"\xc2\xa2"
-       "b",
-       1, 4},
-      {"b", 3, 4},
-      {"b"
-       "\xc2\xa3",
-       3, 6},
-      {"\xc2\xa3", 4, 6},
-      {"\xc2\xa3"
-       "c",
-       4, 7},
-      {"c", 6, 7},
-      {"c"
-       "\xc2\xa4",
-       6, 9},
-      {"\xc2\xa4", 7, 9},
-      {"\xc2\xa4"
-       "d",
-       7, 10},
-      {"d", 9, 10},
-      {"d"
-       "\xc2\xa5",
-       9, 12},
-      {"\xc2\xa5", 10, 12}};
+    const std::vector<utf8token> expected{{"\xc2\xa1"
+                                           "a",
+                                           0, 1, "\xc2\xa1", ""},
+                                          {"\xc2\xa1"
+                                           "a"
+                                           "\xc2\xa2",
+                                           0, 3, "\xc2\xa1", ""},
+                                          {"\xc2\xa2", 1, 3},
+                                          {"\xc2\xa2"
+                                           "b",
+                                           1, 4},
+                                          {"b", 3, 4},
+                                          {"b"
+                                           "\xc2\xa3",
+                                           3, 6},
+                                          {"\xc2\xa3", 4, 6},
+                                          {"\xc2\xa3"
+                                           "c",
+                                           4, 7},
+                                          {"c", 6, 7},
+                                          {"c"
+                                           "\xc2\xa4",
+                                           6, 9},
+                                          {"\xc2\xa4", 7, 9},
+                                          {"\xc2\xa4"
+                                           "d",
+                                           7, 10},
+                                          {"d", 9, 10},
+                                          {"d"
+                                           "\xc2\xa5",
+                                           9, 12},
+                                          {"\xc2\xa5", 10, 12}};
     assert_utf8tokens(expected, data, stream);
   }
   {
@@ -532,55 +540,54 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         1, 2, true, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2),
-        irs::bytes_ref::EMPTY));
+        irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"), 2),
+        irs::kEmptyStringView<irs::byte_type>));
 
     constexpr std::u8string_view utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
-    const auto data = irs::ref_cast<char>(utf8data);
+    const auto data = irs::ViewCast<char>(utf8data);
 
-    const std::vector<utf8token> expected{
-      {"\xc2\xa1"
-       "a",
-       0, 1, "\xc2\xa1", irs::string_ref::EMPTY},
-      {"\xc2\xa1"
-       "a"
-       "\xc2\xa2",
-       0, 3, "\xc2\xa1", irs::string_ref::EMPTY},
-      {"\xc2\xa1"
-       "a"
-       "\xc2\xa2"
-       "b"
-       "\xc2\xa3"
-       "c"
-       "\xc2\xa4"
-       "d"
-       "\xc2\xa5",
-       0, 12, "\xc2\xa1", irs::string_ref::EMPTY},
-      {"\xc2\xa2", 1, 3},
-      {"\xc2\xa2"
-       "b",
-       1, 4},
-      {"b", 3, 4},
-      {"b"
-       "\xc2\xa3",
-       3, 6},
-      {"\xc2\xa3", 4, 6},
-      {"\xc2\xa3"
-       "c",
-       4, 7},
-      {"c", 6, 7},
-      {"c"
-       "\xc2\xa4",
-       6, 9},
-      {"\xc2\xa4", 7, 9},
-      {"\xc2\xa4"
-       "d",
-       7, 10},
-      {"d", 9, 10},
-      {"d"
-       "\xc2\xa5",
-       9, 12},
-      {"\xc2\xa5", 10, 12}};
+    const std::vector<utf8token> expected{{"\xc2\xa1"
+                                           "a",
+                                           0, 1, "\xc2\xa1", ""},
+                                          {"\xc2\xa1"
+                                           "a"
+                                           "\xc2\xa2",
+                                           0, 3, "\xc2\xa1", ""},
+                                          {"\xc2\xa1"
+                                           "a"
+                                           "\xc2\xa2"
+                                           "b"
+                                           "\xc2\xa3"
+                                           "c"
+                                           "\xc2\xa4"
+                                           "d"
+                                           "\xc2\xa5",
+                                           0, 12, "\xc2\xa1", ""},
+                                          {"\xc2\xa2", 1, 3},
+                                          {"\xc2\xa2"
+                                           "b",
+                                           1, 4},
+                                          {"b", 3, 4},
+                                          {"b"
+                                           "\xc2\xa3",
+                                           3, 6},
+                                          {"\xc2\xa3", 4, 6},
+                                          {"\xc2\xa3"
+                                           "c",
+                                           4, 7},
+                                          {"c", 6, 7},
+                                          {"c"
+                                           "\xc2\xa4",
+                                           6, 9},
+                                          {"\xc2\xa4", 7, 9},
+                                          {"\xc2\xa4"
+                                           "d",
+                                           7, 10},
+                                          {"d", 9, 10},
+                                          {"d"
+                                           "\xc2\xa5",
+                                           9, 12},
+                                          {"\xc2\xa5", 10, 12}};
     assert_utf8tokens(expected, data, stream);
   }
   {
@@ -589,71 +596,70 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         2, 3, true, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::bytes_ref::EMPTY,
-        irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
-                       2)));
+        irs::kEmptyStringView<irs::byte_type>,
+        irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
+                        2)));
 
     constexpr std::u8string_view utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
-    const auto data = irs::ref_cast<char>(utf8data);
+    const auto data = irs::ViewCast<char>(utf8data);
 
-    const std::vector<utf8token> expected{
-      {"a"
-       "\xc2\xa2",
-       0, 3},
-      {"a"
-       "\xc2\xa2"
-       "b",
-       0, 4},
-      {"a"
-       "\xc2\xa2"
-       "b"
-       "\xc2\xa3"
-       "c"
-       "\xc2\xa4"
-       "d"
-       "\xc2\xa5"
-       "\xc2\xa1",
-       0, 12, irs::string_ref::EMPTY, "\xc2\xa1"},
-      {"\xc2\xa2"
-       "b",
-       1, 4},
-      {"\xc2\xa2"
-       "b"
-       "\xc2\xa3",
-       1, 6},
-      {"b"
-       "\xc2\xa3",
-       3, 6},
-      {"b"
-       "\xc2\xa3"
-       "c",
-       3, 7},
-      {"\xc2\xa3"
-       "c",
-       4, 7},
-      {"\xc2\xa3"
-       "c"
-       "\xc2\xa4",
-       4, 9},
-      {"c"
-       "\xc2\xa4",
-       6, 9},
-      {"c"
-       "\xc2\xa4"
-       "d",
-       6, 10},
-      {"\xc2\xa4"
-       "d",
-       7, 10},
-      {"\xc2\xa4"
-       "d"
-       "\xc2\xa5"
-       "\xc2\xa1",
-       7, 12, irs::string_ref::EMPTY, "\xc2\xa1"},
-      {"d"
-       "\xc2\xa5"
-       "\xc2\xa1",
-       9, 12, irs::string_ref::EMPTY, "\xc2\xa1"}};
+    const std::vector<utf8token> expected{{"a"
+                                           "\xc2\xa2",
+                                           0, 3},
+                                          {"a"
+                                           "\xc2\xa2"
+                                           "b",
+                                           0, 4},
+                                          {"a"
+                                           "\xc2\xa2"
+                                           "b"
+                                           "\xc2\xa3"
+                                           "c"
+                                           "\xc2\xa4"
+                                           "d"
+                                           "\xc2\xa5"
+                                           "\xc2\xa1",
+                                           0, 12, "", "\xc2\xa1"},
+                                          {"\xc2\xa2"
+                                           "b",
+                                           1, 4},
+                                          {"\xc2\xa2"
+                                           "b"
+                                           "\xc2\xa3",
+                                           1, 6},
+                                          {"b"
+                                           "\xc2\xa3",
+                                           3, 6},
+                                          {"b"
+                                           "\xc2\xa3"
+                                           "c",
+                                           3, 7},
+                                          {"\xc2\xa3"
+                                           "c",
+                                           4, 7},
+                                          {"\xc2\xa3"
+                                           "c"
+                                           "\xc2\xa4",
+                                           4, 9},
+                                          {"c"
+                                           "\xc2\xa4",
+                                           6, 9},
+                                          {"c"
+                                           "\xc2\xa4"
+                                           "d",
+                                           6, 10},
+                                          {"\xc2\xa4"
+                                           "d",
+                                           7, 10},
+                                          {"\xc2\xa4"
+                                           "d"
+                                           "\xc2\xa5"
+                                           "\xc2\xa1",
+                                           7, 12, "", "\xc2\xa1"},
+                                          {"d"
+                                           "\xc2\xa5"
+                                           "\xc2\xa1",
+                                           9, 12, "", "\xc2\xa1"}};
     assert_utf8tokens(expected, data, stream);
   }
 
@@ -663,81 +669,80 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         1, 3, true, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::bytes_ref::EMPTY,
-        irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
-                       2)));
+        irs::kEmptyStringView<irs::byte_type>,
+        irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
+                        2)));
 
     const std::u8string_view utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
-    const auto data = irs::ref_cast<char>(utf8data);
+    const auto data = irs::ViewCast<char>(utf8data);
 
-    const std::vector<utf8token> expected{
-      {"a", 0, 1},
-      {"a"
-       "\xc2\xa2",
-       0, 3},
-      {"a"
-       "\xc2\xa2"
-       "b",
-       0, 4},
-      {"a"
-       "\xc2\xa2"
-       "b"
-       "\xc2\xa3"
-       "c"
-       "\xc2\xa4"
-       "d"
-       "\xc2\xa5"
-       "\xc2\xa1",
-       0, 12, irs::string_ref::EMPTY, "\xc2\xa1"},
-      {"\xc2\xa2", 1, 3},
-      {"\xc2\xa2"
-       "b",
-       1, 4},
-      {"\xc2\xa2"
-       "b"
-       "\xc2\xa3",
-       1, 6},
-      {"b", 3, 4},
-      {"b"
-       "\xc2\xa3",
-       3, 6},
-      {"b"
-       "\xc2\xa3"
-       "c",
-       3, 7},
-      {"\xc2\xa3", 4, 6},
-      {"\xc2\xa3"
-       "c",
-       4, 7},
-      {"\xc2\xa3"
-       "c"
-       "\xc2\xa4",
-       4, 9},
-      {"c", 6, 7},
-      {"c"
-       "\xc2\xa4",
-       6, 9},
-      {"c"
-       "\xc2\xa4"
-       "d",
-       6, 10},
-      {"\xc2\xa4", 7, 9},
-      {"\xc2\xa4"
-       "d",
-       7, 10},
-      {"\xc2\xa4"
-       "d"
-       "\xc2\xa5"
-       "\xc2\xa1",
-       7, 12, irs::string_ref::EMPTY, "\xc2\xa1"},
-      {"d", 9, 10},
-      {"d"
-       "\xc2\xa5"
-       "\xc2\xa1",
-       9, 12, irs::string_ref::EMPTY, "\xc2\xa1"},
-      {"\xc2\xa5"
-       "\xc2\xa1",
-       10, 12, irs::string_ref::EMPTY, "\xc2\xa1"}};
+    const std::vector<utf8token> expected{{"a", 0, 1},
+                                          {"a"
+                                           "\xc2\xa2",
+                                           0, 3},
+                                          {"a"
+                                           "\xc2\xa2"
+                                           "b",
+                                           0, 4},
+                                          {"a"
+                                           "\xc2\xa2"
+                                           "b"
+                                           "\xc2\xa3"
+                                           "c"
+                                           "\xc2\xa4"
+                                           "d"
+                                           "\xc2\xa5"
+                                           "\xc2\xa1",
+                                           0, 12, "", "\xc2\xa1"},
+                                          {"\xc2\xa2", 1, 3},
+                                          {"\xc2\xa2"
+                                           "b",
+                                           1, 4},
+                                          {"\xc2\xa2"
+                                           "b"
+                                           "\xc2\xa3",
+                                           1, 6},
+                                          {"b", 3, 4},
+                                          {"b"
+                                           "\xc2\xa3",
+                                           3, 6},
+                                          {"b"
+                                           "\xc2\xa3"
+                                           "c",
+                                           3, 7},
+                                          {"\xc2\xa3", 4, 6},
+                                          {"\xc2\xa3"
+                                           "c",
+                                           4, 7},
+                                          {"\xc2\xa3"
+                                           "c"
+                                           "\xc2\xa4",
+                                           4, 9},
+                                          {"c", 6, 7},
+                                          {"c"
+                                           "\xc2\xa4",
+                                           6, 9},
+                                          {"c"
+                                           "\xc2\xa4"
+                                           "d",
+                                           6, 10},
+                                          {"\xc2\xa4", 7, 9},
+                                          {"\xc2\xa4"
+                                           "d",
+                                           7, 10},
+                                          {"\xc2\xa4"
+                                           "d"
+                                           "\xc2\xa5"
+                                           "\xc2\xa1",
+                                           7, 12, "", "\xc2\xa1"},
+                                          {"d", 9, 10},
+                                          {"d"
+                                           "\xc2\xa5"
+                                           "\xc2\xa1",
+                                           9, 12, "", "\xc2\xa1"},
+                                          {"\xc2\xa5"
+                                           "\xc2\xa1",
+                                           10, 12, "", "\xc2\xa1"}};
     assert_utf8tokens(expected, data, stream);
   }
 
@@ -747,95 +752,94 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         1, 3, true, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2),
-        irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
-                       2)));
+        irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2),
+        irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
+                        2)));
 
     constexpr std::u8string_view utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
-    const auto data = irs::ref_cast<char>(utf8data);
+    const auto data = irs::ViewCast<char>(utf8data);
 
-    const std::vector<utf8token> expected{
-      {"\xc2\xa2"
-       "a",
-       0, 1, "\xc2\xa2", irs::string_ref::EMPTY},
-      {"\xc2\xa2"
-       "a"
-       "\xc2\xa2",
-       0, 3, "\xc2\xa2", irs::string_ref::EMPTY},
-      {"\xc2\xa2"
-       "a"
-       "\xc2\xa2"
-       "b",
-       0, 4, "\xc2\xa2", irs::string_ref::EMPTY},
-      {"\xc2\xa2"
-       "a"
-       "\xc2\xa2"
-       "b"
-       "\xc2\xa3"
-       "c"
-       "\xc2\xa4"
-       "d"
-       "\xc2\xa5",
-       0, 12, "\xc2\xa2", irs::string_ref::EMPTY},
-      {"a"
-       "\xc2\xa2"
-       "b"
-       "\xc2\xa3"
-       "c"
-       "\xc2\xa4"
-       "d"
-       "\xc2\xa5"
-       "\xc2\xa1",
-       0, 12, irs::string_ref::EMPTY, "\xc2\xa1"},
-      {"\xc2\xa2", 1, 3},
-      {"\xc2\xa2"
-       "b",
-       1, 4},
-      {"\xc2\xa2"
-       "b"
-       "\xc2\xa3",
-       1, 6},
-      {"b", 3, 4},
-      {"b"
-       "\xc2\xa3",
-       3, 6},
-      {"b"
-       "\xc2\xa3"
-       "c",
-       3, 7},
-      {"\xc2\xa3", 4, 6},
-      {"\xc2\xa3"
-       "c",
-       4, 7},
-      {"\xc2\xa3"
-       "c"
-       "\xc2\xa4",
-       4, 9},
-      {"c", 6, 7},
-      {"c"
-       "\xc2\xa4",
-       6, 9},
-      {"c"
-       "\xc2\xa4"
-       "d",
-       6, 10},
-      {"\xc2\xa4", 7, 9},
-      {"\xc2\xa4"
-       "d",
-       7, 10},
-      {"\xc2\xa4"
-       "d"
-       "\xc2\xa5"
-       "\xc2\xa1",
-       7, 12, irs::string_ref::EMPTY, "\xc2\xa1"},
-      {"d", 9, 10},
-      {"d"
-       "\xc2\xa5"
-       "\xc2\xa1",
-       9, 12, irs::string_ref::EMPTY, "\xc2\xa1"},
-      {"\xc2\xa5"
-       "\xc2\xa1",
-       10, 12, irs::string_ref::EMPTY, "\xc2\xa1"}};
+    const std::vector<utf8token> expected{{"\xc2\xa2"
+                                           "a",
+                                           0, 1, "\xc2\xa2", ""},
+                                          {"\xc2\xa2"
+                                           "a"
+                                           "\xc2\xa2",
+                                           0, 3, "\xc2\xa2", ""},
+                                          {"\xc2\xa2"
+                                           "a"
+                                           "\xc2\xa2"
+                                           "b",
+                                           0, 4, "\xc2\xa2", ""},
+                                          {"\xc2\xa2"
+                                           "a"
+                                           "\xc2\xa2"
+                                           "b"
+                                           "\xc2\xa3"
+                                           "c"
+                                           "\xc2\xa4"
+                                           "d"
+                                           "\xc2\xa5",
+                                           0, 12, "\xc2\xa2", ""},
+                                          {"a"
+                                           "\xc2\xa2"
+                                           "b"
+                                           "\xc2\xa3"
+                                           "c"
+                                           "\xc2\xa4"
+                                           "d"
+                                           "\xc2\xa5"
+                                           "\xc2\xa1",
+                                           0, 12, "", "\xc2\xa1"},
+                                          {"\xc2\xa2", 1, 3},
+                                          {"\xc2\xa2"
+                                           "b",
+                                           1, 4},
+                                          {"\xc2\xa2"
+                                           "b"
+                                           "\xc2\xa3",
+                                           1, 6},
+                                          {"b", 3, 4},
+                                          {"b"
+                                           "\xc2\xa3",
+                                           3, 6},
+                                          {"b"
+                                           "\xc2\xa3"
+                                           "c",
+                                           3, 7},
+                                          {"\xc2\xa3", 4, 6},
+                                          {"\xc2\xa3"
+                                           "c",
+                                           4, 7},
+                                          {"\xc2\xa3"
+                                           "c"
+                                           "\xc2\xa4",
+                                           4, 9},
+                                          {"c", 6, 7},
+                                          {"c"
+                                           "\xc2\xa4",
+                                           6, 9},
+                                          {"c"
+                                           "\xc2\xa4"
+                                           "d",
+                                           6, 10},
+                                          {"\xc2\xa4", 7, 9},
+                                          {"\xc2\xa4"
+                                           "d",
+                                           7, 10},
+                                          {"\xc2\xa4"
+                                           "d"
+                                           "\xc2\xa5"
+                                           "\xc2\xa1",
+                                           7, 12, "", "\xc2\xa1"},
+                                          {"d", 9, 10},
+                                          {"d"
+                                           "\xc2\xa5"
+                                           "\xc2\xa1",
+                                           9, 12, "", "\xc2\xa1"},
+                                          {"\xc2\xa5"
+                                           "\xc2\xa1",
+                                           10, 12, "", "\xc2\xa1"}};
     assert_utf8tokens(expected, data, stream);
   }
 
@@ -845,75 +849,74 @@ TEST(ngram_token_stream_test, next_utf8) {
       irs::analysis::ngram_token_stream_base::InputType::UTF8>
       stream(irs::analysis::ngram_token_stream_base::Options(
         1, 3, false, irs::analysis::ngram_token_stream_base::InputType::UTF8,
-        irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2),
-        irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
-                       2)));
+        irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2),
+        irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
+                        2)));
 
     const std::u8string_view utf8data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
-    const auto data = irs::ref_cast<char>(utf8data);
+    const auto data = irs::ViewCast<char>(utf8data);
 
-    const std::vector<utf8token> expected{
-      {"\xc2\xa2"
-       "a",
-       0, 1, "\xc2\xa2", irs::string_ref::EMPTY},
-      {"\xc2\xa2"
-       "a"
-       "\xc2\xa2",
-       0, 3, "\xc2\xa2", irs::string_ref::EMPTY},
-      {"\xc2\xa2"
-       "a"
-       "\xc2\xa2"
-       "b",
-       0, 4, "\xc2\xa2", irs::string_ref::EMPTY},
-      {"\xc2\xa2", 1, 3},
-      {"\xc2\xa2"
-       "b",
-       1, 4},
-      {"\xc2\xa2"
-       "b"
-       "\xc2\xa3",
-       1, 6},
-      {"b", 3, 4},
-      {"b"
-       "\xc2\xa3",
-       3, 6},
-      {"b"
-       "\xc2\xa3"
-       "c",
-       3, 7},
-      {"\xc2\xa3", 4, 6},
-      {"\xc2\xa3"
-       "c",
-       4, 7},
-      {"\xc2\xa3"
-       "c"
-       "\xc2\xa4",
-       4, 9},
-      {"c", 6, 7},
-      {"c"
-       "\xc2\xa4",
-       6, 9},
-      {"c"
-       "\xc2\xa4"
-       "d",
-       6, 10},
-      {"\xc2\xa4", 7, 9},
-      {"\xc2\xa4"
-       "d",
-       7, 10},
-      {"\xc2\xa4"
-       "d"
-       "\xc2\xa5"
-       "\xc2\xa1",
-       7, 12, irs::string_ref::EMPTY, "\xc2\xa1"},
-      {"d", 9, 10},
-      {"d"
-       "\xc2\xa5"
-       "\xc2\xa1",
-       9, 12, irs::string_ref::EMPTY, "\xc2\xa1"},
-      {"\xc2\xa5"
-       "\xc2\xa1",
-       10, 12, irs::string_ref::EMPTY, "\xc2\xa1"}};
+    const std::vector<utf8token> expected{{"\xc2\xa2"
+                                           "a",
+                                           0, 1, "\xc2\xa2", ""},
+                                          {"\xc2\xa2"
+                                           "a"
+                                           "\xc2\xa2",
+                                           0, 3, "\xc2\xa2", ""},
+                                          {"\xc2\xa2"
+                                           "a"
+                                           "\xc2\xa2"
+                                           "b",
+                                           0, 4, "\xc2\xa2", ""},
+                                          {"\xc2\xa2", 1, 3},
+                                          {"\xc2\xa2"
+                                           "b",
+                                           1, 4},
+                                          {"\xc2\xa2"
+                                           "b"
+                                           "\xc2\xa3",
+                                           1, 6},
+                                          {"b", 3, 4},
+                                          {"b"
+                                           "\xc2\xa3",
+                                           3, 6},
+                                          {"b"
+                                           "\xc2\xa3"
+                                           "c",
+                                           3, 7},
+                                          {"\xc2\xa3", 4, 6},
+                                          {"\xc2\xa3"
+                                           "c",
+                                           4, 7},
+                                          {"\xc2\xa3"
+                                           "c"
+                                           "\xc2\xa4",
+                                           4, 9},
+                                          {"c", 6, 7},
+                                          {"c"
+                                           "\xc2\xa4",
+                                           6, 9},
+                                          {"c"
+                                           "\xc2\xa4"
+                                           "d",
+                                           6, 10},
+                                          {"\xc2\xa4", 7, 9},
+                                          {"\xc2\xa4"
+                                           "d",
+                                           7, 10},
+                                          {"\xc2\xa4"
+                                           "d"
+                                           "\xc2\xa5"
+                                           "\xc2\xa1",
+                                           7, 12, "", "\xc2\xa1"},
+                                          {"d", 9, 10},
+                                          {"d"
+                                           "\xc2\xa5"
+                                           "\xc2\xa1",
+                                           9, 12, "", "\xc2\xa1"},
+                                          {"\xc2\xa5"
+                                           "\xc2\xa1",
+                                           10, 12, "", "\xc2\xa1"}};
     assert_utf8tokens(expected, data, stream);
   }
 }
@@ -923,14 +926,15 @@ TEST(ngram_token_stream_test, reset_too_big) {
     irs::analysis::ngram_token_stream_base::InputType::Binary>
     stream(irs::analysis::ngram_token_stream_base::Options(1, 1, false));
 
-  const irs::string_ref input(reinterpret_cast<const char*>(&stream),
-                              size_t(std::numeric_limits<uint32_t>::max()) + 1);
+  const std::string_view input(
+    reinterpret_cast<const char*>(&stream),
+    size_t(std::numeric_limits<uint32_t>::max()) + 1);
 
   ASSERT_FALSE(stream.reset(input));
 
   auto* term = irs::get<irs::term_attribute>(stream);
   ASSERT_TRUE(term);
-  ASSERT_TRUE(term->value.null());
+  ASSERT_TRUE(irs::IsNull(term->value));
 
   auto* increment = irs::get<irs::increment>(stream);
   ASSERT_TRUE(increment);
@@ -944,31 +948,31 @@ TEST(ngram_token_stream_test, reset_too_big) {
 
 TEST(ngram_token_stream_test, next) {
   struct token {
-    token(const irs::string_ref& value, size_t start, size_t end) noexcept
-      : value(value),
+    token(std::string_view value, size_t start, size_t end) noexcept
+      : start_marker(""),
+        end_marker(""),
+        value(value),
         start(start),
-        end(end),
-        start_marker(irs::string_ref::EMPTY),
-        end_marker(irs::string_ref::EMPTY) {}
+        end(end) {}
 
-    token(const irs::string_ref& value, size_t start, size_t end,
-          irs::string_ref sm, irs::string_ref em) noexcept
-      : value(value.c_str(), value.size()),
+    token(std::string_view value, size_t start, size_t end, std::string_view sm,
+          std::string_view em) noexcept
+      : start_marker(sm),
+        end_marker(em),
+        value(value.data(), value.size()),
         start(start),
-        end(end),
-        start_marker(sm),
-        end_marker(em) {}
+        end(end) {}
 
-    irs::string_ref start_marker;
-    irs::string_ref end_marker;
+    std::string_view start_marker;
+    std::string_view end_marker;
 
-    irs::string_ref value;
+    std::string_view value;
     size_t start;
     size_t end;
   };
 
   auto assert_tokens =
-    [](const std::vector<token>& expected, const irs::string_ref& data,
+    [](const std::vector<token>& expected, const std::string_view& data,
        irs::analysis::ngram_token_stream<
          irs::analysis::ngram_token_stream_base::InputType::Binary>& stream) {
       ASSERT_TRUE(stream.reset(data));
@@ -982,7 +986,7 @@ TEST(ngram_token_stream_test, next) {
       auto expected_token = expected.begin();
       uint32_t pos = std::numeric_limits<uint32_t>::max();
       while (stream.next()) {
-        ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value),
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(expected_token->value),
                   value->value);
         ASSERT_EQ(expected_token->start, offset->start);
         ASSERT_EQ(expected_token->end, offset->end);
@@ -994,14 +998,14 @@ TEST(ngram_token_stream_test, next) {
         irs::bstring bs;
         if (!expected_token->start_marker.empty()) {
           bs.append(reinterpret_cast<const irs::byte_type*>(
-                      expected_token->start_marker.c_str()),
+                      expected_token->start_marker.data()),
                     expected_token->start_marker.size());
         }
-        bs.append(reinterpret_cast<const irs::byte_type*>(data.c_str()) + pos,
+        bs.append(reinterpret_cast<const irs::byte_type*>(data.data()) + pos,
                   size);
         if (!expected_token->end_marker.empty()) {
           bs.append(reinterpret_cast<const irs::byte_type*>(
-                      expected_token->end_marker.c_str()),
+                      expected_token->end_marker.data()),
                     expected_token->end_marker.size());
         }
         ASSERT_EQ(bs, value->value);
@@ -1028,15 +1032,14 @@ TEST(ngram_token_stream_test, next) {
       irs::analysis::ngram_token_stream_base::InputType::Binary>
       stream(irs::analysis::ngram_token_stream_base::Options(
         1, 1, false, irs::analysis::ngram_token_stream_base::InputType::Binary,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("$")),
-        irs::ref_cast<irs::byte_type>(irs::string_ref("^"))));
+        irs::ViewCast<irs::byte_type>(std::string_view("$")),
+        irs::ViewCast<irs::byte_type>(std::string_view("^"))));
 
-    const std::vector<token> expected{
-      {"$q", 0, 1, "$", irs::string_ref::EMPTY},
-      {"u", 1, 2},
-      {"i", 2, 3},
-      {"c", 3, 4},
-      {"k^", 4, 5, irs::string_ref::EMPTY, "^"}};
+    const std::vector<token> expected{{"$q", 0, 1, "$", ""},
+                                      {"u", 1, 2},
+                                      {"i", 2, 3},
+                                      {"c", 3, 4},
+                                      {"k^", 4, 5, "", "^"}};
 
     assert_tokens(expected, "quick", stream);
   }
@@ -1061,17 +1064,16 @@ TEST(ngram_token_stream_test, next) {
       irs::analysis::ngram_token_stream_base::InputType::Binary>
       stream(irs::analysis::ngram_token_stream_base::Options(
         1, 1, true, irs::analysis::ngram_token_stream_base::InputType::Binary,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("$")),
-        irs::ref_cast<irs::byte_type>(irs::string_ref("^"))));
+        irs::ViewCast<irs::byte_type>(std::string_view("$")),
+        irs::ViewCast<irs::byte_type>(std::string_view("^"))));
 
-    const std::vector<token> expected{
-      {"$q", 0, 1, "$", irs::string_ref::EMPTY},
-      {"$quick", 0, 5, "$", irs::string_ref::EMPTY},
-      {"quick^", 0, 5, irs::string_ref::EMPTY, "^"},
-      {"u", 1, 2},
-      {"i", 2, 3},
-      {"c", 3, 4},
-      {"k^", 4, 5, irs::string_ref::EMPTY, "^"}};
+    const std::vector<token> expected{{"$q", 0, 1, "$", ""},
+                                      {"$quick", 0, 5, "$", ""},
+                                      {"quick^", 0, 5, "", "^"},
+                                      {"u", 1, 2},
+                                      {"i", 2, 3},
+                                      {"c", 3, 4},
+                                      {"k^", 4, 5, "", "^"}};
 
     assert_tokens(expected, "quick", stream);
   }
@@ -1149,22 +1151,14 @@ TEST(ngram_token_stream_test, next) {
       irs::analysis::ngram_token_stream_base::InputType::Binary>
       stream(irs::analysis::ngram_token_stream_base::Options(
         1, 3, false, irs::analysis::ngram_token_stream_base::InputType::Binary,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("$")),
-        irs::ref_cast<irs::byte_type>(irs::string_ref("^"))));
+        irs::ViewCast<irs::byte_type>(std::string_view("$")),
+        irs::ViewCast<irs::byte_type>(std::string_view("^"))));
 
     const std::vector<token> expected{
-      {"$q", 0, 1, "$", irs::string_ref::EMPTY},
-      {"$qu", 0, 2, "$", irs::string_ref::EMPTY},
-      {"$qui", 0, 3, "$", irs::string_ref::EMPTY},
-      {"u", 1, 2},
-      {"ui", 1, 3},
-      {"uic", 1, 4},
-      {"i", 2, 3},
-      {"ic", 2, 4},
-      {"ick^", 2, 5, irs::string_ref::EMPTY, "^"},
-      {"c", 3, 4},
-      {"ck^", 3, 5, irs::string_ref::EMPTY, "^"},
-      {"k^", 4, 5, irs::string_ref::EMPTY, "^"}};
+      {"$q", 0, 1, "$", ""}, {"$qu", 0, 2, "$", ""}, {"$qui", 0, 3, "$", ""},
+      {"u", 1, 2},           {"ui", 1, 3},           {"uic", 1, 4},
+      {"i", 2, 3},           {"ic", 2, 4},           {"ick^", 2, 5, "", "^"},
+      {"c", 3, 4},           {"ck^", 3, 5, "", "^"}, {"k^", 4, 5, "", "^"}};
 
     assert_tokens(expected, "quick", stream);
   }
@@ -1202,18 +1196,17 @@ TEST(ngram_token_stream_test, next) {
       irs::analysis::ngram_token_stream_base::InputType::Binary>
       stream(irs::analysis::ngram_token_stream_base::Options(
         2, 3, true, irs::analysis::ngram_token_stream_base::InputType::Binary,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("$")),
-        irs::bytes_ref::EMPTY));
+        irs::ViewCast<irs::byte_type>(std::string_view("$")),
+        irs::kEmptyStringView<irs::byte_type>));
 
-    const std::vector<token> expected{
-      {"$qu", 0, 2, "$", irs::string_ref::EMPTY},
-      {"$qui", 0, 3, "$", irs::string_ref::EMPTY},
-      {"$quick", 0, 5, "$", irs::string_ref::EMPTY},
-      {"ui", 1, 3},
-      {"uic", 1, 4},
-      {"ic", 2, 4},
-      {"ick", 2, 5},
-      {"ck", 3, 5}};
+    const std::vector<token> expected{{"$qu", 0, 2, "$", ""},
+                                      {"$qui", 0, 3, "$", ""},
+                                      {"$quick", 0, 5, "$", ""},
+                                      {"ui", 1, 3},
+                                      {"uic", 1, 4},
+                                      {"ic", 2, 4},
+                                      {"ick", 2, 5},
+                                      {"ck", 3, 5}};
 
     assert_tokens(expected, "quick", stream);
   }
@@ -1224,18 +1217,17 @@ TEST(ngram_token_stream_test, next) {
       irs::analysis::ngram_token_stream_base::InputType::Binary>
       stream(irs::analysis::ngram_token_stream_base::Options(
         2, 3, true, irs::analysis::ngram_token_stream_base::InputType::Binary,
-        irs::bytes_ref::EMPTY,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("^"))));
+        irs::kEmptyStringView<irs::byte_type>,
+        irs::ViewCast<irs::byte_type>(std::string_view("^"))));
 
-    const std::vector<token> expected{
-      {"qu", 0, 2},
-      {"qui", 0, 3},
-      {"quick^", 0, 5, irs::string_ref::EMPTY, "^"},
-      {"ui", 1, 3},
-      {"uic", 1, 4},
-      {"ic", 2, 4},
-      {"ick^", 2, 5, irs::string_ref::EMPTY, "^"},
-      {"ck^", 3, 5, irs::string_ref::EMPTY, "^"}};
+    const std::vector<token> expected{{"qu", 0, 2},
+                                      {"qui", 0, 3},
+                                      {"quick^", 0, 5, "", "^"},
+                                      {"ui", 1, 3},
+                                      {"uic", 1, 4},
+                                      {"ic", 2, 4},
+                                      {"ick^", 2, 5, "", "^"},
+                                      {"ck^", 3, 5, "", "^"}};
 
     assert_tokens(expected, "quick", stream);
   }
@@ -1246,19 +1238,18 @@ TEST(ngram_token_stream_test, next) {
       irs::analysis::ngram_token_stream_base::InputType::Binary>
       stream(irs::analysis::ngram_token_stream_base::Options(
         2, 3, true, irs::analysis::ngram_token_stream_base::InputType::Binary,
-        irs::ref_cast<irs::byte_type>(irs::string_ref("$")),
-        irs::ref_cast<irs::byte_type>(irs::string_ref("^"))));
+        irs::ViewCast<irs::byte_type>(std::string_view("$")),
+        irs::ViewCast<irs::byte_type>(std::string_view("^"))));
 
-    const std::vector<token> expected{
-      {"$qu", 0, 2, "$", irs::string_ref::EMPTY},
-      {"$qui", 0, 3, "$", irs::string_ref::EMPTY},
-      {"$quick", 0, 5, "$", irs::string_ref::EMPTY},
-      {"quick^", 0, 5, irs::string_ref::EMPTY, "^"},
-      {"ui", 1, 3},
-      {"uic", 1, 4},
-      {"ic", 2, 4},
-      {"ick^", 2, 5, irs::string_ref::EMPTY, "^"},
-      {"ck^", 3, 5, irs::string_ref::EMPTY, "^"}};
+    const std::vector<token> expected{{"$qu", 0, 2, "$", ""},
+                                      {"$qui", 0, 3, "$", ""},
+                                      {"$quick", 0, 5, "$", ""},
+                                      {"quick^", 0, 5, "", "^"},
+                                      {"ui", 1, 3},
+                                      {"uic", 1, 4},
+                                      {"ic", 2, 4},
+                                      {"ick^", 2, 5, "", "^"},
+                                      {"ck^", 3, 5, "", "^"}};
 
     assert_tokens(expected, "quick", stream);
   }
@@ -1555,7 +1546,7 @@ TEST(ngram_token_stream_test, test_out_of_range_pos_issue) {
 //  stream(
 //    irs::analysis::ngram_token_stream_base::Options(1, 3, true,
 //      irs::analysis::ngram_token_stream_base::InputType::UTF8,
-//      irs::bytes_ref::EMPTY, irs::bytes_ref::EMPTY));
+//      irs::EmptyRef<irs::byte_type>(), irs::EmptyRef<irs::byte_type>()));
 //
 //  std::string data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
 //  for (size_t i = 0; i < 100000; ++i) {
@@ -1592,8 +1583,8 @@ TEST(ngram_token_stream_test, test_out_of_range_pos_issue) {
 //  stream(
 //    irs::analysis::ngram_token_stream_base::Options(1, 3, true,
 //      irs::analysis::ngram_token_stream_base::InputType::UTF8,
-//      irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2),
-//      irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
+//      irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2),
+//      irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
 //      2)));
 //
 //  std::wstring data = u8"a\u00A2b\u00A3c\u00A4d\u00A5";
@@ -1613,8 +1604,8 @@ TEST(ngram_token_stream_test, test_out_of_range_pos_issue) {
 //  stream(
 //    irs::analysis::ngram_token_stream_base::Options(1, 3, true,
 //      irs::analysis::ngram_token_stream_base::InputType::Binary,
-//      irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2),
-//      irs::bytes_ref(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
+//      irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa2"), 2),
+//      irs::bytes_view(reinterpret_cast<const irs::byte_type*>("\xc2\xa1"),
 //      2)));
 //
 //  std::string data = "quickbro";
@@ -1633,7 +1624,7 @@ TEST(ngram_token_stream_test, test_out_of_range_pos_issue) {
 
 TEST(ngram_token_stream_test, test_load) {
   {
-    irs::string_ref data("quick");
+    std::string_view data("quick");
     auto stream = irs::analysis::analyzers::get(
       "ngram", irs::type<irs::text_format::json>::get(),
       "{ "
@@ -1649,14 +1640,14 @@ TEST(ngram_token_stream_test, test_load) {
     ASSERT_TRUE(stream->next());
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(5, offset->end);
-    ASSERT_EQ("quick", irs::ref_cast<char>(term->value));
+    ASSERT_EQ("quick", irs::ViewCast<char>(term->value));
     ASSERT_EQ(1, inc->value);
     ASSERT_FALSE(stream->next());
   }
 
   {
     constexpr std::u8string_view data = u8"\u00C0\u00C1\u00C2\u00C3\u00C4";
-    const auto ref = irs::ref_cast<char>(data);
+    const auto ref = irs::ViewCast<char>(data);
 
     auto stream = irs::analysis::analyzers::get(
       "ngram", irs::type<irs::text_format::json>::get(),
@@ -1674,7 +1665,7 @@ TEST(ngram_token_stream_test, test_load) {
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(10, offset->end);
     ASSERT_EQ("\xc3\x80\xc3\x81\xc3\x82\xc3\x83\xc3\x84",
-              irs::ref_cast<char>(term->value));
+              irs::ViewCast<char>(term->value));
     ASSERT_EQ(1, inc->value);
     ASSERT_FALSE(stream->next());
   }
