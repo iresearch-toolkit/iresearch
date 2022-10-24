@@ -71,7 +71,8 @@ using doc_id_map_t = std::vector<doc_id_t>;
 // document mapping function
 using doc_map_f = std::function<doc_id_t(doc_id_t)>;
 
-using field_meta_map_t = absl::flat_hash_map<std::string_view, const field_meta*>;
+using field_meta_map_t =
+  absl::flat_hash_map<std::string_view, const field_meta*>;
 
 class noop_directory : public directory {
  public:
@@ -1253,8 +1254,8 @@ bool write_fields(columnstore& cs, Iterator& feature_itr,
         factory ? (*factory)({hdrs.data(), hdrs.size()}) : nullptr;
 
       if (feature_writer) {
-        auto value_writer = [writer = feature_writer.get()](data_output& out,
-                                                            bytes_view payload) {
+        auto value_writer = [writer = feature_writer.get()](
+                              data_output& out, bytes_view payload) {
           writer->write(out, payload);
         };
 
