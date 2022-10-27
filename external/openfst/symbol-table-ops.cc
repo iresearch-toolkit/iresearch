@@ -1,9 +1,24 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
 
 #include <fst/symbol-table-ops.h>
 
+#include <cstdint>
 #include <string>
 
 namespace fst {
@@ -19,13 +34,13 @@ SymbolTable *MergeSymbolTable(const SymbolTable &left, const SymbolTable &right,
   bool left_has_all = true;
   bool right_has_all = true;
   bool relabel = false;
-  for (SymbolTableIterator liter(left); !liter.Done(); liter.Next()) {
-    merged->AddSymbol(liter.Symbol(), liter.Value());
+  for (const auto &litem : left) {
+    merged->AddSymbol(litem.Symbol(), litem.Label());
     if (right_has_all) {
-      int64 key = right.Find(liter.Symbol());
-      if (key == -1) {
+      int64_t key = right.Find(litem.Symbol());
+      if (key == kNoSymbol) {
         right_has_all = false;
-      } else if (!relabel && key != liter.Value()) {
+      } else if (!relabel && key != litem.Label()) {
         relabel = true;
       }
     }
@@ -36,22 +51,22 @@ SymbolTable *MergeSymbolTable(const SymbolTable &left, const SymbolTable &right,
   }
   // Adds all symbols we can from right symbol table.
   std::vector<std::string> conflicts;
-  for (SymbolTableIterator riter(right); !riter.Done(); riter.Next()) {
-    int64 key = merged->Find(riter.Symbol());
+  for (const auto &ritem : right) {
+    int64_t key = merged->Find(ritem.Symbol());
     if (key != -1) {
       // Symbol already exists, maybe with different value.
-      if (key != riter.Value()) relabel = true;
+      if (key != ritem.Label()) relabel = true;
       continue;
     }
     // Symbol doesn't exist from left.
     left_has_all = false;
-    if (!merged->Find(riter.Value()).empty()) {
+    if (!merged->Find(ritem.Label()).empty()) {
       // We can't add this where we want to, add it later, in order.
-      conflicts.push_back(riter.Symbol());
+      conflicts.push_back(ritem.Symbol());
       continue;
     }
     // There is a hole and we can add this symbol with its ID.
-    merged->AddSymbol(riter.Symbol(), riter.Value());
+    merged->AddSymbol(ritem.Symbol(), ritem.Label());
   }
   if (right_relabel_output) *right_relabel_output = relabel;
   if (left_has_all) return left.Copy();
@@ -61,54 +76,53 @@ SymbolTable *MergeSymbolTable(const SymbolTable &left, const SymbolTable &right,
 }
 
 SymbolTable *CompactSymbolTable(const SymbolTable &syms) {
-  std::map<int64, std::string> sorted;
-  SymbolTableIterator stiter(syms);
-  for (; !stiter.Done(); stiter.Next()) {
-    sorted[stiter.Value()] = stiter.Symbol();
+  std::map<int64_t, std::string> sorted;
+  for (const auto &stitem : syms) {
+    sorted[stitem.Label()] = stitem.Symbol();
   }
   auto *compact = new SymbolTable(syms.Name() + "_compact");
-  int64 newkey = 0;
+  int64_t newkey = 0;
   for (const auto &kv : sorted) compact->AddSymbol(kv.second, newkey++);
   return compact;
 }
 
-SymbolTable *FstReadSymbols(const std::string &filename, bool input_symbols) {
-  std::ifstream in(filename, std::ios_base::in | std::ios_base::binary);
+SymbolTable *FstReadSymbols(const std::string &source, bool input_symbols) {
+  std::ifstream in(source, std::ios_base::in | std::ios_base::binary);
   if (!in) {
-    LOG(ERROR) << "FstReadSymbols: Can't open file " << filename;
+    LOG(ERROR) << "FstReadSymbols: Can't open file " << source;
     return nullptr;
   }
   FstHeader hdr;
-  if (!hdr.Read(in, filename)) {
-    LOG(ERROR) << "FstReadSymbols: Couldn't read header from " << filename;
+  if (!hdr.Read(in, source)) {
+    LOG(ERROR) << "FstReadSymbols: Couldn't read header from " << source;
     return nullptr;
   }
   if (hdr.GetFlags() & FstHeader::HAS_ISYMBOLS) {
-    std::unique_ptr<SymbolTable> isymbols(SymbolTable::Read(in, filename));
+    std::unique_ptr<SymbolTable> isymbols(SymbolTable::Read(in, source));
     if (isymbols == nullptr) {
       LOG(ERROR) << "FstReadSymbols: Couldn't read input symbols from "
-                 << filename;
+                 << source;
       return nullptr;
     }
     if (input_symbols) return isymbols.release();
   }
   if (hdr.GetFlags() & FstHeader::HAS_OSYMBOLS) {
-    std::unique_ptr<SymbolTable> osymbols(SymbolTable::Read(in, filename));
+    std::unique_ptr<SymbolTable> osymbols(SymbolTable::Read(in, source));
     if (osymbols == nullptr) {
       LOG(ERROR) << "FstReadSymbols: Couldn't read output symbols from "
-                 << filename;
+                 << source;
       return nullptr;
     }
     if (!input_symbols) return osymbols.release();
   }
-  LOG(ERROR) << "FstReadSymbols: The file " << filename
+  LOG(ERROR) << "FstReadSymbols: The file " << source
              << " doesn't contain the requested symbols";
   return nullptr;
 }
 
-bool AddAuxiliarySymbols(const std::string &prefix, int64 start_label,
-                         int64 nlabels, SymbolTable *syms) {
-  for (int64 i = 0; i < nlabels; ++i) {
+bool AddAuxiliarySymbols(const std::string &prefix, int64_t start_label,
+                         int64_t nlabels, SymbolTable *syms) {
+  for (int64_t i = 0; i < nlabels; ++i) {
     auto index = i + start_label;
     if (index != syms->AddSymbol(prefix + std::to_string(i), index)) {
       FSTERROR() << "AddAuxiliarySymbols: Symbol table clash";

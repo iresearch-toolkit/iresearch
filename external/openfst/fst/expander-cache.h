@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -31,12 +45,12 @@
 
 #include <deque>
 #include <memory>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include <fst/cache.h>
 #include <fst/fst.h>
+#include <unordered_map>
 #include <unordered_map>
 
 namespace fst {
@@ -51,13 +65,13 @@ class SimpleVectorCacheState {
   using StateId = typename Arc::StateId;
 
   void Reset() {
-    final_ = Weight::Zero();
+    final_weight_ = Weight::Zero();
     niepsilons_ = 0;
     noepsilons_ = 0;
     arcs_.clear();
   }
 
-  Weight Final() const { return final_; }
+  Weight Final() const { return final_weight_; }
 
   size_t NumInputEpsilons() const { return niepsilons_; }
 
@@ -69,7 +83,7 @@ class SimpleVectorCacheState {
 
   const Arc *Arcs() const { return arcs_.empty() ? nullptr : &arcs_[0]; }
 
-  void SetFinal(Weight final) { final_ = final; }
+  void SetFinal(Weight weight) { final_weight_ = weight; }
 
   void ReserveArcs(size_t n) { arcs_.reserve(n); }
 
@@ -88,7 +102,7 @@ class SimpleVectorCacheState {
   int *MutableRefCount() const { return nullptr; }
 
  private:
-  Weight final_ = Weight::Zero();
+  Weight final_weight_ = Weight::Zero();
   size_t niepsilons_ = 0;  // Number of input epsilons.
   size_t noepsilons_ = 0;  // Number of output epsilons.
   std::vector<Arc> arcs_;
@@ -134,7 +148,7 @@ class NoGcKeepOneExpanderCache {
     auto i = cache_.find(state_id_);
     if (i != cache_.end()) state_ = std::move(i->second);
     if (state_ == nullptr) {
-      state_.reset(new State);
+      state_ = std::make_unique<State>();
       expander.Expand(state_id_, state_.get());
     }
     return state_.get();
@@ -156,26 +170,26 @@ class HashExpanderCache {
   HashExpanderCache(const HashExpanderCache &copy) { *this = copy; }
 
   HashExpanderCache &operator=(const HashExpanderCache &copy) {
-    for (const auto &kv : copy.cache_) cache_[kv.first] = new State(*kv.second);
+    for (const auto &[id, state] : copy.cache_) {
+      cache_[id] = std::make_unique<State>(*state);
+    }
     return *this;
   }
 
-  ~HashExpanderCache() {
-    for (auto i : cache_) delete i.second;
-  }
+  ~HashExpanderCache() = default;
 
   template <class Expander>
-  State *FindOrExpand(Expander &expander, StateId state_id) {  // NOLINT
-    auto it = cache_.insert(std::pair<StateId, State*>(state_id, nullptr));
-    if (!it.second) return it.first->second;
-    auto *state = new State;
-    it.first->second = state;
-    expander.Expand(state_id, state);
-    return state;
+  State *FindOrExpand(Expander &expander, StateId state_id) {
+    auto [it, inserted] = cache_.emplace(state_id, nullptr);
+    if (inserted) {
+      it->second = std::make_unique<State>();
+      expander.Expand(state_id, it->second.get());
+    }
+    return it->second.get();
   }
 
  private:
-  std::unordered_map<StateId, State *> cache_;
+  std::unordered_map<StateId, std::unique_ptr<State>> cache_;
 };
 
 template <class A>
@@ -203,7 +217,7 @@ class VectorExpanderCache {
   }
 
   template <class Expander>
-  State *FindOrExpand(Expander &expander, StateId state_id) {  // NOLINT
+  State *FindOrExpand(Expander &expander, StateId state_id) {
     if (state_id >= vec_.size()) vec_.resize(state_id + 1);
     auto **slot = &vec_[state_id];
     if (*slot == nullptr) {

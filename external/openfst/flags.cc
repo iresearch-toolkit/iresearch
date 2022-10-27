@@ -1,22 +1,31 @@
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
+// distributed under the License is distributed on an 'AS IS' BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
 // Google-style flag handling definitions.
 
-#include <cstring>
-#include <string>
-
-#include <fst/compat.h>
 #include <fst/flags.h>
+
+#include <cstdint>
+#include <cstring>
+#include <iostream>
+#include <ostream>
+#include <set>
+#include <string>
+#include <string_view>
+#include <utility>
+
+#include <fst/log.h>
 
 static const char *private_tmpdir = getenv("TMPDIR");
 
@@ -35,10 +44,12 @@ static void SetProgSrc(const char *src) {
   // Remove "-main" in src filename. Flags are defined in fstx.cc but SetFlags()
   // is called in fstx-main.cc, which results in a filename mismatch in
   // ShowUsageRestrict() below.
-  static constexpr char kMainSuffix[] = "-main.cc";
-  const int prefix_length = prog_src.size() - strlen(kMainSuffix);
-  if (prefix_length > 0 && prog_src.substr(prefix_length) == kMainSuffix) {
-    prog_src.erase(prefix_length, strlen("-main"));
+  static constexpr std::string_view kMainSuffix = "-main.cc";
+  const int prefix_length = prog_src.size() - kMainSuffix.size();
+  if (prefix_length > 0 &&
+      std::string_view(prog_src).substr(prefix_length) == kMainSuffix) {
+    static constexpr size_t kDashMainSize = std::string_view("-main").size();
+    prog_src.erase(prefix_length, kDashMainSize);
   }
 }
 
@@ -49,13 +60,13 @@ void SetFlags(const char *usage, int *argc, char ***argv,
 
   int index = 1;
   for (; index < *argc; ++index) {
-    std::string argval = (*argv)[index];
+    std::string_view argval = (*argv)[index];
     if (argval[0] != '-' || argval == "-") break;
-    while (argval[0] == '-') argval = argval.substr(1);  // Removes initial '-'.
-    std::string arg = argval;
-    std::string val = "";
+    while (argval[0] == '-') argval.remove_prefix(1);  // Removes initial '-'.
+    std::string arg(argval);
+    std::string val("");
     // Splits argval (arg=val) into arg and val.
-    auto pos = argval.find("=");
+    auto pos = argval.find('=');
     if (pos != std::string::npos) {
       arg = argval.substr(0, pos);
       val = argval.substr(pos + 1);
@@ -65,10 +76,12 @@ void SetFlags(const char *usage, int *argc, char ***argv,
       continue;
     auto string_register = FlagRegister<std::string>::GetRegister();
     if (string_register->SetFlag(arg, val)) continue;
-    auto int32_register = FlagRegister<int32>::GetRegister();
+    auto int32_register = FlagRegister<int32_t>::GetRegister();
     if (int32_register->SetFlag(arg, val)) continue;
-    auto int64_register = FlagRegister<int64>::GetRegister();
+    auto int64_register = FlagRegister<int64_t>::GetRegister();
     if (int64_register->SetFlag(arg, val)) continue;
+    auto uint64_register = FlagRegister<uint64_t>::GetRegister();
+    if (uint64_register->SetFlag(arg, val)) continue;
     auto double_register = FlagRegister<double>::GetRegister();
     if (double_register->SetFlag(arg, val)) continue;
     LOG(FATAL) << "SetFlags: Bad option: " << (*argv)[index];
@@ -79,11 +92,11 @@ void SetFlags(const char *usage, int *argc, char ***argv,
     }
     *argc -= index - 1;
   }
-  if (FLAGS_help) {
+  if (FST_FLAGS_help) {
     ShowUsage(true);
     exit(1);
   }
-  if (FLAGS_helpshort) {
+  if (FST_FLAGS_helpshort) {
     ShowUsage(false);
     exit(1);
   }
@@ -104,37 +117,35 @@ static void ShowUsageRestrict(
     if ((match && !in_src) || (!match && in_src)) continue;
     if (file != old_file) {
       if (show_file) {
-        if (file_out) std::cout << std::endl;;
+        if (file_out) std::cout << std::endl;
         std::cout << "Flags from: " << file << std::endl;
         file_out = true;
       }
       old_file = file;
     }
     std::cout << usage << std::endl;
-    ;
     usage_out = true;
   }
   if (usage_out) std::cout << std::endl;
-  ;
 }
 
 void ShowUsage(bool long_usage) {
   std::set<std::pair<std::string, std::string>> usage_set;
   std::cout << flag_usage << std::endl;
-  ;
   auto bool_register = FlagRegister<bool>::GetRegister();
   bool_register->GetUsage(&usage_set);
   auto string_register = FlagRegister<std::string>::GetRegister();
   string_register->GetUsage(&usage_set);
-  auto int32_register = FlagRegister<int32>::GetRegister();
+  auto int32_register = FlagRegister<int32_t>::GetRegister();
   int32_register->GetUsage(&usage_set);
-  auto int64_register = FlagRegister<int64>::GetRegister();
+  auto int64_register = FlagRegister<int64_t>::GetRegister();
   int64_register->GetUsage(&usage_set);
+  auto uint64_register = FlagRegister<uint64_t>::GetRegister();
+  uint64_register->GetUsage(&usage_set);
   auto double_register = FlagRegister<double>::GetRegister();
   double_register->GetUsage(&usage_set);
   if (!prog_src.empty()) {
     std::cout << "PROGRAM FLAGS:" << std::endl << std::endl;
-    ;
     ShowUsageRestrict(usage_set, prog_src, true, false);
   }
   if (!long_usage) return;

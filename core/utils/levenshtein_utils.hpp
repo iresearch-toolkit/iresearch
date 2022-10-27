@@ -23,6 +23,7 @@
 #ifndef IRESEARCH_LEVENSHTEIN_UTILS_H
 #define IRESEARCH_LEVENSHTEIN_UTILS_H
 
+#include <algorithm>
 #include <numeric>
 #include <span>
 #include <vector>

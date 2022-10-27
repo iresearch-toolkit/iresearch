@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -7,16 +21,18 @@
 #ifndef FST_BI_TABLE_H_
 #define FST_BI_TABLE_H_
 
+#include <cstdint>
 #include <deque>
 #include <functional>
 #include <memory>
 #include <type_traits>
-#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 #include <fst/log.h>
 #include <fst/memory.h>
+#include <fst/windows_defs.inc>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace fst {
@@ -44,24 +60,24 @@ namespace fst {
 // };
 
 // An implementation using a hash map for the entry to ID mapping. H is the
-// hash function and E is the equality function. If passed to the constructor,
-// ownership is given to this class.
+// hash function and E is the equality function.
 template <class I, class T, class H, class E = std::equal_to<T>>
 class HashBiTable {
  public:
-  // Reserves space for table_size elements. If passing H and E to the
-  // constructor, this class owns them.
-  explicit HashBiTable(size_t table_size = 0, H *h = nullptr, E *e = nullptr) :
-      hash_func_(h ? h : new H()), hash_equal_(e ? e : new E()),
-      entry2id_(table_size, *hash_func_, *hash_equal_) {
+  // Reserves space for table_size elements.
+  explicit HashBiTable(size_t table_size = 0, const H &h = H(),
+                       const E &e = E())
+      : hash_func_(h),
+        hash_equal_(e),
+        entry2id_(table_size, hash_func_, hash_equal_) {
     if (table_size) id2entry_.reserve(table_size);
   }
 
   HashBiTable(const HashBiTable<I, T, H, E> &table)
-      : hash_func_(new H(*table.hash_func_)),
-        hash_equal_(new E(*table.hash_equal_)),
+      : hash_func_(table.hash_func_),
+        hash_equal_(table.hash_equal_),
         entry2id_(table.entry2id_.begin(), table.entry2id_.end(),
-                  table.entry2id_.size(), *hash_func_, *hash_equal_),
+                  table.entry2id_.size(), hash_func_, hash_equal_),
         id2entry_(table.id2entry_) {}
 
   I FindId(const T &entry, bool insert = true) {
@@ -88,20 +104,22 @@ class HashBiTable {
   }
 
  private:
-  std::unique_ptr<H> hash_func_;
-  std::unique_ptr<E> hash_equal_;
+  H hash_func_;
+  E hash_equal_;
   std::unordered_map<T, I, H, E> entry2id_;
   std::vector<T> id2entry_;
 };
 
 // Enables alternative hash set representations below.
-enum HSType { HS_STL = 0, HS_DENSE = 1, HS_SPARSE = 2, HS_FLAT = 3 };
+enum HSType { HS_STL, HS_FLAT };
 
 // Default hash set is STL hash_set.
 template <class K, class H, class E, HSType HS>
 struct HashSet : public std::unordered_set<K, H, E, PoolAllocator<K>> {
-  explicit HashSet(size_t n = 0, const H &h = H(), const E &e = E())
-      : std::unordered_set<K, H, E, PoolAllocator<K>>(n, h, e) {}
+ private:
+  using Base = std::unordered_set<K, H, E, PoolAllocator<K>>;
+ public:
+  using Base::Base;
 
   void rehash(size_t n) {}
 };
@@ -110,8 +128,7 @@ struct HashSet : public std::unordered_set<K, H, E, PoolAllocator<K>> {
 // holds keys which are either the ID or kCurrentKey. These keys can be mapped
 // to entries either by looking up in the entry vector or, if kCurrentKey, in
 // current_entry_. The hash and key equality functions map to entries first. H
-// is the hash function and E is the equality function. If passed to the
-// constructor, ownership is given to this class.
+// is the hash function and E is the equality function.
 template <class I, class T, class H, class E = std::equal_to<T>,
           HSType HS = HS_FLAT>
 class CompactHashBiTable {
@@ -121,34 +138,35 @@ class CompactHashBiTable {
   friend class HashFunc;
   friend class HashEqual;
 
-  // Reserves space for table_size elements. If passing H and E to the
-  // constructor, this class owns them.
-  explicit CompactHashBiTable(size_t table_size = 0, H *h = nullptr,
-                              E *e = nullptr) :
-        hash_func_(h ? h : new H()), hash_equal_(e ? e : new E()),
-        compact_hash_func_(*this), compact_hash_equal_(*this),
+  // Reserves space for table_size elements.
+  explicit CompactHashBiTable(size_t table_size = 0, const H &h = H(),
+                              const E &e = E())
+      : hash_func_(h),
+        hash_equal_(e),
+        compact_hash_func_(*this),
+        compact_hash_equal_(*this),
         keys_(table_size, compact_hash_func_, compact_hash_equal_) {
     if (table_size) id2entry_.reserve(table_size);
   }
 
-  CompactHashBiTable(const CompactHashBiTable<I, T, H, E, HS> &table)
-      : hash_func_(new H(*table.hash_func_)),
-        hash_equal_(new E(*table.hash_equal_)),
-        compact_hash_func_(*this), compact_hash_equal_(*this),
-        keys_(table.keys_.size(), compact_hash_func_, compact_hash_equal_),
-        id2entry_(table.id2entry_) {
-    keys_.insert(table.keys_.begin(), table.keys_.end());
-  }
+  CompactHashBiTable(const CompactHashBiTable &table)
+      : hash_func_(table.hash_func_),
+        hash_equal_(table.hash_equal_),
+        compact_hash_func_(*this),
+        compact_hash_equal_(*this),
+        id2entry_(table.id2entry_),
+        keys_(table.keys_.begin(), table.keys_.end(), table.keys_.size(),
+              compact_hash_func_, compact_hash_equal_) {}
 
   I FindId(const T &entry, bool insert = true) {
     current_entry_ = &entry;
     if (insert) {
-      auto result = keys_.insert(kCurrentKey);
-      if (!result.second) return *result.first;  // Already exists.
+      auto [iter, was_inserted] = keys_.insert(kCurrentKey);
+      if (!was_inserted) return *iter;  // Already exists.
       // Overwrites kCurrentKey with a new key value; this is safe because it
       // doesn't affect hashing or equality testing.
       I key = id2entry_.size();
-      const_cast<I &>(*result.first) = key;
+      const_cast<I &>(*iter) = key;
       id2entry_.push_back(entry);
       return key;
     }
@@ -181,7 +199,7 @@ class CompactHashBiTable {
   }
 
  private:
-  static_assert(std::is_signed<I>::value, "I must be a signed type");
+  static_assert(std::is_signed_v<I>, "I must be a signed type");
   // ... otherwise >= kCurrentKey comparisons as used below don't work.
   // TODO(rybach): (1) don't use >= for key comparison, (2) allow unsigned key
   // types.
@@ -193,7 +211,7 @@ class CompactHashBiTable {
 
     size_t operator()(I k) const {
       if (k >= kCurrentKey) {
-        return (*ht_->hash_func_)(ht_->Key2Entry(k));
+        return (ht_->hash_func_)(ht_->Key2Entry(k));
       } else {
         return 0;
       }
@@ -211,7 +229,7 @@ class CompactHashBiTable {
       if (k1 == k2) {
         return true;
       } else if (k1 >= kCurrentKey && k2 >= kCurrentKey) {
-        return (*ht_->hash_equal_)(ht_->Key2Entry(k1), ht_->Key2Entry(k2));
+        return (ht_->hash_equal_)(ht_->Key2Entry(k1), ht_->Key2Entry(k2));
       } else {
         return false;
       }
@@ -231,39 +249,32 @@ class CompactHashBiTable {
     }
   }
 
-  std::unique_ptr<H> hash_func_;
-  std::unique_ptr<E> hash_equal_;
+  H hash_func_;
+  E hash_equal_;
   HashFunc compact_hash_func_;
   HashEqual compact_hash_equal_;
-  KeyHashSet keys_;
   std::vector<T> id2entry_;
+  KeyHashSet keys_;
   const T *current_entry_;
 };
-
-template <class I, class T, class H, class E, HSType HS>
-constexpr I CompactHashBiTable<I, T, H, E, HS>::kCurrentKey;
 
 // An implementation using a vector for the entry to ID mapping. It is passed a
 // function object FP that should fingerprint entries uniquely to an integer
 // that can used as a vector index. Normally, VectorBiTable constructs the FP
-// object. The user can instead pass in this object; in that case, VectorBiTable
-// takes its ownership.
+// object. The user can instead pass in this object.
 template <class I, class T, class FP>
 class VectorBiTable {
  public:
-  // Reserves table_size cells of space. If passing FP argument to the
-  // constructor, this class owns it.
-  explicit VectorBiTable(FP *fp = nullptr, size_t table_size = 0) :
-      fp_(fp ? fp : new FP()) {
+  // Reserves table_size cells of space.
+  explicit VectorBiTable(const FP &fp = FP(), size_t table_size = 0) : fp_(fp) {
     if (table_size) id2entry_.reserve(table_size);
   }
 
   VectorBiTable(const VectorBiTable<I, T, FP> &table)
-      : fp_(new FP(*table.fp_)), fp2id_(table.fp2id_),
-        id2entry_(table.id2entry_) {}
+      : fp_(table.fp_), fp2id_(table.fp2id_), id2entry_(table.id2entry_) {}
 
   I FindId(const T &entry, bool insert = true) {
-    ssize_t fp = (*fp_)(entry);
+    ssize_t fp = (fp_)(entry);
     if (fp >= fp2id_.size()) fp2id_.resize(fp + 1);
     I &id_ref = fp2id_[fp];
     if (id_ref == 0) {  // T not found.
@@ -281,10 +292,10 @@ class VectorBiTable {
 
   I Size() const { return id2entry_.size(); }
 
-  const FP &Fingerprint() const { return *fp_; }
+  const FP &Fingerprint() const { return fp_; }
 
  private:
-  std::unique_ptr<FP> fp_;
+  FP fp_;
   std::vector<I> fp2id_;
   std::vector<T> id2entry_;
 };
@@ -294,32 +305,40 @@ class VectorBiTable {
 // fingerprinting functor FP returns a unique fingerprint for each entry to be
 // hashed in the vector (these need to be suitable for indexing in a vector).
 // The hash functor H is used when hashing entry into the compact hash table.
-// If passed to the constructor, ownership is given to this class.
-template <class I, class T, class S, class FP, class H, HSType HS = HS_DENSE>
+template <class I, class T, class S, class FP, class H, HSType HS = HS_FLAT>
 class VectorHashBiTable {
  public:
   friend class HashFunc;
   friend class HashEqual;
 
-  explicit VectorHashBiTable(S *s, FP *fp, H *h, size_t vector_size = 0,
+  explicit VectorHashBiTable(const S &s = S(), const FP &fp = FP(),
+                             const H &h = H(), size_t vector_size = 0,
                              size_t entry_size = 0)
-      : selector_(s), fp_(fp), h_(h), hash_func_(*this), hash_equal_(*this),
+      : selector_(s),
+        fp_(fp),
+        h_(h),
+        hash_func_(*this),
+        hash_equal_(*this),
         keys_(0, hash_func_, hash_equal_) {
     if (vector_size) fp2id_.reserve(vector_size);
     if (entry_size) id2entry_.reserve(entry_size);
   }
 
   VectorHashBiTable(const VectorHashBiTable<I, T, S, FP, H, HS> &table)
-      : selector_(new S(table.s_)), fp_(new FP(*table.fp_)),
-        h_(new H(*table.h_)), id2entry_(table.id2entry_),
-        fp2id_(table.fp2id_), hash_func_(*this), hash_equal_(*this),
+      : selector_(table.s_),
+        fp_(table.fp_),
+        h_(table.h_),
+        id2entry_(table.id2entry_),
+        fp2id_(table.fp2id_),
+        hash_func_(*this),
+        hash_equal_(*this),
         keys_(table.keys_.size(), hash_func_, hash_equal_) {
     keys_.insert(table.keys_.begin(), table.keys_.end());
   }
 
   I FindId(const T &entry, bool insert = true) {
-    if ((*selector_)(entry)) {  // Uses the vector if selector_(entry) == true.
-      uint64 fp = (*fp_)(entry);
+    if ((selector_)(entry)) {  // Uses the vector if selector_(entry) == true.
+      uint64_t fp = (fp_)(entry);
       if (fp2id_.size() <= fp) fp2id_.resize(fp + 1, 0);
       if (fp2id_[fp] == 0) {  // T not found.
         if (insert) {         // Stores and assigns a new ID.
@@ -352,15 +371,14 @@ class VectorHashBiTable {
 
   I Size() const { return id2entry_.size(); }
 
-  const S &Selector() const { return *selector_; }
+  const S &Selector() const { return selector_; }
 
-  const FP &Fingerprint() const { return *fp_; }
+  const FP &Fingerprint() const { return fp_; }
 
-  const H &Hash() const { return *h_; }
+  const H &Hash() const { return h_; }
 
  private:
   static constexpr I kCurrentKey = -1;
-  static constexpr I kEmptyKey = -2;
 
   class HashFunc {
    public:
@@ -368,7 +386,7 @@ class VectorHashBiTable {
 
     size_t operator()(I k) const {
       if (k >= kCurrentKey) {
-        return (*(ht_->h_))(ht_->Key2Entry(k));
+        return (ht_->h_)(ht_->Key2Entry(k));
       } else {
         return 0;
       }
@@ -404,9 +422,9 @@ class VectorHashBiTable {
     }
   }
 
-  std::unique_ptr<S> selector_;  // True if entry hashed into vector.
-  std::unique_ptr<FP> fp_;       // Fingerprint used for hashing into vector.
-  std::unique_ptr<H> h_;         // Hash funcion used for hashing into hash_set.
+  S selector_;  // True if entry hashed into vector.
+  FP fp_;       // Fingerprint used for hashing into vector.
+  H h_;         // Hash funcion used for hashing into hash_set.
 
   std::vector<T> id2entry_;  // Maps state IDs to entry.
   std::vector<I> fp2id_;     // Maps entry fingerprints to IDs.
@@ -418,12 +436,6 @@ class VectorHashBiTable {
   KeyHashSet keys_;
   const T *current_entry_;
 };
-
-template <class I, class T, class S, class FP, class H, HSType HS>
-constexpr I VectorHashBiTable<I, T, S, FP, H, HS>::kCurrentKey;
-
-template <class I, class T, class S, class FP, class H, HSType HS>
-constexpr I VectorHashBiTable<I, T, S, FP, H, HS>::kEmptyKey;
 
 // An implementation using a hash map for the entry to ID mapping. This version
 // permits erasing of arbitrary states. The entry T must have == defined and

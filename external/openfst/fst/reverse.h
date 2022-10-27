@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -7,7 +21,9 @@
 #define FST_REVERSE_H_
 
 #include <algorithm>
+#include <cstdint>
 #include <vector>
+
 
 #include <fst/cache.h>
 
@@ -42,8 +58,8 @@ void Reverse(const Fst<FromArc> &ifst, MutableFst<ToArc> *ofst,
   StateId istart = ifst.Start();
   StateId ostart = kNoStateId;
   StateId offset = 0;
-  uint64 dfs_iprops = 0;
-  uint64 dfs_oprops = 0;
+  uint64_t dfs_iprops = 0;
+  uint64_t dfs_oprops = 0;
   if (!require_superinitial) {
     for (StateIterator<Fst<FromArc>> siter(ifst); !siter.Done(); siter.Next()) {
       const auto s = siter.Value();
@@ -59,7 +75,7 @@ void Reverse(const Fst<FromArc> &ifst, MutableFst<ToArc> *ofst,
       std::vector<StateId> scc;
       SccVisitor<FromArc> scc_visitor(&scc, nullptr, nullptr, &dfs_iprops);
       DfsVisit(ifst, &scc_visitor);
-      if (count(scc.begin(), scc.end(), scc[ostart]) > 1) {
+      if (std::count(scc.begin(), scc.end(), scc[ostart]) > 1) {
         ostart = kNoStateId;
       } else {
         for (ArcIterator<Fst<FromArc>> aiter(ifst, ostart); !aiter.Done();

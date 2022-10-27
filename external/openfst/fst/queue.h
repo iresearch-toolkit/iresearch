@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -6,8 +20,9 @@
 #ifndef FST_QUEUE_H_
 #define FST_QUEUE_H_
 
-#include <deque>
+#include <cstdint>
 #include <memory>
+#include <queue>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -19,7 +34,6 @@
 #include <fst/heap.h>
 #include <fst/topsort.h>
 #include <fst/weight.h>
-
 
 namespace fst {
 
@@ -108,7 +122,7 @@ class TrivialQueue : public QueueBase<S> {
 
   TrivialQueue() : QueueBase<StateId>(TRIVIAL_QUEUE), front_(kNoStateId) {}
 
-  virtual ~TrivialQueue() = default;
+  ~TrivialQueue() override = default;
 
   StateId Head() const final { return front_; }
 
@@ -136,22 +150,22 @@ class FifoQueue : public QueueBase<S> {
 
   FifoQueue() : QueueBase<StateId>(FIFO_QUEUE) {}
 
-  virtual ~FifoQueue() = default;
+  ~FifoQueue() override = default;
 
-  StateId Head() const override { return queue_.back(); }
+  StateId Head() const override { return queue_.front(); }
 
-  void Enqueue(StateId s) override { queue_.push_front(s); }
+  void Enqueue(StateId s) override { queue_.push(s); }
 
-  void Dequeue() override { queue_.pop_back(); }
+  void Dequeue() override { queue_.pop(); }
 
   void Update(StateId) override {}
 
   bool Empty() const override { return queue_.empty(); }
 
-  void Clear() override { queue_.clear(); }
+  void Clear() override { queue_ = std::queue<StateId>(); }
 
  private:
-  std::deque<StateId> queue_;
+  std::queue<StateId> queue_;
 };
 
 // Last-in, first-out queue discipline.
@@ -162,22 +176,22 @@ class LifoQueue : public QueueBase<S> {
 
   LifoQueue() : QueueBase<StateId>(LIFO_QUEUE) {}
 
-  virtual ~LifoQueue() = default;
+  ~LifoQueue() override = default;
 
-  StateId Head() const final { return queue_.front(); }
+  StateId Head() const final { return stack_.back(); }
 
-  void Enqueue(StateId s) final { queue_.push_front(s); }
+  void Enqueue(StateId s) final { stack_.push_back(s); }
 
-  void Dequeue() final { queue_.pop_front(); }
+  void Dequeue() final { stack_.pop_back(); }
 
   void Update(StateId) final {}
 
-  bool Empty() const final { return queue_.empty(); }
+  bool Empty() const final { return stack_.empty(); }
 
-  void Clear() final { queue_.clear(); }
+  void Clear() final { stack_.clear(); }
 
  private:
-  std::deque<StateId> queue_;
+  std::vector<StateId> stack_;
 };
 
 // Shortest-first queue discipline, templated on the StateId and as well as a
@@ -194,7 +208,7 @@ class ShortestFirstQueue : public QueueBase<S> {
   explicit ShortestFirstQueue(Compare comp)
       : QueueBase<StateId>(SHORTEST_FIRST_QUEUE), heap_(comp) {}
 
-  virtual ~ShortestFirstQueue() = default;
+  ~ShortestFirstQueue() override = default;
 
   StateId Head() const override { return heap_.Top(); }
 
@@ -262,27 +276,36 @@ class StateWeightCompare {
   const Less &less_;
 };
 
+// Comparison that can never be instantiated. Useful only to pass a pointer to
+// this to a function that needs a comparison when it is known that the pointer
+// will always be null.
+template <class W>
+struct ErrorLess {
+  using Weight = W;
+  ErrorLess() {
+    FSTERROR() << "ErrorLess: instantiated for Weight " << Weight::Type();
+  }
+  bool operator()(const Weight &, const Weight &) const { return false; }
+};
+
 }  // namespace internal
 
 // Shortest-first queue discipline, templated on the StateId and Weight, is
 // specialized to use the weight's natural order for the comparison function.
+// Requires Weight is idempotent (due to use of NaturalLess).
 template <typename S, typename Weight>
 class NaturalShortestFirstQueue
     : public ShortestFirstQueue<
           S, internal::StateWeightCompare<S, NaturalLess<Weight>>> {
  public:
   using StateId = S;
-  using Compare = internal::StateWeightCompare<StateId, NaturalLess<Weight>>;
+  using Less = NaturalLess<Weight>;
+  using Compare = internal::StateWeightCompare<StateId, Less>;
 
   explicit NaturalShortestFirstQueue(const std::vector<Weight> &distance)
-      : ShortestFirstQueue<StateId, Compare>(Compare(distance, less_)) {}
+      : ShortestFirstQueue<StateId, Compare>(Compare(distance, Less())) {}
 
-  virtual ~NaturalShortestFirstQueue() = default;
-
- private:
-  // This is non-static because the constructor for non-idempotent weights will
-  // result in an error.
-  const NaturalLess<Weight> less_{};
+  ~NaturalShortestFirstQueue() override = default;
 };
 
 // In a shortest path computation on a lattice-like FST, we may keep many old
@@ -418,7 +441,7 @@ class TopOrderQueue : public QueueBase<S> {
         order_(order),
         state_(order.size(), kNoStateId) {}
 
-  virtual ~TopOrderQueue() = default;
+  ~TopOrderQueue() override = default;
 
   StateId Head() const final { return state_[front_]; }
 
@@ -465,7 +488,7 @@ class StateOrderQueue : public QueueBase<S> {
   StateOrderQueue()
       : QueueBase<StateId>(STATE_ORDER_QUEUE), front_(0), back_(kNoStateId) {}
 
-  virtual ~StateOrderQueue() = default;
+  ~StateOrderQueue() override = default;
 
   StateId Head() const final { return front_; }
 
@@ -520,7 +543,7 @@ class SccQueue : public QueueBase<S> {
         front_(0),
         back_(kNoStateId) {}
 
-  virtual ~SccQueue() = default;
+  ~SccQueue() override = default;
 
   StateId Head() const final {
     while ((front_ <= back_) &&
@@ -616,22 +639,26 @@ class AutoQueue : public QueueBase<S> {
             const std::vector<typename Arc::Weight> *distance, ArcFilter filter)
       : QueueBase<StateId>(AUTO_QUEUE) {
     using Weight = typename Arc::Weight;
-    using Less = NaturalLess<Weight>;
+    // We need to have variables of type Less and Compare, so we use
+    // ErrorLess if the type NaturalLess<Weight> cannot be instantiated due
+    // to lack of path property.
+    using Less = std::conditional_t<IsPath<Weight>::value, NaturalLess<Weight>,
+                                    internal::ErrorLess<Weight>>;
     using Compare = internal::StateWeightCompare<StateId, Less>;
     // First checks if the FST is known to have these properties.
     const auto props =
         fst.Properties(kAcyclic | kCyclic | kTopSorted | kUnweighted, false);
     if ((props & kTopSorted) || fst.Start() == kNoStateId) {
-      queue_.reset(new StateOrderQueue<StateId>());
+      queue_ = std::make_unique<StateOrderQueue<StateId>>();
       VLOG(2) << "AutoQueue: using state-order discipline";
     } else if (props & kAcyclic) {
-      queue_.reset(new TopOrderQueue<StateId>(fst, filter));
+      queue_ = std::make_unique<TopOrderQueue<StateId>>(fst, filter);
       VLOG(2) << "AutoQueue: using top-order discipline";
-    } else if ((props & kUnweighted) && (Weight::Properties() & kIdempotent)) {
-      queue_.reset(new LifoQueue<StateId>());
+    } else if ((props & kUnweighted) && IsIdempotent<Weight>::value) {
+      queue_ = std::make_unique<LifoQueue<StateId>>();
       VLOG(2) << "AutoQueue: using LIFO discipline";
     } else {
-      uint64 properties;
+      uint64_t properties;
       // Decomposes into strongly-connected components.
       SccVisitor<Arc> scc_visitor(&scc_, nullptr, nullptr, &properties);
       DfsVisit(fst, &scc_visitor, filter);
@@ -639,9 +666,11 @@ class AutoQueue : public QueueBase<S> {
       std::vector<QueueType> queue_types(nscc);
       std::unique_ptr<Less> less;
       std::unique_ptr<Compare> comp;
-      if (distance && (Weight::Properties() & kPath) == kPath) {
-        less.reset(new Less);
-        comp.reset(new Compare(*distance, *less));
+      if constexpr (IsPath<Weight>::value) {
+        if (distance) {
+          less = std::make_unique<Less>();
+          comp = std::make_unique<Compare>(*distance, *less);
+        }
       }
       // Finds the queue type to use per SCC.
       bool unweighted;
@@ -650,14 +679,14 @@ class AutoQueue : public QueueBase<S> {
                    &unweighted);
       // If unweighted and semiring is idempotent, uses LIFO queue.
       if (unweighted) {
-        queue_.reset(new LifoQueue<StateId>());
+        queue_ = std::make_unique<LifoQueue<StateId>>();
         VLOG(2) << "AutoQueue: using LIFO discipline";
         return;
       }
       // If all the SCC are trivial, the FST is acyclic and the scc number gives
       // the topological order.
       if (all_trivial) {
-        queue_.reset(new TopOrderQueue<StateId>(scc_));
+        queue_ = std::make_unique<TopOrderQueue<StateId>>(scc_);
         VLOG(2) << "AutoQueue: using top-order discipline";
         return;
       }
@@ -670,27 +699,37 @@ class AutoQueue : public QueueBase<S> {
             VLOG(3) << "AutoQueue: SCC #" << i << ": using trivial discipline";
             break;
           case SHORTEST_FIRST_QUEUE:
-            queues_[i].reset(
-                new ShortestFirstQueue<StateId, Compare, false>(*comp));
-            VLOG(3) << "AutoQueue: SCC #" << i
-                    << ": using shortest-first discipline";
+            // The IsPath test is not needed for correctness. It just saves
+            // instantiating a ShortestFirstQueue that can never be called.
+            if constexpr (IsPath<Weight>::value) {
+              queues_[i] = std::make_unique<
+                  ShortestFirstQueue<StateId, Compare, false>>(*comp);
+              VLOG(3) << "AutoQueue: SCC #" << i
+                      << ": using shortest-first discipline";
+            } else {
+              // SccQueueType should ensure this can never happen.
+              FSTERROR() << "Got SHORTEST_FIRST_QUEUE for non-Path Weight "
+                         << Weight::Type();
+              queues_[i].reset();
+            }
             break;
           case LIFO_QUEUE:
-            queues_[i].reset(new LifoQueue<StateId>());
+            queues_[i] = std::make_unique<LifoQueue<StateId>>();
             VLOG(3) << "AutoQueue: SCC #" << i << ": using LIFO discipline";
             break;
           case FIFO_QUEUE:
           default:
-            queues_[i].reset(new FifoQueue<StateId>());
+            queues_[i] = std::make_unique<FifoQueue<StateId>>();
             VLOG(3) << "AutoQueue: SCC #" << i << ": using FIFO discipine";
             break;
         }
       }
-      queue_.reset(new SccQueue<StateId, QueueBase<StateId>>(scc_, &queues_));
+      queue_ = std::make_unique<SccQueue<StateId, QueueBase<StateId>>>(
+          scc_, &queues_);
     }
   }
 
-  virtual ~AutoQueue() = default;
+  ~AutoQueue() override = default;
 
   StateId Head() const final { return queue_->Head(); }
 
@@ -744,10 +783,12 @@ void AutoQueue<StateId>::SccQueueType(const Fst<Arc> &fst,
       if (!filter(arc)) continue;
       if (scc[state] == scc[arc.nextstate]) {
         auto &type = (*queue_type)[scc[state]];
-        if (!less || ((*less)(arc.weight, Weight::One()))) {
+        if constexpr (!IsPath<Weight>::value) {
+          type = FIFO_QUEUE;
+        } else if (!less || (*less)(arc.weight, Weight::One())) {
           type = FIFO_QUEUE;
         } else if ((type == TRIVIAL_QUEUE) || (type == LIFO_QUEUE)) {
-          if (!(Weight::Properties() & kIdempotent) ||
+          if (!IsIdempotent<Weight>::value ||
               (arc.weight != Weight::Zero() && arc.weight != Weight::One())) {
             type = SHORTEST_FIRST_QUEUE;
           } else {
@@ -756,7 +797,7 @@ void AutoQueue<StateId>::SccQueueType(const Fst<Arc> &fst,
         }
         if (type != TRIVIAL_QUEUE) *all_trivial = false;
       }
-      if (!(Weight::Properties() & kIdempotent) ||
+      if (!IsIdempotent<Weight>::value ||
           (arc.weight != Weight::Zero() && arc.weight != Weight::One())) {
         *unweighted = false;
       }
@@ -781,7 +822,7 @@ class NaturalAStarEstimate {
   NaturalAStarEstimate(const std::vector<Weight> &beta) : beta_(beta) {}
 
   const Weight &operator()(StateId s) const {
-     return (s < beta_.size()) ? beta_[s] : kZero;
+    return (s < beta_.size()) ? beta_[s] : kZero;
   }
 
  private:
@@ -789,9 +830,6 @@ class NaturalAStarEstimate {
 
   const std::vector<Weight> &beta_;
 };
-
-template <typename Arc, typename Weight>
-constexpr Weight NaturalAStarEstimate<Arc, Weight>::kZero;
 
 // Given a vector that maps from states to weights representing the shortest
 // distance from the initial state, a comparison function object between
@@ -823,7 +861,8 @@ class AStarWeightCompare {
 
 // A* queue discipline templated on StateId, Weight, and Estimate.
 template <typename S, typename Weight, typename Estimate>
-class NaturalAStarQueue : public ShortestFirstQueue<
+class NaturalAStarQueue
+    : public ShortestFirstQueue<
           S, AStarWeightCompare<S, NaturalLess<Weight>, Estimate>> {
  public:
   using StateId = S;
@@ -834,7 +873,7 @@ class NaturalAStarQueue : public ShortestFirstQueue<
       : ShortestFirstQueue<StateId, Compare>(
             Compare(distance, less_, estimate)) {}
 
-  ~NaturalAStarQueue() = default;
+  ~NaturalAStarQueue() override = default;
 
  private:
   // This is non-static because the constructor for non-idempotent weights will
@@ -854,8 +893,7 @@ struct TrivialStateEquivClass {
 // shortest distance (so far), as specified by distance, is less than (as
 // specified by comp) the shortest distance Times() the threshold to any state
 // in the same equivalence class, as specified by the functor class_func. The
-// underlying queue discipline is specified by queue. The ownership of queue is
-// given to this class.
+// underlying queue discipline is specified by queue.
 //
 // This is not a final class.
 template <typename Queue, typename Less, typename ClassFnc>
@@ -864,16 +902,16 @@ class PruneQueue : public QueueBase<typename Queue::StateId> {
   using StateId = typename Queue::StateId;
   using Weight = typename Less::Weight;
 
-  PruneQueue(const std::vector<Weight> &distance, Queue *queue,
+  PruneQueue(const std::vector<Weight> &distance, std::unique_ptr<Queue> queue,
              const Less &less, const ClassFnc &class_fnc, Weight threshold)
       : QueueBase<StateId>(OTHER_QUEUE),
         distance_(distance),
-        queue_(queue),
+        queue_(std::move(queue)),
         less_(less),
         class_fnc_(class_fnc),
         threshold_(std::move(threshold)) {}
 
-  virtual ~PruneQueue() = default;
+  ~PruneQueue() override = default;
 
   StateId Head() const override { return queue_->Head(); }
 
@@ -922,27 +960,30 @@ class NaturalPruneQueue final
  public:
   using StateId = typename Queue::StateId;
 
-  NaturalPruneQueue(const std::vector<Weight> &distance, Queue *queue,
-                    const ClassFnc &class_fnc, Weight threshold)
+  NaturalPruneQueue(const std::vector<Weight> &distance,
+                    std::unique_ptr<Queue> queue, const ClassFnc &class_fnc,
+                    Weight threshold)
       : PruneQueue<Queue, NaturalLess<Weight>, ClassFnc>(
-            distance, queue, NaturalLess<Weight>(), class_fnc, threshold) {}
+            distance, std::move(queue), NaturalLess<Weight>(), class_fnc,
+            threshold) {}
 
-  virtual ~NaturalPruneQueue() = default;
+  ~NaturalPruneQueue() override = default;
 };
 
 // Filter-based pruning queue discipline: enqueues a state only if allowed by
 // the filter, specified by the state filter functor argument. The underlying
-// queue discipline is specified by the queue argument. The ownership of the
-// queue is given to this class.
+// queue discipline is specified by the queue argument.
 template <typename Queue, typename Filter>
 class FilterQueue : public QueueBase<typename Queue::StateId> {
  public:
   using StateId = typename Queue::StateId;
 
-  FilterQueue(Queue *queue, const Filter &filter)
-      : QueueBase<StateId>(OTHER_QUEUE), queue_(queue), filter_(filter) {}
+  FilterQueue(std::unique_ptr<Queue> queue, const Filter &filter)
+      : QueueBase<StateId>(OTHER_QUEUE),
+        queue_(std::move(queue)),
+        filter_(filter) {}
 
-  virtual ~FilterQueue() = default;
+  ~FilterQueue() override = default;
 
   StateId Head() const final { return queue_->Head(); }
 

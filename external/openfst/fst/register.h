@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -15,8 +29,8 @@
 #include <fst/util.h>
 
 
-#include <fst/types.h>
 #include <fst/log.h>
+#include <string_view>
 
 namespace fst {
 
@@ -48,19 +62,20 @@ class FstRegister : public GenericRegister<std::string, FstRegisterEntry<Arc>,
   using Reader = typename FstRegisterEntry<Arc>::Reader;
   using Converter = typename FstRegisterEntry<Arc>::Converter;
 
-  const Reader GetReader(const std::string &type) const {
+  const Reader GetReader(std::string_view type) const {
     return this->GetEntry(type).reader;
   }
 
-  const Converter GetConverter(const std::string &type) const {
+  const Converter GetConverter(std::string_view type) const {
     return this->GetEntry(type).converter;
   }
 
  protected:
-  std::string ConvertKeyToSoFilename(const std::string &key) const override {
+  std::string ConvertKeyToSoFilename(std::string_view key) const override {
     std::string legal_type(key);
     ConvertToLegalCSymbol(&legal_type);
-    return legal_type + "-fst.so";
+    legal_type.append("-fst.so");
+    return legal_type;
   }
 };
 
@@ -79,9 +94,8 @@ class FstRegisterer : public GenericRegisterer<FstRegister<typename FST::Arc>> {
                                                           BuildEntry()) {}
 
  private:
-  static Fst<Arc> *ReadGeneric(
-      std::istream &strm, const FstReadOptions &opts) {
-    static_assert(std::is_base_of<Fst<Arc>, FST>::value,
+  static Fst<Arc> *ReadGeneric(std::istream &strm, const FstReadOptions &opts) {
+    static_assert(std::is_base_of_v<Fst<Arc>, FST>,
                   "FST class does not inherit from Fst<Arc>");
     return FST::Read(strm, opts);
   }
@@ -93,13 +107,20 @@ class FstRegisterer : public GenericRegisterer<FstRegister<typename FST::Arc>> {
   static Fst<Arc> *Convert(const Fst<Arc> &fst) { return new FST(fst); }
 };
 
-// Convenience macro to generate static FstRegisterer instance.
+// Convenience macro to generate a static FstRegisterer instance.
+// `FST` and `Arc` must be identifiers (that is, not a qualified type).
+// Users SHOULD NOT register within the fst namespace. To register an
+// FST for StdArc, for example, use:
+// namespace example {
+// using fst::StdArc;
+// REGISTER_FST(MyFst, StdArc);
+// }  // namespace example
 #define REGISTER_FST(FST, Arc) \
   static fst::FstRegisterer<FST<Arc>> FST##_##Arc##_registerer
 
 // Converts an FST to the specified type.
 template <class Arc>
-Fst<Arc> *Convert(const Fst<Arc> &fst, const std::string &fst_type) {
+Fst<Arc> *Convert(const Fst<Arc> &fst, std::string_view fst_type) {
   auto *reg = FstRegister<Arc>::GetRegister();
   const auto converter = reg->GetConverter(fst_type);
   if (!converter) {

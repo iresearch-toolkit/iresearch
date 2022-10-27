@@ -20,16 +20,17 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TABLE_MATCHER_H
-#define IRESEARCH_TABLE_MATCHER_H
+#pragma once
 
 #include <algorithm>
 
+// clang-format off
+#include "utils/automaton.hpp"
+// clang-format on
 #include "fst/matcher.h"
-#include "utils/automaton.hpp"  // FIXME
+#include "utils/bit_utils.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/misc.hpp"
-#include "utils/bit_utils.hpp"
 #include "utils/std.hpp"
 
 namespace fst {
@@ -312,7 +313,8 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
 
   virtual const FST& GetFst() const noexcept override { return *fst_; }
 
-  virtual uint64 Properties(uint64 inprops) const noexcept override {
+  virtual std::uint64_t Properties(
+    std::uint64_t inprops) const noexcept override {
     return inprops | (error_ ? kError : 0);
   }
 
@@ -352,5 +354,3 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
 };                                // TableMatcher
 
 }  // namespace fst
-
-#endif

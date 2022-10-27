@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -7,6 +21,7 @@
 #define FST_PARTITION_H_
 
 #include <algorithm>
+#include <type_traits>
 #include <vector>
 
 
@@ -33,7 +48,7 @@ class PartitionIterator;
 //
 // We also support a rather specialized interface that allows you to efficiently
 // split classes in the Hopcroft minimization algorithm. This maintains a
-// binary partition of each class.  Let's call these, rather arbitrarily, the
+// binary partition of each class. Let's call these, rather arbitrarily, the
 // 'yes' subset and the 'no' subset of each class, and assume that by default,
 // each element of a class is in its 'no' subset. When one calls
 // SplitOn(element_id), element_id is moved to the 'yes' subset of its class.
@@ -51,6 +66,9 @@ class PartitionIterator;
 // a subsequent call to FinalizeSplit()
 template <typename T>
 class Partition {
+  static_assert(std::is_signed_v<T> && std::is_integral_v<T>,
+                "T must be a signed integer type");
+
  public:
   Partition() {}
 

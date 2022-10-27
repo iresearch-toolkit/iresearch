@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -13,6 +27,7 @@
 
 #include <fst/arcfilter.h>
 #include <fst/cache.h>
+#include <fst/equal.h>
 #include <fst/queue.h>
 #include <fst/reverse.h>
 #include <fst/test-properties.h>
@@ -21,7 +36,7 @@
 namespace fst {
 
 // A representable float for shortest distance and shortest path algorithms.
-constexpr float kShortestDelta = 1e-6;
+inline constexpr float kShortestDelta = 1e-6;
 
 template <class Arc, class Queue, class ArcFilter>
 struct ShortestDistanceOptions {
@@ -43,8 +58,7 @@ struct ShortestDistanceOptions {
 
   ShortestDistanceOptions(Queue *state_queue, ArcFilter arc_filter,
                           StateId source = kNoStateId,
-                          float delta = kShortestDelta,
-                          bool first_path = false)
+                          float delta = kShortestDelta, bool first_path = false)
       : state_queue(state_queue),
         arc_filter(arc_filter),
         source(source),
@@ -61,7 +75,8 @@ namespace internal {
 // conventions, fst may not be freed before this class. Vector distance
 // should not be modified by the user between these calls. The Error() method
 // returns true iff an error was encountered.
-template <class Arc, class Queue, class ArcFilter>
+template <class Arc, class Queue, class ArcFilter,
+          class WeightEqual = WeightApproxEqual>
 class ShortestDistanceState {
  public:
   using StateId = typename Arc::StateId;
@@ -74,7 +89,7 @@ class ShortestDistanceState {
         distance_(distance),
         state_queue_(opts.state_queue),
         arc_filter_(opts.arc_filter),
-        delta_(opts.delta),
+        weight_equal_(opts.delta),
         first_path_(opts.first_path),
         retain_(retain),
         source_id_(0),
@@ -115,7 +130,7 @@ class ShortestDistanceState {
   std::vector<Weight> *distance_;
   Queue *state_queue_;
   ArcFilter arc_filter_;
-  const float delta_;
+  WeightEqual weight_equal_;  // Determines when relaxation stops.
   const bool first_path_;
   const bool retain_;  // Retain and reuse information across calls.
 
@@ -130,9 +145,9 @@ class ShortestDistanceState {
 
 // Compute the shortest distance; if source is kNoStateId, uses the initial
 // state of the FST.
-template <class Arc, class Queue, class ArcFilter>
-void ShortestDistanceState<Arc, Queue, ArcFilter>::ShortestDistance(
-    StateId source) {
+template <class Arc, class Queue, class ArcFilter, class WeightEqual>
+void ShortestDistanceState<Arc, Queue, ArcFilter,
+                           WeightEqual>::ShortestDistance(StateId source) {
   if (fst_.Start() == kNoStateId) {
     if (fst_.Properties(kError, false)) error_ = true;
     return;
@@ -195,7 +210,7 @@ void ShortestDistanceState<Arc, Queue, ArcFilter>::ShortestDistance(
       auto &na = adder_[nextstate];
       auto &nr = radder_[nextstate];
       auto weight = Times(r, arc.weight);
-      if (!ApproxEqual(nd, Plus(nd, weight), delta_)) {
+      if (!weight_equal_(nd, Plus(nd, weight))) {
         nd = na.Add(weight);
         nr.Add(weight);
         if (!nd.Member() || !nr.Sum().Member()) {

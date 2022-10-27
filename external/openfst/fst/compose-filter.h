@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -6,6 +20,9 @@
 
 #ifndef FST_COMPOSE_FILTER_H_
 #define FST_COMPOSE_FILTER_H_
+
+#include <cstdint>
+
 
 #include <fst/filter-state.h>
 #include <fst/fst-decl.h>  // For optional argument declarations
@@ -70,7 +87,7 @@ namespace fst {
 //   // This specifies how the filter affects the composition result properties.
 //   It takes as argument the properties that would apply with a trivial
 //   // composition filter.
-//   uint64 Properties(uint64 props) const;
+//   uint64_t Properties(uint64_t props) const;
 // };
 //
 // This filter allows only exact matching of symbols from FST1 with on FST2;
@@ -96,7 +113,7 @@ class NullComposeFilter {
         fst1_(matcher1_->GetFst()),
         fst2_(matcher2_->GetFst()) {}
 
-  NullComposeFilter(const NullComposeFilter<M1, M2> &filter, bool safe = false)
+  NullComposeFilter(const NullComposeFilter &filter, bool safe = false)
       : matcher1_(filter.matcher1_->Copy(safe)),
         matcher2_(filter.matcher2_->Copy(safe)),
         fst1_(matcher1_->GetFst()),
@@ -118,7 +135,7 @@ class NullComposeFilter {
 
   Matcher2 *GetMatcher2() { return matcher2_.get(); }
 
-  uint64 Properties(uint64 props) const { return props; }
+  uint64_t Properties(uint64_t props) const { return props; }
 
  private:
   std::unique_ptr<Matcher1> matcher1_;
@@ -178,7 +195,7 @@ class TrivialComposeFilter {
 
   Matcher2 *GetMatcher2() { return matcher2_.get(); }
 
-  uint64 Properties(uint64 props) const { return props; }
+  uint64_t Properties(uint64_t props) const { return props; }
 
  private:
   std::unique_ptr<Matcher1> matcher1_;
@@ -237,8 +254,8 @@ class SequenceComposeFilter {
 
   FilterState FilterArc(Arc *arc1, Arc *arc2) const {
     if (arc1->olabel == kNoLabel) {
-      return alleps1_ ? FilterState::NoState() : noeps1_ ? FilterState(0)
-                                                         : FilterState(1);
+      return alleps1_ ? FilterState::NoState()
+                      : noeps1_ ? FilterState(0) : FilterState(1);
     } else if (arc2->ilabel == kNoLabel) {
       return fs_ != FilterState(0) ? FilterState::NoState() : FilterState(0);
     } else {
@@ -252,7 +269,7 @@ class SequenceComposeFilter {
 
   Matcher2 *GetMatcher2() { return matcher2_.get(); }
 
-  uint64 Properties(uint64 props) const { return props; }
+  uint64_t Properties(uint64_t props) const { return props; }
 
  private:
   std::unique_ptr<Matcher1> matcher1_;
@@ -261,8 +278,8 @@ class SequenceComposeFilter {
   StateId s1_;      // Current fst1_ state.
   StateId s2_;      // Current fst2_ state.
   FilterState fs_;  // Current filter state.
-  bool alleps1_;   // Only epsilons (and non-final) leaving s1_?
-  bool noeps1_;    // No epsilons leaving s1_?
+  bool alleps1_;    // Only epsilons (and non-final) leaving s1_?
+  bool noeps1_;     // No epsilons leaving s1_?
 };
 
 // This filter requires epsilons on FST2 to be read before epsilons on FST1.
@@ -316,8 +333,8 @@ class AltSequenceComposeFilter {
 
   FilterState FilterArc(Arc *arc1, Arc *arc2) const {
     if (arc2->ilabel == kNoLabel) {
-      return alleps2_ ? FilterState::NoState() : noeps2_ ? FilterState(0)
-                                                         : FilterState(1);
+      return alleps2_ ? FilterState::NoState()
+                      : noeps2_ ? FilterState(0) : FilterState(1);
     } else if (arc1->olabel == kNoLabel) {
       return fs_ == FilterState(1) ? FilterState::NoState() : FilterState(0);
     } else {
@@ -331,7 +348,7 @@ class AltSequenceComposeFilter {
 
   Matcher2 *GetMatcher2() { return matcher2_.get(); }
 
-  uint64 Properties(uint64 props) const { return props; }
+  uint64_t Properties(uint64_t props) const { return props; }
 
  private:
   std::unique_ptr<Matcher1> matcher1_;
@@ -427,7 +444,7 @@ class MatchComposeFilter {
 
   Matcher2 *GetMatcher2() { return matcher2_.get(); }
 
-  uint64 Properties(uint64 props) const { return props; }
+  uint64_t Properties(uint64_t props) const { return props; }
 
  private:
   std::unique_ptr<Matcher1> matcher1_;
@@ -497,7 +514,7 @@ class NoMatchComposeFilter {
 
   Matcher2 *GetMatcher2() { return matcher2_.get(); }
 
-  uint64 Properties(uint64 props) const { return props; }
+  uint64_t Properties(uint64_t props) const { return props; }
 
  private:
   std::unique_ptr<Matcher1> matcher1_;
@@ -529,7 +546,7 @@ class MultiEpsFilter {
       : filter_(fst1, fst2, matcher1, matcher2),
         keep_multi_eps_(keep_multi_eps) {}
 
-  MultiEpsFilter(const MultiEpsFilter<Filter> &filter, bool safe = false)
+  MultiEpsFilter(const MultiEpsFilter &filter, bool safe = false)
       : filter_(filter.filter_, safe),
         keep_multi_eps_(filter.keep_multi_eps_) {}
 
@@ -556,7 +573,7 @@ class MultiEpsFilter {
 
   Matcher2 *GetMatcher2() { return filter_.GetMatcher2(); }
 
-  uint64 Properties(uint64 iprops) const {
+  uint64_t Properties(uint64_t iprops) const {
     const auto oprops = filter_.Properties(iprops);
     return oprops & kILabelInvariantProperties & kOLabelInvariantProperties;
   }

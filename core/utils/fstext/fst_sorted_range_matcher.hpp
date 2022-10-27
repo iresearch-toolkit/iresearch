@@ -20,10 +20,11 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SORTED_RANGE_MATCHER_H
-#define IRESEARCH_SORTED_RANGE_MATCHER_H
+#pragma once
 
+//clang-format off
 #include "utils/automaton.hpp"
+// clang-format on
 #include "fst/matcher.h"
 
 namespace fst {
@@ -144,7 +145,7 @@ class SortedRangeExplicitMatcher : public MatcherBase<typename F::Arc> {
 
   const FST &GetFst() const override { return fst_; }
 
-  uint64 Properties(uint64 inprops) const override {
+  std::uint64_t Properties(std::uint64_t inprops) const override {
     return inprops | (error_ ? kError : 0);
   }
 
@@ -236,5 +237,3 @@ inline bool SortedRangeExplicitMatcher<FST, MatchType>::Search() {
 }
 
 }  // namespace fst
-
-#endif  // IRESEARCH_SORTED_RANGE_MATCHER_H

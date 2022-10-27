@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -9,6 +23,8 @@
 #include <algorithm>
 #include <vector>
 
+
+#include <fst/expanded-fst.h>
 #include <fst/mutable-fst.h>
 #include <fst/rational.h>
 
@@ -77,7 +93,14 @@ void Concat(MutableFst<Arc> *fst1, const Fst<Arc> &fst2) {
   }
 }
 
-// Computes the concatentation of two FSTs.  This version modifies its
+// Computes the concatentation of two FSTs. This version modifies its
+// RationalFst input (in first position).
+template <class Arc>
+void Concat(RationalFst<Arc> *fst1, const Fst<Arc> &fst2) {
+  fst1->GetMutableImpl()->AddConcat(fst2, true);
+}
+
+// Computes the concatentation of two FSTs. This version modifies its
 // MutableFst argument (in second position).
 //
 // Complexity:
@@ -134,11 +157,12 @@ void Concat(const Fst<Arc> &fst1, MutableFst<Arc> *fst2) {
   }
 }
 
-// Computes the concatentation of two FSTs. This version modifies its
-// RationalFst input (in first position).
+// Same as the above but can handle arbitrarily many left-hand-side FSTs,
+// preallocating the states.
 template <class Arc>
-void Concat(RationalFst<Arc> *fst1, const Fst<Arc> &fst2) {
-  fst1->GetMutableImpl()->AddConcat(fst2, true);
+void Concat(const std::vector<const Fst<Arc> *> &fsts1, MutableFst<Arc> *fst2) {
+  fst2->ReserveStates(CountStates(fsts1) + fst2->NumStates());
+  for (const auto *fst1 : fsts1) Concat(*fst1, fst2);
 }
 
 // Computes the concatentation of two FSTs. This version modifies its
@@ -181,12 +205,12 @@ class ConcatFst : public RationalFst<A> {
   }
 
   // See Fst<>::Copy() for doc.
-  ConcatFst(const ConcatFst<Arc> &fst, bool safe = false)
+  ConcatFst(const ConcatFst &fst, bool safe = false)
       : RationalFst<Arc>(fst, safe) {}
 
   // Get a copy of this ConcatFst. See Fst<>::Copy() for further doc.
-  ConcatFst<Arc> *Copy(bool safe = false) const override {
-    return new ConcatFst<Arc>(*this, safe);
+  ConcatFst *Copy(bool safe = false) const override {
+    return new ConcatFst(*this, safe);
   }
 
  private:

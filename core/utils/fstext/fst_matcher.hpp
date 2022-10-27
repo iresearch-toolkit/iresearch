@@ -87,11 +87,11 @@ class explicit_matcher final
 
   const FST& GetFst() const override { return matcher_.GetFst(); }
 
-  uint64 Properties(uint64 inprops) const override {
+  std::uint64_t Properties(std::uint64_t inprops) const override {
     return matcher_.Properties(inprops);
   }
 
-  uint32 Flags() const override { return matcher_.Flags(); }
+  std::uint32_t Flags() const override { return matcher_.Flags(); }
 
  private:
   // Checks current arc if available and explicit. If not available, stops. If

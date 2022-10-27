@@ -20,12 +20,13 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_IMMUTABLE_FST_H
-#define IRESEARCH_IMMUTABLE_FST_H
+#pragma once
 
+// clang-format off
 #include <fst/fst.h>
 #include <fst/vector-fst.h>
 #include <fst/expanded-fst.h>
+// clang-format on
 
 #include "shared.hpp"
 #include "store/store_utils.hpp"
@@ -109,7 +110,7 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
   };
 
   // Properties always true of this FST class.
-  static constexpr uint64 kStaticProperties = kExpanded;
+  static constexpr std::uint64_t kStaticProperties = kExpanded;
 
   std::unique_ptr<State[]> states_;
   std::unique_ptr<Arc[]> arcs_;
@@ -385,9 +386,9 @@ class ArcIterator<fstext::ImmutableFst<Arc>> {
 
   void Seek(size_t a) noexcept { begin_ = arcs_ + a; }
 
-  constexpr uint32 Flags() const { return kArcValueFlags; }
+  constexpr std::uint32_t Flags() const { return kArcValueFlags; }
 
-  void SetFlags(uint32, uint32) {}
+  void SetFlags(std::uint32_t, std::uint32_t) {}
 
  private:
   const Arc* arcs_;
@@ -396,5 +397,3 @@ class ArcIterator<fstext::ImmutableFst<Arc>> {
 };
 
 }  // namespace fst
-
-#endif  // IRESEARCH_IMMUTABLE_FST_H
