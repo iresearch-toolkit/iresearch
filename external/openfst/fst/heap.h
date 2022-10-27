@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -12,6 +26,8 @@
 #include <vector>
 
 #include <fst/compat.h>
+#include <fst/log.h>
+
 namespace fst {
 
 // A templated heap implementation that supports in-place update of values.
@@ -67,19 +83,26 @@ class Heap {
 
   // Returns the least value.
   Value Pop() {
+    DCHECK(!Empty());
     Value top = values_.front();
-    Swap(0, size_-1);
+    Swap(0, size_ - 1);
     size_--;
     Heapify(0);
     return top;
   }
 
-  // Returns the least value w.r.t.  the comparison function from the
+  // Returns the least value w.r.t. the comparison function from the
   // heap.
-  const Value &Top() const { return values_.front(); }
+  const Value &Top() const {
+    DCHECK(!Empty());
+    return values_.front();
+  }
 
   // Returns the element for the given key.
-  const Value &Get(int key) const { return values_[pos_[key]]; }
+  const Value &Get(int key) const {
+    DCHECK_LT(key, pos_.size());
+    return values_[pos_[key]];
+  }
 
   // Checks if the heap is empty.
   bool Empty() const { return size_ == 0; }
@@ -159,9 +182,6 @@ class Heap {
   std::vector<Value> values_;
   int size_;
 };
-
-template <class T, class Compare>
-constexpr int Heap<T, Compare>::kNoKey;
 
 }  // namespace fst
 

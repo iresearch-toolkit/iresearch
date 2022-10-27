@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -10,6 +24,8 @@
 #include <utility>
 #include <vector>
 
+
+#include <fst/expanded-fst.h>
 #include <fst/mutable-fst.h>
 #include <fst/rational.h>
 
@@ -39,7 +55,8 @@ void Union(MutableFst<Arc> *fst1, const Fst<Arc> &fst2) {
     return;
   }
   const auto numstates1 = fst1->NumStates();
-  const bool initial_acyclic1 = fst1->Properties(kInitialAcyclic, true);
+  const bool initial_acyclic1 =
+      fst1->Properties(kInitialAcyclic, false) == kInitialAcyclic;
   const auto props1 = fst1->Properties(kFstProperties, false);
   const auto props2 = fst2.Properties(kFstProperties, false);
   const auto start2 = fst2.Start();
@@ -77,6 +94,15 @@ void Union(MutableFst<Arc> *fst1, const Fst<Arc> &fst2) {
     fst1->AddArc(nstart1, Arc(0, 0, start2 + numstates1));
   }
   fst1->SetProperties(UnionProperties(props1, props2), kFstProperties);
+}
+
+// Same as the above but can handle arbitrarily many right-hand-side FSTs,
+// preallocating the states.
+template <class Arc>
+void Union(MutableFst<Arc> *fst1, const std::vector<const Fst<Arc> *> &fsts2) {
+  // We add 1 just in case fst1 has an initial cycle.
+  fst1->ReserveStates(1 + fst1->NumStates() + CountStates(fsts2));
+  for (const auto *fst2 : fsts2) Union(fst1, *fst2);
 }
 
 // Computes the union of two FSTs, modifying the RationalFst argument.
@@ -118,12 +144,12 @@ class UnionFst : public RationalFst<A> {
   }
 
   // See Fst<>::Copy() for doc.
-  UnionFst(const UnionFst<Arc> &fst, bool safe = false)
+  UnionFst(const UnionFst &fst, bool safe = false)
       : RationalFst<Arc>(fst, safe) {}
 
   // Gets a copy of this UnionFst. See Fst<>::Copy() for further doc.
-  UnionFst<Arc> *Copy(bool safe = false) const override {
-    return new UnionFst<Arc>(*this, safe);
+  UnionFst *Copy(bool safe = false) const override {
+    return new UnionFst(*this, safe);
   }
 
  private:

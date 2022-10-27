@@ -30,46 +30,26 @@ typedef float   BaseFloat;
 #endif
 }
 
-#ifdef _MSC_VER
+#ifdef _WIN32
 #include <basetsd.h>
-#define ssize_t SSIZE_T
+using ssize_t = SSIZE_T;
 #endif
 
 // we can do this a different way if some platform
 // we find in the future lacks stdint.h
-#include <stdint.h>
-
-// for discussion on what to do if you need compile kaldi
-// without OpenFST, see the bottom of this this file
-#include <fst/types.h>
+#include <cstdint>
 
 namespace kaldi {
-  using ::int16;
-  using ::int32;
-  using ::int64;
-  using ::uint16;
-  using ::uint32;
-  using ::uint64;
-  typedef float   float32;
-  typedef double double64;
-}  // end namespace kaldi
+  using int16 = std::int16_t;
+  using int32 = std::int32_t;
+  using int64 = std::int64_t;
 
-// In a theoretical case you decide compile Kaldi without the OpenFST
-// comment the previous namespace statement and uncomment the following
-/*
-namespace kaldi {
-  typedef int8_t   int8;
-  typedef int16_t  int16;
-  typedef int32_t  int32;
-  typedef int64_t  int64;
+  using uint16 = std::uint16_t;
+  using uint32 = std::uint32_t;
+  using uint64 = std::uint64_t;
 
-  typedef uint8_t  uint8;
-  typedef uint16_t uint16;
-  typedef uint32_t uint32;
-  typedef uint64_t uint64;
-  typedef float    float32;
-  typedef double   double64;
+  using float32 = float;
+  using double64 = double;
 }  // end namespace kaldi
-*/
 
 #endif  // KALDI_BASE_KALDI_TYPES_H_

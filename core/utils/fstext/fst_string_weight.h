@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FST_STRING_WEIGHT_H
-#define IRESEARCH_FST_STRING_WEIGHT_H
+#pragma once
 
 #include <string>
 
@@ -103,7 +102,7 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
   std::istream& Read(std::istream& strm) {
     // read size
     // use varlen encoding since weights are usually small
-    uint32 size;
+    std::uint32_t size;
     {
       auto it = irs::irstd::make_istream_iterator(strm);
       size = irs::vread<uint32_t>(it);
@@ -119,7 +118,7 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
   std::ostream& Write(std::ostream& strm) const {
     // write size
     // use varlen encoding since weights are usually small
-    const uint32 size = static_cast<uint32_t>(Size());
+    const std::uint32_t size = static_cast<uint32_t>(Size());
     {
       auto it = irs::irstd::make_ostream_iterator(strm);
       irs::vwrite(it, size);
@@ -142,7 +141,7 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     return ReverseWeight(str_.rbegin(), str_.rend());
   }
 
-  static uint64 Properties() noexcept {
+  static std::uint64_t Properties() noexcept {
     static constexpr auto props = kLeftSemiring | kIdempotent;
     return props;
   }
@@ -430,7 +429,7 @@ inline std::istream& operator>>(std::istream& strm,
 // Zero() or NoWeight() as they may interfere
 // with real values
 inline irs::bytes_view Plus(const StringLeftWeight<irs::byte_type>& lhs,
-                           const StringLeftWeight<irs::byte_type>& rhs) {
+                            const StringLeftWeight<irs::byte_type>& rhs) {
   typedef irs::bytes_view Weight;
 
   const auto* plhs = &lhs;
@@ -501,7 +500,7 @@ inline StringLeftWeight<irs::byte_type> Times(
 // Zero() or NoWeight() as they may interfere
 // with real values
 inline irs::bytes_view DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
-                                 const StringLeftWeight<irs::byte_type>& rhs) {
+                                  const StringLeftWeight<irs::byte_type>& rhs) {
   typedef irs::bytes_view Weight;
 
   if (rhs.Size() > lhs.Size()) {
@@ -518,7 +517,7 @@ inline irs::bytes_view DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
 // Zero() or NoWeight() as they may interfere
 // with real values
 inline irs::bytes_view DivideLeft(irs::bytes_view lhs,
-                                 const StringLeftWeight<irs::byte_type>& rhs) {
+                                  const StringLeftWeight<irs::byte_type>& rhs) {
   typedef irs::bytes_view Weight;
 
   if (rhs.Size() > lhs.size()) {
@@ -535,7 +534,7 @@ inline irs::bytes_view DivideLeft(irs::bytes_view lhs,
 // Zero() or NoWeight() as they may interfere
 // with real values
 inline irs::bytes_view DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
-                                 irs::bytes_view rhs) {
+                                  irs::bytes_view rhs) {
   typedef irs::bytes_view Weight;
 
   if (rhs.size() > lhs.Size()) {
@@ -555,5 +554,3 @@ inline StringLeftWeight<irs::byte_type> Divide(
 }
 
 }  // namespace fst
-
-#endif  // IRESEARCH_FST_STRING_WEIGHT_H

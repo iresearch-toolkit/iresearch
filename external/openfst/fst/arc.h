@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -7,11 +21,13 @@
 #define FST_ARC_H_
 
 #include <climits>
+#include <cstdint>
 #include <string>
 #include <type_traits>
 #include <utility>
 
 
+#include <fst/error-weight.h>
 #include <fst/expectation-weight.h>
 #include <fst/float-weight.h>
 #include <fst/lexicographic-weight.h>
@@ -36,7 +52,7 @@ struct ArcTpl {
   Weight weight;
   StateId nextstate;
 
-  ArcTpl() noexcept(std::is_nothrow_default_constructible<Weight>::value) {}
+  ArcTpl() noexcept(std::is_nothrow_default_constructible_v<Weight>) {}
 
   template <class T>
   ArcTpl(Label ilabel, Label olabel, T &&weight, StateId nextstate)
@@ -59,8 +75,11 @@ struct ArcTpl {
 using StdArc = ArcTpl<TropicalWeight>;
 using LogArc = ArcTpl<LogWeight>;
 using Log64Arc = ArcTpl<Log64Weight>;
+using RealArc = ArcTpl<RealWeight>;
+using Real64Arc = ArcTpl<Real64Weight>;
 using SignedLogArc = ArcTpl<SignedLogWeight>;
 using SignedLog64Arc = ArcTpl<SignedLog64Weight>;
+using ErrorArc = ArcTpl<ErrorWeight>;
 using MinMaxArc = ArcTpl<MinMaxWeight>;
 
 // Arc with integer labels and state IDs and string weights.
@@ -179,65 +198,11 @@ struct ReverseArc {
 
 // Arc with integer labels and state IDs and lexicographic weights.
 template <class Weight1, class Weight2>
-struct LexicographicArc {
-  using Label = int;
-  using StateId = int;
-  using Weight = LexicographicWeight<Weight1, Weight2>;
-
-  Label ilabel;
-  Label olabel;
-  Weight weight;
-  StateId nextstate;
-
-  LexicographicArc() = default;
-
-  template <class T>
-  LexicographicArc(Label ilabel, Label olabel, T &&weight, StateId nextstate)
-      : ilabel(ilabel),
-        olabel(olabel),
-        weight(std::forward<T>(weight)),
-        nextstate(nextstate) {}
-
-  // Arc with weight One.
-  LexicographicArc(Label ilabel, Label olabel, StateId nextstate)
-      : LexicographicArc(ilabel, olabel, Weight::One(), nextstate) {}
-
-  static const std::string &Type() {
-    static const std::string *const type = new std::string(Weight::Type());
-    return *type;
-  }
-};
+using LexicographicArc = ArcTpl<LexicographicWeight<Weight1, Weight2>>;
 
 // Arc with integer labels and state IDs and product weights.
 template <class Weight1, class Weight2>
-struct ProductArc {
-  using Label = int;
-  using StateId = int;
-  using Weight = ProductWeight<Weight1, Weight2>;
-
-  Label ilabel;
-  Label olabel;
-  Weight weight;
-  StateId nextstate;
-
-  ProductArc() = default;
-
-  template <class T>
-  ProductArc(Label ilabel, Label olabel, T &&weight, StateId nextstate)
-      : ilabel(ilabel),
-        olabel(olabel),
-        weight(std::forward<T>(weight)),
-        nextstate(nextstate) {}
-
-  // Arc with weight One.
-  ProductArc(Label ilabel, Label olabel, StateId nextstate)
-      : ProductArc(ilabel, olabel, Weight::One(), nextstate) {}
-
-  static const std::string &Type() {
-    static const auto *const type = new std::string(Weight::Type());
-    return *type;
-  }
-};
+using ProductArc = ArcTpl<ProductWeight<Weight1, Weight2>>;
 
 // Arc with label and state ID type the same as first template argument and with
 // weights over the n-th Cartesian power of the weight type of the template
@@ -304,7 +269,7 @@ struct SparsePowerArc {
   static const std::string &Type() {
     static const std::string *const type = [] {
       std::string type = Arc::Type() + "_^n";
-      if (sizeof(K) != sizeof(uint32)) {
+      if (sizeof(K) != sizeof(uint32_t)) {
         type += "_" + std::to_string(CHAR_BIT * sizeof(K));
       }
       return new std::string(type);

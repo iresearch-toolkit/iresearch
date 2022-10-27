@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -7,8 +21,8 @@
 #define FST_FACTOR_WEIGHT_H_
 
 #include <algorithm>
+#include <cstdint>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -17,26 +31,27 @@
 #include <fst/cache.h>
 #include <fst/test-properties.h>
 
+#include <unordered_map>
 
 namespace fst {
 
-constexpr uint32 kFactorFinalWeights = 0x00000001;
-constexpr uint32 kFactorArcWeights = 0x00000002;
+inline constexpr uint8_t kFactorFinalWeights = 0x01;
+inline constexpr uint8_t kFactorArcWeights = 0x02;
 
 template <class Arc>
 struct FactorWeightOptions : CacheOptions {
   using Label = typename Arc::Label;
 
   float delta;
-  uint32 mode;         // Factor arc weights and/or final weights.
+  uint8_t mode;        // Factor arc weights and/or final weights.
   Label final_ilabel;  // Input label of arc when factoring final weights.
   Label final_olabel;  // Output label of arc when factoring final weights.
   bool increment_final_ilabel;  // When factoring final w' results in > 1 arcs
   bool increment_final_olabel;  // at state, increment labels to make distinct?
 
   explicit FactorWeightOptions(const CacheOptions &opts, float delta = kDelta,
-                               uint32 mode = kFactorArcWeights |
-                                             kFactorFinalWeights,
+                               uint8_t mode = kFactorArcWeights |
+                                              kFactorFinalWeights,
                                Label final_ilabel = 0, Label final_olabel = 0,
                                bool increment_final_ilabel = false,
                                bool increment_final_olabel = false)
@@ -49,8 +64,8 @@ struct FactorWeightOptions : CacheOptions {
         increment_final_olabel(increment_final_olabel) {}
 
   explicit FactorWeightOptions(float delta = kDelta,
-                               uint32 mode = kFactorArcWeights |
-                                             kFactorFinalWeights,
+                               uint8_t mode = kFactorArcWeights |
+                                              kFactorFinalWeights,
                                Label final_ilabel = 0, Label final_olabel = 0,
                                bool increment_final_ilabel = false,
                                bool increment_final_olabel = false)
@@ -310,10 +325,10 @@ class FactorWeightFstImpl : public CacheImpl<Arc> {
     return CacheImpl<Arc>::NumOutputEpsilons(s);
   }
 
-  uint64 Properties() const override { return Properties(kFstProperties); }
+  uint64_t Properties() const override { return Properties(kFstProperties); }
 
   // Sets error if found, and returns other FST impl properties.
-  uint64 Properties(uint64 mask) const override {
+  uint64_t Properties(uint64_t mask) const override {
     if ((mask & kError) && fst_->Properties(kError, false)) {
       SetProperties(kError, kError);
     }
@@ -414,13 +429,13 @@ class FactorWeightFstImpl : public CacheImpl<Arc> {
 
   std::unique_ptr<const Fst<Arc>> fst_;
   float delta_;
-  uint32 mode_;         // Factoring arc and/or final weights.
+  uint8_t mode_;        // Factoring arc and/or final weights.
   Label final_ilabel_;  // ilabel of arc created when factoring final weights.
   Label final_olabel_;  // olabel of arc created when factoring final weights.
   bool increment_final_ilabel_;    // When factoring final weights results in
   bool increment_final_olabel_;    // mutiple arcs, increment labels?
-  std::vector<Element> elements_;  // mapping from FST state to Element.
-  ElementMap element_map_;         // mapping from Element to FST state.
+  std::vector<Element> elements_;  // Mapping from FST state to Element.
+  ElementMap element_map_;         // Mapping from Element to FST state.
   // Mapping between old/new StateId for states that do not need to be factored
   // when mode_ is 0 or kFactorFinalWeights.
   std::vector<StateId> unfactored_;
@@ -460,12 +475,12 @@ class FactorWeightFst
       : ImplToFst<Impl>(std::make_shared<Impl>(fst, opts)) {}
 
   // See Fst<>::Copy() for doc.
-  FactorWeightFst(const FactorWeightFst<Arc, FactorIterator> &fst, bool copy)
+  FactorWeightFst(const FactorWeightFst &fst, bool copy)
       : ImplToFst<Impl>(fst, copy) {}
 
   // Get a copy of this FactorWeightFst. See Fst<>::Copy() for further doc.
-  FactorWeightFst<Arc, FactorIterator> *Copy(bool copy = false) const override {
-    return new FactorWeightFst<Arc, FactorIterator>(*this, copy);
+  FactorWeightFst *Copy(bool copy = false) const override {
+    return new FactorWeightFst(*this, copy);
   }
 
   inline void InitStateIterator(StateIteratorData<Arc> *data) const override;
@@ -508,7 +523,9 @@ class ArcIterator<FactorWeightFst<Arc, FactorIterator>>
 template <class Arc, class FactorIterator>
 inline void FactorWeightFst<Arc, FactorIterator>::InitStateIterator(
     StateIteratorData<Arc> *data) const {
-  data->base = new StateIterator<FactorWeightFst<Arc, FactorIterator>>(*this);
+  data->base =
+      std::make_unique<StateIterator<FactorWeightFst<Arc, FactorIterator>>>(
+          *this);
 }
 
 }  // namespace fst

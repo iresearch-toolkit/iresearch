@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -6,6 +20,8 @@
 #ifndef FST_VISIT_H_
 #define FST_VISIT_H_
 
+
+#include <cstdint>
 
 #include <fst/arcfilter.h>
 #include <fst/mutable-fst.h>
@@ -66,12 +82,12 @@ void Visit(const FST &fst, Visitor *visitor, Queue *queue, ArcFilter filter,
     return;
   }
   // An FST's state's visit color.
-  static constexpr uint8 kWhiteState = 0x01;  // Undiscovered.
-  static constexpr uint8 kGreyState = 0x02;   // Discovered & unfinished.
-  static constexpr uint8 kBlackState = 0x04;  // Finished.
+  static constexpr uint8_t kWhiteState = 0x01;  // Undiscovered.
+  static constexpr uint8_t kGreyState = 0x02;   // Discovered & unfinished.
+  static constexpr uint8_t kBlackState = 0x04;  // Finished.
   // We destroy an iterator as soon as possible and mark it so.
-  static constexpr uint8 kArcIterDone = 0x08;
-  std::vector<uint8> state_status;
+  static constexpr uint8_t kArcIterDone = 0x08;
+  std::vector<uint8_t> state_status;
   std::vector<ArcIterator<FST> *> arc_iterator;
   MemoryPool<ArcIterator<FST>> aiter_pool;
   StateId nstates = start + 1;  // Number of known states in general case.
@@ -272,8 +288,10 @@ class PartialCopyVisitor : public CopyVisitor<A> {
 
   PartialCopyVisitor(MutableFst<Arc> *ofst, StateId maxvisit,
                      bool copy_grey = true, bool copy_black = true)
-      : CopyVisitor<A>(ofst), maxvisit_(maxvisit),
-        copy_grey_(copy_grey), copy_black_(copy_black) {}
+      : CopyVisitor<A>(ofst),
+        maxvisit_(maxvisit),
+        copy_grey_(copy_grey),
+        copy_black_(copy_black) {}
 
   void InitVisit(const Fst<A> &ifst) {
     CopyVisitor<A>::InitVisit(ifst);

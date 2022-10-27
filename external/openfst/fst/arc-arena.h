@@ -1,3 +1,17 @@
+// Copyright 2005-2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // See www.openfst.org for extensive documentation on this weighted
 // finite-state transducer library.
 //
@@ -6,6 +20,7 @@
 #ifndef FST_ARC_ARENA_H_
 #define FST_ARC_ARENA_H_
 
+#include <cstdint>
 #include <deque>
 #include <memory>
 #include <utility>
@@ -42,10 +57,8 @@ namespace fst {
 template <typename Arc>
 class ArcArena {
  public:
-  explicit ArcArena(size_t block_size = 256,
-                    size_t max_retained_size = 1e6)
-      : block_size_(block_size),
-        max_retained_size_(max_retained_size) {
+  explicit ArcArena(size_t block_size = 256, size_t max_retained_size = 1e6)
+      : block_size_(block_size), max_retained_size_(max_retained_size) {
     blocks_.emplace_back(MakeSharedBlock(block_size_));
     first_block_size_ = block_size_;
     total_size_ = block_size_;
@@ -54,8 +67,10 @@ class ArcArena {
     next_ = arcs_;
   }
 
-  ArcArena(const ArcArena& copy)
-      : arcs_(copy.arcs_), next_(copy.next_), end_(copy.end_),
+  ArcArena(const ArcArena &copy)
+      : arcs_(copy.arcs_),
+        next_(copy.next_),
+        end_(copy.end_),
         block_size_(copy.block_size_),
         first_block_size_(copy.first_block_size_),
         total_size_(copy.total_size_),
@@ -69,7 +84,7 @@ class ArcArena {
     NewBlock(n);
   }
 
-  void PushArc(const Arc& arc) {
+  void PushArc(const Arc &arc) {
     if (next_ == end_) {
       size_t length = next_ - arcs_;
       NewBlock(length * 2);
@@ -78,7 +93,7 @@ class ArcArena {
     ++next_;
   }
 
-  const Arc* GetArcs() {
+  const Arc *GetArcs() {
     const auto *arcs = arcs_;
     arcs_ = next_;
     return arcs;
@@ -114,8 +129,8 @@ class ArcArena {
     end_ = arcs_ + new_block_size;
   }
 
-  std::shared_ptr<Arc> MakeSharedBlock(size_t size) {
-    return std::shared_ptr<Arc>(new Arc[size], std::default_delete<Arc[]>());
+  std::shared_ptr<Arc[]> MakeSharedBlock(size_t size) {
+    return std::shared_ptr<Arc[]>(new Arc[size]);
   }
 
   Arc *arcs_;
@@ -125,7 +140,7 @@ class ArcArena {
   size_t first_block_size_;
   size_t total_size_;
   size_t max_retained_size_;
-  std::list<std::shared_ptr<Arc>> blocks_;
+  std::list<std::shared_ptr<Arc[]>> blocks_;
 };
 
 // ArcArenaStateStore uses a resusable ArcArena to store arc arrays and does not
@@ -140,12 +155,9 @@ class ArcArenaStateStore {
   using Weight = typename Arc::Weight;
   using StateId = typename Arc::StateId;
 
-  ArcArenaStateStore() : arena_(64 * 1024) {
-  }
-
   class State {
    public:
-    Weight Final() const { return final_; }
+    Weight Final() const { return final_weight_; }
 
     size_t NumInputEpsilons() const { return niepsilons_; }
 
@@ -157,18 +169,18 @@ class ArcArenaStateStore {
 
     const Arc *Arcs() const { return arcs_; }
 
-    int* MutableRefCount() const { return nullptr; }
+    int *MutableRefCount() const { return nullptr; }
 
    private:
-    State(Weight weight, int32 niepsilons, int32 noepsilons, int32 narcs,
-          const Arc *arcs)
-        : final_(std::move(weight)),
+    State(Weight final_weight, int32_t niepsilons, int32_t noepsilons,
+          int32_t narcs, const Arc *arcs)
+        : final_weight_(std::move(final_weight)),
           niepsilons_(niepsilons),
           noepsilons_(noepsilons),
           narcs_(narcs),
           arcs_(arcs) {}
 
-    Weight final_;
+    Weight final_weight_;
     size_t niepsilons_;
     size_t noepsilons_;
     size_t narcs_;
@@ -178,9 +190,9 @@ class ArcArenaStateStore {
   };
 
   template <class Expander>
-  State *FindOrExpand(Expander &expander, StateId state_id) {  // NOLINT
-    auto it = cache_.insert(std::pair<StateId, State*>(state_id, nullptr));
-    if (!it.second) return it.first->second;
+  State *FindOrExpand(Expander &expander, StateId state_id) {
+    const auto &[it, success] = cache_.emplace(state_id, nullptr);
+    if (!success) return it->second;
     // Needs a new state.
     StateBuilder builder(&arena_);
     expander.Expand(state_id, &builder);
@@ -193,10 +205,10 @@ class ArcArenaStateStore {
       if (arcs[i].olabel == 0) ++noepsilons;
     }
     states_.emplace_back(
-        State(builder.final_, niepsilons, noepsilons, narcs, arcs));
+        State(builder.final_weight_, niepsilons, noepsilons, narcs, arcs));
     // Places it in the cache.
     auto state = &states_.back();
-    it.first->second = state;
+    it->second = state;
     return state;
   }
 
@@ -208,10 +220,10 @@ class ArcArenaStateStore {
  private:
   class StateBuilder {
    public:
-    explicit StateBuilder(ArcArena<Arc>* arena)
-       : arena_(arena), final_(Weight::Zero()), narcs_(0) {}
+    explicit StateBuilder(ArcArena<Arc> *arena)
+        : arena_(arena), final_weight_(Weight::Zero()), narcs_(0) {}
 
-    void SetFinal(Weight weight) { final_ = std::move(weight); }
+    void SetFinal(Weight weight) { final_weight_ = std::move(weight); }
 
     void ReserveArcs(size_t n) { arena_->ReserveArcs(n); }
 
@@ -224,7 +236,7 @@ class ArcArenaStateStore {
     friend class ArcArenaStateStore<Arc>;
 
     ArcArena<Arc> *arena_;
-    Weight final_;
+    Weight final_weight_;
     size_t narcs_;
   };
 

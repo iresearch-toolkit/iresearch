@@ -201,7 +201,7 @@ class format_test_case : public index_test_base {
           docs_type::const_iterator doc_end)
       : docs_(doc_begin, doc_end), next_(begin), end_(end) {}
 
-    bool next() {
+    bool next() override {
       if (next_ == end_) {
         return false;
       }
@@ -213,13 +213,14 @@ class format_test_case : public index_test_base {
 
     irs::bytes_view value() const override { return val_; }
 
-    irs::doc_iterator::ptr postings(irs::IndexFeatures /*features*/) const {
+    irs::doc_iterator::ptr postings(
+      irs::IndexFeatures /*features*/) const override {
       return irs::memory::make_managed<format_test_case::postings>(docs_);
     }
 
-    void read() {}
+    void read() override {}
 
-    irs::attribute* get_mutable(irs::type_info::type_id) noexcept {
+    irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
       return nullptr;
     }
 

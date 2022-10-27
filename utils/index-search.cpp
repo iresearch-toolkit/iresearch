@@ -341,7 +341,8 @@ irs::filter::prepared::ptr prepareFilter(
            std::getline(in, tmpBuf, ' ');) {
         auto& part = query.add<irs::by_term>();
         *part.mutable_field() = "body";
-        part.mutable_options()->term = irs::ViewCast<irs::byte_type>(tmpBuf);
+        part.mutable_options()->term =
+          irs::ViewCast<irs::byte_type>(std::string_view{tmpBuf});
       }
 
       return query.prepare(reader, order);
@@ -410,7 +411,8 @@ irs::filter::prepared::ptr prepareFilter(
         } else {
           auto& part = query.add<irs::by_term>();
           *part.mutable_field() = "body";
-          part.mutable_options()->term = irs::ViewCast<irs::byte_type>(tmpBuf);
+          part.mutable_options()->term =
+            irs::ViewCast<irs::byte_type>(std::string_view{tmpBuf});
         }
       }
       return query.prepare(reader, order);
