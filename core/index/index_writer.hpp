@@ -362,7 +362,6 @@ class index_writer : private util::noncopyable {
     // noexcept because all insertions reserve enough space for rollback
     void reset() noexcept;
 
-
     void SetLastTick(uint64_t tick) noexcept { last_operation_tick_ = tick; }
     uint64_t GetLastTick() const noexcept { return last_operation_tick_; }
 
