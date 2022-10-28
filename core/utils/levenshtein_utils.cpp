@@ -406,7 +406,7 @@ std::vector<character> make_alphabet(bytes_view word, size_t& utf8_size) {
     // evaluate characteristic vector
     auto& chi = begin->chi;
     chi.reset(capacity);
-    auto utf8_begin = word.begin();
+    auto utf8_begin = word.data();
     for (size_t i = 0; i < utf8_size; ++i) {
       chi.reset(i, c == utf8_utils::next(utf8_begin));
     }
@@ -597,8 +597,8 @@ automaton make_levenshtein_automaton(const parametric_description& description,
   auto start_state = a.AddState();
   a.SetStart(start_state);
 
-  auto begin = prefix.begin();
-  auto end = prefix.end();
+  auto begin = prefix.data();
+  auto end = prefix.data() + prefix.size();
   decltype(start_state) to;
   for (; begin != end;) {
     const byte_type* next = utf8_utils::next(begin, end);

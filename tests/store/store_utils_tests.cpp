@@ -56,16 +56,16 @@ class bytes_input final : public data_input, public bytes_view {
 
   void seek(size_t pos) {
     assert(this->begin() + pos <= this->end());
-    pos_ = this->begin() + pos;
+    pos_ = this->data() + pos;
   }
 
   virtual size_t file_pointer() const override {
-    return std::distance(this->begin(), pos_);
+    return std::distance(this->data(), pos_);
   }
 
   virtual size_t length() const override { return this->size(); }
 
-  virtual bool eof() const override { return pos_ >= this->end(); }
+  virtual bool eof() const override { return pos_ >= (this->data() + this->size()); }
 
   virtual const byte_type* read_buffer(size_t /*count*/,
                                        BufferHint /*hint*/) override {
@@ -157,7 +157,7 @@ void bytes_input::read_bytes(bstring& buf, size_t size) {
 
 size_t bytes_input::read_bytes(byte_type* b, size_t size) {
   assert(pos_ + size <= this->end());
-  size = std::min(size, size_t(std::distance(pos_, this->end())));
+  size = std::min(size, size_t(std::distance(pos_, this->data() + this->size())));
   std::memcpy(b, pos_, sizeof(byte_type) * size);
   pos_ += size;
   return size;
@@ -207,7 +207,7 @@ void delta_encode_decode_core(size_t step, size_t count) {
   auto encoded = values;
   irs::encode::delta::encode(encoded.begin(), encoded.end());
   ASSERT_TRUE(std::all_of(encoded.begin(), encoded.end(),
-                          [step](int v) { return step == v; }));
+                          [step](auto v) { return step == v; }));
 
   auto decoded = encoded;
   irs::encode::delta::decode(decoded.begin(), decoded.end());

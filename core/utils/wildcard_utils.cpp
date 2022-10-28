@@ -54,8 +54,8 @@ WildcardType wildcard_type(bytes_view expr) noexcept {
   size_t num_match_any_string = 0;
   size_t num_adjacent_match_any_string = 0;
 
-  const auto* char_begin = expr.begin();
-  const auto* end = expr.end();
+  const auto* char_begin = expr.data();
+  const auto* end = expr.data() + expr.size();
 
   for (size_t i = 0; char_begin < end; ++i) {
     const size_t char_length = utf8_utils::cp_length_msb(*char_begin);
@@ -124,8 +124,8 @@ automaton from_wildcard(bytes_view expr) {
     escaped = false;
   };
 
-  const auto* label_begin = expr.begin();
-  const auto* end = expr.end();
+  const auto* label_begin = expr.data();
+  const auto* end = expr.data() + expr.size();
 
   while (label_begin < end) {
     const auto label_length = utf8_utils::cp_length_msb(*label_begin);

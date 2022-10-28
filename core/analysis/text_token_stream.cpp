@@ -1135,8 +1135,8 @@ bool text_token_stream::next_word() {
 }
 
 bool text_token_stream::next_ngram() {
-  auto begin = state_->term.begin();
-  auto end = state_->term.end();
+  auto begin = state_->term.data();
+  auto end = state_->term.data() + state_->term.size();
   assert(begin != end);
 
   auto& inc = std::get<increment>(attrs_);

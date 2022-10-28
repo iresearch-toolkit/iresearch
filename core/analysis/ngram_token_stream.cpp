@@ -381,7 +381,7 @@ void ngram_token_stream_base::emit_original() noexcept {
       marked_term_buffer_.clear();
       IRS_ASSERT(marked_term_buffer_.capacity() >=
                  (options_.end_marker.size() + data_.size()));
-      marked_term_buffer_.append(data_.begin(), data_end_);
+      marked_term_buffer_.append(data_.data(), data_end_);
       marked_term_buffer_.append(options_.end_marker.begin(),
                                  options_.end_marker.end());
       term.value = marked_term_buffer_;
@@ -399,7 +399,7 @@ void ngram_token_stream_base::emit_original() noexcept {
                  (options_.start_marker.size() + data_.size()));
       marked_term_buffer_.append(options_.start_marker.begin(),
                                  options_.start_marker.end());
-      marked_term_buffer_.append(data_.begin(), data_end_);
+      marked_term_buffer_.append(data_.data(), data_end_);
       term.value = marked_term_buffer_;
       assert(marked_term_buffer_.size() <=
              std::numeric_limits<uint32_t>::max());
@@ -436,9 +436,9 @@ bool ngram_token_stream_base::reset(std::string_view value) noexcept {
 
   // reset stream
   data_ = ViewCast<byte_type>(value);
-  begin_ = data_.begin();
+  begin_ = data_.data();
   ngram_end_ = begin_;
-  data_end_ = data_.end();
+  data_end_ = data_.data() + data_.size();
   offset.start = 0;
   length_ = 0;
   if (options_.preserve_original) {
@@ -554,7 +554,7 @@ bool ngram_token_stream<StreamType>::next() noexcept {
           length_ = 0;
           ngram_end_ = begin_;
           offset.start =
-            static_cast<uint32_t>(std::distance(data_.begin(), begin_));
+            static_cast<uint32_t>(std::distance(data_.data(), begin_));
         } else {
           return false;  // stream exhausted
         }

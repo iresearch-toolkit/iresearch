@@ -225,7 +225,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
     const std::string_view lhs = "1234";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
-                       lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
+                       lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -266,7 +266,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_2) {
     const std::string_view lhs = "1234";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
-                       lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
+                       lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -306,7 +306,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_3) {
     const std::string_view lhs = "1234";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
-                       lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
+                       lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -345,7 +345,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_4) {
     const std::string_view lhs = "11";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
-                       lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
+                       lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(2, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -386,7 +386,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_5) {
     const std::string_view lhs = "121";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
-                       lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
+                       lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(4, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -425,7 +425,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_6) {
     const std::string_view lhs = "11";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
-                       lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
+                       lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -466,7 +466,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_7) {
     const std::string_view lhs = "1234";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
-                       lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
+                       lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(2, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -506,7 +506,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_8) {
     const std::string_view rhs = "1562";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
-                       lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
+                       lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -548,7 +548,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_9) {
     const std::string_view lhs = "123451";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
-                       lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
+                       lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
@@ -586,7 +586,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_10) {
     const std::string_view lhs = "";
     ASSERT_DOUBLE_EQ(boost->value,
                      (irs::ngram_similarity<char, true>(
-                       lhs.begin(), lhs.size(), rhs.begin(), rhs.size(), 1)));
+                       lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
