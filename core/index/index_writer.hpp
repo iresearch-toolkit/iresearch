@@ -183,9 +183,11 @@ class index_writer : private util::noncopyable {
     documents_context(documents_context&& other) noexcept
       : segment_(std::move(other.segment_)),
         segment_use_count_(std::move(other.segment_use_count_)),
-        tick_(other.tick_),
+        last_operation_tick_(other.last_operation_tick_),
+        first_operation_tick_(other.first_operation_tick_),
         writer_(other.writer_) {
-      other.tick_ = 0;
+      other.last_operation_tick_ = 0;
+      other.first_operation_tick_ = 0;
       other.segment_use_count_ = 0;
     }
 
@@ -360,16 +362,19 @@ class index_writer : private util::noncopyable {
     // noexcept because all insertions reserve enough space for rollback
     void reset() noexcept;
 
-    void tick(uint64_t tick) noexcept { tick_ = tick; }
-    uint64_t tick() const noexcept { return tick_; }
+    void SetLastTick(uint64_t tick) noexcept { last_operation_tick_ = tick; }
+    uint64_t GetLastTick() const noexcept { return last_operation_tick_; }
+
+    void SetFirstTick(uint64_t tick) noexcept { first_operation_tick_ = tick; }
+    uint64_t GetFirstTick() const noexcept { return first_operation_tick_; }
 
    private:
     // the segment_context used for storing changes (lazy-initialized)
     active_segment_context segment_;
     // segment_.ctx().use_count() at constructor/destructor time must equal
     uint64_t segment_use_count_{0};
-    // transaction tick
-    uint64_t tick_{0};
+    uint64_t last_operation_tick_{0};   // transaction commit tick
+    uint64_t first_operation_tick_{0};  // transaction tick
     index_writer& writer_;
 
     // refresh segment if required (guarded by flush_context::flush_mutex_)
@@ -969,7 +974,8 @@ class index_writer : private util::noncopyable {
     ~flush_context() noexcept { reset(); }
 
     // add the segment to this flush_context
-    void emplace(active_segment_context&& segment);
+    void emplace(active_segment_context&& segment,
+                 uint64_t first_operation_tick);
     void reset() noexcept;
   };
 
