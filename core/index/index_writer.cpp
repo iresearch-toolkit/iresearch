@@ -742,9 +742,9 @@ index_writer::documents_context::~documents_context() noexcept {
     return;  // nothing to do
   }
 
-    if (auto& writer = *ctx->writer_; writer.tick() < last_operation_tick_) {
-      writer.tick(last_operation_tick_);
-    }
+  if (auto& writer = *ctx->writer_; writer.tick() < last_operation_tick_) {
+    writer.tick(last_operation_tick_);
+  }
 
   try {
     // FIXME move emplace into active_segment_context destructor commit segment
