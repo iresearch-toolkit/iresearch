@@ -33,9 +33,9 @@
 
 namespace {
 
-irs::by_ngram_similarity make_filter(const std::string_view& field,
-                                     const std::vector<std::string_view>& ngrams,
-                                     float_t threshold = 1.f) {
+irs::by_ngram_similarity make_filter(
+  const std::string_view& field, const std::vector<std::string_view>& ngrams,
+  float_t threshold = 1.f) {
   irs::by_ngram_similarity filter;
   *filter.mutable_field() = field;
   auto* opts = filter.mutable_options();

@@ -20,13 +20,13 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "store_utils.hpp"
 
+#include "shared.hpp"
 #include "utils/crc.hpp"
+#include "utils/memory.hpp"
 #include "utils/std.hpp"
 #include "utils/string_utils.hpp"
-#include "utils/memory.hpp"
 
 namespace iresearch {
 
@@ -117,14 +117,15 @@ double_t read_zvdouble(data_input& in) {
 // ----------------------------------------------------------------------------
 
 size_t bytes_view_input::read_bytes(byte_type* b, size_t size) noexcept {
-  size = std::min(size, size_t(std::distance(pos_, data_.data() + data_.size())));
+  size =
+    std::min(size, size_t(std::distance(pos_, data_.data() + data_.size())));
   std::memcpy(b, pos_, sizeof(byte_type) * size);
   pos_ += size;
   return size;
 }
 
 size_t bytes_view_input::read_bytes(size_t offset, byte_type* b,
-                                   size_t size) noexcept {
+                                    size_t size) noexcept {
   if (offset < data_.size()) {
     size = std::min(size, size_t(data_.size() - offset));
     std::memcpy(b, data_.data() + offset, sizeof(byte_type) * size);

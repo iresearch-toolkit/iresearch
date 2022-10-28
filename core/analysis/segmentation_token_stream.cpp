@@ -364,7 +364,8 @@ bool segmentation_token_stream::next() {
       case options_t::case_convert_t::NONE:
         assert(length);
         // on *nix base returns pointer on msvc it return iterator
-        term.value = {reinterpret_cast<const byte_type*>(&(*begin.base())), length};
+        term.value = {reinterpret_cast<const byte_type*>(&(*begin.base())),
+                      length};
         break;
       case options_t::case_convert_t::LOWER:
         term_buf_.clear();

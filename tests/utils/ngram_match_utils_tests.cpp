@@ -132,12 +132,12 @@ TEST(ngram_match_utils_test, test_similarity_simple) {
     0.75f, (irs::ngram_similarity<char, true>(rhs.data(), rhs.size(),
                                               lhs.data(), lhs.size(), 1)));
 
-  ASSERT_DOUBLE_EQ(2.f / 3.f,
-                   (irs::ngram_similarity<char, false>(
-                     lhs.data(), lhs.size(), rhs.data(), rhs.size(), 2)));
-  ASSERT_DOUBLE_EQ(2.f / 3.f,
-                   (irs::ngram_similarity<char, false>(
-                     rhs.data(), rhs.size(), lhs.data(), lhs.size(), 2)));
+  ASSERT_DOUBLE_EQ(
+    2.f / 3.f, (irs::ngram_similarity<char, false>(lhs.data(), lhs.size(),
+                                                   rhs.data(), rhs.size(), 2)));
+  ASSERT_DOUBLE_EQ(
+    2.f / 3.f, (irs::ngram_similarity<char, false>(rhs.data(), rhs.size(),
+                                                   lhs.data(), lhs.size(), 2)));
   ASSERT_DOUBLE_EQ(
     1.f / 3.f, (irs::ngram_similarity<char, true>(lhs.data(), lhs.size(),
                                                   rhs.data(), rhs.size(), 2)));
@@ -145,23 +145,23 @@ TEST(ngram_match_utils_test, test_similarity_simple) {
     1.f / 3.f, (irs::ngram_similarity<char, true>(rhs.data(), rhs.size(),
                                                   lhs.data(), lhs.size(), 2)));
 
-  ASSERT_DOUBLE_EQ(2.f / 3.f,
-                   (irs::ngram_similarity<char, false>(
-                     lhs.data(), lhs.size(), rhs.data(), rhs.size(), 3)));
-  ASSERT_DOUBLE_EQ(2.f / 3.f,
-                   (irs::ngram_similarity<char, false>(
-                     rhs.data(), rhs.size(), lhs.data(), lhs.size(), 3)));
+  ASSERT_DOUBLE_EQ(
+    2.f / 3.f, (irs::ngram_similarity<char, false>(lhs.data(), lhs.size(),
+                                                   rhs.data(), rhs.size(), 3)));
+  ASSERT_DOUBLE_EQ(
+    2.f / 3.f, (irs::ngram_similarity<char, false>(rhs.data(), rhs.size(),
+                                                   lhs.data(), lhs.size(), 3)));
   ASSERT_DOUBLE_EQ(0, (irs::ngram_similarity<char, true>(
                         lhs.data(), lhs.size(), rhs.data(), rhs.size(), 3)));
   ASSERT_DOUBLE_EQ(0, (irs::ngram_similarity<char, true>(
                         rhs.data(), rhs.size(), lhs.data(), lhs.size(), 3)));
 
-  ASSERT_DOUBLE_EQ(3.f / 4.f,
-                   (irs::ngram_similarity<char, false>(
-                     lhs.data(), lhs.size(), rhs.data(), rhs.size(), 4)));
-  ASSERT_DOUBLE_EQ(3.f / 4.f,
-                   (irs::ngram_similarity<char, false>(
-                     rhs.data(), rhs.size(), lhs.data(), lhs.size(), 4)));
+  ASSERT_DOUBLE_EQ(
+    3.f / 4.f, (irs::ngram_similarity<char, false>(lhs.data(), lhs.size(),
+                                                   rhs.data(), rhs.size(), 4)));
+  ASSERT_DOUBLE_EQ(
+    3.f / 4.f, (irs::ngram_similarity<char, false>(rhs.data(), rhs.size(),
+                                                   lhs.data(), lhs.size(), 4)));
   ASSERT_DOUBLE_EQ(0, (irs::ngram_similarity<char, true>(
                         lhs.data(), lhs.size(), rhs.data(), rhs.size(), 4)));
   ASSERT_DOUBLE_EQ(0, (irs::ngram_similarity<char, true>(
@@ -171,24 +171,21 @@ TEST(ngram_match_utils_test, test_similarity_simple) {
 TEST(ngram_match_utils_test, test_similarity_different_length) {
   const std::string_view lhs = "applejuice";
   const std::string_view rhs = "aplejuice";
-  ASSERT_DOUBLE_EQ(
-    0.9f, (irs::ngram_similarity<char, false>(lhs.data(), lhs.size(),
-                                              rhs.data(), rhs.size(), 1)));
-  ASSERT_DOUBLE_EQ(
-    0.9f, (irs::ngram_similarity<char, false>(rhs.data(), rhs.size(),
-                                              lhs.data(), lhs.size(), 1)));
-  ASSERT_DOUBLE_EQ(
-    0.9f, (irs::ngram_similarity<char, true>(lhs.data(), lhs.size(),
-                                             rhs.data(), rhs.size(), 1)));
+  ASSERT_DOUBLE_EQ(0.9f, (irs::ngram_similarity<char, false>(
+                           lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
+  ASSERT_DOUBLE_EQ(0.9f, (irs::ngram_similarity<char, false>(
+                           rhs.data(), rhs.size(), lhs.data(), lhs.size(), 1)));
+  ASSERT_DOUBLE_EQ(0.9f, (irs::ngram_similarity<char, true>(
+                           lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
   ASSERT_DOUBLE_EQ(1, (irs::ngram_similarity<char, true>(
                         rhs.data(), rhs.size(), lhs.data(), lhs.size(), 1)));
 
-  ASSERT_DOUBLE_EQ(8.f / 9.f,
-                   (irs::ngram_similarity<char, false>(
-                     lhs.data(), lhs.size(), rhs.data(), rhs.size(), 2)));
-  ASSERT_DOUBLE_EQ(8.f / 9.f,
-                   (irs::ngram_similarity<char, false>(
-                     rhs.data(), rhs.size(), lhs.data(), lhs.size(), 2)));
+  ASSERT_DOUBLE_EQ(
+    8.f / 9.f, (irs::ngram_similarity<char, false>(lhs.data(), lhs.size(),
+                                                   rhs.data(), rhs.size(), 2)));
+  ASSERT_DOUBLE_EQ(
+    8.f / 9.f, (irs::ngram_similarity<char, false>(rhs.data(), rhs.size(),
+                                                   lhs.data(), lhs.size(), 2)));
   ASSERT_DOUBLE_EQ(
     8.f / 9.f, (irs::ngram_similarity<char, true>(lhs.data(), lhs.size(),
                                                   rhs.data(), rhs.size(), 2)));
@@ -256,12 +253,12 @@ TEST(ngram_match_utils_test, test_similarity_with_gaps) {
   ASSERT_DOUBLE_EQ(9.f / 14.f,
                    (irs::ngram_similarity<char, false>(
                      rhs.data(), rhs.size(), lhs.data(), lhs.size(), 1)));
-  ASSERT_DOUBLE_EQ(9.f / 14.f,
-                   (irs::ngram_similarity<char, true>(
-                     lhs.data(), lhs.size(), rhs.data(), rhs.size(), 1)));
-  ASSERT_DOUBLE_EQ(9.f / 12.f,
-                   (irs::ngram_similarity<char, true>(
-                     rhs.data(), rhs.size(), lhs.data(), lhs.size(), 1)));
+  ASSERT_DOUBLE_EQ(
+    9.f / 14.f, (irs::ngram_similarity<char, true>(lhs.data(), lhs.size(),
+                                                   rhs.data(), rhs.size(), 1)));
+  ASSERT_DOUBLE_EQ(
+    9.f / 12.f, (irs::ngram_similarity<char, true>(rhs.data(), rhs.size(),
+                                                   lhs.data(), lhs.size(), 1)));
 
   ASSERT_DOUBLE_EQ(8.f / 13.f,
                    (irs::ngram_similarity<char, false>(
@@ -269,12 +266,12 @@ TEST(ngram_match_utils_test, test_similarity_with_gaps) {
   ASSERT_DOUBLE_EQ(8.f / 13.f,
                    (irs::ngram_similarity<char, false>(
                      rhs.data(), rhs.size(), lhs.data(), lhs.size(), 2)));
-  ASSERT_DOUBLE_EQ(7.f / 13.f,
-                   (irs::ngram_similarity<char, true>(
-                     lhs.data(), lhs.size(), rhs.data(), rhs.size(), 2)));
-  ASSERT_DOUBLE_EQ(7.f / 11.f,
-                   (irs::ngram_similarity<char, true>(
-                     rhs.data(), rhs.size(), lhs.data(), lhs.size(), 2)));
+  ASSERT_DOUBLE_EQ(
+    7.f / 13.f, (irs::ngram_similarity<char, true>(lhs.data(), lhs.size(),
+                                                   rhs.data(), rhs.size(), 2)));
+  ASSERT_DOUBLE_EQ(
+    7.f / 11.f, (irs::ngram_similarity<char, true>(rhs.data(), rhs.size(),
+                                                   lhs.data(), lhs.size(), 2)));
 
   ASSERT_DOUBLE_EQ(
     (2.f / 3.f + 1 + 2.f / 3.f + 1.f / 3.f + 2.f / 3.f + 1.f / 3.f + 3.f) /
@@ -286,12 +283,12 @@ TEST(ngram_match_utils_test, test_similarity_with_gaps) {
       12.f,
     (irs::ngram_similarity<char, false>(rhs.data(), rhs.size(), lhs.data(),
                                         lhs.size(), 3)));
-  ASSERT_DOUBLE_EQ(4.f / 12.f,
-                   (irs::ngram_similarity<char, true>(
-                     lhs.data(), lhs.size(), rhs.data(), rhs.size(), 3)));
-  ASSERT_DOUBLE_EQ(4.f / 10.f,
-                   (irs::ngram_similarity<char, true>(
-                     rhs.data(), rhs.size(), lhs.data(), lhs.size(), 3)));
+  ASSERT_DOUBLE_EQ(
+    4.f / 12.f, (irs::ngram_similarity<char, true>(lhs.data(), lhs.size(),
+                                                   rhs.data(), rhs.size(), 3)));
+  ASSERT_DOUBLE_EQ(
+    4.f / 10.f, (irs::ngram_similarity<char, true>(rhs.data(), rhs.size(),
+                                                   lhs.data(), lhs.size(), 3)));
 
   ASSERT_DOUBLE_EQ(
     (0.75f + 0.75f + 0.5f + 0.25f + 0.25f + 0.5f + 0.75f + 2) / 11.f,
@@ -301,9 +298,9 @@ TEST(ngram_match_utils_test, test_similarity_with_gaps) {
     (0.75f + 0.75f + 0.5f + 0.25f + 0.25f + 0.5f + 0.75f + 2) / 11.f,
     (irs::ngram_similarity<char, false>(rhs.data(), rhs.size(), lhs.data(),
                                         lhs.size(), 4)));
-  ASSERT_DOUBLE_EQ(2.f / 11.f,
-                   (irs::ngram_similarity<char, true>(
-                     lhs.data(), lhs.size(), rhs.data(), rhs.size(), 4)));
+  ASSERT_DOUBLE_EQ(
+    2.f / 11.f, (irs::ngram_similarity<char, true>(lhs.data(), lhs.size(),
+                                                   rhs.data(), rhs.size(), 4)));
   ASSERT_DOUBLE_EQ(
     2.f / 9.f, (irs::ngram_similarity<char, true>(rhs.data(), rhs.size(),
                                                   lhs.data(), lhs.size(), 4)));
@@ -318,9 +315,9 @@ TEST(ngram_match_utils_test, test_similarity_with_gaps) {
                      10.f,
                    (irs::ngram_similarity<char, false>(
                      rhs.data(), rhs.size(), lhs.data(), lhs.size(), 5)));
-  ASSERT_DOUBLE_EQ(1.f / 10.f,
-                   (irs::ngram_similarity<char, true>(
-                     lhs.data(), lhs.size(), rhs.data(), rhs.size(), 5)));
+  ASSERT_DOUBLE_EQ(
+    1.f / 10.f, (irs::ngram_similarity<char, true>(lhs.data(), lhs.size(),
+                                                   rhs.data(), rhs.size(), 5)));
   ASSERT_DOUBLE_EQ(
     1.f / 8.f, (irs::ngram_similarity<char, true>(rhs.data(), rhs.size(),
                                                   lhs.data(), lhs.size(), 5)));
@@ -372,9 +369,8 @@ TEST(ngram_match_utils_test, test_similarity) {
     ASSERT_DOUBLE_EQ(6.f / 7.f,
                      (irs::ngram_similarity<char, true>(
                        lhs.data(), lhs.size(), rhs.data(), rhs.size(), 2)));
-    ASSERT_DOUBLE_EQ(
-      1, (irs::ngram_similarity<char, true>(rhs.data(), rhs.size(),
-                                            lhs.data(), lhs.size(), 2)));
+    ASSERT_DOUBLE_EQ(1, (irs::ngram_similarity<char, true>(
+                          rhs.data(), rhs.size(), lhs.data(), lhs.size(), 2)));
   }
 }
 
@@ -393,12 +389,10 @@ TEST(ngram_match_utils_test, test_similarity_shorter) {
                                                 lhs.data(), lhs.size(), 5)));
     // for "search" semantics this is 0 as there will be no binary matching
     // ngrams found in index
-    ASSERT_DOUBLE_EQ(
-      0, (irs::ngram_similarity<char, true>(lhs.data(), lhs.size(),
-                                            rhs.data(), rhs.size(), 5)));
-    ASSERT_DOUBLE_EQ(
-      0, (irs::ngram_similarity<char, true>(rhs.data(), rhs.size(),
-                                            lhs.data(), lhs.size(), 5)));
+    ASSERT_DOUBLE_EQ(0, (irs::ngram_similarity<char, true>(
+                          lhs.data(), lhs.size(), rhs.data(), rhs.size(), 5)));
+    ASSERT_DOUBLE_EQ(0, (irs::ngram_similarity<char, true>(
+                          rhs.data(), rhs.size(), lhs.data(), lhs.size(), 5)));
   }
   {
     // strings are shorter than ngram length.
@@ -406,20 +400,16 @@ TEST(ngram_match_utils_test, test_similarity_shorter) {
     const std::string_view rhs = "abb";
 
     // for "positional" semantics this will force to find best matched ngram
-    ASSERT_DOUBLE_EQ(
-      1, (irs::ngram_similarity<char, false>(lhs.data(), lhs.size(),
-                                             rhs.data(), rhs.size(), 5)));
-    ASSERT_DOUBLE_EQ(
-      1, (irs::ngram_similarity<char, false>(rhs.data(), rhs.size(),
-                                             lhs.data(), lhs.size(), 5)));
+    ASSERT_DOUBLE_EQ(1, (irs::ngram_similarity<char, false>(
+                          lhs.data(), lhs.size(), rhs.data(), rhs.size(), 5)));
+    ASSERT_DOUBLE_EQ(1, (irs::ngram_similarity<char, false>(
+                          rhs.data(), rhs.size(), lhs.data(), lhs.size(), 5)));
     // for "search" semantics this is 1 as there is binary match of shorter
     // string
-    ASSERT_DOUBLE_EQ(
-      1, (irs::ngram_similarity<char, true>(lhs.data(), lhs.size(),
-                                            rhs.data(), rhs.size(), 5)));
-    ASSERT_DOUBLE_EQ(
-      1, (irs::ngram_similarity<char, true>(rhs.data(), rhs.size(),
-                                            lhs.data(), lhs.size(), 5)));
+    ASSERT_DOUBLE_EQ(1, (irs::ngram_similarity<char, true>(
+                          lhs.data(), lhs.size(), rhs.data(), rhs.size(), 5)));
+    ASSERT_DOUBLE_EQ(1, (irs::ngram_similarity<char, true>(
+                          rhs.data(), rhs.size(), lhs.data(), lhs.size(), 5)));
   }
   {
     // strings are shorter than ngram length.
@@ -435,12 +425,10 @@ TEST(ngram_match_utils_test, test_similarity_shorter) {
                        rhs.data(), rhs.size(), lhs.data(), lhs.size(), 5)));
     // for "search" semantics this is 0 as there no binary match of shorter
     // string
-    ASSERT_DOUBLE_EQ(
-      0, (irs::ngram_similarity<char, true>(lhs.data(), lhs.size(),
-                                            rhs.data(), rhs.size(), 5)));
-    ASSERT_DOUBLE_EQ(
-      0, (irs::ngram_similarity<char, true>(rhs.data(), rhs.size(),
-                                            lhs.data(), lhs.size(), 5)));
+    ASSERT_DOUBLE_EQ(0, (irs::ngram_similarity<char, true>(
+                          lhs.data(), lhs.size(), rhs.data(), rhs.size(), 5)));
+    ASSERT_DOUBLE_EQ(0, (irs::ngram_similarity<char, true>(
+                          rhs.data(), rhs.size(), lhs.data(), lhs.size(), 5)));
   }
 }
 

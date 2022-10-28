@@ -65,8 +65,8 @@ TEST(utf8_utils_test, test) {
 
     {
       auto expected_begin = expected.data();
-      for (auto begin = str.data(), end = (str.data() + str.size()); begin != end;
-           ++expected_begin) {
+      for (auto begin = str.data(), end = (str.data() + str.size());
+           begin != end; ++expected_begin) {
         ASSERT_EQ(*expected_begin, irs::utf8_utils::next(begin));
       }
       ASSERT_EQ(expected.data() + expected.size(), expected_begin);
@@ -74,8 +74,8 @@ TEST(utf8_utils_test, test) {
 
     {
       auto expected_begin = expected.data();
-      for (auto begin = str.data(), end = (str.data() + str.size()); begin != end;
-           ++expected_begin) {
+      for (auto begin = str.data(), end = (str.data() + str.size());
+           begin != end; ++expected_begin) {
         const auto cp = irs::utf8_utils::next_checked(begin, end);
         ASSERT_EQ(*expected_begin, cp);
       }
@@ -125,8 +125,8 @@ TEST(utf8_utils_test, test) {
 
     {
       auto expected_begin = expected.data();
-      for (auto begin = str.data(), end = (str.data() + str.size()); begin != end;
-           ++expected_begin) {
+      for (auto begin = str.data(), end = (str.data() + str.size());
+           begin != end; ++expected_begin) {
         ASSERT_EQ(*expected_begin, irs::utf8_utils::next(begin));
       }
       ASSERT_EQ(expected.data() + expected.size(), expected_begin);
@@ -134,8 +134,8 @@ TEST(utf8_utils_test, test) {
 
     {
       auto expected_begin = expected.data();
-      for (auto begin = str.data(), end = (str.data() + str.size()); begin != end;
-           ++expected_begin) {
+      for (auto begin = str.data(), end = (str.data() + str.size());
+           begin != end; ++expected_begin) {
         const auto cp = irs::utf8_utils::next_checked(begin, end);
         ASSERT_EQ(*expected_begin, cp);
       }
@@ -162,15 +162,18 @@ TEST(utf8_utils_test, test) {
       for (auto expected_value : expected) {
         ASSERT_EQ(
           i, irs::utf8_utils::find(str.data(), str.size(), expected_value));
-        ASSERT_EQ(
-          begin, irs::utf8_utils::find(str.data(), (str.data() + str.size()), expected_value));
+        ASSERT_EQ(begin,
+                  irs::utf8_utils::find(str.data(), (str.data() + str.size()),
+                                        expected_value));
         irs::utf8_utils::next(begin);
         ++i;
       }
 
       ASSERT_EQ(irs::bstring::npos,
                 irs::utf8_utils::find(str.data(), str.size(), 0x80));
-      ASSERT_EQ((str.data() + str.size()), irs::utf8_utils::find(str.data(), (str.data() + str.size()), 0x80));
+      ASSERT_EQ(
+        (str.data() + str.size()),
+        irs::utf8_utils::find(str.data(), (str.data() + str.size()), 0x80));
     }
   }
 
@@ -204,8 +207,8 @@ TEST(utf8_utils_test, test) {
 
     {
       auto expected_begin = expected.data();
-      for (auto begin = str.data(), end = (str.data() + str.size()); begin != end;
-           ++expected_begin) {
+      for (auto begin = str.data(), end = (str.data() + str.size());
+           begin != end; ++expected_begin) {
         ASSERT_EQ(*expected_begin, irs::utf8_utils::next(begin));
       }
       ASSERT_EQ(expected.data() + expected.size(), expected_begin);
@@ -213,8 +216,8 @@ TEST(utf8_utils_test, test) {
 
     {
       auto expected_begin = expected.data();
-      for (auto begin = str.data(), end = (str.data() + str.size()); begin != end;
-           ++expected_begin) {
+      for (auto begin = str.data(), end = (str.data() + str.size());
+           begin != end; ++expected_begin) {
         const auto cp = irs::utf8_utils::next_checked(begin, end);
         ASSERT_EQ(*expected_begin, cp);
       }
@@ -266,8 +269,8 @@ TEST(utf8_utils_test, test) {
 
     {
       auto expected_begin = expected.data();
-      for (auto begin = str.data(), end = (str.data() + str.size()); begin != end;
-           ++expected_begin) {
+      for (auto begin = str.data(), end = (str.data() + str.size());
+           begin != end; ++expected_begin) {
         ASSERT_EQ(*expected_begin, irs::utf8_utils::next(begin));
       }
       ASSERT_EQ(expected.data() + expected.size(), expected_begin);
@@ -275,8 +278,8 @@ TEST(utf8_utils_test, test) {
 
     {
       auto expected_begin = expected.data();
-      for (auto begin = str.data(), end = (str.data() + str.size()); begin != end;
-           ++expected_begin) {
+      for (auto begin = str.data(), end = (str.data() + str.size());
+           begin != end; ++expected_begin) {
         const auto cp = irs::utf8_utils::next_checked(begin, end);
         ASSERT_EQ(*expected_begin, cp);
       }
@@ -308,10 +311,12 @@ TEST(utf8_utils_test, find) {
               irs::utf8_utils::find<true>(str.data(), str.size(), 0x80));
     ASSERT_EQ(irs::bstring::npos,
               irs::utf8_utils::find<false>(str.data(), str.size(), 0x80));
+    ASSERT_EQ(
+      (str.data() + str.size()),
+      irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()), 0x81));
     ASSERT_EQ((str.data() + str.size()),
-              irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()), 0x81));
-    ASSERT_EQ((str.data() + str.size()),
-              irs::utf8_utils::find<false>(str.data(), (str.data() + str.size()), 0x81));
+              irs::utf8_utils::find<false>(str.data(),
+                                           (str.data() + str.size()), 0x81));
   }
 
   // empty sequence
@@ -321,10 +326,12 @@ TEST(utf8_utils_test, find) {
               irs::utf8_utils::find<true>(str.data(), str.size(), 0x80));
     ASSERT_EQ(irs::bstring::npos,
               irs::utf8_utils::find<false>(str.data(), str.size(), 0x80));
+    ASSERT_EQ(
+      (str.data() + str.size()),
+      irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()), 0x81));
     ASSERT_EQ((str.data() + str.size()),
-              irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()), 0x81));
-    ASSERT_EQ((str.data() + str.size()),
-              irs::utf8_utils::find<false>(str.data(), (str.data() + str.size()), 0x81));
+              irs::utf8_utils::find<false>(str.data(),
+                                           (str.data() + str.size()), 0x81));
   }
 
   // 1-byte sequence
@@ -338,14 +345,16 @@ TEST(utf8_utils_test, find) {
     size_t i = 0;
     auto begin = str.data();
     for (auto expected_value : expected) {
-      ASSERT_EQ(i, irs::utf8_utils::find<true>(str.data(), str.size(),
-                                               expected_value));
+      ASSERT_EQ(
+        i, irs::utf8_utils::find<true>(str.data(), str.size(), expected_value));
       ASSERT_EQ(i, irs::utf8_utils::find<false>(str.data(), str.size(),
                                                 expected_value));
-      ASSERT_EQ(begin, irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()),
-                                                   expected_value));
-      ASSERT_EQ(begin, irs::utf8_utils::find<false>(str.data(), (str.data() + str.size()),
-                                                    expected_value));
+      ASSERT_EQ(begin,
+                irs::utf8_utils::find<true>(
+                  str.data(), (str.data() + str.size()), expected_value));
+      ASSERT_EQ(begin,
+                irs::utf8_utils::find<false>(
+                  str.data(), (str.data() + str.size()), expected_value));
       irs::utf8_utils::next(begin);
       ++i;
     }
@@ -354,10 +363,12 @@ TEST(utf8_utils_test, find) {
               irs::utf8_utils::find<true>(str.data(), str.size(), 0x80));
     ASSERT_EQ(irs::bstring::npos,
               irs::utf8_utils::find<false>(str.data(), str.size(), 0x80));
+    ASSERT_EQ(
+      (str.data() + str.size()),
+      irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()), 0x81));
     ASSERT_EQ((str.data() + str.size()),
-              irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()), 0x81));
-    ASSERT_EQ((str.data() + str.size()),
-              irs::utf8_utils::find<false>(str.data(), (str.data() + str.size()), 0x81));
+              irs::utf8_utils::find<false>(str.data(),
+                                           (str.data() + str.size()), 0x81));
   }
 
   // 2-byte sequence
@@ -372,14 +383,16 @@ TEST(utf8_utils_test, find) {
     size_t i = 0;
     auto begin = str.data();
     for (auto expected_value : expected) {
-      ASSERT_EQ(i, irs::utf8_utils::find<true>(str.data(), str.size(),
-                                               expected_value));
+      ASSERT_EQ(
+        i, irs::utf8_utils::find<true>(str.data(), str.size(), expected_value));
       ASSERT_EQ(i, irs::utf8_utils::find<false>(str.data(), str.size(),
                                                 expected_value));
-      ASSERT_EQ(begin, irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()),
-                                                   expected_value));
-      ASSERT_EQ(begin, irs::utf8_utils::find<false>(str.data(), (str.data() + str.size()),
-                                                    expected_value));
+      ASSERT_EQ(begin,
+                irs::utf8_utils::find<true>(
+                  str.data(), (str.data() + str.size()), expected_value));
+      ASSERT_EQ(begin,
+                irs::utf8_utils::find<false>(
+                  str.data(), (str.data() + str.size()), expected_value));
       irs::utf8_utils::next(begin);
       ++i;
     }
@@ -388,10 +401,12 @@ TEST(utf8_utils_test, find) {
               irs::utf8_utils::find<true>(str.data(), str.size(), 0x80));
     ASSERT_EQ(irs::bstring::npos,
               irs::utf8_utils::find<false>(str.data(), str.size(), 0x80));
+    ASSERT_EQ(
+      (str.data() + str.size()),
+      irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()), 0x80));
     ASSERT_EQ((str.data() + str.size()),
-              irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()), 0x80));
-    ASSERT_EQ((str.data() + str.size()),
-              irs::utf8_utils::find<false>(str.data(), (str.data() + str.size()), 0x81));
+              irs::utf8_utils::find<false>(str.data(),
+                                           (str.data() + str.size()), 0x81));
   }
 
   // 3-byte sequence
@@ -408,14 +423,16 @@ TEST(utf8_utils_test, find) {
     size_t i = 0;
     auto begin = str.data();
     for (auto expected_value : expected) {
-      ASSERT_EQ(i, irs::utf8_utils::find<true>(str.data(), str.size(),
-                                               expected_value));
+      ASSERT_EQ(
+        i, irs::utf8_utils::find<true>(str.data(), str.size(), expected_value));
       ASSERT_EQ(i, irs::utf8_utils::find<false>(str.data(), str.size(),
                                                 expected_value));
-      ASSERT_EQ(begin, irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()),
-                                                   expected_value));
-      ASSERT_EQ(begin, irs::utf8_utils::find<false>(str.data(), (str.data() + str.size()),
-                                                    expected_value));
+      ASSERT_EQ(begin,
+                irs::utf8_utils::find<true>(
+                  str.data(), (str.data() + str.size()), expected_value));
+      ASSERT_EQ(begin,
+                irs::utf8_utils::find<false>(
+                  str.data(), (str.data() + str.size()), expected_value));
       irs::utf8_utils::next(begin);
       ++i;
     }
@@ -424,10 +441,12 @@ TEST(utf8_utils_test, find) {
               irs::utf8_utils::find<true>(str.data(), str.size(), 0x80));
     ASSERT_EQ(irs::bstring::npos,
               irs::utf8_utils::find<false>(str.data(), str.size(), 0x80));
+    ASSERT_EQ(
+      (str.data() + str.size()),
+      irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()), 0x80));
     ASSERT_EQ((str.data() + str.size()),
-              irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()), 0x80));
-    ASSERT_EQ((str.data() + str.size()),
-              irs::utf8_utils::find<false>(str.data(), (str.data() + str.size()), 0x81));
+              irs::utf8_utils::find<false>(str.data(),
+                                           (str.data() + str.size()), 0x81));
   }
 
   // 4-byte sequence
@@ -444,14 +463,16 @@ TEST(utf8_utils_test, find) {
     size_t i = 0;
     auto begin = str.data();
     for (auto expected_value : expected) {
-      ASSERT_EQ(i, irs::utf8_utils::find<true>(str.data(), str.size(),
-                                               expected_value));
+      ASSERT_EQ(
+        i, irs::utf8_utils::find<true>(str.data(), str.size(), expected_value));
       ASSERT_EQ(i, irs::utf8_utils::find<false>(str.data(), str.size(),
                                                 expected_value));
-      ASSERT_EQ(begin, irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()),
-                                                   expected_value));
-      ASSERT_EQ(begin, irs::utf8_utils::find<false>(str.data(), (str.data() + str.size()),
-                                                    expected_value));
+      ASSERT_EQ(begin,
+                irs::utf8_utils::find<true>(
+                  str.data(), (str.data() + str.size()), expected_value));
+      ASSERT_EQ(begin,
+                irs::utf8_utils::find<false>(
+                  str.data(), (str.data() + str.size()), expected_value));
       irs::utf8_utils::next(begin);
       ++i;
     }
@@ -460,10 +481,12 @@ TEST(utf8_utils_test, find) {
               irs::utf8_utils::find<true>(str.data(), str.size(), 0x80));
     ASSERT_EQ(irs::bstring::npos,
               irs::utf8_utils::find<false>(str.data(), str.size(), 0x80));
+    ASSERT_EQ(
+      (str.data() + str.size()),
+      irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()), 0x80));
     ASSERT_EQ((str.data() + str.size()),
-              irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()), 0x80));
-    ASSERT_EQ((str.data() + str.size()),
-              irs::utf8_utils::find<false>(str.data(), (str.data() + str.size()), 0x81));
+              irs::utf8_utils::find<false>(str.data(),
+                                           (str.data() + str.size()), 0x81));
   }
 
   // invalid 4-byte sequence
@@ -475,10 +498,12 @@ TEST(utf8_utils_test, find) {
                                     str.data(), str.size(), expected_value));
     ASSERT_EQ(
       0, irs::utf8_utils::find<false>(str.data(), str.size(), expected_value));
-    ASSERT_EQ((str.data() + str.size()), irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()),
-                                                     expected_value));
-    ASSERT_EQ(str.data(), irs::utf8_utils::find<false>(str.data(), (str.data() + str.size()),
-                                                        expected_value));
+    ASSERT_EQ((str.data() + str.size()),
+              irs::utf8_utils::find<true>(str.data(), (str.data() + str.size()),
+                                          expected_value));
+    ASSERT_EQ(str.data(),
+              irs::utf8_utils::find<false>(
+                str.data(), (str.data() + str.size()), expected_value));
   }
 }
 

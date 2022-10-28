@@ -22,22 +22,22 @@
 
 #include "levenshtein_utils.hpp"
 
-#include <queue>
-#include <cmath>
-
 #include <absl/container/flat_hash_map.h>
 #include <absl/hash/hash.h>
 
-#include "shared.hpp"
-#include "store/store_utils.hpp"
-#include "automaton_utils.hpp"
+#include <cmath>
+#include <queue>
+
 #include "arena_allocator.hpp"
+#include "automaton_utils.hpp"
 #include "bit_utils.hpp"
 #include "bitset.hpp"
-#include "map_utils.hpp"
 #include "hash_utils.hpp"
-#include "utf8_utils.hpp"
+#include "map_utils.hpp"
 #include "misc.hpp"
+#include "shared.hpp"
+#include "store/store_utils.hpp"
+#include "utf8_utils.hpp"
 
 namespace {
 

@@ -65,7 +65,9 @@ class bytes_input final : public data_input, public bytes_view {
 
   virtual size_t length() const override { return this->size(); }
 
-  virtual bool eof() const override { return pos_ >= (this->data() + this->size()); }
+  virtual bool eof() const override {
+    return pos_ >= (this->data() + this->size());
+  }
 
   virtual const byte_type* read_buffer(size_t /*count*/,
                                        BufferHint /*hint*/) override {
@@ -157,7 +159,8 @@ void bytes_input::read_bytes(bstring& buf, size_t size) {
 
 size_t bytes_input::read_bytes(byte_type* b, size_t size) {
   assert(pos_ + size <= this->end());
-  size = std::min(size, size_t(std::distance(pos_, this->data() + this->size())));
+  size =
+    std::min(size, size_t(std::distance(pos_, this->data() + this->size())));
   std::memcpy(b, pos_, sizeof(byte_type) * size);
   pos_ += size;
   return size;
