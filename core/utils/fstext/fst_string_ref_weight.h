@@ -113,8 +113,8 @@ class StringRefWeight : public StringRefWeightTraits<Label> {
 
   size_t Size() const noexcept { return str_.size(); }
 
-  const Label* begin() const noexcept { return str_.begin(); }
-  const Label* end() const noexcept { return str_.end(); }
+  const Label* begin() const noexcept { return str_.data(); }
+  const Label* end() const noexcept { return str_.data() + str_.size(); }
 
   // intentionally implicit
   operator std::basic_string_view<Label>() const noexcept { return str_; }

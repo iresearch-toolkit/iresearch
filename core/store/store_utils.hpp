@@ -332,39 +332,39 @@ class bytes_view_input : public index_input {
  public:
   bytes_view_input() = default;
   explicit bytes_view_input(bytes_view data) noexcept
-    : data_(data), pos_(data_.begin()) {}
+    : data_(data), pos_(data_.data()) {}
 
   void skip(size_t size) noexcept {
-    assert(pos_ + size <= data_.end());
+    assert(pos_ + size <= data_.data() + data_.size());
     pos_ += size;
   }
 
   virtual void seek(size_t pos) noexcept override final {
-    assert(data_.begin() + pos <= data_.end());
-    pos_ = data_.begin() + pos;
+    assert(data_.data() + pos <= data_.data() + data_.size());
+    pos_ = data_.data() + pos;
   }
 
   virtual size_t file_pointer() const noexcept override final {
-    return std::distance(data_.begin(), pos_);
+    return std::distance(data_.data(), pos_);
   }
 
   virtual size_t length() const noexcept override final { return data_.size(); }
 
   virtual bool eof() const noexcept override final {
-    return pos_ >= data_.end();
+    return pos_ >= data_.data() + data_.size();
   }
 
   virtual byte_type read_byte() noexcept override final {
-    assert(pos_ < data_.end());
+    assert(pos_ < data_.data() + data_.size());
     return *pos_++;
   }
 
   virtual const byte_type* read_buffer(
     size_t offset, size_t size, BufferHint /*hint*/) noexcept override final {
-    const auto begin = data_.begin() + offset;
+    const auto begin = data_.data() + offset;
     const auto end = begin + size;
 
-    if (end <= data_.end()) {
+    if (end <= data_.data() + data_.size()) {
       pos_ = end;
       return begin;
     }
@@ -376,7 +376,7 @@ class bytes_view_input : public index_input {
     size_t size, BufferHint /*hint*/) noexcept override final {
     const auto* pos = pos_ + size;
 
-    if (pos <= data_.end()) {
+    if (pos <= data_.data() + data_.size()) {
       std::swap(pos, pos_);
       return pos;
     }
@@ -429,7 +429,7 @@ class bytes_view_input : public index_input {
 
  private:
   bytes_view data_;
-  const byte_type* pos_{data_.begin()};
+  const byte_type* pos_{data_.data()};
 };  // bytes_view_input
 
 namespace encode {

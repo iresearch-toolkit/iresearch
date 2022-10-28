@@ -273,7 +273,7 @@ TEST(ngram_token_stream_test, next_utf8) {
         ASSERT_EQ(expected_token->start, offset->start);
         ASSERT_EQ(expected_token->end, offset->end);
         pos += inc->value;
-        auto start = reinterpret_cast<const irs::byte_type*>(data.begin());
+        auto start = reinterpret_cast<const irs::byte_type*>(data.data());
         utf8::unchecked::advance(start, pos);
         const auto size = value->value.size() -
                           expected_token->start_marker.size() -
