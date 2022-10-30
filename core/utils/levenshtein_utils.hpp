@@ -78,7 +78,7 @@ inline size_t edit_distance(const T* lhs, size_t lhs_size, const T* rhs,
 template<typename Char>
 inline size_t edit_distance(std::basic_string_view<Char> lhs,
                             std::basic_string_view<Char> rhs) {
-  return edit_distance(lhs.begin(), lhs.size(), rhs.begin(), rhs.size());
+  return edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size());
 }
 
 // -----------------------------------------------------------------------------
@@ -269,7 +269,7 @@ size_t edit_distance(const parametric_description& description,
 ////////////////////////////////////////////////////////////////////////////////
 inline size_t edit_distance(const parametric_description& description,
                             bytes_view lhs, bytes_view rhs) {
-  return edit_distance(description, lhs.begin(), lhs.size(), rhs.begin(),
+  return edit_distance(description, lhs.data(), lhs.size(), rhs.data(),
                        rhs.size());
 }
 
@@ -305,8 +305,8 @@ bool edit_distance(size_t& distance, const parametric_description& description,
 inline bool edit_distance(size_t& distance,
                           const parametric_description& description,
                           bytes_view lhs, bytes_view rhs) {
-  return edit_distance(distance, description, lhs.begin(), lhs.size(),
-                       rhs.begin(), rhs.size());
+  return edit_distance(distance, description, lhs.data(), lhs.size(),
+                       rhs.data(), rhs.size());
 }
 
 }  // namespace iresearch

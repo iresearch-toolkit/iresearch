@@ -362,7 +362,10 @@ bool segmentation_token_stream::next() {
     switch (auto& term = std::get<term_attribute>(attrs_);
             options_.case_convert) {
       case options_t::case_convert_t::NONE:
-        term.value = {reinterpret_cast<const byte_type*>(begin.base()), length};
+        assert(length);
+        // on *nix base returns pointer on msvc it return iterator
+        term.value = {reinterpret_cast<const byte_type*>(&(*begin.base())),
+                      length};
         break;
       case options_t::case_convert_t::LOWER:
         term_buf_.clear();
