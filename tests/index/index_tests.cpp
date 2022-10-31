@@ -6258,8 +6258,8 @@ TEST_P(index_test_case, refresh_reader) {
     writer->commit();
   }
 
-  // validate state pre/post refresh (existing segment changed)
   {
+    // validate state pre/post refresh (existing segment changed)
     {
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0];  // assume 0 is id of first/only segment
