@@ -6257,9 +6257,9 @@ TEST_P(index_test_case, refresh_reader) {
     writer->documents().remove(std::move(query_doc2));
     writer->commit();
   }
-
+  // validate state pre/post refresh (existing segment changed)
   {
-    // validate state pre/post refresh (existing segment changed)
+    ((void)1);  // for clang-format
     {
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0];  // assume 0 is id of first/only segment
