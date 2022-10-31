@@ -16433,11 +16433,11 @@ TEST_P(index_test_case_11, testExternalGeneration) {
     // subcontext with remove
     {
       auto trx2 = writer->documents();
-      trx2.SetFirstTick(1);
+      trx2.SetFirstTick(3);
       trx2.remove(MakeByTerm("name", "A"));
-      trx2.SetLastTick(3);
+      trx2.SetLastTick(4);
     }
-    trx.SetLastTick(2);
+    trx.SetLastTick(3);
   }
   ASSERT_TRUE(writer->begin());
   writer->commit();
@@ -16493,7 +16493,7 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   ASSERT_EQ(1, segment.live_docs_count());
 }
 
-TEST_P(index_test_case_11, testExternalGenerationSame) {
+TEST_P(index_test_case_11, testExternalGenerationRemoveBeforeInsert) {
   tests::json_doc_generator gen(resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
 
@@ -16505,7 +16505,7 @@ TEST_P(index_test_case_11, testExternalGenerationSame) {
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   {
     auto trx = writer->documents();
-    trx.SetFirstTick(1);
+    trx.SetFirstTick(2);
     {
       auto doc = trx.insert();
       doc.insert<irs::Action::INDEX>(doc0->indexed.begin(),
@@ -16527,7 +16527,7 @@ TEST_P(index_test_case_11, testExternalGenerationSame) {
       trx2.remove(MakeByTerm("name", "A"));
       trx2.SetLastTick(2);
     }
-    trx.SetLastTick(2);
+    trx.SetLastTick(4);
   }
   ASSERT_TRUE(writer->begin());
   writer->commit();
@@ -16535,7 +16535,7 @@ TEST_P(index_test_case_11, testExternalGenerationSame) {
   ASSERT_EQ(1, reader.size());
   auto& segment = (*reader)[0];
   ASSERT_EQ(2, segment.docs_count());
-  ASSERT_EQ(1, segment.live_docs_count());
+  ASSERT_EQ(2, segment.live_docs_count());
 }
 
 // Separate definition as MSVC parser fails to do conditional defines in macro
