@@ -16401,6 +16401,45 @@ TEST_P(index_test_case_11, commit_payload) {
   ASSERT_EQ(reader, reader.reopen());
 }
 
+TEST_P(index_test_case_11, testExternalGeneration) {
+  tests::json_doc_generator gen(resource("simple_sequential.json"),
+                                &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+  auto* doc0 = gen.next();
+  auto* doc1 = gen.next();
+
+  irs::index_writer::init_options writer_options;
+  auto writer = open_writer(irs::OM_CREATE, writer_options);
+  {
+    auto trx = writer->documents();
+    {
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(),
+                                     doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+    }
+    {
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(),
+                                     doc1->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc1->stored.begin(), doc1->stored.end());
+      ASSERT_TRUE(doc);
+    }
+    // subcontext with remove
+    { writer->documents().remove(MakeByTerm("name", "A")); }
+  }
+  ASSERT_TRUE(writer->begin());
+  writer->commit();
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_EQ(1, reader.size());
+  auto& segment = (*reader)[0];
+  ASSERT_EQ(2, segment.docs_count());
+  ASSERT_EQ(1, segment.live_docs_count());
+}
+
+
 // Separate definition as MSVC parser fails to do conditional defines in macro
 // expansion
 namespace {
