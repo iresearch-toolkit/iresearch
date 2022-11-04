@@ -143,7 +143,12 @@ public:
   constexpr seed_or_index(bool is_seed, value_type value)
     : value_(is_seed ? (value | HIGH_BIT) : (value & ~HIGH_BIT)) {}
 
+#if defined(__GNUC__) && !defined(__clang__)
   consteval seed_or_index() = default;
+#else
+  constexpr seed_or_index() = default;
+#endif
+
   constexpr seed_or_index(const seed_or_index &) = default;
   constexpr seed_or_index & operator =(const seed_or_index &) = default;
 };
