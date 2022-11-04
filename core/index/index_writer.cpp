@@ -732,6 +732,14 @@ index_writer::documents_context::document::~document() noexcept {
   }
 }
 
+void index_writer::documents_context::AddToFlush() {
+  const auto& ctx = segment_.ctx();
+  if (!ctx) {
+    return;  // nothing to do
+  }
+  writer_.get_flush_context()->AddToPending(segment_);
+}
+
 index_writer::documents_context::~documents_context() noexcept {
   auto& ctx = segment_.ctx();
 
@@ -1115,6 +1123,19 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
     // add segment_context to free-list
     pending_segment_contexts_freelist_.push(*freelist_node);
   }
+}
+
+void index_writer::flush_context::AddToPending(
+  active_segment_context& segment) {
+  if (segment.flush_ctx_ != nullptr) {
+    // re-used active_segment_context
+    return;
+  }
+  std::lock_guard lock{mutex_};
+  segment.flush_ctx_ = this;
+  segment.pending_segment_context_offset_ = pending_segment_contexts_.size();
+  pending_segment_contexts_.emplace_back(segment.ctx_,
+                                         pending_segment_contexts_.size());
 }
 
 void index_writer::flush_context::reset() noexcept {
