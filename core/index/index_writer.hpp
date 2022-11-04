@@ -367,6 +367,8 @@ class index_writer : private util::noncopyable {
     void SetFirstTick(uint64_t tick) noexcept { first_operation_tick_ = tick; }
     uint64_t GetFirstTick() const noexcept { return first_operation_tick_; }
 
+    void AddToFlush();
+
    private:
     // the segment_context used for storing changes (lazy-initialized)
     active_segment_context segment_;
@@ -974,6 +976,11 @@ class index_writer : private util::noncopyable {
     // add the segment to this flush_context
     void emplace(active_segment_context&& segment,
                  uint64_t first_operation_tick);
+
+    // add the segment to this flush_context pending segments
+    // but not to freelist. So this segment would be waited upon flushing
+    void AddToPending(active_segment_context& segment);
+
     void reset() noexcept;
   };
 
