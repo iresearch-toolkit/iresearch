@@ -339,12 +339,12 @@ class bytes_view_input : public index_input {
     pos_ += size;
   }
 
-  virtual void seek(size_t pos) noexcept override final {
+  virtual void seek(size_t pos) noexcept override {
     assert(data_.data() + pos <= data_.data() + data_.size());
     pos_ = data_.data() + pos;
   }
 
-  virtual size_t file_pointer() const noexcept override final {
+  virtual size_t file_pointer() const noexcept override {
     return std::distance(data_.data(), pos_);
   }
 
@@ -387,7 +387,7 @@ class bytes_view_input : public index_input {
   virtual size_t read_bytes(byte_type* b, size_t size) noexcept override final;
 
   virtual size_t read_bytes(size_t offset, byte_type* b,
-                            size_t size) noexcept override final;
+                            size_t size) noexcept override;
 
   // append to buf
   void read_bytes(bstring& buf, size_t size);
@@ -425,12 +425,55 @@ class bytes_view_input : public index_input {
     return irs::vread<uint32_t>(pos_);
   }
 
-  virtual int64_t checksum(size_t offset) const override final;
+  virtual int64_t checksum(size_t offset) const override;
 
  private:
   bytes_view data_;
   const byte_type* pos_{data_.data()};
 };  // bytes_view_input
+
+// same as bytes_view_input but with support of adress remapping
+// usable when original data offses needs to be persistent
+// NOTE: remapped data blocks may have gaps but should not overlap!
+class IRESEARCH_API remapped_bytes_view_input : public bytes_view_input {
+ public:
+  using mapping_value = std::pair<size_t, size_t>;
+  using mapping = std::vector<mapping_value>;
+
+  explicit remapped_bytes_view_input(const bytes_view& data, mapping&& mapping)
+    : bytes_view_input(data), mapping_{std::move(mapping)} {
+    std::sort(
+      mapping_.begin(), mapping_.end(),
+      [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
+  }
+
+  remapped_bytes_view_input(const remapped_bytes_view_input& other)
+    : bytes_view_input(other), mapping_{other.mapping_} {}
+
+  virtual int64_t checksum(size_t offset) const override final {
+    return bytes_view_input::checksum(src_to_internal(offset));
+  }
+
+  virtual void seek(size_t pos) noexcept override final {
+    bytes_view_input::seek(src_to_internal(pos));
+  }
+
+  virtual size_t file_pointer() const noexcept override final;
+
+  virtual ptr dup() const override {
+    return memory::make_unique<remapped_bytes_view_input>(*this);
+  }
+
+  virtual size_t read_bytes(size_t offset, byte_type* b,
+                            size_t size) noexcept override final {
+    return bytes_view_input::read_bytes(src_to_internal(offset), b, size);
+  }
+
+ private:
+  size_t src_to_internal(size_t t) const noexcept;
+
+  mapping mapping_;
+};  // remapped_bytes_view_input
 
 namespace encode {
 

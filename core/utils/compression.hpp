@@ -23,11 +23,11 @@
 #ifndef IRESEARCH_COMPRESSION_H
 #define IRESEARCH_COMPRESSION_H
 
-#include "memory.hpp"
-#include "type_id.hpp"
-#include "noncopyable.hpp"
-
 #include <map>
+
+#include "memory.hpp"
+#include "noncopyable.hpp"
+#include "type_id.hpp"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          compression registration
@@ -108,8 +108,10 @@ struct decompressor {
 
   /// @note caller is allowed to modify data pointed by 'dst' up to 'dst_size'
   virtual bytes_view decompress(const byte_type* src, size_t src_size,
-                               byte_type* dst, size_t dst_size) = 0;
+                                byte_type* dst, size_t dst_size) = 0;
 
+  // FIXME: make sure no compressor relies tha data_input here is the source
+  // of src in decompress call.
   virtual bool prepare(data_input& /*in*/) {
     // NOOP
     return true;

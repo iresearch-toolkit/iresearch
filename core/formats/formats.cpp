@@ -76,6 +76,8 @@ class format_register
 
 namespace iresearch {
 
+bool noop_memory_accounter(int64_t) noexcept { return true; }
+
 /* static */ void index_meta_writer::complete(index_meta& meta) noexcept {
   meta.last_gen_ = meta.gen_;
 }

@@ -37,7 +37,8 @@ class segment_reader final : public sub_reader {
   typedef segment_reader element_type;  // type same as self
   typedef segment_reader ptr;           // pointer to self
 
-  static segment_reader open(const directory& dir, const segment_meta& meta);
+  static segment_reader open(const directory& dir, const segment_meta& meta,
+                             const index_reader_options& opts);
 
   segment_reader() = default;  // required for context<segment_reader>
   segment_reader(const segment_reader& other) noexcept;
@@ -102,7 +103,8 @@ class segment_reader final : public sub_reader {
     return impl_->sort();
   }
 
-  virtual const irs::column_reader* column(std::string_view name) const override {
+  virtual const irs::column_reader* column(
+    std::string_view name) const override {
     return impl_->column(name);
   }
 
