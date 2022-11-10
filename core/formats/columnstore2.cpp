@@ -404,9 +404,9 @@ class column_base : public column_reader, private util::noncopyable {
     assert(buffered_memory_accounter);
     if (!buffered_memory_accounter(static_cast<int64_t>(size))) {
       // use string to have always null-terminated name
-      std::string col_name{"<anonymous>"};
-      if (!irs::IsNull(name())) {
-        col_name = name();
+      const auto column_name = name();
+      if (irs::IsNull(column_name)) {
+        column_name = "<anonymous>";
       }
       IR_FRMT_WARN(
         "Failed to allocate memory for buffered column id %llu name: %s of "
