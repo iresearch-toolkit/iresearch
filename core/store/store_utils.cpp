@@ -176,7 +176,7 @@ size_t remapped_bytes_view_input::src_to_internal(size_t t) const noexcept {
 
 size_t remapped_bytes_view_input::file_pointer() const noexcept {
   auto const adr = bytes_view_input::file_pointer();
-  size_t diff = std::numeric_limits<size_t>::max();
+  auto diff = std::numeric_limits<size_t>::max();
   assert(!mapping_.empty());
   mapping_value src = mapping_.front();
   for (auto const& m : mapping_) {
