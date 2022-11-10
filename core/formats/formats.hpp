@@ -58,7 +58,7 @@ using callback_f = std::function<bool(doc_iterator&)>;
 // should never throw as may be used in dtors
 using memory_accounting_f = fu2::function<bool(int64_t) noexcept>;
 
-bool noop_memory_accounter(int64_t) noexcept;
+constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class term_meta

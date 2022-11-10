@@ -175,14 +175,14 @@ size_t remapped_bytes_view_input::src_to_internal(size_t t) const noexcept {
 }
 
 size_t remapped_bytes_view_input::file_pointer() const noexcept {
-  auto const adr = bytes_view_input::file_pointer();
+  auto const addr = bytes_view_input::file_pointer();
   auto diff = std::numeric_limits<size_t>::max();
   assert(!mapping_.empty());
   mapping_value src = mapping_.front();
   for (auto const& m : mapping_) {
-    if (m.second < adr) {
-      if (adr - m.second < diff) {
-        diff = m.second - adr;
+    if (m.second < addr) {
+      if (addr - m.second < diff) {
+        diff = m.second - addr;
         src = m;
       }
     }
@@ -191,7 +191,7 @@ size_t remapped_bytes_view_input::file_pointer() const noexcept {
     assert(false);
     return 0;
   }
-  return src.first + (adr - src.second);
+  return src.first + (addr - src.second);
 }
 
 }  // namespace iresearch

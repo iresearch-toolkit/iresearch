@@ -403,15 +403,16 @@ class column_base : public column_reader, private util::noncopyable {
     assert(size < static_cast<size_t>(std::numeric_limits<int64_t>::max()));
     assert(buffered_memory_accounter);
     if (!buffered_memory_accounter(static_cast<int64_t>(size))) {
-      // use string to have always null-terminated name
-      const auto column_name = name();
+      auto column_name = name();
       if (irs::IsNull(column_name)) {
         column_name = "<anonymous>";
       }
+      // use string to have always null-terminated name
+      std::string col{column_name};
       IR_FRMT_WARN(
         "Failed to allocate memory for buffered column id %llu name: %s of "
         "size " IR_SIZE_T_SPECIFIER,
-        header().id, col_name.c_str(), size);
+        header().id, col.c_str(), size);
       return false;
     }
     // should be only one alllocation
@@ -1774,7 +1775,7 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
   if (opts.warmup_column) {
     index_input::ptr direct_data_input;
     auto memory_accounting =
-      opts.pinned_memory ? opts.pinned_memory : noop_memory_accounter;
+      opts.pinned_memory ? opts.pinned_memory : NoopMemoryAccounter;
     for (size_t i = 0; i < sorted_columns.size(); ++i) {
       auto cb = static_cast<column_base*>(sorted_columns[i].get());
       if (opts.warmup_column(*cb)) {

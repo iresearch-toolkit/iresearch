@@ -339,28 +339,28 @@ class bytes_view_input : public index_input {
     pos_ += size;
   }
 
-  virtual void seek(size_t pos) noexcept override {
+  void seek(size_t pos) noexcept override {
     assert(data_.data() + pos <= data_.data() + data_.size());
     pos_ = data_.data() + pos;
   }
 
-  virtual size_t file_pointer() const noexcept override {
+  size_t file_pointer() const noexcept override {
     return std::distance(data_.data(), pos_);
   }
 
-  virtual size_t length() const noexcept override final { return data_.size(); }
+  size_t length() const noexcept override final { return data_.size(); }
 
-  virtual bool eof() const noexcept override final {
+  bool eof() const noexcept override final {
     return pos_ >= data_.data() + data_.size();
   }
 
-  virtual byte_type read_byte() noexcept override final {
+  byte_type read_byte() noexcept override final {
     assert(pos_ < data_.data() + data_.size());
     return *pos_++;
   }
 
-  virtual const byte_type* read_buffer(
-    size_t offset, size_t size, BufferHint /*hint*/) noexcept override final {
+  const byte_type* read_buffer(size_t offset, size_t size,
+                               BufferHint /*hint*/) noexcept override final {
     const auto begin = data_.data() + offset;
     const auto end = begin + size;
 
@@ -372,8 +372,8 @@ class bytes_view_input : public index_input {
     return nullptr;
   }
 
-  virtual const byte_type* read_buffer(
-    size_t size, BufferHint /*hint*/) noexcept override final {
+  const byte_type* read_buffer(size_t size,
+                               BufferHint /*hint*/) noexcept override final {
     const auto* pos = pos_ + size;
 
     if (pos <= data_.data() + data_.size()) {
@@ -384,10 +384,9 @@ class bytes_view_input : public index_input {
     return nullptr;
   }
 
-  virtual size_t read_bytes(byte_type* b, size_t size) noexcept override final;
+  size_t read_bytes(byte_type* b, size_t size) noexcept override final;
 
-  virtual size_t read_bytes(size_t offset, byte_type* b,
-                            size_t size) noexcept override;
+  size_t read_bytes(size_t offset, byte_type* b, size_t size) noexcept override;
 
   // append to buf
   void read_bytes(bstring& buf, size_t size);
@@ -399,33 +398,33 @@ class bytes_view_input : public index_input {
 
   void reset(bytes_view ref) noexcept { reset(ref.data(), ref.size()); }
 
-  virtual ptr dup() const override {
+  ptr dup() const override {
     return memory::make_unique<bytes_view_input>(*this);
   }
 
-  virtual ptr reopen() const override { return dup(); }
+  ptr reopen() const override { return dup(); }
 
-  virtual int16_t read_short() noexcept override final {
+  int16_t read_short() noexcept override final {
     return irs::read<uint16_t>(pos_);
   }
 
-  virtual int32_t read_int() noexcept override final {
+  int32_t read_int() noexcept override final {
     return irs::read<uint32_t>(pos_);
   }
 
-  virtual int64_t read_long() noexcept override final {
+  int64_t read_long() noexcept override final {
     return irs::read<uint64_t>(pos_);
   }
 
-  virtual uint64_t read_vlong() noexcept override final {
+  uint64_t read_vlong() noexcept override final {
     return irs::vread<uint64_t>(pos_);
   }
 
-  virtual uint32_t read_vint() noexcept override final {
+  uint32_t read_vint() noexcept override final {
     return irs::vread<uint32_t>(pos_);
   }
 
-  virtual int64_t checksum(size_t offset) const override;
+  int64_t checksum(size_t offset) const override;
 
  private:
   bytes_view data_;
