@@ -264,8 +264,8 @@ struct column_header {
 
 class reader final : public columnstore_reader {
  public:
-  virtual bool prepare(const directory& dir, const segment_meta& meta,
-                       const options& opts = options{}) override;
+  bool prepare(const directory& dir, const segment_meta& meta,
+               const options& opts = options{}) final;
 
   const column_header* header(field_id field) const;
 
