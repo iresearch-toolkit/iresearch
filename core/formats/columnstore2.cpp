@@ -689,7 +689,7 @@ class dense_fixed_length_column final : public column_base {
 
   void make_buffered(
     irs::index_input& in, memory_accounting_f& memory_accounter,
-    std::span<std::unique_ptr<column_reader>> next_sorted_columns) override {
+    std::span<std::unique_ptr<column_reader>> next_sorted_columns) final {
     auto& hdr = mutable_header();
     auto const data_size = len_ * hdr.docs_count;
     auto const bitmap_size =
