@@ -103,8 +103,8 @@ class segment_reader final : public sub_reader {
     return impl_->sort();
   }
 
-  virtual const irs::column_reader* column(
-    std::string_view name) const override {
+  const irs::column_reader* column(
+    std::string_view name) const final {
     return impl_->column(name);
   }
 
