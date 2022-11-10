@@ -359,7 +359,7 @@ class column_base : public column_reader, private util::noncopyable {
     }
   }
 
-  virtual std::string_view name() const final {
+  std::string_view name() const final {
     return name_.has_value() ? name_.value() : std::string_view{};
   }
 
