@@ -103,8 +103,7 @@ class segment_reader final : public sub_reader {
     return impl_->sort();
   }
 
-  const irs::column_reader* column(
-    std::string_view name) const final {
+  const irs::column_reader* column(std::string_view name) const final {
     return impl_->column(name);
   }
 
