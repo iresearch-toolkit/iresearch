@@ -721,7 +721,7 @@ class dense_fixed_length_column final : public column_base {
   class payload_reader : private ValueReader {
    public:
     template<typename... Args>
-    payload_reader(uint64_t len, uint64_t data, Args&&... args)
+    payload_reader(uint64_t data, uint64_t len, Args&&... args)
       : ValueReader{std::forward<Args>(args)...}, data_{data}, len_{len} {}
 
     bytes_view payload(doc_id_t i) {
@@ -744,8 +744,8 @@ class dense_fixed_length_column final : public column_base {
   std::optional<std::string>&& name, bstring&& payload, column_header&& hdr,
   column_index&& index, index_input& index_in, const index_input& data_in,
   compression::decompressor::ptr&& inflater, encryption::stream* cipher) {
-  const uint64_t data = index_in.read_long();
   const uint64_t len = index_in.read_long();
+  const uint64_t data = index_in.read_long();
 
   return memory::make_unique<dense_fixed_length_column>(
     std::move(name), std::move(payload), std::move(hdr), std::move(index),
