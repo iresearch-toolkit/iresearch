@@ -183,7 +183,8 @@ class column final : public irs::column_output {
 
 class writer final : public columnstore_writer {
  public:
-  static constexpr std::string_view kDataFormatName = "iresearch_11_columnstore_data";
+  static constexpr std::string_view kDataFormatName =
+    "iresearch_11_columnstore_data";
   static constexpr std::string_view kIndexFormatName =
     "iresearch_11_columnstore_index";
   static constexpr std::string_view kDataFormatExt = "csd";
@@ -263,7 +264,8 @@ struct column_header {
 
 class reader final : public columnstore_reader {
  public:
-  virtual bool prepare(const directory& dir, const segment_meta& meta) override;
+  bool prepare(const directory& dir, const segment_meta& meta,
+               const options& opts = options{}) final;
 
   const column_header* header(field_id field) const;
 
@@ -283,7 +285,8 @@ class reader final : public columnstore_reader {
   void prepare_data(const directory& dir, std::string_view filename);
 
   void prepare_index(const directory& dir, const segment_meta& meta,
-                     std::string_view filename);
+                     std::string_view filename, std::string_view data_filename,
+                     const options& opts);
 
   std::vector<column_ptr> sorted_columns_;
   std::vector<const column_ptr::element_type*> columns_;

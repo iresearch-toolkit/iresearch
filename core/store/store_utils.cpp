@@ -160,4 +160,38 @@ int64_t bytes_view_input::checksum(size_t offset) const {
   return crc.checksum();
 }
 
+size_t remapped_bytes_view_input::src_to_internal(size_t t) const noexcept {
+  assert(!mapping_.empty());
+  auto it =
+    std::lower_bound(mapping_.begin(), mapping_.end(), t,
+                     [](const auto& l, const auto& r) { return l.first < r; });
+  if (it == mapping_.end()) {
+    --it;
+  } else if (it->first > t) {
+    assert(it != mapping_.begin());
+    --it;
+  }
+  return it->second + (t - it->first);
+}
+
+size_t remapped_bytes_view_input::file_pointer() const noexcept {
+  auto const addr = bytes_view_input::file_pointer();
+  auto diff = std::numeric_limits<size_t>::max();
+  assert(!mapping_.empty());
+  mapping_value src = mapping_.front();
+  for (auto const& m : mapping_) {
+    if (m.second < addr) {
+      if (addr - m.second < diff) {
+        diff = m.second - addr;
+        src = m;
+      }
+    }
+  }
+  if (IRS_UNLIKELY(diff == std::numeric_limits<size_t>::max())) {
+    assert(false);
+    return 0;
+  }
+  return src.first + (addr - src.second);
+}
+
 }  // namespace iresearch
