@@ -454,7 +454,7 @@ class IRESEARCH_API remapped_bytes_view_input : public bytes_view_input {
     return bytes_view_input::checksum(src_to_internal(offset));
   }
 
-  virtual void seek(size_t pos) noexcept override final {
+  void seek(size_t pos) noexcept final {
     bytes_view_input::seek(src_to_internal(pos));
   }
 
