@@ -21,9 +21,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "store/mmap_directory.hpp"
+
 #include "store/store_utils.hpp"
-#include "utils/mmap_utils.hpp"
 #include "utils/memory.hpp"
+#include "utils/mmap_utils.hpp"
 
 namespace {
 
@@ -38,6 +39,7 @@ using mmap_handle_ptr = std::shared_ptr<mmap_handle>;
 inline int get_posix_madvice(IOAdvice advice) {
   switch (advice) {
     case IOAdvice::NORMAL:
+    case IOAdvice::DIRECT_READ:
       return IR_MADVICE_NORMAL;
     case IOAdvice::SEQUENTIAL:
       return IR_MADVICE_SEQUENTIAL;
@@ -143,6 +145,9 @@ mmap_directory::mmap_directory(irs::utf8_path path,
 index_input::ptr mmap_directory::open(std::string_view name,
                                       IOAdvice advice) const noexcept {
   try {
+    if (IOAdvice::DIRECT_READ == (advice & IOAdvice::DIRECT_READ)) {
+      return fs_directory::open(name, advice);
+    }
     auto path = directory();
     path /= name;
 

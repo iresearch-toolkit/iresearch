@@ -25,30 +25,25 @@
 #include <tuple>
 
 #include "analysis/token_attributes.hpp"
-
-#include "formats/formats.hpp"
 #include "formats/format_utils.hpp"
-
+#include "formats/formats.hpp"
 #include "index/file_names.hpp"
-
 #include "search/cost.hpp"
 #include "search/score.hpp"
-
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
-
-#include "utils/bitpack.hpp"
+#include "utils/attribute_helper.hpp"
 #include "utils/bit_utils.hpp"
+#include "utils/bitpack.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/encryption.hpp"
-#include "utils/attribute_helper.hpp"
+#include "utils/hash_set_utils.hpp"
 #include "utils/iterator.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/hash_set_utils.hpp"
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                               columnstore format
@@ -2350,13 +2345,14 @@ class reader final : public columnstore_reader, public context_provider {
  public:
   explicit reader(size_t pool_size = 16) : context_provider(pool_size) {}
 
-  virtual bool prepare(const directory& dir, const segment_meta& meta) override;
+  bool prepare(const directory& dir, const segment_meta& meta,
+               const options& opts = options{}) override;
 
-  virtual const column_reader* column(field_id field) const override;
+  const column_reader* column(field_id field) const override;
 
-  virtual bool visit(const column_visitor_f& visitor) const override;
+  bool visit(const column_visitor_f& visitor) const override;
 
-  virtual size_t size() const noexcept override { return columns_.size(); }
+  size_t size() const noexcept override { return columns_.size(); }
 
  private:
   static bool read_meta(const directory& dir, const segment_meta& meta,
@@ -2405,7 +2401,8 @@ bool reader::read_meta(const directory& dir, const segment_meta& meta,
   return true;
 }
 
-bool reader::prepare(const directory& dir, const segment_meta& meta) {
+bool reader::prepare(const directory& dir, const segment_meta& meta,
+                     const options& opts) {
   const auto filename = file_name(meta.name, writer::FORMAT_EXT);
   bool exists;
 

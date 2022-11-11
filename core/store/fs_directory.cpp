@@ -23,15 +23,15 @@
 
 #include "fs_directory.hpp"
 
+#include "error/error.hpp"
 #include "shared.hpp"
 #include "store/directory_attributes.hpp"
 #include "store/directory_cleaner.hpp"
-#include "error/error.hpp"
+#include "utils/crc.hpp"
+#include "utils/file_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/object_pool.hpp"
 #include "utils/string_utils.hpp"
-#include "utils/file_utils.hpp"
-#include "utils/crc.hpp"
 
 #ifdef _WIN32
 #include <Windows.h>  // for GetLastError()
@@ -45,6 +45,7 @@ namespace {
 inline int get_posix_fadvice(irs::IOAdvice advice) noexcept {
   switch (advice) {
     case irs::IOAdvice::NORMAL:
+    case irs::IOAdvice::DIRECT_READ:
       return IR_FADVICE_NORMAL;
     case irs::IOAdvice::SEQUENTIAL:
       return IR_FADVICE_SEQUENTIAL;
@@ -63,6 +64,13 @@ inline int get_posix_fadvice(irs::IOAdvice advice) noexcept {
     uint32_t(advice));
 
   return IR_FADVICE_NORMAL;
+}
+
+inline irs::file_utils::OpenMode get_read_mode(irs::IOAdvice advice) {
+  if (irs::IOAdvice::DIRECT_READ == (advice & irs::IOAdvice::DIRECT_READ)) {
+    return irs::file_utils::OpenMode::Read | irs::file_utils::OpenMode::Direct;
+  }
+  return irs::file_utils::OpenMode::Read;
 }
 
 }  // namespace
@@ -261,9 +269,10 @@ class fs_index_input : public buffered_index_input {
     assert(name);
 
     auto handle = file_handle::make();
-    handle->posix_open_advice = get_posix_fadvice(advice);
-    handle->handle = irs::file_utils::open(
-      name, irs::file_utils::OpenMode::Read, handle->posix_open_advice);
+    handle->io_advice = advice;
+    handle->handle =
+      irs::file_utils::open(name, get_read_mode(handle->io_advice),
+                            get_posix_fadvice(handle->io_advice));
 
     if (nullptr == handle->handle) {
 #ifdef _WIN32
@@ -356,7 +365,7 @@ class fs_index_input : public buffered_index_input {
     file_utils::handle_t handle; /* native file handle */
     size_t size{};               /* file size */
     size_t pos{};                /* current file position*/
-    int posix_open_advice{IR_FADVICE_NORMAL};
+    IOAdvice io_advice{IOAdvice::NORMAL};
   };  // file_handle
 
   fs_index_input(file_handle::ptr&& handle, size_t pool_size) noexcept
@@ -437,9 +446,9 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 
   if (!handle->handle) {
     handle->handle = irs::file_utils::open(
-      src, irs::file_utils::OpenMode::Read,
-      src
-        .posix_open_advice);  // same permission as in fs_index_input::open(...)
+      src, get_read_mode(src.io_advice),
+      get_posix_fadvice(
+        src.io_advice));  // same permission as in fs_index_input::open(...)
 
     if (!handle->handle) {
       // even win32 uses 'errno' for error codes in calls to file_open(...)
@@ -452,7 +461,7 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 #endif
           ));
     }
-    handle->posix_open_advice = src.posix_open_advice;
+    handle->io_advice = src.io_advice;
   }
 
   const auto pos = irs::file_utils::ftell(

@@ -263,19 +263,20 @@ struct column_header {
 
 class reader final : public columnstore_reader {
  public:
-  virtual bool prepare(const directory& dir, const segment_meta& meta) override;
+  bool prepare(const directory& dir, const segment_meta& meta,
+               const options& opts = options{}) override;
 
   const column_header* header(field_id field) const;
 
-  virtual const column_reader* column(field_id field) const override {
+  const column_reader* column(field_id field) const override {
     return field >= columns_.size()
              ? nullptr  // can't find column with the specified identifier
              : columns_[field];
   }
 
-  virtual bool visit(const column_visitor_f& visitor) const override;
+  bool visit(const column_visitor_f& visitor) const override;
 
-  virtual size_t size() const override { return columns_.size(); }
+  size_t size() const override { return columns_.size(); }
 
  private:
   using column_ptr = std::unique_ptr<column_reader>;
@@ -283,7 +284,8 @@ class reader final : public columnstore_reader {
   void prepare_data(const directory& dir, std::string_view filename);
 
   void prepare_index(const directory& dir, const segment_meta& meta,
-                     std::string_view filename);
+                     std::string_view filename, std::string_view data_filename,
+                     const options& opts);
 
   std::vector<column_ptr> sorted_columns_;
   std::vector<const column_ptr::element_type*> columns_;
