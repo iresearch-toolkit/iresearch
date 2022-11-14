@@ -182,7 +182,7 @@ size_t remapped_bytes_view_input::file_pointer() const noexcept {
   for (auto const& m : mapping_) {
     if (m.second < addr) {
       if (addr - m.second < diff) {
-        diff = m.second - addr;
+        diff = addr - m.second;
         src = m;
       }
     }

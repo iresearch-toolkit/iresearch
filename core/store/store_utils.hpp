@@ -360,7 +360,7 @@ class bytes_view_input : public index_input {
   }
 
   const byte_type* read_buffer(size_t offset, size_t size,
-                               BufferHint /*hint*/) noexcept override final {
+                               BufferHint /*hint*/) noexcept override {
     const auto begin = data_.data() + offset;
     const auto end = begin + size;
 
@@ -462,6 +462,14 @@ class IRESEARCH_API remapped_bytes_view_input : public bytes_view_input {
   virtual ptr dup() const override {
     return memory::make_unique<remapped_bytes_view_input>(*this);
   }
+
+  const byte_type* read_buffer(size_t offset, size_t size,
+                               BufferHint hint) noexcept override {
+    return bytes_view_input::read_buffer(src_to_internal(offset), size, hint);
+  }
+
+  using bytes_view_input::read_buffer;
+  using bytes_view_input::read_bytes;
 
   virtual size_t read_bytes(size_t offset, byte_type* b,
                             size_t size) noexcept override final {
