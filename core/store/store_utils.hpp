@@ -404,25 +404,15 @@ class bytes_ref_input : public index_input {
 
   ptr reopen() const override { return dup(); }
 
-  int16_t read_short() noexcept override final {
-    return irs::read<uint16_t>(pos_);
-  }
+  int16_t read_short() noexcept final { return irs::read<uint16_t>(pos_); }
 
-  int32_t read_int() noexcept override final {
-    return irs::read<uint32_t>(pos_);
-  }
+  int32_t read_int() noexcept final { return irs::read<uint32_t>(pos_); }
 
-  int64_t read_long() noexcept override final {
-    return irs::read<uint64_t>(pos_);
-  }
+  int64_t read_long() noexcept final { return irs::read<uint64_t>(pos_); }
 
-  uint64_t read_vlong() noexcept override final {
-    return irs::vread<uint64_t>(pos_);
-  }
+  uint64_t read_vlong() noexcept final { return irs::vread<uint64_t>(pos_); }
 
-  uint32_t read_vint() noexcept override final {
-    return irs::vread<uint32_t>(pos_);
-  }
+  uint32_t read_vint() noexcept final { return irs::vread<uint32_t>(pos_); }
 
   int64_t checksum(size_t offset) const override;
 
