@@ -1025,6 +1025,54 @@ TEST(store_utils_tests, avg_encode_block_read_write) {
   }
 }
 
+TEST(store_utils_tests, test_remapped_bytes_view) {
+  std::array<irs::byte_type, 15> data = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8,
+                                         0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF};
+
+  {
+    remapped_bytes_view_input::mapping mapping;
+    mapping.emplace_back(3, 0);
+    remapped_bytes_view_input in(bytes_view(data.data(), data.size()),
+                                 std::move(mapping));
+    auto actual = in.read_buffer(3, 2, BufferHint::NORMAL);
+    ASSERT_EQ(actual[0], data[0]);
+    ASSERT_EQ(5, in.file_pointer());
+    std::array<irs::byte_type, 2> read;
+    ASSERT_EQ(2, in.read_bytes(5, read.data(), 2));
+    ASSERT_EQ(0x3, read[0]);
+    ASSERT_EQ(0x4, read[1]);
+    ASSERT_EQ(7, in.file_pointer());
+    ASSERT_EQ(2, in.read_bytes(read.data(), 2));
+    ASSERT_EQ(0x5, read[0]);
+    ASSERT_EQ(0x6, read[1]);
+    ASSERT_EQ(9, in.file_pointer());
+    auto actual2 = in.read_buffer(4, 2, BufferHint::NORMAL);
+    ASSERT_EQ(actual2[0], data[1]);
+    ASSERT_EQ(6, in.file_pointer());
+    auto actual3 = in.read_buffer(17, 1, BufferHint::NORMAL);
+    ASSERT_EQ(actual3[0], data[14]);
+    ASSERT_EQ(18, in.file_pointer());
+  }
+
+  {
+    remapped_bytes_view_input::mapping mapping;
+    mapping.emplace_back(3, 0);
+    mapping.emplace_back(5, 7);
+    mapping.emplace_back(25, 14);
+    remapped_bytes_view_input in(bytes_view(data.data(), data.size()),
+                                 std::move(mapping));
+    auto actual = in.read_buffer(3, 2, BufferHint::NORMAL);
+    ASSERT_EQ(actual[1], data[1]);
+    ASSERT_EQ(5, in.file_pointer());
+    auto actual2 = in.read_buffer(5, 2, BufferHint::NORMAL);
+    ASSERT_EQ(actual2[0], data[7]);
+    ASSERT_EQ(7, in.file_pointer());
+    auto actual3 = in.read_buffer(25, 1, BufferHint::NORMAL);
+    ASSERT_EQ(actual3[0], data[14]);
+    ASSERT_EQ(26, in.file_pointer());
+  }
+}
+
 #ifdef IRESEARCH_SSE2
 
 TEST(store_utils_tests, read_write_block32_optimized) {
