@@ -1030,10 +1030,10 @@ TEST(store_utils_tests, test_remapped_bytes_view) {
                                          0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF};
 
   {
-    remapped_bytes_view_input::mapping mapping;
+    remapped_bytes_ref_input::mapping mapping;
     mapping.emplace_back(3, 0);
-    remapped_bytes_view_input in(bytes_view(data.data(), data.size()),
-                                 std::move(mapping));
+    remapped_bytes_ref_input in(bytes_ref(data.data(), data.size()),
+                                std::move(mapping));
     auto actual = in.read_buffer(3, 2, BufferHint::NORMAL);
     ASSERT_EQ(actual[0], data[0]);
     ASSERT_EQ(5, in.file_pointer());
@@ -1055,12 +1055,12 @@ TEST(store_utils_tests, test_remapped_bytes_view) {
   }
 
   {
-    remapped_bytes_view_input::mapping mapping;
+    remapped_bytes_ref_input::mapping mapping;
     mapping.emplace_back(3, 0);
     mapping.emplace_back(5, 7);
     mapping.emplace_back(25, 14);
-    remapped_bytes_view_input in(bytes_view(data.data(), data.size()),
-                                 std::move(mapping));
+    remapped_bytes_ref_input in(bytes_ref(data.data(), data.size()),
+                                std::move(mapping));
     auto actual = in.read_buffer(3, 2, BufferHint::NORMAL);
     ASSERT_EQ(actual[1], data[1]);
     ASSERT_EQ(5, in.file_pointer());

@@ -361,7 +361,7 @@ class bytes_ref_input : public index_input {
 
   const byte_type* read_buffer(size_t offset, size_t size,
                                BufferHint /*hint*/) noexcept override {
-    const auto begin = data_.data() + offset;
+    const auto begin = data_.begin() + offset;
     const auto end = begin + size;
 
     if (end <= data_.end()) {
@@ -465,15 +465,15 @@ class IRESEARCH_API remapped_bytes_ref_input : public bytes_ref_input {
 
   const byte_type* read_buffer(size_t offset, size_t size,
                                BufferHint hint) noexcept override {
-    return bytes_view_input::read_buffer(src_to_internal(offset), size, hint);
+    return bytes_ref_input::read_buffer(src_to_internal(offset), size, hint);
   }
 
-  using bytes_view_input::read_buffer;
-  using bytes_view_input::read_bytes;
+  using bytes_ref_input::read_buffer;
+  using bytes_ref_input::read_bytes;
 
   virtual size_t read_bytes(size_t offset, byte_type* b,
                             size_t size) noexcept override final {
-    return bytes_view_input::read_bytes(src_to_internal(offset), b, size);
+    return bytes_ref_input::read_bytes(src_to_internal(offset), b, size);
   }
 
  private:
