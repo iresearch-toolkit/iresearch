@@ -449,7 +449,7 @@ class IRESEARCH_API remapped_bytes_ref_input : public bytes_ref_input {
   remapped_bytes_ref_input(const remapped_bytes_ref_input& other)
     : bytes_ref_input(other), mapping_{other.mapping_} {}
 
-  int64_t checksum(size_t offset) const override final {
+  int64_t checksum(size_t offset) const final {
     return bytes_ref_input::checksum(src_to_internal(offset));
   }
 
@@ -457,7 +457,7 @@ class IRESEARCH_API remapped_bytes_ref_input : public bytes_ref_input {
     bytes_ref_input::seek(src_to_internal(pos));
   }
 
-  size_t file_pointer() const noexcept override final;
+  size_t file_pointer() const noexcept final;
 
   ptr dup() const override {
     return memory::make_unique<remapped_bytes_ref_input>(*this);
@@ -472,7 +472,7 @@ class IRESEARCH_API remapped_bytes_ref_input : public bytes_ref_input {
   using bytes_ref_input::read_bytes;
 
   virtual size_t read_bytes(size_t offset, byte_type* b,
-                            size_t size) noexcept override final {
+                            size_t size) noexcept final {
     return bytes_ref_input::read_bytes(src_to_internal(offset), b, size);
   }
 
