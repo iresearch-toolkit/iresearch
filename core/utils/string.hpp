@@ -28,6 +28,9 @@
 
 #include "shared.hpp"
 
+// MSVC++ > v14.0 (Visual Studio >2015) already implements this in <xstring>
+// MacOS requires this definition to be before first usage (i.e. in bytes_view)
+#if !defined(_MSC_VER) || (_MSC_VER <= 1900)
 namespace std {
 
 // We define this specialization because default implementation
@@ -115,6 +118,7 @@ struct char_traits<::iresearch::byte_type> {
 };
 
 }  // namespace std
+#endif
 
 namespace iresearch {
 
